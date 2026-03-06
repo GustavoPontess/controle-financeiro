@@ -1,0 +1,15 @@
+.navbar {
+  height: 64px;
+  border-bottom: 1px solid #e5e7eb;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 16px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 16px;
+}

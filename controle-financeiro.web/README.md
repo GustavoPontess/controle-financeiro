@@ -1,0 +1,140 @@
+# Controle Financeiro - Frontend
+
+## Sobre
+
+Interface web desenvolvida em React 19 com TypeScript para o sistema de controle de gastos.
+
+Funcionalidades:
+- Gerenciar pessoas
+- Criar categorias
+- Registrar transações
+- Visualizar relatórios
+
+## Tecnologias
+
+- React 19
+- TypeScript
+- Material-UI (MUI) v7
+- React Router v7
+- Axios
+- Vite
+- ESLint
+
+## Estrutura do Projeto
+
+```
+src/
+├── api/            # Configuração Axios
+├── components/     # Componentes reutilizáveis
+├── layouts/        # Layout padrão
+├── pages/          # Páginas (Categories, People, Transactions, Reports)
+├── routes/         # Configuração de rotas
+├── services/       # Serviços da API
+├── styles/         # Estilos globais
+├── types/          # Tipos TypeScript
+├── App.tsx
+└── main.tsx
+```
+
+## Como Executar
+
+### Pré-requisitos
+- Node.js 18+
+- Backend rodando em `http://localhost:5293`
+
+### Instalação
+
+1. Instalar dependências:
+```bash
+npm install
+```
+
+2. Iniciar desenvolvimento:
+```bash
+npm run dev
+```
+
+3. Acessar:
+```
+http://localhost:5173
+```
+
+### Scripts
+```bash
+npm run dev      # Servidor de desenvolvimento
+npm run build    # Build de produção
+npm run preview  # Preview do build
+npm run lint     # Executa linter
+```
+
+## Funcionalidades
+
+### Pessoas
+- Listagem, cadastro e edição
+- Validação de idade (0-120 anos)
+- Indicação visual para menores de 18
+- Exclusão com confirmação
+
+### Categorias
+- Tabela de categorias
+- Criação com finalidade (Despesa/Receita/Ambas)
+- Validação de vínculos
+
+### Transações
+- Registro de receitas e despesas
+- Seleção de pessoa e categoria
+- Validação de compatibilidade
+- Formatação monetária
+- Restrição para menores de 18 anos
+
+### Relatórios
+- Resumo por pessoa
+- Totais gerais do sistema
+- Cálculo de saldos
+
+## Integração com a API
+
+**Axios configurado:**
+```typescript
+baseURL: 'http://localhost:5293/api'
+```
+
+**Serviços:**
+- `categoryService.ts`
+- `personService.ts`
+- `transactionService.ts`
+- `reportService.ts`
+
+## Componentes
+
+**Layout:**
+- Default (Navbar + Sidebar)
+
+**Reutilizáveis:**
+- EmptyState
+- Navbar
+- Sidebar
+
+**Domínio:**
+- CategoriesTable
+- CategoryForm
+- PersonForm
+- TransactionForm
+
+## Boas Práticas
+
+- Tipagem TypeScript
+- Separação de responsabilidades
+- Componentização
+- React Hooks
+- Validações frontend/backend
+- Feedback visual
+
+## Observações
+
+Certifique-se de que:
+1. Backend está em `http://localhost:5293`
+2. Banco migrado: `dotnet ef database update`
+3. CORS configurado
+
+Veja [README do Backend](../ControleFinanceiro.Api/README.md) para detalhes.
