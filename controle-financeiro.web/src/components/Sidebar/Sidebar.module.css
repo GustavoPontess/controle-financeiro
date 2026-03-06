@@ -1,0 +1,57 @@
+.sidebar {
+  padding: 20px 14px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  background: #111827;
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+  margin-right: 12px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 16px 0 8px 12px;
+}
+
+.menuItem {
+  border-radius: 8px !important;
+  margin: 4px 6px;
+  transition: background 0.2s ease;
+}
+
+.menuItem:hover {
+  background: #e5e7eb;
+}
+
+.active {
+  background: #e5e7eb !important;
+}
+
+.icon {
+  min-width: 32px !important;
+}
