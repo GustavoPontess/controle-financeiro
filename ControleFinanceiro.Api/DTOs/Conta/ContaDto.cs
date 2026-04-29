@@ -10,6 +10,7 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         public int? TipoCartao { get; set; }
         public string? TipoCartaoDescricao { get; set; }
         public decimal SaldoInicial { get; set; }
+        public bool IsCarteira { get; set; }
         public Guid? BancoId { get; set; }
         public string BancoNome { get; set; } = string.Empty;
     }

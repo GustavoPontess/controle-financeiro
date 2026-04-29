@@ -12,18 +12,15 @@ import TableHead from "@mui/material/TableHead"
 import TableRow from "@mui/material/TableRow"
 
 import type { Category } from "../../../types/Category"
-import type { Person } from "../../../types/Person"
 import type { Transaction } from "../../../types/Transaction"
 
 type Props = {
   transactions: Transaction[]
-  people: Person[]
   categories: Category[]
 }
 
 export default function TransactionsTable({
   transactions,
-  people,
   categories
 }: Props) {
 
@@ -74,10 +71,6 @@ export default function TransactionsTable({
                 Categoria
               </TableCell>
 
-              <TableCell sx={{ fontSize: 13, color: "#6b7280" }}>
-                Pessoa
-              </TableCell>
-
             </TableRow>
 
           </TableHead>
@@ -86,7 +79,6 @@ export default function TransactionsTable({
 
             {transactions.map(t => {
 
-              const pessoa = people.find(p => p.id === t.pessoaId)
               const categoria = categories.find(c => c.id === t.categoriaId)
 
               return (
@@ -130,10 +122,6 @@ export default function TransactionsTable({
 
                   <TableCell>
                     {categoria?.descricao}
-                  </TableCell>
-
-                  <TableCell>
-                    {pessoa?.nome}
                   </TableCell>
 
                 </TableRow>

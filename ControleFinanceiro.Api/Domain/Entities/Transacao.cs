@@ -17,14 +17,14 @@ public class Transacao
     [Required]
     public TipoTransacao Tipo { get; set; }
 
-    public Guid CategoriaId { get; set; }
+    public Guid? CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
-    public Guid PessoaId { get; set; }
-    public Pessoa? Pessoa { get; set; }
-
-    public Guid? ContaId { get; set; }
+    [Required]
+    public Guid ContaId { get; set; }
     public Conta? Conta { get; set; }
+
+    public Guid CriadoPor { get; set; }
 
     [Required]
     public DateTime Data { get; set; }

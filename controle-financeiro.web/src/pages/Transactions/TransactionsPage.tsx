@@ -19,11 +19,9 @@ import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalance
 import { useNavigate } from "react-router-dom";
 
 import { getCategories } from "../../services/categoryService";
-import { getPeople } from "../../services/personService";
 import { getTransactions } from "../../services/transactionService";
 
 import type { Category } from "../../types/Category";
-import type { Person } from "../../types/Person";
 import type { Transaction } from "../../types/Transaction";
 
 import EmptyState from "../../components/EmptyState/EmptyState";
@@ -65,21 +63,17 @@ function SummaryCard({
 export default function TransactionsPage() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [filterPersonId, setFilterPersonId] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
-      const [cats, persons, trans] = await Promise.all([
+      const [cats, trans] = await Promise.all([
         getCategories(),
-        getPeople(),
         getTransactions(),
       ]);
       setCategories(cats);
-      setPeople(persons);
       setTransactions(trans);
     };
 
@@ -103,7 +97,6 @@ export default function TransactionsPage() {
     const tDate = new Date(t.data);
     if (tDate.getFullYear() !== currentDate.getFullYear()) return false;
     if (tDate.getMonth() !== currentDate.getMonth()) return false;
-    if (filterPersonId && t.pessoaId !== filterPersonId) return false;
     if (filterCategoryId && t.categoriaId !== filterCategoryId) return false;
     return true;
   });
@@ -116,19 +109,7 @@ export default function TransactionsPage() {
     .reduce((sum, t) => sum + t.valor, 0);
   const saldoFinal = totalEntradas - totalSaidas;
 
-  const hasPeople = people.length > 0;
   const hasCategories = categories.length > 0;
-
-  if (!hasPeople) {
-    return (
-      <EmptyState
-        title="Nenhuma pessoa cadastrada"
-        description="Cadastre uma pessoa antes de registrar transações."
-        actionLabel="Adicionar Pessoa"
-        onAction={() => navigate("/")}
-      />
-    );
-  }
 
   if (!hasCategories) {
     return (
@@ -219,21 +200,6 @@ export default function TransactionsPage() {
       <Box sx={{ display: "flex", gap: 2 }}>
         <Select
           displayEmpty
-          value={filterPersonId}
-          onChange={(e) => setFilterPersonId(e.target.value)}
-          size="small"
-          sx={{ minWidth: 180, borderRadius: "8px", fontSize: 14 }}
-        >
-          <MenuItem value="">Selecionar Pessoa</MenuItem>
-          {people.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.nome}
-            </MenuItem>
-          ))}
-        </Select>
-
-        <Select
-          displayEmpty
           value={filterCategoryId}
           onChange={(e) => setFilterCategoryId(e.target.value)}
           size="small"
@@ -272,7 +238,6 @@ export default function TransactionsPage() {
           filtered.map((t: Transaction, i: number) => {
             const isReceita = t.tipo === RECEITA;
             const category = categories.find((c) => c.id === t.categoriaId);
-            const person = people.find((p) => p.id === t.pessoaId);
 
             return (
               <Box
@@ -304,8 +269,11 @@ export default function TransactionsPage() {
                     </Typography>
                     <Typography color="text.secondary" fontSize={12}>
                       {new Date(t.data).toLocaleDateString("pt-BR")}
-                      {category ? ` • ${category.descricao}` : ""}
-                      {person ? ` • ${person.nome}` : ""}
+                      {t.categoriaId === null
+                        ? ""
+                        : category
+                        ? ` • ${category.descricao}`
+                        : ""}
                     </Typography>
                   </Box>
                 </Box>

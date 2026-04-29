@@ -9,7 +9,6 @@ import NewTransactionDialog from "../../components/transactions/NewTransactionDi
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 
-import { getPeople } from "../../services/personService";
 import { getCategories } from "../../services/categoryService";
 
 import styles from "./DefaultLayout.module.css";
@@ -39,18 +38,14 @@ export default function DefaultLayout() {
   };
 
   const checkRequirements = async () => {
-    const people = await getPeople();
     const categories = await getCategories();
-
-    setCanCreateTransaction(people.length > 0 && categories.length > 0);
+    setCanCreateTransaction(categories.length > 0);
   };
 
   useEffect(() => {
     const loadRequirements = async () => {
-      const people = await getPeople();
       const categories = await getCategories();
-
-      setCanCreateTransaction(people.length > 0 && categories.length > 0);
+      setCanCreateTransaction(categories.length > 0);
     };
 
     loadRequirements();
