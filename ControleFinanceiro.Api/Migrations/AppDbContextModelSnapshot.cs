@@ -80,6 +80,45 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Categorias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.CompartilhamentoConta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCompartilhamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PermissaoEscrita")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PermissaoLeitura")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("RelacionamentoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RelacionamentoId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ContaId", "UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("CompartilhamentosContas");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
                 {
                     b.Property<Guid>("Id")
@@ -88,6 +127,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("BancoId")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCarteira")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -107,30 +149,45 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int?>("TipoCartao")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid>("UsuarioIdProprietario")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BancoId");
 
+                    b.HasIndex("UsuarioIdProprietario");
+
                     b.ToTable("Contas");
                 });
 
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Pessoa", b =>
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("DataNascimento")
+                    b.Property<Guid>("CriadoPor")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(200)
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId1")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId2")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Pessoas");
+                    b.HasIndex("UsuarioId1")
+                        .IsUnique();
+
+                    b.ToTable("Relacionamentos");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
@@ -139,10 +196,13 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("CategoriaId")
+                    b.Property<Guid?>("CategoriaId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ContaId")
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Data")
@@ -151,9 +211,6 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(400)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("PessoaId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
@@ -168,9 +225,81 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasIndex("ContaId");
 
-                    b.HasIndex("PessoaId");
-
                     b.ToTable("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataNascimento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelacionamentoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelacionamentoId1")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("RelacionamentoId1")
+                        .IsUnique();
+
+                    b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.CompartilhamentoConta", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany("CompartilhamentosContas")
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Relacionamento", "Relacionamento")
+                        .WithMany("CompartilhamentosContas")
+                        .HasForeignKey("RelacionamentoId");
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany("CompartilhamentosContas")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conta");
+
+                    b.Navigation("Relacionamento");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
@@ -180,33 +309,50 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("BancoId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "UsuarioProprietario")
+                        .WithMany("Contas")
+                        .HasForeignKey("UsuarioIdProprietario")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Banco");
+
+                    b.Navigation("UsuarioProprietario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario1")
+                        .WithOne("Relacionamento")
+                        .HasForeignKey("ControleFinanceiro.Api.Domain.Entities.Relacionamento", "UsuarioId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario1");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Categoria", "Categoria")
                         .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("CategoriaId");
 
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
                         .WithMany("Transacoes")
                         .HasForeignKey("ContaId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Pessoa", "Pessoa")
-                        .WithMany("Transacoes")
-                        .HasForeignKey("PessoaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+                });
 
-                    b.Navigation("Pessoa");
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Relacionamento", null)
+                        .WithOne("Usuario2")
+                        .HasForeignKey("ControleFinanceiro.Api.Domain.Entities.Usuario", "RelacionamentoId1");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
@@ -216,12 +362,25 @@ namespace ControleFinanceiro.Api.Migrations
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
                 {
+                    b.Navigation("CompartilhamentosContas");
+
                     b.Navigation("Transacoes");
                 });
 
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Pessoa", b =>
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
                 {
-                    b.Navigation("Transacoes");
+                    b.Navigation("CompartilhamentosContas");
+
+                    b.Navigation("Usuario2");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>
+                {
+                    b.Navigation("CompartilhamentosContas");
+
+                    b.Navigation("Contas");
+
+                    b.Navigation("Relacionamento");
                 });
 #pragma warning restore 612, 618
         }

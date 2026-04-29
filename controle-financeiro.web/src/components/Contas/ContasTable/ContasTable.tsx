@@ -68,12 +68,16 @@ export default function ContasTable({ contas, onEdit, onDelete }: Props) {
                   </TableCell>
                   <TableCell sx={{ fontSize: 13, py: 1.5 }}>{formatMoney(c.saldoInicial)}</TableCell>
                   <TableCell align="right" sx={{ py: 0.5 }}>
-                    <IconButton size="small" onClick={() => onEdit(c)} sx={{ color: "#6b7280" }}>
-                      <EditIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => onDelete(c.id)} sx={{ color: "#ef4444" }}>
-                      <DeleteIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
+                    {!c.isCarteira && (
+                      <>
+                        <IconButton size="small" onClick={() => onEdit(c)} sx={{ color: "#6b7280" }}>
+                          <EditIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => onDelete(c.id)} sx={{ color: "#ef4444" }}>
+                          <DeleteIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               )

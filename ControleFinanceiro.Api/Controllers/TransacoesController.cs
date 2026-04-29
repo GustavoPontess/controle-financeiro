@@ -3,12 +3,15 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ControleFinanceiro.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class TransacoesController : ControllerBase
     {
         private readonly TransacaoService _service;
@@ -18,6 +21,14 @@ namespace ControleFinanceiro.Api.Controllers
             _service = service;
         }
 
+        private Guid GetUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                throw new UnauthorizedAccessException("Usuário não identificado");
+            return userId;
+        }
+
         [HttpPost]
         [ProducesResponseType(typeof(TransacaoDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -25,6 +36,8 @@ namespace ControleFinanceiro.Api.Controllers
         {
             try
             {
+                var usuarioId = GetUserId();
+
                 var transacao = new Transacao
                 {
                     Id = Guid.NewGuid(),
@@ -32,12 +45,11 @@ namespace ControleFinanceiro.Api.Controllers
                     Valor = dto.Valor,
                     Tipo = (TipoTransacao)dto.Tipo,
                     CategoriaId = dto.CategoriaId,
-                    PessoaId = dto.PessoaId,
                     ContaId = dto.ContaId,
                     Data = dto.Data.ToUniversalTime()
                 };
 
-                var criada = await _service.CriarTransacaoAsync(transacao);
+                var criada = await _service.CriarTransacaoAsync(transacao, usuarioId);
 
                 var retorno = new TransacaoDto
                 {
@@ -46,7 +58,6 @@ namespace ControleFinanceiro.Api.Controllers
                     Valor = criada.Valor,
                     Tipo = (int)criada.Tipo,
                     CategoriaId = criada.CategoriaId,
-                    PessoaId = criada.PessoaId,
                     ContaId = criada.ContaId,
                     Data = criada.Data
                 };
@@ -67,7 +78,8 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<TransacaoDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Listar()
         {
-            var lista = await _service.ListarAsync();
+            var usuarioId = GetUserId();
+            var lista = await _service.ListarAsync(usuarioId);
 
             var retorno = lista.Select(t => new TransacaoDto
             {
@@ -76,7 +88,6 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = t.Valor,
                 Tipo = (int)t.Tipo,
                 CategoriaId = t.CategoriaId,
-                PessoaId = t.PessoaId,
                 ContaId = t.ContaId,
                 Data = t.Data
             });
@@ -89,7 +100,8 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> BuscarPorId(Guid id)
         {
-            var transacao = await _service.BuscarPorIdAsync(id);
+            var usuarioId = GetUserId();
+            var transacao = await _service.BuscarPorIdAsync(id, usuarioId);
 
             if (transacao == null)
             {
@@ -103,18 +115,19 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = transacao.Valor,
                 Tipo = (int)transacao.Tipo,
                 CategoriaId = transacao.CategoriaId,
-                PessoaId = transacao.PessoaId,
+                ContaId = transacao.ContaId,
                 Data = transacao.Data
             };
 
             return Ok(retorno);
         }
 
-        [HttpGet("resumo/{pessoaId}")]
+        [HttpGet("resumo/{contaId}")]
         [ProducesResponseType(typeof(ResumoFinanceiroDto), StatusCodes.Status200OK)]
-        public async Task<IActionResult> ObterResumo(Guid pessoaId)
+        public async Task<IActionResult> ObterResumo(Guid contaId)
         {
-            var resumo = await _service.ObterResumoPorPessoaAsync(pessoaId);
+            var usuarioId = GetUserId();
+            var resumo = await _service.ObterResumoPorContaAsync(contaId, usuarioId);
 
             return Ok(resumo);
         }

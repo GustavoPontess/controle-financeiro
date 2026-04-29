@@ -21,8 +21,14 @@ public class Conta
 
     public decimal SaldoInicial { get; set; }
 
+    public bool IsCarteira { get; set; }
+
     public Guid? BancoId { get; set; }
     public Banco? Banco { get; set; }
 
+    public Guid UsuarioIdProprietario { get; set; }
+    public Usuario? UsuarioProprietario { get; set; }
+
     public ICollection<Transacao> Transacoes { get; set; } = new List<Transacao>();
+    public ICollection<CompartilhamentoConta> CompartilhamentosContas { get; set; } = new List<CompartilhamentoConta>();
 }

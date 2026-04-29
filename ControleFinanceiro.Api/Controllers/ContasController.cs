@@ -2,12 +2,15 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Conta;
 using ControleFinanceiro.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ControleFinanceiro.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ContasController : ControllerBase
     {
         private readonly ContaService _service;
@@ -15,6 +18,14 @@ namespace ControleFinanceiro.Api.Controllers
         public ContasController(ContaService service)
         {
             _service = service;
+        }
+
+        private Guid GetUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                throw new UnauthorizedAccessException("Usuário não identificado");
+            return userId;
         }
 
         private static string DescricaoTipo(TipoConta tipo) => tipo switch
@@ -45,6 +56,7 @@ namespace ControleFinanceiro.Api.Controllers
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
             SaldoInicial = c.SaldoInicial,
+            IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome ?? string.Empty
         };
@@ -52,14 +64,16 @@ namespace ControleFinanceiro.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> Listar()
         {
-            var lista = await _service.ListarAsync();
+            var usuarioId = GetUserId();
+            var lista = await _service.ListarAsync(usuarioId);
             return Ok(lista.Select(ToDto));
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> BuscarPorId(Guid id)
         {
-            var conta = await _service.BuscarPorIdAsync(id);
+            var usuarioId = GetUserId();
+            var conta = await _service.BuscarPorIdAsync(id, usuarioId);
             if (conta == null) return NotFound();
             return Ok(ToDto(conta));
         }
@@ -88,6 +102,7 @@ namespace ControleFinanceiro.Api.Controllers
         {
             try
             {
+                var usuarioId = GetUserId();
                 var validacao = ValidarCartao(dto);
                 if (validacao != null) return validacao;
 
@@ -100,7 +115,7 @@ namespace ControleFinanceiro.Api.Controllers
                     BancoId = dto.BancoId
                 };
 
-                var criada = await _service.CriarAsync(conta);
+                var criada = await _service.CriarAsync(conta, usuarioId);
                 return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
             }
             catch (Exception ex)
@@ -116,6 +131,7 @@ namespace ControleFinanceiro.Api.Controllers
         {
             try
             {
+                var usuarioId = GetUserId();
                 var validacao = ValidarCartao(dto);
                 if (validacao != null) return validacao;
 
@@ -128,7 +144,7 @@ namespace ControleFinanceiro.Api.Controllers
                     BancoId = dto.BancoId
                 };
 
-                await _service.AtualizarAsync(id, conta);
+                await _service.AtualizarAsync(id, conta, usuarioId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -144,7 +160,8 @@ namespace ControleFinanceiro.Api.Controllers
         {
             try
             {
-                await _service.DeletarAsync(id);
+                var usuarioId = GetUserId();
+                await _service.DeletarAsync(id, usuarioId);
                 return NoContent();
             }
             catch (Exception ex)
