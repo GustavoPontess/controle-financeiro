@@ -38,10 +38,11 @@ namespace ControleFinanceiro.Api.Services
                 throw new Exception("Nome deve ter no máximo 200 caracteres.");
             }
 
-            if (pessoa.Idade < 0 || pessoa.Idade > 120)
-            {
-                throw new Exception("Idade inválida.");
-            }
+            if (pessoa.DataNascimento > DateTime.Today)
+                throw new Exception("Data de nascimento não pode ser no futuro.");
+
+            if (pessoa.Idade > 120)
+                throw new Exception("Data de nascimento inválida.");
 
             pessoa.Id = Guid.NewGuid();
 
@@ -70,13 +71,14 @@ namespace ControleFinanceiro.Api.Services
                 throw new Exception("Nome deve ter no máximo 200 caracteres.");
             }
 
-            if (pessoa.Idade < 0 || pessoa.Idade > 120)
-            {
-                throw new Exception("Idade inválida.");
-            }
+            if (pessoa.DataNascimento > DateTime.Today)
+                throw new Exception("Data de nascimento não pode ser no futuro.");
+
+            if (pessoa.Idade > 120)
+                throw new Exception("Data de nascimento inválida.");
 
             pessoaExistente.Nome = pessoa.Nome;
-            pessoaExistente.Idade = pessoa.Idade;
+            pessoaExistente.DataNascimento = pessoa.DataNascimento;
 
             await _context.SaveChangesAsync();
         }

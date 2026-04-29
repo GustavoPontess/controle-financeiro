@@ -15,9 +15,11 @@ import TransactionForm from "../TransactionForm/TransactionForm"
 import { getPeople } from "../../../services/personService"
 import { getCategories } from "../../../services/categoryService"
 import { createTransaction } from "../../../services/transactionService"
+import { getContas } from "../../../services/contaService"
 
 import type { Person } from "../../../types/Person"
 import type { Category } from "../../../types/Category"
+import type { Conta } from "../../../types/Conta"
 
 type Notification = {
   open: boolean
@@ -35,16 +37,16 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
 
   const [people, setPeople] = useState<Person[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [contas, setContas] = useState<Conta[]>([])
 
   useEffect(() => {
 
     const loadData = async () => {
 
-      const persons = await getPeople()
-      const cats = await getCategories()
-
+      const [persons, cats, cts] = await Promise.all([getPeople(), getCategories(), getContas()])
       setPeople(persons)
       setCategories(cats)
+      setContas(cts)
 
     }
 
@@ -64,6 +66,8 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
     const tipo = Number(formData.get("tipo"))
     const categoriaId = formData.get("categoriaId") as string
     const pessoaId = formData.get("pessoaId") as string
+    const contaId = formData.get("contaId") as string
+    const data = formData.get("data") as string
 
     if (valor <= 0) {
 
@@ -83,7 +87,9 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
         valor,
         tipo,
         categoriaId,
-        pessoaId
+        pessoaId,
+        contaId,
+        data
       })
       
 
@@ -113,7 +119,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
 
   return (
 
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
 
       <DialogTitle sx={{ p: 0 }}>
 
@@ -124,7 +130,6 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
             justifyContent: "space-between",
             px: 3,
             py: 2,
-            borderBottom: "1px solid #f1f5f9",
             fontWeight: 600,
             fontSize: 16
           }}
@@ -133,16 +138,15 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           Nova Transação
 
           <IconButton
-            size="small"
             onClick={onClose}
             sx={{
-              color: "#6b7280",
-              "&:hover": {
-                backgroundColor: "#f3f4f6"
-              }
+              width: 24,
+              height: 24,
+              color: "#9ca3af",
+              "&:hover": { backgroundColor: "#f3f4f6", color: "#374151" }
             }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
 
         </Box>
@@ -154,6 +158,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
         <TransactionForm
           people={people}
           categories={categories}
+          contas={contas}
           onCreate={handleCreate}
           onCancel={onClose}
         />

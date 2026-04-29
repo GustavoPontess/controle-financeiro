@@ -22,4 +22,10 @@ public class Transacao
 
     public Guid PessoaId { get; set; }
     public Pessoa? Pessoa { get; set; }
+
+    public Guid? ContaId { get; set; }
+    public Conta? Conta { get; set; }
+
+    [Required]
+    public DateTime Data { get; set; }
 }

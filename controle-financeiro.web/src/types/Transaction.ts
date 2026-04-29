@@ -5,4 +5,6 @@ export interface Transaction {
   tipo: number
   categoriaId: string
   pessoaId: string
+  contaId?: string
+  data: string
 }

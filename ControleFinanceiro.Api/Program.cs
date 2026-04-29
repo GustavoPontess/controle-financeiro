@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.Data;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,10 @@ builder.Services.AddScoped<TransacaoService>();
 builder.Services.AddScoped<PessoaService>();
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<RelatorioService>();
+builder.Services.AddScoped<ContaService>();
+builder.Services.AddScoped<BancoService>();
 
+builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -32,6 +36,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Seed bancos na primeira execução
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+    await context.Database.MigrateAsync();
+    await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
+}
 
 if (app.Environment.IsDevelopment())
 {

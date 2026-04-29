@@ -26,6 +26,7 @@ namespace ControleFinanceiro.Api.Controllers
             {
                 Id = p.Id,
                 Nome = p.Nome,
+                DataNascimento = p.DataNascimento,
                 Idade = p.Idade
             });
 
@@ -48,6 +49,7 @@ namespace ControleFinanceiro.Api.Controllers
             {
                 Id = pessoa.Id,
                 Nome = pessoa.Nome,
+                DataNascimento = pessoa.DataNascimento,
                 Idade = pessoa.Idade
             };
 
@@ -65,7 +67,7 @@ namespace ControleFinanceiro.Api.Controllers
                 {
                     Id = Guid.NewGuid(),
                     Nome = dto.Nome,
-                    Idade = dto.Idade
+                    DataNascimento = dto.DataNascimento.ToUniversalTime()
                 };
 
                 var criada = await _service.CriarAsync(pessoa);
@@ -74,6 +76,7 @@ namespace ControleFinanceiro.Api.Controllers
                 {
                     Id = criada.Id,
                     Nome = criada.Nome,
+                    DataNascimento = criada.DataNascimento,
                     Idade = criada.Idade
                 };
 
@@ -96,7 +99,7 @@ namespace ControleFinanceiro.Api.Controllers
                 {
                     Id = id,
                     Nome = dto.Nome,
-                    Idade = dto.Idade
+                    DataNascimento = dto.DataNascimento.ToUniversalTime()
                 };
 
                 await _service.AtualizarAsync(id, pessoa);

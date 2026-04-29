@@ -1,125 +1,99 @@
-import {
-  Box,
-  TextField,
-  Button
-} from "@mui/material"
-
+import { useRef } from "react"
+import { Box, Typography, TextField } from "@mui/material"
+import CustomButton from "../../CustomButton"
 import type { Person } from "../../../types/Person"
 
+const inputSx = {
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: "#f9fafb",
+    borderRadius: "8px",
+    fontSize: "14px",
+    "& fieldset": { borderColor: "#e5e7eb" },
+    "&:hover fieldset": { borderColor: "#d1d5db" },
+    "&.Mui-focused fieldset": { borderColor: "#111827", borderWidth: "1.5px" },
+  },
+}
+
 interface Props {
-  onSubmit: (person: Omit<Person, "id">) => void
+  onSubmit: (person: Omit<Person, "id" | "idade">) => void
   editingPerson?: Person | null
   onCancelEdit?: () => void
 }
 
-export default function PersonForm({
-  onSubmit,
-  editingPerson,
-  onCancelEdit
-}: Props) {
+export default function PersonForm({ onSubmit, editingPerson, onCancelEdit }: Props) {
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-
     e.preventDefault()
-
     const formData = new FormData(e.currentTarget)
-
     const nome = formData.get("nome") as string
-    const idade = Number(formData.get("idade"))
-
-    onSubmit({ nome, idade })
-
+    const dataNascimento = formData.get("dataNascimento") as string
+    onSubmit({ nome, dataNascimento })
     e.currentTarget.reset()
-
   }
 
-  return (
+  const editingBirthDate = editingPerson?.dataNascimento
+    ? new Date(editingPerson.dataNascimento).toISOString().split("T")[0]
+    : ""
 
+  return (
     <Box
       component="form"
       key={editingPerson?.id ?? "new"}
       onSubmit={handleSubmit}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        pt: 2
-      }}
+      sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
     >
-
-      <TextField
-        name="nome"
-        label="Nome"
-        defaultValue={editingPerson?.nome ?? ""}
-        size="small"
-        fullWidth
-        required
-        inputProps={{ maxLength: 200 }}
-        helperText="Máximo de 200 caracteres"
-      />
-
-      <TextField
-        name="idade"
-        label="Idade"
-        type="number"
-        defaultValue={editingPerson?.idade ?? ""}
-        size="small"
-        required
-        inputProps={{
-          min: 0,
-          max: 120
-        }}
-      />
-
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 1,
-          pt: 1
-        }}
-      >
-
-        {editingPerson && (
-
-          <Button
-            type="button"
-            variant="outlined"
-            onClick={onCancelEdit}
-            sx={{
-              backgroundColor: "#ffffff",
-              color: "#111827",
-              borderColor: "#e5e7eb",
-              borderRadius: "7px",
-              "&:hover": {
-                backgroundColor: "#f3f4f6",
-                borderColor: "#d1d5db"
-              }
-            }}
-          >
-            Cancelar
-          </Button>
-
-        )}
-
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{
-            backgroundColor: "#111827",
-            "&:hover": {
-              backgroundColor: "#1f2937"
-            },
-            borderRadius: "7px"
-          }}
-        >
-          {editingPerson ? "Atualizar" : "Criar"}
-        </Button>
-
+      <Box>
+        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>
+          Nome
+        </Typography>
+        <TextField
+          name="nome"
+          placeholder="Ex: João Silva"
+          defaultValue={editingPerson?.nome ?? ""}
+          size="small"
+          fullWidth
+          required
+          inputProps={{ maxLength: 200 }}
+          helperText="Máximo de 200 caracteres"
+          sx={inputSx}
+        />
       </Box>
 
+      <Box>
+        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>
+          Data de Nascimento
+        </Typography>
+        <TextField
+          name="dataNascimento"
+          type="date"
+          size="small"
+          fullWidth
+          required
+          defaultValue={editingBirthDate}
+          inputRef={dateInputRef}
+          onClick={() => dateInputRef.current?.showPicker()}
+          sx={{
+            ...inputSx,
+            "& .MuiOutlinedInput-root": {
+              ...inputSx["& .MuiOutlinedInput-root"],
+              cursor: "pointer",
+              "& input": { cursor: "pointer" },
+            },
+          }}
+        />
+      </Box>
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 1 }}>
+        {editingPerson && (
+          <CustomButton type="button" variant="secondary" onClick={onCancelEdit}>
+            Cancelar
+          </CustomButton>
+        )}
+        <CustomButton type="submit" variant="primary">
+          {editingPerson ? "Atualizar" : "Criar"}
+        </CustomButton>
+      </Box>
     </Box>
-
   )
-
 }

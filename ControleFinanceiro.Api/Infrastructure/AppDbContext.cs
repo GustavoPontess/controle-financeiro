@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<Pessoa> Pessoas => Set<Pessoa>();
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Transacao> Transacoes => Set<Transacao>();
+    public DbSet<Conta> Contas => Set<Conta>();
+    public DbSet<Banco> Bancos => Set<Banco>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,5 +20,17 @@ public class AppDbContext : DbContext
             .WithOne(t => t.Pessoa)
             .HasForeignKey(t => t.PessoaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Conta>()
+            .HasMany(c => c.Transacoes)
+            .WithOne(t => t.Conta)
+            .HasForeignKey(t => t.ContaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Banco>()
+            .HasMany(b => b.Contas)
+            .WithOne(c => c.Banco)
+            .HasForeignKey(c => c.BancoId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

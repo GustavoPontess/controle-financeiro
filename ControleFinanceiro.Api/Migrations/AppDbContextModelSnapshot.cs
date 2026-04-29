@@ -17,6 +17,50 @@ namespace ControleFinanceiro.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CodigoBanco")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Cor")
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeFantasia")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RazaoSocial")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Bancos");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Categoria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -36,14 +80,48 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Categorias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("BancoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NumeroConta")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("SaldoInicial")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TipoCartao")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BancoId");
+
+                    b.ToTable("Contas");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Pessoa", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Idade")
-                        .HasColumnType("INTEGER");
+                    b.Property<DateTime>("DataNascimento")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -64,6 +142,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("CategoriaId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("ContaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Data")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -82,9 +166,21 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasIndex("CategoriaId");
 
+                    b.HasIndex("ContaId");
+
                     b.HasIndex("PessoaId");
 
                     b.ToTable("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Banco", "Banco")
+                        .WithMany("Contas")
+                        .HasForeignKey("BancoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Banco");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
@@ -95,6 +191,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany("Transacoes")
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Pessoa", "Pessoa")
                         .WithMany("Transacoes")
                         .HasForeignKey("PessoaId")
@@ -103,7 +204,19 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Navigation("Categoria");
 
+                    b.Navigation("Conta");
+
                     b.Navigation("Pessoa");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
+                {
+                    b.Navigation("Contas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Conta", b =>
+                {
+                    b.Navigation("Transacoes");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Pessoa", b =>

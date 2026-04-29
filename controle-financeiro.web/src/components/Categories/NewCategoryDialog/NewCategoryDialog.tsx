@@ -59,7 +59,7 @@ export default function NewCategoryDialog({
 
   return (
 
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
 
       <DialogTitle sx={{ p: 0 }}>
 
@@ -70,7 +70,6 @@ export default function NewCategoryDialog({
             justifyContent: "space-between",
             px: 3,
             py: 2,
-            borderBottom: "1px solid #f1f5f9",
             fontWeight: 600,
             fontSize: 16
           }}
@@ -79,16 +78,15 @@ export default function NewCategoryDialog({
           Nova Categoria
 
           <IconButton
-            size="small"
             onClick={onClose}
             sx={{
-              color: "#6b7280",
-              "&:hover": {
-                backgroundColor: "#f3f4f6"
-              }
+              width: 24,
+              height: 24,
+              color: "#9ca3af",
+              "&:hover": { backgroundColor: "#f3f4f6", color: "#374151" }
             }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
 
         </Box>

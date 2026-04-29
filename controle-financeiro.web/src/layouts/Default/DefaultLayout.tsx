@@ -65,6 +65,7 @@ export default function DefaultLayout() {
       >
         <Navbar
           toggleDrawer={toggleDrawer}
+          sidebarOpen={open}
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
         />
