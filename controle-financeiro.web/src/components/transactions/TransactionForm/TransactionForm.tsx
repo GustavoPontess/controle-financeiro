@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { Box, Typography, TextField, Select, MenuItem } from "@mui/material";
 import CustomButton from "../../CustomButton";
 import type { Category } from "../../../types/Category";
-import type { Person } from "../../../types/Person";
 import type { Conta } from "../../../types/Conta";
 
 const inputSx = {
@@ -37,14 +36,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 type Props = {
-  people: Person[];
   categories: Category[];
   contas: Conta[];
   onCreate: (e: React.FormEvent<HTMLFormElement>) => void;
   onCancel?: () => void;
 };
 
-export default function TransactionForm({ people, categories, contas, onCreate, onCancel }: Props) {
+export default function TransactionForm({ categories, contas, onCreate, onCancel }: Props) {
   const [tipo, setTipo] = useState(1);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,23 +89,6 @@ export default function TransactionForm({ people, categories, contas, onCreate, 
         >
           <MenuItem value={1}>Despesa</MenuItem>
           <MenuItem value={2}>Receita</MenuItem>
-        </Select>
-      </Field>
-
-      <Field label="Pessoa">
-        <Select
-          name="pessoaId"
-          defaultValue=""
-          size="small"
-          fullWidth
-          required
-          displayEmpty
-          sx={selectSx}
-        >
-          <MenuItem value="" disabled>Selecione a pessoa</MenuItem>
-          {people.map((p) => (
-            <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>
-          ))}
         </Select>
       </Field>
 

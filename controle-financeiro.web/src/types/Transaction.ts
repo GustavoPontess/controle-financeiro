@@ -3,8 +3,7 @@ export interface Transaction {
   descricao: string
   valor: number
   tipo: number
-  categoriaId: string
-  pessoaId: string
+  categoriaId: string | null
   contaId?: string
   data: string
 }

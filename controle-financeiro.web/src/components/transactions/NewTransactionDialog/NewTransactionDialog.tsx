@@ -12,12 +12,10 @@ import CloseIcon from "@mui/icons-material/Close"
 
 import TransactionForm from "../TransactionForm/TransactionForm"
 
-import { getPeople } from "../../../services/personService"
 import { getCategories } from "../../../services/categoryService"
 import { createTransaction } from "../../../services/transactionService"
 import { getContas } from "../../../services/contaService"
 
-import type { Person } from "../../../types/Person"
 import type { Category } from "../../../types/Category"
 import type { Conta } from "../../../types/Conta"
 
@@ -35,19 +33,15 @@ type Props = {
 
 export default function NewTransactionDialog({ open, onClose, notify }: Props) {
 
-  const [people, setPeople] = useState<Person[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [contas, setContas] = useState<Conta[]>([])
 
   useEffect(() => {
 
     const loadData = async () => {
-
-      const [persons, cats, cts] = await Promise.all([getPeople(), getCategories(), getContas()])
-      setPeople(persons)
+      const [cats, cts] = await Promise.all([getCategories(), getContas()])
       setCategories(cats)
       setContas(cts)
-
     }
 
     if (open) loadData()
@@ -65,54 +59,27 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
     const valor = Number(formData.get("valor"))
     const tipo = Number(formData.get("tipo"))
     const categoriaId = formData.get("categoriaId") as string
-    const pessoaId = formData.get("pessoaId") as string
     const contaId = formData.get("contaId") as string
     const data = formData.get("data") as string
 
     if (valor <= 0) {
-
-      notify({
-        open: true,
-        message: "O valor deve ser maior que zero",
-        severity: "error"
-      })
-
+      notify({ open: true, message: "O valor deve ser maior que zero", severity: "error" })
       return
     }
 
     try {
 
-      await createTransaction({
-        descricao,
-        valor,
-        tipo,
-        categoriaId,
-        pessoaId,
-        contaId,
-        data
-      })
-      
+      await createTransaction({ descricao, valor, tipo, categoriaId, contaId, data })
 
-      notify({
-        open: true,
-        message: "Transação criada com sucesso",
-        severity: "success"
-      })
+      notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
 
       window.dispatchEvent(new Event("transactionCreated"))
 
       form.reset()
-
       onClose()
 
     } catch {
-
-      notify({
-        open: true,
-        message: "Erro ao criar transação",
-        severity: "error"
-      })
-
+      notify({ open: true, message: "Erro ao criar transação", severity: "error" })
     }
 
   }
@@ -122,7 +89,6 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
 
       <DialogTitle sx={{ p: 0 }}>
-
         <Box
           sx={{
             display: "flex",
@@ -134,9 +100,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
             fontSize: 16
           }}
         >
-
           Nova Transação
-
           <IconButton
             onClick={onClose}
             sx={{
@@ -148,21 +112,16 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           >
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
-
         </Box>
-
       </DialogTitle>
 
       <DialogContent sx={{ pt: 3 }}>
-
         <TransactionForm
-          people={people}
           categories={categories}
           contas={contas}
           onCreate={handleCreate}
           onCancel={onClose}
         />
-
       </DialogContent>
 
     </Dialog>

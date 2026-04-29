@@ -97,12 +97,16 @@ export default function AccountsPage() {
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <Typography fontSize={13} color="#6b7280">{formatMoney(conta.saldoInicial)}</Typography>
-                  <IconButton size="small" onClick={() => { setEditingConta(conta); setOpenContaDialog(true) }} sx={{ color: "#6b7280" }}>
-                    <EditIcon sx={{ fontSize: 15 }} />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDeleteConta(conta.id)} sx={{ color: "#ef4444" }}>
-                    <DeleteIcon sx={{ fontSize: 15 }} />
-                  </IconButton>
+                  {!conta.isCarteira && (
+                    <>
+                      <IconButton size="small" onClick={() => { setEditingConta(conta); setOpenContaDialog(true) }} sx={{ color: "#6b7280" }}>
+                        <EditIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteConta(conta.id)} sx={{ color: "#ef4444" }}>
+                        <DeleteIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </>
+                  )}
                 </Box>
               </Box>
             )

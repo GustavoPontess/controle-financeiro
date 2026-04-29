@@ -23,6 +23,8 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
       case "/categories": return "Categorias"
       case "/transactions": return "Transações"
       case "/reports": return "Relatórios"
+      case "/bancos": return "Bancos"
+      case "/credit-cards": return "Cartões de Crédito"
       default: return "Controle Financeiro"
     }
   }
@@ -40,18 +42,20 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
         <div className={styles.title}>{getTitle()}</div>
       </div>
 
-      <Tooltip title={canCreateTransaction ? "" : "Cadastre pelo menos uma pessoa e uma categoria"}>
-        <span>
-          <CustomButton
-            size="small"
-            startIcon={<AddCircleOutlineRoundedIcon sx={{ fontSize: 14 }} />}
-            onClick={openTransaction}
-            disabled={!canCreateTransaction}
-          >
-            Nova Transação
-          </CustomButton>
-        </span>
-      </Tooltip>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Tooltip title={canCreateTransaction ? "" : "Cadastre pelo menos uma categoria antes de adicionar transações"}>
+          <span>
+            <CustomButton
+              size="small"
+              startIcon={<AddCircleOutlineRoundedIcon sx={{ fontSize: 14 }} />}
+              onClick={openTransaction}
+              disabled={!canCreateTransaction}
+            >
+              Nova Transação
+            </CustomButton>
+          </span>
+        </Tooltip>
+      </div>
     </div>
   )
 }
