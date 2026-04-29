@@ -7,6 +7,6 @@ namespace ControleFinanceiro.Api.DTOs.Pessoa
         [MaxLength(200)]
         public string Nome { get; set; } = string.Empty;
         
-        public int Idade { get; set; }
+        public DateTime DataNascimento { get; set; }
     }
 }

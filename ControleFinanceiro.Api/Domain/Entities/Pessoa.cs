@@ -10,8 +10,19 @@ public class Pessoa
     [MaxLength(200)]
     public string Nome { get; set; } = string.Empty;
 
-    [Range(0, 120)]
-    public int Idade { get; set; }
+    [Required]
+    public DateTime DataNascimento { get; set; }
+
+    public int Idade
+    {
+        get
+        {
+            var hoje = DateTime.Today;
+            var idade = hoje.Year - DataNascimento.Year;
+            if (DataNascimento.Date > hoje.AddYears(-idade)) idade--;
+            return idade;
+        }
+    }
 
     public ICollection<Transacao> Transacoes { get; set; } = new List<Transacao>();
 }

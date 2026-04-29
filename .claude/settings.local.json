@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet build *)",
+      "Bash(taskkill /PID 6532 /F)",
+      "PowerShell(Stop-Process -Id 6532 -Force)",
+      "PowerShell(Stop-Process -Id 20508 -Force)",
+      "Bash(taskkill //PID 33468 //F)"
+    ]
+  }
+}

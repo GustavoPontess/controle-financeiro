@@ -32,7 +32,9 @@ namespace ControleFinanceiro.Api.Controllers
                     Valor = dto.Valor,
                     Tipo = (TipoTransacao)dto.Tipo,
                     CategoriaId = dto.CategoriaId,
-                    PessoaId = dto.PessoaId
+                    PessoaId = dto.PessoaId,
+                    ContaId = dto.ContaId,
+                    Data = dto.Data.ToUniversalTime()
                 };
 
                 var criada = await _service.CriarTransacaoAsync(transacao);
@@ -44,7 +46,9 @@ namespace ControleFinanceiro.Api.Controllers
                     Valor = criada.Valor,
                     Tipo = (int)criada.Tipo,
                     CategoriaId = criada.CategoriaId,
-                    PessoaId = criada.PessoaId
+                    PessoaId = criada.PessoaId,
+                    ContaId = criada.ContaId,
+                    Data = criada.Data
                 };
 
                 return CreatedAtAction(
@@ -72,7 +76,9 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = t.Valor,
                 Tipo = (int)t.Tipo,
                 CategoriaId = t.CategoriaId,
-                PessoaId = t.PessoaId
+                PessoaId = t.PessoaId,
+                ContaId = t.ContaId,
+                Data = t.Data
             });
 
             return Ok(retorno);
@@ -97,7 +103,8 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = transacao.Valor,
                 Tipo = (int)transacao.Tipo,
                 CategoriaId = transacao.CategoriaId,
-                PessoaId = transacao.PessoaId
+                PessoaId = transacao.PessoaId,
+                Data = transacao.Data
             };
 
             return Ok(retorno);
