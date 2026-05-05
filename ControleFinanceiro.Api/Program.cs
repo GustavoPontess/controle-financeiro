@@ -93,51 +93,118 @@ using (var scope = app.Services.CreateScope())
 
 static async Task AplicarSistemaFaturasAsync(ControleFinanceiro.Api.Infrastructure.AppDbContext ctx)
 {
-    // Cria tabela Faturas (idempotente)
-    await ctx.Database.ExecuteSqlRawAsync(@"
-        CREATE TABLE IF NOT EXISTS ""Faturas"" (
-            ""Id""               TEXT    NOT NULL,
-            ""CartaoCreditoId""  TEXT    NOT NULL,
-            ""DataInicio""       TEXT    NOT NULL,
-            ""DataFechamento""   TEXT    NOT NULL,
-            ""DataVencimento""   TEXT    NOT NULL,
-            ""Status""           INTEGER NOT NULL,
-            ""ValorPago""        TEXT    NOT NULL,
-            ""CriadoPor""        TEXT    NOT NULL,
-            CONSTRAINT ""PK_Faturas"" PRIMARY KEY (""Id""),
-            CONSTRAINT ""FK_Faturas_CartoesCredito"" FOREIGN KEY (""CartaoCreditoId"")
-                REFERENCES ""CartoesCredito"" (""Id"") ON DELETE RESTRICT
-        )");
+    Console.WriteLine("[Startup] Verificando schema do sistema de faturas...");
 
-    await ctx.Database.ExecuteSqlRawAsync(@"
-        CREATE INDEX IF NOT EXISTS ""IX_Faturas_CartaoCreditoId""
-        ON ""Faturas"" (""CartaoCreditoId"")");
+    var conn = ctx.Database.GetDbConnection();
+    await conn.OpenAsync();
 
-    // Adiciona colunas na tabela Transacoes (ignora se já existirem)
-    foreach (var sql in new[]
+    try
     {
-        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""FaturaId""           TEXT",
-        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""Parcelas""           INTEGER",
-        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""NumeroParcela""      INTEGER",
-        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""TransacaoOrigemId""  TEXT",
-    })
-    {
-        try { await ctx.Database.ExecuteSqlRawAsync(sql); }
-        catch { /* coluna já existe — ignorar */ }
+        // ── Tabela Faturas ────────────────────────────────────────────────
+        var tabelaExiste = false;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Faturas'";
+            tabelaExiste = (long)(await cmd.ExecuteScalarAsync())! > 0;
+        }
+
+        if (!tabelaExiste)
+        {
+            Console.WriteLine("[Startup] Criando tabela Faturas...");
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                CREATE TABLE ""Faturas"" (
+                    ""Id""               TEXT    NOT NULL,
+                    ""CartaoCreditoId""  TEXT    NOT NULL,
+                    ""DataInicio""       TEXT    NOT NULL,
+                    ""DataFechamento""   TEXT    NOT NULL,
+                    ""DataVencimento""   TEXT    NOT NULL,
+                    ""Status""           INTEGER NOT NULL,
+                    ""ValorPago""        TEXT    NOT NULL,
+                    ""CriadoPor""        TEXT    NOT NULL,
+                    CONSTRAINT ""PK_Faturas"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_Faturas_CartoesCredito"" FOREIGN KEY (""CartaoCreditoId"")
+                        REFERENCES ""CartoesCredito"" (""Id"") ON DELETE RESTRICT
+                )";
+            await cmd.ExecuteNonQueryAsync();
+
+            using var idx = conn.CreateCommand();
+            idx.CommandText = @"CREATE INDEX ""IX_Faturas_CartaoCreditoId"" ON ""Faturas"" (""CartaoCreditoId"")";
+            await idx.ExecuteNonQueryAsync();
+            Console.WriteLine("[Startup] Tabela Faturas criada.");
+        }
+        else
+        {
+            Console.WriteLine("[Startup] Tabela Faturas já existe. Pulando.");
+        }
+
+        // ── Colunas em Transacoes ─────────────────────────────────────────
+        var colunas = new List<string>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(Transacoes)";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                colunas.Add(reader.GetString(1)); // coluna "name"
+        }
+
+        var novasColunas = new[]
+        {
+            ("FaturaId",          "TEXT"),
+            ("Parcelas",          "INTEGER"),
+            ("NumeroParcela",     "INTEGER"),
+            ("TransacaoOrigemId", "TEXT"),
+        };
+
+        foreach (var (nome, tipo) in novasColunas)
+        {
+            if (!colunas.Contains(nome))
+            {
+                Console.WriteLine($"[Startup] Adicionando coluna Transacoes.{nome}...");
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $@"ALTER TABLE ""Transacoes"" ADD COLUMN ""{nome}"" {tipo}";
+                await cmd.ExecuteNonQueryAsync();
+                Console.WriteLine($"[Startup] Coluna {nome} adicionada.");
+            }
+            else
+            {
+                Console.WriteLine($"[Startup] Coluna {nome} já existe. Pulando.");
+            }
+        }
+
+        // ── Índice FaturaId ───────────────────────────────────────────────
+        var indiceExiste = false;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='IX_Transacoes_FaturaId'";
+            indiceExiste = (long)(await cmd.ExecuteScalarAsync())! > 0;
+        }
+        if (!indiceExiste)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"CREATE INDEX ""IX_Transacoes_FaturaId"" ON ""Transacoes"" (""FaturaId"")";
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        // ── Histórico de migração ─────────────────────────────────────────
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                SELECT '20260505120000_AddFaturaSystem', '8.0.0'
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM ""__EFMigrationsHistory""
+                    WHERE ""MigrationId"" = '20260505120000_AddFaturaSystem'
+                )";
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        Console.WriteLine("[Startup] Schema do sistema de faturas OK.");
     }
-
-    await ctx.Database.ExecuteSqlRawAsync(@"
-        CREATE INDEX IF NOT EXISTS ""IX_Transacoes_FaturaId""
-        ON ""Transacoes"" (""FaturaId"")");
-
-    // Garante que o registro de migração existe no histórico
-    await ctx.Database.ExecuteSqlRawAsync(@"
-        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-        SELECT '20260505120000_AddFaturaSystem', '8.0.0'
-        WHERE NOT EXISTS (
-            SELECT 1 FROM ""__EFMigrationsHistory""
-            WHERE ""MigrationId"" = '20260505120000_AddFaturaSystem'
-        )");
+    finally
+    {
+        await conn.CloseAsync();
+    }
 }
 
 if (app.Environment.IsDevelopment())

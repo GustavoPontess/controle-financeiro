@@ -18,7 +18,9 @@ public class RelatorioService
     public async Task<RelatorioMensalDto> GetRelatorioAsync(Guid usuarioId, int ano)
     {
         var transacoes = await _context.Transacoes
-            .Where(t => t.Conta!.UsuarioIdProprietario == usuarioId && t.Data.Year == ano)
+            .Where(t => t.Data.Year == ano &&
+                        (t.Conta!.UsuarioIdProprietario == usuarioId ||
+                         t.CartaoCredito!.CriadoPor == usuarioId))
             .Include(t => t.Categoria)
             .AsNoTracking()
             .ToListAsync();
@@ -31,6 +33,8 @@ public class RelatorioService
             var doMes = transacoes.Where(t => t.Data.Month == mes).ToList();
             var receitas = doMes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
             var despesas = doMes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
+            var receitasCaixa = doMes.Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito).Sum(t => t.Valor);
+            var despesasCaixa = doMes.Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito).Sum(t => t.Valor);
             return new EvolucaoMensalDto
             {
                 Ano = ano,
@@ -38,7 +42,7 @@ public class RelatorioService
                 MesLabel = char.ToUpper(mesesNomes[mes - 1][0]) + mesesNomes[mes - 1][1..],
                 Receitas = receitas,
                 Despesas = despesas,
-                Saldo = receitas - despesas
+                Saldo = receitasCaixa - despesasCaixa
             };
         }).ToList();
 

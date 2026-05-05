@@ -124,7 +124,9 @@ export default function TransactionsPage() {
   const totalSaidas = filtered
     .filter((t) => t.tipo !== RECEITA)
     .reduce((sum, t) => sum + t.valor, 0);
-  const saldoFinal = totalEntradas - totalSaidas;
+  const saldoFinal = filtered
+    .filter((t) => !t.usadoComoCredito)
+    .reduce((sum, t) => sum + (t.tipo === RECEITA ? t.valor : -t.valor), 0);
 
   const hasCategories = categories.length > 0;
 

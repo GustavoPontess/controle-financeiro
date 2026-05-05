@@ -87,7 +87,11 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { load() }, [currentDate])
+  useEffect(() => {
+    load()
+    window.addEventListener("transactionCreated", load)
+    return () => window.removeEventListener("transactionCreated", load)
+  }, [currentDate])
 
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))

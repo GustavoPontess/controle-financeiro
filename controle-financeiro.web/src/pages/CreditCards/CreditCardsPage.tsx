@@ -222,13 +222,16 @@ export default function CreditCardsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover este cartão?")) return
+    if (!confirm("Remover este cartão? Todas as transações e faturas vinculadas também serão excluídas.")) return
     try {
       await deleteCartao(id)
       notify({ open: true, message: "Cartão removido", severity: "success" })
       if (faturasCartaoId === id) setFaturasCartaoId(null)
       await loadData()
-    } catch { notify({ open: true, message: "Erro ao remover cartão", severity: "error" }) }
+    } catch (e: any) {
+      const msg = e?.response?.data?.mensagem ?? "Erro ao remover cartão"
+      notify({ open: true, message: msg, severity: "error" })
+    }
   }
 
   const totalLimite = cartoes.filter(c => c.temCredito && c.limite).reduce((s, c) => s + (c.limite ?? 0), 0)

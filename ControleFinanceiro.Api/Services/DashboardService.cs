@@ -46,10 +46,18 @@ public class DashboardService
             .Where(t => t.Tipo == TipoTransacao.Despesa)
             .Sum(t => t.Valor);
 
-        // Saldo acumulado até o fim do mês selecionado (inclui histórico anterior)
+        // SaldoMes usa apenas movimentos de caixa — crédito só entra quando a fatura é paga.
+        var receitasCaixaMes = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito)
+            .Sum(t => t.Valor);
+
+        var despesasCaixaMes = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito)
+            .Sum(t => t.Valor);
+
         var inicioDoPeriodo = new DateTime(ano, mes, 1);
         var saldoAnteriorAoMes = todasTransacoes
-            .Where(t => t.Data < inicioDoPeriodo)
+            .Where(t => t.Data < inicioDoPeriodo && !t.UsadoComoCredito)
             .Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
 
         var saldoContas = contas.Select(c =>
@@ -118,7 +126,7 @@ public class DashboardService
             SaldoTotal = saldoTotal,
             ReceitasMes = receitasMes,
             DespesasMes = despesasMes,
-            SaldoMes = saldoAnteriorAoMes + receitasMes - despesasMes,
+            SaldoMes = saldoAnteriorAoMes + receitasCaixaMes - despesasCaixaMes,
             TopCategorias = categoriasDtos,
             TransacoesRecentes = recentes,
             SaldoContas = saldoContas
