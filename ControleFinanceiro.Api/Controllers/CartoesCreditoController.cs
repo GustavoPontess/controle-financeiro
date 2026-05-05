@@ -60,7 +60,14 @@ public class CartoesCreditoController(CartaoCreditoService service) : Controller
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Deletar(Guid id)
     {
-        var ok = await _service.DeletarAsync(id, UserId);
-        return ok ? NoContent() : NotFound();
+        try
+        {
+            var ok = await _service.DeletarAsync(id, UserId);
+            return ok ? NoContent() : NotFound();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { mensagem = ex.Message });
+        }
     }
 }

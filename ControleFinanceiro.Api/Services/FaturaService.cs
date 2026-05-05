@@ -37,23 +37,25 @@ public class FaturaService
         int diaEfetivo = Math.Min(dia, diasNoMes);
         var fechamentoDoMes = new DateTime(dataTransacao.Year, dataTransacao.Month, diaEfetivo);
 
-        if (dataTransacao.Day <= diaEfetivo)
+        if (dataTransacao.Day < diaEfetivo)
         {
-            // Transação antes/no fechamento → pertence à fatura que FECHA este mês
+            // Transação ANTES do fechamento → pertence à fatura que fecha neste mês.
+            // A fatura começa no mesmo dia de fechamento do mês anterior (inclusive).
             var mesAnterior = dataTransacao.AddMonths(-1);
             int diasMesAnterior = DateTime.DaysInMonth(mesAnterior.Year, mesAnterior.Month);
             int diaAnteriorEfetivo = Math.Min(dia, diasMesAnterior);
-            var inicioFatura = new DateTime(mesAnterior.Year, mesAnterior.Month, diaAnteriorEfetivo).AddDays(1);
+            var inicioFatura = new DateTime(mesAnterior.Year, mesAnterior.Month, diaAnteriorEfetivo);
             return (inicioFatura, fechamentoDoMes);
         }
         else
         {
-            // Transação depois do fechamento → pertence à PRÓXIMA fatura
+            // Transação NO DIA DO FECHAMENTO ou depois → pertence à NOVA fatura.
+            // A nova fatura começa no próprio dia do fechamento deste mês.
             var proximoMes = dataTransacao.AddMonths(1);
             int diasProximoMes = DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month);
             int diaProximoEfetivo = Math.Min(dia, diasProximoMes);
             var fechamentoProximo = new DateTime(proximoMes.Year, proximoMes.Month, diaProximoEfetivo);
-            return (fechamentoDoMes.AddDays(1), fechamentoProximo);
+            return (fechamentoDoMes, fechamentoProximo);
         }
     }
 
@@ -93,14 +95,22 @@ public class FaturaService
 
         var (inicio, fechamento) = CalcularPeriodo(dataTransacao.Date, cartao.DiaFechamento);
 
+        // Busca pelo fechamento (que sempre foi calculado corretamente).
+        // Corrige DataInicio caso tenha sido salvo com lógica anterior (bug: +1 dia).
         var fatura = await _context.Faturas
             .FirstOrDefaultAsync(f =>
                 f.CartaoCreditoId == cartaoCreditoId &&
-                f.DataInicio == inicio &&
                 f.DataFechamento == fechamento);
 
         if (fatura != null)
+        {
+            if (fatura.DataInicio != inicio)
+            {
+                fatura.DataInicio = inicio;
+                await _context.SaveChangesAsync();
+            }
             return fatura;
+        }
 
         var vencimento = CalcularVencimento(fechamento, cartao.DiaVencimento);
 

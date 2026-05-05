@@ -99,6 +99,16 @@ public class CartaoCreditoService(AppDbContext context)
         var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
         if (cartao is null) return false;
 
+        var transacoes = await _context.Transacoes
+            .Where(t => t.CartaoCreditoId == id)
+            .ToListAsync();
+        _context.Transacoes.RemoveRange(transacoes);
+
+        var faturas = await _context.Faturas
+            .Where(f => f.CartaoCreditoId == id)
+            .ToListAsync();
+        _context.Faturas.RemoveRange(faturas);
+
         _context.CartoesCredito.Remove(cartao);
         await _context.SaveChangesAsync();
         return true;
