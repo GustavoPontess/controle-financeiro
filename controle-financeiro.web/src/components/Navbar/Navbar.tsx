@@ -25,6 +25,7 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
       case "/reports": return "Relatórios"
       case "/bancos": return "Bancos"
       case "/credit-cards": return "Cartões de Crédito"
+      case "/settings": return "Configurações"
       default: return "Controle Financeiro"
     }
   }

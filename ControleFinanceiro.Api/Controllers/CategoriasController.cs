@@ -2,12 +2,15 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Categoria;
 using ControleFinanceiro.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ControleFinanceiro.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class CategoriasController : ControllerBase
     {
         private readonly CategoriaService _service;
@@ -17,68 +20,73 @@ namespace ControleFinanceiro.Api.Controllers
             _service = service;
         }
 
+        private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<CategoriaDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Listar()
         {
-            var categorias = await _service.ListarAsync();
+            var categorias = await _service.ListarAsync(UserId);
 
             var retorno = categorias.Select(c => new CategoriaDto
             {
                 Id = c.Id,
                 Descricao = c.Descricao,
-                Finalidade = (int)c.Finalidade
+                Finalidade = (int)c.Finalidade,
+                IsPadrao = c.UsuarioId == null,
             });
 
             return Ok(retorno);
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(CategoriaDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> BuscarPorId(Guid id)
         {
-            var categoria = await _service.BuscarPorIdAsync(id);
+            var categoria = await _service.BuscarPorIdAsync(id, UserId);
+            if (categoria == null) return NotFound();
 
-            if (categoria == null)
-            {
-                return NotFound();
-            }
-
-            var retorno = new CategoriaDto
+            return Ok(new CategoriaDto
             {
                 Id = categoria.Id,
                 Descricao = categoria.Descricao,
-                Finalidade = (int)categoria.Finalidade
-            };
-
-            return Ok(retorno);
+                Finalidade = (int)categoria.Finalidade,
+                IsPadrao = categoria.UsuarioId == null,
+            });
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(CategoriaDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Criar([FromBody] CriarCategoriaDto dto)
         {
             try
             {
                 var categoria = new Categoria
                 {
-                    Id = Guid.NewGuid(),
                     Descricao = dto.Descricao,
                     Finalidade = (Finalidade)dto.Finalidade
                 };
 
-                var criada = await _service.CriarAsync(categoria);
+                var criada = await _service.CriarAsync(categoria, UserId);
 
-                var retorno = new CategoriaDto
+                return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, new CategoriaDto
                 {
                     Id = criada.Id,
                     Descricao = criada.Descricao,
-                    Finalidade = (int)criada.Finalidade
-                };
+                    Finalidade = (int)criada.Finalidade,
+                    IsPadrao = false,
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { mensagem = ex.Message });
+            }
+        }
 
-                return CreatedAtAction(nameof(BuscarPorId), new { id = retorno.Id }, retorno);
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Deletar(Guid id)
+        {
+            try
+            {
+                await _service.DeletarAsync(id, UserId);
+                return NoContent();
             }
             catch (Exception ex)
             {

@@ -1,6 +1,7 @@
 import { Dialog, DialogTitle, DialogContent, IconButton, Box } from "@mui/material"
 import CloseIcon from "@mui/icons-material/Close"
 import ContaForm from "../ContaForm/ContaForm"
+import type { ContaFormData } from "../ContaForm/ContaForm"
 import { createConta, updateConta } from "../../../services/contaService"
 import type { Conta } from "../../../types/Conta"
 import type { Banco } from "../../../types/Banco"
@@ -22,13 +23,14 @@ type Props = {
 }
 
 export default function NewContaDialog({ open, onClose, onSaved, notify, bancos, editingConta, preSelectedBancoId }: Props) {
-  const handleSubmit = async (conta: Omit<Conta, "id" | "tipoDescricao" | "tipoCartaoDescricao" | "bancoNome">) => {
+  const handleSubmit = async (data: ContaFormData) => {
     try {
+      const { saldoInicial, ...contaBase } = data
       if (editingConta) {
-        await updateConta(editingConta.id, conta)
+        await updateConta(editingConta.id, contaBase)
         notify({ open: true, message: "Conta atualizada com sucesso", severity: "success" })
       } else {
-        await createConta(conta)
+        await createConta({ ...contaBase, saldoInicial })
         notify({ open: true, message: "Conta adicionada com sucesso", severity: "success" })
       }
       await onSaved()

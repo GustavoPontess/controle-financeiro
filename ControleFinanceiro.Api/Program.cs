@@ -21,6 +21,13 @@ builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<RelatorioService>();
+builder.Services.AddScoped<TransferenciaService>();
+builder.Services.AddScoped<RecorrenteService>();
+builder.Services.AddScoped<EmprestimoService>();
+builder.Services.AddScoped<CartaoCreditoService>();
+builder.Services.AddScoped<FaturaService>();
 
 // JWT Configuration
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "your-secret-key-change-this-in-production-very-long-string";
@@ -75,7 +82,62 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
     await context.Database.MigrateAsync();
+
+    // Aplica diretamente o schema do sistema de faturas, caso a migração
+    // tenha ficado registrada no histórico mas sem executar o DDL no banco.
+    await AplicarSistemaFaturasAsync(context);
+
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
+    await CategoriaSeeder.SeedAsync(context);
+}
+
+static async Task AplicarSistemaFaturasAsync(ControleFinanceiro.Api.Infrastructure.AppDbContext ctx)
+{
+    // Cria tabela Faturas (idempotente)
+    await ctx.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Faturas"" (
+            ""Id""               TEXT    NOT NULL,
+            ""CartaoCreditoId""  TEXT    NOT NULL,
+            ""DataInicio""       TEXT    NOT NULL,
+            ""DataFechamento""   TEXT    NOT NULL,
+            ""DataVencimento""   TEXT    NOT NULL,
+            ""Status""           INTEGER NOT NULL,
+            ""ValorPago""        TEXT    NOT NULL,
+            ""CriadoPor""        TEXT    NOT NULL,
+            CONSTRAINT ""PK_Faturas"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_Faturas_CartoesCredito"" FOREIGN KEY (""CartaoCreditoId"")
+                REFERENCES ""CartoesCredito"" (""Id"") ON DELETE RESTRICT
+        )");
+
+    await ctx.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_Faturas_CartaoCreditoId""
+        ON ""Faturas"" (""CartaoCreditoId"")");
+
+    // Adiciona colunas na tabela Transacoes (ignora se já existirem)
+    foreach (var sql in new[]
+    {
+        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""FaturaId""           TEXT",
+        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""Parcelas""           INTEGER",
+        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""NumeroParcela""      INTEGER",
+        @"ALTER TABLE ""Transacoes"" ADD COLUMN ""TransacaoOrigemId""  TEXT",
+    })
+    {
+        try { await ctx.Database.ExecuteSqlRawAsync(sql); }
+        catch { /* coluna já existe — ignorar */ }
+    }
+
+    await ctx.Database.ExecuteSqlRawAsync(@"
+        CREATE INDEX IF NOT EXISTS ""IX_Transacoes_FaturaId""
+        ON ""Transacoes"" (""FaturaId"")");
+
+    // Garante que o registro de migração existe no histórico
+    await ctx.Database.ExecuteSqlRawAsync(@"
+        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+        SELECT '20260505120000_AddFaturaSystem', '8.0.0'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ""__EFMigrationsHistory""
+            WHERE ""MigrationId"" = '20260505120000_AddFaturaSystem'
+        )");
 }
 
 if (app.Environment.IsDevelopment())
