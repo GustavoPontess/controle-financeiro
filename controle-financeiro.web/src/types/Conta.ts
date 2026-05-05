@@ -6,7 +6,7 @@ export interface Conta {
   tipoDescricao: string
   tipoCartao?: number
   tipoCartaoDescricao?: string
-  saldoInicial: number
+  saldoAtual: number
   isCarteira: boolean
   bancoId?: string
   bancoNome?: string

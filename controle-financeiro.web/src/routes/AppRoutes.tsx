@@ -8,8 +8,14 @@ import RegisterPage from "../pages/Auth/RegisterPage"
 
 import CategoriesPage from "../pages/Categories/CategoriesPage"
 import TransactionsPage from "../pages/Transactions/TransactionsPage"
-import BancosPage from "../pages/Bancos/BancosPage"
 import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
+import SettingsPage from "../pages/Settings/SettingsPage"
+import DashboardPage from "../pages/Dashboard/DashboardPage"
+import ReportsPage from "../pages/Reports/ReportsPage"
+import TransferenciasPage from "../pages/Transferencias/TransferenciasPage"
+import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
+import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
+import AccountsPage from "../pages/Accounts/AccountsPage"
 
 export default function AppRoutes() {
   return (
@@ -27,11 +33,17 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<TransactionsPage />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
-          <Route path="/bancos" element={<BancosPage />} />
           <Route path="/credit-cards" element={<CreditCardsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/transferencias" element={<TransferenciasPage />} />
+          <Route path="/assinaturas" element={<RecorrentesPage />} />
+          <Route path="/emprestimos" element={<EmprestimosPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Fallback */}

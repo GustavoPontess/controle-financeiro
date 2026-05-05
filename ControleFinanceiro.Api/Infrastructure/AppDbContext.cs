@@ -14,13 +14,40 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
+    public DbSet<Transferencia> Transferencias => Set<Transferencia>();
+    public DbSet<Recorrente> Recorrentes => Set<Recorrente>();
+    public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
+    public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
+    public DbSet<Fatura> Faturas => Set<Fatura>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
+
+        modelBuilder.Entity<CartaoCredito>()
+            .HasMany(c => c.Transacoes)
+            .WithOne(t => t.CartaoCredito)
+            .HasForeignKey(t => t.CartaoCreditoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CartaoCredito>()
+            .HasMany(c => c.Faturas)
+            .WithOne(f => f.CartaoCredito)
+            .HasForeignKey(f => f.CartaoCreditoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Fatura>()
+            .HasMany(f => f.Transacoes)
+            .WithOne(t => t.Fatura)
+            .HasForeignKey(t => t.FaturaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Conta>()
             .HasMany(c => c.Transacoes)
             .WithOne(t => t.Conta)
             .HasForeignKey(t => t.ContaId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Banco>()
@@ -55,6 +82,19 @@ public class AppDbContext : DbContext
             .WithMany(c => c.CompartilhamentosContas)
             .HasForeignKey(c => c.ContaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Transferencia relationships
+        modelBuilder.Entity<Transferencia>()
+            .HasOne(t => t.ContaOrigem)
+            .WithMany()
+            .HasForeignKey(t => t.ContaOrigemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Transferencia>()
+            .HasOne(t => t.ContaDestino)
+            .WithMany()
+            .HasForeignKey(t => t.ContaDestinoId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Unique constraints
         modelBuilder.Entity<Usuario>()

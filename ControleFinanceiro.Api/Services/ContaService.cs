@@ -19,6 +19,7 @@ namespace ControleFinanceiro.Api.Services
             return await _context.Contas
                 .Where(c => c.UsuarioIdProprietario == usuarioId)
                 .Include(c => c.Banco)
+                .Include(c => c.Transacoes)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -28,10 +29,11 @@ namespace ControleFinanceiro.Api.Services
             return await _context.Contas
                 .Where(c => c.Id == id && c.UsuarioIdProprietario == usuarioId)
                 .Include(c => c.Banco)
+                .Include(c => c.Transacoes)
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId)
+        public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0)
         {
             if (string.IsNullOrWhiteSpace(conta.Nome))
                 throw new Exception("Nome é obrigatório.");
@@ -43,13 +45,13 @@ namespace ControleFinanceiro.Api.Services
             conta.UsuarioIdProprietario = usuarioId;
             _context.Contas.Add(conta);
 
-            if (conta.SaldoInicial > 0)
+            if (saldoInicial > 0)
             {
                 _context.Transacoes.Add(new Transacao
                 {
                     Id = Guid.NewGuid(),
                     Descricao = "Saldo Inicial",
-                    Valor = conta.SaldoInicial,
+                    Valor = saldoInicial,
                     Tipo = TipoTransacao.Receita,
                     ContaId = conta.Id,
                     CategoriaId = null,
@@ -71,7 +73,7 @@ namespace ControleFinanceiro.Api.Services
                 throw new Exception("Você não tem permissão para atualizar esta conta.");
 
             if (existente.IsCarteira)
-                throw new Exception("A conta Carteira não pode ser editada.");
+                throw new Exception("A carteira não pode ser editada.");
 
             if (string.IsNullOrWhiteSpace(conta.Nome))
                 throw new Exception("Nome é obrigatório.");
@@ -80,8 +82,8 @@ namespace ControleFinanceiro.Api.Services
             existente.NumeroConta = conta.NumeroConta;
             existente.Tipo = conta.Tipo;
             existente.TipoCartao = conta.TipoCartao;
-            existente.SaldoInicial = conta.SaldoInicial;
             existente.BancoId = conta.BancoId;
+            existente.IsCarteira = conta.IsCarteira;
 
             await _context.SaveChangesAsync();
         }
@@ -95,7 +97,7 @@ namespace ControleFinanceiro.Api.Services
                 throw new Exception("Você não tem permissão para deletar esta conta.");
 
             if (conta.IsCarteira)
-                throw new Exception("A conta Carteira não pode ser excluída.");
+                throw new Exception("A carteira não pode ser deletada.");
 
             _context.Contas.Remove(conta);
             await _context.SaveChangesAsync();

@@ -15,9 +15,12 @@ import TransactionForm from "../TransactionForm/TransactionForm"
 import { getCategories } from "../../../services/categoryService"
 import { createTransaction } from "../../../services/transactionService"
 import { getContas } from "../../../services/contaService"
+import { getCartoes } from "../../../services/cartaoCreditoService"
 
 import type { Category } from "../../../types/Category"
 import type { Conta } from "../../../types/Conta"
+import type { CartaoCredito } from "../../../types/CartaoCredito"
+import type { TransactionFormData } from "../TransactionForm/TransactionForm"
 
 type Notification = {
   open: boolean
@@ -35,53 +38,39 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [contas, setContas] = useState<Conta[]>([])
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
 
   useEffect(() => {
-
     const loadData = async () => {
-      const [cats, cts] = await Promise.all([getCategories(), getContas()])
+      const [cats, cts, carts] = await Promise.all([getCategories(), getContas(), getCartoes()])
       setCategories(cats)
       setContas(cts)
+      setCartoes(carts)
     }
-
     if (open) loadData()
-
   }, [open])
 
-  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
-
-    e.preventDefault()
-
-    const form = e.currentTarget
-    const formData = new FormData(form)
-
-    const descricao = formData.get("descricao") as string
-    const valor = Number(formData.get("valor"))
-    const tipo = Number(formData.get("tipo"))
-    const categoriaId = formData.get("categoriaId") as string
-    const contaId = formData.get("contaId") as string
-    const data = formData.get("data") as string
-
-    if (valor <= 0) {
-      notify({ open: true, message: "O valor deve ser maior que zero", severity: "error" })
-      return
-    }
-
+  const handleCreate = async (data: TransactionFormData) => {
     try {
-
-      await createTransaction({ descricao, valor, tipo, categoriaId, contaId, data })
-
+      const isCredito = data.meioPagamento === 3
+      await createTransaction({
+        descricao: data.descricao,
+        valor: Number(data.valor),
+        tipo: data.tipo,
+        categoriaId: data.categoriaId || null,
+        contaId: isCredito ? undefined : data.contaId || undefined,
+        cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
+        usadoComoCredito: isCredito,
+        meioPagamento: data.meioPagamento,
+        parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
+        data: data.data,
+      })
       notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
-
       window.dispatchEvent(new Event("transactionCreated"))
-
-      form.reset()
       onClose()
-
     } catch {
       notify({ open: true, message: "Erro ao criar transação", severity: "error" })
     }
-
   }
 
   return (
@@ -119,7 +108,8 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
         <TransactionForm
           categories={categories}
           contas={contas}
-          onCreate={handleCreate}
+          cartoes={cartoes}
+          onSubmit={handleCreate}
           onCancel={onClose}
         />
       </DialogContent>

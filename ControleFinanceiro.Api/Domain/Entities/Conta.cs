@@ -19,8 +19,6 @@ public class Conta
 
     public TipoCartao? TipoCartao { get; set; }
 
-    public decimal SaldoInicial { get; set; }
-
     public bool IsCarteira { get; set; }
 
     public Guid? BancoId { get; set; }

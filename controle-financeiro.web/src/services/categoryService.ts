@@ -6,7 +6,11 @@ export const getCategories = async (): Promise<Category[]> => {
   return res.data
 }
 
-export const createCategory = async (category: Omit<Category, "id">) => {
+export const createCategory = async (category: Omit<Category, "id" | "isPadrao">) => {
   const res = await api.post("/categorias", category)
   return res.data
+}
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  await api.delete(`/categorias/${id}`)
 }

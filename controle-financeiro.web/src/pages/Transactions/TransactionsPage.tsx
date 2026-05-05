@@ -6,7 +6,6 @@ import {
   IconButton,
   Select,
   MenuItem,
-  Chip,
 } from "@mui/material";
 import CustomButton from "../../components/CustomButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -16,15 +15,19 @@ import TodayIcon from "@mui/icons-material/Today";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { getCategories } from "../../services/categoryService";
 import { getTransactions } from "../../services/transactionService";
+import { getContas } from "../../services/contaService";
 
 import type { Category } from "../../types/Category";
 import type { Transaction } from "../../types/Transaction";
-
 import EmptyState from "../../components/EmptyState/EmptyState";
+import TransactionTable, { type TransactionRow } from "../../components/transactions/TransactionTable/TransactionTable";
+
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const RECEITA = 2;
 
@@ -36,49 +39,63 @@ function SummaryCard({
   value,
   color,
   icon,
+  subtitle,
 }: {
   title: string;
   value: string;
   color: string;
   icon: React.ReactNode;
+  subtitle?: string;
 }) {
   return (
-    <Paper
-      elevation={0}
-      sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}
-    >
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-        <Typography fontSize={14} fontWeight={600} color="#111827">
+    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+        <Typography fontSize={13} fontWeight={600} color="#6b7280">
           {title}
         </Typography>
-        <Box sx={{ color }}>{icon}</Box>
+        <Box sx={{
+          width: 36, height: 36, borderRadius: "8px",
+          bgcolor: `${color}15`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color,
+        }}>
+          {icon}
+        </Box>
       </Box>
-      <Typography fontSize={22} fontWeight={700} color={color}>
+      <Typography fontSize={24} fontWeight={700} color="#111827">
         {value}
       </Typography>
+      {subtitle && (
+        <Typography fontSize={12} color="#9ca3af" mt={0.5}>
+          {subtitle}
+        </Typography>
+      )}
     </Paper>
   );
 }
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
+  const { notify } = useOutletContext<OutletContextType>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [saldoTotal, setSaldoTotal] = useState(0);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
+  const loadData = async () => {
+    const [cats, trans, contas] = await Promise.all([
+      getCategories(),
+      getTransactions(),
+      getContas(),
+    ]);
+    setCategories(cats);
+    setTransactions(trans);
+    setSaldoTotal(contas.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0));
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      const [cats, trans] = await Promise.all([
-        getCategories(),
-        getTransactions(),
-      ]);
-      setCategories(cats);
-      setTransactions(trans);
-    };
-
     loadData();
-
     window.addEventListener("transactionCreated", loadData);
     return () => window.removeEventListener("transactionCreated", loadData);
   }, []);
@@ -175,24 +192,31 @@ export default function TransactionsPage() {
       </Box>
 
       {/* Summary cards */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2 }}>
+        <SummaryCard
+          title="Saldo Total"
+          value={formatMoney(saldoTotal)}
+          color="#2563eb"
+          icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
+          subtitle="todas as contas"
+        />
         <SummaryCard
           title="Total Entradas"
           value={formatMoney(totalEntradas)}
           color="#16a34a"
-          icon={<TrendingUpIcon />}
+          icon={<TrendingUpIcon sx={{ fontSize: 18 }} />}
         />
         <SummaryCard
           title="Total Saídas"
           value={formatMoney(totalSaidas)}
           color="#dc2626"
-          icon={<TrendingDownIcon />}
+          icon={<TrendingDownIcon sx={{ fontSize: 18 }} />}
         />
         <SummaryCard
-          title="Saldo Final"
+          title="Saldo do Mês"
           value={formatMoney(saldoFinal)}
-          color="#2563eb"
-          icon={<AccountBalanceWalletOutlinedIcon />}
+          color="#374151"
+          icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
         />
       </Box>
 
@@ -214,95 +238,30 @@ export default function TransactionsPage() {
         </Select>
       </Box>
 
-      {/* Transactions list */}
-      <Paper
-        elevation={0}
-        sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}
-      >
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            fontWeight: 600,
-            fontSize: 15,
-          }}
-        >
-          Todas as Transações
+      {/* Transactions table */}
+      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9" }}>
+          <Typography fontSize={15} fontWeight={600} color="#111827">Todas as Transações</Typography>
         </Box>
-
-        {filtered.length === 0 ? (
-          <Box sx={{ px: 3, py: 6, textAlign: "center", color: "#9ca3af" }}>
-            <Typography fontSize={14}>Nenhuma transação encontrada</Typography>
-          </Box>
-        ) : (
-          filtered.map((t: Transaction, i: number) => {
-            const isReceita = t.tipo === RECEITA;
-            const category = categories.find((c) => c.id === t.categoriaId);
-
-            return (
-              <Box
-                key={t.id}
-                sx={{
-                  px: 3,
-                  py: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none",
-                  "&:hover": { background: "#fafafa" },
-                  transition: "background 0.15s",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      backgroundColor: isReceita ? "#16a34a" : "#dc2626",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Box>
-                    <Typography fontWeight={600} fontSize={14}>
-                      {t.descricao}
-                    </Typography>
-                    <Typography color="text.secondary" fontSize={12}>
-                      {new Date(t.data).toLocaleDateString("pt-BR")}
-                      {t.categoriaId === null
-                        ? ""
-                        : category
-                        ? ` • ${category.descricao}`
-                        : ""}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography
-                    fontWeight={600}
-                    fontSize={14}
-                    color={isReceita ? "#16a34a" : "#dc2626"}
-                  >
-                    {isReceita ? "+" : ""}
-                    {formatMoney(t.valor)}
-                  </Typography>
-                  <Chip
-                    label={isReceita ? "Receita" : "Despesa"}
-                    size="small"
-                    sx={{
-                      fontSize: 11,
-                      height: 20,
-                      borderRadius: "4px",
-                      backgroundColor: "#f3f4f6",
-                      color: "#374151",
-                    }}
-                  />
-                </Box>
-              </Box>
-            );
-          })
-        )}
+        <TransactionTable
+          rows={filtered.map((t: Transaction): TransactionRow => ({
+            id: t.id,
+            descricao: t.descricao,
+            valor: t.valor,
+            tipo: t.tipo,
+            data: t.data,
+            categoriaId: t.categoriaId ?? undefined,
+            categoriaDescricao: categories.find(c => c.id === t.categoriaId)?.descricao,
+            contaId: t.contaId,
+            cartaoCreditoId: t.cartaoCreditoId,
+            contaNome: t.contaNome ?? t.cartaoCreditoNome,
+            meioPagamento: t.meioPagamento,
+            meioPagamentoDescricao: t.meioPagamentoDescricao,
+          }))}
+          onRefresh={loadData}
+          notify={notify}
+          emptyMessage="Nenhuma transação neste período"
+        />
       </Paper>
     </Box>
   );

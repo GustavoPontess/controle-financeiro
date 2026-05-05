@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 import Navbar from "../../components/Navbar/Navbar";
 import Sidebar from "../../components/Sidebar/Sidebar";
@@ -22,6 +23,7 @@ type Notification = {
 };
 
 export default function DefaultLayout() {
+  const { accountKey } = useAuth();
   const [open, setOpen] = useState(true);
   const [openTransaction, setOpenTransaction] = useState(false);
 
@@ -49,7 +51,7 @@ export default function DefaultLayout() {
     };
 
     loadRequirements();
-  }, []);
+  }, [accountKey]);
   return (
     <div className={styles.layout}>
       <Sidebar open={open} drawerWidth={drawerWidth} />
@@ -67,6 +69,7 @@ export default function DefaultLayout() {
 
         <main className={styles.content}>
           <Outlet
+            key={accountKey}
             context={{
               notify: setNotification,
               refreshTransactionRequirements: checkRequirements,

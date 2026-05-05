@@ -1,8 +1,11 @@
 import { useState } from "react"
-import { Box, Typography, TextField, Select, MenuItem, Alert } from "@mui/material"
+import { Box, Typography, TextField, Select, MenuItem } from "@mui/material"
 import CustomButton from "../../CustomButton"
 import type { Conta } from "../../../types/Conta"
 import type { Banco } from "../../../types/Banco"
+import type { CriarContaPayload } from "../../../services/contaService"
+
+type ContaFormData = Omit<Conta, "id" | "tipoDescricao" | "tipoCartaoDescricao" | "bancoNome" | "saldoAtual"> & { saldoInicial?: number }
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -27,42 +30,33 @@ const selectSx = {
 const TIPOS = [
   { value: 1, label: "Conta Corrente" },
   { value: 2, label: "Conta Poupança" },
-  { value: 3, label: "Cartão de Crédito" },
   { value: 4, label: "Dinheiro" },
   { value: 5, label: "Empréstimo" },
-]
-
-const TIPOS_CARTAO = [
-  { value: 1, label: "Crédito" },
-  { value: 2, label: "Débito" },
-  { value: 3, label: "Pré-Pago" },
 ]
 
 interface Props {
   bancos: Banco[]
   preSelectedBancoId?: string
-  onSubmit: (conta: Omit<Conta, "id" | "tipoDescricao" | "tipoCartaoDescricao" | "bancoNome">) => void
+  onSubmit: (data: ContaFormData) => void
   editingConta?: Conta | null
   onCancel?: () => void
 }
 
+export type { ContaFormData, CriarContaPayload }
+
 export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editingConta, onCancel }: Props) {
   const [tipo, setTipo] = useState(editingConta?.tipo ?? 0)
-  const [tipoCartao, setTipoCartao] = useState(editingConta?.tipoCartao ?? 0)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const nome = formData.get("nome") as string
-    const saldoInicial = Number(formData.get("saldoInicial"))
-    const bancoId = formData.get("bancoId") as string || undefined
-    const tipoCartaoValue = tipo === 3 && tipoCartao > 0 ? tipoCartao : undefined
-    onSubmit({ nome, tipo, tipoCartao: tipoCartaoValue, saldoInicial, bancoId })
+    const numeroConta = (formData.get("numeroConta") as string) || undefined
+    const saldoInicial = !editingConta ? Number(formData.get("saldoInicial")) || 0 : undefined
+    const bancoId = (formData.get("bancoId") as string) || undefined
+    onSubmit({ nome, numeroConta, tipo, saldoInicial, bancoId, isCarteira: false })
     e.currentTarget.reset()
   }
-
-  const isCartaoCreditoType = tipo === 3
-  const isCartaoDebitoOuCredito = isCartaoCreditoType && (tipoCartao === 1 || tipoCartao === 2)
 
   return (
     <Box component="form" key={editingConta?.id ?? "new"} onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -87,7 +81,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
         <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Nome da Conta</Typography>
         <TextField
           name="nome"
-          placeholder="Ex: NuConta, Cartão Roxinho"
+          placeholder="Ex: NuConta, Conta Corrente BB"
           defaultValue={editingConta?.nome ?? ""}
           size="small"
           fullWidth
@@ -99,8 +93,22 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
       </Box>
 
       <Box>
+        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Número da Conta</Typography>
+        <TextField
+          name="numeroConta"
+          placeholder="Ex: 1234-5"
+          defaultValue={editingConta?.numeroConta ?? ""}
+          size="small"
+          fullWidth
+          inputProps={{ maxLength: 50 }}
+          helperText="Opcional — usado para exibição"
+          sx={inputSx}
+        />
+      </Box>
+
+      <Box>
         <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Tipo</Typography>
-        <Select name="tipo" value={tipo} onChange={(e) => { setTipo(Number(e.target.value)); setTipoCartao(0) }} size="small" fullWidth required displayEmpty sx={selectSx}>
+        <Select name="tipo" value={tipo} onChange={(e) => setTipo(Number(e.target.value))} size="small" fullWidth required displayEmpty sx={selectSx}>
           <MenuItem value={0} disabled>Selecione o tipo</MenuItem>
           {TIPOS.map(t => (
             <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
@@ -108,38 +116,22 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
         </Select>
       </Box>
 
-      {isCartaoCreditoType && (
+      {!editingConta && (
         <Box>
-          <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Tipo de Cartão</Typography>
-          <Select name="tipoCartao" value={tipoCartao} onChange={(e) => setTipoCartao(Number(e.target.value))} size="small" fullWidth required displayEmpty sx={selectSx}>
-            <MenuItem value={0} disabled>Selecione o tipo de cartão</MenuItem>
-            {TIPOS_CARTAO.map(t => (
-              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
-            ))}
-          </Select>
+          <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Saldo Inicial</Typography>
+          <TextField
+            name="saldoInicial"
+            placeholder="0,00"
+            type="number"
+            defaultValue={0}
+            size="small"
+            fullWidth
+            inputProps={{ step: "0.01" }}
+            helperText="Informe 0 se não souber o saldo atual"
+            sx={inputSx}
+          />
         </Box>
       )}
-
-      {isCartaoDebitoOuCredito && (
-        <Alert severity="info" sx={{ fontSize: 12 }}>
-          Cartões de crédito e débito devem estar vinculados a uma conta bancária
-        </Alert>
-      )}
-
-      <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Saldo Inicial</Typography>
-        <TextField
-          name="saldoInicial"
-          placeholder="0,00"
-          type="number"
-          defaultValue={editingConta?.saldoInicial ?? 0}
-          size="small"
-          fullWidth
-          inputProps={{ step: "0.01" }}
-          helperText="Informe 0 se não souber o saldo atual"
-          sx={inputSx}
-        />
-      </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 0.5 }}>
         <CustomButton type="button" variant="secondary" onClick={onCancel}>Cancelar</CustomButton>
