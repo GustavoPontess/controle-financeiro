@@ -1,0 +1,168 @@
+using Microsoft.EntityFrameworkCore;
+using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.CartaoCredito;
+using ControleFinanceiro.Api.Infrastructure;
+
+namespace ControleFinanceiro.Api.Services;
+
+public class CartaoCreditoService(AppDbContext context)
+{
+    private readonly AppDbContext _context = context;
+
+    public async Task<List<CartaoCreditoDto>> ListarAsync(Guid usuarioId)
+    {
+        var cartoes = await _context.CartoesCredito
+            .Where(c => c.CriadoPor == usuarioId)
+            .Include(c => c.Conta)
+            .Include(c => c.Banco)
+            .Include(c => c.Transacoes)
+            .OrderBy(c => c.Nome)
+            .ToListAsync();
+
+        return cartoes.Select(ToDto).ToList();
+    }
+
+    public async Task<CartaoCreditoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
+    {
+        var cartao = await _context.CartoesCredito
+            .Where(c => c.Id == id && c.CriadoPor == usuarioId)
+            .Include(c => c.Conta)
+            .Include(c => c.Banco)
+            .Include(c => c.Transacoes)
+            .FirstOrDefaultAsync();
+
+        return cartao is null ? null : ToDto(cartao);
+    }
+
+    public async Task<CartaoCreditoDto> CriarAsync(CriarCartaoCreditoDto dto, Guid usuarioId)
+    {
+        if (!dto.EhPrePago && dto.ContaId.HasValue)
+        {
+            var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId);
+            if (conta is null) throw new Exception("Conta vinculada não encontrada.");
+        }
+
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(),
+            Nome = dto.Nome,
+            UltimosDigitos = dto.UltimosDigitos,
+            Bandeira = dto.Bandeira,
+            TemCredito = dto.TemCredito,
+            TemDebito = dto.TemDebito,
+            EhPrePago = dto.EhPrePago,
+            Limite = dto.TemCredito ? dto.Limite : null,
+            DiaFechamento = dto.TemCredito ? dto.DiaFechamento : null,
+            DiaVencimento = dto.TemCredito ? dto.DiaVencimento : null,
+            ContaId = dto.EhPrePago ? null : dto.ContaId,
+            BancoId = dto.BancoId,
+            Ativo = true,
+            CriadoPor = usuarioId,
+        };
+
+        _context.CartoesCredito.Add(cartao);
+        await _context.SaveChangesAsync();
+
+        return await BuscarPorIdAsync(cartao.Id, usuarioId) ?? ToDto(cartao);
+    }
+
+    public async Task<bool> AtualizarAsync(Guid id, CriarCartaoCreditoDto dto, Guid usuarioId)
+    {
+        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
+        if (cartao is null) return false;
+
+        if (!dto.EhPrePago && dto.ContaId.HasValue && dto.ContaId != cartao.ContaId)
+        {
+            var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId);
+            if (conta is null) throw new Exception("Conta vinculada não encontrada.");
+        }
+
+        cartao.Nome = dto.Nome;
+        cartao.UltimosDigitos = dto.UltimosDigitos;
+        cartao.Bandeira = dto.Bandeira;
+        cartao.TemCredito = dto.TemCredito;
+        cartao.TemDebito = dto.TemDebito;
+        cartao.EhPrePago = dto.EhPrePago;
+        cartao.Limite = dto.TemCredito ? dto.Limite : null;
+        cartao.DiaFechamento = dto.TemCredito ? dto.DiaFechamento : null;
+        cartao.DiaVencimento = dto.TemCredito ? dto.DiaVencimento : null;
+        cartao.ContaId = dto.EhPrePago ? null : dto.ContaId;
+        cartao.BancoId = dto.BancoId;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeletarAsync(Guid id, Guid usuarioId)
+    {
+        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
+        if (cartao is null) return false;
+
+        _context.CartoesCredito.Remove(cartao);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    private static (DateTime inicio, DateTime fim) CicloAtual(int? diaFechamento)
+    {
+        var hoje = DateTime.UtcNow.Date;
+        if (!diaFechamento.HasValue)
+            return (new DateTime(hoje.Year, hoje.Month, 1), hoje);
+
+        var dia = Math.Min(diaFechamento.Value, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        var fechamentoMesAtual = new DateTime(hoje.Year, hoje.Month, dia);
+
+        if (hoje <= fechamentoMesAtual)
+        {
+            var prev = fechamentoMesAtual.AddMonths(-1);
+            var diaAnterior = Math.Min(diaFechamento.Value, DateTime.DaysInMonth(prev.Year, prev.Month));
+            return (new DateTime(prev.Year, prev.Month, diaAnterior).AddDays(1), fechamentoMesAtual);
+        }
+        return (fechamentoMesAtual.AddDays(1), fechamentoMesAtual.AddMonths(1));
+    }
+
+    private static CartaoCreditoDto ToDto(CartaoCredito c)
+    {
+        var (inicio, fim) = CicloAtual(c.DiaFechamento);
+        var gastos = c.TemCredito
+            ? c.Transacoes
+                .Where(t => t.UsadoComoCredito && t.Tipo == TipoTransacao.Despesa && t.Data.Date >= inicio && t.Data.Date <= fim)
+                .Sum(t => t.Valor)
+            : 0;
+
+        var limiteDisponivel = c.TemCredito && c.Limite.HasValue ? c.Limite.Value - gastos : (decimal?)null;
+
+        var bandeiraDesc = c.Bandeira switch
+        {
+            BandeiraCartao.Visa => "Visa",
+            BandeiraCartao.Mastercard => "Mastercard",
+            BandeiraCartao.Elo => "Elo",
+            BandeiraCartao.Hipercard => "Hipercard",
+            BandeiraCartao.AmericanExpress => "American Express",
+            _ => "Outros"
+        };
+
+        return new CartaoCreditoDto
+        {
+            Id = c.Id,
+            Nome = c.Nome,
+            UltimosDigitos = c.UltimosDigitos,
+            Bandeira = (int)c.Bandeira,
+            BandeiraDescricao = bandeiraDesc,
+            TemCredito = c.TemCredito,
+            TemDebito = c.TemDebito,
+            EhPrePago = c.EhPrePago,
+            Limite = c.TemCredito ? c.Limite : null,
+            LimiteDisponivel = limiteDisponivel,
+            GastosNoCicloAtual = gastos,
+            DiaFechamento = c.DiaFechamento,
+            DiaVencimento = c.DiaVencimento,
+            ContaId = c.ContaId,
+            ContaNome = c.Conta?.Nome,
+            BancoId = c.BancoId,
+            BancoNome = c.Banco?.Nome,
+            Ativo = c.Ativo,
+        };
+    }
+}

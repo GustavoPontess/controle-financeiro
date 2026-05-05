@@ -1,23 +1,48 @@
 import { useEffect, useState } from "react"
-import { Box, Typography } from "@mui/material"
+import { Box, Typography, Chip, IconButton, Paper } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
-import type { Category } from "../../types/Category"
-import { getCategories } from "../../services/categoryService"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined"
+import type { Category } from "../../types/Category"
+import { getCategories, deleteCategory } from "../../services/categoryService"
 import CustomButton from "../../components/CustomButton"
-import CategoriesTable from "../../components/Categories/CategoriesTable/CategoriesTable"
 import NewCategoryDialog from "../../components/Categories/NewCategoryDialog/NewCategoryDialog"
-import EmptyState from "../../components/EmptyState/EmptyState"
 
-type Notification = {
-  open: boolean
-  message: string
-  severity: "success" | "error"
-}
-
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = {
   notify: React.Dispatch<React.SetStateAction<Notification>>
   refreshTransactionRequirements: () => Promise<void>
+}
+
+const FINALIDADE_LABEL: Record<number, { label: string; bg: string; color: string }> = {
+  1: { label: "Despesa", bg: "#fee2e2", color: "#dc2626" },
+  2: { label: "Receita", bg: "#dcfce7", color: "#16a34a" },
+  3: { label: "Ambas",   bg: "#f3f4f6", color: "#374151" },
+}
+
+function CategoryRow({ cat, onDelete }: { cat: Category; onDelete?: () => void }) {
+  const fin = FINALIDADE_LABEL[cat.finalidade] ?? FINALIDADE_LABEL[3]
+  return (
+    <Box sx={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      px: 2.5, py: 1.5, borderBottom: "1px solid #f1f5f9",
+      "&:last-child": { borderBottom: 0 },
+      "&:hover": { bgcolor: "#fafafa" },
+    }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Typography fontSize={13} fontWeight={500} color="#111827">{cat.descricao}</Typography>
+        <Chip label={fin.label} size="small" sx={{ fontSize: 11, height: 18, bgcolor: fin.bg, color: fin.color }} />
+      </Box>
+      {cat.isPadrao ? (
+        <LockOutlinedIcon sx={{ fontSize: 15, color: "#d1d5db" }} titleAccess="Categoria padrão" />
+      ) : (
+        <IconButton size="small" onClick={onDelete} sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}>
+          <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      )}
+    </Box>
+  )
 }
 
 export default function CategoriesPage() {
@@ -25,48 +50,79 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [openDialog, setOpenDialog] = useState(false)
 
-  const loadCategories = async () => {
+  const load = async () => {
     const data = await getCategories()
     setCategories(data)
   }
 
-  useEffect(() => {
-    (async () => {
-      await loadCategories()
-    })()
-  }, [])
+  useEffect(() => { load() }, [])
+
+  const handleDelete = async (cat: Category) => {
+    if (!confirm(`Remover "${cat.descricao}"? Transações vinculadas ficarão sem categoria.`)) return
+    try {
+      await deleteCategory(cat.id)
+      notify({ open: true, message: "Categoria removida", severity: "success" })
+      await load()
+      await refreshTransactionRequirements()
+    } catch {
+      notify({ open: true, message: "Erro ao remover categoria", severity: "error" })
+    }
+  }
+
+  const padrao   = categories.filter(c => c.isPadrao)
+  const pessoais = categories.filter(c => !c.isPadrao)
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography fontSize={14} fontWeight={600} color="#111827">
-          Categorias
-        </Typography>
-        <CustomButton
-          size="small"
-          startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />}
-          onClick={() => setOpenDialog(true)}
-        >
-          Adicionar Categoria
+        <Box>
+          <Typography fontSize={22} fontWeight={700} color="#111827">Categorias</Typography>
+          <Typography fontSize={13} color="#6b7280">Organize suas receitas e despesas</Typography>
+        </Box>
+        <CustomButton size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />} onClick={() => setOpenDialog(true)}>
+          Nova Categoria
         </CustomButton>
       </Box>
 
-      {categories.length === 0 ? (
-        <EmptyState
-          title="Nenhuma categoria cadastrada"
-          description="Crie categorias para organizar suas receitas e despesas."
-          actionLabel="Adicionar Categoria"
-          onAction={() => setOpenDialog(true)}
-        />
-      ) : (
-        <CategoriesTable categories={categories} />
-      )}
+      {/* Minhas categorias */}
+      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box>
+            <Typography fontSize={15} fontWeight={600} color="#111827">Minhas Categorias</Typography>
+            <Typography fontSize={12} color="#9ca3af">Criadas por você — podem ser removidas</Typography>
+          </Box>
+          <Chip label={pessoais.length} size="small" sx={{ fontWeight: 700, bgcolor: "#f3f4f6", color: "#374151" }} />
+        </Box>
+
+        {pessoais.length === 0 ? (
+          <Box sx={{ py: 5, textAlign: "center" }}>
+            <Typography fontSize={13} color="#9ca3af">Você ainda não criou nenhuma categoria pessoal</Typography>
+            <Typography fontSize={12} color="#d1d5db" mt={0.5}>Clique em "Nova Categoria" para adicionar</Typography>
+          </Box>
+        ) : (
+          pessoais.map(cat => <CategoryRow key={cat.id} cat={cat} onDelete={() => handleDelete(cat)} />)
+        )}
+      </Paper>
+
+      {/* Padrão */}
+      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box>
+            <Typography fontSize={15} fontWeight={600} color="#111827">Categorias Padrão</Typography>
+            <Typography fontSize={12} color="#9ca3af">Disponíveis para todos — não podem ser removidas</Typography>
+          </Box>
+          <Chip label={padrao.length} size="small" sx={{ fontWeight: 700, bgcolor: "#f3f4f6", color: "#374151" }} />
+        </Box>
+
+        {padrao.map(cat => <CategoryRow key={cat.id} cat={cat} />)}
+      </Paper>
 
       <NewCategoryDialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
         onCreated={async () => {
-          await loadCategories()
+          await load()
           await refreshTransactionRequirements()
         }}
         notify={notify}

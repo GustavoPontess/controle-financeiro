@@ -13,37 +13,52 @@ namespace ControleFinanceiro.Api.Services
             _context = context;
         }
 
-        public async Task<List<Categoria>> ListarAsync()
+        public async Task<List<Categoria>> ListarAsync(Guid usuarioId)
         {
             return await _context.Categorias
+                .Where(c => c.UsuarioId == null || c.UsuarioId == usuarioId)
+                .OrderBy(c => c.UsuarioId == null ? 0 : 1) // padrões primeiro
+                .ThenBy(c => c.Descricao)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
-        public async Task<Categoria?> BuscarPorIdAsync(Guid id)
+        public async Task<Categoria?> BuscarPorIdAsync(Guid id, Guid usuarioId)
         {
             return await _context.Categorias
-                .FirstOrDefaultAsync(c => c.Id == id);
+                .FirstOrDefaultAsync(c => c.Id == id && (c.UsuarioId == null || c.UsuarioId == usuarioId));
         }
 
-        public async Task<Categoria> CriarAsync(Categoria categoria)
+        public async Task<Categoria> CriarAsync(Categoria categoria, Guid usuarioId)
         {
             if (string.IsNullOrWhiteSpace(categoria.Descricao))
-            {
                 throw new Exception("Descrição é obrigatória.");
-            }
 
             if (categoria.Descricao.Length > 400)
-            {
                 throw new Exception("Descrição deve ter no máximo 400 caracteres.");
-            }
 
             categoria.Id = Guid.NewGuid();
+            categoria.UsuarioId = usuarioId;
 
             _context.Categorias.Add(categoria);
             await _context.SaveChangesAsync();
 
             return categoria;
+        }
+
+        public async Task DeletarAsync(Guid id, Guid usuarioId)
+        {
+            var categoria = await _context.Categorias.FindAsync(id)
+                ?? throw new Exception("Categoria não encontrada.");
+
+            if (categoria.UsuarioId == null)
+                throw new Exception("Categorias padrão não podem ser removidas.");
+
+            if (categoria.UsuarioId != usuarioId)
+                throw new Exception("Você não tem permissão para remover esta categoria.");
+
+            _context.Categorias.Remove(categoria);
+            await _context.SaveChangesAsync();
         }
     }
 }

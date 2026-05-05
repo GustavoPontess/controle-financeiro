@@ -10,5 +10,6 @@ namespace ControleFinanceiro.Api.DTOs.Categoria
         public string Descricao { get; set; } = string.Empty;
 
         public int Finalidade { get; set; }
+        public bool IsPadrao { get; set; }
     }
 }

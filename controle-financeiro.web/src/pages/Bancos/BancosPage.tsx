@@ -35,16 +35,6 @@ type OutletContextType = {
   notify: React.Dispatch<React.SetStateAction<Notification>>
 }
 
-const getTransactionCountForMonth = (transactions: Transaction[], contaId: string | undefined) => {
-  if (!contaId) return 0
-  const now = new Date()
-  return transactions.filter(t => {
-    if (t.contaId !== contaId) return false
-    const d = new Date(t.data)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).length
-}
-
 const getContaBalance = (contaId: string, transactions: Transaction[]) =>
   transactions
     .filter(t => t.contaId === contaId)
@@ -126,82 +116,72 @@ export default function BancosPage() {
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {/* Bancos com suas contas */}
-          {bancosComContas.map(banco => {
-            const contasDoBanco = contas.filter(c => c.bancoId === banco.id)
-            return (
-              <Paper key={banco.id} elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-                {/* Banco header */}
-                <Box sx={{ px: 3, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#fafafa", borderBottom: contasDoBanco.length > 0 ? "1px solid #f1f5f9" : "none" }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    <Box
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        backgroundColor: banco.cor || "#dbeafe",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#ffffff",
-                        fontSize: 18,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {banco.nomeFantasia.charAt(0).toUpperCase()}
-                    </Box>
-                    <Box>
-                      <Typography fontSize={14} fontWeight={600} color="#111827">{banco.nomeFantasia}</Typography>
-                      <Typography fontSize={12} color="#9ca3af">{banco.tipoDescricao}</Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  </Box>
-                </Box>
-
-                {/* Contas do banco */}
-                {contasDoBanco.length === 0 ? (
-                  <Box sx={{ px: 3, py: 2, color: "#9ca3af", fontSize: 13 }}>
-                    Nenhuma conta vinculada a este banco.
-                  </Box>
-                ) : (
-                  contasDoBanco.map((conta, i) => {
-                    const colors = tipoContaColor[conta.tipo] ?? { bg: "#f3f4f6", color: "#374151" }
-                    const transactionCount = getTransactionCountForMonth(transactions, conta.id)
-                    return (
-                      <Box
-                        key={conta.id}
-                        sx={{
-                          px: 3, py: 1.5,
-                          display: "flex", alignItems: "center", justifyContent: "space-between",
-                          borderBottom: i < contasDoBanco.length - 1 ? "1px solid #f9fafb" : "none",
-                          "&:hover": { backgroundColor: "#fafafa" },
-                        }}
-                      >
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                          <Chip label={conta.tipoDescricao} size="small" sx={{ fontSize: 11, height: 22, borderRadius: "6px", backgroundColor: colors.bg, color: colors.color, fontWeight: 500 }} />
-                          <Typography fontSize={13} fontWeight={500} color="#111827">{conta.nome}</Typography>
-                        </Box>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                          <Typography fontSize={13} color="#6b7280">{formatMoney(getContaBalance(conta.id, transactions))}</Typography>
-                          <Typography fontSize={12} color="#9ca3af">{transactionCount} transações</Typography>
-                          {!conta.isCarteira && (
-                            <>
-                              <IconButton size="small" onClick={() => { setEditingConta(conta); setOpenContaDialog(true) }} sx={{ color: "#6b7280" }}>
-                                <EditIcon sx={{ fontSize: 15 }} />
-                              </IconButton>
-                              <IconButton size="small" onClick={() => handleDeleteConta(conta.id)} sx={{ color: "#ef4444" }}>
-                                <DeleteIcon sx={{ fontSize: 15 }} />
-                              </IconButton>
-                            </>
-                          )}
+          {bancosComContas.length > 0 && (
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 2 }}>
+              {bancosComContas.map(banco => {
+                const contasDoBanco = contas.filter(c => c.bancoId === banco.id)
+                // show one card per bank summarizing the bank and first account info
+                const firstConta = contasDoBanco[0]
+                
+                return (
+                  <Box key={banco.id}>
+                    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
+                      <Box sx={{ px: 3, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#fafafa", borderBottom: contasDoBanco.length > 0 ? "1px solid #f1f5f9" : "none" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                          <Box
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "50%",
+                              backgroundColor: banco.cor || "#dbeafe",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#ffffff",
+                              fontSize: 18,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {banco.nomeFantasia.charAt(0).toUpperCase()}
+                          </Box>
+                          <Box>
+                            <Typography fontSize={14} fontWeight={600} color="#111827">{banco.nomeFantasia}</Typography>
+                            <Typography fontSize={12} color="#9ca3af">{banco.tipoDescricao}</Typography>
+                          </Box>
                         </Box>
                       </Box>
-                    )
-                  })
-                )}
-              </Paper>
-            )
-          })}
+
+                      <Box sx={{ px: 3, py: 2, display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
+                        <Typography fontSize={12} color="#6b7280">Saldo</Typography>
+                        <Typography fontSize={18} fontWeight={700} color="#15803d">{formatMoney(contasDoBanco.reduce((s, c) => s + getContaBalance(c.id, transactions), 0))}</Typography>
+                        <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                          <Paper elevation={0} sx={{ px: 1.5, py: 0.5, borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                            <Typography fontSize={12} color="#6b7280">Contas</Typography>
+                            <Typography fontSize={14} fontWeight={700} color="#111827">{contasDoBanco.length}</Typography>
+                          </Paper>
+                          <Paper elevation={0} sx={{ px: 1.5, py: 0.5, borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                            <Typography fontSize={12} color="#6b7280">Transações</Typography>
+                            <Typography fontSize={14} fontWeight={700} color="#111827">{transactions.filter(t => contasDoBanco.find(c => c.id === t.contaId)).length}</Typography>
+                          </Paper>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ px: 3, py: 2, borderTop: "1px solid #f1f5f9", display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                        <IconButton size="small" onClick={() => { setEditingConta(firstConta ?? null); setOpenContaDialog(true) }} sx={{ color: "#6b7280" }}>
+                          <EditIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                        {firstConta && (
+                          <IconButton size="small" onClick={() => handleDeleteConta(firstConta.id)} sx={{ color: "#ef4444" }}>
+                            <DeleteIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </Paper>
+                  </Box>
+                )
+              })}
+            </Box>
+          )}
 
           {/* Contas sem banco */}
           {contasSemBanco.length > 0 && (
@@ -211,7 +191,6 @@ export default function BancosPage() {
               </Box>
               {contasSemBanco.map((conta, i) => {
                 const colors = tipoContaColor[conta.tipo] ?? { bg: "#f3f4f6", color: "#374151" }
-                const transactionCount = getTransactionCountForMonth(transactions, conta.id)
                 return (
                   <Box
                     key={conta.id}
@@ -228,7 +207,7 @@ export default function BancosPage() {
                     </Box>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography fontSize={13} color="#6b7280">{formatMoney(getContaBalance(conta.id, transactions))}</Typography>
-                      <Typography fontSize={12} color="#9ca3af">{transactionCount} transações</Typography>
+                      <Typography fontSize={12} color="#9ca3af">{transactions.filter(t => t.contaId === conta.id).length} transações</Typography>
                       {!conta.isCarteira && (
                         <>
                           <IconButton size="small" onClick={() => { setEditingConta(conta); setOpenContaDialog(true) }} sx={{ color: "#6b7280" }}>

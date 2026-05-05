@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Write(*)",
+      "Edit(*)",
+      "Bash(dotnet *)",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

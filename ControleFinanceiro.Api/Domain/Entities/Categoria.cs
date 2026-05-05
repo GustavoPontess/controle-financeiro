@@ -13,4 +13,7 @@ public class Categoria
 
     [Required]
     public Finalidade Finalidade { get; set; }
+
+    // null = padrão (todos veem, ninguém deleta); guid = categoria pessoal do usuário
+    public Guid? UsuarioId { get; set; }
 }

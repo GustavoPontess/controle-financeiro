@@ -1,0 +1,318 @@
+using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Fatura;
+using ControleFinanceiro.Api.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+
+namespace ControleFinanceiro.Api.Services;
+
+public class FaturaService
+{
+    private readonly AppDbContext _context;
+
+    public FaturaService(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // ── Cálculo de período ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Dado uma data de transação e o dia de fechamento do cartão,
+    /// retorna o início e o fechamento do período da fatura correspondente.
+    /// </summary>
+    public static (DateTime inicio, DateTime fechamento) CalcularPeriodo(DateTime dataTransacao, int? diaFechamento)
+    {
+        // Sem dia de fechamento → usa mês calendário completo
+        if (!diaFechamento.HasValue)
+        {
+            var primeiroDia = new DateTime(dataTransacao.Year, dataTransacao.Month, 1);
+            var ultimoDia = new DateTime(dataTransacao.Year, dataTransacao.Month,
+                DateTime.DaysInMonth(dataTransacao.Year, dataTransacao.Month));
+            return (primeiroDia, ultimoDia);
+        }
+
+        int dia = diaFechamento.Value;
+        int diasNoMes = DateTime.DaysInMonth(dataTransacao.Year, dataTransacao.Month);
+        int diaEfetivo = Math.Min(dia, diasNoMes);
+        var fechamentoDoMes = new DateTime(dataTransacao.Year, dataTransacao.Month, diaEfetivo);
+
+        if (dataTransacao.Day <= diaEfetivo)
+        {
+            // Transação antes/no fechamento → pertence à fatura que FECHA este mês
+            var mesAnterior = dataTransacao.AddMonths(-1);
+            int diasMesAnterior = DateTime.DaysInMonth(mesAnterior.Year, mesAnterior.Month);
+            int diaAnteriorEfetivo = Math.Min(dia, diasMesAnterior);
+            var inicioFatura = new DateTime(mesAnterior.Year, mesAnterior.Month, diaAnteriorEfetivo).AddDays(1);
+            return (inicioFatura, fechamentoDoMes);
+        }
+        else
+        {
+            // Transação depois do fechamento → pertence à PRÓXIMA fatura
+            var proximoMes = dataTransacao.AddMonths(1);
+            int diasProximoMes = DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month);
+            int diaProximoEfetivo = Math.Min(dia, diasProximoMes);
+            var fechamentoProximo = new DateTime(proximoMes.Year, proximoMes.Month, diaProximoEfetivo);
+            return (fechamentoDoMes.AddDays(1), fechamentoProximo);
+        }
+    }
+
+    /// <summary>
+    /// Calcula a data de vencimento com base no fechamento e no dia de vencimento do cartão.
+    /// O vencimento é sempre APÓS o fechamento (mesmo mês ou próximo mês).
+    /// </summary>
+    public static DateTime CalcularVencimento(DateTime fechamento, int? diaVencimento)
+    {
+        if (!diaVencimento.HasValue)
+            return fechamento.AddDays(10);
+
+        int diasNoMes = DateTime.DaysInMonth(fechamento.Year, fechamento.Month);
+        int diaEfetivo = Math.Min(diaVencimento.Value, diasNoMes);
+        var vencimentoMesmo = new DateTime(fechamento.Year, fechamento.Month, diaEfetivo);
+
+        if (vencimentoMesmo > fechamento)
+            return vencimentoMesmo;
+
+        // Dia de vencimento é anterior ao fechamento → vai para o próximo mês
+        var proximo = fechamento.AddMonths(1);
+        int diasProximo = DateTime.DaysInMonth(proximo.Year, proximo.Month);
+        return new DateTime(proximo.Year, proximo.Month, Math.Min(diaVencimento.Value, diasProximo));
+    }
+
+    // ── Busca ou criação de fatura ────────────────────────────────────────────
+
+    /// <summary>
+    /// Retorna a fatura existente para o período da data da transação,
+    /// ou cria uma nova se não existir (lançamentos retroativos incluídos).
+    /// Respeita o invariante: faturas fechadas/pagas não são modificadas.
+    /// </summary>
+    public async Task<Fatura> ObterOuCriarFaturaAsync(Guid cartaoCreditoId, DateTime dataTransacao, Guid usuarioId)
+    {
+        var cartao = await _context.CartoesCredito.FindAsync(cartaoCreditoId)
+            ?? throw new Exception("Cartão de crédito não encontrado.");
+
+        var (inicio, fechamento) = CalcularPeriodo(dataTransacao.Date, cartao.DiaFechamento);
+
+        var fatura = await _context.Faturas
+            .FirstOrDefaultAsync(f =>
+                f.CartaoCreditoId == cartaoCreditoId &&
+                f.DataInicio == inicio &&
+                f.DataFechamento == fechamento);
+
+        if (fatura != null)
+            return fatura;
+
+        var vencimento = CalcularVencimento(fechamento, cartao.DiaVencimento);
+
+        fatura = new Fatura
+        {
+            Id = Guid.NewGuid(),
+            CartaoCreditoId = cartaoCreditoId,
+            DataInicio = inicio,
+            DataFechamento = fechamento,
+            DataVencimento = vencimento,
+            Status = StatusFatura.Aberta,
+            ValorPago = 0,
+            CriadoPor = usuarioId,
+        };
+
+        _context.Faturas.Add(fatura);
+        await _context.SaveChangesAsync();
+        return fatura;
+    }
+
+    // ── Parcelamento ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Cria N transações distribuídas em N faturas consecutivas (parcelamento).
+    /// A primeira parcela cai na fatura da data informada; as demais, nos meses seguintes.
+    /// </summary>
+    public async Task<List<Transacao>> CriarParcelamentoAsync(
+        Guid cartaoCreditoId,
+        Guid? categoriaId,
+        string descricaoBase,
+        decimal valorTotal,
+        int numParcelas,
+        DateTime dataBase,
+        Guid usuarioId)
+    {
+        if (numParcelas < 2)
+            throw new Exception("Parcelamento requer no mínimo 2 parcelas.");
+
+        var valorParcela = Math.Round(valorTotal / numParcelas, 2);
+        var resto = valorTotal - valorParcela * numParcelas; // centavos residuais vão para a última parcela
+
+        var transacoes = new List<Transacao>();
+        Guid primeiraTransacaoId = Guid.NewGuid();
+
+        for (int i = 1; i <= numParcelas; i++)
+        {
+            var dataTransacao = dataBase.AddMonths(i - 1);
+            var fatura = await ObterOuCriarFaturaAsync(cartaoCreditoId, dataTransacao, usuarioId);
+
+            decimal valorDaParcela = (i == numParcelas) ? valorParcela + resto : valorParcela;
+
+            var transacao = new Transacao
+            {
+                Id = i == 1 ? primeiraTransacaoId : Guid.NewGuid(),
+                Descricao = $"{descricaoBase} ({i}/{numParcelas})",
+                Valor = valorDaParcela,
+                Tipo = TipoTransacao.Despesa,
+                CategoriaId = categoriaId,
+                CartaoCreditoId = cartaoCreditoId,
+                FaturaId = fatura.Id,
+                UsadoComoCredito = true,
+                MeioPagamento = MeioPagamento.Credito,
+                Data = dataTransacao,
+                Parcelas = numParcelas,
+                NumeroParcela = i,
+                TransacaoOrigemId = i == 1 ? null : primeiraTransacaoId,
+                CriadoPor = usuarioId,
+            };
+
+            _context.Transacoes.Add(transacao);
+            transacoes.Add(transacao);
+        }
+
+        await _context.SaveChangesAsync();
+        return transacoes;
+    }
+
+    // ── Pagamento de fatura ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Paga total ou parcialmente uma fatura.
+    /// Debita o valor da conta informada e atualiza o status da fatura.
+    /// Invariante: só impacta o saldo da conta no momento do pagamento.
+    /// </summary>
+    public async Task<Transacao> PagarFaturaAsync(Guid faturaId, PagarFaturaDto dto, Guid usuarioId)
+    {
+        var fatura = await _context.Faturas
+            .Include(f => f.CartaoCredito)
+            .Include(f => f.Transacoes)
+            .FirstOrDefaultAsync(f => f.Id == faturaId)
+            ?? throw new Exception("Fatura não encontrada.");
+
+        if (fatura.CartaoCredito.CriadoPor != usuarioId)
+            throw new Exception("Você não tem permissão para pagar esta fatura.");
+
+        if (fatura.Status == StatusFatura.Paga)
+            throw new Exception("Esta fatura já foi paga integralmente.");
+
+        var conta = await _context.Contas
+            .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
+            ?? throw new Exception("Conta não encontrada.");
+
+        var valorTotal = fatura.Transacoes
+            .Where(t => t.UsadoComoCredito)
+            .Sum(t => t.Valor);
+
+        var valorRestante = valorTotal - fatura.ValorPago;
+        if (dto.Valor <= 0 || dto.Valor > valorRestante)
+            throw new Exception($"Valor inválido. Restante a pagar: {valorRestante:C}.");
+
+        // Cria transação de débito na conta (aqui o saldo da conta é afetado — invariante 5)
+        var pagamento = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            Descricao = $"Pagamento fatura {fatura.CartaoCredito.Nome} " +
+                        $"({fatura.DataFechamento:MM/yyyy})",
+            Valor = dto.Valor,
+            Tipo = TipoTransacao.Despesa,
+            ContaId = dto.ContaId,
+            FaturaId = fatura.Id,
+            MeioPagamento = (MeioPagamento)dto.MeioPagamento,
+            Data = dto.DataPagamento.ToUniversalTime(),
+            CriadoPor = usuarioId,
+        };
+
+        fatura.ValorPago += dto.Valor;
+        if (fatura.ValorPago >= valorTotal)
+            fatura.Status = StatusFatura.Paga;
+
+        _context.Transacoes.Add(pagamento);
+        await _context.SaveChangesAsync();
+        return pagamento;
+    }
+
+    // ── Consultas ─────────────────────────────────────────────────────────────
+
+    public async Task<List<FaturaDto>> ListarPorCartaoAsync(Guid cartaoCreditoId, Guid usuarioId)
+    {
+        var cartao = await _context.CartoesCredito
+            .FirstOrDefaultAsync(c => c.Id == cartaoCreditoId && c.CriadoPor == usuarioId)
+            ?? throw new Exception("Cartão não encontrado.");
+
+        var faturas = await _context.Faturas
+            .Where(f => f.CartaoCreditoId == cartaoCreditoId)
+            .Include(f => f.Transacoes)
+            .OrderByDescending(f => f.DataFechamento)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return faturas.Select(f => ToDto(f, cartao.Nome)).ToList();
+    }
+
+    public async Task<FaturaDetalheDto> DetalheAsync(Guid faturaId, Guid usuarioId)
+    {
+        var fatura = await _context.Faturas
+            .Where(f => f.Id == faturaId && f.CartaoCredito.CriadoPor == usuarioId)
+            .Include(f => f.CartaoCredito)
+            .Include(f => f.Transacoes)
+                .ThenInclude(t => t.Categoria)
+            .AsNoTracking()
+            .FirstOrDefaultAsync()
+            ?? throw new Exception("Fatura não encontrada.");
+
+        var dto = new FaturaDetalheDto();
+        PreencherDto(dto, fatura, fatura.CartaoCredito.Nome);
+        dto.Transacoes = fatura.Transacoes
+            .Where(t => t.UsadoComoCredito)
+            .OrderByDescending(t => t.Data)
+            .Select(t => new FaturaTransacaoDto
+            {
+                Id = t.Id,
+                Descricao = t.Descricao,
+                Valor = t.Valor,
+                Data = t.Data,
+                CategoriaId = t.CategoriaId,
+                CategoriaDescricao = t.Categoria?.Descricao,
+                Parcelas = t.Parcelas,
+                NumeroParcela = t.NumeroParcela,
+            }).ToList();
+
+        return dto;
+    }
+
+    // ── Helpers privados ──────────────────────────────────────────────────────
+
+    private static FaturaDto ToDto(Fatura f, string cartaoNome)
+    {
+        var dto = new FaturaDto();
+        PreencherDto(dto, f, cartaoNome);
+        return dto;
+    }
+
+    private static void PreencherDto(FaturaDto dto, Fatura f, string cartaoNome)
+    {
+        var valorTotal = f.Transacoes.Where(t => t.UsadoComoCredito).Sum(t => t.Valor);
+        dto.Id = f.Id;
+        dto.CartaoCreditoId = f.CartaoCreditoId;
+        dto.CartaoCreditoNome = cartaoNome;
+        dto.DataInicio = f.DataInicio;
+        dto.DataFechamento = f.DataFechamento;
+        dto.DataVencimento = f.DataVencimento;
+        dto.Status = (int)f.Status;
+        dto.StatusDescricao = f.Status switch
+        {
+            StatusFatura.Aberta  => "Aberta",
+            StatusFatura.Fechada => "Fechada",
+            StatusFatura.Paga    => "Paga",
+            _                    => "Desconhecido",
+        };
+        dto.ValorTotal = valorTotal;
+        dto.ValorPago = f.ValorPago;
+        dto.ValorRestante = valorTotal - f.ValorPago;
+        dto.Vencida = f.Status != StatusFatura.Paga && DateTime.UtcNow.Date > f.DataVencimento.Date;
+    }
+}

@@ -55,7 +55,8 @@ namespace ControleFinanceiro.Api.Controllers
             TipoDescricao = DescricaoTipo(c.Tipo),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
-            SaldoInicial = c.SaldoInicial,
+            SaldoAtual = c.Transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor)
+                       - c.Transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
             IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome ?? string.Empty
@@ -109,13 +110,14 @@ namespace ControleFinanceiro.Api.Controllers
                 var conta = new Conta
                 {
                     Nome = dto.Nome,
+                    NumeroConta = dto.NumeroConta,
                     Tipo = (TipoConta)dto.Tipo,
                     TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
-                    SaldoInicial = dto.SaldoInicial,
-                    BancoId = dto.BancoId
+                    BancoId = dto.BancoId,
+                    IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
                 };
 
-                var criada = await _service.CriarAsync(conta, usuarioId);
+                var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
                 return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
             }
             catch (Exception ex)
@@ -138,10 +140,11 @@ namespace ControleFinanceiro.Api.Controllers
                 var conta = new Conta
                 {
                     Nome = dto.Nome,
+                    NumeroConta = dto.NumeroConta,
                     Tipo = (TipoConta)dto.Tipo,
                     TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
-                    SaldoInicial = dto.SaldoInicial,
-                    BancoId = dto.BancoId
+                    BancoId = dto.BancoId,
+                    IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
                 };
 
                 await _service.AtualizarAsync(id, conta, usuarioId);
