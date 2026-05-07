@@ -60,7 +60,56 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Swagger/OpenAPI Configuration with JWT Support
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Controle Financeiro API",
+        Version = "v1.0",
+        Description = "API de gerenciamento financeiro pessoal com suporte a transações, contas, cartões de crédito, transferências e mais.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "Gustavo Pontes",
+            Email = "gut.n.pontes@gmail.com"
+        }
+    });
+
+    // Add JWT Bearer authentication to Swagger
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        Description = "Enter your JWT token in the format: Bearer {token}"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Include XML comments from controllers
+    var xmlFile = Path.Combine(AppContext.BaseDirectory, "ControleFinanceiro.Api.xml");
+    if (File.Exists(xmlFile))
+    {
+        options.IncludeXmlComments(xmlFile);
+    }
+
+    // Order endpoints by path
+    options.OrderActionsBy(x => x.RelativePath);
+});
 
 builder.Services.AddCors(options =>
 {
