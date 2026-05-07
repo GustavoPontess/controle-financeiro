@@ -1,0 +1,315 @@
+# Quick Reference — Controle Financeiro
+
+**Leia isto PRIMEIRO. Links para docs detalhadas no final.**
+
+---
+
+## 🏗️ Stack
+
+- **Backend:** .NET 8, C#, EF Core, SQLite, JWT
+- **Frontend:** React 19, TypeScript, Material-UI v7, Vite
+- **DB:** SQLite (`controlefinanceiro.db`)
+- **Auth:** JWT Bearer (HS256, 60min expiration)
+
+---
+
+## 🚀 Running
+
+```powershell
+# Backend (http://localhost:5293, Swagger at /swagger)
+cd ControleFinanceiro.Api
+dotnet run
+
+# Frontend (http://localhost:5173)
+cd controle-financeiro.web
+npm run dev
+
+# Note: ⚠️ Port mismatch → Frontend baseURL hardcoded to 5296 (needs fix)
+```
+
+---
+
+## 📁 Project Structure
+
+```
+ControleFinanceiro.Api/
+├── Controllers/          # 12 thin HTTP layers
+├── Services/             # Business logic (one per entity)
+├── Domain/
+│   ├── Entities/         # EF Core models
+│   └── Enums/            # 11 enums (TipoTransacao, StatusFatura, etc)
+├── DTOs/                 # Request/response contracts
+├── Infrastructure/
+│   ├── AppDbContext.cs   # EF DbContext + migrations
+│   └── Identity/         # JWT + BCrypt
+└── Data/                 # Seeders (Banco, Categoria)
+
+controle-financeiro.web/
+├── src/pages/            # Page containers
+├── src/components/       # Reusable UI
+├── src/services/         # API clients
+├── src/types/            # DTOs (mirror backend)
+├── src/api/axiosClient.ts # Axios + JWT interceptor
+└── src/routes/           # React Router config
+```
+
+---
+
+## 🎯 Key Concepts (MUST KNOW)
+
+| Concept | Definition | Key Notes |
+|---------|-----------|-----------|
+| **Transacao** | Core entity. Links to Conta OR CartaoCredito (never both) | Supports parcelamento (installments) |
+| **Parcelamento** | Create 1 txn with Parcelas=12 → generates 12 DB rows | Each with NumeroParcela (1..12) |
+| **Fatura** | Auto-created invoice for credit card. Status: Aberta→Fechada→Paga | Delete CartaoCredito RESTRICTED if Fatura open |
+| **Conta** | Bank account/wallet. Saldo = SUM(Receitas) - SUM(Despesas) | Saldo NOT stored; calculated on-the-fly |
+| **Categoria** | Has Finalidade (Despesa/Receita/Ambas) matching TipoTransacao | Validação ao criar transação |
+| **Transferencia** | Between user's own accounts. Creates 2 implicit txns (Despesa + Receita) | Contabiliza ambas contas |
+
+---
+
+## 🔐 Data Isolation (CRITICAL)
+
+**Every query filters by `UsuarioId`:**
+
+```csharp
+// Controller: Extract userId from JWT
+var usuarioId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+// Service: Pass to ALL queries
+var transacoes = await _context.Transacoes
+    .Where(t => t.UsuarioId == usuarioId)  // ← NEVER omit this
+    .ToListAsync();
+```
+
+**NEVER trust user input for filtering.**
+
+---
+
+## 📋 11 Core Entities
+
+1. **Usuario** — Auth + user data
+2. **Conta** — Bank accounts/wallets
+3. **Banco** — Banks (synced from BCB API)
+4. **CartaoCredito** — Credit cards
+5. **Transacao** — Transactions (core)
+6. **Categoria** — Expense/income categories
+7. **Fatura** — Credit card invoices (auto-created)
+8. **Transferencia** — Inter-account transfers
+9. **Recorrente** — Recurring expenses/income
+10. **Emprestimo** — Loan tracking
+11. **CompartilhamentoConta** — Share accounts (if implemented)
+
+---
+
+## 🔤 Naming Conventions
+
+### Backend (C#)
+| Type | Pattern | Example |
+|------|---------|---------|
+| Classes | PascalCase | `TransacaoService`, `ContasController` |
+| Methods | PascalCase + Async | `CriarTransacaoAsync`, `ObterPorId` |
+| Params | camelCase | `usuarioId`, `criarTransacaoDto` |
+| Private fields | _camelCase | `_context`, `_mapper` |
+| Enums | PascalCase | `TipoTransacao`, `StatusFatura` |
+
+### Frontend (React/TS)
+| Type | Pattern | Example |
+|------|---------|---------|
+| Components | PascalCase | `TransacaoForm.tsx`, `ContaList.tsx` |
+| Services | [Entity]Service | `TransacaoService.ts` |
+| Types | PascalCase | `TransacaoDto`, `CreateTransacaoDto` |
+| Variables | camelCase | `isLoading`, `userId` |
+
+---
+
+## 💻 Code Patterns
+
+### Backend Service
+```csharp
+public class TransacaoService
+{
+    private readonly AppDbContext _context;
+    public TransacaoService(AppDbContext context) => _context = context;
+    
+    public async Task<TransacaoDto> CriarAsync(CriarTransacaoDto dto, Guid usuarioId)
+    {
+        var txn = new Transacao { /* map from dto */ };
+        await _context.Transacoes.AddAsync(txn);
+        await _context.SaveChangesAsync();
+        return Map(txn);
+    }
+}
+```
+
+### Backend Controller
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class TransacoesController : ControllerBase
+{
+    private Guid GetUserId() => 
+        Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+    
+    [HttpPost]
+    public async Task<IActionResult> Criar([FromBody] CriarTransacaoDto dto)
+    {
+        var usuarioId = GetUserId();
+        var result = await _service.CriarAsync(dto, usuarioId);
+        return CreatedAtAction(nameof(BuscarPorId), new { id = result.Id }, result);
+    }
+}
+```
+
+### Frontend Service
+```typescript
+const TransacaoService = {
+  obterTodos: () => axiosClient.get<TransacaoDto[]>('/transacoes'),
+  criar: (dto: CreateTransacaoDto) => axiosClient.post('/transacoes', dto),
+};
+export default TransacaoService;
+```
+
+### Frontend Component
+```typescript
+export const TransacaoForm = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await TransacaoService.criar(formData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return <Box component="form" onSubmit={handleSubmit}>{/* ... */}</Box>;
+};
+```
+
+---
+
+## 🗄️ Database
+
+**11 tables, all with UsuarioId for isolation:**
+
+Key relationships:
+- `Conta` ← has many → `Transacao` (cascade delete)
+- `CartaoCredito` ← has many → `Fatura` (restrict delete)
+- `Fatura` ← has many → `Transacao` (cascade delete)
+- `Categoria` ← has many → `Transacao` (no delete if has txns)
+
+**Schema:** See `docs/DATABASE.md` for ER diagram + full specs
+
+---
+
+## 📡 API Documentation
+
+**Documentação 100% automática via Swagger/OpenAPI**
+
+```powershell
+dotnet run
+# → http://localhost:5293/swagger
+```
+
+**12 controllers com endpoints documentados:**
+- Auth (register, login, me, profile, change-password)
+- Transacoes (CRUD + parcelamento)
+- Contas (CRUD)
+- CartoesCreditito (CRUD)
+- Faturas (listar, pagar)
+- Categorias (CRUD)
+- Transferencias (GET, POST)
+- Bancos (GET — synced from BCB)
+- Recorrentes (CRUD)
+- Emprestimos (CRUD)
+- Dashboard (/resumo)
+- Relatorios (/categoria-mes)
+
+**Documentação está no CÓDIGO** — comentários XML dos controllers
+**Swagger gera automaticamente** — sem arquivo manual para manter
+
+---
+
+## 🔄 Common Flows
+
+1. **Register/Login** → JWT stored in localStorage → Interceptor injects on every request
+2. **Create Transaction (à vista)** → Create 1 Transacao row → Update Conta.saldo (calculated)
+3. **Create Transaction (parcelada)** → Create 12 Transacao rows → Auto-create 12 Faturas → Each links to its month
+4. **Pay Invoice** → Update Fatura.status to "Paga" → Done
+5. **Transfer Between Accounts** → Create 1 Transferencia row → Creates 2 implicit Transacoes (Despesa + Receita)
+
+**Detailed flows:** See `docs/FLOWS.md` with sequence diagrams
+
+---
+
+## ⚡ Common Commands
+
+```powershell
+# Backend
+dotnet restore
+dotnet build
+dotnet run
+dotnet ef migrations add MigrationName
+dotnet ef database update
+
+# Frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+
+# Git
+git add .
+git commit -m "feat: description"
+git push origin feature-branch
+```
+
+---
+
+## 🔗 Full Documentation
+
+| Doc | Purpose | When to Read |
+|-----|---------|-------------|
+| **CLAUDE.md** (root) | Tech stack, architecture, patterns | First time setup |
+| **docs/STANDARDS.md** | Code conventions, naming, git | Before writing code |
+| **docs/API.md** | All endpoints + examples | When implementing frontend or testing |
+| **docs/DATABASE.md** | Schema + ER diagram | When working with data |
+| **docs/FLOWS.md** | Business logic sequences | When understanding how features work |
+| **docs/README.md** | Doc index | Navigation |
+
+---
+
+## ⚠️ Important Notes
+
+1. **Port issue:** Frontend tries to hit `localhost:5296/api` but backend is `5293` — needs fix
+2. **Delete behavior:** Contas cascade (txns deleted), CartoesCreditito restrict (can't delete if open Faturas)
+3. **No soft deletes:** Using RESTRICT delete behavior instead
+4. **No rate limiting:** Future security concern
+5. **No background jobs:** Recorrentes don't auto-execute (needs implementation)
+
+---
+
+## 🎯 Adding a New Feature (Quick Checklist)
+
+- [ ] Create Entity in `Domain/Entities/`
+- [ ] Create DTOs in `DTOs/[Entity]/`
+- [ ] Create Service in `Services/[Entity]Service.cs`
+- [ ] Create Controller in `Controllers/[Entity]Controller.cs`
+- [ ] Register Service in `Program.cs`
+- [ ] Create Migration: `dotnet ef migrations add Add[Entity]`
+- [ ] Create Frontend Service in `src/services/`
+- [ ] Create Frontend Types in `src/types/`
+- [ ] Create Frontend Components in `src/pages/[Entity]/`
+- [ ] Test end-to-end
+- [ ] Update docs if needed
+
+---
+
+**Keep this open while developing. Links to detailed docs above.**
