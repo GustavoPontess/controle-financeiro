@@ -1,0 +1,554 @@
+# Code Standards & Conventions
+
+Padrões de código que todo contributor deve seguir para manter consistência.
+
+## Backend (.NET/C#)
+
+### Naming Conventions
+
+| Item | Pattern | Example |
+|------|---------|---------|
+| **Classes** | PascalCase | `TransacaoService`, `BancoController` |
+| **Methods** | PascalCase | `CriarTransacaoAsync`, `ObterPorId` |
+| **Parameters** | camelCase | `usuarioId`, `criarTransacaoDto` |
+| **Private fields** | _camelCase | `_context`, `_mapper` |
+| **Constants** | UPPER_CASE | `TAXA_PADRAO`, `TIMEOUT_MS` |
+| **Interfaces** | IPascalCase | `ITransacaoService`, `IRepository` |
+| **Enums** | PascalCase | `TipoTransacao`, `StatusFatura` |
+| **Enum values** | PascalCase | `Receita`, `Despesa`, `Aberta`, `Paga` |
+
+### File & Folder Structure
+
+```
+ControleFinanceiro.Api/
+├── Controllers/
+│   ├── TransacoesController.cs
+│   ├── ContasController.cs
+│   └── [other]Controller.cs
+├── Services/
+│   ├── TransacaoService.cs
+│   ├── ContaService.cs
+│   └── [other]Service.cs
+├── Domain/
+│   ├── Entities/
+│   │   ├── Transacao.cs
+│   │   ├── Conta.cs
+│   │   └── ...
+│   └── Enums/
+│       ├── TipoTransacao.cs
+│       └── ...
+├── DTOs/
+│   ├── Transacao/
+│   │   ├── TransacaoDto.cs
+│   │   └── CriarTransacaoDto.cs
+│   ├── Conta/
+│   │   └── ...
+│   └── ...
+├── Infrastructure/
+│   ├── AppDbContext.cs
+│   └── Identity/
+│       ├── JwtTokenProvider.cs
+│       └── PasswordHasher.cs
+├── Migrations/
+│   ├── 20260303175437_InitialCreate.cs
+│   └── ...
+└── Data/
+    ├── BancoSeeder.cs
+    └── CategoriaSeeder.cs
+```
+
+**One file per class rule:** Cada classe em seu próprio arquivo.
+
+### Async/Await Pattern
+
+```csharp
+// Correct ✓
+public async Task<TransacaoDto> CriarAsync(CriarTransacaoDto dto, Guid usuarioId)
+{
+    var transacao = new Transacao { /* ... */ };
+    await _context.Transacoes.AddAsync(transacao);
+    await _context.SaveChangesAsync();
+    return Map(transacao);
+}
+
+// Avoid ✗
+public TransacaoDto Criar(CriarTransacaoDto dto) { /* ... */ }
+```
+
+**Rules:**
+- Use `async/await` for all I/O (DB, API calls)
+- Methods should end with `Async` suffix
+- Return `Task<T>` or `Task`
+- Never use `.Result` or `.Wait()` (deadlock risk)
+
+### Constructor Injection
+
+```csharp
+public class TransacaoService
+{
+    private readonly AppDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly CategoriaService _categoriaService;
+
+    public TransacaoService(AppDbContext context, IMapper mapper, CategoriaService categoriaService)
+    {
+        _context = context;
+        _mapper = mapper;
+        _categoriaService = categoriaService;
+    }
+}
+```
+
+**Rules:**
+- Use constructor injection (DI)
+- Declare private readonly fields
+- Assign in constructor
+
+### Data Isolation Pattern
+
+```csharp
+[Authorize]
+[HttpGet]
+public async Task<ActionResult<IEnumerable<TransacaoDto>>> Listar()
+{
+    var usuarioId = GetUserId();  // ← Always extract user from JWT
+    var transacoes = await _service.ListarAsync(usuarioId);  // ← Pass to service
+    return Ok(transacoes);
+}
+
+private Guid GetUserId()
+{
+    var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+    if (claim == null || !Guid.TryParse(claim.Value, out var userId))
+        throw new UnauthorizedAccessException();
+    return userId;
+}
+```
+
+**Rules:**
+- Extract `usuarioId` from JWT in controller
+- Pass `usuarioId` to service methods
+- Service filters all queries by `usuarioId`
+- Never trust user input; always validate
+
+### Error Handling
+
+```csharp
+// Correct ✓
+[HttpPost]
+public async Task<ActionResult<TransacaoDto>> Criar([FromBody] CriarTransacaoDto dto)
+{
+    try
+    {
+        var usuarioId = GetUserId();
+        var result = await _service.CriarAsync(dto, usuarioId);
+        return CreatedAtAction(nameof(BuscarPorId), new { id = result.Id }, result);
+    }
+    catch (ArgumentException ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "Erro interno" });
+    }
+}
+```
+
+**Rules:**
+- Wrap service calls in try-catch
+- Catch specific exceptions first
+- Return appropriate HTTP status codes
+- Log exceptions (if logging enabled)
+
+### EF Core Patterns
+
+```csharp
+// Query
+var transacao = await _context.Transacoes
+    .Include(t => t.Conta)
+    .Include(t => t.Categoria)
+    .FirstOrDefaultAsync(t => t.Id == id && t.UsuarioId == usuarioId);
+
+// Insert
+var transacao = new Transacao { /* ... */ };
+await _context.Transacoes.AddAsync(transacao);
+await _context.SaveChangesAsync();
+
+// Update
+transacao.Descricao = "novo";
+_context.Transacoes.Update(transacao);
+await _context.SaveChangesAsync();
+
+// Delete
+_context.Transacoes.Remove(transacao);
+await _context.SaveChangesAsync();
+```
+
+**Rules:**
+- Always use `async` methods (AddAsync, SaveChangesAsync, etc.)
+- Eager load with `Include()` to avoid N+1
+- Filter by `usuarioId` always
+- One `SaveChangesAsync()` per transaction
+
+---
+
+## Frontend (React/TypeScript)
+
+### Naming Conventions
+
+| Item | Pattern | Example |
+|------|---------|---------|
+| **Component files** | PascalCase | `TransacaoList.tsx`, `FormConta.tsx` |
+| **Component names** | PascalCase | `export const TransacaoList = () => {}` |
+| **Hooks** | camelCase | `useAuth()`, `useTransacoes()` |
+| **Services** | PascalCase+Service | `TransacaoService.ts`, `ContaService.ts` |
+| **Types/Interfaces** | PascalCase | `TransacaoDto`, `CreateTransacaoDto` |
+| **Variables** | camelCase | `isLoading`, `userId`, `errorMessage` |
+| **Constants** | UPPER_CASE | `API_BASE_URL`, `DEBOUNCE_MS` |
+
+### Folder Structure
+
+```
+src/
+├── pages/
+│   ├── Transacoes/
+│   │   ├── index.tsx
+│   │   ├── List.tsx
+│   │   ├── Form.tsx
+│   │   └── Detail.tsx
+│   ├── Contas/
+│   │   └── ...
+│   └── ...
+├── components/
+│   ├── Navbar.tsx
+│   ├── Sidebar.tsx
+│   ├── Form/
+│   │   ├── TextField.tsx
+│   │   └── SelectField.tsx
+│   └── ...
+├── services/
+│   ├── TransacaoService.ts
+│   ├── ContaService.ts
+│   └── ...
+├── contexts/
+│   ├── AuthContext.tsx
+│   └── ...
+├── hooks/
+│   ├── useAuth.ts
+│   ├── useTransacoes.ts
+│   └── ...
+├── types/
+│   ├── TransacaoDto.ts
+│   ├── ContaDto.ts
+│   └── ...
+├── api/
+│   └── axiosClient.ts
+├── routes/
+│   └── index.tsx
+└── App.tsx
+```
+
+**Rules:**
+- Pages: containers (pages/)
+- Components: reusable UI (components/)
+- Services: API calls (services/)
+- Types: Interfaces (types/)
+- One component per file
+
+### React Component Pattern
+
+```typescript
+import { useState, useEffect } from 'react';
+import { Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import TransacaoService from '@/services/TransacaoService';
+
+interface Props {
+  onSuccess?: () => void;
+}
+
+export const TransacaoForm = ({ onSuccess }: Props) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [descricao, setDescricao] = useState('');
+  const [valor, setValor] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const result = await TransacaoService.criar({
+        descricao,
+        valor: parseFloat(valor),
+        // ...
+      });
+      
+      setDescricao('');
+      setValor('');
+      onSuccess?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
+      {error && <Alert severity="error">{error}</Alert>}
+      
+      <TextField
+        fullWidth
+        label="Descrição"
+        value={descricao}
+        onChange={(e) => setDescricao(e.target.value)}
+        disabled={loading}
+        required
+        margin="normal"
+      />
+
+      <TextField
+        fullWidth
+        label="Valor"
+        type="number"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        disabled={loading}
+        required
+        margin="normal"
+      />
+
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={loading}
+        sx={{ mt: 2 }}
+      >
+        {loading ? <CircularProgress size={24} /> : 'Criar'}
+      </Button>
+    </Box>
+  );
+};
+```
+
+**Rules:**
+- Use `useState` for component state
+- Use `useEffect` for side effects
+- Always clean up subscriptions in useEffect return
+- Handle loading & error states
+- Type props with interfaces
+- Use Material-UI components
+- Destructure props
+
+### Service Pattern
+
+```typescript
+import axiosClient from '@/api/axiosClient';
+import { TransacaoDto, CreateTransacaoDto } from '@/types';
+
+const TransacaoService = {
+  obterTodos: async () => {
+    const response = await axiosClient.get<TransacaoDto[]>('/transacoes');
+    return response.data;
+  },
+
+  obterPorId: async (id: string) => {
+    const response = await axiosClient.get<TransacaoDto>(`/transacoes/${id}`);
+    return response.data;
+  },
+
+  criar: async (dto: CreateTransacaoDto) => {
+    const response = await axiosClient.post<TransacaoDto>('/transacoes', dto);
+    return response.data;
+  },
+
+  atualizar: async (id: string, dto: Partial<CreateTransacaoDto>) => {
+    const response = await axiosClient.put<TransacaoDto>(`/transacoes/${id}`, dto);
+    return response.data;
+  },
+
+  deletar: async (id: string) => {
+    await axiosClient.delete(`/transacoes/${id}`);
+  },
+};
+
+export default TransacaoService;
+```
+
+**Rules:**
+- One file per resource
+- Export as default singleton object
+- Type all responses
+- Use async/await
+- Throw errors (let components handle)
+
+### Type Definitions
+
+```typescript
+// types/TransacaoDto.ts
+export interface TransacaoDto {
+  id: string;
+  descricao: string;
+  valor: number;
+  tipo: 0 | 1; // 0=Receita, 1=Despesa
+  categoriaId?: string;
+  contaId?: string;
+  data: string; // ISO datetime
+}
+
+export interface CreateTransacaoDto
+  extends Omit<TransacaoDto, 'id'> {}
+
+export interface UpdateTransacaoDto
+  extends Partial<CreateTransacaoDto> {}
+```
+
+**Rules:**
+- Mirror backend DTOs exactly
+- Use `|` for union types
+- Use `?` for optional fields
+- Use `Omit<>` & `Partial<>` utilities
+- Export from types/ folder
+
+---
+
+## TypeScript
+
+### Type Safety
+
+```typescript
+// Correct ✓
+const valor: number = 100;
+const dados: TransacaoDto[] = await service.obterTodos();
+const opcoes: 'receita' | 'despesa' = 'receita';
+
+// Avoid ✗
+const valor: any = 100;
+const dados = await service.obterTodos(); // implicit any
+```
+
+**Rules:**
+- No implicit `any`
+- Always type function params & returns
+- Use union types for enums
+- Strict mode enabled
+
+### Null Checks
+
+```typescript
+// Correct ✓
+if (usuario === null || usuario === undefined) {
+  return null;
+}
+
+if (!usuario) {
+  return null;
+}
+
+if (usuario?.email) {
+  console.log(usuario.email);
+}
+
+// Avoid ✗
+if (usuario) { // false positives
+}
+```
+
+---
+
+## Git & Commits
+
+### Branch Naming
+
+```
+feature/add-transferencias
+bugfix/fix-saldo-calculation
+docs/update-api-docs
+refactor/extract-service-logic
+```
+
+### Commit Messages
+
+```
+feat: add transaction parcelamento feature
+
+- Create parcela splits
+- Auto-create faturas
+- Update frontend UI
+
+feat: add transfer between accounts
+fix: correct saldo calculation for transactions
+docs: update API documentation
+refactor: extract validation logic into service
+```
+
+**Rules:**
+- Start with type: `feat:`, `fix:`, `docs:`, `refactor:`, etc.
+- Lowercase after type
+- Imperative mood
+- Max 50 chars for subject
+- Detailed description if complex
+
+---
+
+## Documentation
+
+### Comments
+
+```csharp
+// Bad
+var x = t.V.Where(a => a.T == 1); // Filter
+
+// Good
+// Calculate total expenses for this month
+var expenses = transactions
+    .Where(t => t.Type == TransactionType.Expense)
+    .ToList();
+```
+
+**Rules:**
+- Explain WHY, not WHAT
+- Use clear variable names (self-documenting)
+- Comment complex logic
+- Update comments when changing code
+
+### Docstrings
+
+```csharp
+/// <summary>
+/// Create a new transaction or parcelamento.
+/// </summary>
+/// <param name="dto">Transaction details</param>
+/// <param name="usuarioId">User ID for isolation</param>
+/// <returns>Created transaction(s)</returns>
+/// <exception cref="ArgumentException">If validation fails</exception>
+public async Task<Transacao> CriarAsync(CriarTransacaoDto dto, Guid usuarioId)
+```
+
+---
+
+## Performance Checklist
+
+- [ ] No N+1 queries (use `Include()`)
+- [ ] Indexed frequently-queried columns
+- [ ] Async/await all I/O
+- [ ] Minimize data transfers (pagination)
+- [ ] Cache immutable data (banks, categories)
+- [ ] Bundle frontend assets
+- [ ] Lazy load routes
+
+---
+
+## Testing (Future)
+
+When tests are added:
+- Unit tests for services
+- Integration tests for controllers
+- Component tests for React
+- E2E tests for critical flows
