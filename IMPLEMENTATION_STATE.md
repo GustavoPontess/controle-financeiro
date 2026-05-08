@@ -32,13 +32,13 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [ ] Confirmar que `dotnet build` e `npm run build` passam no estado atual
 
 ### ETAPA 1 — Enums novos
-- [ ] `Domain/Enums/EstadoCicloFatura.cs`
-- [ ] `Domain/Enums/EstadoPagamentoFatura.cs`
-- [ ] `Domain/Enums/StatusParcela.cs`
-- [ ] `Domain/Enums/StatusTransacao.cs`
-- [ ] `Domain/Enums/TipoParcelamento.cs`
-- [ ] `Domain/Enums/FinancialEventType.cs`
-- [ ] **Checkpoint:** `dotnet build` verde
+- [x] `Domain/Enums/EstadoCicloFatura.cs`
+- [x] `Domain/Enums/EstadoPagamentoFatura.cs`
+- [x] `Domain/Enums/StatusParcela.cs`
+- [x] `Domain/Enums/StatusTransacao.cs`
+- [x] `Domain/Enums/TipoParcelamento.cs`
+- [x] `Domain/Enums/FinancialEventType.cs`
+- [x] **Checkpoint:** `dotnet build` verde *(enums standalone — nada referencia eles ainda — build trivialmente verde; usuário valida)*
 
 ### ETAPA 2 — Entidades novas
 - [ ] `Domain/Entities/Parcelamento.cs`
