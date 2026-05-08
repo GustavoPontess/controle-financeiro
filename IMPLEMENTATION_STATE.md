@@ -1,15 +1,14 @@
 # 🚧 IMPLEMENTATION_STATE — Issue #1 Parcelamento Flexível
 
 **Atualizado em:** 2026-05-08
-**Branch:** `feature/1-parcelamento-flexivel` (criada, sem commits ainda)
-**Etapa atual:** 0 — BLOQUEADA por lock + build não validado
-**Última sessão:** Sessão 1 — 2026-05-08
+**Branch:** `feature/1-parcelamento-flexivel` @ commit `27ba211`
+**Etapa atual:** 3 — Modificar entidades existentes (próxima a iniciar)
+**Última sessão:** Sessão 1 — 2026-05-08 (ETAPAS 0, 1, 2 fechadas)
 
-⚠️ **AÇÃO MANUAL DO USUÁRIO ANTES DE RETOMAR:**
-1. PowerShell: `Remove-Item E:\VSCode\controle-financeiro\.git\index.lock -Force`
-2. PowerShell: `cd E:\VSCode\controle-financeiro\ControleFinanceiro.Api && dotnet build` — confirmar verde
-3. PowerShell: `cd E:\VSCode\controle-financeiro\controle-financeiro.web && npm run build` — confirmar verde
-4. Decidir o que fazer com mudanças não-commitadas em `main` (87 arquivos, mas `git diff -w` mostra que são puramente line endings CRLF↔LF — recomendado normalizar com `.gitattributes` ou `git add --renormalize .` em sessão dedicada)
+⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
+- 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
+- Sandbox Linux NÃO tem `dotnet`/`npm` — todo `dotnet build` e `npm run build` precisa ser rodado pelo usuário no Git Bash dele. Eu não consigo validar checkpoint sem o usuário rodar e me avisar.
+- Sandbox Linux NÃO consegue criar/remover `.git/index.lock` no mount (operation not permitted, provavelmente fsmonitor--daemon do Windows segura). Por isso `git add`/`git commit` precisam ser rodados pelo usuário no Git Bash dele.
 
 ---
 
@@ -44,7 +43,7 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] `Domain/Entities/Parcelamento.cs`
 - [x] `Domain/Entities/ParcelaTransacao.cs`
 - [x] `Domain/Entities/FinancialEventLog.cs`
-- [x] **Checkpoint:** `dotnet build` verde *(POCOs auto-contidos — usuário valida)*
+- [x] **Checkpoint:** `dotnet build` verde *(commit `27ba211`)*
 
 ### ETAPA 3 — Modificar entidades existentes
 - [ ] `Fatura.cs` — adicionar EstadoCiclo, EstadoPagamento, EstaAtrasada, JurosDeMora, Multa, DataFechamentoEfetiva, DataPagamentoTotal; manter Status (deprecated, removido na ETAPA 5)
@@ -131,7 +130,7 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[░░░░░░░░░░░░] 0/12 etapas concluídas
+[██░░░░░░░░░░] 2/12 etapas concluídas
 ```
 
 ---
@@ -139,20 +138,28 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📜 Histórico de sessões
 
 ### Sessão 1 — 2026-05-08
-- **Etapas concluídas:** nenhuma
-- **Etapas iniciadas (incompletas):** ETAPA 0 — branch criada (`feature/1-parcelamento-flexivel`), commit dos docs do issue (`ARQUITETURA_PARCELAMENTO.md`, `IMPLEMENTATION_STATE.md`, `PROMPT_NOVA_SESSAO.md`, `UX_PARCELAMENTO.md`) BLOQUEADO por `.git/index.lock` que o sandbox Linux não consegue remover (mount com restrição de filesystem do Windows).
-- **Branch após sessão:** `feature/1-parcelamento-flexivel` em HEAD = main (sem novos commits)
-- **Estado do build:** não validado (sandbox Linux não tem `dotnet`)
-- **Próxima ação ao retomar:**
-  1. (manual) Usuário remove `.git/index.lock` no PowerShell
-  2. (manual) Usuário roda `dotnet build` e `npm run build` pra confirmar verde
-  3. Commit dos 4 docs do issue (`docs(parcelamento): adicionar arquitetura + implementation state + UX + prompt de sessao`)
-  4. Iniciar ETAPA 1 — criar 6 enums em `ControleFinanceiro.Api/Domain/Enums/` (EstadoCicloFatura, EstadoPagamentoFatura, StatusParcela, StatusTransacao, TipoParcelamento, FinancialEventType — assinaturas em `ARQUITETURA_PARCELAMENTO.md` § "ENUMS NOVOS E MODIFICADOS")
+- **Etapas concluídas:** 0, 1, 2
+- **Etapas iniciadas (incompletas):** nenhuma
+- **Commits da sessão (na branch `feature/1-parcelamento-flexivel`):**
+  - `5d33241` — `docs(parcelamento): adicionar arquitetura + implementation state + UX + prompt de sessao`
+  - *(ETAPA 1)* `feat(parcelamento): adicionar 6 enums novos (EstadoCicloFatura, EstadoPagamentoFatura, StatusParcela, StatusTransacao, TipoParcelamento, FinancialEventType)`
+  - `27ba211` — `feat(parcelamento): adicionar entidades Parcelamento, ParcelaTransacao, FinancialEventLog`
+  - *(opcional pós-sessão)* `chore: atualizar implementation state — fim da sessão 1`
+- **Estado do build:** verde (validado pelo usuário após ETAPAS 0, 1, 2)
+- **Próxima ação ao retomar (ETAPA 3):**
+  1. Modificar `Domain/Entities/Fatura.cs` — adicionar `EstadoCiclo` (enum), `EstadoPagamento` (enum), `EstaAtrasada` (bool), `JurosDeMora` (decimal default 0), `Multa` (decimal default 0), `DataFechamentoEfetiva` (DateTime?), `DataPagamentoTotal` (DateTime?). MANTER `Status` (StatusFatura) por ora — só remover na ETAPA 5. Spec: `ARQUITETURA_PARCELAMENTO.md` § "Fatura (Mudanças)".
+  2. Modificar `Domain/Entities/CartaoCredito.cs` — adicionar propriedade `LimiteTotal` (decimal). MANTER `Limite` por ora — só remover na ETAPA 5. Limites Bloqueado/Disponível NÃO são persistidos (calculados em LimiteCalculatorService — ETAPA 6). Spec: § "CartaoCredito (Mudanças)".
+  3. Modificar `Domain/Entities/Recorrente.cs` — tornar `ContaId` nullable, adicionar `CartaoCreditoId` (Guid?, com nav), `CanceladoEm` (DateTime?), `MotivoCancelamento` (string? max 400), `CriadoEm` (DateTime). Validação ContaId XOR CartaoCreditoId fica em RecorrenteService (não no domínio). Spec: § "Recorrente (alterações)".
+  4. Modificar `Domain/Entities/Transacao.cs` — adicionar `ParcelamentoId` (Guid?, nav), `ParcelaTransacaoId` (Guid?, nav), `StatusTransacao` (enum, default Executado pra retrocompat), `EhPagamentoFatura` (bool default false), `FaturaPagaId` (Guid?, nav opcional), `Ativo` (bool default true), `CanceladoEm`, `MotivoCancelamento`, `CriadoEm`. MANTER `Parcelas`, `NumeroParcela`, `TransacaoOrigemId` — remoção fica pra ETAPA 5. Spec: § "Transacao (Mudanças)".
+  5. Atualizar `Infrastructure/AppDbContext.cs` — adicionar `DbSet<Parcelamento>`, `DbSet<ParcelaTransacao>`, `DbSet<FinancialEventLog>`. Configurar delete behavior em `OnModelCreating`: `Parcelamento → ParcelaTransacao` cascade; `Fatura → ParcelaTransacao` restrict; `Parcelamento → Transacao (FaturaPagaId, ParcelamentoId, ParcelaTransacaoId)` restrict (não mexer em transações ao soft-deletar parcelamento).
+  6. Checkpoint: `dotnet build` verde + commit `feat(parcelamento): modificar Fatura/CartaoCredito/Recorrente/Transacao + AppDbContext pra suportar novo modelo`.
+  7. NÃO criar migration ainda — isso é ETAPA 4.
 - **Notas:**
-  - 87 arquivos aparecem `modified` em `main` — `git diff -w` retorna vazio → 100% diferenças de line ending (CRLF↔LF do mount Linux). Não é mudança real. Decidi NÃO commitar pra não poluir histórico. Recomendação: normalizar com `.gitattributes` em sessão dedicada (`* text=auto eol=lf`) e rodar `git add --renormalize .`.
-  - DESIGN_SYSTEM.md e `controle-financeiro.web/src/pages/DesignSystem/` continuam untracked — não relacionados ao issue #1, deixei intocados.
-  - Caveman skill ativada conforme PROMPT_NOVA_SESSAO §2.
-  - Como sandbox Linux nunca terá `dotnet`/`npm`, todo checkpoint de build precisa ser manualmente confirmado pelo usuário a cada etapa daqui em diante.
+  - Caveman skill ativada (full mode).
+  - Trabalho aconteceu via mix sandbox-Linux (Read/Write/Edit) + comandos manuais do usuário no Git Bash. Sandbox sem `dotnet`/`npm` e sem permissão de tocar `.git/` no mount Windows → usuário roda build/git, eu escrevo código.
+  - Avalia opção computer-use foi descartada: terminais são tier "click" (sem input de teclado) → não vale pra loop dev.
+  - 87 arquivos `modified` em `main` (line endings CRLF↔LF do mount) ainda intocados; ignorar até sessão dedicada de normalização.
+  - DESIGN_SYSTEM.md e `controle-financeiro.web/src/pages/DesignSystem/` continuam untracked — fora do escopo Issue #1.
 
 <!--
 Template para entradas:
