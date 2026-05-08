@@ -41,10 +41,10 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** `dotnet build` verde *(enums standalone — nada referencia eles ainda — build trivialmente verde; usuário valida)*
 
 ### ETAPA 2 — Entidades novas
-- [ ] `Domain/Entities/Parcelamento.cs`
-- [ ] `Domain/Entities/ParcelaTransacao.cs`
-- [ ] `Domain/Entities/FinancialEventLog.cs`
-- [ ] **Checkpoint:** `dotnet build` verde
+- [x] `Domain/Entities/Parcelamento.cs`
+- [x] `Domain/Entities/ParcelaTransacao.cs`
+- [x] `Domain/Entities/FinancialEventLog.cs`
+- [x] **Checkpoint:** `dotnet build` verde *(POCOs auto-contidos — usuário valida)*
 
 ### ETAPA 3 — Modificar entidades existentes
 - [ ] `Fatura.cs` — adicionar EstadoCiclo, EstadoPagamento, EstaAtrasada, JurosDeMora, Multa, DataFechamentoEfetiva, DataPagamentoTotal; manter Status (deprecated, removido na ETAPA 5)
