@@ -426,3 +426,6 @@ FodyWeavers.xsd
 
 # Arquivos temporários de mounts FUSE (sandbox dev)
 .fuse_hidden*
+
+# Claude Code — config local de permissões (não compartilhar entre devs)
+.claude/settings.local.json
