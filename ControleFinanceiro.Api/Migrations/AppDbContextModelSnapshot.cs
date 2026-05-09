@@ -94,6 +94,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal?>("Limite")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("LimiteTotal")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -114,40 +117,6 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ContaId");
 
                     b.ToTable("CartoesCredito");
-                });
-
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CartaoCreditoId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CriadoPor")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DataFechamento")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DataInicio")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DataVencimento")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("ValorPago")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CartaoCreditoId");
-
-                    b.ToTable("Faturas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Categoria", b =>
@@ -293,6 +262,233 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Emprestimos");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CartaoCreditoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataFechamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataFechamentoEfetiva")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataInicio")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataPagamentoTotal")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("EstaAtrasada")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EstadoCiclo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EstadoPagamento")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("JurosDeMora")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Multa")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("ValorPago")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartaoCreditoId");
+
+                    b.ToTable("Faturas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.FinancialEventLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntidadeAfetada")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntidadeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OrigemAcao")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("ValorAntes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("ValorDepois")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("CriadoPor", "CriadoEm");
+
+                    b.HasIndex("EntidadeAfetada", "EntidadeId");
+
+                    b.ToTable("FinancialEventLogs");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ParcelaTransacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("FaturaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("IOF")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PagoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ParcelamentoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QuantidadeTotal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("TaxaJuro")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("ValorComJuros")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FaturaId");
+
+                    b.HasIndex("ParcelamentoId");
+
+                    b.ToTable("ParcelasTransacao");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Parcelamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CartaoCreditoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CategoriaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCompra")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QuantidadeParcelas")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("TaxaJuroMensal")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("ValorComJuros")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ValorTotal")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartaoCreditoId");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.ToTable("Parcelamentos");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -302,10 +498,19 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CartaoCreditoId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("ContaId")
+                    b.Property<Guid?>("ContaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("CriadoPor")
@@ -331,6 +536,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("Frequencia")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
 
@@ -338,6 +547,8 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CartaoCreditoId");
 
                     b.HasIndex("CategoriaId");
 
@@ -381,6 +592,12 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("CartaoCreditoId")
                         .HasColumnType("TEXT");
 
@@ -388,6 +605,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ContaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("CriadoPor")
@@ -401,26 +621,45 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("MeioPagamento")
+                    b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("FaturaId")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("Parcelas")
+                    b.Property<Guid?>("FaturaPagaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MeioPagamento")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("NumeroParcela")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("TransacaoOrigemId")
+                    b.Property<Guid?>("ParcelaTransacaoId")
                         .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ParcelamentoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Parcelas")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("RecorrenteOrigemId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("StatusTransacao")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("TransacaoOrigemId")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("UsadoComoCredito")
                         .HasColumnType("INTEGER");
@@ -437,6 +676,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ContaId");
 
                     b.HasIndex("FaturaId");
+
+                    b.HasIndex("FaturaPagaId");
+
+                    b.HasIndex("ParcelaTransacaoId");
+
+                    b.HasIndex("ParcelamentoId");
 
                     b.ToTable("Transacoes");
                 });
@@ -589,17 +834,69 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("UsuarioProprietario");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
+                        .WithMany("Faturas")
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CartaoCredito");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ParcelaTransacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Fatura", "Fatura")
+                        .WithMany("ParcelasTransacao")
+                        .HasForeignKey("FaturaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Parcelamento", "Parcelamento")
+                        .WithMany("Parcelas")
+                        .HasForeignKey("ParcelamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Fatura");
+
+                    b.Navigation("Parcelamento");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Parcelamento", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
+                        .WithMany("Parcelamentos")
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId");
+
+                    b.Navigation("CartaoCredito");
+
+                    b.Navigation("Categoria");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
+                        .WithMany()
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("CategoriaId");
 
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
                         .WithMany()
-                        .HasForeignKey("ContaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ContaId");
+
+                    b.Navigation("CartaoCredito");
 
                     b.Navigation("Categoria");
 
@@ -615,17 +912,6 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario1");
-                });
-
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
-                {
-                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
-                        .WithMany("Faturas")
-                        .HasForeignKey("CartaoCreditoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CartaoCredito");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
@@ -649,6 +935,21 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("FaturaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Fatura", "FaturaPaga")
+                        .WithMany()
+                        .HasForeignKey("FaturaPagaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.ParcelaTransacao", "ParcelaTransacao")
+                        .WithMany()
+                        .HasForeignKey("ParcelaTransacaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Parcelamento", "Parcelamento")
+                        .WithMany()
+                        .HasForeignKey("ParcelamentoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CartaoCredito");
 
                     b.Navigation("Categoria");
@@ -656,6 +957,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Conta");
 
                     b.Navigation("Fatura");
+
+                    b.Navigation("FaturaPaga");
+
+                    b.Navigation("ParcelaTransacao");
+
+                    b.Navigation("Parcelamento");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transferencia", b =>
@@ -693,11 +1000,8 @@ namespace ControleFinanceiro.Api.Migrations
                 {
                     b.Navigation("Faturas");
 
-                    b.Navigation("Transacoes");
-                });
+                    b.Navigation("Parcelamentos");
 
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
-                {
                     b.Navigation("Transacoes");
                 });
 
@@ -706,6 +1010,18 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("CompartilhamentosContas");
 
                     b.Navigation("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Fatura", b =>
+                {
+                    b.Navigation("ParcelasTransacao");
+
+                    b.Navigation("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Parcelamento", b =>
+                {
+                    b.Navigation("Parcelas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>

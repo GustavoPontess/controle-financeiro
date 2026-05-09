@@ -55,10 +55,15 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** `dotnet build` verde com 18 warnings obsolete (esperadas — vão sumir nas ETAPAS 5/6)
 
 ### ETAPA 4 — Migration de schema (aditiva)
-- [ ] `dotnet ef migrations add AddParcelamentoSchema`
-- [ ] Verificar SQL gerado é puramente aditivo (não dropa nada)
-- [ ] `dotnet ef database update`
-- [ ] **Checkpoint:** `dotnet run` sobe sem erro; Swagger acessível
+- [x] `dotnet ef migrations add AddParcelamentoSchema`
+- [x] SQL revisado: aditivo (CreateTable Parcelamentos/ParcelasTransacao/FinancialEventLogs + AddColumn em Transacoes/Faturas/CartoesCredito/Assinaturas + drop+recreate FK_Assinaturas_Contas pra mudar nullable). Zero DropColumn/DropTable.
+- [x] **Correções manuais aplicadas no arquivo da migration** (registradas como comentários `// CORREÇÃO MANUAL`):
+  - `Transacoes.Ativo` default `false` → `true` (transações existentes não viram soft-deleted)
+  - `Transacoes.StatusTransacao` default `0` (Previsao) → `1` (Executado) (transações existentes são reais, não previsão)
+  - `Transacoes.CriadoEm` e `Assinaturas.CriadoEm` default `0001-01-01` → constante `2026-05-09` (SQLite proíbe `datetime('now')` em ALTER TABLE ADD COLUMN). ETAPA 5 vai UPDATE pra `Data`/`DataInicio` original.
+- [x] Backup do banco: `controlefinanceiro.db.backup-pre-etapa4` (rolar atrás se algo quebrar futuro)
+- [x] `dotnet ef database update` aplicado com sucesso após correções
+- [x] **Checkpoint:** `dotnet run` sobe sem erro; Swagger acessível em `http://localhost:5293/swagger`
 
 ### ETAPA 5 — Migration de data + cleanup
 - [ ] `dotnet ef migrations add MigrateLegacyParcelamentoData`
@@ -132,7 +137,7 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[███░░░░░░░░░] 3/12 etapas concluídas
+[████░░░░░░░░] 4/12 etapas concluídas
 ```
 
 ---
