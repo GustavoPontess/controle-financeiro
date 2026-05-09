@@ -20,6 +20,11 @@ public class AppDbContext : DbContext
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
 
+    // ── Issue #1 Parcelamento Flexível (ARQUITETURA_PARCELAMENTO.md) ──
+    public DbSet<Parcelamento> Parcelamentos => Set<Parcelamento>();
+    public DbSet<ParcelaTransacao> ParcelasTransacao => Set<ParcelaTransacao>();
+    public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -36,12 +41,22 @@ public class AppDbContext : DbContext
             .HasForeignKey(f => f.CartaoCreditoId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Fatura ↔ Transacao (relação principal: transações que ENTRARAM na fatura)
         modelBuilder.Entity<Fatura>()
             .HasMany(f => f.Transacoes)
             .WithOne(t => t.Fatura)
             .HasForeignKey(t => t.FaturaId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Fatura ↔ Transacao (relação especial: pagamento de fatura aponta pra fatura quitada)
+        // Sem coleção do lado da Fatura — relação one-way navegável apenas a partir da Transacao.
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.FaturaPaga)
+            .WithMany()
+            .HasForeignKey(t => t.FaturaPagaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Conta>()
             .HasMany(c => c.Transacoes)
@@ -95,6 +110,63 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(t => t.ContaDestinoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ── Issue #1 Parcelamento Flexível ──
+
+        // CartaoCredito → Parcelamento (Restrict: não dá pra deletar cartão com parcelamentos)
+        modelBuilder.Entity<CartaoCredito>()
+            .HasMany(c => c.Parcelamentos)
+            .WithOne(p => p.CartaoCredito)
+            .HasForeignKey(p => p.CartaoCreditoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Parcelamento → ParcelaTransacao (Cascade: parcelas seguem o parcelamento;
+        // soft delete é a norma — hard delete só ocorre em correção administrativa)
+        modelBuilder.Entity<Parcelamento>()
+            .HasMany(p => p.Parcelas)
+            .WithOne(pt => pt.Parcelamento)
+            .HasForeignKey(pt => pt.ParcelamentoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Fatura → ParcelaTransacao (Restrict: parcela não pode ficar órfã da fatura)
+        modelBuilder.Entity<Fatura>()
+            .HasMany(f => f.ParcelasTransacao)
+            .WithOne(pt => pt.Fatura)
+            .HasForeignKey(pt => pt.FaturaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Transacao → Parcelamento (SetNull: se Parcelamento for hard-deletado um dia,
+        // transações executadas viram órfãs em vez de sumirem)
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.Parcelamento)
+            .WithMany()
+            .HasForeignKey(t => t.ParcelamentoId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Transacao → ParcelaTransacao (SetNull: idem)
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.ParcelaTransacao)
+            .WithMany()
+            .HasForeignKey(t => t.ParcelaTransacaoId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Recorrente → CartaoCredito (SetNull: cartão pode sair, recorrente sobrevive)
+        modelBuilder.Entity<Recorrente>()
+            .HasOne(r => r.CartaoCredito)
+            .WithMany()
+            .HasForeignKey(r => r.CartaoCreditoId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // FinancialEventLog: índices úteis pra audit/debug e idempotência
+        modelBuilder.Entity<FinancialEventLog>()
+            .HasIndex(e => new { e.CriadoPor, e.CriadoEm });
+        modelBuilder.Entity<FinancialEventLog>()
+            .HasIndex(e => e.CorrelationId);
+        modelBuilder.Entity<FinancialEventLog>()
+            .HasIndex(e => new { e.EntidadeAfetada, e.EntidadeId });
 
         // Unique constraints
         modelBuilder.Entity<Usuario>()
