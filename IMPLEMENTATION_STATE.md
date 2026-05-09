@@ -65,12 +65,24 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] `dotnet ef database update` aplicado com sucesso após correções
 - [x] **Checkpoint:** `dotnet run` sobe sem erro; Swagger acessível em `http://localhost:5293/swagger`
 
-### ETAPA 5 — Migration de data + cleanup
-- [ ] `dotnet ef migrations add MigrateLegacyParcelamentoData`
-- [ ] Migrar dados: StatusFatura antigo → 3 flags novas
-- [ ] Drop colunas legadas (Parcelas, NumeroParcela, TransacaoOrigemId, Status, Limite)
+### ETAPA 5a — Migration de DADOS (sem drops)
+- [x] `dotnet ef migrations add MigrateLegacyData` → arquivo `20260509030627_MigrateLegacyData.cs` (vazio inicial — preenchido manualmente com 6 `migrationBuilder.Sql()`)
+- [x] UPDATE Faturas: `Status` legacy → `(EstadoCiclo, EstadoPagamento, EstaAtrasada)` (mapeamento Aberta=1→(0,0,0); Fechada=2→(1,0,0); Paga=3→(1,2,0); para Paga seta também DataPagamentoTotal=now via COALESCE)
+- [x] UPDATE Transacoes SET `CriadoEm = Data`
+- [x] UPDATE Assinaturas SET `CriadoEm = DataInicio`
+- [x] UPDATE CartoesCredito SET `LimiteTotal = Limite`
+- [x] Backup `controlefinanceiro.db.backup-pre-etapa5a` criado
+- [x] `dotnet ef database update` aplicado com sucesso
+- [x] **Checkpoint via spot-check:** 5 faturas Status=1→(0,0,0) + 1 fatura Status=3→(1,2,0); 8 transações com CriadoEm=Data, StatusTransacao=Executado, Ativo=true; cartão Nubank Gold com Limite=LimiteTotal=12000; 0 assinaturas (nada a migrar)
+
+### ETAPA 5b — CLEANUP (após ETAPAS 6-9 estarem prontas)
+- [ ] Refatorar `FaturaService.cs` (9 usos de `Status`/`Parcelas`/`NumeroParcela`/`TransacaoOrigemId`)
+- [ ] Refatorar `CartaoCreditoService.cs` (4 usos de `Limite` → `LimiteTotal`)
+- [ ] Refatorar `TransacoesController.cs` (2 usos de `Parcelas`/`NumeroParcela`)
+- [ ] Remover propriedades `[Obsolete]` das entidades (Status, Limite, Parcelas, NumeroParcela, TransacaoOrigemId)
+- [ ] Gerar migration `RemoveLegacyColumns` (drops automáticos pelo diff de model)
 - [ ] `dotnet ef database update`
-- [ ] **Checkpoint:** dados existentes sobreviveram a migração
+- [ ] **Checkpoint:** zero warnings obsolete; build verde; API sobe; queries existentes ainda funcionam
 
 ### ETAPA 6 — Serviços
 - [ ] `Services/FinancialEventLogService.cs`
@@ -137,7 +149,7 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[████░░░░░░░░] 4/12 etapas concluídas
+[████▌░░░░░░░] 4.5/12 etapas concluídas (5a feito; 5b adiado pra após ETAPAS 6-9)
 ```
 
 ---
