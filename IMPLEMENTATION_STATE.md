@@ -1,9 +1,9 @@
 # 🚧 IMPLEMENTATION_STATE — Issue #1 Parcelamento Flexível
 
-**Atualizado em:** 2026-05-08
-**Branch:** `feature/1-parcelamento-flexivel` @ commit `874f1b3` (último commitado)
-**Etapa atual:** 3 — PARCIAL (3 de 5 arquivos editados, sem commit)
-**Última sessão:** Sessão 2 — 2026-05-08 (parou no meio da ETAPA 3 a pedido do usuário)
+**Atualizado em:** 2026-05-09
+**Branch:** `feature/1-parcelamento-flexivel`
+**Etapa atual:** 6 — PARCIAL (2 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService prontos; falta ParcelamentoService [coração], ParcelaTransacaoService, adapt FaturaService/RecorrenteService, middleware de idempotência)
+**Última sessão:** Sessão 2 — 2026-05-09 (ETAPAS 3, 4, 5a fechadas + ETAPA 6 parcial)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -150,31 +150,68 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[████▌░░░░░░░] 4.5/12 etapas concluídas (5a feito; 5b adiado pra após ETAPAS 6-9)
+[████▌▓░░░░░░] 4.5 + ~25% da ETAPA 6 / 12 etapas concluídas
 ```
 
 ---
 
 ## 📜 Histórico de sessões
 
-### Sessão 2 — 2026-05-08
-- **Etapas concluídas:** nenhuma (ETAPA 3 parcial)
-- **Etapas iniciadas (incompletas):** ETAPA 3 — 3 de 5 arquivos editados, sem commit, build não validado
-- **Arquivos com mudanças NÃO commitadas:**
-  - `ControleFinanceiro.Api/Domain/Entities/Fatura.cs` (7 campos novos + nav, Status `[Obsolete]`)
-  - `ControleFinanceiro.Api/Domain/Entities/CartaoCredito.cs` (`LimiteTotal` novo, `Limite` `[Obsolete]`, nav Parcelamentos)
-  - `ControleFinanceiro.Api/Domain/Entities/Recorrente.cs` (ContaId nullable, +CartaoCreditoId, +3 campos auditoria)
-  - `IMPLEMENTATION_STATE.md` (este arquivo)
-- **Estado do build:** NÃO validado — provavelmente verde (única atribuição que importa: `RecorrenteService.cs:143 r.ContaId = dto.ContaId` continua válida com nullable). Mas há risco de algum service quebrar em runtime se assume Recorrente.ContaId sempre presente.
-- **Próxima ação ao retomar:**
-  1. (manual) `cd /e/VSCode/controle-financeiro/ControleFinanceiro.Api && dotnet build` — confirmar build verde com 3 arquivos modificados. Se vermelho, colar erros e ajustar.
-  2. Editar `Domain/Entities/Transacao.cs` — adicionar campos novos conforme `ARQUITETURA_PARCELAMENTO.md` § "Transacao (Mudanças)". Manter `Parcelas`, `NumeroParcela`, `TransacaoOrigemId` (remoção é ETAPA 5).
-  3. Editar `Infrastructure/AppDbContext.cs` — adicionar 3 DbSets novos + configurar delete behaviors em `OnModelCreating`.
-  4. (manual) `dotnet build` — confirmar verde após Transacao + AppDbContext.
-  5. Commit único pra fechar ETAPA 3: `feat(parcelamento): modificar Fatura/CartaoCredito/Recorrente/Transacao + AppDbContext pra suportar novo modelo`.
+### Sessão 2 — 2026-05-09
+- **Etapas concluídas:** 3, 4, 5a + 25% da ETAPA 6
+- **Etapas iniciadas (incompletas):** ETAPA 6 — 2 de 8 sub-itens prontos
+- **Commits da sessão (na branch `feature/1-parcelamento-flexivel`):**
+  - `bd4c45e` — `feat(parcelamento): modificar Fatura/CartaoCredito/Recorrente/Transacao + AppDbContext pra suportar novo modelo`
+  - *(ETAPA 4)* `feat(parcelamento): migration aditiva AddParcelamentoSchema (3 tabelas novas + colunas em Transacoes/Faturas/CartoesCredito/Assinaturas)`
+  - *(ETAPA 5a)* `feat(parcelamento): migration de dados legacy (Status->3 flags, CriadoEm preservado, LimiteTotal copiado)`
+  - *(ETAPA 6 parcial)* `feat(parcelamento): adicionar FinancialEventLogService + LimiteCalculatorService + DI`
+  - *(opcional pós-sessão)* `chore: atualizar implementation state — fim da sessão 2`
+- **Estado do build:** verde (validado pelo usuário após cada checkpoint)
+- **Estado do banco:** schema novo aplicado + dados legacy migrados (5 faturas Aberta + 1 Paga mapeadas certinho, 8 transações com CriadoEm=Data e StatusTransacao=Executado, 1 cartão Nubank Gold com LimiteTotal=12000)
+- **Backups locais (untracked, na pasta da API):**
+  - `controlefinanceiro.db.backup-pre-etapa4`
+  - `controlefinanceiro.db.backup-pre-etapa5a`
+- **Próxima ação ao retomar (ETAPA 6 — `ParcelamentoService.cs`):**
+  Esse é o coração do issue — 4 métodos públicos, ~300-400 linhas. Deve consumir uma sessão inteira sozinho. Estrutura sugerida:
+  
+  1. **DTOs primeiro** em `DTOs/Parcelamento/`:
+     - `CriarParcelamentoDto` — `{ descricao, valor, tipo (TipoParcelamento), cartaoCreditoId, dataCompra, parcelas, primeiraParcelaMes (yyyy-MM), categoriaId?, taxaJuroMensal? (PIX), idempotencyKey }`
+     - `CancelarParcelamentoDto` — `{ motivo, idempotencyKey }`
+     - `ParcelamentoDto` — visão de listagem (id, descricao, tipo, qtdParcelas, parcelasPagas, valorOriginal, valorPago, valorRestante, proximaParcela{...}, ativo)
+     - `ParcelamentoDetalheDto` — visão completa: tudo do anterior + array de `ParcelaDto { id, numero, dataVencimento, valor, valorComJuros, status, faturaId, faturaMesReferencia, pagoEm, canceladoEm }`
+  
+  2. **`Services/ParcelamentoService.cs`** — registrar Scoped no `Program.cs`. Métodos:
+     - `CriarAsync(CriarParcelamentoDto, usuarioId)` — fluxo conforme `ARQUITETURA_PARCELAMENTO.md` § "Fluxo 1: Criar Parcelamento":
+       - Idempotência: `FinancialEventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, dto.idempotencyKey)` — se achar, retornar resultado anterior reconstruído
+       - Validações: Valor>0, 2≤parcelas≤36, dataCompra<=hoje, primeiraParcelaMes>=mês atual, cartão existe + TemCredito + pertence ao usuário, categoria compatível com Tipo (se informada). PIX: 1.99% ≤ TaxaJuroMensal ≤ 11.99%, calcular ValorComJuros (juros simples por enquanto, IOF≈0.0038/dia × dias até vencimento — placeholder MVP)
+       - `LimiteCalculatorService.CalcularAsync(cartaoId, usuarioId)` — checar `disponivel >= valorBloqueado` (valorBloqueado = ValorComJuros ?? ValorTotal)
+       - Numa única `_context.Database.BeginTransactionAsync()`:
+         - INSERT Parcelamento
+         - Calcular N datas de vencimento (primeiraParcelaMes + i meses, dia = dia da DataCompra OU DiaVencimento do cartão — checar spec)
+         - Pra cada parcela: `ObterOuCriarFatura(cartaoId, mesVencimento)` (helper a criar — provavelmente reaproveitar lógica de `FaturaService` se existir; se não, criar privado neste service)
+         - INSERT N × ParcelaTransacao (Status=Pendente, FaturaId=resolvido)
+         - 2 × `FinancialEventLog.Registrar()`: `ParcelamentoCriado` + `LimiteBloqueado` (mesmo `correlationId`); payload do primeiro contém `idempotencyKey`
+         - SaveChanges + Commit
+       - Retornar `ParcelamentoDetalheDto`
+     - `CancelarAsync(parcelamentoId, CancelarParcelamentoDto, usuarioId)` — fluxo § "Fluxo 3":
+       - Idempotência igual ao criar
+       - Validar Ativo=true, motivo não-vazio
+       - Numa transação: UPDATE Parcelamento(Ativo=false, CanceladoEm, MotivoCancelamento), UPDATE ParcelasTransacao SET Status=Cancelada WHERE ParcelamentoId=@id AND Status=Pendente (preservar Pagas), `FinancialEventLog.Registrar(ParcelamentoCancelado + ParcelaCancelada×N + LimiteLiberado)`
+       - Retornar `{ canceladas: int, jaPagas: int, requerEstorno: bool, novoLimite: LimiteSnapshot }`
+     - `ListarAsync(usuarioId, ativo?: bool)` — query Parcelamentos do user com Include(Parcelas), montar `ParcelamentoDto` de cada (parcelasPagas = COUNT Status=Paga, valorPago = SUM, valorRestante = ValorTotal - valorPago, proximaParcela = primeira Pendente ordenada por DataVencimento)
+     - `ObterDetalheAsync(id, usuarioId)` — Include Parcelas + Fatura, montar `ParcelamentoDetalheDto`
+  
+  3. **Helper `ObterOuCriarFaturaAsync`** — provavelmente injetar `FaturaService` se já tem método público, OU criar privado neste service (consultar existência de Fatura pra (CartaoId, mês) e criar se não existir). Verificar `FaturaService.cs` antes de duplicar lógica.
+  
+  4. **NÃO mexer ainda em** `ParcelaTransacaoService`, `FaturaService` adapt, `RecorrenteService` adapt, middleware de idempotência — esses ficam pra ETAPA 6 sessões 4+. ParcelamentoService sozinho já é uma sessão.
+  
+  5. **Checkpoint final:** `dotnet build` verde + commit `feat(parcelamento): adicionar ParcelamentoService (Criar/Cancelar/Listar/Detalhe) + DTOs + DI`
+
 - **Notas:**
-  - Saída antes de mexer em `Transacao.cs` foi proposital — Transacao tem 14+ campos novos a adicionar e era arriscado parar no meio dele.
-  - AppDbContext intocado: nada quebra ainda porque EF Core descobre relations sozinho via convention quando entidades têm navs configuradas. Mas delete behaviors precisam ser explicitados na ETAPA 3 antes de fazer migration na ETAPA 4.
+  - ETAPA 5b (cleanup das colunas legacy + remoção das `[Obsolete]`) ADIADA pra após ETAPAS 6-9 conforme combinado. Não fazer agora — code legacy ainda referenciado em FaturaService/CartaoCreditoService/TransacoesController.
+  - 18 warnings obsolete continuam aparecendo a cada `dotnet build` — esperados, vão sumir na ETAPA 5b.
+  - `FinancialEventLogService.BuscarPorIdempotencyKeyAsync` usa `.Contains()` em string serializada do payload — funciona em SQLite mas é O(N). Se virar problema de performance em prod, normalizar idempotencyKey pra coluna dedicada na tabela. Por ora ok pra MVP.
+  - `LimiteCalculatorService.CalcularTodosDoUsuarioAsync` faz N+1 queries (uma por cartão). Otimizar quando virar gargalo.
 
 ### Sessão 1 — 2026-05-08
 - **Etapas concluídas:** 0, 1, 2
