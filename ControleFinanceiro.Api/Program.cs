@@ -32,6 +32,7 @@ builder.Services.AddScoped<FaturaService>();
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
+builder.Services.AddScoped<ParcelamentoService>();
 
 // JWT Configuration
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "your-secret-key-change-this-in-production-very-long-string";
