@@ -2,8 +2,8 @@
 
 **Atualizado em:** 2026-05-09
 **Branch:** `feature/1-parcelamento-flexivel`
-**Etapa atual:** 6 — PARCIAL (4 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService + ParcelamentoService [coração] + DI prontos; falta ParcelaTransacaoService, adapt FaturaService/RecorrenteService, middleware de idempotência)
-**Última sessão:** Sessão 3 — 2026-05-09 (ParcelamentoService completo + DTOs + DI; build verde)
+**Etapa atual:** 6 — PARCIAL (6 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService + ParcelamentoService + ParcelaTransacaoService + adapt FaturaService [3 flags] + DI prontos; falta adapt RecorrenteService + middleware idempotência)
+**Última sessão:** Sessão 4 — 2026-05-09 (ParcelaTransacaoService + DTOs + adapt FaturaService 3 flags; build verde)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -89,8 +89,8 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] `Services/LimiteCalculatorService.cs` — `CalcularAsync(cartaoId, usuarioId)` retorna `LimiteSnapshot` (LimiteTotal, Bloqueado, Disponivel, ExposicaoFuturaPrevisao); `CalcularTodosDoUsuarioAsync()` pra dashboard
 - [x] DI: ambos + ParcelamentoService registrados como Scoped em `Program.cs`
 - [x] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe — coração do issue, transação ACID + idempotência + FinancialEventLog) + DTOs em `DTOs/Parcelamento/` (CriarParcelamentoDto, CancelarParcelamentoDto, CancelamentoResultadoDto, LimiteSnapshotDto, ParcelamentoDto, ParcelamentoDetalheDto, ParcelaDto, ProximaParcelaDto). PIX juros simples (placeholder MVP). Reaproveita `FaturaService.ObterOuCriarFaturaAsync`. Commit `ef9db19`.
-- [ ] `Services/ParcelaTransacaoService.cs` (PagarAntecipado, Cancelar)
-- [ ] Adaptar `FaturaService.cs` para 3 flags
+- [x] `Services/ParcelaTransacaoService.cs` (PagarAntecipado, Cancelar) + `DTOs/ParcelaTransacao/` (PagarParcelaDto, FaturaAtualizadaDto, PagarParcelaResultadoDto, CancelarParcelaDto, CancelarParcelaResultadoDto) — Sessão 4.
+- [x] Adaptar `FaturaService.cs` para 3 flags — Sessão 4: PagarFaturaAsync usa EstadoPagamento; PreencherDto expõe 3 flags; CalcularValorTotal inclui ParcelasTransacao; queries incluem ParcelasTransacao.
 - [ ] Adaptar `RecorrenteService.cs` para janela de 3 meses + soft delete
 - [ ] Middleware/atributo de Idempotência
 - [ ] **Checkpoint:** todos services compilam, registrados no DI
@@ -150,12 +150,48 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[████▌▓▓░░░░░] 4.5 + ~50% da ETAPA 6 / 12 etapas concluídas
+[████▌▓▓▓░░░░] 4.5 + ~75% da ETAPA 6 / 12 etapas concluídas
 ```
 
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 4 — 2026-05-09 (ParcelaTransacaoService + adapt FaturaService)
+- **Etapas concluídas:** nenhuma fechada inteira; ETAPA 6 avançou de ~50% para ~75% (6 de 8 sub-itens prontos)
+- **Etapas iniciadas (incompletas):** ETAPA 6 segue aberta — falta RecorrenteService adapt e middleware idempotência
+- **Commits a fazer:**
+  - `feat(parcelamento): adicionar ParcelaTransacaoService (PagarAntecipado/Cancelar) + DTOs + DI`
+  - `feat(parcelamento): adaptar FaturaService para 3 flags (EstadoPagamento, CalcularValorTotal, ParcelasTransacao)`
+  - `chore: atualizar implementation state — fim da sessão 4`
+- **Estado do build:** verde (usuário rodou `dotnet build` pós-ParcelaTransacaoService; adaptar FaturaService precisa de novo build)
+- **Arquivos criados/editados:**
+  - `DTOs/ParcelaTransacao/PagarParcelaDto.cs` — PagarParcelaDto + FaturaAtualizadaDto + PagarParcelaResultadoDto
+  - `DTOs/ParcelaTransacao/CancelarParcelaDto.cs` — CancelarParcelaDto + CancelarParcelaResultadoDto
+  - `Services/ParcelaTransacaoService.cs` — PagarAntecipadoAsync + CancelarAsync (ACID, idempotência, FinancialEventLog)
+  - `Program.cs` — AddScoped<ParcelaTransacaoService>()
+  - `DTOs/Fatura/FaturaDto.cs` — adicionou EstadoCiclo, EstadoPagamento, EstaAtrasada, DataPagamentoTotal
+  - `Services/FaturaService.cs` — PagarFaturaAsync usa EstadoPagamento; PreencherDto expõe 3 flags + #pragma legacy Status; CalcularValorTotal (static helper) inclui ParcelasTransacao; 3 queries incluem Include(ParcelasTransacao)
+- **Decisões:**
+  - Transacao de pagamento de parcela usa FaturaPagaId (não FaturaId) → não polui total da fatura
+  - CalcularValorTotal = legacy UsadoComoCredito+Ativo + ParcelasTransacao — sem dupla contagem
+  - Saldo da conta: SUM Receitas - SUM Despesas (Ativo+Executado) — conforme convenção do projeto
+  - LimiteLiberado emitido em PagarAntecipado E Cancelar parcela (parcela sai de Pendente → sai do LimiteBloqueado)
+  - `#pragma warning disable CS0618` envolve acesso a `Status` legado em PreencherDto
+- **Próxima ação ao retomar (ETAPA 6 — RecorrenteService):**
+  1. Adaptar `RecorrenteService.cs` para janela 3 meses + soft delete + ContaId XOR CartaoCreditoId nullable
+     - `ContaId` já é nullable (ETAPA 3). Service precisa validar XOR (ContaId OU CartaoCreditoId, não ambos, não nenhum)
+     - Janela de 3 meses: ao criar Recorrente, gerar apenas 3 transações futuras com StatusTransacao=Previsao (não infinito)
+     - Soft delete: ao cancelar Recorrente, marcar `CanceladoEm` + `MotivoCancelamento` + cancelar transações Previsao futuras (Ativo=false)
+     - Expandir jobs futuros vão gerar mais transações conforme janela avança (ETAPA 8)
+  2. Middleware/atributo de Idempotência (`[Idempotent]`) — extrair `Idempotency-Key` do header HTTP e passar pra service
+     - Atualmente idempotencyKey vem no body do DTO. Refatorar pra extrair do header e injetar via IHttpContextAccessor ou action filter
+     - Manter compatibilidade: se header presente, sobrescreve; se DTO também tem, usar header
+  3. Checkpoint final ETAPA 6: `dotnet build` verde + commits dos sub-itens acima
+- **Notas:**
+  - Contexto encerrou em ~85%+ — paramos antes de RecorrenteService para evitar estado quebrado
+  - Caveman skill ativa (full mode)
+  - Sandbox sem dotnet/npm/git — usuário roda no Git Bash
 
 ### Sessão 3 — 2026-05-09 (ParcelamentoService — coração do Issue #1)
 - **Etapas concluídas:** nenhuma fechada inteira; ETAPA 6 avançou de ~25% pra ~50% (4 de 8 sub-itens prontos)
