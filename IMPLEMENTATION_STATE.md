@@ -85,9 +85,10 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [ ] **Checkpoint:** zero warnings obsolete; build verde; API sobe; queries existentes ainda funcionam
 
 ### ETAPA 6 — Serviços
-- [ ] `Services/FinancialEventLogService.cs`
-- [ ] `Services/LimiteCalculatorService.cs` (LimiteBloqueado/Disponivel derivados)
-- [ ] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe)
+- [x] `Services/FinancialEventLogService.cs` — helper `Registrar()` + `BuscarPorIdempotencyKeyAsync()` (suporte ao padrão de idempotência via `idempotencyKey` dentro do `PayloadJson`)
+- [x] `Services/LimiteCalculatorService.cs` — `CalcularAsync(cartaoId, usuarioId)` retorna `LimiteSnapshot` (LimiteTotal, Bloqueado, Disponivel, ExposicaoFuturaPrevisao); `CalcularTodosDoUsuarioAsync()` pra dashboard
+- [x] DI: ambos registrados como Scoped em `Program.cs`
+- [ ] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe — coração do issue, transação ACID + idempotência + FinancialEventLog)
 - [ ] `Services/ParcelaTransacaoService.cs` (PagarAntecipado, Cancelar)
 - [ ] Adaptar `FaturaService.cs` para 3 flags
 - [ ] Adaptar `RecorrenteService.cs` para janela de 3 meses + soft delete
