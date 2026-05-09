@@ -1,9 +1,9 @@
 # 🚧 IMPLEMENTATION_STATE — Issue #1 Parcelamento Flexível
 
 **Atualizado em:** 2026-05-08
-**Branch:** `feature/1-parcelamento-flexivel` @ commit `27ba211`
-**Etapa atual:** 3 — Modificar entidades existentes (próxima a iniciar)
-**Última sessão:** Sessão 1 — 2026-05-08 (ETAPAS 0, 1, 2 fechadas)
+**Branch:** `feature/1-parcelamento-flexivel` @ commit `874f1b3` (último commitado)
+**Etapa atual:** 3 — PARCIAL (3 de 5 arquivos editados, sem commit)
+**Última sessão:** Sessão 2 — 2026-05-08 (parou no meio da ETAPA 3 a pedido do usuário)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -46,11 +46,13 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** `dotnet build` verde *(commit `27ba211`)*
 
 ### ETAPA 3 — Modificar entidades existentes
-- [ ] `Fatura.cs` — adicionar EstadoCiclo, EstadoPagamento, EstaAtrasada, JurosDeMora, Multa, DataFechamentoEfetiva, DataPagamentoTotal; manter Status (deprecated, removido na ETAPA 5)
-- [ ] `CartaoCredito.cs` — rename Limite → LimiteTotal (manter coluna antiga até ETAPA 5)
-- [ ] `Recorrente.cs` — tornar ContaId nullable, adicionar CartaoCreditoId, CanceladoEm, MotivoCancelamento, CriadoEm
-- [ ] `Transacao.cs` — adicionar ParcelamentoId, ParcelaTransacaoId, StatusTransacao, EhPagamentoFatura, FaturaPagaId, Ativo, CanceladoEm, MotivoCancelamento, CriadoEm; manter Parcelas/NumeroParcela/TransacaoOrigemId (removido na ETAPA 5)
-- [ ] **Checkpoint:** `dotnet build` verde + AppDbContext atualizado
+- [x] `Fatura.cs` — adicionou EstadoCiclo, EstadoPagamento, EstaAtrasada, JurosDeMora, Multa, DataFechamentoEfetiva, DataPagamentoTotal + nav `ParcelasTransacao`; Status marcada `[Obsolete]` *(NÃO commitado)*
+- [x] `CartaoCredito.cs` — adicionou `LimiteTotal` (nullable); Limite original marcada `[Obsolete]`; nav `Parcelamentos` adicionada *(NÃO commitado)*
+- [x] `Recorrente.cs` — ContaId virou nullable; +`CartaoCreditoId` + nav, +`CanceladoEm`, +`MotivoCancelamento`, +`CriadoEm` *(NÃO commitado)*
+- [x] `Transacao.cs` — adicionou ParcelamentoId, ParcelaTransacaoId, StatusTransacao, EhPagamentoFatura, FaturaPagaId, Ativo, CanceladoEm, MotivoCancelamento, CriadoEm; Parcelas/NumeroParcela/TransacaoOrigemId marcados `[Obsolete]`
+- [x] `AppDbContext.cs` — adicionou 3 DbSets + delete behaviors completos (Parcelamento→ParcelaTransacao Cascade; Fatura→ParcelaTransacao Restrict; CartaoCredito→Parcelamento Restrict; Recorrente→CartaoCredito SetNull; Transacao→Parcelamento/ParcelaTransacao SetNull; Transacao.FaturaPaga via FaturaPagaId Restrict + nav one-way) + 3 índices em FinancialEventLog
+- [x] `RecorrenteService.cs:90` — fix `ContaId = r.ContaId ?? Guid.Empty` (Recorrente.ContaId virou nullable; coalesce temporário até DTO virar nullable na ETAPA 6/7)
+- [x] **Checkpoint:** `dotnet build` verde com 18 warnings obsolete (esperadas — vão sumir nas ETAPAS 5/6)
 
 ### ETAPA 4 — Migration de schema (aditiva)
 - [ ] `dotnet ef migrations add AddParcelamentoSchema`
@@ -130,12 +132,31 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[██░░░░░░░░░░] 2/12 etapas concluídas
+[███░░░░░░░░░] 3/12 etapas concluídas
 ```
 
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 2 — 2026-05-08
+- **Etapas concluídas:** nenhuma (ETAPA 3 parcial)
+- **Etapas iniciadas (incompletas):** ETAPA 3 — 3 de 5 arquivos editados, sem commit, build não validado
+- **Arquivos com mudanças NÃO commitadas:**
+  - `ControleFinanceiro.Api/Domain/Entities/Fatura.cs` (7 campos novos + nav, Status `[Obsolete]`)
+  - `ControleFinanceiro.Api/Domain/Entities/CartaoCredito.cs` (`LimiteTotal` novo, `Limite` `[Obsolete]`, nav Parcelamentos)
+  - `ControleFinanceiro.Api/Domain/Entities/Recorrente.cs` (ContaId nullable, +CartaoCreditoId, +3 campos auditoria)
+  - `IMPLEMENTATION_STATE.md` (este arquivo)
+- **Estado do build:** NÃO validado — provavelmente verde (única atribuição que importa: `RecorrenteService.cs:143 r.ContaId = dto.ContaId` continua válida com nullable). Mas há risco de algum service quebrar em runtime se assume Recorrente.ContaId sempre presente.
+- **Próxima ação ao retomar:**
+  1. (manual) `cd /e/VSCode/controle-financeiro/ControleFinanceiro.Api && dotnet build` — confirmar build verde com 3 arquivos modificados. Se vermelho, colar erros e ajustar.
+  2. Editar `Domain/Entities/Transacao.cs` — adicionar campos novos conforme `ARQUITETURA_PARCELAMENTO.md` § "Transacao (Mudanças)". Manter `Parcelas`, `NumeroParcela`, `TransacaoOrigemId` (remoção é ETAPA 5).
+  3. Editar `Infrastructure/AppDbContext.cs` — adicionar 3 DbSets novos + configurar delete behaviors em `OnModelCreating`.
+  4. (manual) `dotnet build` — confirmar verde após Transacao + AppDbContext.
+  5. Commit único pra fechar ETAPA 3: `feat(parcelamento): modificar Fatura/CartaoCredito/Recorrente/Transacao + AppDbContext pra suportar novo modelo`.
+- **Notas:**
+  - Saída antes de mexer em `Transacao.cs` foi proposital — Transacao tem 14+ campos novos a adicionar e era arriscado parar no meio dele.
+  - AppDbContext intocado: nada quebra ainda porque EF Core descobre relations sozinho via convention quando entidades têm navs configuradas. Mas delete behaviors precisam ser explicitados na ETAPA 3 antes de fazer migration na ETAPA 4.
 
 ### Sessão 1 — 2026-05-08
 - **Etapas concluídas:** 0, 1, 2

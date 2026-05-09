@@ -87,7 +87,9 @@ public class RecorrenteService
             TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
             CategoriaId = r.CategoriaId,
             CategoriaNome = r.Categoria?.Descricao,
-            ContaId = r.ContaId,
+            // TODO ETAPA 6/7: tornar RecorrenteDto.ContaId nullable (Recorrente agora é XOR Conta/CartaoCredito).
+            // Por ora coalesce pra Guid.Empty pra não quebrar contrato externo.
+            ContaId = r.ContaId ?? Guid.Empty,
             ContaNome = r.Conta?.Nome ?? string.Empty,
             Frequencia = (int)r.Frequencia,
             FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
