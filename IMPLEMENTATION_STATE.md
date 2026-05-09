@@ -157,6 +157,19 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 
 ## 📜 Histórico de sessões
 
+### Sessão 2.5 — 2026-05-09 (cleanup pós-sessão 2)
+- **Trabalho de housekeeping** (sem avançar etapas):
+  - `.gitignore` enriquecido: ignora `*.db-wal`, `*.db-shm`, `*.db.backup-*`, `.fuse_hidden*`, `.claude/settings.local.json`
+  - `.claude/settings.local.json` removido do tracking (`git rm --cached`)
+  - 7 arquivos com diff REAL (que VS Code mostrava sem filtro) commitados em 3 commits temáticos:
+    - `7037a19` — chore .gitignore (sqlite-wal/backups/fuse) [feito antes]
+    - `a80bc85` — feat(design) DESIGN_SYSTEM.md + showcase [feito antes]
+    - `e4e72c1` — chore .gitignore settings.local.json
+    - `bec1a5e` — feat(web) integrar página Design System (package.json, package-lock.json, AppRoutes.tsx)
+    - `0f024b5` — chore: fix JSON dev '}' faltante + suprimir CS1591 + completar docs/README
+- **Estado pendente:** ~80 arquivos com mudanças exclusivamente de line endings (CRLF↔LF do mount Linux). `git diff -w` = vazio. VS Code já filtra esses por config. Resolver em sessão dedicada com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .` num commit único.
+- **Próxima ação:** ETAPA 6 segue de onde parou — `ParcelamentoService` (ver "Próxima ação ao retomar" abaixo).
+
 ### Sessão 2 — 2026-05-09
 - **Etapas concluídas:** 3, 4, 5a + 25% da ETAPA 6
 - **Etapas iniciadas (incompletas):** ETAPA 6 — 2 de 8 sub-itens prontos
