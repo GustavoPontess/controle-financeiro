@@ -2,8 +2,8 @@
 
 **Atualizado em:** 2026-05-09
 **Branch:** `feature/1-parcelamento-flexivel`
-**Etapa atual:** 6 — PARCIAL (2 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService prontos; falta ParcelamentoService [coração], ParcelaTransacaoService, adapt FaturaService/RecorrenteService, middleware de idempotência)
-**Última sessão:** Sessão 2 — 2026-05-09 (ETAPAS 3, 4, 5a fechadas + ETAPA 6 parcial)
+**Etapa atual:** 6 — PARCIAL (4 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService + ParcelamentoService [coração] + DI prontos; falta ParcelaTransacaoService, adapt FaturaService/RecorrenteService, middleware de idempotência)
+**Última sessão:** Sessão 3 — 2026-05-09 (ParcelamentoService completo + DTOs + DI; build verde)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -87,8 +87,8 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ### ETAPA 6 — Serviços
 - [x] `Services/FinancialEventLogService.cs` — helper `Registrar()` + `BuscarPorIdempotencyKeyAsync()` (suporte ao padrão de idempotência via `idempotencyKey` dentro do `PayloadJson`)
 - [x] `Services/LimiteCalculatorService.cs` — `CalcularAsync(cartaoId, usuarioId)` retorna `LimiteSnapshot` (LimiteTotal, Bloqueado, Disponivel, ExposicaoFuturaPrevisao); `CalcularTodosDoUsuarioAsync()` pra dashboard
-- [x] DI: ambos registrados como Scoped em `Program.cs`
-- [ ] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe — coração do issue, transação ACID + idempotência + FinancialEventLog)
+- [x] DI: ambos + ParcelamentoService registrados como Scoped em `Program.cs`
+- [x] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe — coração do issue, transação ACID + idempotência + FinancialEventLog) + DTOs em `DTOs/Parcelamento/` (CriarParcelamentoDto, CancelarParcelamentoDto, CancelamentoResultadoDto, LimiteSnapshotDto, ParcelamentoDto, ParcelamentoDetalheDto, ParcelaDto, ProximaParcelaDto). PIX juros simples (placeholder MVP). Reaproveita `FaturaService.ObterOuCriarFaturaAsync`. Commit `ef9db19`.
 - [ ] `Services/ParcelaTransacaoService.cs` (PagarAntecipado, Cancelar)
 - [ ] Adaptar `FaturaService.cs` para 3 flags
 - [ ] Adaptar `RecorrenteService.cs` para janela de 3 meses + soft delete
@@ -150,14 +150,68 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[████▌▓░░░░░░] 4.5 + ~25% da ETAPA 6 / 12 etapas concluídas
+[████▌▓▓░░░░░] 4.5 + ~50% da ETAPA 6 / 12 etapas concluídas
 ```
 
 ---
 
 ## 📜 Histórico de sessões
 
-### Sessão 2.5 — 2026-05-09 (cleanup pós-sessão 2)
+### Sessão 3 — 2026-05-09 (ParcelamentoService — coração do Issue #1)
+- **Etapas concluídas:** nenhuma fechada inteira; ETAPA 6 avançou de ~25% pra ~50% (4 de 8 sub-itens prontos)
+- **Etapas iniciadas (incompletas):** ETAPA 6 segue aberta — falta ParcelaTransacaoService, adapt FaturaService/RecorrenteService, middleware de idempotência
+- **Commits da sessão (na branch `feature/1-parcelamento-flexivel`):**
+  - `ef9db19` — `feat(parcelamento): adicionar ParcelamentoService (Criar/Cancelar/Listar/Detalhe) + DTOs + DI`
+  - *(opcional pós-sessão)* `chore: atualizar implementation state — fim da sessão 3`
+- **Estado do build:** verde — 18 warnings obsolete legacy (mesmos da sessão 2, zero warnings novos do código novo). Validado por `dotnet build` no Git Bash do usuário.
+- **Arquivos criados (3) / editados (1):**
+  - `DTOs/Parcelamento/CriarParcelamentoDto.cs` — CriarParcelamentoDto, CancelarParcelamentoDto, CancelamentoResultadoDto, LimiteSnapshotDto
+  - `DTOs/Parcelamento/ParcelamentoDto.cs` — ParcelamentoDto, ProximaParcelaDto, ParcelamentoDetalheDto, ParcelaDto
+  - `Services/ParcelamentoService.cs` — ~440 linhas; 4 métodos públicos + `RatearValor`/`MontarDto`/`MontarCancelamentoResultadoAsync` privados; injeta `AppDbContext`, `FinancialEventLogService`, `LimiteCalculatorService`, `FaturaService`
+  - `Program.cs` — `builder.Services.AddScoped<ParcelamentoService>()` adicionado ao bloco "Issue #1"
+- **Decisões / nuances:**
+  - **Reaproveita** `FaturaService.ObterOuCriarFaturaAsync(cartaoId, dataVencimentoParcela, usuarioId)` em vez de duplicar lógica de período/fechamento. Cada parcela tem `DataVencimento = (primeiraParcelaMes + i meses, dia=DataCompra.Day clampado)` e a fatura correspondente é resolvida pelo `FaturaService.CalcularPeriodo(diaTransacao, cartao.DiaFechamento)`.
+  - **Idempotência por tipo de evento:** `BuscarPorIdempotencyKeyAsync` é genérica. CriarAsync filtra `prev.Tipo == ParcelamentoCriado && entidade == "Parcelamento"`; CancelarAsync filtra `prev.Tipo == ParcelamentoCancelado && entidadeId == parcelamentoId`. Replay reconstrói resposta via `ObterDetalheAsync` / `MontarCancelamentoResultadoAsync`.
+  - **PIX juros (MVP):** juros simples `principal × (taxa/100) × N`. IOF = 0 placeholder (parcela.IOF=null). Documentado no doc-comment + state que valor real depende de Open Finance.
+  - **Rateio centavos:** `RatearValor(total, n)` distribui em N com 2 casas; resto vai pra última parcela. Mesmo padrão pra Valor (principal) e ValorComJuros (PIX).
+  - **Soft delete em CancelarAsync:** marca `Parcelamento.Ativo=false` + parcelas Pendentes viram Cancelada. Pagas preservadas; `requerEstorno=true` na response sinaliza pra UI sugerir transação de estorno (não automático).
+  - **Tipo do parcelamento:** restrito a `CompraParcelada | PIXCredito` neste fluxo. `Recorrente` rejeitado (segue fluxo próprio em RecorrenteService — fora do escopo desta sessão).
+  - **Validação de Categoria:** aceita `Despesa` ou `Ambas` (parcelamento sempre é saída).
+  - **Conflito de namespaces:** `ControleFinanceiro.Api.DTOs.Parcelamento` (namespace) vs `ControleFinanceiro.Api.Domain.Entities.Parcelamento` (tipo) — não colide. C# resolve `Parcelamento` pra tipo (entidade) e `using DTOs.Parcelamento` traz só os tipos DENTRO do namespace pro escopo.
+  - **Transação ACID:** `BeginTransactionAsync` + `try/catch` com `Rollback` em exceção. `FaturaService.ObterOuCriarFaturaAsync` chama `SaveChangesAsync` interno, mas tudo fica capturado pela transação aberta até `Commit` final.
+- **Não feito (próximas sessões):**
+  - `ParcelaTransacaoService` (PagarAntecipado, Cancelar individual) — Fluxo 2 da arquitetura
+  - Adaptar `FaturaService.cs` pra 3 flags + remover usos legacy de `Status`
+  - Adaptar `RecorrenteService.cs` pra janela de 3 meses + soft delete + ContaId XOR CartaoCreditoId
+  - Middleware/atributo `[Idempotent]` (extrair Idempotency-Key do header HTTP — atualmente o service espera idempotencyKey no body do DTO)
+  - ETAPAS 7-12 (Controllers, Hangfire, Testes, Frontend, docs)
+- **Próxima ação ao retomar (ETAPA 6 — `ParcelaTransacaoService.cs`):**
+  Estrutura sugerida:
+  1. **DTOs** em `DTOs/ParcelaTransacao/`:
+     - `PagarParcelaDto` — `{ contaPagamentoId: Guid, dataPagamento: DateTime?, idempotencyKey: string }`
+     - `PagarParcelaResultadoDto` — `{ parcelaId, status (Paga), pagoEm, faturaAtualizada (id, estadoPagamento, valorPago, valorRestante), novoLimite: LimiteSnapshotDto }`
+     - `CancelarParcelaDto` — `{ motivo, idempotencyKey }` (cancelamento individual de UMA parcela específica — não confundir com cancelar parcelamento todo)
+  2. **`Services/ParcelaTransacaoService.cs`** — registrar Scoped em Program.cs. Métodos:
+     - `PagarAntecipadoAsync(parcelaId, dto, usuarioId)` — Fluxo 2 da arquitetura:
+       - Idempotência (mesmo padrão de ParcelamentoService)
+       - Validações: parcela existe + pertence ao usuário + Status==Pendente + Parcelamento.Ativo + Conta.UsuarioIdProprietario + Saldo>=parcela.Valor (calcular SaldoConta via `Receitas - Despesas` em Transacoes Executado+Ativo) + Fatura está em (Aberta,*,*) ou (Fechada,NaoPago/Parcial,*)
+       - Transação ACID: UPDATE Parcela.Status=Paga+PagoEm; INSERT Transacao(EhPagamentoFatura=true, FaturaPagaId=fatura.Id, ContaId=dto.contaPagamentoId, Valor=parcela.Valor, Tipo=Despesa, StatusTransacao=Executado, Ativo=true); UPDATE Fatura.ValorPago+=parcela.Valor; recalc EstadoPagamento (NaoPago/Parcial/Pago); se EstadoPagamento==Pago, marcar DataPagamentoTotal=now e zerar EstaAtrasada
+       - FinancialEventLog: ParcelaPaga + LimiteLiberado + (FaturaPagaTotal ou FaturaPagaParcial conforme caso)
+       - Retornar PagarParcelaResultadoDto
+     - `CancelarAsync(parcelaId, dto, usuarioId)` — cancelamento individual:
+       - Idempotência
+       - Validações: parcela existe + Status==Pendente + Parcelamento.Ativo
+       - Transação: UPDATE Parcela.Status=Cancelada+CanceladoEm+MotivoCancelamento (NÃO cancela parcelamento inteiro); FinancialEventLog ParcelaCancelada + LimiteLiberado
+       - Retornar resultado com novo LimiteSnapshot
+  3. **Helper:** método privado `RecalcularEstadoPagamentoFatura(faturaId)` — soma ValorTotal das transações da fatura (UsadoComoCredito=true) + parcelas Pagas; compara com ValorPago atualizado. Talvez extrair em helper compartilhado entre Parcela/Fatura services no futuro.
+  4. **Checkpoint:** `dotnet build` verde + commit `feat(parcelamento): adicionar ParcelaTransacaoService (PagarAntecipado/Cancelar) + DTOs + DI`
+- **Notas:**
+  - Caveman skill ativa (full mode) — usuário não pediu pra desligar.
+  - Sandbox Linux continua sem `dotnet`/`npm` e sem permissão pra `.git/index.lock` — usuário roda build/git no Git Bash, eu escrevo código.
+  - State file ainda menciona "87 arquivos com diff exclusivamente CRLF↔LF" — pendência de sessão dedicada de normalização. Não bloqueia.
+  - Idempotência via header HTTP ainda não foi feita — atualmente service espera campo `idempotencyKey` dentro do DTO. Quando middleware for criado (ainda na ETAPA 6), refatorar para extrair do header `Idempotency-Key` e passar pra service. Por ora aceitar via DTO mantém compatibilidade.
+
+
 - **Trabalho de housekeeping** (sem avançar etapas):
   - `.gitignore` enriquecido: ignora `*.db-wal`, `*.db-shm`, `*.db.backup-*`, `.fuse_hidden*`, `.claude/settings.local.json`
   - `.claude/settings.local.json` removido do tracking (`git rm --cached`)
