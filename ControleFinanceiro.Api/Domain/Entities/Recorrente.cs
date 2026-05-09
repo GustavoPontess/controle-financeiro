@@ -20,9 +20,19 @@ public class Recorrente
     public Guid? CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
-    [Required]
-    public Guid ContaId { get; set; }
+    /// <summary>
+    /// Conta de destino. Tornado nullable: agora ContaId XOR CartaoCreditoId.
+    /// Validação fica em RecorrenteService (não no domínio).
+    /// </summary>
+    public Guid? ContaId { get; set; }
     public Conta? Conta { get; set; }
+
+    /// <summary>
+    /// Cartão de crédito de destino (alternativa à Conta). Quando preenchido,
+    /// transações geradas entram em fatura do cartão.
+    /// </summary>
+    public Guid? CartaoCreditoId { get; set; }
+    public CartaoCredito? CartaoCredito { get; set; }
 
     [Required]
     public FrequenciaRecorrencia Frequencia { get; set; }
@@ -39,4 +49,13 @@ public class Recorrente
     public Guid CriadoPor { get; set; }
 
     public DateTime? DataProximaGeracao { get; set; }
+
+    /// <summary>Quando foi cancelada (soft delete).</summary>
+    public DateTime? CanceladoEm { get; set; }
+
+    [MaxLength(400)]
+    public string? MotivoCancelamento { get; set; }
+
+    /// <summary>Timestamp de criação (auditoria).</summary>
+    public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

@@ -35,9 +35,18 @@ public class Transacao
     public Guid? FaturaId { get; set; }
     public Fatura? Fatura { get; set; }
 
-    // Parcelamento: null = à vista
+    // ── Parcelamento legado (DEPRECATED — removido na ETAPA 5) ──
+
+    /// <summary>DEPRECATED — substituído por Parcelamento + ParcelaTransacao.</summary>
+    [Obsolete("Use ParcelamentoId + ParcelaTransacaoId. Removido na ETAPA 5.")]
     public int? Parcelas { get; set; }
+
+    /// <summary>DEPRECATED — substituído por ParcelaTransacao.Numero.</summary>
+    [Obsolete("Use ParcelaTransacao.Numero via ParcelaTransacaoId. Removido na ETAPA 5.")]
     public int? NumeroParcela { get; set; }
+
+    /// <summary>DEPRECATED — substituído por ParcelamentoId.</summary>
+    [Obsolete("Use ParcelamentoId. Removido na ETAPA 5.")]
     public Guid? TransacaoOrigemId { get; set; }
 
     public Guid CriadoPor { get; set; }
@@ -46,4 +55,37 @@ public class Transacao
     public DateTime Data { get; set; }
 
     public Guid? RecorrenteOrigemId { get; set; }
+
+    // ── Novos vínculos ao sistema de Parcelamento (ARQUITETURA_PARCELAMENTO.md § "Transacao (Mudanças)") ──
+
+    /// <summary>Vincula esta Transacao ao Parcelamento que a originou (se aplicável).</summary>
+    public Guid? ParcelamentoId { get; set; }
+    public Parcelamento? Parcelamento { get; set; }
+
+    /// <summary>Vincula esta Transacao à parcela específica (se aplicável).</summary>
+    public Guid? ParcelaTransacaoId { get; set; }
+    public ParcelaTransacao? ParcelaTransacao { get; set; }
+
+    // ── Status, soft delete e marcador de pagamento de fatura ──
+
+    /// <summary>Diferencia previsão (Recorrente futura), executada (real) e cancelada.</summary>
+    public StatusTransacao StatusTransacao { get; set; } = StatusTransacao.Executado;
+
+    /// <summary>true se esta Transacao representa o pagamento de uma Fatura (rota especial — ponte conta↔cartão).</summary>
+    public bool EhPagamentoFatura { get; set; }
+
+    /// <summary>Quando EhPagamentoFatura=true, qual Fatura foi quitada.</summary>
+    public Guid? FaturaPagaId { get; set; }
+    public Fatura? FaturaPaga { get; set; }
+
+    /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
+    public bool Ativo { get; set; } = true;
+
+    public DateTime? CanceladoEm { get; set; }
+
+    [MaxLength(400)]
+    public string? MotivoCancelamento { get; set; }
+
+    /// <summary>Timestamp de criação (auditoria).</summary>
+    public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
