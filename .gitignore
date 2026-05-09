@@ -416,3 +416,13 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# SQLite runtime files (Write-Ahead Log + Shared Memory) — recriados pelo SQLite
+*.db-wal
+*.db-shm
+
+# Backups locais do banco (Claude/dev costumam criar antes de migrations destrutivas)
+*.db.backup-*
+
+# Arquivos temporários de mounts FUSE (sandbox dev)
+.fuse_hidden*
