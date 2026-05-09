@@ -16,6 +16,7 @@ import TransferenciasPage from "../pages/Transferencias/TransferenciasPage"
 import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
+import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
 
 export default function AppRoutes() {
   return (
@@ -44,6 +45,7 @@ export default function AppRoutes() {
           <Route path="/emprestimos" element={<EmprestimosPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/design-system" element={<DesignSystemShowcase />} />
         </Route>
 
         {/* Fallback */}
