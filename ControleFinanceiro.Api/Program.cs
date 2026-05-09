@@ -33,6 +33,7 @@ builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
 builder.Services.AddScoped<ParcelamentoService>();
+builder.Services.AddScoped<ParcelaTransacaoService>();
 
 // JWT Configuration
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "your-secret-key-change-this-in-production-very-long-string";
