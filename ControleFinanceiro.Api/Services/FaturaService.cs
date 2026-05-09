@@ -200,22 +200,22 @@ public class FaturaService
         var fatura = await _context.Faturas
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
             .FirstOrDefaultAsync(f => f.Id == faturaId)
             ?? throw new Exception("Fatura não encontrada.");
 
         if (fatura.CartaoCredito.CriadoPor != usuarioId)
             throw new Exception("Você não tem permissão para pagar esta fatura.");
 
-        if (fatura.Status == StatusFatura.Paga)
+        if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
             throw new Exception("Esta fatura já foi paga integralmente.");
 
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new Exception("Conta não encontrada.");
 
-        var valorTotal = fatura.Transacoes
-            .Where(t => t.UsadoComoCredito)
-            .Sum(t => t.Valor);
+        // Inclui crédito à vista (legacy) + parcelas do sistema novo
+        var valorTotal = CalcularValorTotal(fatura);
 
         var valorRestante = valorTotal - fatura.ValorPago;
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
@@ -238,7 +238,15 @@ public class FaturaService
 
         fatura.ValorPago += dto.Valor;
         if (fatura.ValorPago >= valorTotal)
-            fatura.Status = StatusFatura.Paga;
+        {
+            fatura.EstadoPagamento = EstadoPagamentoFatura.Pago;
+            fatura.DataPagamentoTotal = DateTime.UtcNow;
+            fatura.EstaAtrasada = false;
+        }
+        else if (fatura.ValorPago > 0)
+        {
+            fatura.EstadoPagamento = EstadoPagamentoFatura.Parcial;
+        }
 
         _context.Transacoes.Add(pagamento);
         await _context.SaveChangesAsync();
@@ -256,6 +264,7 @@ public class FaturaService
         var faturas = await _context.Faturas
             .Where(f => f.CartaoCreditoId == cartaoCreditoId)
             .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
             .OrderByDescending(f => f.DataFechamento)
             .AsNoTracking()
             .ToListAsync();
@@ -270,6 +279,7 @@ public class FaturaService
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
                 .ThenInclude(t => t.Categoria)
+            .Include(f => f.ParcelasTransacao)
             .AsNoTracking()
             .FirstOrDefaultAsync()
             ?? throw new Exception("Fatura não encontrada.");
@@ -305,13 +315,15 @@ public class FaturaService
 
     private static void PreencherDto(FaturaDto dto, Fatura f, string cartaoNome)
     {
-        var valorTotal = f.Transacoes.Where(t => t.UsadoComoCredito).Sum(t => t.Valor);
+        var valorTotal = CalcularValorTotal(f);
         dto.Id = f.Id;
         dto.CartaoCreditoId = f.CartaoCreditoId;
         dto.CartaoCreditoNome = cartaoNome;
         dto.DataInicio = f.DataInicio;
         dto.DataFechamento = f.DataFechamento;
         dto.DataVencimento = f.DataVencimento;
+        // Legacy — mantido até ETAPA 5b
+#pragma warning disable CS0618
         dto.Status = (int)f.Status;
         dto.StatusDescricao = f.Status switch
         {
@@ -320,9 +332,30 @@ public class FaturaService
             StatusFatura.Paga    => "Paga",
             _                    => "Desconhecido",
         };
-        dto.ValorTotal = valorTotal;
-        dto.ValorPago = f.ValorPago;
-        dto.ValorRestante = valorTotal - f.ValorPago;
-        dto.Vencida = f.Status != StatusFatura.Paga && DateTime.UtcNow.Date > f.DataVencimento.Date;
+#pragma warning restore CS0618
+        // 3 flags ortogonais
+        dto.EstadoCiclo       = (int)f.EstadoCiclo;
+        dto.EstadoPagamento   = (int)f.EstadoPagamento;
+        dto.EstaAtrasada      = f.EstaAtrasada;
+        dto.DataPagamentoTotal = f.DataPagamentoTotal;
+        dto.ValorTotal    = valorTotal;
+        dto.ValorPago     = f.ValorPago;
+        dto.ValorRestante = Math.Max(0m, valorTotal - f.ValorPago);
+        dto.Vencida = f.EstadoPagamento != EstadoPagamentoFatura.Pago
+                      && DateTime.UtcNow.Date > f.DataVencimento.Date;
+    }
+
+    /// <summary>
+    /// Total da fatura = crédito à vista (legacy) + parcelas do sistema novo.
+    /// Sem dupla contagem: transações de pagamento têm FaturaPagaId, não FaturaId.
+    /// </summary>
+    private static decimal CalcularValorTotal(Fatura f)
+    {
+        var legacyTotal = f.Transacoes
+            .Where(t => t.UsadoComoCredito && t.Ativo)
+            .Sum(t => t.Valor);
+        var parcelasTotal = f.ParcelasTransacao
+            .Sum(p => p.ValorComJuros ?? p.Valor);
+        return legacyTotal + parcelasTotal;
     }
 }
