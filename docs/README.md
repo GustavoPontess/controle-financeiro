@@ -170,4 +170,12 @@ dotnet ef migrations add MigrationName
 
 - Check **CLAUDE.md** for tech stack & patterns
 - Check **FLOWS.md** for how data flows
-- Check **STANDARDS.md** f
+- Check **STANDARDS.md** for coding conventions
+- Check **API.md** for endpoint details
+- Check **DATABASE.md** for schema details
+
+If still stuck, trace through the code and add documentation!
+
+---
+
+**Last Updated:** 2026-05-07
