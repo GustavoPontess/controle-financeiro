@@ -52,7 +52,7 @@ public class CartaoCreditoService(AppDbContext context)
             TemCredito = dto.TemCredito,
             TemDebito = dto.TemDebito,
             EhPrePago = dto.EhPrePago,
-            Limite = dto.TemCredito ? dto.Limite : null,
+            LimiteTotal = dto.TemCredito ? dto.Limite : null,
             DiaFechamento = dto.TemCredito ? dto.DiaFechamento : null,
             DiaVencimento = dto.TemCredito ? dto.DiaVencimento : null,
             ContaId = dto.EhPrePago ? null : dto.ContaId,
@@ -84,7 +84,7 @@ public class CartaoCreditoService(AppDbContext context)
         cartao.TemCredito = dto.TemCredito;
         cartao.TemDebito = dto.TemDebito;
         cartao.EhPrePago = dto.EhPrePago;
-        cartao.Limite = dto.TemCredito ? dto.Limite : null;
+        cartao.LimiteTotal = dto.TemCredito ? dto.Limite : null;
         cartao.DiaFechamento = dto.TemCredito ? dto.DiaFechamento : null;
         cartao.DiaVencimento = dto.TemCredito ? dto.DiaVencimento : null;
         cartao.ContaId = dto.EhPrePago ? null : dto.ContaId;
@@ -141,7 +141,7 @@ public class CartaoCreditoService(AppDbContext context)
                 .Sum(t => t.Valor)
             : 0;
 
-        var limiteDisponivel = c.TemCredito && c.Limite.HasValue ? c.Limite.Value - gastos : (decimal?)null;
+        var limiteDisponivel = c.TemCredito && c.LimiteTotal.HasValue ? c.LimiteTotal.Value - gastos : (decimal?)null;
 
         var bandeiraDesc = c.Bandeira switch
         {
@@ -163,7 +163,7 @@ public class CartaoCreditoService(AppDbContext context)
             TemCredito = c.TemCredito,
             TemDebito = c.TemDebito,
             EhPrePago = c.EhPrePago,
-            Limite = c.TemCredito ? c.Limite : null,
+            Limite = c.TemCredito ? c.LimiteTotal : null,
             LimiteDisponivel = limiteDisponivel,
             GastosNoCicloAtual = gastos,
             DiaFechamento = c.DiaFechamento,

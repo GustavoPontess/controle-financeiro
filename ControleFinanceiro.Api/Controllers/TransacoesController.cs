@@ -87,8 +87,10 @@ namespace ControleFinanceiro.Api.Controllers
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : null,
             MeioPagamentoDescricao = MeioPagamentoLabel(t.MeioPagamento),
             FaturaId = t.FaturaId,
+#pragma warning disable CS0618
             Parcelas = t.Parcelas,
             NumeroParcela = t.NumeroParcela,
+#pragma warning restore CS0618
             Data = t.Data,
         };
 
