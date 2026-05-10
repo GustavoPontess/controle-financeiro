@@ -121,9 +121,9 @@ public class FaturaService
             DataInicio = inicio,
             DataFechamento = fechamento,
             DataVencimento = vencimento,
-#pragma warning disable CS0618
-            Status = StatusFatura.Aberta,
-#pragma warning restore CS0618
+            EstadoCiclo = EstadoCicloFatura.Aberta,
+            EstadoPagamento = EstadoPagamentoFatura.NaoPago,
+            EstaAtrasada = false,
             ValorPago = 0,
             CriadoPor = usuarioId,
         };
@@ -176,11 +176,6 @@ public class FaturaService
                 UsadoComoCredito = true,
                 MeioPagamento = MeioPagamento.Credito,
                 Data = dataTransacao,
-#pragma warning disable CS0618
-                Parcelas = numParcelas,
-                NumeroParcela = i,
-                TransacaoOrigemId = i == 1 ? null : primeiraTransacaoId,
-#pragma warning restore CS0618
                 CriadoPor = usuarioId,
             };
 
@@ -301,10 +296,6 @@ public class FaturaService
                 Data = t.Data,
                 CategoriaId = t.CategoriaId,
                 CategoriaDescricao = t.Categoria?.Descricao,
-#pragma warning disable CS0618
-                Parcelas = t.Parcelas,
-                NumeroParcela = t.NumeroParcela,
-#pragma warning restore CS0618
             }).ToList();
 
         return dto;
@@ -328,17 +319,6 @@ public class FaturaService
         dto.DataInicio = f.DataInicio;
         dto.DataFechamento = f.DataFechamento;
         dto.DataVencimento = f.DataVencimento;
-        // Legacy — mantido até ETAPA 5b
-#pragma warning disable CS0618
-        dto.Status = (int)f.Status;
-        dto.StatusDescricao = f.Status switch
-        {
-            StatusFatura.Aberta  => "Aberta",
-            StatusFatura.Fechada => "Fechada",
-            StatusFatura.Paga    => "Paga",
-            _                    => "Desconhecido",
-        };
-#pragma warning restore CS0618
         // 3 flags ortogonais
         dto.EstadoCiclo       = (int)f.EstadoCiclo;
         dto.EstadoPagamento   = (int)f.EstadoPagamento;
