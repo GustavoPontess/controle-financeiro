@@ -9,8 +9,10 @@ public class RecorrenteDto
     public string TipoDescricao { get; set; } = string.Empty;
     public Guid? CategoriaId { get; set; }
     public string? CategoriaNome { get; set; }
-    public Guid ContaId { get; set; }
-    public string ContaNome { get; set; } = string.Empty;
+    public Guid? ContaId { get; set; }
+    public string? ContaNome { get; set; }
+    public Guid? CartaoCreditoId { get; set; }
+    public string? CartaoCreditoNome { get; set; }
     public int Frequencia { get; set; }
     public string FrequenciaDescricao { get; set; } = string.Empty;
     public int Dia { get; set; }
@@ -18,4 +20,6 @@ public class RecorrenteDto
     public DateTime? DataFim { get; set; }
     public bool Ativo { get; set; }
     public DateTime? DataProximaGeracao { get; set; }
+    public DateTime? CanceladoEm { get; set; }
+    public string? MotivoCancelamento { get; set; }
 }

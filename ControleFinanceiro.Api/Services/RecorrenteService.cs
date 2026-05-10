@@ -9,10 +9,16 @@ namespace ControleFinanceiro.Api.Services;
 public class RecorrenteService
 {
     private readonly AppDbContext _context;
+    private readonly FaturaService _faturaService;
+    private readonly FinancialEventLogService _eventLogService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public RecorrenteService(AppDbContext context)
+    public RecorrenteService(AppDbContext context, FaturaService faturaService, FinancialEventLogService eventLogService, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
+        _faturaService = faturaService;
+        _eventLogService = eventLogService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     private static DateTime ProximaData(DateTime atual, FrequenciaRecorrencia freq) => freq switch
@@ -30,6 +36,12 @@ public class RecorrenteService
         FrequenciaRecorrencia.Anual => "Anual",
         _ => freq.ToString()
     };
+
+    private string? ObterIdempotencyKey()
+    {
+        var idempotencyKey = _httpContextAccessor.HttpContext?.Items["IdempotencyKey"] as string;
+        return !string.IsNullOrWhiteSpace(idempotencyKey) ? idempotencyKey : null;
+    }
 
     public async Task GerarPendentesAsync(Guid usuarioId)
     {
@@ -53,9 +65,13 @@ public class RecorrenteService
                     Tipo = r.Tipo,
                     CategoriaId = r.CategoriaId,
                     ContaId = r.ContaId,
+                    CartaoCreditoId = r.CartaoCreditoId,
+                    StatusTransacao = StatusTransacao.Executado,
+                    Ativo = true,
                     CriadoPor = usuarioId,
                     Data = proxima,
-                    RecorrenteOrigemId = r.Id
+                    RecorrenteOrigemId = r.Id,
+                    CriadoEm = DateTime.UtcNow
                 });
                 proxima = ProximaData(proxima, r.Frequencia);
                 houveMudanca = true;
@@ -73,6 +89,7 @@ public class RecorrenteService
             .Where(r => r.CriadoPor == usuarioId)
             .Include(r => r.Categoria)
             .Include(r => r.Conta)
+            .Include(r => r.CartaoCredito)
             .OrderByDescending(r => r.Ativo)
             .ThenBy(r => r.Descricao)
             .AsNoTracking()
@@ -87,48 +104,213 @@ public class RecorrenteService
             TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
             CategoriaId = r.CategoriaId,
             CategoriaNome = r.Categoria?.Descricao,
-            // TODO ETAPA 6/7: tornar RecorrenteDto.ContaId nullable (Recorrente agora é XOR Conta/CartaoCredito).
-            // Por ora coalesce pra Guid.Empty pra não quebrar contrato externo.
-            ContaId = r.ContaId ?? Guid.Empty,
-            ContaNome = r.Conta?.Nome ?? string.Empty,
+            ContaId = r.ContaId,
+            ContaNome = r.Conta?.Nome,
+            CartaoCreditoId = r.CartaoCreditoId,
+            CartaoCreditoNome = r.CartaoCredito?.Nome,
             Frequencia = (int)r.Frequencia,
             FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
             Dia = r.Dia,
             DataInicio = r.DataInicio,
             DataFim = r.DataFim,
             Ativo = r.Ativo,
-            DataProximaGeracao = r.DataProximaGeracao
+            DataProximaGeracao = r.DataProximaGeracao,
+            CanceladoEm = r.CanceladoEm,
+            MotivoCancelamento = r.MotivoCancelamento
         }).ToList();
     }
 
     public async Task<RecorrenteDto> CriarAsync(CriarRecorrenteDto dto, Guid usuarioId)
     {
-        var conta = await _context.Contas.FindAsync(dto.ContaId)
-            ?? throw new Exception("Conta não encontrada.");
-        if (conta.UsuarioIdProprietario != usuarioId)
-            throw new Exception("Conta não pertence ao usuário.");
+        // Validar ContaId XOR CartaoCreditoId
+        if ((dto.ContaId == null && dto.CartaoCreditoId == null) ||
+            (dto.ContaId != null && dto.CartaoCreditoId != null))
+            throw new Exception("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
 
-        var recorrente = new Recorrente
+        Guid recorrenteId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
+        var dataInicio = dto.DataInicio.ToUniversalTime();
+        var idempotencyKey = ObterIdempotencyKey();
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            Id = Guid.NewGuid(),
-            Descricao = dto.Descricao,
-            Valor = dto.Valor,
-            Tipo = (TipoTransacao)dto.Tipo,
-            CategoriaId = dto.CategoriaId,
-            ContaId = dto.ContaId,
-            Frequencia = (FrequenciaRecorrencia)dto.Frequencia,
-            Dia = dto.Dia,
-            DataInicio = dto.DataInicio.ToUniversalTime(),
-            DataFim = dto.DataFim?.ToUniversalTime(),
-            Ativo = true,
-            CriadoPor = usuarioId,
-            DataProximaGeracao = dto.DataInicio.ToUniversalTime()
-        };
+            // Validar idempotência
+            if (!string.IsNullOrEmpty(idempotencyKey))
+            {
+                var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
+                if (prevEvent != null)
+                    return (await ListarAsync(usuarioId)).FirstOrDefault(r => r.Id == recorrenteId)
+                        ?? throw new Exception("Idempotência: evento anterior encontrado mas recorrente não existe.");
+            }
 
-        _context.Recorrentes.Add(recorrente);
-        await _context.SaveChangesAsync();
+            // Validar origem
+            if (dto.ContaId.HasValue)
+            {
+                var conta = await _context.Contas.FindAsync(dto.ContaId)
+                    ?? throw new Exception("Conta não encontrada.");
+                if (conta.UsuarioIdProprietario != usuarioId)
+                    throw new Exception("Conta não pertence ao usuário.");
+            }
+            else if (dto.CartaoCreditoId.HasValue)
+            {
+                var cartao = await _context.CartoesCredito.FindAsync(dto.CartaoCreditoId)
+                    ?? throw new Exception("Cartão não encontrado.");
+                if (cartao.CriadoPor != usuarioId)
+                    throw new Exception("Cartão não pertence ao usuário.");
+            }
 
-        return (await ListarAsync(usuarioId)).First(r => r.Id == recorrente.Id);
+            // Criar recorrente com janela de 3 meses
+            var dataFimJanela = dataInicio.AddMonths(3);
+            var recorrente = new Recorrente
+            {
+                Id = recorrenteId,
+                Descricao = dto.Descricao,
+                Valor = dto.Valor,
+                Tipo = (TipoTransacao)dto.Tipo,
+                CategoriaId = dto.CategoriaId,
+                ContaId = dto.ContaId,
+                CartaoCreditoId = dto.CartaoCreditoId,
+                Frequencia = (FrequenciaRecorrencia)dto.Frequencia,
+                Dia = dto.Dia,
+                DataInicio = dataInicio,
+                DataFim = dto.DataFim?.ToUniversalTime(),
+                Ativo = true,
+                CriadoPor = usuarioId,
+                DataProximaGeracao = dataFimJanela,
+                CriadoEm = DateTime.UtcNow
+            };
+
+            _context.Recorrentes.Add(recorrente);
+            await _context.SaveChangesAsync();
+
+            // Materializar 3 meses de transações Previsão
+            var proxima = dataInicio.Date;
+            while (proxima < dataFimJanela && (dto.DataFim == null || proxima <= dto.DataFim.Value.Date))
+            {
+                Guid? faturaId = null;
+                if (dto.CartaoCreditoId.HasValue)
+                {
+                    var fatura = await _faturaService.ObterOuCriarFaturaAsync(dto.CartaoCreditoId.Value, proxima, usuarioId);
+                    faturaId = fatura.Id;
+                }
+
+                var transacao = new Transacao
+                {
+                    Id = Guid.NewGuid(),
+                    Descricao = dto.Descricao,
+                    Valor = dto.Valor,
+                    Tipo = (TipoTransacao)dto.Tipo,
+                    CategoriaId = dto.CategoriaId,
+                    ContaId = dto.ContaId,
+                    CartaoCreditoId = dto.CartaoCreditoId,
+                    FaturaId = faturaId,
+                    StatusTransacao = StatusTransacao.Previsao,
+                    Ativo = true,
+                    CriadoPor = usuarioId,
+                    Data = proxima,
+                    RecorrenteOrigemId = recorrenteId,
+                    CriadoEm = DateTime.UtcNow
+                };
+
+                _context.Transacoes.Add(transacao);
+                proxima = ProximaData(proxima, (FrequenciaRecorrencia)dto.Frequencia);
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Log evento
+            await _eventLogService.RegistrarAsync(new FinancialEventLog
+            {
+                UsuarioId = usuarioId,
+                Tipo = FinancialEventType.RecorrenteCriada,
+                Origem = "Service:RecorrenteService",
+                EntidadeId = recorrenteId,
+                EntidadeNome = "Recorrente",
+                CorrelationId = correlationId,
+                PayloadJson = $"{{ \"descricao\": \"{recorrente.Descricao}\", \"valor\": {recorrente.Valor}, \"idempotencyKey\": \"{idempotencyKey}\" }}",
+                CriadoEm = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return (await ListarAsync(usuarioId)).First(r => r.Id == recorrenteId);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<object> CancelarAsync(Guid id, CancelarRecorrenteDto dto, Guid usuarioId)
+    {
+        var recorrente = await _context.Recorrentes.FindAsync(id)
+            ?? throw new Exception("Recorrente não encontrado.");
+        if (recorrente.CriadoPor != usuarioId)
+            throw new Exception("Sem permissão.");
+
+        var motivo = dto.Motivo;
+        if (string.IsNullOrWhiteSpace(motivo))
+            throw new Exception("Motivo do cancelamento é obrigatório.");
+
+        var correlationId = Guid.NewGuid();
+        var idempotencyKey = ObterIdempotencyKey();
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Validar idempotência
+            if (!string.IsNullOrEmpty(idempotencyKey))
+            {
+                var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
+                if (prevEvent != null)
+                    return new { canceladoEm = recorrente.CanceladoEm, motivo = recorrente.MotivoCancelamento };
+            }
+
+            // Soft delete recorrente
+            recorrente.Ativo = false;
+            recorrente.CanceladoEm = DateTime.UtcNow;
+            recorrente.MotivoCancelamento = motivo;
+
+            // Cancelar transações futuras (Previsão)
+            var transacoesFuturas = await _context.Transacoes
+                .Where(t => t.RecorrenteOrigemId == id && t.StatusTransacao == StatusTransacao.Previsao)
+                .ToListAsync();
+
+            foreach (var t in transacoesFuturas)
+            {
+                t.Ativo = false;
+                t.CanceladoEm = DateTime.UtcNow;
+                t.MotivoCancelamento = motivo;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Log evento
+            await _eventLogService.RegistrarAsync(new FinancialEventLog
+            {
+                UsuarioId = usuarioId,
+                Tipo = FinancialEventType.RecorrenteCancelada,
+                Origem = "Service:RecorrenteService",
+                EntidadeId = id,
+                EntidadeNome = "Recorrente",
+                CorrelationId = correlationId,
+                PayloadJson = $"{{ \"motivo\": \"{motivo}\", \"transacoesCanceladas\": {transacoesFuturas.Count}, \"idempotencyKey\": \"{idempotencyKey}\" }}",
+                CriadoEm = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return new { canceladoEm = recorrente.CanceladoEm, motivo = recorrente.MotivoCancelamento };
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task AtualizarAsync(Guid id, CriarRecorrenteDto dto, Guid usuarioId)
@@ -143,6 +325,7 @@ public class RecorrenteService
         r.Tipo = (TipoTransacao)dto.Tipo;
         r.CategoriaId = dto.CategoriaId;
         r.ContaId = dto.ContaId;
+        r.CartaoCreditoId = dto.CartaoCreditoId;
         r.Frequencia = (FrequenciaRecorrencia)dto.Frequencia;
         r.Dia = dto.Dia;
         r.DataFim = dto.DataFim?.ToUniversalTime();
