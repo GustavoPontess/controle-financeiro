@@ -15,8 +15,6 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public int? MeioPagamento { get; set; }
         public string? MeioPagamentoDescricao { get; set; }
         public Guid? FaturaId { get; set; }
-        public int? Parcelas { get; set; }
-        public int? NumeroParcela { get; set; }
         public DateTime Data { get; set; }
     }
 }

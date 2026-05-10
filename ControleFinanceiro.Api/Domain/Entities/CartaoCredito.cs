@@ -13,13 +13,6 @@ public class CartaoCredito
     public bool EhPrePago { get; set; }
 
     /// <summary>
-    /// DEPRECATED — substituído por LimiteTotal.
-    /// Mantido até ETAPA 5 (migration de dados copia para LimiteTotal e dropa esta coluna).
-    /// </summary>
-    [Obsolete("Use LimiteTotal. Removido na ETAPA 5.")]
-    public decimal? Limite { get; set; }
-
-    /// <summary>
     /// Limite total de crédito do cartão. NOT NULL para cartões com TemCredito=true
     /// (validação de Service, não de domínio — schema permite null pra retrocompat
     /// com cartões debit-only legados).
