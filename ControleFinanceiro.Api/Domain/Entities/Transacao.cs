@@ -35,20 +35,6 @@ public class Transacao
     public Guid? FaturaId { get; set; }
     public Fatura? Fatura { get; set; }
 
-    // ── Parcelamento legado (DEPRECATED — removido na ETAPA 5) ──
-
-    /// <summary>DEPRECATED — substituído por Parcelamento + ParcelaTransacao.</summary>
-    [Obsolete("Use ParcelamentoId + ParcelaTransacaoId. Removido na ETAPA 5.")]
-    public int? Parcelas { get; set; }
-
-    /// <summary>DEPRECATED — substituído por ParcelaTransacao.Numero.</summary>
-    [Obsolete("Use ParcelaTransacao.Numero via ParcelaTransacaoId. Removido na ETAPA 5.")]
-    public int? NumeroParcela { get; set; }
-
-    /// <summary>DEPRECATED — substituído por ParcelamentoId.</summary>
-    [Obsolete("Use ParcelamentoId. Removido na ETAPA 5.")]
-    public Guid? TransacaoOrigemId { get; set; }
-
     public Guid CriadoPor { get; set; }
 
     [Required]

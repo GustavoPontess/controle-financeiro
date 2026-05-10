@@ -91,9 +91,6 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhPrePago")
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal?>("Limite")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal?>("LimiteTotal")
                         .HasColumnType("TEXT");
 
@@ -303,9 +300,6 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<decimal>("Multa")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("ValorPago")
                         .HasColumnType("TEXT");
@@ -637,17 +631,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("NumeroParcela")
-                        .HasColumnType("INTEGER");
-
                     b.Property<Guid?>("ParcelaTransacaoId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ParcelamentoId")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("Parcelas")
-                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("RecorrenteOrigemId")
                         .HasColumnType("TEXT");
@@ -657,9 +645,6 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
-
-                    b.Property<Guid?>("TransacaoOrigemId")
-                        .HasColumnType("TEXT");
 
                     b.Property<bool>("UsadoComoCredito")
                         .HasColumnType("INTEGER");

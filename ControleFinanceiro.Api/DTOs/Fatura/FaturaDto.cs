@@ -9,10 +9,6 @@ public class FaturaDto
     public DateTime DataFechamento { get; set; }
     public DateTime DataVencimento { get; set; }
 
-    // ── Legacy (mantido para retrocompat até ETAPA 5b) ──
-    public int Status { get; set; }
-    public string StatusDescricao { get; set; } = string.Empty;
-
     // ── 3 flags ortogonais (ARQUITETURA_PARCELAMENTO.md § "Fatura (Mudanças)") ──
     /// <summary>0=Aberta, 1=Fechada</summary>
     public int EstadoCiclo { get; set; }
@@ -40,8 +36,6 @@ public class FaturaTransacaoDto
     public DateTime Data { get; set; }
     public Guid? CategoriaId { get; set; }
     public string? CategoriaDescricao { get; set; }
-    public int? Parcelas { get; set; }
-    public int? NumeroParcela { get; set; }
 }
 
 public class PagarFaturaDto

@@ -12,13 +12,6 @@ public class Fatura
     public DateTime DataFechamento { get; set; }
     public DateTime DataVencimento { get; set; }
 
-    /// <summary>
-    /// DEPRECATED — substituído por (EstadoCiclo, EstadoPagamento, EstaAtrasada).
-    /// Mantido pra retrocompatibilidade até migração de dados (ETAPA 5).
-    /// </summary>
-    [Obsolete("Use EstadoCiclo + EstadoPagamento + EstaAtrasada. Removido na ETAPA 5.")]
-    public StatusFatura Status { get; set; } = StatusFatura.Aberta;
-
     // Quanto já foi pago (para pagamento parcial → EstadoPagamento permanece Parcial até quitar)
     public decimal ValorPago { get; set; }
 
