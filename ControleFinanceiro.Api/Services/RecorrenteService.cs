@@ -220,17 +220,14 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
 
             // Log evento
-            await _eventLogService.RegistrarAsync(new FinancialEventLog
-            {
-                UsuarioId = usuarioId,
-                Tipo = FinancialEventType.RecorrenteCriada,
-                Origem = "Service:RecorrenteService",
-                EntidadeId = recorrenteId,
-                EntidadeNome = "Recorrente",
-                CorrelationId = correlationId,
-                PayloadJson = $"{{ \"descricao\": \"{recorrente.Descricao}\", \"valor\": {recorrente.Valor}, \"idempotencyKey\": \"{idempotencyKey}\" }}",
-                CriadoEm = DateTime.UtcNow
-            });
+            _eventLogService.Registrar(
+                usuarioId,
+                FinancialEventType.RecorrenteCriada,
+                "Recorrente",
+                recorrenteId,
+                correlationId,
+                "Service:RecorrenteService",
+                payload: new { descricao = recorrente.Descricao, valor = recorrente.Valor, idempotencyKey });
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -289,17 +286,14 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
 
             // Log evento
-            await _eventLogService.RegistrarAsync(new FinancialEventLog
-            {
-                UsuarioId = usuarioId,
-                Tipo = FinancialEventType.RecorrenteCancelada,
-                Origem = "Service:RecorrenteService",
-                EntidadeId = id,
-                EntidadeNome = "Recorrente",
-                CorrelationId = correlationId,
-                PayloadJson = $"{{ \"motivo\": \"{motivo}\", \"transacoesCanceladas\": {transacoesFuturas.Count}, \"idempotencyKey\": \"{idempotencyKey}\" }}",
-                CriadoEm = DateTime.UtcNow
-            });
+            _eventLogService.Registrar(
+                usuarioId,
+                FinancialEventType.RecorrenteCancelada,
+                "Recorrente",
+                id,
+                correlationId,
+                "Service:RecorrenteService",
+                payload: new { motivo, transacoesCanceladas = transacoesFuturas.Count, idempotencyKey });
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
