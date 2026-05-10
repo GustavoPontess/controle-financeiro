@@ -26,7 +26,13 @@ public class FaturasController : ControllerBase
         return id;
     }
 
-    /// <summary>Lista todas as faturas de um cartão, ordenadas da mais recente para a mais antiga.</summary>
+    /// <summary>
+    /// Lista todas as faturas de um cartão, ordenadas da mais recente para a mais antiga.
+    /// Cada fatura expõe 3 flags ortogonais em vez de enum monolítico (Status obsoleto):
+    /// - EstadoCiclo (Aberta/Fechada): ciclo de cobrança.
+    /// - EstadoPagamento (NaoPago/Parcial/Pago): andamento do pagamento.
+    /// - EstaAtrasada (bool): vencida sem quitar (marcada pelo job FaturaAtrasoJob).
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<FaturaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(Guid cartaoCreditoId)
@@ -43,7 +49,11 @@ public class FaturasController : ControllerBase
         }
     }
 
-    /// <summary>Detalhe de uma fatura com todas as transações do período.</summary>
+    /// <summary>
+    /// Detalhe de uma fatura com todas as transações e parcelas do período.
+    /// Expõe EstadoCiclo, EstadoPagamento, EstaAtrasada (3 flags em vez de Status obsoleto).
+    /// Inclui FinancialEventLog audit trail de pagamentos/atrasos.
+    /// </summary>
     [HttpGet("{faturaId}")]
     [ProducesResponseType(typeof(FaturaDetalheDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -63,7 +73,9 @@ public class FaturasController : ControllerBase
 
     /// <summary>
     /// Paga uma fatura (total ou parcialmente).
-    /// Cria uma transação de débito na conta informada — invariante 5.
+    /// Cria uma transação de débito na conta informada.
+    /// Atualiza EstadoPagamento (e possivelmente EstadoCiclo se pagamento total antecipado).
+    /// Idempotência via header Idempotency-Key.
     /// </summary>
     [HttpPost("{faturaId}/pagar")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
