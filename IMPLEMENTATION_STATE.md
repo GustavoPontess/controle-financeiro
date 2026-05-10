@@ -1,9 +1,9 @@
 # 🚧 IMPLEMENTATION_STATE — Issue #1 Parcelamento Flexível
 
 **Atualizado em:** 2026-05-09
-**Branch:** `feature/1-parcelamento-flexivel`
-**Etapa atual:** 7 — PRÓXIMA (ETAPA 6 concluída: 8/8 sub-itens prontos — FinancialEventLogService + LimiteCalculatorService + ParcelamentoService + ParcelaTransacaoService + adapt FaturaService [3 flags] + adapt RecorrenteService [janela 3m + soft delete] + middleware idempotência + DI)
-**Última sessão:** Sessão 5 — 2026-05-09 (RecorrenteService + IdempotencyAttribute + DTOs; pendente validação build verde do usuário)
+**Branch:** `feature/1-parcelamento-flexível`
+**Etapa atual:** 8 — EM PROGRESSO (ETAPA 7 concluída; Sessão 7 em andamento)
+**Última sessão:** Sessão 7 — 2026-05-09 (ETAPA 8 Hangfire Jobs; 5/7 sub-itens prontos)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -98,20 +98,21 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** todos services compilam, registrados no DI — PENDENTE: validação `dotnet build` do usuário
 
 ### ETAPA 7 — Controllers
-- [ ] `Controllers/ParcelamentosController.cs`
-- [ ] `Controllers/ParcelasController.cs`
-- [ ] Adaptar `FaturasController.cs`
-- [ ] DTOs em `DTOs/Parcelamento/`, `DTOs/Parcela/`
-- [ ] **Checkpoint:** Swagger lista todos os endpoints
+- [x] `Controllers/ParcelamentosController.cs` (GET /, GET /{id}, POST /, POST /{id}/cancelar)
+- [x] `Controllers/ParcelasController.cs` (POST /{id}/pagar, POST /{id}/cancelar)
+- [x] Adaptar `FaturasController.cs` (docs + 3 flags)
+- [x] DTOs em `DTOs/Parcelamento/`, `DTOs/ParcelaTransacao/` (já criados em ETAPA 6)
+- [x] **Checkpoint:** Build verde (0 erros, 13 avisos obsolete esperados) + Swagger lista endpoints
 
 ### ETAPA 8 — Jobs Hangfire
-- [ ] Adicionar Hangfire ao `Program.cs` (storage SQLite)
-- [ ] `Infrastructure/Jobs/FaturaFechamentoJob.cs`
-- [ ] `Infrastructure/Jobs/FaturaAtrasoJob.cs`
-- [ ] `Infrastructure/Jobs/ExpandirRecorrentesJob.cs`
-- [ ] `Infrastructure/Jobs/ExecutarRecorrentesJob.cs`
-- [ ] `Infrastructure/Jobs/RecalcularLimitesJob.cs`
-- [ ] **Checkpoint:** dashboard `/hangfire` acessível
+- [x] Adicionar Hangfire ao `Program.cs` (storage SQLite) + registrar job classes no DI
+- [x] `Infrastructure/Jobs/FaturaFechamentoJob.cs`
+- [x] `Infrastructure/Jobs/FaturaAtrasoJob.cs`
+- [x] `Infrastructure/Jobs/ExpandirRecorrentesJob.cs`
+- [x] `Infrastructure/Jobs/ExecutarRecorrentesJob.cs`
+- [x] `Infrastructure/Jobs/RecalcularLimitesJob.cs`
+- [x] Adicionar Hangfire NuGet packages ao csproj
+- [ ] **Checkpoint:** `dotnet build` verde + `dotnet run` + dashboard `/hangfire` acessível (validar usuário)
 
 ### ETAPA 9 — Testes
 - [ ] Setup xUnit no projeto Test (se não existir)
@@ -158,6 +159,62 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 7 — 2026-05-09 (Hangfire Jobs — ETAPA 8 parcial)
+- **Etapas concluídas:** ETAPA 8 — 6 de 7 sub-itens (jobs criados, NuGet adicionados, Program.cs configurado)
+- **Branch após sessão:** `feature/1-parcelamento-flexivel` (2 commits pendentes)
+- **Estado do build:** pendente validação `dotnet build` do usuário
+- **Arquivos criados/editados:**
+  - `Infrastructure/Jobs/FaturaFechamentoJob.cs` — novo; diário 02:00: Aberta → Fechada
+  - `Infrastructure/Jobs/FaturaAtrasoJob.cs` — novo; diário 02:30: marca EstaAtrasada=true + juros (1%/mês) + multa (2%)
+  - `Infrastructure/Jobs/ExpandirRecorrentesJob.cs` — novo; diário 03:00: expande janela móvel 3 meses
+  - `Infrastructure/Jobs/ExecutarRecorrentesJob.cs` — novo; diário 03:30: Previsao → Executado
+  - `Infrastructure/Jobs/RecalcularLimitesJob.cs` — novo; a cada hora: recalcula limites (LimiteBloqueado/Disponivel)
+  - `ControleFinanceiro.Api.csproj` — adicionados pacotes Hangfire.Core (1.8.6), Hangfire.AspNetCore (1.8.6), Hangfire.Storage.SQLite (1.4.7)
+  - `Program.cs` — adicionados using (Hangfire, Jobs), registrados 5 job classes no DI, configurado Hangfire com storage SQLite (`hangfire.db`), adicionado middleware `/hangfire` dashboard, agendados 5 recurring jobs com cron schedules (02:00, 02:30, 03:00, 03:30, hourly)
+- **Decisões:**
+  - Hangfire storage: SQLite em arquivo local `hangfire.db` (não em-memória, persiste entre reinicializações)
+  - Schedules: UTC zone, 5 jobs em cron simplificados (minuto+hora fixos, dias/mês/DoW = `*`)
+  - FaturaAtrasoJob: juros simples (1% ao mês × meses atraso, 2% multa fixa) — MVP simplificado, Real deve usar Open Finance + cálculo jurídico
+  - ExpandirRecorrentesJob: reaproveita lógica de RecorrenteService.CriarAsync (janela móvel 3 meses)
+  - ExecutarRecorrentesJob: apenas marca Previsao → Executado pela data, não executa pagamentos
+  - RecalcularLimitesJob: chama LimiteCalculatorService.CalcularTodosDoUsuarioAsync — não persiste, apenas recalcula em-memória
+- **Próxima ação ao retomar (ETAPA 8 — Checkpoint):**
+  1. Usuário roda `dotnet build` e valida verde
+  2. Usuário roda `dotnet run` e acessa `http://localhost:5293/hangfire` para confirmar dashboard acessível
+  3. Se OK: commit `feat(parcelamento): adicionar Hangfire jobs (5 background tasks) + Program.cs config`
+  4. Próxima: ETAPA 9 (Testes — xUnit, ParcelamentoService, idempotência, e2e)
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - Sandbox sem dotnet/npm — usuário valida `dotnet build` e `/hangfire` acesso no Git Bash/browser
+  - Jobs herdam FaturaService.CalcularValorTotal logic (Transacoes legacy + ParcelasTransacao novo)
+  - ETAPA 8 checkpoint é visitação manual do `/hangfire` dashboard — não automatizável via sandbox
+
+### Sessão 6 — 2026-05-09 (Controllers — ETAPA 7 completa)
+- **Etapas concluídas:** ETAPA 7 finalizada — 5 de 5 sub-itens prontos
+- **Branch após sessão:** `feature/1-parcelamento-flexivel` (2 commits novos)
+- **Estado do build:** verde (0 erros, 13 warnings obsolete [esperados])
+- **Arquivos criados/editados:**
+  - `Controllers/ParcelamentosController.cs` — novo; 4 endpoints (Listar, Detalhe, Criar, Cancelar)
+  - `Controllers/ParcelasController.cs` — novo; 2 endpoints (PagarAntecipado, Cancelar individual)
+  - `Controllers/FaturasController.cs` — docs melhorados (3 flags, idempotência, audit trail)
+- **Decisões:**
+  - Route: `/api/parcelamentos` + `/api/parcelas` (padrão RESTful)
+  - IdempotencyAttribute extraído em header automaticamente para todos os controllers
+  - XML docs completos com ProducesResponseType para cada possível resposta
+  - Status codes apropriados (201 Created pra POST, 204 NoContent pra operações sem retorno, etc)
+  - DTOs reutilizados de ETAPA 6 (CriarParcelamentoDto, ParcelamentoDto, PagarParcelaDto, etc)
+- **Próxima ação ao retomar (ETAPA 8 — Jobs Hangfire):**
+  Implementar 5 background jobs:
+  1. FaturaFechamentoJob (diário 02:00): Aberta → Fechada
+  2. FaturaAtrasoJob (diário 02:30): marca EstaAtrasada=true + juros/multa
+  3. ExpandirRecorrentesJob (diário 03:00): janela móvel 3 meses
+  4. ExecutarRecorrentesJob (diário 03:30): Previsao → Executado
+  5. RecalcularLimitesJob (a cada hora): LimiteBloqueado/Disponivel
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - Build rodou local e passou — tudo compila
+  - ETAPA 7 agora completa; ETAPA 8 próxima (Hangfire jobs)
 
 ### Sessão 5 — 2026-05-09 (RecorrenteService + IdempotencyAttribute — ETAPA 6 completa)
 - **Etapas concluídas:** ETAPA 6 finalizada — 8 de 8 sub-itens prontos

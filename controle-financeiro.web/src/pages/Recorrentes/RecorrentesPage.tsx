@@ -36,7 +36,7 @@ const freqBadgeColor: Record<number, { bg: string; color: string }> = {
 const emptyForm: CriarRecorrente = {
   descricao: "",
   valor: 0,
-  tipo: 2,
+  tipo: 1,
   categoriaId: undefined,
   contaId: "",
   frequencia: 2,
@@ -107,7 +107,7 @@ export default function RecorrentesPage() {
 
   const totalMensal = recorrentes
     .filter(r => r.ativo && r.frequencia === 2)
-    .reduce((sum, r) => sum + (r.tipo === 2 ? -r.valor : r.valor), 0)
+    .reduce((sum, r) => sum + (r.tipo === 1 ? -r.valor : r.valor), 0)
 
   const ativos = recorrentes.filter(r => r.ativo).length
 
@@ -154,7 +154,7 @@ export default function RecorrentesPage() {
         ) : (
           recorrentes.map((r, i) => {
             const freq = freqBadgeColor[r.frequencia] ?? { bg: "#f3f4f6", color: "#374151" }
-            const isDespesa = r.tipo === 2
+            const isDespesa = r.tipo === 1
             return (
               <Box
                 key={r.id}
@@ -242,8 +242,8 @@ export default function RecorrentesPage() {
                 label="Tipo *"
                 onChange={(e) => setForm(f => ({ ...f, tipo: Number(e.target.value) }))}
               >
-                <MuiMenuItem value={2}>Despesa</MuiMenuItem>
-                <MuiMenuItem value={1}>Receita</MuiMenuItem>
+                <MuiMenuItem value={1}>Despesa</MuiMenuItem>
+                <MuiMenuItem value={2}>Receita</MuiMenuItem>
               </Select>
             </FormControl>
 
