@@ -1,14 +1,17 @@
-export enum TipoParcelamento {
-  CompraParcelada = 0,
-  PIXCredito = 1,
-  Recorrente = 2,
-}
+export const TipoParcelamento = {
+  CompraParcelada: 0,
+  PIXCredito: 1,
+  Recorrente: 2,
+} as const
 
-export enum StatusParcela {
-  Pendente = 0,
-  Paga = 1,
-  Cancelada = 2,
-}
+export const StatusParcela = {
+  Pendente: 0,
+  Paga: 1,
+  Cancelada: 2,
+} as const
+
+export type TipoParcelamento = typeof TipoParcelamento[keyof typeof TipoParcelamento]
+export type StatusParcela = typeof StatusParcela[keyof typeof StatusParcela]
 
 export interface Parcelamento {
   id: string
