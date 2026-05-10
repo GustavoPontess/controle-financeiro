@@ -2,7 +2,10 @@ using ControleFinanceiro.Api.Data;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Filters;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Services;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -38,6 +41,17 @@ builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
 builder.Services.AddScoped<ParcelamentoService>();
 builder.Services.AddScoped<ParcelaTransacaoService>();
+
+// Hangfire Background Jobs
+builder.Services.AddScoped<FaturaFechamentoJob>();
+builder.Services.AddScoped<FaturaAtrasoJob>();
+builder.Services.AddScoped<ExpandirRecorrentesJob>();
+builder.Services.AddScoped<ExecutarRecorrentesJob>();
+builder.Services.AddScoped<RecalcularLimitesJob>();
+
+builder.Services.AddHangfire(config =>
+    config.UseMemoryStorage());
+builder.Services.AddHangfireServer();
 
 builder.Services.AddHttpContextAccessor();
 
@@ -280,6 +294,48 @@ app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Hangfire Dashboard
+app.UseHangfireDashboard("/hangfire");
+
+// Schedule recurring jobs
+var bgJob = app.Services.GetRequiredService<IBackgroundJobClient>();
+var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
+// Daily invoice closure (02:00 UTC)
+recManager.AddOrUpdate<FaturaFechamentoJob>(
+    "fatura-fechamento",
+    job => job.ExecuteAsync(),
+    "0 2 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Daily overdue mark (02:30 UTC)
+recManager.AddOrUpdate<FaturaAtrasoJob>(
+    "fatura-atraso",
+    job => job.ExecuteAsync(),
+    "30 2 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Daily expand recurring window (03:00 UTC)
+recManager.AddOrUpdate<ExpandirRecorrentesJob>(
+    "expandir-recorrentes",
+    job => job.ExecuteAsync(),
+    "0 3 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Daily execute pending transactions (03:30 UTC)
+recManager.AddOrUpdate<ExecutarRecorrentesJob>(
+    "executar-recorrentes",
+    job => job.ExecuteAsync(),
+    "30 3 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Hourly recalculate limits
+recManager.AddOrUpdate<RecalcularLimitesJob>(
+    "recalcular-limites",
+    job => job.ExecuteAsync(),
+    "0 * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapControllers();
 
