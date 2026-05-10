@@ -2,8 +2,8 @@
 
 **Atualizado em:** 2026-05-09
 **Branch:** `feature/1-parcelamento-flexivel`
-**Etapa atual:** 6 — PARCIAL (6 de 8 sub-itens: FinancialEventLogService + LimiteCalculatorService + ParcelamentoService + ParcelaTransacaoService + adapt FaturaService [3 flags] + DI prontos; falta adapt RecorrenteService + middleware idempotência)
-**Última sessão:** Sessão 4 — 2026-05-09 (ParcelaTransacaoService + DTOs + adapt FaturaService 3 flags; build verde)
+**Etapa atual:** 7 — PRÓXIMA (ETAPA 6 concluída: 8/8 sub-itens prontos — FinancialEventLogService + LimiteCalculatorService + ParcelamentoService + ParcelaTransacaoService + adapt FaturaService [3 flags] + adapt RecorrenteService [janela 3m + soft delete] + middleware idempotência + DI)
+**Última sessão:** Sessão 5 — 2026-05-09 (RecorrenteService + IdempotencyAttribute + DTOs; pendente validação build verde do usuário)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -91,9 +91,11 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] `Services/ParcelamentoService.cs` (Criar, Cancelar, Listar, Detalhe — coração do issue, transação ACID + idempotência + FinancialEventLog) + DTOs em `DTOs/Parcelamento/` (CriarParcelamentoDto, CancelarParcelamentoDto, CancelamentoResultadoDto, LimiteSnapshotDto, ParcelamentoDto, ParcelamentoDetalheDto, ParcelaDto, ProximaParcelaDto). PIX juros simples (placeholder MVP). Reaproveita `FaturaService.ObterOuCriarFaturaAsync`. Commit `ef9db19`.
 - [x] `Services/ParcelaTransacaoService.cs` (PagarAntecipado, Cancelar) + `DTOs/ParcelaTransacao/` (PagarParcelaDto, FaturaAtualizadaDto, PagarParcelaResultadoDto, CancelarParcelaDto, CancelarParcelaResultadoDto) — Sessão 4.
 - [x] Adaptar `FaturaService.cs` para 3 flags — Sessão 4: PagarFaturaAsync usa EstadoPagamento; PreencherDto expõe 3 flags; CalcularValorTotal inclui ParcelasTransacao; queries incluem ParcelasTransacao.
-- [ ] Adaptar `RecorrenteService.cs` para janela de 3 meses + soft delete
-- [ ] Middleware/atributo de Idempotência
-- [ ] **Checkpoint:** todos services compilam, registrados no DI
+- [x] Adaptar `RecorrenteService.cs` para janela de 3 meses + soft delete — Sessão 5: CriarAsync materializa 3 transações futuras (Previsao); CancelarAsync soft-delete; ContaId XOR CartaoCreditoId validação; FinancialEventLog registration
+- [x] `Infrastructure/Filters/IdempotencyAttribute.cs` — ação filter global que extrai `Idempotency-Key` do header HTTP para HttpContext.Items
+- [x] DI: RecorrenteService + IHttpContextAccessor + AddHttpContextAccessor() + IdempotencyAttribute registrados em `Program.cs`
+- [x] DTOs: `CriarRecorrenteDto`, `RecorrenteDto`, `CancelarRecorrenteDto` atualizados
+- [x] **Checkpoint:** todos services compilam, registrados no DI — PENDENTE: validação `dotnet build` do usuário
 
 ### ETAPA 7 — Controllers
 - [ ] `Controllers/ParcelamentosController.cs`
@@ -156,6 +158,37 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 5 — 2026-05-09 (RecorrenteService + IdempotencyAttribute — ETAPA 6 completa)
+- **Etapas concluídas:** ETAPA 6 finalizada — 8 de 8 sub-itens prontos
+- **Etapas iniciadas (incompletas):** nenhuma
+- **Branch após sessão:** `feature/1-parcelamento-flexivel` (commits pendentes)
+- **Estado do build:** pendente validação `dotnet build` do usuário
+- **Arquivos criados/editados:**
+  - `DTOs/Recorrente/CriarRecorrenteDto.cs` — tornar ContaId nullable, adicionar CartaoCreditoId + IdempotencyKey
+  - `DTOs/Recorrente/RecorrenteDto.cs` — adicionar CartaoCreditoId, CartaoCreditoNome, CanceladoEm, MotivoCancelamento
+  - `DTOs/Recorrente/CancelarRecorrenteDto.cs` — novo DTO (Motivo + IdempotencyKey)
+  - `Services/RecorrenteService.cs` — major refactor:
+    - Injetar FaturaService, FinancialEventLogService, IHttpContextAccessor
+    - CriarAsync: validar ContaId XOR CartaoCreditoId, materializar 3 meses de Transacoes Previsao, registrar FinancialEventLog
+    - Novo CancelarAsync: soft delete + cancel transações futuras + FinancialEventLog
+    - GerarPendentesAsync: atualizar para incluir CartaoCreditoId em Transacao
+    - ListarAsync: adicionar Include(CartaoCredito) + expor na DTO
+    - ObterIdempotencyKey() helper: extrai idempotencyKey do HttpContext
+  - `Infrastructure/Filters/IdempotencyFilter.cs` — novo, ação filter que extrai header `Idempotency-Key` pro HttpContext.Items
+  - `Program.cs` — adicionar AddHttpContextAccessor(), registrar IdempotencyAttribute como global filter
+- **Decisões:**
+  - ContaId XOR CartaoCreditoId validado em Service (não domínio)
+  - Materialização de 3 meses ao criar Recorrente (não 12 meses infinitos)
+  - Soft delete ao cancelar: marca Ativo=false, cancela transações Previsao futuras, preserva Executadas
+  - Idempotência via header HTTP "Idempotency-Key" com fallback pra DTO (compatibilidade)
+  - IdempotencyAttribute registrado globalmente em Program.cs
+- **Próxima ação ao retomar (ETAPA 7 — Controllers):**
+  Criar endpoints para Parcelamentos e Parcelas com [Idempotency] aplicado onde necessário (POST, não GET).
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - Sandbox sem dotnet/npm/git — usuário roda no Git Bash e me avisa quando `dotnet build` verde
+  - ETAPA 6 agora completa; ETAPA 7 próxima (Controllers)
 
 ### Sessão 4 — 2026-05-09 (ParcelaTransacaoService + adapt FaturaService)
 - **Etapas concluídas:** nenhuma fechada inteira; ETAPA 6 avançou de ~50% para ~75% (6 de 8 sub-itens prontos)
