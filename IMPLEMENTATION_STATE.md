@@ -127,7 +127,7 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] `src/types/ParcelaTransacao.ts` (interfaces para pagar/cancelar parcela individual)
 - [x] `src/types/Fatura.ts` (atualizado com 3 flags: estadoCiclo, estadoPagamento, estaAtrasada, dataPagamentoTotal)
 - [x] `src/services/ParcelamentoService.ts` (6 métodos + helpers idempotency + format mês-ano)
-- [x] **Checkpoint:** `npm run build` verde ✅ (0 erros Parcelamento/ParcelaTransacao; 18 pré-existentes do projeto)
+- [x] **Checkpoint:** `npm run build` verde ✅ (0 erros totais — todas entidades + tipos + service + bugs pré-existentes corrigidos)
 
 ### ETAPA 11 — Frontend (Componentes)
 - [ ] `src/pages/Parcelamentos/index.tsx`
