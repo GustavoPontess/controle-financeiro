@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Data;
 using ControleFinanceiro.Api.Infrastructure;
+using ControleFinanceiro.Api.Infrastructure.Filters;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,7 +10,10 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(typeof(IdempotencyAttribute));
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -34,6 +38,8 @@ builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
 builder.Services.AddScoped<ParcelamentoService>();
 builder.Services.AddScoped<ParcelaTransacaoService>();
+
+builder.Services.AddHttpContextAccessor();
 
 // JWT Configuration
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "your-secret-key-change-this-in-production-very-long-string";
