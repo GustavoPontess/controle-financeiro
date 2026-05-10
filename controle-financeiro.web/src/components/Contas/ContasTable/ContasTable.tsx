@@ -66,7 +66,7 @@ export default function ContasTable({ contas, onEdit, onDelete }: Props) {
                       }}
                     />
                   </TableCell>
-                  <TableCell sx={{ fontSize: 13, py: 1.5 }}>{formatMoney(c.saldoInicial)}</TableCell>
+                  <TableCell sx={{ fontSize: 13, py: 1.5 }}>{formatMoney(c.saldoAtual)}</TableCell>
                   <TableCell align="right" sx={{ py: 0.5 }}>
                     {!c.isCarteira && (
                       <>
