@@ -16,8 +16,9 @@ public class CriarRecorrenteDto
 
     public Guid? CategoriaId { get; set; }
 
-    [Required]
-    public Guid ContaId { get; set; }
+    public Guid? ContaId { get; set; }
+
+    public Guid? CartaoCreditoId { get; set; }
 
     [Required]
     public int Frequencia { get; set; }
@@ -29,4 +30,6 @@ public class CriarRecorrenteDto
     public DateTime DataInicio { get; set; }
 
     public DateTime? DataFim { get; set; }
+
+    public string? IdempotencyKey { get; set; }
 }
