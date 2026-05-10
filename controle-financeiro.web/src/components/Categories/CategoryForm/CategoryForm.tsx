@@ -30,7 +30,8 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
     const formData = new FormData(e.currentTarget);
     const descricao = formData.get("descricao") as string;
     const finalidade = Number(formData.get("finalidade"));
-    onSubmit({ descricao, finalidade });
+    const isPadrao = formData.get("isPadrao") === "on";
+    onSubmit({ descricao, finalidade, isPadrao });
     e.currentTarget.reset();
   };
 
@@ -78,6 +79,13 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
           <MenuItem value={2}>Receita</MenuItem>
           <MenuItem value={3}>Ambas</MenuItem>
         </Select>
+      </Box>
+
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <input type="checkbox" name="isPadrao" id="isPadrao" />
+        <label htmlFor="isPadrao" style={{ fontSize: "13px", color: "#6b7280", cursor: "pointer" }}>
+          Categoria padrão
+        </label>
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 1 }}>

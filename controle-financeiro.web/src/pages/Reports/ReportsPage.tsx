@@ -114,6 +114,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: "#6b7280" }} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: "#6b7280" }} />
                   <Tooltip
+                    // @ts-expect-error recharts formatter types are loose
                     formatter={(val: number) => formatMoney(val)}
                     contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13 }}
                   />
@@ -142,6 +143,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: "#6b7280" }} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: "#6b7280" }} />
                   <Tooltip
+                    // @ts-expect-error recharts formatter types are loose
                     formatter={(val: number) => formatMoney(val)}
                     contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13 }}
                   />
@@ -174,7 +176,8 @@ export default function ReportsPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={90}
-                      label={({ descricao, percentual }) => `${descricao} ${percentual}%`}
+                      // @ts-expect-error recharts PieChart label types vary by version
+                      label={({ name, value, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       labelLine={false}
                     >
                       {data.gastosPorCategoria.map((_, index) => (
@@ -182,6 +185,7 @@ export default function ReportsPage() {
                       ))}
                     </Pie>
                     <Tooltip
+                      // @ts-expect-error recharts formatter types are loose
                       formatter={(val: number) => formatMoney(val)}
                       contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13 }}
                     />
