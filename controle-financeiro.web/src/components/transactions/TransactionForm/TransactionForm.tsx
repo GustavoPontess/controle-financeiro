@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Typography, TextField, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
+import { Box, Typography, TextField, Select, MenuItem, FormControl } from "@mui/material";
 import CustomButton from "../../CustomButton";
 import type { Category } from "../../../types/Category";
 import type { Conta } from "../../../types/Conta";

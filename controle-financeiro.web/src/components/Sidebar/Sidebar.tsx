@@ -78,7 +78,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
 
   const isOverTrigger = useRef(false);
   const isOverSubmenu = useRef(false);
-  const hoverTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleLogout = () => {
     closeAll();

@@ -5,7 +5,6 @@ import type {
   CriarParcelamentoPayload,
   CancelarParcelamentoPayload,
   CancelamentoResultado,
-  TipoParcelamento,
 } from '../types/Parcelamento'
 import type {
   PagarParcelaPayload,
