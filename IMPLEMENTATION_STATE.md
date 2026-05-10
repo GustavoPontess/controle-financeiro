@@ -2,8 +2,8 @@
 
 **Atualizado em:** 2026-05-10
 **Branch:** `feature/1-parcelamento-flexível`
-**Etapa atual:** 10 — PRÓXIMA (ETAPAS 8-9 concluídas; Sessão 8 concluída)
-**Última sessão:** Sessão 8 — 2026-05-10 (ETAPA 8 Hangfire + ETAPA 9 Testes; ambas 100% completas)
+**Etapa atual:** 11 — PRÓXIMA (ETAPA 10 Frontend tipos/service concluída; Sessão 9 em andamento)
+**Última sessão:** Sessão 9 — 2026-05-10 (ETAPA 10 concluída; aguardando checkpoint npm run build do usuário)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -123,11 +123,11 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** 13/13 testes passam (xUnit + EF InMemory + Transaction warning suprimido)
 
 ### ETAPA 10 — Frontend (Tipos e Services)
-- [ ] `src/types/Parcelamento.ts`
-- [ ] `src/types/ParcelaTransacao.ts`
-- [ ] `src/types/Fatura.ts` (atualizado com 3 flags)
-- [ ] `src/services/ParcelamentoService.ts`
-- [ ] **Checkpoint:** `npm run build` verde
+- [x] `src/types/Parcelamento.ts` (enum TipoParcelamento + StatusParcela + 8 interfaces)
+- [x] `src/types/ParcelaTransacao.ts` (interfaces para pagar/cancelar parcela individual)
+- [x] `src/types/Fatura.ts` (atualizado com 3 flags: estadoCiclo, estadoPagamento, estaAtrasada, dataPagamentoTotal)
+- [x] `src/services/ParcelamentoService.ts` (6 métodos + helpers idempotency + format mês-ano)
+- [ ] **Checkpoint:** `npm run build` verde (PENDENTE: usuário roda este comando)
 
 ### ETAPA 11 — Frontend (Componentes)
 - [ ] `src/pages/Parcelamentos/index.tsx`
@@ -153,12 +153,39 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[████▌▓▓▓░░░░] 4.5 + ~75% da ETAPA 6 / 12 etapas concluídas
+[█████░░░░░░] 5.5 / 12 etapas concluídas (ETAPA 0-3 + 4-5a + 5b adiada + 6-9 + 10 = 100% backend + 100% tipos/service frontend)
 ```
 
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 9 — 2026-05-10 (Frontend Tipos + Service — ETAPA 10 completa)
+- **Etapas concluídas:** ETAPA 10 (100% — tipos + service do frontend criados)
+- **Branch após sessão:** `feature/1-parcelamento-flexivel` (1 commit: `ed50556`)
+- **Estado do build:** tipos criados, chamada `npm run build` PENDENTE de rodada do usuário
+- **Arquivos criados/editados:**
+  - `controle-financeiro.web/src/types/Parcelamento.ts` — novo; enum TipoParcelamento + StatusParcela + 8 interfaces (Parcelamento, ProximaParcela, ParcelaDto, ParcelamentoDetalhe, LimiteSnapshot, DTOs de criar/cancelar)
+  - `controle-financeiro.web/src/types/ParcelaTransacao.ts` — novo; interfaces FaturaAtualizada + PagarParcelaPayload/Resultado + CancelarParcelaPayload/Resultado
+  - `controle-financeiro.web/src/types/Fatura.ts` — atualizado; adicionadas 3 flags ortogonais (estadoCiclo, estadoPagamento, estaAtrasada, dataPagamentoTotal)
+  - `controle-financeiro.web/src/services/ParcelamentoService.ts` — novo; 6 métodos (listar, obterDetalhe, criar, cancelar parcelamentos + pagarParcelaAntecipado, cancelarParcela) + helpers (gerarIdempotencyKey, formatarMesAno, obterMesProximo)
+- **Decisões:**
+  - Service usa axios com header `Idempotency-Key` (idempotência via HTTP header, não body)
+  - Geração de UUID via `crypto.randomUUID()` nativa do browser (sem dependência `uuid`)
+  - Tipos espelham 100% os DTOs C# do backend (Sessão 3-5)
+  - Próxima parcela + detalhe completo em ParcelamentoDetalheDto (com array de ParcelaDto)
+- **Próxima ação ao retomar (ETAPA 11 — Frontend Componentes):**
+  1. Após usuário rodar e validar `npm run build` verde desta sessão:
+     - Criar `src/pages/Parcelamentos/index.tsx` (listagem) com filtro por Ativo + card de cada parcelamento
+     - Criar `src/pages/Parcelamentos/[id].tsx` (detalhe) com lista de parcelas + ações (pagar antecipado, cancelar individual)
+     - Criar componentes reutilizáveis (ParcelamentoCard, ParcelamentoForm, FaturaStatusBadge, modais de cancelar/pagar)
+     - Integrar rotas em AppRoutes.tsx
+  2. Checkpoint: `npm run dev` exibe nova tela sem erros
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - Sandbox Linux sem npm/dotnet — criação de tipos foi feita, mas checkpoint `npm run build` precisa ser rodado pelo usuário no Git Bash
+  - Commit `ed50556`: feat(web/parcelamento) tipos e service frontend
+  - ETAPA 10 = 100% concluída em código; checkpoint pendente de validação build
 
 ### Sessão 8 — 2026-05-10 (Hangfire Jobs checkpoint + Testes — ETAPAS 8-9 completas)
 - **Etapas concluídas:** ETAPA 8 checkpoint (jobs + Program.cs OK) + ETAPA 9 (13/13 testes passam)
