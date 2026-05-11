@@ -545,10 +545,161 @@ public async Task<Transacao> CriarAsync(CriarTransacaoDto dto, Guid usuarioId)
 
 ---
 
-## Testing (Future)
+## Parcelamento Patterns (ETAPA 2+)
 
-When tests are added:
-- Unit tests for services
-- Integration tests for controllers
-- Component tests for React
-- E2E tests for critical flows
+### ParcelamentoService Conventions
+
+**ACID Transactions:**
+```csharp
+public async Task<ParcelamentoDetalheDto> CriarAsync(CriarParcelamentoDto dto, Guid usuarioId)
+{
+    using var transaction = await _context.Database.BeginTransactionAsync();
+    try
+    {
+        // INSERT Parcelamento + N ParcelasTransacao + FinancialEventLog
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return MontarDto(...);
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+```
+
+**Idempotency via HTTP Header:**
+```csharp
+// Extract from IHttpContextAccessor
+var idempotencyKey = HttpContext.Items["IdempotencyKey"] as string;
+
+// Check existing
+var existing = await _financialEventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
+if (existing != null)
+{
+    // Replay response from previous operation
+    return await ObterDetalheAsync(existing.EntidadeId, usuarioId);
+}
+
+// Proceed if new
+```
+
+**Idempotency Filter:**
+```csharp
+public class IdempotencyAttribute : Attribute, IAsyncActionFilter
+{
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        var idempotencyKey = context.HttpContext.Request.Headers["Idempotency-Key"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            context.HttpContext.Items["IdempotencyKey"] = idempotencyKey;
+        }
+        await next();
+    }
+}
+```
+
+**Soft Deletes (Parcelamento + ParcelaTransacao):**
+```csharp
+// Never DELETE physically
+// Only UPDATE Ativo = false + CanceladoEm + MotivoCancelamento
+
+// Query always filters:
+var parcelamentos = await _context.Parcelamentos
+    .Where(p => p.UsuarioId == usuarioId && p.Ativo)
+    .ToListAsync();
+```
+
+### FinancialEventLog Patterns
+
+**Event Types (Enum):**
+```csharp
+public enum FinancialEventType
+{
+    ParcelamentoCriado = 0,
+    ParcelamentoCancelado = 1,
+    ParcelaPaga = 2,
+    ParcelaCancelada = 3,
+    LimiteBloqueado = 4,
+    LimiteLiberado = 5,
+    FaturaPagaTotal = 6,
+    FaturaPagaParcial = 7,
+}
+```
+
+**Registering Events:**
+```csharp
+await _financialEventLogService.Registrar(
+    usuarioId: usuarioId,
+    tipo: FinancialEventType.ParcelamentoCriado,
+    entidadeId: parcelamento.Id,
+    entidadeNome: "Parcelamento",
+    correlationId: Guid.NewGuid(),
+    payloadJson: JsonSerializer.Serialize(new 
+    { 
+        parcelamento.Id, 
+        parcelamento.QuantidadeParcelas,
+        idempotencyKey: dto.IdempotencyKey
+    })
+);
+```
+
+**Idempotency Search:**
+```csharp
+// Service searches PayloadJson for idempotencyKey
+// If found + same type + same entity: return previous result
+// Enables replay without re-processing
+```
+
+### Limite (Credit Limit) Patterns
+
+**Calculation (NOT Stored):**
+```csharp
+public class LimiteSnapshot
+{
+    public decimal LimiteTotal { get; set; }          // CartaoCredito.LimiteTotal
+    public decimal LimiteBloqueado { get; set; }      // SUM Parcelamentos.Ativo.ValorComJuros
+    public decimal LimiteDisponivel { get; set; }     // LimiteTotal - LimiteBloqueado
+    public decimal ExposicaoFuturaPrevisao { get; set; } // Next 3 months (Recorrentes)
+}
+```
+
+**When to Calculate:**
+- Before creating Parcelamento (validate `disponivel >= valorComJuros`)
+- After paying Parcela (liberar limite)
+- Hangfire RecalcularLimitesJob (hourly)
+
+---
+
+## Testing (Includes ETAPA 9)
+
+### Unit Tests (xUnit)
+- LimiteCalculatorService (5 testes)
+- ParcelamentoService (5 testes)
+- Idempotência (same key = same result)
+
+### Integration Tests (EF InMemory)
+- End-to-end parcelamento creation
+- Hangfire job scheduling
+- Limite bloqueado/liberado
+
+### Coverage
+- All happy paths
+- Validations (valor>0, parcelas 2-36, categoria, etc.)
+- Edge cases (atraso, juros, soft delete)
+
+---
+
+## Hangfire Jobs (ETAPA 8)
+
+| Job | Cron | Behavior |
+|-----|------|----------|
+| `FaturaFechamentoJob` | 02:00 UTC | EstadoCiclo: Aberta → Fechada |
+| `FaturaAtrasoJob` | 02:30 UTC | EstaAtrasada=true, adiciona JurosDeMora+Multa |
+| `ExpandirRecorrentesJob` | 03:00 UTC | Janela móvel: materializa mais 3 meses se < 1 mês restante |
+| `ExecutarRecorrentesJob` | 03:30 UTC | StatusTransacao: Previsao → Executado (por data) |
+| `RecalcularLimitesJob` | Hourly | LimiteBloqueado/Disponivel (não persiste, só calcula) |
+
+**Storage:** In-memory (MVPMat pode migrar para SQLite em prod)
