@@ -61,6 +61,9 @@ namespace ControleFinanceiro.Api.Services
             if (transacao.Valor <= 0)
                 throw new Exception("O valor da transação deve ser positivo.");
 
+            if (transacao.Data.Date > DateTime.UtcNow.Date)
+                throw new Exception("A data da transação não pode ser futura.");
+
             // Transação de crédito → associar à fatura correspondente (invariante 2)
             if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue)
             {
@@ -134,6 +137,12 @@ namespace ControleFinanceiro.Api.Services
                 .FirstOrDefaultAsync();
 
             if (transacao is null) return false;
+
+            if (dados.Valor <= 0)
+                throw new Exception("O valor da transação deve ser positivo.");
+
+            if (dados.Data.Date > DateTime.UtcNow.Date)
+                throw new Exception("A data da transação não pode ser futura.");
 
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
