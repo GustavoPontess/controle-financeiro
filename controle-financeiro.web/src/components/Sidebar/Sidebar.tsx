@@ -188,6 +188,11 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
               icon={<RepeatOutlinedIcon sx={{ fontSize: 18 }} />}
             />
             <MenuItem
+              to="/parcelamentos"
+              label="Parcelamentos"
+              icon={<CheckIcon sx={{ fontSize: 18 }} />}
+            />
+            <MenuItem
               to="/emprestimos"
               label="Empréstimos"
               icon={<HandshakeOutlinedIcon sx={{ fontSize: 18 }} />}
