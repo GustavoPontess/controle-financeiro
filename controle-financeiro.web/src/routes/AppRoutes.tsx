@@ -14,6 +14,8 @@ import DashboardPage from "../pages/Dashboard/DashboardPage"
 import ReportsPage from "../pages/Reports/ReportsPage"
 import TransferenciasPage from "../pages/Transferencias/TransferenciasPage"
 import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
+import ParcelamentosPage from "../pages/Parcelamentos"
+import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
@@ -42,6 +44,8 @@ export default function AppRoutes() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/transferencias" element={<TransferenciasPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
+          <Route path="/parcelamentos" element={<ParcelamentosPage />} />
+          <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
