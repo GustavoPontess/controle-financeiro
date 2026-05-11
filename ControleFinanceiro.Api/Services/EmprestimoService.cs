@@ -30,6 +30,12 @@ public class EmprestimoService(AppDbContext context)
 
     public async Task<EmprestimoDto> CriarAsync(CriarEmprestimoDto dto, Guid usuarioId)
     {
+        if (dto.ValorTotal <= 0)
+            throw new Exception("Valor total do empréstimo deve ser positivo.");
+
+        if (dto.DataVencimento.HasValue && dto.DataVencimento.Value.Date < dto.DataInicio.Date)
+            throw new Exception("Data de vencimento não pode ser anterior à data de início.");
+
         var emprestimo = new Emprestimo
         {
             Id = Guid.NewGuid(),
@@ -52,6 +58,9 @@ public class EmprestimoService(AppDbContext context)
 
     public async Task<bool> RegistrarPagamentoAsync(Guid id, decimal valor, Guid usuarioId)
     {
+        if (valor <= 0)
+            throw new Exception("Valor do pagamento deve ser positivo.");
+
         var e = await _context.Emprestimos.FirstOrDefaultAsync(x => x.Id == id && x.CriadoPor == usuarioId);
         if (e is null || e.Quitado) return false;
 
