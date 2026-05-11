@@ -6,32 +6,85 @@
 
 ---
 
-## 🔴 BLOQUEADORES CRÍTICOS (Atacar Primeiro)
+## ✅ RESOLVIDOS
 
-### #1: Parcelamento Inflexível
+### ✅ #1: Parcelamento Inflexível
 
 **Severidade:** 🔴 CRÍTICA  
-**Impacto:** Não funciona para seu caso real (saltar meses)  
-**Esforço:** 6 horas  
-**Status:** ⏳ NÃO INICIADO
+**Status:** ✅ RESOLVIDO (2026-05-10)  
+**Tempo:** ~11 horas (11 sessões)  
+**Commits:** 11 principais
 
-**Problema:**
+**Problema Original:**
 - Atual: 12 parcelas sempre consecutivas (mai→jun→jul...)
-- Você precisa: Parcela 1 em JUL, 2 em SET, 3 em NOV, etc
-- Causa: Tabela `Transacao` mistura "informação da compra" com "informação da parcela"
+- Precisava: Parcela 1 em JUL, 2 em SET, 3 em NOV (flexível)
+- Causa: Tabela `Transacao` misturava "compra" com "parcela"
 
-**Solução:**
-- Criar tabela `ParcelaTransacao`
-- Cada parcela tem sua data de vencimento
-- Flexibilidade total
+**Solução Implementada:**
+- ✅ Criada tabela `Parcelamentos` (novo)
+- ✅ Criada tabela `ParcelasTransacao` (novo)
+- ✅ Criada tabela `FinancialEventLog` (novo)
+- ✅ Atualizada `Fatura` com 3 flags ortogonais (EstadoCiclo, EstadoPagamento, EstaAtrasada)
+- ✅ Atualizado `CartaoCredito` com `LimiteTotal`
+- ✅ Atualizado `Transacao` com ParcelamentoId, StatusTransacao, soft delete (Ativo)
+- ✅ Atualizado `Recorrente` com janela 3 meses + CartaoCreditoId
 
-**Checklist After Resolve:**
-- [ ] Atualizar docs/DATABASE.md (novo schema)
-- [ ] Atualizar docs/FLOWS.md (novo fluxo de parcelamento)
-- [ ] Atualizar docs/STANDARDS.md (padrão de ParcelaTransacao)
-- [ ] Atualizar memory/decisions_and_constraints.md
-- [ ] Criar migration EF Core
-- [ ] Testar end-to-end
+**Entidades Novas:**
+- `Parcelamentos` — 1+ parcelas flexíveis de uma compra
+- `ParcelasTransacao` — cada parcela individual com data própria
+- `FinancialEventLog` — auditoria + idempotência
+
+**Services Novos:**
+- `ParcelamentoService` — Criar/Cancelar/Listar/Detalhe
+- `ParcelaTransacaoService` — PagarAntecipado/Cancelar individual
+- `LimiteCalculatorService` — Cálculo dinâmico de limite
+- `FinancialEventLogService` — Auditoria + idempotência
+
+**Controllers Novos:**
+- `ParcelamentosController` — CRUD + cancelar
+- `ParcelasController` — Pagar + Cancelar parcela
+
+**Jobs Novos (Hangfire):**
+- FaturaFechamentoJob — Aberta → Fechada
+- FaturaAtrasoJob — Marca atrasada + juros
+- ExpandirRecorrentesJob — Janela móvel 3 meses
+- ExecutarRecorrentesJob — Previsao → Executado
+- RecalcularLimitesJob — Limites dinâmicos
+
+**Frontend:**
+- Pages: `/parcelamentos` (listagem) + `/parcelamentos/:id` (detalhe)
+- Componentes: cards, modais pagar/cancelar, status badges
+- Types: Parcelamento, ParcelaTransacao, Fatura (atualizado)
+- Service: ParcelamentoService com idempotência
+
+**Testes (13 total):**
+- 5 LimiteCalculatorService (cálculo, validações)
+- 5 ParcelamentoService (criar, validar, cancelar, listar)
+- 3 E2E (create, idempotência, cancel)
+
+**Documentação Atualizada:**
+- [x] docs/DATABASE.md — 3 entidades + updates
+- [x] docs/FLOWS.md — 3 fluxos (criar, pagar antecipado, cancelar)
+- [x] docs/STANDARDS.md — padrões ACID, soft delete, idempotência, Hangfire
+
+**QA Final:**
+- ✅ Build backend: 0 erros, 0 warnings
+- ✅ Build frontend: 0 erros
+- ✅ Testes: 13/13 passing
+- ✅ Swagger: endpoints novos listados
+- ✅ Hangfire: `/hangfire` dashboard acessível
+
+**Impacto:**
+- Parcelamento 100% flexível (pula meses conforme necessário)
+- Juros simples suportados (PIX com taxa customizável)
+- Soft delete + auditoria completa
+- Idempotência via header HTTP
+- Limite bloqueado/liberado automaticamente
+- 5 jobs background para automação
+
+---
+
+## 🔴 BLOQUEADORES CRÍTICOS (Atacar Depois)
 
 ---
 
