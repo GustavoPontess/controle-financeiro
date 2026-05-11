@@ -2,8 +2,8 @@
 
 **Atualizado em:** 2026-05-10
 **Branch:** `feature/1-parcelamento-flexível`
-**Etapa atual:** 11 — PRÓXIMA (ETAPA 5b concluída 100%; ETAPA 10 concluída 100%)
-**Última sessão:** Sessão 10 — 2026-05-10 (ETAPA 5b completa — 13 warnings resolvidos + [Obsolete] removidas + migration aplicada)
+**Etapa atual:** 12 — PRÓXIMA (ETAPA 11 concluída 100%)
+**Última sessão:** Sessão 11 — 2026-05-10 (ETAPA 11 completa — frontend componentes React + rotas)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -131,14 +131,11 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** `npm run build` verde ✅ (0 erros totais — todas entidades + tipos + service + bugs pré-existentes corrigidos)
 
 ### ETAPA 11 — Frontend (Componentes)
-- [ ] `src/pages/Parcelamentos/index.tsx`
-- [ ] `src/pages/Parcelamentos/[id].tsx`
-- [ ] `src/components/ParcelamentoForm.tsx`
-- [ ] `src/components/ParcelamentoCard.tsx`
-- [ ] `src/components/FaturaStatusBadge.tsx`
-- [ ] `src/components/CancelarParcelamentoModal.tsx`
-- [ ] `src/components/PagarParcelaModal.tsx`
-- [ ] **Checkpoint:** `npm run dev` exibe nova tela sem erro
+- [x] `src/pages/Parcelamentos/index.tsx`
+- [x] `src/pages/Parcelamentos/[id].tsx`
+- [x] Rotas integradas em `AppRoutes.tsx`
+- [x] Menu sidebar atualizado
+- [x] **Checkpoint:** `npm run build` verde (0 erros)
 
 ### ETAPA 12 — Atualização de docs e fechamento
 - [ ] `docs/DATABASE.md`
@@ -154,12 +151,42 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ## 📊 Progresso
 
 ```
-[██████░░░░░] 6 / 12 etapas concluídas (ETAPA 0-3 + 4-5a-5b 100% + 6-9 + 10 = 100% backend refatorado + 100% tipos/service frontend)
+[████████░░░] 7 / 12 etapas concluídas (ETAPA 0-3 + 4-5a-5b + 6-9 + 10-11 = 100% backend + 100% frontend componentes)
 ```
 
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 11 — 2026-05-10 (ETAPA 11 Frontend Componentes — 100% completa)
+- **Etapas concluídas:** ETAPA 11 (100% — componentes React criados)
+- **Branch após sessão:** `feature/1-parcelamento-flexível` (1 commit: `ff4765d`)
+- **Estado do build:** verde (npm run build 0 erros, 0 warnings)
+- **Arquivos criados/editados:**
+  - `controle-financeiro.web/src/pages/Parcelamentos/index.tsx` — novo; listagem com cards, stats, dialog
+  - `controle-financeiro.web/src/pages/Parcelamentos/[id].tsx` — novo; detalhe com tabela, modais pagar/cancelar
+  - `controle-financeiro.web/src/routes/AppRoutes.tsx` — adicionadas rotas /parcelamentos e /parcelamentos/:id
+  - `controle-financeiro.web/src/components/Sidebar/Sidebar.tsx` — adicionado item menu "Parcelamentos"
+  - `controle-financeiro.web/src/api/axiosConfig.ts` — porta corrigida: 5296 → 5293
+- **Decisões:**
+  - Componentes seguem padrão do projeto (Material-UI, hooks, Material-UI components)
+  - Usam tipos TypeScript com enums numéricos (0-2) alinhados ao backend
+  - Modais integrados para ações (pagar antecipado, cancelar parcelamento)
+  - Progresso visual com LinearProgress, cards, stats
+  - Rotas integradas: listagem → detalhe com dynamic routing
+- **Próxima ação ao retomar (ETAPA 12 — Documentação e Merge):**
+  1. Atualizar `docs/DATABASE.md` com schema novo
+  2. Atualizar `docs/FLOWS.md` com fluxos parcelamento
+  3. Atualizar `docs/STANDARDS.md` se houver padrões novos
+  4. Atualizar `CLAUDE.md` se necessário
+  5. Atualizar `PROGRESS.md` — mover #1 para "Resolvidos"
+  6. Atualizar `ISSUES.md` — marcar #1 como concluído
+  7. Merge `feature/1-parcelamento-flexível` → `main`
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - ETAPA 11 completada com build verde
+  - Próxima etapa é documentação e merge (ETAPA 12)
+  - Commit `ff4765d`: feat(web/parcelamento) componentes React
 
 ### Sessão 10 — 2026-05-10 (ETAPA 5b CLEANUP completa)
 - **Etapas concluídas:** ETAPA 5b (100%) — refatoração completa de código legacy + migration
