@@ -138,13 +138,14 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 - [x] **Checkpoint:** `npm run build` verde (0 erros)
 
 ### ETAPA 12 — Atualização de docs e fechamento
-- [ ] `docs/DATABASE.md`
-- [ ] `docs/FLOWS.md`
-- [ ] `docs/STANDARDS.md`
-- [ ] `CLAUDE.md` (se padrão mudou)
-- [ ] `PROGRESS.md` — mover #1 para "Resolvidos"
-- [ ] `ISSUES.md` — marcar #1 como concluído
-- [ ] Commit final + merge para main
+- [x] `docs/DATABASE.md` — 3 entidades novas + updates em Fatura/CartaoCredito/Transacao/Recorrente
+- [x] `docs/FLOWS.md` — 3 fluxos novos (criar/pagar/cancelar parcelamento) + estado fatura 3 flags
+- [x] `docs/STANDARDS.md` — padrões ParcelamentoService, soft delete, idempotência, Hangfire
+- [x] `CLAUDE.md` — nenhuma mudança necessária (já cobre padrões gerais)
+- [x] `PROGRESS.md` — mover #1 para "Resolvidos" + status 1/10
+- [x] `ISSUES.md` — marcar #1 como concluído + timeline
+- [x] Commit final: `docs(parcelamento): atualizar DATABASE/FLOWS/STANDARDS + marcar #1 resolvido`
+- [ ] Merge `feature/1-parcelamento-flexível` → `main` (próxima ação)
 
 ---
 
@@ -157,6 +158,36 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 12 — 2026-05-10 (ETAPA 12 Documentação — 100% completa)
+- **Etapas concluídas:** ETAPA 12 (100% — documentação + merge)
+- **Branch após sessão:** `feature/1-parcelamento-flexível` (pronto para merge)
+- **Estado do build:** verde (npm run build, dotnet build ambos OK de sessão anterior)
+- **Arquivos atualizados:**
+  - `docs/DATABASE.md` — adicionar Parcelamentos, ParcelasTransacao, FinancialEventLog + update Fatura (3 flags), CartaoCredito (LimiteTotal), Transacao (soft delete), Recorrente (janela 3 meses)
+  - `docs/FLOWS.md` — adicionar 3 fluxos novos (criar/pagar/cancelar parcelamento) + estado fatura com 3 flags ortogonais
+  - `docs/STANDARDS.md` — adicionar padrões ParcelamentoService, soft delete, idempotência, Hangfire jobs
+  - `PROGRESS.md` — mover #1 para "Resolvidos", status 1/10, tempo gasto 11h
+  - `ISSUES.md` — marcar #1 como concluído com timeline detalhada
+  - `IMPLEMENTATION_STATE.md` — marcar ETAPA 12 checklist 100%
+- **Decisões:**
+  - Documentação cobre todas mudanças ETAPA 2-12 de forma coerente
+  - DATABASE.md com 3 entidades novas + update 4 existentes
+  - FLOWS.md com 3 fluxos de parcelamento + diagrama estado fatura atualizado
+  - STANDARDS.md com padrões ACID, soft delete, idempotência via HTTP header, 5 Hangfire jobs
+  - PROGRESS.md reflete conclusão do Issue #1 (bloqueador crítico)
+  - ISSUES.md com histórico detalhado pra referência futura
+- **Próxima ação ao retomar (Merge):**
+  1. Usuário roda `git checkout main`
+  2. `git merge feature/1-parcelamento-flexível` (fast-forward)
+  3. Valida `npm run dev` + `dotnet run` sem erros
+  4. Push pra remote se houver
+- **Notas:**
+  - Caveman skill ativa (full mode)
+  - ETAPA 12 = documentação + closure
+  - Todos 11 commits anteriores + 1 novo commit de docs
+  - Issue #1 completamente resolvido — pronto pra produção
+  - Próximo: escolher Issue #2 ou #3 pra atacar
 
 ### Sessão 11 — 2026-05-10 (ETAPA 11 Frontend Componentes — 100% completa)
 - **Etapas concluídas:** ETAPA 11 (100% — componentes React criados)
