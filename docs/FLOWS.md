@@ -52,27 +52,85 @@ sequenceDiagram
 
 ---
 
-## 3. Create Parcelada (Installment) Flow
+## 3. Create Parcelamento (Flexible Installment) Flow — ETAPA 2
 
 ```mermaid
 sequenceDiagram
-    User->>Frontend: Fill form + Parcelas=12
-    Frontend->>API: POST /transacoes {parcelas: 12, CartaoCreditoId}
-    API->>Service: CriarParcelamentoAsync()
-    Service->>Service: Loop i=1 to 12:
-    Service->>DB: Create Transacao(NumeroParcela=i)
-    Service->>DB: Find/Create Fatura for month i
-    Service->>DB: Link Transacao → Fatura
-    Service->>DB: Commit all
-    API-->>Frontend: 201 Created + array[12 TransacaoDto]
-    Frontend->>Frontend: Show "12 parcelas criadas"
+    User->>Frontend: Fill "Parcelamento" form (valor, parcelas, cartão, primeiraParcelaMes)
+    Frontend->>API: POST /api/parcelamentos {CriarParcelamentoDto}
+    API->>Service: CriarAsync(dto, usuarioId)
+    Service->>Service: Check Idempotency-Key (header)
+    Service->>DB: Validar: cartão, categoria, limite
+    Service->>DB: BEGIN TRANSACTION
+    Service->>DB: INSERT Parcelamento (QuantidadeParcelas=N, ValorTotal, TipoParcelamento)
+    Service->>Service: Loop i=1 to N:
+    Service->>Service: Calc DataVencimento = primeiraParcelaMes + i meses
+    Service->>Service: Calc RateiovalorComJuros (incluindo juros PIX se aplicável)
+    Service->>DB: INSERT ParcelaTransacao (numero=i, DataVencimento, ValorComJuros, Status=Pendente)
+    Service->>DB: GET/CREATE Fatura para DataVencimento
+    Service->>DB: UPDATE Fatura.ParcelasTransacao += ParcelaTransacao
+    Service->>DB: INSERT Transacao (ParcelamentoId, StatusTransacao=Previsao) — materializar quando vencer
+    Service->>DB: REGISTRAR FinancialEventLog (ParcelamentoCriado + LimiteBloqueado)
+    Service->>DB: COMMIT TRANSACTION
+    API-->>Frontend: 201 Created + ParcelamentoDetalheDto
+    Frontend->>Frontend: Show "12 parcelas criadas com juros"
 ```
 
-**Key Points:**
-- `Parcelas.HasValue && Parcelas > 1` triggers parcelamento
-- Each `Transacao` has unique `NumeroParcela` (1..N)
-- `Fatura` auto-created for each month
-- Status starts as "Aberta"
+**Key Points (ETAPA 2):**
+- `TipoParcelamento`: 0=CompraParcelada (à vista no cartão), 1=PIXCredito (com juros)
+- `QuantidadeParcelas`: 2-36, flexível
+- `primeiraParcelaMes`: pode pular meses (ex: JUL, SET, NOV = semestral)
+- Cada ParcelaTransacao = 1 Fatura diferente
+- Idempotência via `Idempotency-Key` header + `FinancialEventLogService`
+- Limite bloqueado imediatamente (`LimiteBloqueado += ValorComJuros`)
+- Juros PIX: simples (1.99%-11.99% a.m.)
+
+---
+
+## 3b. Pagar Parcela Antecipada — ETAPA 2
+
+```mermaid
+sequenceDiagram
+    User->>Frontend: View Parcelamento detail, click "Pagar antecipado"
+    Frontend->>API: POST /api/parcelas/{parcelaId}/pagar {ContaPagamentoId, DataPagamento}
+    API->>Service: PagarAntecipadoAsync(parcelaId, dto, usuarioId)
+    Service->>DB: Validar: parcela Status=Pendente, conta saldo>=parcela.Valor
+    Service->>DB: BEGIN TRANSACTION
+    Service->>DB: UPDATE ParcelaTransacao SET Status=Paga, PagoEm=now
+    Service->>DB: INSERT Transacao (EhPagamentoFatura=true, FaturaPagaId=faturaId, ContaId=dto.ContaPagamentoId, Valor=parcela.Valor)
+    Service->>DB: UPDATE Fatura recalc EstadoPagamento
+    Service->>DB: REGISTRAR FinancialEventLog (ParcelaPaga + LimiteLiberado)
+    Service->>DB: COMMIT TRANSACTION
+    API-->>Frontend: 200 OK + FaturaAtualizadaDto
+    Frontend->>Frontend: Show "Parcela paga em 10/05"
+```
+
+---
+
+## 3c. Cancelar Parcelamento Inteiro — ETAPA 2
+
+```mermaid
+sequenceDiagram
+    User->>Frontend: View Parcelamento, click "Cancelar"
+    Frontend->>API: POST /api/parcelamentos/{id}/cancelar {CancelarParcelamentoDto}
+    API->>Service: CancelarAsync(parcelamentoId, dto, usuarioId)
+    Service->>DB: BEGIN TRANSACTION
+    Service->>DB: UPDATE Parcelamento SET Ativo=false, CanceladoEm, MotivoCancelamento
+    Service->>DB: UPDATE ParcelasTransacao WHERE Status=Pendente SET Status=Cancelada
+    Service->>DB: REGISTRAR FinancialEventLog (ParcelamentoCancelado + LimiteLiberado)
+    Service->>DB: COMMIT TRANSACTION
+    API-->>Frontend: 200 OK + {canceladas: int, jaPagas: int, requerEstorno: bool}
+    Frontend->>Frontend: Show "5 parcelas canceladas, 7 já pagas — considere estorno?"
+```
+
+---
+
+## OLD 3. Create Parcelada (Legacy — Removed in ETAPA 2)
+
+```
+DEPRECATED: Old system used Transacao.Parcelas + NumeroParcela.
+Replaced by: Parcelamento + ParcelaTransacao (flexible, per-month parcelas).
+```
 
 ---
 
@@ -235,30 +293,52 @@ graph TD
 
 ---
 
-## 11. Estado de Fatura Transitions
+## 11. Estado de Fatura Transitions — ETAPA 3 (3 Orthogonal Flags)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Aberta: Transaction created
-    Aberta --> Fechada: Month ends
-    Fechada --> Paga: User pays
-    Paga --> [*]: Complete
-    
-    note right of Aberta
-        Transactions can be added/removed
-        Total calculated dynamically
+    [*] --> Aberta_NaoPago: Transaction created
+    note right of Aberta_NaoPago
+        EstadoCiclo=Aberta, EstadoPagamento=NaoPago
+        Transações podem ser adicionadas
+        Total calculado dinamicamente
     end note
     
-    note right of Fechada
-        Read-only
-        Due date visible
+    Aberta_NaoPago --> Fechada_NaoPago: Hangfire job (fim do mês)
+    Aberta_NaoPago --> Fechada_PagoParcial: User paga parte
+    note right of Fechada_PagoParcial
+        EstadoCiclo=Fechada, EstadoPagamento=PagoParcial
+        Data de fechamento registrada
+        Vencimento visível
     end note
     
-    note right of Paga
-        Archived
-        Payment date recorded
+    Fechada_NaoPago --> Fechada_Atrasada: Hangfire (passado vencimento)
+    note right of Fechada_Atrasada
+        EstaAtrasada=true
+        Juros + Multa adicionados
+    end note
+    
+    Fechada_PagoParcial --> Fechada_Pago: User paga restante
+    Fechada_NaoPago --> Fechada_Pago: User paga 100%
+    Fechada_Atrasada --> Fechada_Pago: User paga com juros
+    
+    Fechada_Pago --> [*]: Complete
+    note right of Fechada_Pago
+        EstadoCiclo=Fechada, EstadoPagamento=Pago, EstaAtrasada=false
+        DataPagamentoTotal registrada
+        Arquivada
     end note
 ```
+
+**3 Orthogonal Flags:**
+1. **EstadoCiclo:** `Aberta` (0) | `Fechada` (1)
+   - Controls if new transactions can be added
+2. **EstadoPagamento:** `NaoPago` (0) | `PagoParcial` (1) | `Pago` (2)
+   - Calculated from sum of Transacoes + ParcelasTransacao pagas
+3. **EstaAtrasada:** `false` | `true`
+   - Set by FaturaAtrasoJob if DataVencimento passed without full payment
+
+**No longer:** Single `Status` enum (legacy deleted in ETAPA 5b)
 
 ---
 

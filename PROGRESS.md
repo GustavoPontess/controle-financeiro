@@ -1,33 +1,68 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🔴 0/10 problemas resolvidos  
+**Status Geral:** 🟢 1/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
+**Última Atualização:** 2026-05-10 (ETAPA 12 — Documentação)
 
 ---
 
 ## 📈 Dashboard de Progresso
 
 ```
-Bloqueadores Críticos:    0/3 ✅
+Bloqueadores Críticos:    1/3 ✅ (1 resolvido: #1)
 Problemas Altos:          0/4 ✅
 Problemas Médios:         0/3 ✅
 
-Total:                    0/10 problemas
-Tempo estimado total:     ~25-30 horas
+Total:                    1/10 problemas resolvido
+Tempo estimado restante:  ~24-25 horas
 ```
 
 ---
 
 ## ✅ Resolvidos
 
-*(Nenhum ainda)*
+### ✅ #1: Parcelamento Inflexível
+
+**Resolvido em:** 2026-05-10  
+**Tempo gasto:** ~11 horas (11 sessões)  
+**Commits:** 11 commits principais (ver IMPLEMENTATION_STATE.md Histórico de sessões)
+
+**O que mudou:**
+- **Backend Completo:** 3 entidades novas (Parcelamento, ParcelaTransacao, FinancialEventLog)
+- **Services:** ParcelamentoService, ParcelaTransacaoService, LimiteCalculatorService, FinancialEventLogService
+- **Controllers:** ParcelamentosController, ParcelasController
+- **Jobs:** 5 Hangfire background jobs (FaturaFechamento, FaturaAtraso, ExpandirRecorrentes, ExecutarRecorrentes, RecalcularLimites)
+- **Tests:** 13 xUnit tests (5 LimiteCalculator, 5 Parcelamento, 3 E2E)
+- **Frontend:** React components para Parcelamentos (listagem + detalhe + modais)
+- **Migrations:** 3 migrations (AddParcelamentoSchema, MigrateLegacyData, RemoveLegacyColumns)
+
+**Documentação atualizada:**
+- [x] docs/DATABASE.md (3 entidades + 4 atualizações)
+- [x] docs/FLOWS.md (3 fluxos novos)
+- [x] docs/STANDARDS.md (padrões ParcelamentoService, soft delete, idempotência, Hangfire)
+- [x] CLAUDE.md (já continha padrões gerais)
+
+**Testes adicionados:**
+- [x] LimiteCalculatorServiceTests (5)
+- [x] ParcelamentoServiceTests (5)
+- [x] ParcelamentoE2ETests (3)
+
+**QA:**
+- [x] Build backend: 0 erros, 0 warnings
+- [x] Build frontend: 0 erros
+- [x] Testes: 13/13 passando
+- [x] Swagger: endpoints listados
+- [x] `/hangfire` dashboard: acessível
+- [x] npm run dev: sem erros
+
+**Próximo problema:** #2 (Testes Unitários/Integração — já parcialmente feito em #1)
 
 ---
 
 ## ⏳ Em Progresso
 
-*(Nenhum ainda)*
+*(Nenhum — #1 resolvido, #2 em espera)*
 
 ---
 
@@ -35,7 +70,7 @@ Tempo estimado total:     ~25-30 horas
 
 ### 🔴 CRÍTICOS
 
-- [ ] **#1** Parcelamento Inflexível (6h)
+- [ ] **#2** Testes Unitários/Integração (8h) — 30% feito em #1
 - [ ] **#2** Testes Unitários/Integração (8h)
 - [ ] **#3** Validações de Negócio (4h)
 
