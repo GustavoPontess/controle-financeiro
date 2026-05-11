@@ -11,6 +11,60 @@ namespace ControleFinanceiro.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // AddFaturaSystem (20260505120000) não tinha Designer file — EF Core não a enxerga.
+            // Program.cs criava a tabela via raw DDL ao iniciar o app. Se o banco foi criado
+            // APENAS via migrations (sem rodar o app antes), a tabela e colunas abaixo não existem.
+            // Se o app foi rodado antes: AddFaturaSystem estará em __EFMigrationsHistory e estas
+            // declarações nunca chegarão a ser executadas neste bloco Up() — EF Core skipa a migration.
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS ""Faturas"" (
+                    ""Id"" TEXT NOT NULL,
+                    ""CartaoCreditoId"" TEXT NOT NULL,
+                    ""DataInicio"" TEXT NOT NULL,
+                    ""DataFechamento"" TEXT NOT NULL,
+                    ""DataVencimento"" TEXT NOT NULL,
+                    ""Status"" INTEGER NOT NULL DEFAULT 0,
+                    ""ValorPago"" TEXT NOT NULL DEFAULT '0',
+                    ""CriadoPor"" TEXT NOT NULL,
+                    CONSTRAINT ""PK_Faturas"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_Faturas_CartoesCredito_CartaoCreditoId"" FOREIGN KEY (""CartaoCreditoId"")
+                        REFERENCES ""CartoesCredito"" (""Id"") ON DELETE RESTRICT
+                )
+            ");
+            migrationBuilder.Sql(@"CREATE INDEX IF NOT EXISTS ""IX_Faturas_CartaoCreditoId"" ON ""Faturas"" (""CartaoCreditoId"")");
+            migrationBuilder.AddColumn<Guid>(
+                name: "FaturaId",
+                table: "Transacoes",
+                type: "TEXT",
+                nullable: true);
+            migrationBuilder.AddColumn<int>(
+                name: "Parcelas",
+                table: "Transacoes",
+                type: "INTEGER",
+                nullable: true);
+            migrationBuilder.AddColumn<int>(
+                name: "NumeroParcela",
+                table: "Transacoes",
+                type: "INTEGER",
+                nullable: true);
+            migrationBuilder.AddColumn<Guid>(
+                name: "TransacaoOrigemId",
+                table: "Transacoes",
+                type: "TEXT",
+                nullable: true);
+            migrationBuilder.CreateIndex(
+                name: "IX_Transacoes_FaturaId",
+                table: "Transacoes",
+                column: "FaturaId");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Transacoes_Faturas_FaturaId",
+                table: "Transacoes",
+                column: "FaturaId",
+                principalTable: "Faturas",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
+
             migrationBuilder.DropForeignKey(
                 name: "FK_Assinaturas_Contas_ContaId",
                 table: "Assinaturas");
@@ -362,6 +416,10 @@ namespace ControleFinanceiro.Api.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
+                name: "FK_Transacoes_Faturas_FaturaId",
+                table: "Transacoes");
+
+            migrationBuilder.DropForeignKey(
                 name: "FK_Assinaturas_CartoesCredito_CartaoCreditoId",
                 table: "Assinaturas");
 
@@ -507,6 +565,29 @@ namespace ControleFinanceiro.Api.Migrations
                 principalTable: "Contas",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.DropIndex(
+                name: "IX_Transacoes_FaturaId",
+                table: "Transacoes");
+
+            migrationBuilder.DropColumn(
+                name: "FaturaId",
+                table: "Transacoes");
+
+            migrationBuilder.DropColumn(
+                name: "Parcelas",
+                table: "Transacoes");
+
+            migrationBuilder.DropColumn(
+                name: "NumeroParcela",
+                table: "Transacoes");
+
+            migrationBuilder.DropColumn(
+                name: "TransacaoOrigemId",
+                table: "Transacoes");
+
+            migrationBuilder.DropTable(
+                name: "Faturas");
         }
     }
 }
