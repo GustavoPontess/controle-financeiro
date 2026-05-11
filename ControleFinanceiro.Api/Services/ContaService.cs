@@ -41,6 +41,9 @@ namespace ControleFinanceiro.Api.Services
             if (conta.Nome.Length > 100)
                 throw new Exception("Nome deve ter no máximo 100 caracteres.");
 
+            if (saldoInicial < 0)
+                throw new Exception("Saldo inicial não pode ser negativo.");
+
             conta.Id = Guid.NewGuid();
             conta.UsuarioIdProprietario = usuarioId;
             _context.Contas.Add(conta);

@@ -37,6 +37,21 @@ public class CartaoCreditoService(AppDbContext context)
 
     public async Task<CartaoCreditoDto> CriarAsync(CriarCartaoCreditoDto dto, Guid usuarioId)
     {
+        if (string.IsNullOrWhiteSpace(dto.Nome))
+            throw new Exception("Nome do cartão é obrigatório.");
+
+        if (dto.TemCredito)
+        {
+            if (!dto.Limite.HasValue || dto.Limite.Value <= 0)
+                throw new Exception("Limite do cartão deve ser positivo.");
+
+            if (!dto.DiaFechamento.HasValue || dto.DiaFechamento.Value is < 1 or > 28)
+                throw new Exception("Dia de fechamento deve ser entre 1 e 28.");
+
+            if (!dto.DiaVencimento.HasValue || dto.DiaVencimento.Value is < 1 or > 28)
+                throw new Exception("Dia de vencimento deve ser entre 1 e 28.");
+        }
+
         if (!dto.EhPrePago && dto.ContaId.HasValue)
         {
             var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId);
@@ -71,6 +86,21 @@ public class CartaoCreditoService(AppDbContext context)
     {
         var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
         if (cartao is null) return false;
+
+        if (string.IsNullOrWhiteSpace(dto.Nome))
+            throw new Exception("Nome do cartão é obrigatório.");
+
+        if (dto.TemCredito)
+        {
+            if (!dto.Limite.HasValue || dto.Limite.Value <= 0)
+                throw new Exception("Limite do cartão deve ser positivo.");
+
+            if (!dto.DiaFechamento.HasValue || dto.DiaFechamento.Value is < 1 or > 28)
+                throw new Exception("Dia de fechamento deve ser entre 1 e 28.");
+
+            if (!dto.DiaVencimento.HasValue || dto.DiaVencimento.Value is < 1 or > 28)
+                throw new Exception("Dia de vencimento deve ser entre 1 e 28.");
+        }
 
         if (!dto.EhPrePago && dto.ContaId.HasValue && dto.ContaId != cartao.ContaId)
         {
