@@ -1,9 +1,9 @@
 # 🚧 IMPLEMENTATION_STATE — Issue #1 Parcelamento Flexível
 
-**Atualizado em:** 2026-05-10
+**Atualizado em:** 2026-05-11
 **Branch:** `feature/1-parcelamento-flexível`
-**Etapa atual:** 12 — PRÓXIMA (ETAPA 11 concluída 100%)
-**Última sessão:** Sessão 11 — 2026-05-10 (ETAPA 11 completa — frontend componentes React + rotas)
+**Etapa atual:** Merge em main (todas etapas 0-12 concluídas)
+**Última sessão:** Sessão 13 — 2026-05-11 (fix migration AddParcelamentoSchema — Faturas não existia em DB puro migrations)
 
 ⚠️ **PENDÊNCIAS DE AMBIENTE (não bloqueiam, mas resolver em sessão dedicada):**
 - 87 arquivos em todas as branches aparecem `modified` no sandbox Linux (mount interpreta CRLF↔LF). `git diff -w` retorna vazio → não é mudança real. Recomendado normalizar com `.gitattributes` (`* text=auto eol=lf`) + `git add --renormalize .`. Cada commit gera warning "LF will be replaced by CRLF" — inofensivo.
@@ -158,6 +158,20 @@ A ordem importa: cada etapa deixa o build verde e o software funcional.
 ---
 
 ## 📜 Histórico de sessões
+
+### Sessão 13 — 2026-05-11 (fix: migration AddParcelamentoSchema — bug Faturas not found)
+- **Etapas concluídas:** nenhuma nova — bug fix em migration existente
+- **Branch após sessão:** `feature/1-parcelamento-flexível` (1 commit fix + 1 commit state)
+- **Estado do build:** `dotnet ef database update` passa sem erro (todas 3 migrations pendentes aplicadas)
+- **Problema:** `20260505120000_AddFaturaSystem` não tinha `.Designer.cs` — EF Core não reconhecia a migration. Program.cs criava a tabela `Faturas` via raw DDL ao iniciar o app e marcava a migration como aplicada manualmente. Ao rodar `dotnet ef database update` diretamente (sem ter rodado o app), `AddParcelamentoSchema` falhava: `SQLite Error 1: 'no such table: Faturas'`.
+- **Fix aplicado:** editado `20260509025858_AddParcelamentoSchema.cs`:
+  - `Up()`: adicionado `CREATE TABLE IF NOT EXISTS "Faturas"` + `AddColumn` para FaturaId/Parcelas/NumeroParcela/TransacaoOrigemId em Transacoes + `AddForeignKey` FK_Transacoes_Faturas_FaturaId — tudo idempotente (se app já tiver rodado, Faturas existe e CREATE IF NOT EXISTS vira no-op)
+  - `Down()`: adicionados drops correspondentes (DropForeignKey FK FaturaId, DropIndex, DropColumn ×4, DropTable Faturas)
+- **Próxima ação:** Merge `feature/1-parcelamento-flexível` → `main`
+  1. `git checkout main`
+  2. `git merge feature/1-parcelamento-flexível`
+  3. Validar `dotnet run` + `npm run dev` sem erros
+  4. Push se houver remote
 
 ### Sessão 12 — 2026-05-10 (ETAPA 12 Documentação — 100% completa)
 - **Etapas concluídas:** ETAPA 12 (100% — documentação + merge)
