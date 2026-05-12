@@ -99,30 +99,34 @@
 
 ---
 
+## ✅ #2: Sem Testes Unitários/Integração
+
+**Severidade:** 🔴 CRÍTICA
+**Status:** ✅ RESOLVIDO (2026-05-11)
+**Tempo:** ~1h
+**Commits:** feat(testes): adicionar testes unitários — Issue #2
+
+**O que foi feito:**
+- Setup xUnit já existia (projeto `ControleFinanceiro.Api.Tests`)
+- Criados 4 arquivos de testes novos cobrindo serviços com novas validações:
+  - `TransacaoServiceTests.cs` — 9 testes (valor zero/negativo, data futura, conta não encontrada, sem conta/cartão, categoria incompatível, dados válidos, atualizar valor/data)
+  - `CartaoCreditoServiceTests.cs` — 10 testes (nome vazio, limite zero/negativo, dia fechamento/vencimento inválido, sem crédito ignora validações, dados válidos, atualizar limite)
+  - `ContaServiceTests.cs` — 7 testes (nome vazio/longo, saldo negativo, saldo positivo cria receita, saldo zero, dados válidos, carteira não deletável)
+  - `EmprestimoServiceTests.cs` — 9 testes (valor zero/negativo, vencimento anterior, dados válidos, sem vencimento, pagamento zero/negativo/parcial/total)
+- **Total:** 48 testes passando (35 novos + 13 existentes do Issue #1)
+
+**Padrão adotado:**
+- InMemory DB com `Guid.NewGuid().ToString()` como nome único por teste
+- `ConfigureWarnings(TransactionIgnoredWarning)` para InMemory
+- Helper `Build()` retorna `(ctx, svc)` com dependências injetadas
+- Helper `SeedConta()` para testes que precisam de conta existente
+
+**QA:**
+- ✅ `dotnet test`: 48/48 passando, 0 falhas
+
 ## 🔴 BLOQUEADORES CRÍTICOS (Atacar Depois)
 
 ---
-
-### #2: Sem Testes Unitários/Integração
-
-**Severidade:** 🔴 CRÍTICA  
-**Impacto:** Risco ao refatorar, sem confiança no código  
-**Esforço:** 8 horas  
-**Status:** ⏳ NÃO INICIADO
-
-**Problema:**
-- 0% cobertura de testes
-- Refatorar parcelamento = risco alto
-
-**Solução:**
-- Setup xUnit (backend)
-- Setup Jest/Vitest (frontend)
-- Testes básicos em TransacaoService, CartaoCreditoService
-
-**Checklist After Resolve:**
-- [ ] Documentar setup de testes em docs/
-- [ ] Atualizar memory/decisions_and_constraints.md
-- [ ] CI/CD para rodar testes em cada commit
 
 ---
 
