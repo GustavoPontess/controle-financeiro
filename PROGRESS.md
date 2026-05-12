@@ -1,7 +1,7 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 1/10 problemas resolvidos  
+**Status Geral:** 🟢 2/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
 **Última Atualização:** 2026-05-10 (ETAPA 12 — Documentação)
 
@@ -10,12 +10,12 @@
 ## 📈 Dashboard de Progresso
 
 ```
-Bloqueadores Críticos:    1/3 ✅ (1 resolvido: #1)
+Bloqueadores Críticos:    2/3 ✅ (resolvidos: #1, #3)
 Problemas Altos:          0/4 ✅
 Problemas Médios:         0/3 ✅
 
-Total:                    1/10 problemas resolvido
-Tempo estimado restante:  ~24-25 horas
+Total:                    2/10 problemas resolvidos
+Tempo estimado restante:  ~20-21 horas
 ```
 
 ---
@@ -57,6 +57,22 @@ Tempo estimado restante:  ~24-25 horas
 - [x] npm run dev: sem erros
 
 **Próximo problema:** #2 (Testes Unitários/Integração — já parcialmente feito em #1)
+
+---
+
+### ✅ #3: Validações de Negócio Ausentes
+
+**Resolvido em:** 2026-05-11
+**Tempo gasto:** ~30 min
+**Commit:** `65baf78`
+
+**O que mudou:**
+- `TransacaoService`: data futura bloqueada; `Valor > 0` em Atualizar
+- `CartaoCreditoService`: Nome obrigatório; Limite > 0; DiaFechamento/DiaVencimento 1–28
+- `ContaService`: saldoInicial negativo → erro explícito
+- `EmprestimoService`: ValorTotal > 0; DataVencimento >= DataInicio; Valor > 0 em pagamento
+
+**Próximo problema:** #2 (Testes)
 
 ---
 

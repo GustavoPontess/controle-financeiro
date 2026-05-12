@@ -84,6 +84,21 @@
 
 ---
 
+## ✅ #3: Validações de Negócio Ausentes
+
+**Severidade:** 🔴 CRÍTICA
+**Status:** ✅ RESOLVIDO (2026-05-11)
+**Tempo:** ~30 min
+**Commit:** `65baf78`
+
+**O que mudou:**
+- `TransacaoService`: bloqueia data futura (Criar + Atualizar); valida `Valor > 0` em Atualizar
+- `CartaoCreditoService`: Nome obrigatório; `Limite > 0` quando `TemCredito=true`; `DiaFechamento`/`DiaVencimento` entre 1–28
+- `ContaService`: `saldoInicial < 0` agora lança erro explícito
+- `EmprestimoService`: `ValorTotal > 0`; `DataVencimento >= DataInicio`; `Valor > 0` em RegistrarPagamento
+
+---
+
 ## 🔴 BLOQUEADORES CRÍTICOS (Atacar Depois)
 
 ---
