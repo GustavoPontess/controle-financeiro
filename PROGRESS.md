@@ -1,21 +1,21 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 2/10 problemas resolvidos  
+**Status Geral:** 🟢 3/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-10 (ETAPA 12 — Documentação)
+**Última Atualização:** 2026-05-11 (Issue #2 — Testes)
 
 ---
 
 ## 📈 Dashboard de Progresso
 
 ```
-Bloqueadores Críticos:    2/3 ✅ (resolvidos: #1, #3)
+Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
 Problemas Altos:          0/4 ✅
 Problemas Médios:         0/3 ✅
 
-Total:                    2/10 problemas resolvidos
-Tempo estimado restante:  ~20-21 horas
+Total:                    3/10 problemas resolvidos
+Tempo estimado restante:  ~18-19 horas
 ```
 
 ---
@@ -56,7 +56,7 @@ Tempo estimado restante:  ~20-21 horas
 - [x] `/hangfire` dashboard: acessível
 - [x] npm run dev: sem erros
 
-**Próximo problema:** #2 (Testes Unitários/Integração — já parcialmente feito em #1)
+**Próximo problema:** #4 (Paginação em Endpoints)
 
 ---
 
@@ -72,13 +72,28 @@ Tempo estimado restante:  ~20-21 horas
 - `ContaService`: saldoInicial negativo → erro explícito
 - `EmprestimoService`: ValorTotal > 0; DataVencimento >= DataInicio; Valor > 0 em pagamento
 
-**Próximo problema:** #2 (Testes)
+**Próximo problema:** #4 (Paginação em Endpoints)
+
+---
+
+### ✅ #2: Sem Testes Unitários/Integração
+
+**Resolvido em:** 2026-05-11
+**Tempo gasto:** ~1h
+
+**O que mudou:**
+- 4 arquivos de testes novos: TransacaoService (9), CartaoCreditoService (10), ContaService (7), EmprestimoService (9)
+- **Total:** 48 testes passando (35 novos + 13 do Issue #1)
+- Padrão: InMemory DB único por teste, helpers `Build()` e `Seed*()`
+
+**QA:**
+- [x] `dotnet test`: 48/48 passando, 0 falhas
 
 ---
 
 ## ⏳ Em Progresso
 
-*(Nenhum — #1 resolvido, #2 em espera)*
+*(Nenhum — #1, #2, #3 resolvidos)*
 
 ---
 
@@ -86,9 +101,7 @@ Tempo estimado restante:  ~20-21 horas
 
 ### 🔴 CRÍTICOS
 
-- [ ] **#2** Testes Unitários/Integração (8h) — 30% feito em #1
-- [ ] **#2** Testes Unitários/Integração (8h)
-- [ ] **#3** Validações de Negócio (4h)
+*(Todos resolvidos)*
 
 ### 🟡 ALTOS
 
