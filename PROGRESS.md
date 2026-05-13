@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 5/10 problemas resolvidos  
+**Status Geral:** 🟢 6/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #5 — Autenticação Robusta)
+**Última Atualização:** 2026-05-13 (Issue #6 — Documentação)
 
 ---
 
@@ -11,11 +11,11 @@
 
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
-Problemas Altos:          2/4 ✅ (resolvidos: #4, #5)
+Problemas Altos:          3/4 ✅ (resolvidos: #4, #5, #6)
 Problemas Médios:         0/3 ✅
 
-Total:                    5/10 problemas resolvidos
-Tempo estimado restante:  ~14-15 horas
+Total:                    6/10 problemas resolvidos
+Tempo estimado restante:  ~13-14 horas
 ```
 
 ---
@@ -72,7 +72,19 @@ Tempo estimado restante:  ~14-15 horas
 - `ContaService`: saldoInicial negativo → erro explícito
 - `EmprestimoService`: ValorTotal > 0; DataVencimento >= DataInicio; Valor > 0 em pagamento
 
-**Próximo problema:** #6 (Documentação com Dono)
+**Próximo problema:** #7 (API Versioning)
+
+---
+
+### ✅ #6: Documentação Sem Dono/Revisão
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~20 min
+**Commit:** `d812c0c`
+
+**O que mudou:**
+- Frontmatter `owner/last_reviewed/next_review/status` nos 4 docs
+- Checklist de revisão trimestral no README
 
 ---
 
@@ -134,9 +146,6 @@ Tempo estimado restante:  ~14-15 horas
 
 ### 🟡 ALTOS
 
-- [ ] **#6** Documentação com Dono (1h)
-- [ ] **#7** API Versioning (3h)
-- [ ] **#6** Documentação com Dono (1h)
 - [ ] **#7** API Versioning (3h)
 
 ### 🟠 MÉDIOS

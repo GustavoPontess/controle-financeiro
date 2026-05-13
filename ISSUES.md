@@ -201,31 +201,18 @@
 
 ---
 
-### #6: Documentação Sem Dono/Revisão
+## ✅ #6: Documentação Sem Dono/Revisão
 
-**Severidade:** 🟡 ALTA  
-**Impacto:** Docs ficam obsoletas  
-**Esforço:** 1 hora  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟡 ALTA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~20 min
+**Commit:** `d812c0c`
 
-**Problema:**
-- Quem é responsável por cada doc?
-- Quando revisar?
-- Status (CURRENT / DEPRECATED)?
-
-**Solução:**
-- Adicionar frontmatter em cada doc:
-  ```yaml
-  owner: Gustavo
-  last_reviewed: 2026-05-07
-  next_review: 2026-08-07
-  status: CURRENT
-  ```
-
-**Checklist After Resolve:**
-- [ ] Adicionar metadata em todos docs em docs/
-- [ ] Adicionar metadata em memory/
-- [ ] Criar checklist de revisão mensal
+**O que foi feito:**
+- Frontmatter adicionado em 4 docs: `DATABASE.md`, `FLOWS.md`, `STANDARDS.md`, `README.md`
+- Campos: `owner: Gustavo`, `last_reviewed`, `next_review` (trimestral), `status: CURRENT`
+- Checklist trimestral de revisão adicionado no `README.md`
+- Known issues no README atualizados (itens já resolvidos removidos)
 
 ---
 
