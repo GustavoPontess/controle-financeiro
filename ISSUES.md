@@ -155,26 +155,27 @@
 
 ---
 
+## ✅ #4: Sem Paginação em Endpoints
+
+**Severidade:** 🟡 ALTA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~1h
+**Commit:** `06f9371`
+
+**O que foi feito:**
+- Criado `DTOs/Common/PagedResult<T>` — envelope genérico `{ items, total, page, pageSize, totalPages }`
+- Paginação adicionada em 5 endpoints de listagem (os que crescem sem limite):
+  - `GET /api/transacoes` — `?page=1&pageSize=20`
+  - `GET /api/emprestimos`
+  - `GET /api/parcelamentos` — mantém filtro `?ativo=`
+  - `GET /api/recorrentes`
+  - `GET /api/transferencias`
+- Categorias, Cartões e Contas **não paginados** (conjuntos naturalmente pequenos)
+- Validação: `page >= 1`, `pageSize` clampado 1–100, default 20
+- Services: `CountAsync()` + `Skip().Take()` na mesma query (eficiente)
+- 48/48 testes passando
+
 ## 🟡 PROBLEMAS ALTOS (Atacar Depois)
-
-### #4: Sem Paginação em Endpoints
-
-**Severidade:** 🟡 ALTA  
-**Impacto:** API fica lenta com muitas transações  
-**Esforço:** 2 horas  
-**Status:** ⏳ NÃO INICIADO
-
-**Problema:**
-- GET /transacoes retorna TUDO (10k transações? Tudo!)
-- Sem limite
-
-**Solução:**
-- Adicionar `skip` e `take` em controllers
-- Frontend com paginação
-
-**Checklist After Resolve:**
-- [ ] Atualizar CONTROLLER_TEMPLATE.md
-- [ ] Documentar paginação em docs/
 
 ---
 
