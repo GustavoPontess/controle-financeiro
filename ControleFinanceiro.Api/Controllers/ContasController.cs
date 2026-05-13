@@ -62,6 +62,19 @@ namespace ControleFinanceiro.Api.Controllers
             BancoNome = c.Banco?.Nome ?? string.Empty
         };
 
+        private static void ValidarCartao(CriarContaDto dto)
+        {
+            if (dto.Tipo == (int)TipoConta.CartaoCredito)
+            {
+                if (!dto.TipoCartao.HasValue)
+                    throw new ArgumentException("Tipo de cartão é obrigatório para cartões de crédito");
+
+                var tipoCartao = (TipoCartao)dto.TipoCartao.Value;
+                if ((tipoCartao == TipoCartao.Credito || tipoCartao == TipoCartao.Debito) && !dto.BancoId.HasValue)
+                    throw new ArgumentException("Cartões de crédito e débito devem estar vinculados a uma conta bancária");
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> Listar()
         {
@@ -79,51 +92,26 @@ namespace ControleFinanceiro.Api.Controllers
             return Ok(ToDto(conta));
         }
 
-        private IActionResult? ValidarCartao(CriarContaDto dto)
-        {
-            if (dto.Tipo == (int)TipoConta.CartaoCredito)
-            {
-                if (!dto.TipoCartao.HasValue)
-                    return BadRequest(new { mensagem = "Tipo de cartão é obrigatório para cartões de crédito" });
-
-                var tipoCartao = (TipoCartao)dto.TipoCartao.Value;
-                if (tipoCartao == TipoCartao.Credito || tipoCartao == TipoCartao.Debito)
-                {
-                    if (!dto.BancoId.HasValue)
-                        return BadRequest(new { mensagem = "Cartões de crédito e débito devem estar vinculados a uma conta bancária" });
-                }
-            }
-            return null;
-        }
-
         [HttpPost]
         [ProducesResponseType(typeof(ContaDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Criar([FromBody] CriarContaDto dto)
         {
-            try
-            {
-                var usuarioId = GetUserId();
-                var validacao = ValidarCartao(dto);
-                if (validacao != null) return validacao;
+            var usuarioId = GetUserId();
+            ValidarCartao(dto);
 
-                var conta = new Conta
-                {
-                    Nome = dto.Nome,
-                    NumeroConta = dto.NumeroConta,
-                    Tipo = (TipoConta)dto.Tipo,
-                    TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
-                    BancoId = dto.BancoId,
-                    IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
-                };
-
-                var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
-                return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
-            }
-            catch (Exception ex)
+            var conta = new Conta
             {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+                Nome = dto.Nome,
+                NumeroConta = dto.NumeroConta,
+                Tipo = (TipoConta)dto.Tipo,
+                TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
+                BancoId = dto.BancoId,
+                IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
+            };
+
+            var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
+            return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
         }
 
         [HttpPut("{id}")]
@@ -131,29 +119,21 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarContaDto dto)
         {
-            try
-            {
-                var usuarioId = GetUserId();
-                var validacao = ValidarCartao(dto);
-                if (validacao != null) return validacao;
+            var usuarioId = GetUserId();
+            ValidarCartao(dto);
 
-                var conta = new Conta
-                {
-                    Nome = dto.Nome,
-                    NumeroConta = dto.NumeroConta,
-                    Tipo = (TipoConta)dto.Tipo,
-                    TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
-                    BancoId = dto.BancoId,
-                    IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
-                };
-
-                await _service.AtualizarAsync(id, conta, usuarioId);
-                return NoContent();
-            }
-            catch (Exception ex)
+            var conta = new Conta
             {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+                Nome = dto.Nome,
+                NumeroConta = dto.NumeroConta,
+                Tipo = (TipoConta)dto.Tipo,
+                TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
+                BancoId = dto.BancoId,
+                IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
+            };
+
+            await _service.AtualizarAsync(id, conta, usuarioId);
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
@@ -161,17 +141,9 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Deletar(Guid id)
         {
-            try
-            {
-                var usuarioId = GetUserId();
-                await _service.DeletarAsync(id, usuarioId);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+            var usuarioId = GetUserId();
+            await _service.DeletarAsync(id, usuarioId);
+            return NoContent();
         }
     }
 }
-

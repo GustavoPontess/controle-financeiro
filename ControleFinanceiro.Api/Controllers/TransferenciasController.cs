@@ -41,16 +41,9 @@ public class TransferenciasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Criar([FromBody] CriarTransferenciaDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.CriarAsync(dto, usuarioId);
-            return CreatedAtAction(nameof(Listar), resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.CriarAsync(dto, usuarioId);
+        return CreatedAtAction(nameof(Listar), resultado);
     }
 
     [HttpDelete("{id}")]
@@ -58,15 +51,8 @@ public class TransferenciasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Deletar(Guid id)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            await _service.DeletarAsync(id, usuarioId);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        await _service.DeletarAsync(id, usuarioId);
+        return NoContent();
     }
 }

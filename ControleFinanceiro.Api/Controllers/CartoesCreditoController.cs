@@ -32,42 +32,21 @@ public class CartoesCreditoController(CartaoCreditoService service) : Controller
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarCartaoCreditoDto dto)
     {
-        try
-        {
-            var result = await _service.CriarAsync(dto, UserId);
-            return CreatedAtAction(nameof(Buscar), new { id = result.Id }, result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var result = await _service.CriarAsync(dto, UserId);
+        return CreatedAtAction(nameof(Buscar), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarCartaoCreditoDto dto)
     {
-        try
-        {
-            var ok = await _service.AtualizarAsync(id, dto, UserId);
-            return ok ? NoContent() : NotFound();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var ok = await _service.AtualizarAsync(id, dto, UserId);
+        return ok ? NoContent() : NotFound();
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Deletar(Guid id)
     {
-        try
-        {
-            var ok = await _service.DeletarAsync(id, UserId);
-            return ok ? NoContent() : NotFound();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var ok = await _service.DeletarAsync(id, UserId);
+        return ok ? NoContent() : NotFound();
     }
 }

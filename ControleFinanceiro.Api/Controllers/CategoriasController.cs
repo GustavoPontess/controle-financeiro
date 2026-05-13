@@ -56,42 +56,28 @@ namespace ControleFinanceiro.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Criar([FromBody] CriarCategoriaDto dto)
         {
-            try
+            var categoria = new Categoria
             {
-                var categoria = new Categoria
-                {
-                    Descricao = dto.Descricao,
-                    Finalidade = (Finalidade)dto.Finalidade
-                };
+                Descricao = dto.Descricao,
+                Finalidade = (Finalidade)dto.Finalidade
+            };
 
-                var criada = await _service.CriarAsync(categoria, UserId);
+            var criada = await _service.CriarAsync(categoria, UserId);
 
-                return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, new CategoriaDto
-                {
-                    Id = criada.Id,
-                    Descricao = criada.Descricao,
-                    Finalidade = (int)criada.Finalidade,
-                    IsPadrao = false,
-                });
-            }
-            catch (Exception ex)
+            return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, new CategoriaDto
             {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+                Id = criada.Id,
+                Descricao = criada.Descricao,
+                Finalidade = (int)criada.Finalidade,
+                IsPadrao = false,
+            });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Deletar(Guid id)
         {
-            try
-            {
-                await _service.DeletarAsync(id, UserId);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+            await _service.DeletarAsync(id, UserId);
+            return NoContent();
         }
     }
 }
