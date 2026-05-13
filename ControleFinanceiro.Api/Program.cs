@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Filters;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
+using ControleFinanceiro.Api.Infrastructure.Middleware;
 using ControleFinanceiro.Api.Services;
 using Hangfire;
 using Hangfire.MemoryStorage;
@@ -308,6 +309,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseHttpsRedirection();
 

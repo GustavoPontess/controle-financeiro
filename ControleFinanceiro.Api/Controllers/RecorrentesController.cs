@@ -40,60 +40,32 @@ public class RecorrentesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarRecorrenteDto dto)
     {
-        try
-        {
-            var uid = GetUserId();
-            var result = await _service.CriarAsync(dto, uid);
-            return CreatedAtAction(nameof(Listar), null, result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var uid = GetUserId();
+        var result = await _service.CriarAsync(dto, uid);
+        return CreatedAtAction(nameof(Listar), null, result);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarRecorrenteDto dto)
     {
-        try
-        {
-            var uid = GetUserId();
-            await _service.AtualizarAsync(id, dto, uid);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var uid = GetUserId();
+        await _service.AtualizarAsync(id, dto, uid);
+        return NoContent();
     }
 
     [HttpPatch("{id}/toggle")]
     public async Task<IActionResult> ToggleAtivo(Guid id)
     {
-        try
-        {
-            var uid = GetUserId();
-            await _service.ToggleAtivoAsync(id, uid);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var uid = GetUserId();
+        await _service.ToggleAtivoAsync(id, uid);
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Deletar(Guid id)
     {
-        try
-        {
-            var uid = GetUserId();
-            await _service.DeletarAsync(id, uid);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var uid = GetUserId();
+        await _service.DeletarAsync(id, uid);
+        return NoContent();
     }
 }

@@ -36,41 +36,34 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Criar([FromBody] CriarTransacaoDto dto)
         {
-            try
+            var usuarioId = GetUserId();
+
+            // Parcelamento → cria N transações e retorna lista
+            if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
             {
-                var usuarioId = GetUserId();
-
-                // Parcelamento → cria N transações e retorna lista
-                if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
-                {
-                    dto.Data = dto.Data.ToUniversalTime();
-                    var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId);
-                    var retornoParcelas = parcelas.Select(ToDto).ToList();
-                    return StatusCode(StatusCodes.Status201Created, retornoParcelas);
-                }
-
-                // Transação à vista
-                var transacao = new Transacao
-                {
-                    Id = Guid.NewGuid(),
-                    Descricao = dto.Descricao,
-                    Valor = dto.Valor,
-                    Tipo = (TipoTransacao)dto.Tipo,
-                    CategoriaId = dto.CategoriaId == Guid.Empty ? null : dto.CategoriaId,
-                    ContaId = dto.ContaId,
-                    CartaoCreditoId = dto.CartaoCreditoId,
-                    UsadoComoCredito = dto.UsadoComoCredito,
-                    MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
-                    Data = dto.Data.ToUniversalTime()
-                };
-
-                var criada = await _service.CriarTransacaoAsync(transacao, usuarioId);
-                return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
+                dto.Data = dto.Data.ToUniversalTime();
+                var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId);
+                var retornoParcelas = parcelas.Select(ToDto).ToList();
+                return StatusCode(StatusCodes.Status201Created, retornoParcelas);
             }
-            catch (Exception ex)
+
+            // Transação à vista
+            var transacao = new Transacao
             {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+                Id = Guid.NewGuid(),
+                Descricao = dto.Descricao,
+                Valor = dto.Valor,
+                Tipo = (TipoTransacao)dto.Tipo,
+                CategoriaId = dto.CategoriaId == Guid.Empty ? null : dto.CategoriaId,
+                ContaId = dto.ContaId,
+                CartaoCreditoId = dto.CartaoCreditoId,
+                UsadoComoCredito = dto.UsadoComoCredito,
+                MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
+                Data = dto.Data.ToUniversalTime()
+            };
+
+            var criada = await _service.CriarTransacaoAsync(transacao, usuarioId);
+            return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
         }
 
         private static TransacaoDto ToDto(Transacao t) => new()
@@ -124,25 +117,18 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarTransacaoDto dto)
         {
-            try
+            var usuarioId = GetUserId();
+            var dados = new Transacao
             {
-                var usuarioId = GetUserId();
-                var dados = new Transacao
-                {
-                    Descricao = dto.Descricao,
-                    Valor = dto.Valor,
-                    Tipo = (TipoTransacao)dto.Tipo,
-                    CategoriaId = dto.CategoriaId,
-                    MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
-                    Data = dto.Data.ToUniversalTime()
-                };
-                var ok = await _service.AtualizarAsync(id, dados, usuarioId);
-                return ok ? NoContent() : NotFound();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+                Descricao = dto.Descricao,
+                Valor = dto.Valor,
+                Tipo = (TipoTransacao)dto.Tipo,
+                CategoriaId = dto.CategoriaId,
+                MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
+                Data = dto.Data.ToUniversalTime()
+            };
+            var ok = await _service.AtualizarAsync(id, dados, usuarioId);
+            return ok ? NoContent() : NotFound();
         }
 
         [HttpDelete("{id}")]

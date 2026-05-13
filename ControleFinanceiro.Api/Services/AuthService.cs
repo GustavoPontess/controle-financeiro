@@ -110,14 +110,14 @@ public class AuthService
         // Find user
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower());
         if (usuario == null)
-            throw new InvalidOperationException("Email ou senha inválidos");
+            throw new UnauthorizedAccessException("Email ou senha inválidos");
 
         // Verify password
         if (!PasswordHasher.VerifyPassword(dto.Password, usuario.PasswordHash))
-            throw new InvalidOperationException("Email ou senha inválidos");
+            throw new UnauthorizedAccessException("Email ou senha inválidos");
 
         if (!usuario.Ativo)
-            throw new InvalidOperationException("Usuário inativo");
+            throw new UnauthorizedAccessException("Usuário inativo");
 
         var rt = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
@@ -150,10 +150,10 @@ public class AuthService
             .FirstOrDefaultAsync(r => r.Token == refreshToken);
 
         if (rt == null || rt.Revogado || rt.ExpiresAt <= DateTime.UtcNow)
-            throw new InvalidOperationException("Refresh token inválido ou expirado.");
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
 
         if (!rt.Usuario.Ativo)
-            throw new InvalidOperationException("Usuário inativo.");
+            throw new UnauthorizedAccessException("Usuário inativo.");
 
         // Revogar o token atual (rotação)
         rt.Revogado = true;
@@ -265,10 +265,10 @@ public class AuthService
             .FirstOrDefaultAsync(t => t.Token == dto.Token);
 
         if (prt == null || prt.Usado || prt.ExpiresAt <= DateTime.UtcNow)
-            throw new InvalidOperationException("Token inválido ou expirado.");
+            throw new ArgumentException("Token inválido ou expirado.");
 
         if (!prt.Usuario.Ativo)
-            throw new InvalidOperationException("Usuário inativo.");
+            throw new ArgumentException("Usuário inativo.");
 
         // Alterar senha
         prt.Usuario.PasswordHash = PasswordHasher.HashPassword(dto.NovaSenha);
@@ -308,7 +308,7 @@ public class AuthService
     {
         var usuario = await _context.Usuarios.FindAsync(usuarioId);
         if (usuario == null)
-            throw new InvalidOperationException("Usuário não encontrado");
+            throw new KeyNotFoundException("Usuário não encontrado");
 
         usuario.Nome = nome;
         usuario.DataNascimento = dataNascimento;
@@ -332,10 +332,10 @@ public class AuthService
     {
         var usuario = await _context.Usuarios.FindAsync(usuarioId);
         if (usuario == null)
-            throw new InvalidOperationException("Usuário não encontrado");
+            throw new KeyNotFoundException("Usuário não encontrado");
 
         if (!PasswordHasher.VerifyPassword(senhaAtual, usuario.PasswordHash))
-            throw new InvalidOperationException("Senha atual inválida");
+            throw new UnauthorizedAccessException("Senha atual inválida");
 
         if (novaSenha.Length < 6)
             throw new ArgumentException("Nova senha deve ter no mínimo 6 caracteres");

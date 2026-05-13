@@ -37,16 +37,9 @@ public class FaturasController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<FaturaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(Guid cartaoCreditoId)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var faturas = await _service.ListarPorCartaoAsync(cartaoCreditoId, usuarioId);
-            return Ok(faturas);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var faturas = await _service.ListarPorCartaoAsync(cartaoCreditoId, usuarioId);
+        return Ok(faturas);
     }
 
     /// <summary>
@@ -59,16 +52,9 @@ public class FaturasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Detalhe(Guid cartaoCreditoId, Guid faturaId)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var detalhe = await _service.DetalheAsync(faturaId, usuarioId);
-            return Ok(detalhe);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var detalhe = await _service.DetalheAsync(faturaId, usuarioId);
+        return Ok(detalhe);
     }
 
     /// <summary>
@@ -82,15 +68,8 @@ public class FaturasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Pagar(Guid cartaoCreditoId, Guid faturaId, [FromBody] PagarFaturaDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            await _service.PagarFaturaAsync(faturaId, dto, usuarioId);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        await _service.PagarFaturaAsync(faturaId, dto, usuarioId);
+        return NoContent();
     }
 }
