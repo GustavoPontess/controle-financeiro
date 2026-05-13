@@ -1,3 +1,10 @@
+---
+owner: Gustavo
+last_reviewed: 2026-05-13
+next_review: 2026-08-13
+status: CURRENT
+---
+
 # Code Standards & Conventions
 
 Padrões de código que todo contributor deve seguir para manter consistência.
