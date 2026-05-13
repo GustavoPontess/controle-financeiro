@@ -483,6 +483,38 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Parcelamentos");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("PasswordResetTokens");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -549,6 +581,38 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ContaId");
 
                     b.ToTable("Assinaturas", (string)null);
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Revogado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
@@ -866,6 +930,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
@@ -886,6 +961,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>

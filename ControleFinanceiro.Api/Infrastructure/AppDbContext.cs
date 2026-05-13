@@ -25,6 +25,10 @@ public class AppDbContext : DbContext
     public DbSet<ParcelaTransacao> ParcelasTransacao => Set<ParcelaTransacao>();
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
 
+    // ── Issue #5 Autenticação Robusta ──
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -175,6 +179,30 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })
+            .IsUnique();
+
+        // ── Issue #5 Autenticação Robusta ──
+
+        // RefreshToken → Usuario (Cascade: tokens somem com o usuário)
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(rt => rt.Usuario)
+            .WithMany()
+            .HasForeignKey(rt => rt.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(rt => rt.Token)
+            .IsUnique();
+
+        // PasswordResetToken → Usuario (Cascade: tokens somem com o usuário)
+        modelBuilder.Entity<PasswordResetToken>()
+            .HasOne(prt => prt.Usuario)
+            .WithMany()
+            .HasForeignKey(prt => prt.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PasswordResetToken>()
+            .HasIndex(prt => prt.Token)
             .IsUnique();
     }
 }
