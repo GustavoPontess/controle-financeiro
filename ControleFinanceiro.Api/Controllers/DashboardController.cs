@@ -29,16 +29,9 @@ public class DashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetResumo([FromQuery] int? ano, [FromQuery] int? mes)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var now = DateTime.Now;
-            var resultado = await _service.GetResumoAsync(usuarioId, ano ?? now.Year, mes ?? now.Month);
-            return Ok(resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var now = DateTime.Now;
+        var resultado = await _service.GetResumoAsync(usuarioId, ano ?? now.Year, mes ?? now.Month);
+        return Ok(resultado);
     }
 }

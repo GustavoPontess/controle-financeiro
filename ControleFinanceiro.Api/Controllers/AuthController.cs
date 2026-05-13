@@ -23,37 +23,15 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
-        try
-        {
-            var result = await _authService.RegisterAsync(dto);
-            return CreatedAtAction(nameof(GetMe), result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _authService.RegisterAsync(dto);
+        return CreatedAtAction(nameof(GetMe), result);
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
-        try
-        {
-            var result = await _authService.LoginAsync(dto);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
+        var result = await _authService.LoginAsync(dto);
+        return Ok(result);
     }
 
     [Authorize]
@@ -62,11 +40,10 @@ public class AuthController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            return Unauthorized();
+            throw new UnauthorizedAccessException("Usuário não identificado");
 
         var usuario = await _authService.GetUsuarioAsync(usuarioId);
-        if (usuario == null)
-            return NotFound();
+        if (usuario == null) return NotFound();
 
         return Ok(usuario);
     }
@@ -77,17 +54,10 @@ public class AuthController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            return Unauthorized();
+            throw new UnauthorizedAccessException("Usuário não identificado");
 
-        try
-        {
-            var result = await _authService.UpdateProfileAsync(usuarioId, dto.Nome, dto.DataNascimento);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await _authService.UpdateProfileAsync(usuarioId, dto.Nome, dto.DataNascimento);
+        return Ok(result);
     }
 
     [Authorize]
@@ -96,21 +66,10 @@ public class AuthController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            return Unauthorized();
+            throw new UnauthorizedAccessException("Usuário não identificado");
 
-        try
-        {
-            await _authService.ChangePasswordAsync(usuarioId, dto.SenhaAtual, dto.NovaSenha);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        await _authService.ChangePasswordAsync(usuarioId, dto.SenhaAtual, dto.NovaSenha);
+        return NoContent();
     }
 
     /// <summary>
@@ -122,19 +81,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
     {
-        try
-        {
-            var result = await _authService.RefreshAsync(dto.RefreshToken);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
+        var result = await _authService.RefreshAsync(dto.RefreshToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -155,15 +103,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
-        try
-        {
-            var result = await _authService.SolicitarResetSenhaAsync(dto.Email);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _authService.SolicitarResetSenhaAsync(dto.Email);
+        return Ok(result);
     }
 
     /// <summary>
@@ -174,19 +115,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
-        try
-        {
-            await _authService.ResetSenhaAsync(dto);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        await _authService.ResetSenhaAsync(dto);
+        return NoContent();
     }
 }
 

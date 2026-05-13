@@ -29,15 +29,8 @@ public class RelatoriosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRelatorio([FromQuery] int? ano)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.GetRelatorioAsync(usuarioId, ano ?? DateTime.Now.Year);
-            return Ok(resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.GetRelatorioAsync(usuarioId, ano ?? DateTime.Now.Year);
+        return Ok(resultado);
     }
 }

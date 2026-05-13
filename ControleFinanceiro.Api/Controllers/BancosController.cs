@@ -61,16 +61,9 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Criar([FromBody] CriarBancoDto dto)
         {
-            try
-            {
-                var banco = new Banco { Nome = dto.Nome, Tipo = (TipoBanco)dto.Tipo };
-                var criado = await _service.CriarAsync(banco);
-                return CreatedAtAction(nameof(BuscarPorId), new { id = criado.Id }, ToDto(criado));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+            var banco = new Banco { Nome = dto.Nome, Tipo = (TipoBanco)dto.Tipo };
+            var criado = await _service.CriarAsync(banco);
+            return CreatedAtAction(nameof(BuscarPorId), new { id = criado.Id }, ToDto(criado));
         }
 
         [HttpPut("{id}")]
@@ -78,16 +71,9 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarBancoDto dto)
         {
-            try
-            {
-                var banco = new Banco { Nome = dto.Nome, Tipo = (TipoBanco)dto.Tipo };
-                await _service.AtualizarAsync(id, banco);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+            var banco = new Banco { Nome = dto.Nome, Tipo = (TipoBanco)dto.Tipo };
+            await _service.AtualizarAsync(id, banco);
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
@@ -95,15 +81,8 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Deletar(Guid id)
         {
-            try
-            {
-                await _service.DeletarAsync(id);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = ex.Message });
-            }
+            await _service.DeletarAsync(id);
+            return NoContent();
         }
     }
 }

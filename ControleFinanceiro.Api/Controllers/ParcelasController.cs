@@ -50,16 +50,9 @@ public class ParcelasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PagarAntecipado(Guid parcelaId, [FromBody] PagarParcelaDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.PagarAntecipadoAsync(parcelaId, dto, usuarioId);
-            return Ok(resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.PagarAntecipadoAsync(parcelaId, dto, usuarioId);
+        return Ok(resultado);
     }
 
     /// <summary>
@@ -81,15 +74,8 @@ public class ParcelasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Cancelar(Guid parcelaId, [FromBody] CancelarParcelaDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.CancelarAsync(parcelaId, dto, usuarioId);
-            return Ok(resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.CancelarAsync(parcelaId, dto, usuarioId);
+        return Ok(resultado);
     }
 }

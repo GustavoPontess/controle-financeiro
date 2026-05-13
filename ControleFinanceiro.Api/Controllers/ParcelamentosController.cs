@@ -45,16 +45,9 @@ public class ParcelamentosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize);
-            return Ok(parcelamentos);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize);
+        return Ok(parcelamentos);
     }
 
     /// <summary>
@@ -71,16 +64,9 @@ public class ParcelamentosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Detalhe(Guid id)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var detalhe = await _service.ObterDetalheAsync(id, usuarioId);
-            return Ok(detalhe);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var detalhe = await _service.ObterDetalheAsync(id, usuarioId);
+        return Ok(detalhe);
     }
 
     /// <summary>
@@ -98,16 +84,9 @@ public class ParcelamentosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Criar([FromBody] CriarParcelamentoDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.CriarAsync(dto, usuarioId);
-            return CreatedAtAction(nameof(Detalhe), new { id = resultado.Id }, resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.CriarAsync(dto, usuarioId);
+        return CreatedAtAction(nameof(Detalhe), new { id = resultado.Id }, resultado);
     }
 
     /// <summary>
@@ -129,15 +108,8 @@ public class ParcelamentosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarParcelamentoDto dto)
     {
-        try
-        {
-            var usuarioId = GetUserId();
-            var resultado = await _service.CancelarAsync(id, dto, usuarioId);
-            return Ok(resultado);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { mensagem = ex.Message });
-        }
+        var usuarioId = GetUserId();
+        var resultado = await _service.CancelarAsync(id, dto, usuarioId);
+        return Ok(resultado);
     }
 }
