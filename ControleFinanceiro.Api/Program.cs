@@ -39,6 +39,7 @@ builder.Services.AddScoped<RecorrenteService>();
 builder.Services.AddScoped<EmprestimoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
+builder.Services.AddScoped<OrcamentoService>();
 
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
