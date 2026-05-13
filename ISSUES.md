@@ -216,25 +216,19 @@
 
 ---
 
-### #7: Sem Versionamento de API
+## ✅ #7: Sem Versionamento de API
 
-**Severidade:** 🟡 ALTA  
-**Impacto:** Quebracliente se mudar schema  
-**Esforço:** 3 horas  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟡 ALTA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~1h
+**Commit:** `8804037`
 
-**Problema:**
-- POST /api/transacoes (v1 implícita)
-- Sem suporte a múltiplas versões
-
-**Solução:**
-- POST /api/v1/transacoes
-- Suporte a v1, v2 simultâneas por 1-2 anos
-
-**Checklist After Resolve:**
-- [ ] Atualizar Program.cs com versionamento
-- [ ] Atualizar controllers
-- [ ] Documentar estratégia em docs/
+**O que foi feito:**
+- Instalado `Asp.Versioning.Mvc` 8.1.0 + `Asp.Versioning.Mvc.ApiExplorer` 8.1.0
+- `DefaultApiVersionConvention` (IControllerConvention) reescreve rotas globalmente de `api/*` → `api/v{version:apiVersion}/*` sem tocar nos 14 controllers
+- `Program.cs`: `AddApiVersioning` com `UrlSegmentApiVersionReader`, `AssumeDefaultVersionWhenUnspecified=true`, Swagger doc v1
+- Frontend: `axiosConfig.ts` e `axiosClient.ts` atualizados para `http://localhost:5293/api/v1`
+- 48/48 testes passando, 0 erros, 0 warnings
 
 ---
 
