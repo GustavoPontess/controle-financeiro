@@ -1,3 +1,10 @@
+---
+owner: Gustavo
+last_reviewed: 2026-05-13
+next_review: 2026-08-13
+status: CURRENT
+---
+
 # Database Schema
 
 SQLite database with 11 core entities. **File:** `ControleFinanceiro.Api/controlefinanceiro.db`
