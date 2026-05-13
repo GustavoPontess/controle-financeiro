@@ -255,26 +255,18 @@
 
 ---
 
-### #9: SQL Raw em Program.cs (Não Migração)
+## ✅ #9: SQL Raw em Program.cs (Não Migração)
 
-**Severidade:** 🟠 MÉDIA  
-**Impacto:** Deploy arriscado, difícil de sincronizar  
-**Esforço:** 2 horas  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟠 MÉDIA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~30 min
+**Commit:** `7cb2870`
 
-**Problema:**
-- AplicarSistemaFaturasAsync() executa SQL direto
-- Não é migration EF Core
-- Difícil de rollback
-
-**Solução:**
-- Converter tudo para migrations EF Core
-- Deletar SQL raw do Program.cs
-
-**Checklist After Resolve:**
-- [ ] Atualizar docs/ se schema mudou
-- [ ] Testar em DB limpo
-- [ ] Documentar migração em docs/
+**O que foi feito:**
+- Diagnóstico: `AplicarSistemaFaturasAsync` era redundante — `AddParcelamentoSchema` (20260509025858) já cria Faturas via `CREATE TABLE IF NOT EXISTS` e `MigrateAsync()` roda antes do raw SQL
+- Removidos ~115 linhas de DDL raw do `Program.cs`
+- Startup agora: `MigrateAsync()` → seed bancos → seed categorias
+- `20260505120000_AddFaturaSystem.cs` mantida com comentário explicativo (migration legada sem Designer.cs, não reconhecida pelo EF Core)
 
 ---
 
