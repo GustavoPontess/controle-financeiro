@@ -234,26 +234,24 @@
 
 ## 🟠 PROBLEMAS MÉDIOS (Atacar Depois)
 
-### #8: Tratamento de Erro Inconsistente
+## ✅ #8: Tratamento de Erro Inconsistente
 
-**Severidade:** 🟠 MÉDIA  
-**Impacto:** Confunde frontend e usuário  
-**Esforço:** 2 horas  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟠 MÉDIA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~1h
+**Commit:** `16ff4b5`
 
-**Problema:**
-- Alguns endpoints: `{ message: "erro" }`
-- Outros: `{ mensagem: "erro" }`
-- Inconsistência em status codes
-
-**Solução:**
-- Padrão único de erro
-- Códigos de erro (ERROR_001)
-- Middleware de error handling
-
-**Checklist After Resolve:**
-- [ ] Atualizar CONTROLLER_TEMPLATE.md
-- [ ] Documentar erro handling em docs/
+**O que foi feito:**
+- `ErrorResponseDto` — envelope único `{ message, code }` em camelCase
+- `GlobalExceptionHandlerMiddleware` — captura todas as exceções não tratadas e mapeia para status codes padronizados:
+  - `ArgumentException` → 400 `VALIDATION_ERROR`
+  - `KeyNotFoundException` → 404 `NOT_FOUND`
+  - `InvalidOperationException` → 409 `BUSINESS_RULE_VIOLATION`
+  - `UnauthorizedAccessException` → 401 `UNAUTHORIZED`
+  - `*` → 500 `INTERNAL_ERROR`
+- Removidos todos os `try/catch` de erro dos 12 controllers (476 linhas de boilerplate eliminadas)
+- `AuthService`: exceções ajustadas para tipos semânticos corretos
+- `ContasController`: `ValidarCartao` convertido para `throw ArgumentException`
 
 ---
 

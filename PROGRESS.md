@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 7/10 problemas resolvidos  
+**Status Geral:** 🟢 8/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #7 — API Versioning)
+**Última Atualização:** 2026-05-13 (Issue #8 — Error Handling)
 
 ---
 
@@ -12,10 +12,10 @@
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
 Problemas Altos:          4/4 ✅ (resolvidos: #4, #5, #6, #7)
-Problemas Médios:         0/3 ✅
+Problemas Médios:         1/3 ✅ (resolvidos: #8)
 
-Total:                    7/10 problemas resolvidos
-Tempo estimado restante:  ~10 horas
+Total:                    8/10 problemas resolvidos
+Tempo estimado restante:  ~22 horas (#9 simples, #10 complexo)
 ```
 
 ---
@@ -114,6 +114,20 @@ Tempo estimado restante:  ~10 horas
 - 5 endpoints paginados: Transações, Empréstimos, Parcelamentos, Recorrentes, Transferências
 - Query: `CountAsync()` + `Skip().Take()`, page/pageSize com clamp 1–100
 - 48/48 testes passando
+
+---
+
+### ✅ #8: Tratamento de Erro Inconsistente
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~1h
+**Commit:** `16ff4b5`
+
+**O que mudou:**
+- `ErrorResponseDto` — envelope único `{ message, code }` em camelCase para todas as respostas de erro
+- `GlobalExceptionHandlerMiddleware` — mapeamento único: ArgumentException→400, KeyNotFoundException→404, InvalidOperationException→409, UnauthorizedAccessException→401, *→500
+- Todos os 12 controllers limpos de try/catch de erro (476 linhas removidas)
+- `AuthService` com tipos de exceção semânticos corretos
 
 ---
 
