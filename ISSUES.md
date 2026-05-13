@@ -270,25 +270,22 @@
 
 ---
 
-### #10: Sem Features Básicas
+## ✅ #10: Features Básicas (parcial)
 
-**Severidade:** 🟠 MÉDIA  
-**Impacto:** Produto não é competitivo  
-**Esforço:** 20+ horas  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟠 MÉDIA
+**Status:** ✅ PARCIALMENTE RESOLVIDO (2026-05-13)
+**Tempo:** ~2h
+**Commit:** `298f882`
 
-**Problemas:**
-- ❌ Relatórios customizáveis
-- ❌ Export (CSV, PDF)
-- ❌ Orçamento / metas
-- ❌ Avisos de limite
-- ❌ Recorrentes com auto-execução
-- ❌ Sincronização com banco
+**Implementado:**
+- ✅ Relatórios customizáveis: `GET /api/v1/relatorios/periodo?dataInicio=&dataFim=[&categoriaId][&tipo][&contaId]` — evolução diária, gastos por categoria e meio de pagamento, limite 2 anos
+- ✅ Export CSV: `GET /api/v1/relatorios/export/csv` (mesmos filtros) — download direto Content-Disposition
+- ✅ Orçamento/Metas: CRUD completo (`/api/v1/orcamentos`) — limite por categoria/mês, alertas de consumo, `emAlerta`, `ultrapassado`, cálculo em tempo real
 
-**Checklist After Resolve:**
-- [ ] Documentar cada feature
-- [ ] Testar end-to-end
-- [ ] Atualizar docs/FLOWS.md
+**Pendente (out of scope para agora):**
+- ⏳ Export PDF (requer biblioteca, ex: QuestPDF)
+- ⏳ Avisos de limite em tempo real (WebSocket/SignalR)
+- ⏳ Sincronização com banco (Open Finance/BCB)
 
 ---
 
