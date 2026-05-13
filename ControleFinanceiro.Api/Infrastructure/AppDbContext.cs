@@ -29,6 +29,9 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    // ── Issue #10 Orçamento/Metas ──
+    public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -203,6 +206,28 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PasswordResetToken>()
             .HasIndex(prt => prt.Token)
+            .IsUnique();
+
+        // ── Issue #10 Orçamento/Metas ──
+
+        // Orcamento → Usuario (Cascade: orçamentos somem com o usuário)
+        modelBuilder.Entity<Orcamento>()
+            .HasOne(o => o.Usuario)
+            .WithMany()
+            .HasForeignKey(o => o.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Orcamento → Categoria (SetNull: categoria pode ser deletada, orçamento vira "geral")
+        modelBuilder.Entity<Orcamento>()
+            .HasOne(o => o.Categoria)
+            .WithMany()
+            .HasForeignKey(o => o.CategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Um usuário pode ter apenas 1 orçamento por (categoria, mês, ano)
+        modelBuilder.Entity<Orcamento>()
+            .HasIndex(o => new { o.UsuarioId, o.CategoriaId, o.Mes, o.Ano })
             .IsUnique();
     }
 }
