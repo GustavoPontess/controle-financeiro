@@ -1,6 +1,7 @@
 using System.Globalization;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -394,18 +395,32 @@ public class ParcelamentoService
     /// Lista parcelamentos do usuário, ordenados por data de criação (mais recentes primeiro).
     /// Filtra por <paramref name="ativo"/> se informado.
     /// </summary>
-    public async Task<List<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null)
+    public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 20)
     {
-        var parcelamentos = await _context.Parcelamentos
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Parcelamentos
             .Where(p => p.CriadoPor == usuarioId
                         && (!ativo.HasValue || p.Ativo == ativo.Value))
             .Include(p => p.CartaoCredito)
             .Include(p => p.Parcelas)
             .OrderByDescending(p => p.CriadoEm)
-            .AsNoTracking()
+            .AsNoTracking();
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return parcelamentos.Select(p => MontarDto(p, detalhe: false)).ToList();
+        return new PagedResult<ParcelamentoDto>
+        {
+            Items = items.Select(p => MontarDto(p, detalhe: false)),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     // ── Detalhe ───────────────────────────────────────────────────────────────

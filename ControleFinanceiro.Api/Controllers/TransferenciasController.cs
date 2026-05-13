@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -27,12 +28,12 @@ public class TransferenciasController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<TransferenciaDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar()
+    [ProducesResponseType(typeof(PagedResult<TransferenciaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var usuarioId = GetUserId();
-        var lista = await _service.ListarAsync(usuarioId);
-        return Ok(lista);
+        var resultado = await _service.ListarAsync(usuarioId, page, pageSize);
+        return Ok(resultado);
     }
 
     [HttpPost]

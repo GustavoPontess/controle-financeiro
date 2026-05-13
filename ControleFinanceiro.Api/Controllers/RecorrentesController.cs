@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -27,12 +28,13 @@ public class RecorrentesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Listar()
+    [ProducesResponseType(typeof(PagedResult<RecorrenteDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var uid = GetUserId();
         await _service.GerarPendentesAsync(uid);
-        var lista = await _service.ListarAsync(uid);
-        return Ok(lista);
+        var resultado = await _service.ListarAsync(uid, page, pageSize);
+        return Ok(resultado);
     }
 
     [HttpPost]

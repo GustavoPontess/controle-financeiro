@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -82,15 +83,31 @@ public class TransferenciaService
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
     }
 
-    public async Task<List<TransferenciaDto>> ListarAsync(Guid usuarioId)
+    public async Task<PagedResult<TransferenciaDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
     {
-        return await _context.Transferencias
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Transferencias
             .Where(t => t.CriadoPor == usuarioId)
             .Include(t => t.ContaOrigem)
             .Include(t => t.ContaDestino)
-            .OrderByDescending(t => t.Data)
+            .OrderByDescending(t => t.Data);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(t => MapToDto(t, t.ContaOrigem!.Nome, t.ContaDestino!.Nome))
             .ToListAsync();
+
+        return new PagedResult<TransferenciaDto>
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     public async Task DeletarAsync(Guid id, Guid usuarioId)

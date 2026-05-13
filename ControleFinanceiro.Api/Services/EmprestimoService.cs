@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Emprestimo;
 using ControleFinanceiro.Api.Infrastructure;
 
@@ -10,16 +11,30 @@ public class EmprestimoService(AppDbContext context)
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<List<EmprestimoDto>> ListarAsync(Guid usuarioId)
+    public async Task<PagedResult<EmprestimoDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
     {
-        var emprestimos = await _context.Emprestimos
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Emprestimos
             .Where(e => e.CriadoPor == usuarioId)
             .OrderBy(e => e.Quitado)
             .ThenBy(e => e.DataVencimento)
-            .ThenBy(e => e.DataInicio)
+            .ThenBy(e => e.DataInicio);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return emprestimos.Select(ToDto).ToList();
+        return new PagedResult<EmprestimoDto>
+        {
+            Items = items.Select(ToDto),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     public async Task<EmprestimoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
