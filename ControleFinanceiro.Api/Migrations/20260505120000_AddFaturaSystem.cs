@@ -5,7 +5,16 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ControleFinanceiro.Api.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// ATENÇÃO — migration legada sem .Designer.cs; NÃO é reconhecida pelo EF Core.
+    ///
+    /// O schema de Faturas é criado por <see cref="AddParcelamentoSchema"/> (20260509025858)
+    /// via SQL idempotente (CREATE TABLE IF NOT EXISTS). Bancos existentes possuem a entrada
+    /// '20260505120000_AddFaturaSystem' em __EFMigrationsHistory porque o startup antigo a
+    /// inseria manualmente — esse raw SQL foi removido em Issue #9. Esta classe é mantida
+    /// apenas para não quebrar a cronologia do diretório; não execute nem delete para
+    /// evitar confusão em revisões futuras.
+    /// </summary>
     [Migration("20260505120000_AddFaturaSystem")]
     public partial class AddFaturaSystem : Migration
     {
