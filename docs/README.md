@@ -1,3 +1,10 @@
+---
+owner: Gustavo
+last_reviewed: 2026-05-13
+next_review: 2026-08-13
+status: CURRENT
+---
+
 # Documentation Index
 
 Complete documentation for the Controle Financeiro project.
@@ -147,10 +154,8 @@ dotnet ef migrations add MigrationName
 
 ## ⚠️ Known Issues
 
-1. **Port Mismatch:** Frontend baseURL is `5296` but backend runs on `5293` — **needs fixing**
-2. **No Rate Limiting:** Future security concern
-3. **No Background Jobs:** Recorrentes & async tasks not implemented
-4. **No Tests:** Unit/integration tests not in place
+1. **No Rate Limiting:** Future security concern
+2. **No API Versioning:** Issue #7 — endpoints sem versionamento
 
 ---
 
@@ -178,4 +183,27 @@ If still stuck, trace through the code and add documentation!
 
 ---
 
-**Last Updated:** 2026-05-07
+---
+
+## 🔄 Ciclo de Revisão de Documentação
+
+Cada documento em `docs/` possui frontmatter com:
+
+| Campo | Descrição |
+|-------|-----------|
+| `owner` | Responsável por manter o documento atualizado |
+| `last_reviewed` | Data da última revisão |
+| `next_review` | Data prevista para próxima revisão (trimestral) |
+| `status` | `CURRENT` / `OUTDATED` / `DEPRECATED` |
+
+### Checklist de revisão trimestral (owner: Gustavo)
+
+- [ ] DATABASE.md — schema ainda reflete todas as entidades?
+- [ ] FLOWS.md — fluxos ainda correspondem ao código?
+- [ ] STANDARDS.md — padrões ainda são seguidos? Algum novo padrão surgiu?
+- [ ] README.md (este) — links válidos? Known issues atualizado?
+- [ ] CLAUDE.md (raiz) — arquitetura e comandos ainda corretos?
+- Atualizar `last_reviewed` e `next_review` em cada arquivo revisado
+- Marcar `status: OUTDATED` se o arquivo precisar de atualização urgente
+
+**Last Updated:** 2026-05-13
