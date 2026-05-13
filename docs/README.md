@@ -155,7 +155,6 @@ dotnet ef migrations add MigrationName
 ## ⚠️ Known Issues
 
 1. **No Rate Limiting:** Future security concern
-2. **No API Versioning:** Issue #7 — endpoints sem versionamento
 
 ---
 
