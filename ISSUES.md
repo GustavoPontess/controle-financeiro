@@ -179,28 +179,25 @@
 
 ---
 
-### #5: Autenticação Não-Robusta
+## ✅ #5: Autenticação Não-Robusta
 
-**Severidade:** 🟡 ALTA  
-**Impacto:** Inseguro para produção  
-**Esforço:** 5 horas  
-**Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟡 ALTA
+**Status:** ✅ RESOLVIDO (2026-05-13)
+**Tempo:** ~1h
+**Commit:** `863efad`
 
-**Problema:**
-- Sem "forgot password"
-- Sem "2FA"
-- Sem "session management"
-- Sem "refresh token"
-
-**Solução:**
-- Implementar forgot password
-- Refresh token para expiração
-- 2FA opcional
-
-**Checklist After Resolve:**
-- [ ] Atualizar docs/FLOWS.md (novo fluxo auth)
-- [ ] Documentar segurança em docs/
-- [ ] Atualizar memory/decisions_and_constraints.md
+**O que foi feito:**
+- `RefreshToken` e `PasswordResetToken` — 2 entidades novas com cascade delete
+- Migration `AddRefreshAndResetTokens` aplicada
+- `AuthService`:
+  - `LoginAsync` / `RegisterAsync` agora retornam `refreshToken` + `refreshTokenExpiresAt` (7 dias)
+  - `RefreshAsync` — rotação de token: revoga o antigo, emite novo par JWT+refresh
+  - `LogoutAsync` — revoga refresh token (silencioso se não encontrado)
+  - `SolicitarResetSenhaAsync` — gera token de reset (1h), invalida tokens anteriores (em prod: enviar por e-mail)
+  - `ResetSenhaAsync` — valida token, atualiza senha, revoga todos os refresh tokens do usuário
+- 4 endpoints novos: `POST /auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password`
+- 2FA fora do escopo (requer infra SMS/TOTP)
+- 48/48 testes passando
 
 ---
 

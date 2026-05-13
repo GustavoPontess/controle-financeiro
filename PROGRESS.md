@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 4/10 problemas resolvidos  
+**Status Geral:** 🟢 5/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #4 — Paginação)
+**Última Atualização:** 2026-05-13 (Issue #5 — Autenticação Robusta)
 
 ---
 
@@ -11,11 +11,11 @@
 
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
-Problemas Altos:          1/4 ✅ (resolvido: #4)
+Problemas Altos:          2/4 ✅ (resolvidos: #4, #5)
 Problemas Médios:         0/3 ✅
 
-Total:                    4/10 problemas resolvidos
-Tempo estimado restante:  ~16-17 horas
+Total:                    5/10 problemas resolvidos
+Tempo estimado restante:  ~14-15 horas
 ```
 
 ---
@@ -72,7 +72,22 @@ Tempo estimado restante:  ~16-17 horas
 - `ContaService`: saldoInicial negativo → erro explícito
 - `EmprestimoService`: ValorTotal > 0; DataVencimento >= DataInicio; Valor > 0 em pagamento
 
-**Próximo problema:** #5 (Autenticação Robusta)
+**Próximo problema:** #6 (Documentação com Dono)
+
+---
+
+### ✅ #5: Autenticação Não-Robusta
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~1h
+**Commit:** `863efad`
+
+**O que mudou:**
+- Refresh token (7 dias) com rotação — Login/Register retornam o par completo
+- Logout revoga refresh token
+- Forgot/Reset password com token de 1h
+- Reset revoga todos os refresh tokens do usuário
+- 4 endpoints novos em `/auth`
 
 ---
 
@@ -119,7 +134,8 @@ Tempo estimado restante:  ~16-17 horas
 
 ### 🟡 ALTOS
 
-- [ ] **#5** Autenticação Robusta (5h)
+- [ ] **#6** Documentação com Dono (1h)
+- [ ] **#7** API Versioning (3h)
 - [ ] **#6** Documentação com Dono (1h)
 - [ ] **#7** API Versioning (3h)
 
