@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ControleFinanceiro.Api.Data;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Filters;
@@ -8,7 +9,9 @@ using Hangfire;
 using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,14 +90,32 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger/OpenAPI Configuration with JWT Support
+// ── API Versioning ────────────────────────────────────────────────────────────
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddMvc(options =>
+{
+    options.Conventions.Add(new DefaultApiVersionConvention());
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+// Swagger/OpenAPI Configuration with JWT Support + Versioning
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "Controle Financeiro API",
-        Version = "v1.0",
-        Description = "API de gerenciamento financeiro pessoal com suporte a transações, contas, cartões de crédito, transferências e mais.",
+        Version = "v1",
+        Description = "API de gerenciamento financeiro pessoal — v1.",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
             Name = "Gustavo Pontes",

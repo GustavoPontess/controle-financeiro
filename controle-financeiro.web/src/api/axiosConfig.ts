@@ -1,7 +1,7 @@
 import axios from "axios"
 
 export const api = axios.create({
-  baseURL: "http://localhost:5293/api",
+  baseURL: "http://localhost:5293/api/v1",
 })
 
 // Request interceptor to add JWT token
