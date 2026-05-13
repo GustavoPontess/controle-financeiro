@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 3/10 problemas resolvidos  
+**Status Geral:** 🟢 4/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-11 (Issue #2 — Testes)
+**Última Atualização:** 2026-05-13 (Issue #4 — Paginação)
 
 ---
 
@@ -11,11 +11,11 @@
 
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
-Problemas Altos:          0/4 ✅
+Problemas Altos:          1/4 ✅ (resolvido: #4)
 Problemas Médios:         0/3 ✅
 
-Total:                    3/10 problemas resolvidos
-Tempo estimado restante:  ~18-19 horas
+Total:                    4/10 problemas resolvidos
+Tempo estimado restante:  ~16-17 horas
 ```
 
 ---
@@ -72,7 +72,21 @@ Tempo estimado restante:  ~18-19 horas
 - `ContaService`: saldoInicial negativo → erro explícito
 - `EmprestimoService`: ValorTotal > 0; DataVencimento >= DataInicio; Valor > 0 em pagamento
 
-**Próximo problema:** #4 (Paginação em Endpoints)
+**Próximo problema:** #5 (Autenticação Robusta)
+
+---
+
+### ✅ #4: Sem Paginação em Endpoints
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~1h
+**Commit:** `06f9371`
+
+**O que mudou:**
+- `PagedResult<T>` genérico em `DTOs/Common/`
+- 5 endpoints paginados: Transações, Empréstimos, Parcelamentos, Recorrentes, Transferências
+- Query: `CountAsync()` + `Skip().Take()`, page/pageSize com clamp 1–100
+- 48/48 testes passando
 
 ---
 
@@ -105,7 +119,6 @@ Tempo estimado restante:  ~18-19 horas
 
 ### 🟡 ALTOS
 
-- [ ] **#4** Paginação em Endpoints (2h)
 - [ ] **#5** Autenticação Robusta (5h)
 - [ ] **#6** Documentação com Dono (1h)
 - [ ] **#7** API Versioning (3h)
