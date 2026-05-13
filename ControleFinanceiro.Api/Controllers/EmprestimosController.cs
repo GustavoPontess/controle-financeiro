@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Emprestimo;
 using ControleFinanceiro.Api.Services;
 using System.Security.Claims;
@@ -16,9 +17,10 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> Listar()
+    [ProducesResponseType(typeof(PagedResult<EmprestimoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var result = await _service.ListarAsync(UserId);
+        var result = await _service.ListarAsync(UserId, page, pageSize);
         return Ok(result);
     }
 

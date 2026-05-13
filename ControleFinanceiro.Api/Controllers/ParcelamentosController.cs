@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -34,18 +35,20 @@ public class ParcelamentosController : ControllerBase
     /// Listar todos os parcelamentos ativos do usuário.
     /// </summary>
     /// <param name="ativo">Filtro opcional (null = ambos).</param>
-    /// <returns>Lista de parcelamentos com próxima parcela.</returns>
+    /// <param name="page">Página atual (base 1, padrão 1).</param>
+    /// <param name="pageSize">Itens por página (1–100, padrão 20).</param>
+    /// <returns>Resultado paginado de parcelamentos com próxima parcela.</returns>
     /// <response code="200">Lista retornada.</response>
     /// <response code="401">Não autenticado.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ParcelamentoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<ParcelamentoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Listar(bool? ativo = null)
+    public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         try
         {
             var usuarioId = GetUserId();
-            var parcelamentos = await _service.ListarAsync(usuarioId, ativo);
+            var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize);
             return Ok(parcelamentos);
         }
         catch (Exception ex)

@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Services;
@@ -91,13 +92,19 @@ namespace ControleFinanceiro.Api.Controllers
         };
 
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<TransacaoDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> Listar()
+        [ProducesResponseType(typeof(PagedResult<TransacaoDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var usuarioId = GetUserId();
-            var lista = await _service.ListarAsync(usuarioId);
+            var resultado = await _service.ListarAsync(usuarioId, page, pageSize);
 
-            return Ok(lista.Select(ToDto));
+            return Ok(new PagedResult<TransacaoDto>
+            {
+                Items = resultado.Items.Select(ToDto),
+                Total = resultado.Total,
+                Page = resultado.Page,
+                PageSize = resultado.PageSize,
+            });
         }
 
         [HttpGet("{id}")]
