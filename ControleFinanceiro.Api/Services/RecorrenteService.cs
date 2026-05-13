@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -83,41 +84,55 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
     }
 
-    public async Task<List<RecorrenteDto>> ListarAsync(Guid usuarioId)
+    public async Task<PagedResult<RecorrenteDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
     {
-        var lista = await _context.Recorrentes
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Recorrentes
             .Where(r => r.CriadoPor == usuarioId)
             .Include(r => r.Categoria)
             .Include(r => r.Conta)
             .Include(r => r.CartaoCredito)
             .OrderByDescending(r => r.Ativo)
             .ThenBy(r => r.Descricao)
-            .AsNoTracking()
+            .AsNoTracking();
+
+        var total = await query.CountAsync();
+        var lista = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return lista.Select(r => new RecorrenteDto
+        return new PagedResult<RecorrenteDto>
         {
-            Id = r.Id,
-            Descricao = r.Descricao,
-            Valor = r.Valor,
-            Tipo = (int)r.Tipo,
-            TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
-            CategoriaId = r.CategoriaId,
-            CategoriaNome = r.Categoria?.Descricao,
-            ContaId = r.ContaId,
-            ContaNome = r.Conta?.Nome,
-            CartaoCreditoId = r.CartaoCreditoId,
-            CartaoCreditoNome = r.CartaoCredito?.Nome,
-            Frequencia = (int)r.Frequencia,
-            FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
-            Dia = r.Dia,
-            DataInicio = r.DataInicio,
-            DataFim = r.DataFim,
-            Ativo = r.Ativo,
-            DataProximaGeracao = r.DataProximaGeracao,
-            CanceladoEm = r.CanceladoEm,
-            MotivoCancelamento = r.MotivoCancelamento
-        }).ToList();
+            Items = lista.Select(r => new RecorrenteDto
+            {
+                Id = r.Id,
+                Descricao = r.Descricao,
+                Valor = r.Valor,
+                Tipo = (int)r.Tipo,
+                TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
+                CategoriaId = r.CategoriaId,
+                CategoriaNome = r.Categoria?.Descricao,
+                ContaId = r.ContaId,
+                ContaNome = r.Conta?.Nome,
+                CartaoCreditoId = r.CartaoCreditoId,
+                CartaoCreditoNome = r.CartaoCredito?.Nome,
+                Frequencia = (int)r.Frequencia,
+                FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
+                Dia = r.Dia,
+                DataInicio = r.DataInicio,
+                DataFim = r.DataFim,
+                Ativo = r.Ativo,
+                DataProximaGeracao = r.DataProximaGeracao,
+                CanceladoEm = r.CanceladoEm,
+                MotivoCancelamento = r.MotivoCancelamento
+            }),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     public async Task<RecorrenteDto> CriarAsync(CriarRecorrenteDto dto, Guid usuarioId)
@@ -140,7 +155,7 @@ public class RecorrenteService
             {
                 var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
                 if (prevEvent != null)
-                    return (await ListarAsync(usuarioId)).FirstOrDefault(r => r.Id == recorrenteId)
+                    return (await ListarAsync(usuarioId)).Items.FirstOrDefault(r => r.Id == recorrenteId)
                         ?? throw new Exception("Idempotência: evento anterior encontrado mas recorrente não existe.");
             }
 
@@ -232,7 +247,7 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return (await ListarAsync(usuarioId)).First(r => r.Id == recorrenteId);
+            return (await ListarAsync(usuarioId)).Items.First(r => r.Id == recorrenteId);
         }
         catch
         {

@@ -101,17 +101,33 @@ namespace ControleFinanceiro.Api.Services
                 usuarioId);
         }
 
-        public async Task<List<Transacao>> ListarAsync(Guid usuarioId)
+        public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
         {
-            return await _context.Transacoes
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+
+            var query = _context.Transacoes
                 .Where(t =>
                     (t.ContaId.HasValue && t.Conta!.UsuarioIdProprietario == usuarioId) ||
                     (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId))
                 .Include(t => t.Conta)
                 .Include(t => t.CartaoCredito)
                 .Include(t => t.Categoria)
-                .OrderByDescending(t => t.Data)
+                .OrderByDescending(t => t.Data);
+
+            var total = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            return new DTOs.Common.PagedResult<Transacao>
+            {
+                Items = items,
+                Total = total,
+                Page = page,
+                PageSize = pageSize,
+            };
         }
 
         public async Task<Transacao?> BuscarPorIdAsync(Guid id, Guid usuarioId)

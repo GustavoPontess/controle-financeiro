@@ -5,6 +5,7 @@ using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using System.Linq;
 
 namespace ControleFinanceiro.Api.Tests.Services;
 
@@ -233,7 +234,7 @@ public class ParcelamentoServiceTests
         var resultado = await service.ListarAsync(usuarioId, true);
 
         // Assert
-        Assert.Single(resultado);
-        Assert.Equal(parcelamento.Id, resultado[0].Id);
+        Assert.Single(resultado.Items);
+        Assert.Equal(parcelamento.Id, resultado.Items.First().Id);
     }
 }
