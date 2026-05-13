@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 8/10 problemas resolvidos  
+**Status Geral:** 🟢 9/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #8 — Error Handling)
+**Última Atualização:** 2026-05-13 (Issue #9 — SQL Raw → Migrations)
 
 ---
 
@@ -12,10 +12,10 @@
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
 Problemas Altos:          4/4 ✅ (resolvidos: #4, #5, #6, #7)
-Problemas Médios:         1/3 ✅ (resolvidos: #8)
+Problemas Médios:         2/3 ✅ (resolvidos: #8, #9)
 
-Total:                    8/10 problemas resolvidos
-Tempo estimado restante:  ~22 horas (#9 simples, #10 complexo)
+Total:                    9/10 problemas resolvidos
+Tempo estimado restante:  ~20 horas (#10 — Features Básicas)
 ```
 
 ---
@@ -114,6 +114,19 @@ Tempo estimado restante:  ~22 horas (#9 simples, #10 complexo)
 - 5 endpoints paginados: Transações, Empréstimos, Parcelamentos, Recorrentes, Transferências
 - Query: `CountAsync()` + `Skip().Take()`, page/pageSize com clamp 1–100
 - 48/48 testes passando
+
+---
+
+### ✅ #9: SQL Raw em Program.cs
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~30 min
+**Commit:** `7cb2870`
+
+**O que mudou:**
+- Removido `AplicarSistemaFaturasAsync()` do Program.cs (~115 linhas de DDL raw)
+- `AddParcelamentoSchema` já fazia o mesmo via `CREATE TABLE IF NOT EXISTS`
+- Startup limpo: `MigrateAsync()` → seed
 
 ---
 
