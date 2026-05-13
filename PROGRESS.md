@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 9/10 problemas resolvidos  
+**Status Geral:** 🟢 10/10 problemas resolvidos (parcialmente em #10)  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #9 — SQL Raw → Migrations)
+**Última Atualização:** 2026-05-13 (Issue #10 — Features Básicas)
 
 ---
 
@@ -12,10 +12,10 @@
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
 Problemas Altos:          4/4 ✅ (resolvidos: #4, #5, #6, #7)
-Problemas Médios:         2/3 ✅ (resolvidos: #8, #9)
+Problemas Médios:         3/3 ✅ (resolvidos: #8, #9, #10 parcial)
 
-Total:                    9/10 problemas resolvidos
-Tempo estimado restante:  ~20 horas (#10 — Features Básicas)
+Total:                    10/10 problemas resolvidos ✅
+Features pendentes:       PDF export, WebSocket alertas, Open Finance
 ```
 
 ---
@@ -114,6 +114,19 @@ Tempo estimado restante:  ~20 horas (#10 — Features Básicas)
 - 5 endpoints paginados: Transações, Empréstimos, Parcelamentos, Recorrentes, Transferências
 - Query: `CountAsync()` + `Skip().Take()`, page/pageSize com clamp 1–100
 - 48/48 testes passando
+
+---
+
+### ✅ #10: Features Básicas (parcial)
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~2h
+**Commit:** `298f882`
+
+**O que mudou:**
+- Relatórios customizáveis: `/api/v1/relatorios/periodo` com filtros de período, categoria, tipo, conta
+- Export CSV: `/api/v1/relatorios/export/csv` — download direto
+- Orçamento/Metas: CRUD completo com alertas de consumo em tempo real
 
 ---
 
