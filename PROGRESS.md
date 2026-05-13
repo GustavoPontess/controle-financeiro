@@ -1,9 +1,9 @@
 # Progress Tracker
 
 **Objetivo:** Virar produto  
-**Status Geral:** 🟢 6/10 problemas resolvidos  
+**Status Geral:** 🟢 7/10 problemas resolvidos  
 **Data Início:** 2026-05-07  
-**Última Atualização:** 2026-05-13 (Issue #6 — Documentação)
+**Última Atualização:** 2026-05-13 (Issue #7 — API Versioning)
 
 ---
 
@@ -11,11 +11,11 @@
 
 ```
 Bloqueadores Críticos:    3/3 ✅ (resolvidos: #1, #2, #3)
-Problemas Altos:          3/4 ✅ (resolvidos: #4, #5, #6)
+Problemas Altos:          4/4 ✅ (resolvidos: #4, #5, #6, #7)
 Problemas Médios:         0/3 ✅
 
-Total:                    6/10 problemas resolvidos
-Tempo estimado restante:  ~13-14 horas
+Total:                    7/10 problemas resolvidos
+Tempo estimado restante:  ~10 horas
 ```
 
 ---
@@ -117,6 +117,21 @@ Tempo estimado restante:  ~13-14 horas
 
 ---
 
+### ✅ #7: Sem Versionamento de API
+
+**Resolvido em:** 2026-05-13
+**Tempo gasto:** ~1h
+**Commit:** `8804037`
+
+**O que mudou:**
+- `Asp.Versioning.Mvc` 8.1.0 + `Asp.Versioning.Mvc.ApiExplorer` instalados
+- `DefaultApiVersionConvention` reescreve rotas globalmente → `api/v1/*` sem alterar os 14 controllers
+- `Program.cs`: `AddApiVersioning` + `UrlSegmentApiVersionReader` + Swagger v1
+- Frontend: `axiosConfig.ts` + `axiosClient.ts` atualizados para `/api/v1`
+- `AssumeDefaultVersionWhenUnspecified=true` mantém retrocompatibilidade
+
+---
+
 ### ✅ #2: Sem Testes Unitários/Integração
 
 **Resolvido em:** 2026-05-11
@@ -146,7 +161,7 @@ Tempo estimado restante:  ~13-14 horas
 
 ### 🟡 ALTOS
 
-- [ ] **#7** API Versioning (3h)
+*(Todos resolvidos)*
 
 ### 🟠 MÉDIOS
 
