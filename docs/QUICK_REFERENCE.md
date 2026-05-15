@@ -24,7 +24,7 @@ dotnet run
 cd controle-financeiro.web
 npm run dev
 
-# Note: ⚠️ Port mismatch → Frontend baseURL hardcoded to 5296 (needs fix)
+# API versionada: rotas em /api/v1/... (configurado globalmente)
 ```
 
 ---
@@ -288,11 +288,11 @@ git push origin feature-branch
 
 ## ⚠️ Important Notes
 
-1. **Port issue:** Frontend tries to hit `localhost:5296/api` but backend is `5293` — needs fix
-2. **Delete behavior:** Contas cascade (txns deleted), CartoesCreditito restrict (can't delete if open Faturas)
-3. **No soft deletes:** Using RESTRICT delete behavior instead
-4. **No rate limiting:** Future security concern
-5. **No background jobs:** Recorrentes don't auto-execute (needs implementation)
+1. **API versionada:** todas as rotas em `/api/v1/...` (configurado globalmente em `Program.cs`)
+2. **Delete behavior:** Contas cascade (txns deleted), Cartões restrict (can't delete if open Faturas)
+3. **Soft delete obrigatório** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`
+4. **Background jobs:** 5 jobs Hangfire ativos (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`). Atualmente usando `MemoryStorage` (migração para Postgres prevista em Issue #17)
+5. **Pendências de produção** (ver `../ISSUES.md` Bloco A): rate limiting, JWT em httpOnly cookie, secrets via env var, política de senha forte
 
 ---
 
