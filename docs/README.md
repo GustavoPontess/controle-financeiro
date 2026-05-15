@@ -37,7 +37,8 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 | [DATABASE.md](./DATABASE.md) | Schema, ER, delete behavior, descrição das entidades |
 | [FLOWS.md](./FLOWS.md) | Fluxos de negócio (transação, parcelamento, fatura) |
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, componentes MUI |
-| [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches e mensagens de commit |
+| [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches, commits, PR, squash merge |
+| [COLLABORATION.md](./COLLABORATION.md) | Protocolo de trabalho em dupla (Issues, conflitos, review) |
 | [CONTROLLER_TEMPLATE.md](./CONTROLLER_TEMPLATE.md) | Scaffold para criar novo controller |
 | [ANALISE_PRODUTO.md](./ANALISE_PRODUTO.md) | Análise crítica de produto (maio/2026) — leitura recomendada para entender o porquê do roadmap atual |
 

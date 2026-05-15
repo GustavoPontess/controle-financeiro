@@ -1,419 +1,278 @@
-# Git Workflow - Padrão de Commits & Branches
+---
+owner: Gustavo
+last_reviewed: 2026-05-15
+next_review: 2026-08-15
+status: CURRENT
+---
 
-**Decisão:** GitHub Flow (simples, moderno, eficiente)  
-**Data:** 2026-05-07  
-**Responsável:** Gustavo  
+# Git Workflow
 
-⚠️ **IMPORTANTE:** Seguir este padrão em TODOS os commits e branches. Não improvisar.
+**Estratégia:** GitHub Flow + PR obrigatório + Squash Merge.
+
+Para o protocolo de trabalho **em dupla** (quem pega qual Issue, conflitos previsíveis, code review), ver `COLLABORATION.md`. Este arquivo cobre apenas as regras de git em si.
 
 ---
 
-## 📋 Estratégia: GitHub Flow
+## Branches
 
-### Por quê GitHub Flow?
-- ✅ Simples (1 main + feature branches)
-- ✅ Cada problema = 1 branch clara
-- ✅ Fácil rastrear em ISSUES.md
-- ✅ Rápido de fazer merge
-- ✅ Moderno (usado por GitHub, GitLab)
-- ✅ Sem overhead de Git Flow
+### Naming pattern
 
-### Branches
 ```
-main (ÚNICA branch protegida em produção)
-  ↑
-  └─ feature/[ISSUE_ID]-[descrição] (cada problema)
-     └─ merge quando resolvido
+feature/<numero-issue>-<slug-kebab-case>
 ```
+
+Sempre derivada de `main` atualizada. O número é o do GitHub Issue, que reflete o número em `ISSUES.md`.
+
+**Bons exemplos:**
+
+```
+feature/11-segredos-env-vars
+feature/12-cors-correto
+feature/22-familia-membros-modelagem
+```
+
+**Errado:**
+
+```
+feature/segredos               (sem número)
+feature/11_segredos_env_vars   (underscore, não kebab)
+my-branch                      (sem prefixo)
+fix/11-segredos                (use feature/ para tudo, não fix/)
+```
+
+### Branch protection no `main`
+
+Configurar no GitHub (Settings → Branches → Add rule para `main`):
+
+- ✅ Require pull request before merging
+- ✅ Require approvals: 1
+- ✅ Dismiss stale approvals when new commits are pushed
+- ✅ Require linear history
+- ✅ Require status checks to pass (depois que Issue #19 entregar o CI)
+
+Até habilitar formalmente, regra é por convenção: **ninguém commita direto em `main`**.
 
 ---
 
-## 🏷️ Padrão de Naming de Branches
+## Commits
 
-### Formato
-```
-feature/[ISSUE_ID]-[descrição-em-kebab-case]
-```
+### Mensagem semântica
 
-### Exemplos (Obrigatório)
 ```
-feature/1-parcelamento-flexivel
-feature/2-add-unit-tests
-feature/3-validacoes-negocio
-feature/4-paginacao-endpoints
-feature/5-autenticacao-robusta
-feature/6-docs-ownership
-feature/7-api-versioning
-feature/8-error-handling-consistente
-feature/9-migrations-ef-core
-feature/10-features-basicas
+<tipo>(<escopo>): <descrição curta>
+
+<corpo opcional, em prosa ou bullets>
+
+Refs #<numero-issue>
 ```
 
-### ❌ O QUE NÃO FAZER
+### Tipos válidos
+
+| Tipo | Quando usar |
+|---|---|
+| `feat` | Funcionalidade nova ou melhoria de comportamento |
+| `fix` | Correção de bug |
+| `docs` | Mudança só em documentação |
+| `refactor` | Reescrita sem mudança de comportamento |
+| `test` | Adicionar/ajustar testes |
+| `chore` | Build, deps, configuração, infra de repo |
+| `perf` | Melhoria de performance |
+| `style` | Formatação (sem mudança de lógica) |
+
+### Bons exemplos
+
 ```
-❌ feature/parcelamento (sem ID)
-❌ feature/1-parcelamento_inflexivel (underscore, não kebab)
-❌ fix/parcelamento (usa feature, não fix/hotfix para problemas normais)
-❌ my-branch (nenhum prefixo)
+feat(security): mover JWT secret para variável de ambiente
+
+Adiciona leitura via Environment.GetEnvironmentVariable com fallback
+de erro claro quando ausente. appsettings.json passa a ter placeholder.
+
+Refs #11
 ```
 
----
-
-## 📝 Padrão de Commit Messages
-
-### Formato
 ```
-<tipo>(<escopo>): <descrição>
-
-<corpo (opcional)>
-
-<footer (opcional)>
+fix(cors): remover AllowAnyOrigin que invalidava WithOrigins
+Refs #12
 ```
 
-### Tipos (Obrigatório)
 ```
-feat:     Nova feature ou melhoria
-fix:      Correção de bug
-docs:     Documentação
-refactor: Refatoração de código (sem mudança de feature)
-test:     Testes adicionados/modificados
-chore:    Dependências, build, etc
+docs: atualiza COLLABORATION.md com regra de rebase
 ```
 
-### Exemplos (Obrigatório)
+### Errado
 
-**Commit simples:**
 ```
-feat: adicionar suporte a parcelamento flexível
-```
-
-**Com escopo:**
-```
-feat(transacao): refactor parcelamento com ParcelaTransacao
-
-- Criar tabela ParcelaTransacao
-- Suportar datas customizadas
-- Migration EF Core
+mudanças                           (genérico)
+WIP                                (não permitido em main)
+fix fix fix                        (sem descrição)
+GRANDE MUDANÇA AQUI               (sem tipo)
+ajustes finais                    (vazio de sentido)
 ```
 
-**Fixar bug:**
-```
-fix(auth): corrigir JWT token expirado após 60min
+### Tamanho do commit
 
-O token não estava sendo renovado. Implementado refresh token.
-```
-
-**Documentação:**
-```
-docs: atualizar DATABASE.md após refactor parcelamento
-```
-
-### ❌ O QUE NÃO FAZER
-```
-❌ "mudancas" (muito genérico)
-❌ "fix fix fix" (sem descrição)
-❌ "commit" (impessoal)
-❌ "1" (ilegível)
-❌ "GRANDE MUDANÇA AQUI" (sem tipo)
-```
+- **Commits pequenos** e frequentes durante o trabalho. Cada commit deve ser uma unidade lógica.
+- **Não vale "commit gigante"** com tudo da Issue. Se quebrar em 5-10 commits faz sentido conceitual, quebre.
+- No final, o squash merge unifica tudo em 1 commit no `main` — então o ônus do histórico bonito está no PR title/description, não em cada commit da branch.
 
 ---
 
-## 🔄 Workflow Passo a Passo
+## Workflow ponta a ponta
 
-### 1. Começar Novo Problema
+### 1. Começar uma Issue
 
 ```bash
-# Atualizar main
 git checkout main
-git pull origin main
+git pull --ff-only origin main
 
-# Criar branch EXATAMENTE neste formato
-git checkout -b feature/[ID]-[descrição]
+# Antes de criar a branch, assigne-se no GitHub Issue
+gh issue edit <numero> --add-assignee @me
 
-# Exemplo:
-git checkout -b feature/1-parcelamento-flexivel
+# Cria a branch
+git checkout -b feature/<numero>-<slug>
 ```
 
-### 2. Trabalhar no Problema
+### 2. Trabalhar
 
 ```bash
-# Fazer mudanças
-# ... editar código ...
+# Commits frequentes
+git add <arquivos-específicos>
+git commit -m "feat(escopo): descrição"
 
-# Commits frequentes (não 1 commit gigante)
-git add src/services/ParcelaTransacaoService.cs
-git commit -m "feat(transacao): adicionar serviço de parcela"
-
-git add ControleFinanceiro.Api/Controllers/TransacoesController.cs
-git commit -m "feat(controller): atualizar endpoint de parcelamento"
-
-git add docs/DATABASE.md
-git commit -m "docs: atualizar schema após ParcelaTransacao"
-
-# Push
-git push origin feature/1-parcelamento-flexivel
+# Push cedo (mesmo se for Draft PR)
+git push -u origin feature/<numero>-<slug>
 ```
 
-### 3. Antes de Fazer Merge: Checklist
+### 3. Sincronizar com `main` se o outro mergeou algo
+
+```bash
+git fetch origin
+git rebase origin/main
+
+# Se conflito, resolve, depois:
+git add <arquivos-resolvidos>
+git rebase --continue
+
+# Force-push só se necessário, e SEMPRE com --force-with-lease (nunca --force)
+git push --force-with-lease
+```
+
+### 4. Abrir PR
+
+```bash
+# Opcional: via CLI
+gh pr create --fill --base main --head feature/<numero>-<slug>
+
+# Ou pela interface do GitHub. O template aparece automaticamente.
+```
+
+### 5. Pedir review
+
+- PR fica **Draft** enquanto trabalhando.
+- Quando todos os checks do template estão verdes, marca **Ready for review**.
+- Adiciona o sócio como reviewer (`gh pr edit --add-reviewer <user>` ou pela UI).
+
+### 6. Após approval, fazer o merge
+
+- **Quem abriu o PR faz o merge** (não o reviewer).
+- **Estratégia: Squash and merge** (botão padrão no GitHub se configurado).
+- **Mensagem do squash:** o GitHub usa o título do PR. Ajuste antes do merge se necessário.
+- **Deletar a branch** após merge (botão automático).
+
+```bash
+# Após merge, na máquina local:
+git checkout main
+git pull --ff-only origin main
+git branch -d feature/<numero>-<slug>
+```
+
+### 7. Atualizar arquivos vivos
+
+Após merge, abrir uma **branch curta para atualizar `PROGRESS.md` e `ISSUES.md`** marcando a Issue como concluída. Esse update pode entrar via PR pequeno ou — se o time concordou — direto em `main` (acordo a tomar).
+
+---
+
+## Checklist antes de marcar PR como Ready for review
 
 ```
-Antes de fazer merge, garantir:
-
 Código:
-  [ ] dotnet build (sem warnings)
-  [ ] npm run lint (frontend sem erros)
-  [ ] Testes passam (se houver)
-  [ ] Zero console.error no browser
+  [ ] dotnet build sem warnings
+  [ ] dotnet test passando
+  [ ] npm run build sem erros (se mexeu no frontend)
+  [ ] npm run lint sem erros (se mexeu no frontend)
 
 Documentação:
   [ ] docs/DATABASE.md atualizado (se schema mudou)
   [ ] docs/FLOWS.md atualizado (se fluxo mudou)
-  [ ] docs/STANDARDS.md atualizado (se padrão mudou)
-  [ ] memory/architecture_audit.md atualizado
-  [ ] memory/decisions_and_constraints.md atualizado (se decisão nova)
-  [ ] QUICK_REFERENCE.md atualizado (se resumo mudou)
-  [ ] CONTROLLER_TEMPLATE.md atualizado (se padrão mudou)
-  [ ] ISSUES.md atualizado (marcar como ✅ #X)
-  [ ] PROGRESS.md atualizado (incrementar contador)
+  [ ] docs/STANDARDS.md atualizado (se padrão novo)
+  [ ] docs/QUICK_REFERENCE.md atualizado (se algo essencial mudou)
+  [ ] docs/features/<feature>/ atualizado (se mexeu em feature)
+  [ ] Swagger atualizado (comentários XML em endpoints novos)
 
 Commits:
-  [ ] Mensagens claras (feat/fix/docs)
-  [ ] Sem "WIP", "tmp", "test"
-  [ ] Sem commits desnecessários
+  [ ] Mensagens semânticas (feat/fix/docs/...)
+  [ ] Sem "WIP" ou commits temporários
+  [ ] Refs para a Issue presentes
 
 Testes:
-  [ ] Testes novos cobrem mudança
-  [ ] Testes antigos ainda passam
-  [ ] Zero test failures
-
-Swagger:
-  [ ] Swagger UI atualizado (se endpoint novo)
-  [ ] Comentários XML em place
-```
-
-### 4. Fazer Merge
-
-```bash
-# Opção A: Merge local
-git checkout main
-git pull origin main
-git merge feature/1-parcelamento-flexivel
-git push origin main
-
-# Opção B: Pull Request (melhor pra revisar)
-# No GitHub/GitLab, abrir PR e merge via interface
-
-# Delete branch
-git branch -d feature/1-parcelamento-flexivel
-git push origin --delete feature/1-parcelamento-flexivel
-```
-
-### 5. Atualizar PROGRESS.md + ISSUES.md
-
-**APÓS fazer merge na main:**
-
-```bash
-# Já na main
-git pull origin main
-
-# Editar PROGRESS.md:
-# - Mover #1 de "⏳ NÃO INICIADOS" para "✅ RESOLVIDOS"
-# - Incrementar contador "0/10" → "1/10"
-# - Adicionar nota da resolução
-
-# Editar ISSUES.md:
-# - Mudar status de "#1" de "⏳ NÃO INICIADO" para "✅ RESOLVIDO"
-
-git add PROGRESS.md ISSUES.md
-git commit -m "docs: problema #1 resolvido"
-git push origin main
+  [ ] Cobertura para o que mudou
+  [ ] Nenhum teste antigo quebrado
 ```
 
 ---
 
-## 📋 Template de PR (se usar Pull Requests)
+## Regras inegociáveis
 
-```markdown
-# Problema: #1 - Parcelamento Flexível
-
-## Descrição
-Refator completo do sistema de parcelamento para suportar datas customizadas.
-
-Ver ISSUES.md #1 para contexto completo.
-
-## Mudanças Técnicas
-- [ ] Nova tabela `ParcelaTransacao`
-- [ ] Migration EF Core
-- [ ] Controllers atualizados
-- [ ] Testes adicionados
-
-## Documentação Atualizada
-- [x] docs/DATABASE.md
-- [x] docs/FLOWS.md
-- [x] memory/architecture_audit.md
-- [x] ISSUES.md
-- [x] PROGRESS.md
-
-## Checklist de Qualidade
-- [x] Build sem warnings
-- [x] Testes passam
-- [x] Swagger atualizado
-- [x] Zero console.error
-- [x] Commits com mensagens claras
-
-## Relacionado
-Closes ISSUES.md #1
-```
+1. **Nunca commitar em `main` direto** (mesmo antes do branch protection estar configurado).
+2. **Nunca `git push --force` no `main`.** Em branch própria, só `--force-with-lease`.
+3. **Nunca merge commit em PR.** Squash sempre. Histórico linear.
+4. **Nunca dois devs na mesma branch ao mesmo tempo.** Branch é território de um dev por vez.
+5. **Nunca abrir PR sem assignee.** O autor é sempre assignee.
+6. **Nunca aprovar o próprio PR.** O outro revisa.
+7. **Nunca deixar branch antiga (já mergeada) viva no remoto.** Deletar após merge.
 
 ---
 
-## 🔗 Integração com ISSUES.md + PROGRESS.md
+## Aliases úteis (opcional)
 
-### Relação Obrigatória
-
-```
-ISSUES.md:
-├── #1 Parcelamento Inflexível
-│   └── Branch: feature/1-parcelamento-flexivel
-│   └── Status: ⏳ NÃO INICIADO / 🔄 EM PROGRESSO / ✅ RESOLVIDO
-│
-├── #2 Testes
-│   └── Branch: feature/2-add-unit-tests
-│   └── Status: ⏳ NÃO INICIADO
-│
-└── #3 Validações
-    └── Branch: feature/3-validacoes-negocio
-    └── Status: ⏳ NÃO INICIADO
-
-PROGRESS.md:
-├── 🔴 CRÍTICOS: 0/3
-│   [ ] #1 (feature/1-parcelamento-flexivel)
-│   [ ] #2 (feature/2-add-unit-tests)
-│   [ ] #3 (feature/3-validacoes-negocio)
-│
-└── 📈 Total: 0/10 resolvidos
-```
-
----
-
-## 📊 Exemplo Completo (Semana 1)
-
-```bash
-# Segunda
-git checkout -b feature/1-parcelamento-flexivel
-# ... trabalhar ...
-git add .
-git commit -m "feat: adicionar ParcelaTransacao"
-git push origin feature/1-parcelamento-flexivel
-
-# Quarta (após resolver)
-git checkout main
-git pull origin main
-git merge feature/1-parcelamento-flexivel
-git push origin main
-git branch -d feature/1-parcelamento-flexivel
-git push origin --delete feature/1-parcelamento-flexivel
-
-# Atualizar docs
-git add PROGRESS.md ISSUES.md
-git commit -m "docs: problema #1 resolvido"
-git push origin main
-
-# Quinta
-git checkout -b feature/2-add-unit-tests
-# ... continuar ...
-```
-
----
-
-## ✅ Checklist Antes de Começar Cada Problema
-
-```
-Antes de git checkout -b feature/X:
-
-[ ] ISSUES.md está atualizado?
-[ ] PROGRESS.md está atualizado?
-[ ] main está atualizado?
-    git checkout main
-    git pull origin main
-[ ] Nenhuma branch antiga pendente?
-    git branch -a
-[ ] Decisão clara do que fazer?
-    Ver ISSUES.md #X
-[ ] Tempo estimado? (blocar calendário se preciso)
-```
-
----
-
-## 🚨 Regras que NUNCA Quebrar
-
-1. **SEMPRE começar em main atualizado**
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-
-2. **SEMPRE usar naming pattern** `feature/[ID]-[descrição]`
-
-3. **SEMPRE fazer commits com tipo** `feat:/fix:/docs:/etc`
-
-4. **SEMPRE revisar checklist** antes de fazer merge
-
-5. **SEMPRE atualizar PROGRESS.md + ISSUES.md** após resolver
-
-6. **NUNCA fazer merge de feature diretamente em main** (usar PR se possível)
-
-7. **NUNCA commit sem descrição clara**
-
-8. **NUNCA deixar branches antigas no remote**
-
----
-
-## 📱 Git Aliases (Optional, Facilita Vida)
-
-Adicione ao `~/.gitconfig`:
+Adicione ao seu `~/.gitconfig`:
 
 ```ini
 [alias]
-    checkout-clean = "!git checkout main && git pull origin main"
-    branch-clean = "!git branch -d $(git branch --merged | grep -v main)"
-    commit-msg = "!echo 'feat:|fix:|docs:|refactor:|test:|chore:'"
-    log-branch = "log --oneline --graph --all --decorate"
+    # Atualiza main
+    sync = "!git checkout main && git pull --ff-only origin main"
+
+    # Cria branch a partir de main atualizada
+    nb = "!f() { git sync && git checkout -b \"$1\"; }; f"
+
+    # Rebase em main
+    rb = "!git fetch origin && git rebase origin/main"
+
+    # Status enxuto
+    s = status -sb
+
+    # Log bonito
+    lg = "log --oneline --graph --all --decorate -20"
+
+    # Push seguro
+    pf = push --force-with-lease
 ```
 
 Uso:
+
 ```bash
-git checkout-clean
-git commit-msg  # mostra tipos válidos
-git branch-clean
+git sync                            # atualiza main
+git nb feature/11-segredos          # cria branch
+git rb                              # rebase em main
+git s                               # status
+git lg                              # log gráfico
+git pf                              # force-push seguro
 ```
 
 ---
 
-## 📚 Referência Rápida
+## Resolução de conflitos
 
-| Ação | Comando |
-|------|---------|
-| Começar problema | `git checkout -b feature/1-xxx` |
-| Fazer commit | `git commit -m "feat: descrição"` |
-| Enviar branch | `git push origin feature/1-xxx` |
-| Merge | `git merge feature/1-xxx` |
-| Atualizar docs | `git add PROGRESS.md && git commit -m "docs: #1 resolvido"` |
-| Deletar branch | `git branch -d feature/1-xxx && git push origin --delete feature/1-xxx` |
+Para conflitos em arquivos compartilhados específicos (`PROGRESS.md`, migrations, `package-lock.json`), ver `COLLABORATION.md` seção 7.
 
----
-
-## 💡 Reminders Automáticos
-
-Toda vez que começar problema novo, lembrar:
-
-✅ Padrão branch: `feature/[ID]-[descrição]`  
-✅ Padrão commit: `feat/fix/docs: descrição`  
-✅ Atualizar documentação antes de merge  
-✅ Atualizar PROGRESS.md após resolver  
-✅ Deletar branch após merge  
-
----
-
-**Este arquivo é "LIVE" — se o padrão mudar, atualizar aqui!**
+Princípio geral: **rebase, não merge.** Resolva conflito linha a linha, teste o resultado, depois `--continue`.
