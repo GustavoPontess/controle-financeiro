@@ -14,6 +14,8 @@ Você é Claude trabalhando no projeto **Controle Financeiro** em `E:\VSCode\con
 
 **Não é projeto pessoal** — é produto futuro. Padrão de qualidade alto: testes, validação, documentação atualizada, commits semânticos.
 
+**Trabalho em dupla:** o projeto é desenvolvido por dois devs em assíncrono, ambos com Claude. **Antes de fazer qualquer mudança, ler `docs/COLLABORATION.md`** para entender o protocolo de coordenação (GitHub Issues, branches, code review, conflitos previsíveis).
+
 ---
 
 ## 2. Primeira ação — invocar skill `caveman`
@@ -22,15 +24,40 @@ Antes de qualquer outra coisa, invoque a skill `caveman` no modo `full` para red
 
 Se a skill já estiver ativa de invocação anterior, ignore.
 
-## 3. Ordem de leitura obrigatória (a cada nova sessão)
+## 3. Pré-flight de git (antes de qualquer mudança)
+
+Antes de tocar em código, garantir que o ambiente local está sincronizado e que ninguém mais está na Issue que você vai pegar:
+
+```bash
+# 1. Atualizar main local
+git checkout main
+git pull --ff-only origin main
+
+# 2. Ver o estado das Issues no GitHub
+gh issue list --state open                       # tudo aberto
+gh issue list --assignee "@me" --state open      # o que está comigo
+gh pr list --state open                          # PRs em andamento
+
+# 3. Se já tem Issue assignada a você (sessão anterior em andamento), pula direto pro passo 4
+# 4. Se não tem, escolha a próxima Issue do Bloco A → B → C → D (ver ISSUES.md), assigne-se:
+gh issue edit <numero> --add-assignee @me
+
+# 5. Crie a branch
+git checkout -b feature/<numero>-<slug-kebab>
+```
+
+Não pegue Issue assignada a outro dev. Não pegue Issue fora da ordem dos blocos sem motivo justificado em comentário no GitHub Issue.
+
+## 4. Ordem de leitura obrigatória (a cada nova sessão)
 
 Use o tool `Read` nesta ordem:
 
 1. **`IMPLEMENTATION_STATE.md`** — onde a sessão anterior parou. **Mais importante.**
 2. **`PROGRESS.md`** — dashboard de progresso geral e histórico de sessões.
 3. **`ISSUES.md`** — catálogo do backlog atual (Q3 2026, 4 blocos).
-4. **`CLAUDE.md`** — convenções do projeto, stack, comandos, padrões.
-5. **`docs/QUICK_REFERENCE.md`** — resumo de stack/comandos/padrões para consulta rápida.
+4. **`docs/COLLABORATION.md`** — protocolo de trabalho em dupla (especialmente se primeira sessão sua).
+5. **`CLAUDE.md`** — convenções do projeto, stack, comandos, padrões.
+6. **`docs/QUICK_REFERENCE.md`** — resumo de stack/comandos/padrões para consulta rápida.
 
 Conforme o trabalho da sessão exigir, leia adicionalmente:
 
@@ -46,7 +73,7 @@ Conforme o trabalho da sessão exigir, leia adicionalmente:
 
 ---
 
-## 4. Estrutura mental do trabalho
+## 5. Estrutura mental do trabalho
 
 Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Cada Issue pertence a um dos 4 blocos:
 
@@ -63,7 +90,7 @@ Quando a Issue estiver clara em `IMPLEMENTATION_STATE.md`, siga as etapas dela e
 
 ---
 
-## 5. Regra de ouro — nunca parar em estado quebrado
+## 6. Regra de ouro — nunca parar em estado quebrado
 
 Se sentir pressão de tokens (após ~70% do contexto), **interrompa em ponto seguro**:
 
@@ -83,31 +110,41 @@ Se a próxima ação vai te empurrar para ponto perigoso e tokens estão escasso
 
 ---
 
-## 6. Procedimento de encerramento de sessão (obrigatório)
+## 7. Procedimento de encerramento de sessão (obrigatório)
 
 Quando decidir parar (limite de tokens, fim natural de etapa, ou usuário pediu):
 
 1. **Garantir build verde** — `dotnet build` no backend, `npm run build` no frontend se mexeu lá.
-2. **Commit do que foi feito** seguindo `docs/GIT_WORKFLOW.md`. Mesmo trabalho parcial pode ser commitado, desde que compile.
-3. **Atualizar `IMPLEMENTATION_STATE.md`:**
+2. **Rebase em `main` atualizado** antes de qualquer push:
+   ```bash
+   git fetch origin
+   git rebase origin/main
+   ```
+   Se houver conflito, resolver, `git rebase --continue`. Ver `docs/COLLABORATION.md` seção 7 para conflitos típicos em arquivos vivos.
+3. **Commit do que foi feito** seguindo `docs/GIT_WORKFLOW.md`. Mesmo trabalho parcial pode ser commitado, desde que compile.
+4. **Atualizar `IMPLEMENTATION_STATE.md`:**
    - Marcar etapas concluídas com `[x]`.
    - Atualizar "Etapa atual" para a próxima.
    - Atualizar "Próxima ação concreta" com instrução específica (arquivo, método, comportamento esperado).
    - Adicionar entrada nova em "Histórico de sessões na issue atual".
-4. **Atualizar `PROGRESS.md`:**
-   - Adicionar entrada em "Histórico de sessões" com data, o que foi feito, próxima ação.
-   - Se a issue foi concluída, mover dela para a seção "Resolvidos" e atualizar o dashboard.
-5. **Atualizar documentação tocada:**
+5. **Atualizar documentação tocada na sessão:**
    - Se schema mudou: `docs/DATABASE.md`.
    - Se fluxo mudou: `docs/FLOWS.md`.
    - Se padrão mudou: `docs/STANDARDS.md`.
    - Se feature nova: `docs/features/<nome>/`.
-6. **Commit final do state:** `chore(docs): atualiza state — sessão N`.
-7. **Avisar o usuário em chat:** qual issue/etapa parou, o que foi feito, e que ele pode reabrir nova sessão com este mesmo prompt.
+6. **Push:** `git push -u origin feature/<numero>-<slug>` (ou `git push --force-with-lease` se já existia).
+7. **Abrir Pull Request** (Draft se ainda não terminou, Ready for review se terminou):
+   ```bash
+   gh pr create --fill --base main --head feature/<numero>-<slug>
+   ```
+   Adicionar o sócio como reviewer. Preencher o template (aparece automaticamente).
+8. **Atualizar GitHub Issue** com um comentário do tipo "sessão N: parei em X, PR #Y aberto".
+9. **`PROGRESS.md`** só é tocado **no PR final** (que fecha a Issue), não em sessões intermediárias.
+10. **Avisar o usuário em chat:** qual issue/etapa parou, número do PR, o que falta para Ready for review.
 
 ---
 
-## 7. Comandos úteis
+## 8. Comandos úteis
 
 ```powershell
 # Backend (porta 5293)
@@ -128,7 +165,7 @@ npm run lint
 
 ---
 
-## 8. Padrões críticos para lembrar
+## 9. Padrões críticos para lembrar
 
 - **`UsuarioId` em toda query** — multi-tenancy é checagem manual em cada service. Nunca confiar em filtros vindos do cliente.
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) — nunca `_context.Remove()`.
@@ -143,7 +180,7 @@ npm run lint
 
 ---
 
-## 9. Quando em dúvida
+## 10. Quando em dúvida
 
 - **Sobre o domínio existente:** `docs/DATABASE.md`, `docs/FLOWS.md`, ou `Grep`/`Read` no código real.
 - **Sobre a nova feature Família:** `docs/features/familia/visao.md` (visão de produto, não spec técnica fechada).
@@ -152,11 +189,12 @@ npm run lint
 
 ---
 
-## 10. Para começar agora
+## 11. Para começar agora
 
 1. Invocar skill `caveman` (modo `full`).
-2. `Read` em `IMPLEMENTATION_STATE.md`.
-3. Identificar issue/etapa atual.
-4. Continuar dali em diante. Se nenhuma issue está em execução, perguntar ao usuário qual quer iniciar (ver `ISSUES.md` Bloco A — começo natural).
+2. Rodar o **pré-flight de git** (seção 3): atualizar `main`, ver Issues no GitHub, escolher/retomar Issue, criar branch.
+3. `Read` em `IMPLEMENTATION_STATE.md` (na branch).
+4. Identificar issue/etapa atual.
+5. Continuar dali em diante. Se nenhuma issue está em execução, perguntar ao usuário qual quer iniciar (ver `ISSUES.md` Bloco A — começo natural).
 
 Boa sessão.

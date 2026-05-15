@@ -3,6 +3,8 @@
 Guia para Claude trabalhar eficientemente com este repositório. **Leia este arquivo antes de qualquer mudança.**
 
 > **Antes de uma sessão de trabalho:** ler também `PROMPT_NOVA_SESSAO.md` (ponto de entrada do workflow de sessão) e `IMPLEMENTATION_STATE.md` (estado vivo).
+>
+> **Trabalho em dupla:** o projeto é desenvolvido por dois devs em assíncrono. Antes de fazer mudança em código, ler `docs/COLLABORATION.md` para entender o protocolo de coordenação (GitHub Issues, branches, code review, conflitos em arquivos vivos).
 
 ## Project Overview
 
