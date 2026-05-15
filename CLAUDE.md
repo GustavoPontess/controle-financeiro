@@ -2,13 +2,19 @@
 
 Guia para Claude trabalhar eficientemente com este repositório. **Leia este arquivo antes de qualquer mudança.**
 
+> **Antes de uma sessão de trabalho:** ler também `PROMPT_NOVA_SESSAO.md` (ponto de entrada do workflow de sessão) e `IMPLEMENTATION_STATE.md` (estado vivo).
+
 ## Project Overview
 
-Sistema pessoal de controle financeiro focado em **usabilidade**. 
-- **Backend:** .NET 8 Web API com SQLite/EF Core
-- **Frontend:** React 19 + TypeScript + Vite + Material-UI
-- **Banco de Dados:** SQLite com 11 entidades principais
-- **Autenticação:** JWT Bearer (HS256, 60min expiration)
+Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
+
+- **Backend:** .NET 8 Web API com EF Core (SQLite em dev, destino Postgres em prod — Bloco B do roadmap)
+- **Frontend:** React 19 + TypeScript + Vite + Material-UI v7
+- **Banco de dados atual:** SQLite com 18 entidades; migração para Postgres prevista em Issue #16
+- **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
+- **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
+- **Jobs:** Hangfire (atualmente `MemoryStorage`, migração para `PostgresStorage` em Issue #17)
+- **Backlog ativo:** ver `ISSUES.md` — 4 blocos sequenciais (A: higiene → B: infra → C: pivot Família → D: UX B2C)
 
 ## Commands
 
@@ -32,14 +38,16 @@ npm run lint
 ## Architecture
 
 ### Backend Structure
-- **Controllers/** — thin HTTP layer; 12 controllers mapping to each domain area
-- **Services/** — all business logic; each controller has a paired service registered as Scoped
-- **Domain/Entities/** — EF Core entity models (never exposed directly in responses)
-- **Domain/Enums/** — 11 enums (TipoTransacao, Finalidade, TipoConta, MeioPagamento, etc.)
-- **DTOs/** — request/response contracts; services map entities ↔ DTOs
-- **Infrastructure/AppDbContext.cs** — EF Core DbContext with 11 DbSets and delete behavior configuration
-- **Infrastructure/Identity/** — JWT generation and BCrypt password hashing
-- **Data/** — seeders: BancoSeeder fetches from BCB (Banco Central do Brasil) live API; CategoriaSeeder populates initial categories
+- **Controllers/** — thin HTTP layer; 16 controllers mapping to each domain area
+- **Services/** — all business logic; 19 services, each registered Scoped
+- **Domain/Entities/** — 18 EF Core entity models (never exposed directly in responses)
+- **Domain/Enums/** — vários enums (TipoTransacao, Finalidade, TipoConta, StatusFatura, MeioPagamento, etc.)
+- **DTOs/** — request/response contracts; services map entities ↔ DTOs. `DTOs/Common/PagedResult<T>` é o envelope padrão de listagens paginadas.
+- **Infrastructure/AppDbContext.cs** — EF Core DbContext com DbSets e configuração de delete behavior
+- **Infrastructure/Identity/** — JWT generation + PBKDF2 password hashing + refresh/reset tokens
+- **Infrastructure/Middleware/GlobalExceptionHandlerMiddleware.cs** — captura exceções e mapeia para `ErrorResponseDto { code, message }`
+- **Data/** — seeders: `BancoSeeder` (BCB live API), `CategoriaSeeder`
+- **Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`)
 
 ### Frontend Structure
 - **src/api/axiosClient.ts** — single Axios instance; request interceptor injects JWT from localStorage; response interceptor redirects to `/auth/login` on 401
@@ -92,10 +100,12 @@ npm run lint
 
 ## Important Notes
 
-- **⚠️ PORT MISMATCH:** Frontend baseURL (`axiosClient.ts`) é `http://localhost:5296/api` mas backend roda em `5293`. **PRECISA AJUSTAR** quando ambos rodam.
 - Delete behavior: `Conta → Transacoes` (cascade), `CartaoCredito → Faturas` (restrict)
-- User ID é extraído via `User.FindFirstValue(ClaimTypes.NameIdentifier)` e passado pelos serviços para isolamento de dados
-- **API Docs:** Ver `endpoints_access_guide.md` (memória) para como Claude acessa endpoints
+- User ID é extraído via `User.FindFirstValue(ClaimTypes.NameIdentifier)` e passado pelos serviços para isolamento de dados (multi-tenancy manual em cada query)
+- **API Docs:** Swagger em `http://localhost:5293/swagger` — gerado a partir dos comentários XML dos controllers
+- **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`. Nunca `_context.Remove()` nessas entidades.
+- **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`
+- **`FinancialEventLog`** registra mudanças de saldo/limite — usar em qualquer operação que afete saldo
 
 ---
 
@@ -264,8 +274,38 @@ dotnet ef database update
 
 ---
 
-## Important Notes
+## Documentation Structure
 
-- **⚠️ PORT MISMATCH:** Frontend baseURL é `5296` mas backend roda em `5293`
-- Delete behavior: `Conta → Transacoes` (cascade), `CartaoCredito → Faturas` (restrict)
-- User ID é extraído e passado pelos serviços para isolamento de dados
+```
+.
+├── CLAUDE.md                    ← este arquivo (convenções e padrões)
+├── PROMPT_NOVA_SESSAO.md        ← ponto de entrada de cada sessão de trabalho
+├── IMPLEMENTATION_STATE.md      ← estado vivo da issue em execução
+├── ISSUES.md                    ← backlog atual (Q3 2026, 4 blocos)
+├── PROGRESS.md                  ← dashboard de progresso e histórico de sessões
+├── README.md                    ← README público do projeto
+└── docs/
+    ├── README.md                ← índice da documentação
+    ├── QUICK_REFERENCE.md       ← resumo de stack/comandos/padrões
+    ├── STANDARDS.md             ← convenções de código (naming, error handling, etc.)
+    ├── DATABASE.md              ← schema, ER, delete behavior
+    ├── FLOWS.md                 ← fluxos de negócio
+    ├── DESIGN_SYSTEM.md         ← paleta, tipografia, componentes MUI
+    ├── GIT_WORKFLOW.md          ← padrão de branches e commits
+    ├── CONTROLLER_TEMPLATE.md   ← scaffold de controller novo
+    ├── ANALISE_PRODUTO.md       ← análise crítica de produto (maio/2026)
+    ├── features/                ← uma pasta por feature
+    │   ├── parcelamento/        ← (concluída em Q2 2026)
+    │   │   ├── arquitetura.md
+    │   │   └── ux.md
+    │   └── familia/             ← (próximo grande pivot)
+    │       └── visao.md
+    └── history/                 ← documentos arquivados
+        ├── ISSUES_2026Q2.md
+        ├── PROGRESS_2026Q2.md
+        └── IMPLEMENTATION_STATE_2026Q2_parcelamento.md
+```
+
+**Princípio:** documentação por feature mora em `docs/features/<nome>/`. Quando uma feature complexa for iniciada, criar pelo menos `arquitetura.md` (spec técnica) e `ux.md` (mockups e copy) dentro da pasta da feature.
+
+**Manutenção:** ao fim de cada sessão que mudou padrões, schema ou fluxo, atualizar o doc correspondente — checklist em `PROMPT_NOVA_SESSAO.md` seção 5.
