@@ -1,343 +1,344 @@
-# Issues & Problemas Técnicos
+---
+owner: Gustavo
+last_reviewed: 2026-05-15
+next_review: 2026-08-15
+status: CURRENT
+---
 
-**Descobertos em:** 2026-05-07  
-**Contexto:** Auditoria para preparar projeto para virar produto  
-**Status Geral:** 🔴 10 problemas críticos/altos + 7 médios
+# Issues & Roadmap — Q3 2026
+
+**Contexto:** O backlog Q2 2026 (Issues #1-#10) foi concluído — ver `docs/history/ISSUES_2026Q2.md`. Esse backlog focou em higiene de código sobre o que já existia. Este novo roadmap reflete:
+
+1. Análise crítica de produto feita em 2026-05-15 (ver `docs/ANALISE_PRODUTO.md`)
+2. Decisão de **pivot para nicho de finanças familiares/casais** (ver `docs/features/familia/visao.md`)
+3. Lacunas reais para virar produto B2C, não cobertas pelo backlog Q2
+
+**Status geral:** 0/20 itens iniciados • 4 blocos sequenciais
 
 ---
 
-## ✅ RESOLVIDOS
+## Estrutura em 4 blocos
 
-### ✅ #1: Parcelamento Inflexível
+A ordem dos blocos é **obrigatória** — pular blocos cria dívida que volta a custar caro depois.
 
-**Severidade:** 🔴 CRÍTICA  
-**Status:** ✅ RESOLVIDO (2026-05-10)  
-**Tempo:** ~11 horas (11 sessões)  
-**Commits:** 11 principais
+| Bloco | Tema | Duração estimada | Por que nessa posição |
+|---|---|---|---|
+| **A** | Higiene de produção | 5-7 dias | Vulnerabilidades reais. Não pode ter usuário antes de fechar |
+| **B** | Infraestrutura para escalar | 10-14 dias | Sem isso, qualquer crescimento quebra o app |
+| **C** | Pivot Família | 4-6 semanas | A feature diferenciadora. Sem ela, somos só "mais um app de finanças" |
+| **D** | Retenção e UX B2C | 6-10 semanas | Importação OFX, mobile, push — o que mantém usuário no app |
 
-**Problema Original:**
-- Atual: 12 parcelas sempre consecutivas (mai→jun→jul...)
-- Precisava: Parcela 1 em JUL, 2 em SET, 3 em NOV (flexível)
-- Causa: Tabela `Transacao` misturava "compra" com "parcela"
-
-**Solução Implementada:**
-- ✅ Criada tabela `Parcelamentos` (novo)
-- ✅ Criada tabela `ParcelasTransacao` (novo)
-- ✅ Criada tabela `FinancialEventLog` (novo)
-- ✅ Atualizada `Fatura` com 3 flags ortogonais (EstadoCiclo, EstadoPagamento, EstaAtrasada)
-- ✅ Atualizado `CartaoCredito` com `LimiteTotal`
-- ✅ Atualizado `Transacao` com ParcelamentoId, StatusTransacao, soft delete (Ativo)
-- ✅ Atualizado `Recorrente` com janela 3 meses + CartaoCreditoId
-
-**Entidades Novas:**
-- `Parcelamentos` — 1+ parcelas flexíveis de uma compra
-- `ParcelasTransacao` — cada parcela individual com data própria
-- `FinancialEventLog` — auditoria + idempotência
-
-**Services Novos:**
-- `ParcelamentoService` — Criar/Cancelar/Listar/Detalhe
-- `ParcelaTransacaoService` — PagarAntecipado/Cancelar individual
-- `LimiteCalculatorService` — Cálculo dinâmico de limite
-- `FinancialEventLogService` — Auditoria + idempotência
-
-**Controllers Novos:**
-- `ParcelamentosController` — CRUD + cancelar
-- `ParcelasController` — Pagar + Cancelar parcela
-
-**Jobs Novos (Hangfire):**
-- FaturaFechamentoJob — Aberta → Fechada
-- FaturaAtrasoJob — Marca atrasada + juros
-- ExpandirRecorrentesJob — Janela móvel 3 meses
-- ExecutarRecorrentesJob — Previsao → Executado
-- RecalcularLimitesJob — Limites dinâmicos
-
-**Frontend:**
-- Pages: `/parcelamentos` (listagem) + `/parcelamentos/:id` (detalhe)
-- Componentes: cards, modais pagar/cancelar, status badges
-- Types: Parcelamento, ParcelaTransacao, Fatura (atualizado)
-- Service: ParcelamentoService com idempotência
-
-**Testes (13 total):**
-- 5 LimiteCalculatorService (cálculo, validações)
-- 5 ParcelamentoService (criar, validar, cancelar, listar)
-- 3 E2E (create, idempotência, cancel)
-
-**Documentação Atualizada:**
-- [x] docs/DATABASE.md — 3 entidades + updates
-- [x] docs/FLOWS.md — 3 fluxos (criar, pagar antecipado, cancelar)
-- [x] docs/STANDARDS.md — padrões ACID, soft delete, idempotência, Hangfire
-
-**QA Final:**
-- ✅ Build backend: 0 erros, 0 warnings
-- ✅ Build frontend: 0 erros
-- ✅ Testes: 13/13 passing
-- ✅ Swagger: endpoints novos listados
-- ✅ Hangfire: `/hangfire` dashboard acessível
-
-**Impacto:**
-- Parcelamento 100% flexível (pula meses conforme necessário)
-- Juros simples suportados (PIX com taxa customizável)
-- Soft delete + auditoria completa
-- Idempotência via header HTTP
-- Limite bloqueado/liberado automaticamente
-- 5 jobs background para automação
+Total realista: **4-6 meses part-time** ou **2-3 meses full-time**.
 
 ---
 
-## ✅ #3: Validações de Negócio Ausentes
+## 🅰️ BLOCO A — Higiene de Produção
 
-**Severidade:** 🔴 CRÍTICA
-**Status:** ✅ RESOLVIDO (2026-05-11)
-**Tempo:** ~30 min
-**Commit:** `65baf78`
+> Sem isso, qualquer usuário real é incidente de segurança. **Inadiável.**
 
-**O que mudou:**
-- `TransacaoService`: bloqueia data futura (Criar + Atualizar); valida `Valor > 0` em Atualizar
-- `CartaoCreditoService`: Nome obrigatório; `Limite > 0` quando `TemCredito=true`; `DiaFechamento`/`DiaVencimento` entre 1–28
-- `ContaService`: `saldoInicial < 0` agora lança erro explícito
-- `EmprestimoService`: `ValorTotal > 0`; `DataVencimento >= DataInicio`; `Valor > 0` em RegistrarPagamento
+### 🔴 #11 — Segredos via variáveis de ambiente
 
----
+**Severidade:** 🔴 CRÍTICA • **Esforço:** 2h • **Status:** ⏳ NÃO INICIADO
 
-## ✅ #2: Sem Testes Unitários/Integração
-
-**Severidade:** 🔴 CRÍTICA
-**Status:** ✅ RESOLVIDO (2026-05-11)
-**Tempo:** ~1h
-**Commits:** feat(testes): adicionar testes unitários — Issue #2
-
-**O que foi feito:**
-- Setup xUnit já existia (projeto `ControleFinanceiro.Api.Tests`)
-- Criados 4 arquivos de testes novos cobrindo serviços com novas validações:
-  - `TransacaoServiceTests.cs` — 9 testes (valor zero/negativo, data futura, conta não encontrada, sem conta/cartão, categoria incompatível, dados válidos, atualizar valor/data)
-  - `CartaoCreditoServiceTests.cs` — 10 testes (nome vazio, limite zero/negativo, dia fechamento/vencimento inválido, sem crédito ignora validações, dados válidos, atualizar limite)
-  - `ContaServiceTests.cs` — 7 testes (nome vazio/longo, saldo negativo, saldo positivo cria receita, saldo zero, dados válidos, carteira não deletável)
-  - `EmprestimoServiceTests.cs` — 9 testes (valor zero/negativo, vencimento anterior, dados válidos, sem vencimento, pagamento zero/negativo/parcial/total)
-- **Total:** 48 testes passando (35 novos + 13 existentes do Issue #1)
-
-**Padrão adotado:**
-- InMemory DB com `Guid.NewGuid().ToString()` como nome único por teste
-- `ConfigureWarnings(TransactionIgnoredWarning)` para InMemory
-- Helper `Build()` retorna `(ctx, svc)` com dependências injetadas
-- Helper `SeedConta()` para testes que precisam de conta existente
-
-**QA:**
-- ✅ `dotnet test`: 48/48 passando, 0 falhas
-
-## 🔴 BLOQUEADORES CRÍTICOS (Atacar Depois)
-
----
-
----
-
-### #3: Validações de Negócio Ausentes
-
-**Severidade:** 🔴 CRÍTICA  
-**Impacto:** Dados inválidos no banco  
-**Esforço:** 4 horas  
-**Status:** ⏳ NÃO INICIADO
-
-**Problema:**
-- Transação pode ser futura (❌ não deveria)
-- Parcela pode ter valor negativo (❌ não deveria)
-- CartãoCredito pode ter limite negativo (❌)
-- Saldo de Conta pode ser manipulado direto (❌)
+**Problema:** JWT secret e connection string hardcoded em `Program.cs` (linha 64) e `appsettings.json` (linha 9). Qualquer um com acesso ao repositório consegue forjar tokens válidos.
 
 **Solução:**
-- Adicionar validações em Services
-- Adicionar FluentValidation ou data annotations
-- Testes de validação
+- Mover JWT secret para variável de ambiente `JWT_SECRET`
+- Connection string via `DATABASE_URL` (já preparando migração para Postgres no Bloco B)
+- Adicionar `appsettings.Development.json` com placeholders (ignorado em git)
+- Documentar em `docs/STANDARDS.md` o padrão de configuração
 
-**Checklist After Resolve:**
-- [ ] Documentar validações em docs/STANDARDS.md
-- [ ] Atualizar memory/decisions_and_constraints.md
-- [ ] Adicionar exemplos de erro em docs/
+**Checkpoint:** API sobe lendo variáveis do ambiente; `appsettings.json` versionado não contém segredos reais.
 
 ---
 
-## ✅ #4: Sem Paginação em Endpoints
+### 🔴 #12 — Corrigir CORS contraditório
 
-**Severidade:** 🟡 ALTA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~1h
-**Commit:** `06f9371`
+**Severidade:** 🔴 CRÍTICA • **Esforço:** 30min • **Status:** ⏳ NÃO INICIADO
 
-**O que foi feito:**
-- Criado `DTOs/Common/PagedResult<T>` — envelope genérico `{ items, total, page, pageSize, totalPages }`
-- Paginação adicionada em 5 endpoints de listagem (os que crescem sem limite):
-  - `GET /api/transacoes` — `?page=1&pageSize=20`
-  - `GET /api/emprestimos`
-  - `GET /api/parcelamentos` — mantém filtro `?ativo=`
-  - `GET /api/recorrentes`
-  - `GET /api/transferencias`
-- Categorias, Cartões e Contas **não paginados** (conjuntos naturalmente pequenos)
-- Validação: `page >= 1`, `pageSize` clampado 1–100, default 20
-- Services: `CountAsync()` + `Skip().Take()` na mesma query (eficiente)
-- 48/48 testes passando
+**Problema:** `Program.cs` linha 169 tem `.WithOrigins("http://localhost:5173").AllowAnyOrigin()` — `AllowAnyOrigin()` sobrescreve `WithOrigins()` e na prática aceita qualquer origem.
 
-## 🟡 PROBLEMAS ALTOS (Atacar Depois)
+**Solução:**
+- Remover `.AllowAnyOrigin()`
+- Configurar lista de origens permitidas via variável de ambiente `CORS_ALLOWED_ORIGINS` (separada por vírgula)
+- Default em dev: `http://localhost:5173`
+- Em produção: domínio real do frontend
+- Validar headers expostos (`Authorization`, `Content-Type`) e métodos (`GET, POST, PUT, DELETE, PATCH`)
+
+**Checkpoint:** Requisição de origem não-permitida retorna erro CORS no browser.
 
 ---
 
-## ✅ #5: Autenticação Não-Robusta
+### 🔴 #13 — JWT em httpOnly cookie + CSRF token
 
-**Severidade:** 🟡 ALTA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~1h
-**Commit:** `863efad`
+**Severidade:** 🔴 CRÍTICA • **Esforço:** 1 dia • **Status:** ⏳ NÃO INICIADO
 
-**O que foi feito:**
-- `RefreshToken` e `PasswordResetToken` — 2 entidades novas com cascade delete
-- Migration `AddRefreshAndResetTokens` aplicada
-- `AuthService`:
-  - `LoginAsync` / `RegisterAsync` agora retornam `refreshToken` + `refreshTokenExpiresAt` (7 dias)
-  - `RefreshAsync` — rotação de token: revoga o antigo, emite novo par JWT+refresh
-  - `LogoutAsync` — revoga refresh token (silencioso se não encontrado)
-  - `SolicitarResetSenhaAsync` — gera token de reset (1h), invalida tokens anteriores (em prod: enviar por e-mail)
-  - `ResetSenhaAsync` — valida token, atualiza senha, revoga todos os refresh tokens do usuário
-- 4 endpoints novos: `POST /auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password`
-- 2FA fora do escopo (requer infra SMS/TOTP)
-- 48/48 testes passando
+**Problema:** Frontend armazena JWT em `localStorage` (`axiosClient.ts`). XSS rouba o token e o atacante se passa pelo usuário.
+
+**Solução:**
+- Backend emite JWT em `Set-Cookie` com flags `HttpOnly`, `Secure`, `SameSite=Strict`
+- Refresh token em cookie separado com mesmo padrão
+- CSRF token em header customizado (`X-CSRF-Token`) emitido junto via cookie comum
+- `axiosClient` envia credenciais (`withCredentials: true`) e inclui o CSRF token nos métodos mutators
+- Backend valida CSRF token em POST/PUT/DELETE/PATCH
+
+**Checkpoint:** Inspeção do DevTools não mostra JWT em `localStorage`/`sessionStorage`. Tentativa de CSRF de outra origem é bloqueada.
 
 ---
 
-## ✅ #6: Documentação Sem Dono/Revisão
+### 🟡 #14 — Rate limiting em endpoints sensíveis
 
-**Severidade:** 🟡 ALTA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~20 min
-**Commit:** `d812c0c`
+**Severidade:** 🟡 ALTA • **Esforço:** 3h • **Status:** ⏳ NÃO INICIADO
 
-**O que foi feito:**
-- Frontmatter adicionado em 4 docs: `DATABASE.md`, `FLOWS.md`, `STANDARDS.md`, `README.md`
-- Campos: `owner: Gustavo`, `last_reviewed`, `next_review` (trimestral), `status: CURRENT`
-- Checklist trimestral de revisão adicionado no `README.md`
-- Known issues no README atualizados (itens já resolvidos removidos)
+**Problema:** `/auth/login`, `/auth/register`, `/auth/forgot-password` sem rate limiting — brute force trivial.
 
----
+**Solução:**
+- Usar `AspNetCoreRateLimit` ou middleware nativo `Microsoft.AspNetCore.RateLimiting` (.NET 8)
+- Política fixa: 5 tentativas de login por IP em 5min
+- 3 cadastros por IP por hora
+- 1 reset de senha por e-mail por 15min
+- Retornar `429 Too Many Requests` com `Retry-After`
 
-## ✅ #7: Sem Versionamento de API
-
-**Severidade:** 🟡 ALTA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~1h
-**Commit:** `8804037`
-
-**O que foi feito:**
-- Instalado `Asp.Versioning.Mvc` 8.1.0 + `Asp.Versioning.Mvc.ApiExplorer` 8.1.0
-- `DefaultApiVersionConvention` (IControllerConvention) reescreve rotas globalmente de `api/*` → `api/v{version:apiVersion}/*` sem tocar nos 14 controllers
-- `Program.cs`: `AddApiVersioning` com `UrlSegmentApiVersionReader`, `AssumeDefaultVersionWhenUnspecified=true`, Swagger doc v1
-- Frontend: `axiosConfig.ts` e `axiosClient.ts` atualizados para `http://localhost:5293/api/v1`
-- 48/48 testes passando, 0 erros, 0 warnings
+**Checkpoint:** 6ª tentativa de login no mesmo IP retorna 429.
 
 ---
 
-## 🟠 PROBLEMAS MÉDIOS (Atacar Depois)
+### 🟡 #15 — Política de senha forte + 2FA opcional
 
-## ✅ #8: Tratamento de Erro Inconsistente
+**Severidade:** 🟡 ALTA • **Esforço:** 4h (senha) + 2 dias (2FA fora do MVP) • **Status:** ⏳ NÃO INICIADO
 
-**Severidade:** 🟠 MÉDIA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~1h
-**Commit:** `16ff4b5`
+**Problema:** Senha mínima de 6 chars sem requisito de complexidade. Cai em ataque de dicionário.
 
-**O que foi feito:**
-- `ErrorResponseDto` — envelope único `{ message, code }` em camelCase
-- `GlobalExceptionHandlerMiddleware` — captura todas as exceções não tratadas e mapeia para status codes padronizados:
-  - `ArgumentException` → 400 `VALIDATION_ERROR`
-  - `KeyNotFoundException` → 404 `NOT_FOUND`
-  - `InvalidOperationException` → 409 `BUSINESS_RULE_VIOLATION`
-  - `UnauthorizedAccessException` → 401 `UNAUTHORIZED`
-  - `*` → 500 `INTERNAL_ERROR`
-- Removidos todos os `try/catch` de erro dos 12 controllers (476 linhas de boilerplate eliminadas)
-- `AuthService`: exceções ajustadas para tipos semânticos corretos
-- `ContasController`: `ValidarCartao` convertido para `throw ArgumentException`
+**Solução (MVP — só senha):**
+- Mínimo 10 caracteres
+- Pelo menos 1 letra minúscula, 1 maiúscula, 1 número, 1 caractere especial
+- Verificação contra lista das 10k senhas mais comuns (`HaveIBeenPwned` API offline ou arquivo local)
+- Frontend mostra força da senha em tempo real
+- Mensagem clara do que está faltando
 
----
+**Solução (futura — 2FA):**
+- TOTP via app autenticador (Google Authenticator, Authy)
+- Opt-in via configuração do usuário
+- Backup codes para recuperação
 
-## ✅ #9: SQL Raw em Program.cs (Não Migração)
-
-**Severidade:** 🟠 MÉDIA
-**Status:** ✅ RESOLVIDO (2026-05-13)
-**Tempo:** ~30 min
-**Commit:** `7cb2870`
-
-**O que foi feito:**
-- Diagnóstico: `AplicarSistemaFaturasAsync` era redundante — `AddParcelamentoSchema` (20260509025858) já cria Faturas via `CREATE TABLE IF NOT EXISTS` e `MigrateAsync()` roda antes do raw SQL
-- Removidos ~115 linhas de DDL raw do `Program.cs`
-- Startup agora: `MigrateAsync()` → seed bancos → seed categorias
-- `20260505120000_AddFaturaSystem.cs` mantida com comentário explicativo (migration legada sem Designer.cs, não reconhecida pelo EF Core)
+**Checkpoint MVP:** Cadastro com senha fraca retorna erro listando requisitos.
 
 ---
 
-## ✅ #10: Features Básicas (parcial)
+## 🅱️ BLOCO B — Infraestrutura para Escalar
 
-**Severidade:** 🟠 MÉDIA
-**Status:** ✅ PARCIALMENTE RESOLVIDO (2026-05-13)
-**Tempo:** ~2h
-**Commit:** `298f882`
+> O que separa "rodando no meu computador" de "100 usuários sem cair".
 
-**Implementado:**
-- ✅ Relatórios customizáveis: `GET /api/v1/relatorios/periodo?dataInicio=&dataFim=[&categoriaId][&tipo][&contaId]` — evolução diária, gastos por categoria e meio de pagamento, limite 2 anos
-- ✅ Export CSV: `GET /api/v1/relatorios/export/csv` (mesmos filtros) — download direto Content-Disposition
-- ✅ Orçamento/Metas: CRUD completo (`/api/v1/orcamentos`) — limite por categoria/mês, alertas de consumo, `emAlerta`, `ultrapassado`, cálculo em tempo real
+### 🔴 #16 — Migrar SQLite para Postgres
 
-**Pendente (out of scope para agora):**
-- ⏳ Export PDF (requer biblioteca, ex: QuestPDF)
-- ⏳ Avisos de limite em tempo real (WebSocket/SignalR)
-- ⏳ Sincronização com banco (Open Finance/BCB)
+**Severidade:** 🔴 CRÍTICA • **Esforço:** 3-4 dias • **Status:** ⏳ NÃO INICIADO
 
----
+**Problema:** SQLite é single-writer. Acima de ~50 usuários ativos simultâneos, queries começam a serializar e a UX cai. Backup é "copia arquivo" — não há replicação.
 
-## 📋 Formato de Resolução
+**Solução:**
+- Adicionar `Npgsql.EntityFrameworkCore.PostgreSQL`
+- Connection string genérica via `DATABASE_URL` com prefixo (`postgres://` vs `sqlite://`)
+- Provider selecionado dinamicamente em `Program.cs`
+- Revisar migrations existentes — algumas usam funções SQLite-specific (`datetime('now')`)
+- Manter SQLite em dev/test (rápido para subir) e Postgres em prod
+- Script de seed que funcione nos dois providers
 
-Cada problema, quando resolvido, segue este checklist:
-
-```markdown
-## ✅ #X: [Nome Problema]
-
-**Resolvido em:** YYYY-MM-DD
-**Tempo gasto:** X horas
-**Commits:** #abc123, #def456
-
-**O que mudou:**
-- Descrição da mudança
-
-**Documentação atualizada:**
-- [x] docs/DATABASE.md
-- [x] docs/FLOWS.md
-- [x] memory/decisions_and_constraints.md
-- [x] docs/STANDARDS.md
-- [x] QUICK_REFERENCE.md
-- [x] CLAUDE.md
-
-**Testes adicionados:**
-- [x] TransacaoServiceTests.cs
-- [x] ParcelaTransacaoTests.tsx
-
-**Próximo problema:** #4
-```
+**Checkpoint:** API roda em Postgres local (docker-compose) com 100% dos testes passando.
 
 ---
 
-## 📊 Prioridade de Ataque
+### 🔴 #17 — Hangfire com PostgresStorage
 
-```
-Semana 1: #1 (Parcelamento) + #2 (Testes) + #3 (Validações)
-Semana 2: #6 (Docs Owner) + #4 (Paginação)
-Semana 3: #5 (Auth) + #9 (Migrations)
-Semana 4: #7 (API Versioning) + #8 (Erro Handling)
-Depois: #10 (Features)
-```
+**Severidade:** 🔴 CRÍTICA • **Esforço:** 4h • **Status:** ⏳ NÃO INICIADO
+
+**Problema:** Atualmente Hangfire usa `MemoryStorage` (`Program.cs` linha 58). A cada deploy, fila de jobs é perdida. Fatura agendada não fecha, recorrente não dispara.
+
+**Solução:**
+- Trocar para `Hangfire.PostgreSql`
+- Schema separado `hangfire` no mesmo banco
+- Migration automática na inicialização (`PrepareSchemaIfNecessary = true`)
+- Dashboard `/hangfire` protegido por autenticação admin
+- Health check do Hangfire incluído no `/health`
+
+**Checkpoint:** Restart da API mantém jobs agendados intactos.
 
 ---
 
-## 🎯 Próximo Passo
+### 🟡 #18 — Docker + docker-compose
 
-**Qual atacar primeiro?**
-- [ ] #1 Parcelamento inflexível
-- [ ] #2 Testes
-- [ ] #3 Validações
-- [ ] Outro?
+**Severidade:** 🟡 ALTA • **Esforço:** 1 dia • **Status:** ⏳ NÃO INICIADO
 
-Decide e a gente começa! 🚀
+**Problema:** Sem containerização. Deploy depende de ambiente local com .NET SDK + Node + dependências.
+
+**Solução:**
+- `Dockerfile` multi-stage para a API (build SDK → runtime alpine)
+- `Dockerfile` para o frontend (build Node → nginx servindo dist/)
+- `docker-compose.yml` orquestrando: API + Web + Postgres + Volume de dados
+- `docker-compose.dev.yml` com volumes para hot reload
+- README atualizado com comandos `docker compose up`
+
+**Checkpoint:** `docker compose up` sobe stack inteira em ambiente limpo.
+
+---
+
+### 🟡 #19 — GitHub Actions: build, test, lint
+
+**Severidade:** 🟡 ALTA • **Esforço:** 1 dia • **Status:** ⏳ NÃO INICIADO
+
+**Problema:** Sem CI. Mudanças vão para `main` sem nenhum gate automático.
+
+**Solução:**
+- `.github/workflows/ci.yml` rodando em PR e push para main
+- Job backend: `dotnet restore`, `dotnet build --no-restore --warnaserror`, `dotnet test`
+- Job frontend: `npm ci`, `npm run lint`, `npm run build`, futuramente `npm test`
+- Cache de NuGet e node_modules
+- Badge no README com status
+- Bloqueio de merge se algum job falhar (configurar em branch protection)
+
+**Checkpoint:** PR com código quebrado vira merge bloqueado.
+
+---
+
+### 🟡 #20 — Health checks + observabilidade
+
+**Severidade:** 🟡 ALTA • **Esforço:** 1-2 dias • **Status:** ⏳ NÃO INICIADO
+
+**Problema:** Sem `/health`, sem logs estruturados, sem rastreamento de erros. Em produção, problema vira mistério até usuário reclamar.
+
+**Solução:**
+- `Microsoft.AspNetCore.Diagnostics.HealthChecks` + `AspNetCore.HealthChecks.NpgSql` + `AspNetCore.HealthChecks.Hangfire`
+- Endpoints `/health` (público, leve) e `/health/ready` (detalhado, protegido)
+- Serilog com sink para console (estruturado JSON) e arquivo rotativo
+- Sentry (`Sentry.AspNetCore`) com DSN via env var — só ativa em produção
+- Correlation ID injetado em logs e response headers
+
+**Checkpoint:** Erro proposital aparece no Sentry com stacktrace completo e correlation ID.
+
+---
+
+### 🟠 #21 — Testes frontend (Vitest + RTL)
+
+**Severidade:** 🟠 MÉDIA • **Esforço:** 2-3 dias • **Status:** ⏳ NÃO INICIADO
+
+**Problema:** Zero teste no frontend. Refactor é roleta russa.
+
+**Solução:**
+- Configurar `vitest` + `@testing-library/react` + `@testing-library/user-event`
+- Setup com `jsdom`, mocks para axios e react-router
+- Cobertura inicial mínima: smoke test em cada página + lógica de validação de formulários críticos (transação, login, parcelamento)
+- Adicionar ao CI (`npm test`)
+
+**Checkpoint:** 30+ testes no frontend rodando no CI.
+
+---
+
+## 🅲️ BLOCO C — Pivot Família
+
+> A feature que justifica o produto existir. Ver `docs/features/familia/visao.md` antes de começar.
+
+### 🟢 #22 — Sub-feature 1: Família + Membros (sem rateio)
+
+**Severidade:** 🟢 FEATURE • **Esforço:** 2 semanas • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Criar família, convidar membros (existentes e novos), aceitar/recusar, papéis editáveis, listar, sair.
+
+**Pré-requisitos:** Blocos A e B concluídos.
+
+**Spec técnica:** A criar em `docs/features/familia/sub-1-familia-membros/` quando começar.
+
+---
+
+### 🟢 #23 — Sub-feature 2: Despesa Compartilhada (modo igualitário)
+
+**Severidade:** 🟢 FEATURE • **Esforço:** 1-2 semanas • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Marcar transação como compartilhada, feed compartilhado, balanço mensal igualitário.
+
+**Spec técnica:** A criar em `docs/features/familia/sub-2-despesa-compartilhada/` quando começar.
+
+---
+
+### 🟢 #24 — Sub-feature 3: Dependentes
+
+**Severidade:** 🟢 FEATURE • **Esforço:** 1 semana • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Criar dependente, atribuir despesa, filtro por dependente.
+
+---
+
+### 🟢 #25 — Sub-feature 4: Modos de rateio (proporcional + custom)
+
+**Severidade:** 🟢 FEATURE • **Esforço:** 1 semana • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Regra de divisão proporcional à renda e custom por despesa. Recalcular balanços.
+
+---
+
+### 🟢 #26 — Sub-feature 5: Acerto de contas
+
+**Severidade:** 🟢 FEATURE • **Esforço:** 4-5 dias • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Marcar saldo como acertado, histórico, comprovante opcional.
+
+---
+
+## 🅳️ BLOCO D — Retenção e UX B2C
+
+> O que mantém o usuário no app depois da primeira semana.
+
+### 🔴 #27 — Importação OFX/CSV de extrato bancário
+
+**Severidade:** 🔴 CRÍTICA PRA RETENÇÃO • **Esforço:** 1-2 semanas • **Status:** ⏳ NÃO INICIADO
+
+**Por que crítica:** Sem isso, o usuário precisa lançar cada despesa manualmente. Taxa de abandono em 7 dias passa de 60% em apps que pedem entrada manual.
+
+**Escopo MVP:**
+- Upload de arquivo OFX (todos os bancos brasileiros suportam)
+- Parsing de campos: data, descrição, valor, conta
+- Deduplicação contra transações já lançadas
+- Tela de revisão pré-importação (usuário aprova/categoriza antes de salvar)
+- Sugestão automática de categoria baseada em descrição (regra primeiro, ML depois)
+
+---
+
+### 🟡 #28 — PWA instalável + offline básico
+
+**Severidade:** 🟡 ALTA • **Esforço:** 3-4 dias • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:**
+- `manifest.json` com ícones e theme color
+- Service Worker via Workbox cacheando shell da aplicação
+- Funciona offline para visualização do que já carregou
+- Botão "Adicionar à tela inicial" promovido após 2ª sessão
+
+---
+
+### 🟡 #29 — Onboarding guiado pós-cadastro
+
+**Severidade:** 🟡 ALTA • **Esforço:** 1 semana • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Primeiro acesso após registro guia o usuário por: (1) cadastrar primeira conta, (2) cadastrar primeiro cartão, (3) importar OFX ou lançar 3 transações de exemplo, (4) opcionalmente criar família. Skip a qualquer momento.
+
+---
+
+### 🟠 #30 — Notificações (push + e-mail)
+
+**Severidade:** 🟠 MÉDIA • **Esforço:** 1-2 semanas • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Vencimento de fatura, estouro de orçamento, despesa compartilhada lançada por outro membro, acerto de contas pendente, novo convite de família. Web Push API + e-mail transacional.
+
+---
+
+### 🟠 #31 — Dark mode
+
+**Severidade:** 🟠 MÉDIA • **Esforço:** 2 dias • **Status:** ⏳ NÃO INICIADO
+
+**Escopo:** Theme MUI com paleta dark. Toggle no header com persistência. Respeitar `prefers-color-scheme` no primeiro acesso.
+
+---
+
+## Histórico
+
+Backlog anterior (Q2 2026, Issues #1-#10) — todos concluídos.
+
+Ver: `docs/history/ISSUES_2026Q2.md`

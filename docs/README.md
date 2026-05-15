@@ -1,208 +1,103 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-13
-next_review: 2026-08-13
+last_reviewed: 2026-05-15
+next_review: 2026-08-15
 status: CURRENT
 ---
 
-# Documentation Index
+# Índice da Documentação
 
-Complete documentation for the Controle Financeiro project.
+Documentação completa do projeto Controle Financeiro.
 
-## 📖 Quick Links
-
-### Setup & Running
-- See root `CLAUDE.md` for project overview and running locally
-
-### Development Guides
-- **[STANDARDS.md](./STANDARDS.md)** — Code conventions, naming, patterns (C#, React, TypeScript)
-- **[DATABASE.md](./DATABASE.md)** — Schema, relationships, entity descriptions
-- **[FLOWS.md](./FLOWS.md)** — Data flow diagrams for core business logic
-
-### API Documentation
-⚠️ **API.md foi removido** — A documentação é **100% automática via Swagger**
-
-Endpoints são documentados automaticamente:
-- Rode: `dotnet run`
-- Acesse: `http://localhost:5293/swagger`
-- Documentação gera-se a partir dos comentários XML nos controllers
+> **Para começar uma sessão de trabalho com Claude:** ler `../PROMPT_NOVA_SESSAO.md` (na raiz).
 
 ---
 
-## 📐 Architecture at a Glance
+## Documentação na raiz do repositório
 
-```
-Frontend (React 19)
-    ↓ HTTP/JWT
-Backend (.NET 8)
-    ↓ EF Core
-SQLite Database
-```
+Arquivos que ficam na raiz porque são acessados a cada sessão:
 
-**Key Files:**
-- **CLAUDE.md** (root) — AI assistant guidance, tech stack, patterns
-- **Package.json** — Frontend dependencies
-- **ControleFinanceiro.Api.csproj** — Backend project config
+| Arquivo | Propósito |
+|---|---|
+| [`../CLAUDE.md`](../CLAUDE.md) | Convenções gerais, stack, padrões |
+| [`../PROMPT_NOVA_SESSAO.md`](../PROMPT_NOVA_SESSAO.md) | Protocolo de início e encerramento de sessão |
+| [`../IMPLEMENTATION_STATE.md`](../IMPLEMENTATION_STATE.md) | Estado vivo da issue em execução |
+| [`../ISSUES.md`](../ISSUES.md) | Backlog atual (Q3 2026, 4 blocos) |
+| [`../PROGRESS.md`](../PROGRESS.md) | Dashboard e histórico de sessões |
+| [`../README.md`](../README.md) | README público do projeto |
 
 ---
 
-## 🎯 Common Tasks
+## Documentação geral (`docs/`)
 
-### Add a New Endpoint
-
-1. Create **Entity** in `Domain/Entities/`
-2. Create **DTOs** in `DTOs/[EntityName]/`
-3. Create **Service** in `Services/[Entity]Service.cs`
-4. Create **Controller** in `Controllers/[Entity]Controller.cs`
-5. Create **Migration**: `dotnet ef migrations add Add[Entity]`
-6. Update frontend `Services/` with API client
-7. Document in this `docs/` folder
-
-See **STANDARDS.md** for patterns and **FLOWS.md** for data flows.
-
-### Fix a Bug
-
-1. Reproduce in dev environment
-2. Locate in codebase (use grep or IDE)
-3. Write a test if possible
-4. Apply fix
-5. Run linter: `npm run lint` (frontend) or `dotnet build` (backend)
-6. Test end-to-end
-7. Update CLAUDE.md if patterns changed
-
-### Deploy
-
-(To be defined — not in current scope)
+| Arquivo | Quando consultar |
+|---|---|
+| [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | Resumo de stack/comandos/padrões — primeira leitura |
+| [STANDARDS.md](./STANDARDS.md) | Convenções de código (C#, TS, naming, error handling, paginação) |
+| [DATABASE.md](./DATABASE.md) | Schema, ER, delete behavior, descrição das entidades |
+| [FLOWS.md](./FLOWS.md) | Fluxos de negócio (transação, parcelamento, fatura) |
+| [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, componentes MUI |
+| [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches e mensagens de commit |
+| [CONTROLLER_TEMPLATE.md](./CONTROLLER_TEMPLATE.md) | Scaffold para criar novo controller |
+| [ANALISE_PRODUTO.md](./ANALISE_PRODUTO.md) | Análise crítica de produto (maio/2026) — leitura recomendada para entender o porquê do roadmap atual |
 
 ---
 
-## 📚 Document Purposes
+## Documentação por feature (`docs/features/`)
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **CLAUDE.md** (root) | AI guidance + quick ref | Claude, developers |
-| **STANDARDS.md** | Code style & conventions | All developers |
-| **API.md** | Endpoint specifications | Backend devs, frontend devs |
-| **DATABASE.md** | Schema & relationships | Backend devs, DB admins |
-| **FLOWS.md** | Business logic flows | Backend devs, architects |
-| **README.md** (this) | Doc navigation | Everyone |
+Cada feature complexa tem sua própria pasta com spec técnica e UX. Ao iniciar uma feature nova, criar a pasta + `arquitetura.md` + `ux.md` antes de codar.
+
+| Feature | Status | Arquivos |
+|---|---|---|
+| [parcelamento](./features/parcelamento/) | ✅ Concluída (Q2 2026) | [arquitetura.md](./features/parcelamento/arquitetura.md), [ux.md](./features/parcelamento/ux.md) |
+| [familia](./features/familia/) | 🔵 Em visão (Q3 2026) | [visao.md](./features/familia/visao.md) |
 
 ---
 
-## 🔍 Key Concepts
+## Arquivos arquivados (`docs/history/`)
 
-### Data Isolation
-Every query filters by `UsuarioId` from JWT claims. **Never** skip this filter.
+Documentos que cumpriram seu propósito e ficam preservados para consulta histórica:
 
-### Parcelamento (Installments)
-Creating 1 transaction with `Parcelas=12` generates 12 database rows, one per installment month.
-
-### Saldo (Balance)
-NOT stored; calculated dynamically as `SUM(Receitas) - SUM(Despesas)` per Conta.
-
-### Fatura (Invoice)
-Auto-created when credit card transaction is added. Status: Aberta → Fechada → Paga.
-
-### Transferência
-Creates 2 implicit transactions: Despesa (origin) + Receita (destination).
+- [ISSUES_2026Q2.md](./history/ISSUES_2026Q2.md) — Backlog do Q2 2026, todos concluídos
+- [PROGRESS_2026Q2.md](./history/PROGRESS_2026Q2.md) — Tracker do Q2 2026
+- [IMPLEMENTATION_STATE_2026Q2_parcelamento.md](./history/IMPLEMENTATION_STATE_2026Q2_parcelamento.md) — Estado detalhado das 13 sessões que implementaram o Parcelamento Flexível
 
 ---
 
-## 🚀 Quick Start (Dev)
+## Documentação automática (Swagger)
 
-### Backend
+A API tem documentação **100% automática** via Swagger/OpenAPI.
+
 ```powershell
 cd ControleFinanceiro.Api
-dotnet restore
 dotnet run
-# Swagger: http://localhost:5293/swagger
+# acessar http://localhost:5293/swagger
 ```
 
-### Frontend
-```powershell
-cd controle-financeiro.web
-npm install
-npm run dev
-# Dev server: http://localhost:5173
-```
-
-### Database
-```powershell
-# Apply migrations
-dotnet ef database update
-
-# Create migration
-dotnet ef migrations add MigrationName
-```
+Os endpoints são documentados a partir dos comentários XML dos controllers — manutenção zero fora do código.
 
 ---
 
-## 🐛 Debugging Tips
+## Ciclo de revisão de documentação
 
-### Backend
-- Use Swagger at `/swagger` to test endpoints
-- Enable EF Core logging in `appsettings.Development.json`
-- Check `controlefinanceiro.db` with SQLite tools
-
-### Frontend
-- React DevTools browser extension
-- Network tab to inspect API requests
-- Console for JavaScript errors
-- VSCode debugger for TypeScript
-
----
-
-## ⚠️ Known Issues
-
-1. **No Rate Limiting:** Future security concern
-
----
-
-## 📝 Contributing
-
-1. Read **STANDARDS.md** for code style
-2. Read **FLOWS.md** to understand the flow
-3. Check **API.md** for endpoint contracts
-4. Reference **DATABASE.md** for schema
-5. Follow patterns in existing code
-6. Run linter before committing
-7. Write clear commit messages
-
----
-
-## 📞 Questions?
-
-- Check **CLAUDE.md** for tech stack & patterns
-- Check **FLOWS.md** for how data flows
-- Check **STANDARDS.md** for coding conventions
-- Check **API.md** for endpoint details
-- Check **DATABASE.md** for schema details
-
-If still stuck, trace through the code and add documentation!
-
----
-
----
-
-## 🔄 Ciclo de Revisão de Documentação
-
-Cada documento em `docs/` possui frontmatter com:
+Cada documento em `docs/` tem frontmatter:
 
 | Campo | Descrição |
-|-------|-----------|
+|---|---|
 | `owner` | Responsável por manter o documento atualizado |
 | `last_reviewed` | Data da última revisão |
 | `next_review` | Data prevista para próxima revisão (trimestral) |
 | `status` | `CURRENT` / `OUTDATED` / `DEPRECATED` |
 
-### Checklist de revisão trimestral (owner: Gustavo)
+**Checklist trimestral (owner: Gustavo):**
 
 - [ ] DATABASE.md — schema ainda reflete todas as entidades?
 - [ ] FLOWS.md — fluxos ainda correspondem ao código?
 - [ ] STANDARDS.md — padrões ainda são seguidos? Algum novo padrão surgiu?
-- [ ] README.md (este) — links válidos? Known issues atualizado?
-- [ ] CLAUDE.md (raiz) — arquitetura e comandos ainda corretos?
+- [ ] QUICK_REFERENCE.md — comandos e contagens (entidades, controllers) atualizados?
+- [ ] features/*/visao.md — visão de cada feature reflete decisões atuais?
+- [ ] CLAUDE.md (raiz) — arquitetura e referências internas válidas?
 - Atualizar `last_reviewed` e `next_review` em cada arquivo revisado
-- Marcar `status: OUTDATED` se o arquivo precisar de atualização urgente
+- Marcar `status: OUTDATED` em arquivos que precisem de atenção urgente
 
-**Last Updated:** 2026-05-13
+**Última revisão geral:** 2026-05-15 (reorganização Q3 + criação de `docs/features/` e `docs/history/`)
