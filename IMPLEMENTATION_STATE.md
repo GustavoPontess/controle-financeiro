@@ -151,7 +151,33 @@ Issue #15 concluída. **Bloco A 100% concluído.**
   fora do escopo de #16.
 
 ### Próxima ação concreta
-#16 concluída. Próxima: #17 — Hangfire com PostgresStorage (Bloco B, depende de #16).
+#16 concluída.
+
+---
+
+## Issue em execução
+
+**Issue:** #17 — Hangfire com PostgresStorage
+**Bloco:** B (Infraestrutura para Escalar)
+**Iniciada em:** 2026-05-16 (sessão 23)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — validado em Postgres, 48 testes verdes
+
+### Etapas
+- [x] 1. Package `Hangfire.PostgreSql`
+- [x] 2. Storage dinâmico: Postgres → `PostgreSqlStorage` (schema `hangfire`, `PrepareSchemaIfNecessary`), SQLite → `MemoryStorage`
+- [x] 3. Dashboard `/hangfire` protegido (`HangfireDashboardAuthFilter` — exige autenticação)
+- [x] 4. Validado: schema `hangfire` criado, 5 jobs recorrentes persistem após restart, dashboard 401 sem auth
+
+### Decisões
+- Storage segue o provider (igual ao DbContext de #16): MemoryStorage em dev
+  SQLite, PostgreSqlStorage em prod. Hangfire.PostgreSql só funciona com Postgres.
+- Dashboard exige usuário autenticado (não papel admin — papéis não existem
+  ainda; virão no Bloco C).
+- Health check do Hangfire fica para #20 (Health checks + observabilidade).
+
+### Próxima ação concreta
+#17 concluída. Próxima: #18 já mergeada; seguir Bloco B (#19 CI em andamento pelo sócio, #20 reservada).
 
 ---
 

@@ -15,7 +15,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 - **Banco de dados:** 18 entidades. Provider dinâmico SQLite/Postgres (Issue #16 concluída); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
-- **Jobs:** Hangfire (atualmente `MemoryStorage`, migração para `PostgresStorage` em Issue #17)
+- **Jobs:** Hangfire — storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em prod, `MemoryStorage` em dev SQLite. Dashboard `/hangfire` exige autenticação
 - **Backlog ativo:** ver `ISSUES.md` — 4 blocos sequenciais (A: higiene → B: infra → C: pivot Família → D: UX B2C)
 
 ## Commands
