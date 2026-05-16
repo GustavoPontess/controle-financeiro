@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface SidebarIconProps {
-  sx?: React.CSSProperties & { [key: string]: any }
+  sx?: React.CSSProperties & Record<string, unknown>
 }
 
 export default function SidebarToggleIcon({ sx }: SidebarIconProps) {

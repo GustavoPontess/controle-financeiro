@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import {
   Box,
@@ -177,7 +176,7 @@ const sections: Section[] = [
 
 export default function DesignSystemShowcase() {
   const [activeSection, setActiveSection] = useState('cores');
-  const [showPassword, setShowPassword] = useState(false);
+  const showPassword = false;
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
@@ -245,7 +244,7 @@ export default function DesignSystemShowcase() {
               </Typography>
               <Grid container spacing={2} sx={{ mb: 4 }}>
                 {Object.entries(colors.gray).map(([key, value]) => (
-                  <Grid item xs={6} sm={4} md={3} key={key}>
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={key}>
                     <ColorSwatch label={`Gray ${key}`} value={value as string} />
                   </Grid>
                 ))}
@@ -256,19 +255,19 @@ export default function DesignSystemShowcase() {
                 Semânticas
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={4} md={3}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                   <ColorSwatch label="Success" value={colors.success} />
                 </Grid>
-                <Grid item xs={6} sm={4} md={3}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                   <ColorSwatch label="Error" value={colors.error} />
                 </Grid>
-                <Grid item xs={6} sm={4} md={3}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                   <ColorSwatch label="Warning" value={colors.warning} />
                 </Grid>
-                <Grid item xs={6} sm={4} md={3}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                   <ColorSwatch label="Info" value={colors.info} />
                 </Grid>
-                <Grid item xs={6} sm={4} md={3}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                   <ColorSwatch label="Accent" value={colors.accent} />
                 </Grid>
               </Grid>
@@ -443,7 +442,7 @@ export default function DesignSystemShowcase() {
                 { icon: <TrendingUp size={24} />, title: 'Despesas', value: 'R$ 2.890,00', color: colors.error },
                 { icon: <Calendar size={24} />, title: 'Este Mês', value: '+R$ 2.340,00', color: colors.accent },
               ].map((item, idx) => (
-                <Grid item xs={12} sm={6} md={4} key={idx}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={idx}>
                   <Card
                     sx={{
                       p: 3,
@@ -484,7 +483,7 @@ export default function DesignSystemShowcase() {
               {icons.map((item) => {
                 const IconComponent = item.icon;
                 return (
-                  <Grid item xs={6} sm={4} md={3} lg={2} key={item.name}>
+                  <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={item.name}>
                     <Paper
                       sx={{
                         p: 2,
