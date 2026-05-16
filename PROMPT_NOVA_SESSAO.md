@@ -48,6 +48,16 @@ git checkout -b feature/<numero>-<slug-kebab>
 
 Não pegue Issue assignada a outro dev. Não pegue Issue fora da ordem dos blocos sem motivo justificado em comentário no GitHub Issue.
 
+**Reservar Issues dependentes (obrigatório).** Ao se assignar a uma Issue, verifique no `ISSUES.md` se há outras Issues que dependem dela — direta ou transitivamente (ex: #17 "Hangfire PostgresStorage" depende de #16 "Migrar para Postgres"; #20 "Health checks" depende de #16 e #17). Assigne-se **também** a toda a cadeia de dependência:
+
+```bash
+gh issue edit <numero-dependente> --add-assignee @me
+```
+
+Motivo: o outro dev trabalha em paralelo. Se ele pegar uma Issue que depende da sua e ela ainda não foi mergeada, ele fica travado esperando seu merge/commit. Reservar a cadeia inteira evita esse bloqueio.
+
+Cuidado para não reservar demais: assigne **apenas** Issues com dependência real. Issues independentes ficam livres para o outro dev — senão ele fica sem trabalho. O equilíbrio é reservar a cadeia de dependência, não o bloco inteiro.
+
 ## 4. Ordem de leitura obrigatória (a cada nova sessão)
 
 Use o tool `Read` nesta ordem:
