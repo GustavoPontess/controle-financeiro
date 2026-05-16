@@ -16,15 +16,15 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Higiene de Produção:          3/5  ✅ #11, #12, #13
+Bloco A — Higiene de Produção:          4/5  ✅ #11, #12, #13, #14
 Bloco B — Infraestrutura para Escalar:  0/6  ⏳
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          3/21 (14%)
+Total Q3 2026:                          4/21 (19%)
 ```
 
-**Status geral:** Bloco A 60% concluído. Issues #11, #12 em 1 sessão; #13 em 4 sessões (backend + frontend + CSRF middleware).
+**Status geral:** Bloco A 80% concluído. Issues #11, #12 em 1 sessão; #13 em 4 sessões (backend + frontend + CSRF middleware); #14 em 1 sessão.
 
 ---
 
@@ -49,11 +49,27 @@ Síntese:
 
 ## Em progresso
 
-Nenhum item em execução. Próximo: **Issue #14 — Rate limiting** (Bloco A).
+Nenhum item em execução. Próximo: **Issue #15 — Política de senha forte** (Bloco A).
 
 ---
 
 ## Histórico de sessões
+
+### Sessão 21 — 2026-05-16
+- **Issue #14 — Rate limiting em endpoints sensíveis (✅ CONCLUÍDA)**
+  - `Microsoft.AspNetCore.RateLimiting` (middleware nativo .NET 8, shared framework)
+  - 3 políticas `FixedWindow` particionadas por IP: login (5/5min),
+    register (3/1h), forgot-password (1/15min)
+  - Resposta `429` com header `Retry-After`; `FixedWindow` escolhido pois
+    `SlidingWindow` não popula o metadata `RetryAfter`
+  - Testes curl: login 6º→429 (Retry-After:300), register 4º→429,
+    forgot-password 2º→429
+- **Fixes pré-existentes na mesma branch** (não fazem parte de #14):
+  - CORS `AllowCredentials` — frontend `withCredentials` exigia o header
+  - Loop de redirect 401 em `/auth/login`
+  - Services de listagem desempacotam `PagedResult.items` (5 services)
+  - Error handling em `Promise.all` em 6 páginas
+- **Próxima ação:** Issue #15 (Política de senha forte) — Bloco A
 
 ### Sessões 16–20 — 2026-05-16
 - **Issue #13 — JWT em httpOnly cookie + CSRF token (✅ CONCLUÍDA)**
