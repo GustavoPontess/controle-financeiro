@@ -18,8 +18,8 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 **Issue:** #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
 **Iniciada em:** 2026-05-16 (sessão 16)
-**Sessões nessa issue:** 2
-**Status:** 90% — backend ✅, frontend ✅, testes ⏳
+**Sessões nessa issue:** 3
+**Status:** 95% — backend ✅, frontend ✅, middleware ajustado, testes ⏳
 
 ### Etapas
 - [x] 1. CsrfTokenService: gerar e validar tokens
@@ -34,18 +34,23 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 - [ ] 10. Testar: CSRF bloqueado cross-origin
 
 ### Etapa atual
-Testes manuais de integração. Build frontend ✅. Build backend aguarda liberação de processo (PID 3904 rodando).
+Testes manuais. Todos ajustes de código ✅:
+- Frontend build ✅
+- Backend build ✅ (após limpar bin/obj)
+- Middleware: ajustado para skip CSRF em /auth/login, /auth/register, /auth/forgot-password, /auth/reset-password
+- launchSettings.json: porta corrigida para 5293
+- Commits: 96cc007, 81c4741, 1b7134d
 
 ### Próxima ação concreta
-Sessão 18:
-1. Encerrar processo antigo do API (PID 3904)
-2. Rodar backend: `dotnet run` em ControleFinanceiro.Api/
-3. Rodar frontend: `npm run dev` em controle-financeiro.web/
-4. Login em http://localhost:5173 com credenciais teste
-5. DevTools → Application → Cookies: verificar "jwt" (httpOnly) e "X-CSRF-Token" presentes
-6. DevTools → Application → localStorage: verificar vazio
-7. DevTools → Network: testar POST e verificar header "X-CSRF-Token" enviado
-8. Cross-origin test (abrir outra aba em origin diferente, tentar fazer POST) — deve retornar 403
+Sessão 19:
+1. Kill processo antigo (port 5293 em uso)
+2. Rodar backend: `dotnet run` ControleFinanceiro.Api/
+3. Testar POST /auth/register sem CSRF — deve funcionar ✅ (público)
+4. Verificar Set-Cookie: jwt (httpOnly), X-CSRF-Token (não-httpOnly)
+5. Rodar frontend: `npm run dev` controle-financeiro.web/
+6. Login em http://localhost:5173
+7. DevTools verificar cookies + localStorage vazio + network POST com X-CSRF-Token
+8. Mergear PR #26 se testes passarem
 
 
 ---
