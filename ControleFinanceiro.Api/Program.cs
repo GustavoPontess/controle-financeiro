@@ -10,6 +10,7 @@ using ControleFinanceiro.Api.Services;
 using DotNetEnv;
 using Hangfire;
 using Hangfire.MemoryStorage;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -72,8 +73,21 @@ builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
 
+// Hangfire: Postgres (prod) persiste a fila de jobs entre deploys; SQLite
+// (dev) usa MemoryStorage — jobs não sobrevivem a restart, aceitável em dev.
 builder.Services.AddHangfire(config =>
-    config.UseMemoryStorage());
+{
+    if (usePostgres)
+        config.UsePostgreSqlStorage(
+            c => c.UseNpgsqlConnection(databaseUrl),
+            new PostgreSqlStorageOptions
+            {
+                SchemaName = "hangfire",
+                PrepareSchemaIfNecessary = true,
+            });
+    else
+        config.UseMemoryStorage();
+});
 builder.Services.AddHangfireServer();
 
 // Rate Limiting — protege endpoints de autenticação contra brute force.
@@ -289,8 +303,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Hangfire Dashboard
-app.UseHangfireDashboard("/hangfire");
+// Hangfire Dashboard — protegido: exige usuário autenticado
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireDashboardAuthFilter() }
+});
 
 // Schedule recurring jobs
 var bgJob = app.Services.GetRequiredService<IBackgroundJobClient>();
