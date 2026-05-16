@@ -65,7 +65,7 @@ export default function ParcelamentoDetalhePage() {
       setParcelamento(p)
       setContas(c)
       if (c.length > 0) setContaSelecionada(c[0].id)
-    } catch (e) {
+    } catch {
       setErro("Erro ao carregar parcelamento")
     } finally {
       setLoading(false)
@@ -89,7 +89,7 @@ export default function ParcelamentoDetalhePage() {
       })
       setModalPagar(false)
       await loadData()
-    } catch (e) {
+    } catch {
       setErroPagar("Erro ao pagar parcela")
     } finally {
       setLoadingPagar(false)
@@ -109,7 +109,7 @@ export default function ParcelamentoDetalhePage() {
         idempotencyKey: crypto.randomUUID(),
       })
       navigate("/parcelamentos")
-    } catch (e) {
+    } catch {
       alert("Erro ao cancelar parcelamento")
     } finally {
       setLoadingCancelar(false)
