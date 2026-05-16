@@ -9,6 +9,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import RepeatIcon from "@mui/icons-material/Repeat"
 import TrendingUpIcon from "@mui/icons-material/TrendingUp"
 import TrendingDownIcon from "@mui/icons-material/TrendingDown"
+import { useOutletContext } from "react-router-dom"
 import CustomButton from "../../components/CustomButton"
 import {
   getRecorrentes, createRecorrente, toggleRecorrente, deleteRecorrente,
@@ -18,6 +19,9 @@ import { getCategories } from "../../services/categoryService"
 import type { Recorrente, CriarRecorrente } from "../../types/Recorrente"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
+
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -46,6 +50,7 @@ const emptyForm: CriarRecorrente = {
 }
 
 export default function RecorrentesPage() {
+  const { notify } = useOutletContext<OutletContextType>()
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
