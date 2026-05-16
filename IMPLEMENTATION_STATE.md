@@ -19,7 +19,7 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 **Bloco:** A (Higiene de Produção)
 **Iniciada em:** 2026-05-16 (sessão 16)
 **Sessões nessa issue:** 3
-**Status:** 95% — backend ✅, frontend ✅, middleware ajustado, testes ⏳
+**Status:** 100% — backend ✅, frontend ✅, testes curl ✅, aguarda validação visual no browser
 
 ### Etapas
 - [x] 1. CsrfTokenService: gerar e validar tokens
@@ -30,27 +30,25 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 - [x] 6. Frontend: axiosConfig com withCredentials: true
 - [x] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
 - [x] 8. Frontend: remover Token/RefreshToken de storage — refatorado AuthContext
-- [ ] 9. Testar: JWT não aparece em localStorage
-- [ ] 10. Testar: CSRF bloqueado cross-origin
+- [x] 9. Testar: JWT não aparece em localStorage (curl: token vazio no body ✅)
+- [x] 10. Testar: CSRF bloqueado — 403 sem header, 200/400 com header ✅
 
-### Etapa atual
-Testes manuais. Todos ajustes de código ✅:
-- Frontend build ✅
-- Backend build ✅ (após limpar bin/obj)
-- Middleware: ajustado para skip CSRF em /auth/login, /auth/register, /auth/forgot-password, /auth/reset-password
-- launchSettings.json: porta corrigida para 5293
-- Commits: 96cc007, 81c4741, 1b7134d
+### Fixes aplicados na sessão 19
+- `SetAuthCookies`: `Secure = Request.IsHttps` (falso em dev HTTP, verdadeiro em prod HTTPS)
+- `Register`: agora chama `SetAuthCookies`, retorna body sem tokens
+- `Refresh`: lê refreshToken do cookie (não do body)
+- `Logout`: lê refreshToken do cookie, chama `ClearAuthCookies()`
+- `JwtBearer.OnMessageReceived`: lê token do cookie `jwt`
+- `AuthContext.logout()`: chama `api.post('/auth/logout')` para limpar cookies no servidor
+- Commits: 050b2b0
 
 ### Próxima ação concreta
-Sessão 19:
-1. Kill processo antigo (port 5293 em uso)
-2. Rodar backend: `dotnet run` ControleFinanceiro.Api/
-3. Testar POST /auth/register sem CSRF — deve funcionar ✅ (público)
-4. Verificar Set-Cookie: jwt (httpOnly), X-CSRF-Token (não-httpOnly)
-5. Rodar frontend: `npm run dev` controle-financeiro.web/
-6. Login em http://localhost:5173
-7. DevTools verificar cookies + localStorage vazio + network POST com X-CSRF-Token
-8. Mergear PR #26 se testes passarem
+Sessão 20:
+1. Validação visual no browser — `npm run dev` + Login em http://localhost:5173
+2. DevTools: Application > Cookies → `jwt` (httpOnly ✅), `X-CSRF-Token` (não httpOnly ✅)
+3. DevTools: Application > Local Storage → vazio (sem tokens) ✅
+4. DevTools: Network → POST request inclui header `X-CSRF-Token` ✅
+5. Mergear PR #26
 
 
 ---
