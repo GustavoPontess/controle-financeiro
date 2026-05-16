@@ -710,3 +710,74 @@ public class LimiteSnapshot
 | `RecalcularLimitesJob` | Hourly | LimiteBloqueado/Disponivel (não persiste, só calcula) |
 
 **Storage:** In-memory (MVPMat pode migrar para SQLite em prod)
+
+---
+
+## Configuration via Environment Variables
+
+**Objetivo:** Eliminar segredos hardcoded do repositório. JWT secret, database URLs e CORS origins são lidos de variáveis de ambiente via DotNetEnv.
+
+### Setup
+
+1. **Create `.env` file** (ignored by git, local only):
+```bash
+# ControleFinanceiro.Api/.env
+JWT_SECRET=your-super-secret-key-change-this-in-production-minimum-32-characters-long!
+JWT_ISSUER=ControleFinanceiro
+JWT_AUDIENCE=ControleFinanceiroUsers
+JWT_EXPIRATION_MINUTES=60
+DATABASE_URL=Data Source=controlefinanceiro.db
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+ASPNETCORE_ENVIRONMENT=Development
+```
+
+2. **Reference `.env.example`** (versioned, shows structure):
+```bash
+# See .env.example for all available variables
+cp ControleFinanceiro.Api/.env.example ControleFinanceiro.Api/.env
+# Edit .env with your values
+```
+
+### Variables
+
+| Variable | Type | Required | Example | Notes |
+|----------|------|----------|---------|-------|
+| `JWT_SECRET` | string | ✓ | `your-secret-key-32-chars-min` | Minimum 32 characters, alphanumeric + special recommended |
+| `JWT_ISSUER` | string | | `ControleFinanceiro` | Default: ControleFinanceiro |
+| `JWT_AUDIENCE` | string | | `ControleFinanceiroUsers` | Default: ControleFinanceiroUsers |
+| `JWT_EXPIRATION_MINUTES` | int | | `60` | Default: 60 |
+| `DATABASE_URL` | string | ✓ | `Data Source=controlefinanceiro.db` | SQLite or Postgres (future) |
+| `CORS_ALLOWED_ORIGINS` | string | | `http://localhost:5173,https://app.example.com` | Comma-separated, no spaces |
+| `ASPNETCORE_ENVIRONMENT` | string | | `Development` | Required by .NET |
+
+### Implementation (Program.cs)
+
+```csharp
+// Load .env at startup
+if (File.Exists(".env"))
+{
+    Env.Load(".env");
+}
+
+// Read with error on missing critical vars
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? throw new InvalidOperationException("JWT_SECRET environment variable is not set");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
+
+// Non-critical with defaults
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "ControleFinanceiro";
+var corsOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? "http://localhost:5173")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+```
+
+### In Production
+
+- Do NOT commit `.env`
+- Set environment variables on host (systemd, Docker, Kubernetes, cloud platform)
+- No fallback defaults for critical secrets (fail fast)
+- Use `.env.example` as documentation only
+
+### Dependencies
+
+- `DotNetEnv` (NuGet) — reads `.env` into `Environment.GetEnvironmentVariable()`
