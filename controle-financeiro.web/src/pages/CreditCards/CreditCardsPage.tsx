@@ -233,8 +233,8 @@ export default function CreditCardsPage() {
       notify({ open: true, message: "Cartão removido", severity: "success" })
       if (faturasCartaoId === id) setFaturasCartaoId(null)
       await loadData()
-    } catch (e: any) {
-      const msg = e?.response?.data?.mensagem ?? "Erro ao remover cartão"
+    } catch (e) {
+      const msg = (e as { response?: { data?: { mensagem?: string } } }).response?.data?.mensagem ?? "Erro ao remover cartão"
       notify({ open: true, message: msg, severity: "error" })
     }
   }

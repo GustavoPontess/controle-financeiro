@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom"
 import CustomButton from "../../components/CustomButton"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getCartoes } from "../../services/cartaoCreditoService"
+import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
 
@@ -39,7 +40,7 @@ export default function ParcelamentosPage() {
   const [form, setForm] = useState<Omit<CriarParcelamentoPayload, "idempotencyKey">>({
     descricao: "",
     valor: 0,
-    tipo: 0 as any,
+    tipo: TipoParcelamento.CompraParcelada,
     cartaoCreditoId: "",
     dataCompra: new Date().toISOString().split("T")[0],
     parcelas: 3,
@@ -55,7 +56,7 @@ export default function ParcelamentosPage() {
       ])
       setParcelamentos(p)
       setCartoes(c)
-    } catch (e) {
+    } catch {
       setErroGeral("Erro ao carregar dados")
     }
   }
@@ -70,7 +71,7 @@ export default function ParcelamentosPage() {
     setForm({
       descricao: "",
       valor: 0,
-      tipo: 0 as any,
+      tipo: TipoParcelamento.CompraParcelada,
       cartaoCreditoId: "",
       dataCompra: new Date().toISOString().split("T")[0],
       parcelas: 3,
@@ -103,7 +104,7 @@ export default function ParcelamentosPage() {
       })
       setDialogOpen(false)
       await loadData()
-    } catch (e) {
+    } catch {
       setErroGeral("Erro ao criar parcelamento")
     } finally {
       setLoading(false)
@@ -324,7 +325,7 @@ export default function ParcelamentosPage() {
             <Select
               value={form.tipo}
               label="Tipo *"
-              onChange={(e) => setForm(f => ({ ...f, tipo: Number(e.target.value) as any }))}
+              onChange={(e) => setForm(f => ({ ...f, tipo: Number(e.target.value) as TipoParcelamento }))}
             >
               <MuiMenuItem value={0}>Compra Parcelada</MuiMenuItem>
               <MuiMenuItem value={1}>PIX Crédito</MuiMenuItem>

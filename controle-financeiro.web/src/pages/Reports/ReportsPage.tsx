@@ -177,7 +177,7 @@ export default function ReportsPage() {
                       cy="50%"
                       outerRadius={90}
                       // @ts-expect-error recharts PieChart label types vary by version
-                      label={({ name, value, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       labelLine={false}
                     >
                       {data.gastosPorCategoria.map((_, index) => (
