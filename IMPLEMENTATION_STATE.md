@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-16
-status: AGUARDANDO_PROXIMA_ISSUE
-issue_anterior: '#11, #12 — Ambas concluídas em sessão 15'
+status: EM_EXECUCAO
+issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 ---
 
 # Implementation State — sessão atual
@@ -13,12 +13,34 @@ issue_anterior: '#11, #12 — Ambas concluídas em sessão 15'
 
 ---
 
-## Próxima Issue
+## Issue em execução
 
-**Próxima a começar:** Issue #13 — JWT em httpOnly cookie + CSRF token
+**Issue:** #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
-**Esforço:** 1 dia
-**Razão:** Vulnerabilidade crítica XSS (tokens em localStorage)
+**Iniciada em:** 2026-05-16 (sessão 16)
+**Sessões nessa issue:** 1
+**Status:** 50% — backend ✅, frontend ⏳
+
+### Etapas
+- [x] 1. CsrfTokenService: gerar e validar tokens
+- [x] 2. AuthController: SetAuthCookies com HttpOnly, Secure, SameSite=Strict
+- [x] 3. Login/Refresh: emitir em cookies, não no body
+- [x] 4. CsrfValidationMiddleware: validar X-CSRF-Token em POST/PUT/DELETE/PATCH
+- [ ] 5. Frontend: remover JWT de localStorage
+- [ ] 6. Frontend: axiosClient com withCredentials: true
+- [ ] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
+- [ ] 8. Frontend: remover Token/RefreshToken de storage
+- [ ] 9. Testar: JWT não aparece em localStorage
+- [ ] 10. Testar: CSRF bloqueado cross-origin
+
+### Próxima ação concreta
+Sessão 17:
+1. Abrir frontend (`controle-financeiro.web/src/api/axiosClient.ts`)
+2. Remover `token` e `refreshToken` de localStorage
+3. Configurar `withCredentials: true`
+4. Adicionar interceptor para incluir X-CSRF-Token em headers
+5. Testar login (JWT em cookie, não localStorage)
+6. Testar CSRF de origem diferente (deve bloquear)
 
 
 ---
