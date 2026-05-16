@@ -6,6 +6,7 @@ using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Infrastructure.Middleware;
 using ControleFinanceiro.Api.Services;
+using DotNetEnv;
 using Hangfire;
 using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,6 +15,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
+
+// Load environment variables from .env file if it exists
+if (File.Exists(".env"))
+{
+    Env.Load(".env");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +31,9 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlite("Data Source=controlefinanceiro.db");
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
+    options.UseSqlite(databaseUrl);
 });
 
 builder.Services.AddScoped<TransacaoService>();
@@ -61,10 +70,11 @@ builder.Services.AddHangfireServer();
 builder.Services.AddHttpContextAccessor();
 
 // JWT Configuration
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "your-secret-key-change-this-in-production-very-long-string";
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "ControleFinanceiro";
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "ControleFinanceiroUsers";
-var jwtExpirationMinutes = int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"] ?? "60");
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? throw new InvalidOperationException("JWT_SECRET environment variable is not set");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "ControleFinanceiro";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "ControleFinanceiroUsers";
+var jwtExpirationMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES") ?? "60");
 
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 builder.Services.AddSingleton(new JwtTokenProvider(jwtSecret, jwtIssuer, jwtAudience, jwtExpirationMinutes));
@@ -160,13 +170,14 @@ builder.Services.AddSwaggerGen(options =>
     options.OrderActionsBy(x => x.RelativePath);
 });
 
+var corsOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? "http://localhost:5173").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173")
-                  .AllowAnyOrigin()
+            policy.WithOrigins(corsOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
