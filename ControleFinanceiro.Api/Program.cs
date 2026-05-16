@@ -11,11 +11,13 @@ using DotNetEnv;
 using Hangfire;
 using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
+using System.Threading.RateLimiting;
 
 // Load environment variables from .env file if it exists
 if (File.Exists(".env"))
@@ -68,6 +70,56 @@ builder.Services.AddScoped<RecalcularLimitesJob>();
 builder.Services.AddHangfire(config =>
     config.UseMemoryStorage());
 builder.Services.AddHangfireServer();
+
+// Rate Limiting — protege endpoints de autenticação contra brute force.
+// Todas as políticas particionam por IP de origem.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    static string PartitionByIp(HttpContext ctx) =>
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    options.AddPolicy("auth-login", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy("auth-register", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy("auth-forgot-password", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+            }));
+
+    options.OnRejected = async (context, token) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString();
+        }
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Muitas tentativas. Tente novamente mais tarde." }, token);
+    };
+});
 
 builder.Services.AddHttpContextAccessor();
 
@@ -190,7 +242,8 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins(corsOrigins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 
@@ -219,6 +272,8 @@ app.UseMiddleware<CsrfValidationMiddleware>();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

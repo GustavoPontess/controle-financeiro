@@ -2,8 +2,8 @@ import { api } from "../api/axiosConfig"
 import type { Transferencia, CriarTransferencia } from "../types/Transferencia"
 
 export const getTransferencias = async (): Promise<Transferencia[]> => {
-  const res = await api.get("/transferencias")
-  return res.data
+  const res = await api.get("/transferencias", { params: { pageSize: 1000 } })
+  return res.data.items
 }
 
 export const createTransferencia = async (dto: CriarTransferencia): Promise<Transferencia> => {

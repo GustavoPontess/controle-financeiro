@@ -50,11 +50,16 @@ export default function BancosPage() {
   const [editingConta, setEditingConta] = useState<Conta | null>(null)
 
   const loadData = async () => {
-    const [bs, cs, ts] = await Promise.all([getBancos(), getContas(), getTransactions()])
-    setBancos(bs)
-    const filtered = cs.filter(c => c.tipo !== 3) // Exclude CartaoCredito (type 3)
-    setContas(filtered)
-    setTransactions(ts)
+    try {
+      const [bs, cs, ts] = await Promise.all([getBancos(), getContas(), getTransactions()])
+      setBancos(bs)
+      const filtered = cs.filter(c => c.tipo !== 3) // Exclude CartaoCredito (type 3)
+      setContas(filtered)
+      setTransactions(ts)
+    } catch (error) {
+      console.error("Erro ao carregar bancos:", error)
+      notify({ open: true, message: "Erro ao carregar bancos", severity: "error" })
+    }
   }
 
   useEffect(() => {

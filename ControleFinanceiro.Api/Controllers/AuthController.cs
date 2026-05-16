@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Services;
 using ControleFinanceiro.Api.Infrastructure.Identity;
@@ -61,6 +62,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth-register")]
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
         var result = await _authService.RegisterAsync(dto);
@@ -78,6 +80,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-login")]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         var result = await _authService.LoginAsync(dto);
@@ -179,6 +182,7 @@ public class AuthController : ControllerBase
     /// Solicita reset de senha. Em produção enviaria e-mail; aqui retorna o token diretamente.
     /// </summary>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth-forgot-password")]
     [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {

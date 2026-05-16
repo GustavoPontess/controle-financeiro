@@ -2,8 +2,8 @@ import { api } from "../api/axiosConfig"
 import type { Emprestimo, CriarEmprestimo } from "../types/Emprestimo"
 
 export const getEmprestimos = async (): Promise<Emprestimo[]> => {
-  const res = await api.get("/emprestimos")
-  return res.data
+  const res = await api.get("/emprestimos", { params: { pageSize: 1000 } })
+  return res.data.items
 }
 
 export const createEmprestimo = async (dto: CriarEmprestimo): Promise<Emprestimo> => {

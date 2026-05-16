@@ -55,10 +55,15 @@ export default function RecorrentesPage() {
   const [erro, setErro] = useState("")
 
   const loadData = async () => {
-    const [r, c, cat] = await Promise.all([getRecorrentes(), getContas(), getCategories()])
-    setRecorrentes(r)
-    setContas(c)
-    setCategorias(cat)
+    try {
+      const [r, c, cat] = await Promise.all([getRecorrentes(), getContas(), getCategories()])
+      setRecorrentes(r)
+      setContas(c)
+      setCategorias(cat)
+    } catch (error) {
+      console.error("Erro ao carregar recorrentes:", error)
+      notify({ open: true, message: "Erro ao carregar recorrentes", severity: "error" })
+    }
   }
 
   useEffect(() => { loadData() }, [])

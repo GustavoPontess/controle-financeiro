@@ -33,9 +33,14 @@ export default function TransferenciasPage() {
   const [erro, setErro] = useState("")
 
   const loadData = async () => {
-    const [t, c] = await Promise.all([getTransferencias(), getContas()])
-    setTransferencias(t)
-    setContas(c)
+    try {
+      const [t, c] = await Promise.all([getTransferencias(), getContas()])
+      setTransferencias(t)
+      setContas(c)
+    } catch (error) {
+      console.error("Erro ao carregar transferências:", error)
+      setErro("Erro ao carregar transferências")
+    }
   }
 
   useEffect(() => { loadData() }, [])
