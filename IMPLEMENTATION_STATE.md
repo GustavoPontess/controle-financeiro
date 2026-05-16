@@ -18,29 +18,34 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 **Issue:** #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
 **Iniciada em:** 2026-05-16 (sessão 16)
-**Sessões nessa issue:** 1
-**Status:** 50% — backend ✅, frontend ⏳
+**Sessões nessa issue:** 2
+**Status:** 90% — backend ✅, frontend ✅, testes ⏳
 
 ### Etapas
 - [x] 1. CsrfTokenService: gerar e validar tokens
 - [x] 2. AuthController: SetAuthCookies com HttpOnly, Secure, SameSite=Strict
 - [x] 3. Login/Refresh: emitir em cookies, não no body
 - [x] 4. CsrfValidationMiddleware: validar X-CSRF-Token em POST/PUT/DELETE/PATCH
-- [ ] 5. Frontend: remover JWT de localStorage
-- [ ] 6. Frontend: axiosClient com withCredentials: true
-- [ ] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
-- [ ] 8. Frontend: remover Token/RefreshToken de storage
+- [x] 5. Frontend: remover JWT de localStorage
+- [x] 6. Frontend: axiosConfig com withCredentials: true
+- [x] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
+- [x] 8. Frontend: remover Token/RefreshToken de storage — refatorado AuthContext
 - [ ] 9. Testar: JWT não aparece em localStorage
 - [ ] 10. Testar: CSRF bloqueado cross-origin
 
+### Etapa atual
+Testes manuais de integração. Build frontend ✅. Build backend aguarda liberação de processo (PID 3904 rodando).
+
 ### Próxima ação concreta
-Sessão 17:
-1. Abrir frontend (`controle-financeiro.web/src/api/axiosClient.ts`)
-2. Remover `token` e `refreshToken` de localStorage
-3. Configurar `withCredentials: true`
-4. Adicionar interceptor para incluir X-CSRF-Token em headers
-5. Testar login (JWT em cookie, não localStorage)
-6. Testar CSRF de origem diferente (deve bloquear)
+Sessão 18:
+1. Encerrar processo antigo do API (PID 3904)
+2. Rodar backend: `dotnet run` em ControleFinanceiro.Api/
+3. Rodar frontend: `npm run dev` em controle-financeiro.web/
+4. Login em http://localhost:5173 com credenciais teste
+5. DevTools → Application → Cookies: verificar "jwt" (httpOnly) e "X-CSRF-Token" presentes
+6. DevTools → Application → localStorage: verificar vazio
+7. DevTools → Network: testar POST e verificar header "X-CSRF-Token" enviado
+8. Cross-origin test (abrir outra aba em origin diferente, tentar fazer POST) — deve retornar 403
 
 
 ---
