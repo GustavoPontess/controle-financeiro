@@ -2,11 +2,22 @@
 Obrigado pelo PR! Preencha os campos abaixo. Deixe checkboxes vazios para os passos que ainda não foram completados — assim o reviewer sabe o que falta.
 -->
 
-## Issue relacionada
+## Issue(s) relacionada(s)
 
 Closes #<numero>
 
-<!-- Se for trabalho parcial que não fecha a Issue inteira, use "Refs #<numero>" no lugar de "Closes" -->
+<!--
+Se este PR fecha múltiplas issues (porque uma foi resolvida como subproduto de outra,
+ou porque escopo se sobrepôs), liste TODAS aqui, uma por linha:
+
+    Closes #1
+    Closes #2
+
+Assim o GitHub fecha todas automaticamente ao mergear e vincula o PR a cada uma.
+Não fechar manualmente fora do PR — perde rastreabilidade.
+
+Se for trabalho parcial que não fecha a Issue inteira, use "Refs #<numero>" no lugar de "Closes".
+-->
 
 ## O que muda
 
