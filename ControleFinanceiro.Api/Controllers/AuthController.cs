@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Services;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Infrastructure.Security;
 
 namespace ControleFinanceiro.Api.Controllers;
 
@@ -13,11 +14,48 @@ public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
     private readonly JwtTokenProvider _tokenProvider;
+    private readonly CsrfTokenService _csrfTokenService;
 
-    public AuthController(AuthService authService, JwtTokenProvider tokenProvider)
+    public AuthController(AuthService authService, JwtTokenProvider tokenProvider, CsrfTokenService csrfTokenService)
     {
         _authService = authService;
         _tokenProvider = tokenProvider;
+        _csrfTokenService = csrfTokenService;
+    }
+
+    private void SetAuthCookies(string jwtToken, string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.UtcNow.AddHours(1)
+        };
+
+        Response.Cookies.Append("jwt", jwtToken, cookieOptions);
+
+        var refreshCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.UtcNow.AddDays(7)
+        };
+
+        Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
+
+        // CSRF token in non-HttpOnly cookie (JS can read it)
+        var csrfToken = _csrfTokenService.GenerateToken();
+        var csrfCookieOptions = new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.UtcNow.AddHours(1)
+        };
+
+        Response.Cookies.Append("X-CSRF-Token", csrfToken, csrfCookieOptions);
     }
 
     [HttpPost("register")]
@@ -31,7 +69,18 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         var result = await _authService.LoginAsync(dto);
-        return Ok(result);
+        SetAuthCookies(result.Token, result.RefreshToken);
+
+        // Return user info without tokens (tokens are now in httpOnly cookies)
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = result.UsuarioId,
+            Email = result.Email,
+            Nome = result.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
     }
 
     [Authorize]
@@ -82,7 +131,17 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
     {
         var result = await _authService.RefreshAsync(dto.RefreshToken);
-        return Ok(result);
+        SetAuthCookies(result.Token, result.RefreshToken);
+
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = result.UsuarioId,
+            Email = result.Email,
+            Nome = result.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
     }
 
     /// <summary>

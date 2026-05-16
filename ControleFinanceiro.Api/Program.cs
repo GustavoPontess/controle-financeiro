@@ -5,6 +5,7 @@ using ControleFinanceiro.Api.Infrastructure.Filters;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Infrastructure.Middleware;
+using ControleFinanceiro.Api.Infrastructure.Security;
 using ControleFinanceiro.Api.Services;
 using DotNetEnv;
 using Hangfire;
@@ -41,6 +42,7 @@ builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();
 builder.Services.AddScoped<TransferenciaService>();
@@ -203,6 +205,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseMiddleware<CsrfValidationMiddleware>();
 
 app.UseHttpsRedirection();
 
