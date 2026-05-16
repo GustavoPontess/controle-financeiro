@@ -55,12 +55,21 @@ dotnet run
 - [ ] `UsuarioId` checado em todas as queries novas (multi-tenancy)
 - [ ] Soft delete preservado em entidades financeiras
 
-## Notas para o reviewer
+## Review
+
+<!-- Marque uma das opções abaixo -->
+
+- [ ] **Auto-merge** — PR pequeno/trivial, build verde, dispensa review do outro
+- [ ] **Aguardando review** — pedi review do outro porque [arquitetural / decisão importante / inseguro / mudança grande]
+
+Critério em `docs/COLLABORATION.md` §6.3.
+
+## Notas para o reviewer (se pediu review)
 
 <!-- Algo específico que você quer que o reviewer olhe com mais atenção? Dúvidas em aberto? Decisão que mereceu trade-off? -->
 
-## Após approval
+## Após pronto
 
-- [ ] Eu (autor) vou fazer o **squash merge** (não o reviewer)
-- [ ] Branch será deletada pós-merge
-- [ ] `ISSUES.md` e `PROGRESS.md` serão atualizados em PR de follow-up (ou neste mesmo se já estiverem inclusos)
+- [ ] Squash merge (executado pelo próprio autor)
+- [ ] Branch deletada pós-merge (automático)
+- [ ] `ISSUES.md` e `PROGRESS.md` atualizados (neste PR ou em follow-up curto)

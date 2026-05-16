@@ -137,10 +137,10 @@ Quando decidir parar (limite de tokens, fim natural de etapa, ou usuário pediu)
    ```bash
    gh pr create --fill --base main --head feature/<numero>-<slug>
    ```
-   Adicionar o sócio como reviewer. Preencher o template (aparece automaticamente).
+   Preencher o template (aparece automaticamente). No campo "Review", marcar **Auto-merge** ou **Aguardando review** conforme o critério de `docs/COLLABORATION.md` §6.3. PR pequeno/trivial pode auto-merge sem esperar o outro.
 8. **Atualizar GitHub Issue** com um comentário do tipo "sessão N: parei em X, PR #Y aberto".
 9. **`PROGRESS.md`** só é tocado **no PR final** (que fecha a Issue), não em sessões intermediárias.
-10. **Avisar o usuário em chat:** qual issue/etapa parou, número do PR, o que falta para Ready for review.
+10. **Avisar o usuário em chat:** qual issue/etapa parou, número do PR, se vai auto-mergear ou aguardar review.
 
 ---
 
