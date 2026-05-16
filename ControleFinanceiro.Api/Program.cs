@@ -12,6 +12,7 @@ using Hangfire;
 using Hangfire.MemoryStorage;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -89,6 +90,13 @@ builder.Services.AddHangfire(config =>
         config.UseMemoryStorage();
 });
 builder.Services.AddHangfireServer();
+
+// Health checks: /health (liveness, leve) e /health/ready (readiness:
+// banco + Hangfire). Usa AddDbContextCheck — provider-agnóstico, funciona
+// tanto em SQLite quanto Postgres.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" })
+    .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire", tags: new[] { "ready" });
 
 // Rate Limiting — protege endpoints de autenticação contra brute force.
 // Todas as políticas particionam por IP de origem.
@@ -349,5 +357,17 @@ recManager.AddOrUpdate<RecalcularLimitesJob>(
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapControllers();
+
+// /health — liveness: responde se o processo está de pé (sem checar deps)
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+
+// /health/ready — readiness: checa banco e Hangfire
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
