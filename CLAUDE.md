@@ -10,9 +10,9 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
-- **Backend:** .NET 8 Web API com EF Core (SQLite em dev, destino Postgres em prod — Bloco B do roadmap)
+- **Backend:** .NET 8 Web API com EF Core. Provider escolhido em runtime pela connection string: SQLite em dev, Postgres em prod (ver `Infrastructure/DatabaseProvider.cs`)
 - **Frontend:** React 19 + TypeScript + Vite + Material-UI v7
-- **Banco de dados atual:** SQLite com 18 entidades; migração para Postgres prevista em Issue #16
+- **Banco de dados:** 18 entidades. Provider dinâmico SQLite/Postgres (Issue #16 concluída); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire (atualmente `MemoryStorage`, migração para `PostgresStorage` em Issue #17)
@@ -75,8 +75,10 @@ npm run lint
 - All endpoints except `/auth/login` and `/auth/register` require `[Authorize]`
 
 ### Database
-- SQLite file: `ControleFinanceiro.Api/controlefinanceiro.db`
-- EF Core migrations in `Migrations/`
+- Provider escolhido em runtime via `DATABASE_URL` (`DatabaseProvider.IsPostgres`): `Host=` → Postgres, senão SQLite
+- **SQLite (dev):** arquivo `ControleFinanceiro.Api/controlefinanceiro.db`, schema criado via `EnsureCreated` (sem migrations)
+- **Postgres (prod):** migrations versionadas em `Migrations/` (geradas para Postgres pelo `AppDbContextFactory`); `docker compose up -d` sobe Postgres local
+- `Npgsql.EnableLegacyTimestampBehavior` ativo — `DateTime` mapeia para `timestamp without time zone`
 - Some schema patches for the Fatura system are applied via raw DDL in `Program.cs` startup (check for column existence before executing)
 
 ## API Documentation
