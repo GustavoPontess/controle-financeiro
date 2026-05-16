@@ -16,15 +16,15 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Higiene de Produção:          1/5  ✅ #11
+Bloco A — Higiene de Produção:          2/5  ✅ #11, #12
 Bloco B — Infraestrutura para Escalar:  0/6  ⏳
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          1/21 (4%)
+Total Q3 2026:                          2/21 (9%)
 ```
 
-**Status geral:** Bloco A iniciado. Issue #11 concluída em 1 sessão.
+**Status geral:** Bloco A 40% concluído. Issues #11, #12 fechadas em 1 sessão.
 
 ---
 
@@ -56,15 +56,23 @@ Nenhum item em execução. Aguardando início do **Bloco A** (higiene de produç
 ## Histórico de sessões
 
 ### Sessão 15 — 2026-05-16
-- **Issue #11 — Segredos via variáveis de ambiente (CONCLUÍDA)**
+- **Issue #11 — Segredos via variáveis de ambiente (✅ CONCLUÍDA)**
   - Moveu JWT secret, database URL e CORS origins para variáveis de ambiente via `DotNetEnv`
   - Criou `.env.example` versionado; `.env` local ignorado
   - Atualizou `Program.cs` com `Env.Load()` e fallback claro (fail-fast)
   - Removeu segredos de `appsettings.json` versionado
   - Testou build ✅, API sobe com `.env` ✅, erro sem vars ✅
   - Documentou em `docs/STANDARDS.md` §Configuration via Environment Variables
-  - PR #23 aberto, pronto para merge
-- **Próxima ação:** Issue #12 (Corrigir CORS contraditório) — já parcialmente resolvida em #11
+  - PR #23 mergeado em main
+  
+- **Issue #12 — Corrigir CORS contraditório (✅ CONCLUÍDA)**
+  - Removido `.AllowAnyOrigin()` que sobrescrevia `WithOrigins()`
+  - CORS origins agora lidos dinamicamente de `CORS_ALLOWED_ORIGINS` env var
+  - Resolvida como parte de #11 (mesmo commit que env vars)
+  - Requisição de origem não-permitida retorna erro CORS correto
+  - Issue #12 fechada
+
+- **Próxima ação:** Issue #13 (JWT em httpOnly cookie + CSRF token) — Bloco A, segurança crítica
 
 ### Sessão 14 — 2026-05-15
 - Análise crítica completa do projeto sob lente de produto B2C (`docs/ANALISE_PRODUTO.md`)

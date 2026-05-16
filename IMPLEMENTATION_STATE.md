@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-16
-status: EM_EXECUCAO
-issue_atual: '#11 — Segredos via variáveis de ambiente'
+status: AGUARDANDO_PROXIMA_ISSUE
+issue_anterior: '#11, #12 — Ambas concluídas em sessão 15'
 ---
 
 # Implementation State — sessão atual
@@ -13,69 +13,13 @@ issue_atual: '#11 — Segredos via variáveis de ambiente'
 
 ---
 
-## Issue em execução
+## Próxima Issue
 
-**Issue:** #11 — Segredos via variáveis de ambiente
+**Próxima a começar:** Issue #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
-**Iniciada em:** 2026-05-16
-**Sessões nessa issue:** 1
+**Esforço:** 1 dia
+**Razão:** Vulnerabilidade crítica XSS (tokens em localStorage)
 
-### Etapas
-- [x] 1. Identificar segredos hardcoded (JWT, connection string, CORS origins)
-- [x] 2. Criar `.env.example` versionado com chaves e descrição
-- [x] 3. Adicionar `DotNetEnv` package e configurar carregamento em `Program.cs`
-- [x] 4. Mover JWT Secret, Database URL e CORS para variáveis de ambiente
-- [x] 5. Remover segredos do `appsettings.json` versionado
-- [x] 6. Verificar `.env` já está em `.gitignore`
-- [x] 7. Criar `.env` local com valores de development
-- [x] 8. Testar build ✅
-- [x] 9. Testar API sobe com `.env` ✅
-- [x] 10. Testar erro claro quando `JWT_SECRET` falta ✅
-- [x] 11. Documentar em `docs/STANDARDS.md` ✅
-- [ ] 12. Commit semântico
-
-### Etapa atual
-Pronto para commit. Todos os checkpoints verdes.
-
-### Próxima ação concreta
-Fazer commit com mensagem `feat(security): mover segredos para variáveis de ambiente (#11)` e abrir PR.
-
----
-
-## Próxima ação concreta (para a próxima sessão)
-
-**Issue:** #11 — Segredos via variáveis de ambiente
-**Bloco:** A (Higiene de Produção)
-**Esforço estimado:** 2h
-
-**Primeiro passo concreto:**
-
-1. Criar branch `feature/11-segredos-env-vars` (ver `docs/GIT_WORKFLOW.md`)
-2. Identificar e listar todos os segredos hardcoded:
-   - JWT secret em `Program.cs` (linha ~64) e `appsettings.json` (linha ~9)
-   - Connection string em `appsettings.json`
-   - Qualquer outra chave/token verificável via `grep -rn "secret\|password\|key" ControleFinanceiro.Api/*.json ControleFinanceiro.Api/Program.cs`
-3. Criar `ControleFinanceiro.Api/.env.example` versionado, com chaves vazias e descrição de cada uma
-4. Garantir que `.env` está no `.gitignore` (verificar antes de qualquer commit)
-5. Atualizar `Program.cs` para ler de variáveis de ambiente com fallback de erro claro caso a variável esteja ausente
-6. Atualizar `appsettings.json` removendo segredos reais (deixar estrutura/placeholders)
-7. Checkpoint: rodar `dotnet run` em ambiente limpo (sem variáveis exportadas) e confirmar erro claro indicando qual variável falta
-8. Checkpoint final: definir as variáveis em `.env` local, `dotnet run`, API sobe e responde a um login normalmente
-9. Documentar o padrão de configuração em `docs/STANDARDS.md` (seção nova "Configuração via variáveis de ambiente")
-10. Commit semântico: `feat(security): mover segredos para variáveis de ambiente (#11)`
-11. Atualizar este arquivo e `PROGRESS.md` no encerramento da sessão
-
----
-
-## Etapas previstas para Issue #11 (quando iniciar)
-
-1. **Identificar todos os segredos hardcoded** — JWT secret, connection string, qualquer chave de API
-2. **Criar arquivo `.env.example` versionado** com chaves vazias e descrição
-3. **Atualizar `appsettings.json` para placeholder ou remover segredos** (manter estrutura)
-4. **Configurar `Program.cs` para ler env vars** com fallback claro de erro se faltar
-5. **Atualizar `.gitignore`** se `.env` ainda não estiver listado
-6. **Documentar em `docs/STANDARDS.md`** o padrão de configuração
-7. **Checkpoint:** API sobe sem `appsettings.json` ter segredo, lendo de variável de ambiente
 
 ---
 
@@ -108,10 +52,6 @@ Fazer commit com mensagem `feat(security): mover segredos para variáveis de amb
 ```
 
 ---
-
-## Histórico de sessões na issue atual
-
-*(vazio — nenhuma issue em execução)*
 
 ---
 
