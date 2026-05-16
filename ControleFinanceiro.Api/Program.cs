@@ -5,6 +5,7 @@ using ControleFinanceiro.Api.Infrastructure.Filters;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Infrastructure.Middleware;
+using ControleFinanceiro.Api.Infrastructure.Security;
 using ControleFinanceiro.Api.Services;
 using DotNetEnv;
 using Hangfire;
@@ -41,6 +42,7 @@ builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();
 builder.Services.AddScoped<TransferenciaService>();
@@ -96,6 +98,15 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = ctx =>
+        {
+            if (ctx.Request.Cookies.TryGetValue("jwt", out var jwtCookie) && !string.IsNullOrEmpty(jwtCookie))
+                ctx.Token = jwtCookie;
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -203,6 +214,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseMiddleware<CsrfValidationMiddleware>();
 
 app.UseHttpsRedirection();
 

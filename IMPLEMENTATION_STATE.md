@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-16
-status: AGUARDANDO_PROXIMA_ISSUE
-issue_anterior: '#11, #12 — Ambas concluídas em sessão 15'
+status: EM_EXECUCAO
+issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 ---
 
 # Implementation State — sessão atual
@@ -13,12 +13,47 @@ issue_anterior: '#11, #12 — Ambas concluídas em sessão 15'
 
 ---
 
-## Próxima Issue
+## Issue em execução
 
-**Próxima a começar:** Issue #13 — JWT em httpOnly cookie + CSRF token
+**Issue:** #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
-**Esforço:** 1 dia
-**Razão:** Vulnerabilidade crítica XSS (tokens em localStorage)
+**Iniciada em:** 2026-05-16 (sessão 16)
+**Sessões nessa issue:** 4
+**Status:** 100% CONCLUÍDA ✅ — backend ✅, frontend ✅, testes curl ✅, validação de código ✅, PR #26 mergeado
+
+### Etapas
+- [x] 1. CsrfTokenService: gerar e validar tokens
+- [x] 2. AuthController: SetAuthCookies com HttpOnly, Secure, SameSite=Strict
+- [x] 3. Login/Refresh: emitir em cookies, não no body
+- [x] 4. CsrfValidationMiddleware: validar X-CSRF-Token em POST/PUT/DELETE/PATCH
+- [x] 5. Frontend: remover JWT de localStorage
+- [x] 6. Frontend: axiosConfig com withCredentials: true
+- [x] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
+- [x] 8. Frontend: remover Token/RefreshToken de storage — refatorado AuthContext
+- [x] 9. Testar: JWT não aparece em localStorage (curl: token vazio no body ✅)
+- [x] 10. Testar: CSRF bloqueado — 403 sem header, 200/400 com header ✅
+
+### Fixes aplicados na sessão 19
+- `SetAuthCookies`: `Secure = Request.IsHttps` (falso em dev HTTP, verdadeiro em prod HTTPS)
+- `Register`: agora chama `SetAuthCookies`, retorna body sem tokens
+- `Refresh`: lê refreshToken do cookie (não do body)
+- `Logout`: lê refreshToken do cookie, chama `ClearAuthCookies()`
+- `JwtBearer.OnMessageReceived`: lê token do cookie `jwt`
+- `AuthContext.logout()`: chama `api.post('/auth/logout')` para limpar cookies no servidor
+- Commits: 050b2b0
+
+### Sessão 20 (2026-05-16)
+- Validação de código frontend: zero referências a localStorage com tokens ✅
+- `axiosConfig.ts`: `withCredentials: true`, CSRF header só em mutators, sem `Authorization: Bearer` ✅
+- `AuthContext.tsx`: `savedAccounts` em localStorage (lista de contas, não tokens), logout chama POST /auth/logout ✅
+- PR #26 mergeado
+- Próxima issue: #14 — Rate limiting em endpoints sensíveis (Bloco A)
+
+### Próxima ação concreta
+Iniciar Issue #14 — Rate limiting:
+- Assignar issue no GitHub
+- Criar branch `feature/14-rate-limiting`
+- Implementar `AspNetCoreRateLimit` ou `dotnet-rate-limiter` em endpoints de auth
 
 
 ---
