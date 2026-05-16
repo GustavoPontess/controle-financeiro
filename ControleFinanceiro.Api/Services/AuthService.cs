@@ -54,8 +54,7 @@ public class AuthService
         if (dto.Password != dto.ConfirmPassword)
             throw new ArgumentException("Senhas não conferem");
 
-        if (dto.Password.Length < 6)
-            throw new ArgumentException("Senha deve ter no mínimo 6 caracteres");
+        PasswordPolicyService.ValidarOuLancar(dto.Password);
 
         // Check if email already exists
         if (_context.Usuarios.Any(u => u.Email == dto.Email))
@@ -254,8 +253,10 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(dto.Token))
             throw new ArgumentException("Token é obrigatório.");
 
-        if (string.IsNullOrWhiteSpace(dto.NovaSenha) || dto.NovaSenha.Length < 6)
-            throw new ArgumentException("Nova senha deve ter no mínimo 6 caracteres.");
+        if (string.IsNullOrWhiteSpace(dto.NovaSenha))
+            throw new ArgumentException("Nova senha é obrigatória.");
+
+        PasswordPolicyService.ValidarOuLancar(dto.NovaSenha);
 
         if (dto.NovaSenha != dto.ConfirmarNovaSenha)
             throw new ArgumentException("Senhas não conferem.");
@@ -337,8 +338,7 @@ public class AuthService
         if (!PasswordHasher.VerifyPassword(senhaAtual, usuario.PasswordHash))
             throw new UnauthorizedAccessException("Senha atual inválida");
 
-        if (novaSenha.Length < 6)
-            throw new ArgumentException("Nova senha deve ter no mínimo 6 caracteres");
+        PasswordPolicyService.ValidarOuLancar(novaSenha);
 
         usuario.PasswordHash = PasswordHasher.HashPassword(novaSenha);
         usuario.AtualizadoEm = DateTime.UtcNow;
