@@ -138,6 +138,13 @@ Quando decidir parar (limite de tokens, fim natural de etapa, ou usuário pediu)
    gh pr create --fill --base main --head feature/<numero>-<slug>
    ```
    Preencher o template (aparece automaticamente). No campo "Review", marcar **Auto-merge** ou **Aguardando review** conforme o critério de `docs/COLLABORATION.md` §6.3. PR pequeno/trivial pode auto-merge sem esperar o outro.
+
+   **Se o trabalho da Issue principal resolveu também outras issues** (ex: trabalho na #11 resolveu como subproduto a #12), listar TODAS no body do PR antes de mergear:
+   ```
+   Closes #1
+   Closes #2
+   ```
+   Assim o GitHub fecha todas automaticamente e vincula o PR a cada Issue. **Nunca fechar Issue manualmente fora do PR** — perde rastreabilidade. Ver `docs/COLLABORATION.md` §6.5.
 8. **Atualizar GitHub Issue** com um comentário do tipo "sessão N: parei em X, PR #Y aberto".
 9. **`PROGRESS.md`** só é tocado **no PR final** (que fecha a Issue), não em sessões intermediárias.
 10. **Avisar o usuário em chat:** qual issue/etapa parou, número do PR, se vai auto-mergear ou aguardar review.
