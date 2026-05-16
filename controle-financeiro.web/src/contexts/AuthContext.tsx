@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api } from '@/api/axiosConfig'
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Falha ao carregar dados do usuário')
       }
     } catch (error) {
-      throw new Error((error as any)?.response?.data?.message || 'Erro ao fazer login')
+      throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao fazer login')
     }
   }
 
@@ -109,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Falha ao carregar dados do usuário')
       }
     } catch (error) {
-      throw new Error((error as any)?.response?.data?.message || 'Erro ao registrar')
+      throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao registrar')
     }
   }
 
@@ -142,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
     } catch (error) {
-      throw new Error((error as any)?.response?.data?.message || 'Credenciais inválidas')
+      throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Credenciais inválidas')
     }
   }
 
