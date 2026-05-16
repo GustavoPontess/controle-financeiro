@@ -369,6 +369,9 @@ ASALocalRun/
 *.binlog
 MSBuild_Logs/
 
+# Serilog rolling log files
+logs/
+
 # AWS SAM Build and Temporary Artifacts folder
 .aws-sam
 
