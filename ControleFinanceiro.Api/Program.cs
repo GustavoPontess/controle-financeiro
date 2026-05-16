@@ -20,6 +20,8 @@ using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 using System.Threading.RateLimiting;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 // Load environment variables from .env file if it exists
 if (File.Exists(".env"))
@@ -28,6 +30,15 @@ if (File.Exists(".env"))
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog — logs estruturados em JSON: console + arquivo rotativo diário.
+builder.Host.UseSerilog((context, config) =>
+{
+    config
+        .Enrich.FromLogContext()
+        .WriteTo.Console(new CompactJsonFormatter())
+        .WriteTo.File(new CompactJsonFormatter(), "logs/log-.json", rollingInterval: RollingInterval.Day);
+});
 
 builder.Services.AddControllers(options =>
 {
@@ -298,6 +309,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseSerilogRequestLogging();
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseMiddleware<CsrfValidationMiddleware>();
