@@ -32,11 +32,16 @@ builder.Services.AddControllers(options =>
     options.Filters.Add(typeof(IdempotencyAttribute));
 });
 
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
+var usePostgres = DatabaseProvider.IsPostgres(databaseUrl);
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
-        ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
-    options.UseSqlite(databaseUrl);
+    if (usePostgres)
+        options.UseNpgsql(databaseUrl);
+    else
+        options.UseSqlite(databaseUrl);
 });
 
 builder.Services.AddScoped<TransacaoService>();
@@ -254,7 +259,13 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-    await context.Database.MigrateAsync();
+
+    // Postgres (prod) usa migrations versionadas; SQLite (dev) cria o schema
+    // direto do modelo via EnsureCreated — mais rápido para subir, sem histórico.
+    if (usePostgres)
+        await context.Database.MigrateAsync();
+    else
+        await context.Database.EnsureCreatedAsync();
 
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
