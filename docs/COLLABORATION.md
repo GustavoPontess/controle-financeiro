@@ -217,7 +217,28 @@ Review do outro dev **não é obrigatório**. É cortesia em casos onde faz dife
 - **Squash merge é o default.** A branch inteira vira 1 commit no `main` com a mensagem do PR.
 - **Branch é deletada após merge** (botão automático do GitHub).
 
-### 6.5 Discordância
+### 6.5 Issues múltiplas fechadas pelo mesmo PR
+
+Acontece: você está trabalhando na Issue #11 e percebe que o trabalho **já resolveu também** a Issue #12 (escopo se sobrepôs, ou uma é subproduto natural da outra). Nesses casos:
+
+- **Não crie branch separada** para a Issue #12 só para "fechá-la formalmente". É burocracia.
+- **No body do PR, liste TODAS as issues fechadas**, uma por linha:
+
+  ```
+  Closes #1
+  Closes #2
+  ```
+
+- Ao mergear, o GitHub:
+  - Fecha as duas issues automaticamente
+  - Vincula o PR a cada uma (aparece no sidebar da Issue)
+  - Preserva o link permanente no histórico
+
+**Nunca feche uma Issue manualmente fora do PR.** Isso perde a rastreabilidade entre o Issue e o commit que a resolveu.
+
+Se você só descobre que fechou outra issue **depois** do PR estar mergeado: faça um commit pequeno em `main` mencionando "Closes #N" (ou abra mini-PR de doc com `Closes`). Não basta comentar manualmente no Issue.
+
+### 6.6 Discordância
 
 Se vocês discordarem em PR e não chegarem a acordo:
 
