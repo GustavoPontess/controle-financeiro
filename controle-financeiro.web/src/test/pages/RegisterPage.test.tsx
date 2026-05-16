@@ -1,0 +1,120 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import RegisterPage from '../../pages/Auth/RegisterPage'
+
+const mockRegister = vi.fn()
+const mockNavigate = vi.fn()
+
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({ register: mockRegister }),
+}))
+
+function renderRegister() {
+  return render(
+    <MemoryRouter>
+      <RegisterPage />
+    </MemoryRouter>
+  )
+}
+
+describe('RegisterPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renderiza sem crash', () => {
+    renderRegister()
+    expect(screen.getByRole('button', { name: 'Criar Conta' })).toBeInTheDocument()
+  })
+
+  it('exibe campo de email', () => {
+    renderRegister()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+  })
+
+  it('exibe campo de nome', () => {
+    renderRegister()
+    expect(screen.getByLabelText(/nome completo/i)).toBeInTheDocument()
+  })
+
+  it('exibe campos de senha e confirmar senha', () => {
+    const { container } = renderRegister()
+    const passwordInputs = container.querySelectorAll('input[type="password"]')
+    expect(passwordInputs.length).toBe(2)
+  })
+
+  it('não exibe indicador de força quando senha está vazia', () => {
+    renderRegister()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
+  it('exibe indicador de força quando senha é digitada', () => {
+    const { container } = renderRegister()
+    const [senhaInput] = container.querySelectorAll('input[type="password"]')
+    fireEvent.change(senhaInput, { target: { value: 'abc' } })
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('exibe requisito de comprimento com ✓ quando senha tem 10+ chars', () => {
+    const { container } = renderRegister()
+    const [senhaInput] = container.querySelectorAll('input[type="password"]')
+    fireEvent.change(senhaInput, { target: { value: 'abcdefghij' } })
+    expect(screen.getByText(/mínimo 10 caracteres/i)).toBeInTheDocument()
+    const items = screen.getAllByText(/✓/)
+    expect(items.length).toBeGreaterThan(0)
+  })
+
+  it('exibe erro quando senhas não conferem', async () => {
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(confirmarInput, { target: { value: 'diferente' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    await waitFor(() => expect(screen.getByText(/senhas não conferem/i)).toBeInTheDocument())
+  })
+
+  it('exibe erro quando senha não atende requisitos', async () => {
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(senhaInput, { target: { value: 'fraca' } })
+    fireEvent.change(confirmarInput, { target: { value: 'fraca' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    await waitFor(() => expect(screen.getByText(/senha não atende/i)).toBeInTheDocument())
+  })
+
+  it('navega para / após registro bem-sucedido', async () => {
+    mockRegister.mockResolvedValueOnce(undefined)
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
+
+  it('exibe erro retornado pelo backend', async () => {
+    mockRegister.mockRejectedValueOnce(new Error('Email já cadastrado'))
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    await waitFor(() => expect(screen.getByText('Email já cadastrado')).toBeInTheDocument())
+  })
+})

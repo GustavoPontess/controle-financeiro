@@ -3,25 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Box, Container, TextField, Typography, Alert, CircularProgress, LinearProgress } from '@mui/material'
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
-
-interface SenhaRequisito {
-  label: string
-  ok: boolean
-}
-
-function getSenhaRequisitos(senha: string): SenhaRequisito[] {
-  return [
-    { label: 'Mínimo 10 caracteres', ok: senha.length >= 10 },
-    { label: '1 letra minúscula', ok: /[a-z]/.test(senha) },
-    { label: '1 letra maiúscula', ok: /[A-Z]/.test(senha) },
-    { label: '1 número', ok: /[0-9]/.test(senha) },
-    { label: '1 caractere especial (!@#$%^&*…)', ok: /[^a-zA-Z0-9]/.test(senha) },
-  ]
-}
-
-function getSenhaForca(requisitos: SenhaRequisito[]): number {
-  return requisitos.filter((r) => r.ok).length
-}
+import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
