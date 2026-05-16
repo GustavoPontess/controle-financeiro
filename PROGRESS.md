@@ -17,14 +17,14 @@ status: CURRENT
 
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
-Bloco B — Infraestrutura para Escalar:  0/6  ⏳
+Bloco B — Infraestrutura para Escalar:  3/6  ✅ #16, #17, #18  ⏳ #19 (em andamento), #20, #21
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          5/21 (24%)
+Total Q3 2026:                          8/21 (38%)
 ```
 
-**Status geral:** Bloco A 100% concluído 🎉. Próximo: Bloco B — Issue #16 (SQLite → Postgres).
+**Status geral:** Bloco A 100% 🎉. Bloco B 50% — #16/#17/#18 concluídos. Em andamento: #19 (CI). Próximo: #20 (Health checks).
 
 ---
 
@@ -49,11 +49,25 @@ Síntese:
 
 ## Em progresso
 
-Nenhum item em execução. **Bloco A concluído.** Próximo: **Issue #16 — Migrar SQLite para Postgres** (Bloco B).
+**Issue #19 — GitHub Actions CI** em andamento (sócio). Próximo livre: **Issue #20 — Health checks + observabilidade** (reservada).
 
 ---
 
 ## Histórico de sessões
+
+### Sessão 23 — 2026-05-16
+- **Issue #16 — Migrar SQLite para Postgres (✅ CONCLUÍDA)** — PR #35
+  - `DatabaseProvider`: provider escolhido em runtime pela connection string (`Host=` → Postgres)
+  - Postgres usa migrations versionadas; SQLite (dev) cria schema via `EnsureCreated`
+  - 27 migrations SQLite descartadas e regeneradas como `InitialCreate` Postgres; `AppDbContextFactory` fixa Postgres no design-time
+  - `Npgsql.EnableLegacyTimestampBehavior` (DateTime naïve → `timestamp without time zone`)
+  - `docker-compose.yml`: serviço Postgres; validado CRUD completo em Postgres real
+- **Issue #17 — Hangfire com PostgresStorage (✅ CONCLUÍDA)** — PR #36
+  - Storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em Postgres, `MemoryStorage` em dev SQLite
+  - Dashboard `/hangfire` protegido (`HangfireDashboardAuthFilter` — exige autenticação)
+  - Validado: 5 jobs recorrentes persistem após restart da API
+- **Fixes pré-existentes** (em branch própria, PRs separados): CORS, redirect loop, PagedResult
+- **Próxima ação:** Issue #20 — Health checks + observabilidade (Bloco B)
 
 ### Sessão 22 — 2026-05-16
 - **Issue #15 — Política de senha forte (✅ CONCLUÍDA) — Bloco A 100% completo 🎉**
