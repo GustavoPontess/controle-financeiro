@@ -84,14 +84,19 @@ export default function TransactionsPage() {
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
   const loadData = async () => {
-    const [cats, trans, contas] = await Promise.all([
-      getCategories(),
-      getTransactions(),
-      getContas(),
-    ]);
-    setCategories(cats);
-    setTransactions(trans);
-    setSaldoTotal(contas.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0));
+    try {
+      const [cats, trans, contas] = await Promise.all([
+        getCategories(),
+        getTransactions(),
+        getContas(),
+      ]);
+      setCategories(cats);
+      setTransactions(trans);
+      setSaldoTotal(contas.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0));
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+      notify({ open: true, message: "Erro ao carregar transações", severity: "error" });
+    }
   };
 
   useEffect(() => {
