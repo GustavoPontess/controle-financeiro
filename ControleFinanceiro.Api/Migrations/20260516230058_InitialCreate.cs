@@ -54,8 +54,8 @@ namespace ControleFinanceiro.Api.Migrations
                     ValorTotal = table.Column<decimal>(type: "numeric", nullable: false),
                     ValorPago = table.Column<decimal>(type: "numeric", nullable: false),
                     Tipo = table.Column<int>(type: "integer", nullable: false),
-                    DataInicio = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DataVencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataInicio = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DataVencimento = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Quitado = table.Column<bool>(type: "boolean", nullable: false),
                     Observacao = table.Column<string>(type: "text", nullable: true),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false)
@@ -79,7 +79,7 @@ namespace ControleFinanceiro.Api.Migrations
                     PayloadJson = table.Column<string>(type: "text", nullable: true),
                     CorrelationId = table.Column<Guid>(type: "uuid", nullable: false),
                     OrigemAcao = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -99,14 +99,14 @@ namespace ControleFinanceiro.Api.Migrations
                     CartaoCreditoId = table.Column<Guid>(type: "uuid", nullable: true),
                     Frequencia = table.Column<int>(type: "integer", nullable: false),
                     Dia = table.Column<int>(type: "integer", nullable: false),
-                    DataInicio = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DataFim = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataInicio = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DataFim = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
-                    DataProximaGeracao = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CanceladoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataProximaGeracao = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CanceladoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     MotivoCancelamento = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: true),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -153,16 +153,16 @@ namespace ControleFinanceiro.Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     CartaoCreditoId = table.Column<Guid>(type: "uuid", nullable: false),
-                    DataInicio = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DataFechamento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DataVencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DataInicio = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DataFechamento = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DataVencimento = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     ValorPago = table.Column<decimal>(type: "numeric", nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
                     EstadoCiclo = table.Column<int>(type: "integer", nullable: false),
                     EstadoPagamento = table.Column<int>(type: "integer", nullable: false),
                     EstaAtrasada = table.Column<bool>(type: "boolean", nullable: false),
-                    DataFechamentoEfetiva = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    DataPagamentoTotal = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataFechamentoEfetiva = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    DataPagamentoTotal = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     JurosDeMora = table.Column<decimal>(type: "numeric", nullable: false),
                     Multa = table.Column<decimal>(type: "numeric", nullable: false)
                 },
@@ -185,7 +185,7 @@ namespace ControleFinanceiro.Api.Migrations
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
                     Tipo = table.Column<int>(type: "integer", nullable: false),
                     Descricao = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: false),
-                    DataCompra = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DataCompra = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     ValorTotal = table.Column<decimal>(type: "numeric", nullable: false),
                     ValorComJuros = table.Column<decimal>(type: "numeric", nullable: true),
                     QuantidadeParcelas = table.Column<int>(type: "integer", nullable: false),
@@ -193,9 +193,9 @@ namespace ControleFinanceiro.Api.Migrations
                     CartaoCreditoId = table.Column<Guid>(type: "uuid", nullable: false),
                     CategoriaId = table.Column<Guid>(type: "uuid", nullable: true),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
-                    CanceladoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CanceladoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     MotivoCancelamento = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: true),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -221,17 +221,17 @@ namespace ControleFinanceiro.Api.Migrations
                     ParcelamentoId = table.Column<Guid>(type: "uuid", nullable: false),
                     Numero = table.Column<int>(type: "integer", nullable: false),
                     QuantidadeTotal = table.Column<int>(type: "integer", nullable: false),
-                    DataVencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DataVencimento = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Valor = table.Column<decimal>(type: "numeric", nullable: false),
                     ValorComJuros = table.Column<decimal>(type: "numeric", nullable: true),
                     TaxaJuro = table.Column<decimal>(type: "numeric", nullable: true),
                     IOF = table.Column<decimal>(type: "numeric", nullable: true),
                     FaturaId = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    PagoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CanceladoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    PagoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CanceladoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     MotivoCancelamento = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: true),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -260,7 +260,7 @@ namespace ControleFinanceiro.Api.Migrations
                     UsuarioId = table.Column<Guid>(type: "uuid", nullable: false),
                     PermissaoLeitura = table.Column<bool>(type: "boolean", nullable: false),
                     PermissaoEscrita = table.Column<bool>(type: "boolean", nullable: false),
-                    DataCompartilhamento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DataCompartilhamento = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
                     RelacionamentoId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
@@ -308,7 +308,7 @@ namespace ControleFinanceiro.Api.Migrations
                     MeioPagamento = table.Column<int>(type: "integer", nullable: true),
                     FaturaId = table.Column<Guid>(type: "uuid", nullable: true),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
-                    Data = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Data = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     RecorrenteOrigemId = table.Column<Guid>(type: "uuid", nullable: true),
                     ParcelamentoId = table.Column<Guid>(type: "uuid", nullable: true),
                     ParcelaTransacaoId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -316,9 +316,9 @@ namespace ControleFinanceiro.Api.Migrations
                     EhPagamentoFatura = table.Column<bool>(type: "boolean", nullable: false),
                     FaturaPagaId = table.Column<Guid>(type: "uuid", nullable: true),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
-                    CanceladoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CanceladoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     MotivoCancelamento = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: true),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -374,7 +374,7 @@ namespace ControleFinanceiro.Api.Migrations
                     ContaOrigemId = table.Column<Guid>(type: "uuid", nullable: false),
                     ContaDestinoId = table.Column<Guid>(type: "uuid", nullable: false),
                     Valor = table.Column<decimal>(type: "numeric", nullable: false),
-                    Data = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Data = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Descricao = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false),
                     TransacaoOrigemId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -408,8 +408,8 @@ namespace ControleFinanceiro.Api.Migrations
                     Ano = table.Column<int>(type: "integer", nullable: false),
                     ValorLimite = table.Column<decimal>(type: "numeric", nullable: false),
                     PercentualAlerta = table.Column<decimal>(type: "numeric", nullable: false),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -429,9 +429,9 @@ namespace ControleFinanceiro.Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UsuarioId = table.Column<Guid>(type: "uuid", nullable: false),
                     Token = table.Column<string>(type: "text", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Usado = table.Column<bool>(type: "boolean", nullable: false),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -445,9 +445,9 @@ namespace ControleFinanceiro.Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UsuarioId = table.Column<Guid>(type: "uuid", nullable: false),
                     Token = table.Column<string>(type: "text", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Revogado = table.Column<bool>(type: "boolean", nullable: false),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -462,7 +462,7 @@ namespace ControleFinanceiro.Api.Migrations
                     UsuarioId1 = table.Column<Guid>(type: "uuid", nullable: false),
                     UsuarioId2 = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    DataCriacao = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DataCriacao = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     CriadoPor = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -478,10 +478,10 @@ namespace ControleFinanceiro.Api.Migrations
                     Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     PasswordHash = table.Column<string>(type: "text", nullable: false),
                     Nome = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    DataNascimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataNascimento = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     RelacionamentoId = table.Column<Guid>(type: "uuid", nullable: true),
                     RelacionamentoId1 = table.Column<Guid>(type: "uuid", nullable: true)
                 },

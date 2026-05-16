@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ControleFinanceiro.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260516225028_InitialCreate")]
+    [Migration("20260516230058_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -159,7 +159,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataCompartilhamento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("PermissaoEscrita")
                         .HasColumnType("boolean");
@@ -234,10 +234,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataInicio")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DataVencimento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -280,19 +280,19 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataFechamento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DataFechamentoEfetiva")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DataInicio")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DataPagamentoTotal")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DataVencimento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("EstaAtrasada")
                         .HasColumnType("boolean");
@@ -329,7 +329,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
@@ -380,13 +380,13 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("Mes")
                         .HasColumnType("integer");
@@ -417,16 +417,16 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CanceladoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataVencimento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("FaturaId")
                         .HasColumnType("uuid");
@@ -442,7 +442,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("PagoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("ParcelamentoId")
                         .HasColumnType("uuid");
@@ -481,7 +481,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("CanceladoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CartaoCreditoId")
                         .HasColumnType("uuid");
@@ -490,13 +490,13 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataCompra")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -538,10 +538,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Token")
                         .IsRequired()
@@ -573,7 +573,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("CanceladoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("CartaoCreditoId")
                         .HasColumnType("uuid");
@@ -585,19 +585,19 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DataFim")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DataInicio")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DataProximaGeracao")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -638,10 +638,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("Revogado")
                         .HasColumnType("boolean");
@@ -673,7 +673,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -702,7 +702,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("CanceladoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("CartaoCreditoId")
                         .HasColumnType("uuid");
@@ -714,13 +714,13 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Data")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -799,7 +799,7 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Data")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -834,13 +834,13 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DataNascimento")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
