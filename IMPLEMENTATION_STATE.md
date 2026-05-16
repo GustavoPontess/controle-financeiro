@@ -119,8 +119,39 @@ desempacote de PagedResult em 5 services. Não fazem parte de #14.
 - `RecorrentesPage.tsx`: bug pré-existente (`notify` não declarado). Fix: `useOutletContext<OutletContextType>()`.
 
 ### Próxima ação concreta
-Issue #15 concluída. **Bloco A 100% concluído.** Próxima: #16 — Migrar SQLite para Postgres (Bloco B).
-Branch: criar `feature/16-migrar-postgres`.
+Issue #15 concluída. **Bloco A 100% concluído.**
+
+---
+
+## Issue em execução
+
+**Issue:** #16 — Migrar SQLite para Postgres
+**Bloco:** B (Infraestrutura para Escalar)
+**Iniciada em:** 2026-05-16 (sessão 23)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — validado em Postgres, 48 testes verdes
+
+### Etapas
+- [x] 1. `Npgsql.EntityFrameworkCore.PostgreSQL` + `DatabaseProvider` (seleção por connection string)
+- [x] 2. `Program.cs`: provider dinâmico — Postgres `Migrate()`, SQLite `EnsureCreated()`
+- [x] 3. `AppDbContextFactory` (design-time fixa Postgres) + migrations regeneradas para Postgres
+- [x] 4. `docker-compose.yml` com Postgres 16
+- [x] 5. Fix `Npgsql.EnableLegacyTimestampBehavior` (DateTime naïve → `timestamp without time zone`)
+- [x] 6. Validado: API roda em Postgres, CRUD completo, 48 testes verdes
+
+### Decisões
+- Detecção de provider: connection string com `Host=` → Postgres, senão SQLite.
+- SQLite (dev) usa `EnsureCreated` (sem migrations); Postgres (prod) usa migrations
+  versionadas. Migrations multi-provider no mesmo assembly causam conflito de
+  snapshot — separar por provider de runtime evita isso.
+- Migrations SQLite antigas (27) descartadas e regeneradas como uma `InitialCreate`
+  Postgres — não havia banco de produção a preservar.
+- `EnableLegacyTimestampBehavior`: o domínio usa `DateTime` naïve; o modo legado
+  mapeia para `timestamp without time zone`. Migrar o domínio para UTC-aware está
+  fora do escopo de #16.
+
+### Próxima ação concreta
+#16 concluída. Próxima: #17 — Hangfire com PostgresStorage (Bloco B, depende de #16).
 
 ---
 
