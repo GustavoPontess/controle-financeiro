@@ -1,8 +1,57 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, Container, TextField, Typography, Alert, CircularProgress } from '@mui/material'
+import { Box, Container, TextField, Typography, Alert, CircularProgress, LinearProgress } from '@mui/material'
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
+
+interface SenhaRequisito {
+  label: string
+  ok: boolean
+}
+
+function getSenhaRequisitos(senha: string): SenhaRequisito[] {
+  return [
+    { label: 'Mínimo 10 caracteres', ok: senha.length >= 10 },
+    { label: '1 letra minúscula', ok: /[a-z]/.test(senha) },
+    { label: '1 letra maiúscula', ok: /[A-Z]/.test(senha) },
+    { label: '1 número', ok: /[0-9]/.test(senha) },
+    { label: '1 caractere especial (!@#$%^&*…)', ok: /[^a-zA-Z0-9]/.test(senha) },
+  ]
+}
+
+function getSenhaForca(requisitos: SenhaRequisito[]): number {
+  return requisitos.filter((r) => r.ok).length
+}
+
+function PasswordStrengthIndicator({ senha }: { senha: string }) {
+  if (!senha) return null
+  const requisitos = getSenhaRequisitos(senha)
+  const forca = getSenhaForca(requisitos)
+  const progresso = (forca / requisitos.length) * 100
+  const cor = forca <= 2 ? '#ef4444' : forca <= 3 ? '#f59e0b' : forca === 4 ? '#3b82f6' : '#22c55e'
+
+  return (
+    <Box sx={{ mt: -1 }}>
+      <LinearProgress
+        variant="determinate"
+        value={progresso}
+        sx={{
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: '#e5e7eb',
+          '& .MuiLinearProgress-bar': { backgroundColor: cor, borderRadius: 2 },
+        }}
+      />
+      <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {requisitos.map((r) => (
+          <Typography key={r.label} fontSize={11} color={r.ok ? '#22c55e' : '#9ca3af'} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {r.ok ? '✓' : '○'} {r.label}
+          </Typography>
+        ))}
+      </Box>
+    </Box>
+  )
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -24,8 +73,10 @@ export default function RegisterPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres')
+    const requisitos = getSenhaRequisitos(password)
+    const pendentes = requisitos.filter((r) => !r.ok).map((r) => r.label)
+    if (pendentes.length > 0) {
+      setError('Senha não atende aos requisitos: ' + pendentes.join('; '))
       return
     }
 
@@ -139,7 +190,6 @@ export default function RegisterPage() {
             required
             fullWidth
             size="small"
-            helperText="Mínimo 6 caracteres"
             sx={{
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#f9fafb',
@@ -151,6 +201,7 @@ export default function RegisterPage() {
               },
             }}
           />
+          <PasswordStrengthIndicator senha={password} />
 
           <TextField
             label="Confirmar Senha"

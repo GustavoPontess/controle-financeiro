@@ -16,15 +16,15 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Higiene de Produção:          4/5  ✅ #11, #12, #13, #14
+Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  0/6  ⏳
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          4/21 (19%)
+Total Q3 2026:                          5/21 (24%)
 ```
 
-**Status geral:** Bloco A 80% concluído. Issues #11, #12 em 1 sessão; #13 em 4 sessões (backend + frontend + CSRF middleware); #14 em 1 sessão.
+**Status geral:** Bloco A 100% concluído 🎉. Próximo: Bloco B — Issue #16 (SQLite → Postgres).
 
 ---
 
@@ -49,11 +49,20 @@ Síntese:
 
 ## Em progresso
 
-Nenhum item em execução. Próximo: **Issue #15 — Política de senha forte** (Bloco A).
+Nenhum item em execução. **Bloco A concluído.** Próximo: **Issue #16 — Migrar SQLite para Postgres** (Bloco B).
 
 ---
 
 ## Histórico de sessões
+
+### Sessão 22 — 2026-05-16
+- **Issue #15 — Política de senha forte (✅ CONCLUÍDA) — Bloco A 100% completo 🎉**
+  - `PasswordPolicyService`: mínimo 10 chars, minúscula, maiúscula, número, especial, lista de senhas comuns PT-BR aware
+  - `AuthService`: substituídos 3 checks `< 6` por `ValidarOuLancar` em Register, ResetSenha e ChangePassword
+  - `RegisterPage.tsx`: indicador de força em tempo real (LinearProgress + checklist ✓/○ por regra)
+  - Fix colateral: `RecorrentesPage.tsx` bug pré-existente (`notify` sem `useOutletContext`)
+  - Build backend + frontend: 0 erros ✅
+- **Próxima ação:** Issue #16 (Migrar SQLite → Postgres) — Bloco B
 
 ### Sessão 21 — 2026-05-16
 - **Issue #14 — Rate limiting em endpoints sensíveis (✅ CONCLUÍDA)**
