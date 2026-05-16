@@ -40,15 +40,20 @@ my-branch                      (sem prefixo)
 fix/11-segredos                (use feature/ para tudo, não fix/)
 ```
 
-### Branch protection no `main`
+### Branch protection no `main` (via Rulesets)
 
-Configurar no GitHub (Settings → Branches → Add rule para `main`):
+Configurar no GitHub (Settings → Rules → Rulesets → New ruleset):
 
-- ✅ Require pull request before merging
-- ✅ Require approvals: 1
-- ✅ Dismiss stale approvals when new commits are pushed
+- ✅ Require a pull request before merging (**sem** required approvals — autor pode auto-mergear)
+- ✅ Dismiss stale pull request approvals when new commits are pushed
+- ✅ Require conversation resolution before merging
 - ✅ Require linear history
+- ✅ Block force pushes
+- ✅ Restrict deletions
+- ✅ Allowed merge methods: **Squash only**
 - ✅ Require status checks to pass (depois que Issue #19 entregar o CI)
+
+**Review do outro é cortesia, não barreira técnica** — ver `COLLABORATION.md` §6.3 para o critério de quando pedir review.
 
 Até habilitar formalmente, regra é por convenção: **ninguém commita direto em `main`**.
 
@@ -228,8 +233,13 @@ Testes:
 3. **Nunca merge commit em PR.** Squash sempre. Histórico linear.
 4. **Nunca dois devs na mesma branch ao mesmo tempo.** Branch é território de um dev por vez.
 5. **Nunca abrir PR sem assignee.** O autor é sempre assignee.
-6. **Nunca aprovar o próprio PR.** O outro revisa.
-7. **Nunca deixar branch antiga (já mergeada) viva no remoto.** Deletar após merge.
+6. **Nunca deixar branch antiga (já mergeada) viva no remoto.** Deletar após merge.
+7. **Nunca `git reset --hard` sem antes verificar working tree.** O `--hard` apaga alterações não-commitadas **silenciosamente**. Antes de usar, rode `git status` e/ou `git stash` para preservar trabalho em andamento. Já perdemos trabalho de uma sessão por essa armadilha — não repete.
+
+## Convenções (não-bloqueantes, mas valem a disciplina)
+
+- **Pedir review do outro em PRs grandes ou arquiteturais.** Critério detalhado em `COLLABORATION.md` §6.3. Auto-merge é permitido pra PRs pequenos/triviais.
+- **PR aberto há mais de 5 dias sem merge é red flag** — ou termina, ou fecha como "won't merge", ou divide em PRs menores.
 
 ---
 
