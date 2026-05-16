@@ -177,7 +177,37 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 - Health check do Hangfire fica para #20 (Health checks + observabilidade).
 
 ### Próxima ação concreta
-#17 concluída. Próxima: #18 já mergeada; seguir Bloco B (#19 CI em andamento pelo sócio, #20 reservada).
+#17 concluída.
+
+---
+
+## Issue em execução
+
+**Issue:** #20 — Health checks + observabilidade
+**Bloco:** B (Infraestrutura para Escalar)
+**Iniciada em:** 2026-05-16 (sessão 23)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — build verde, 48 testes verdes
+
+### Etapas
+- [x] 1. Health checks: `/health` (liveness) e `/health/ready` (banco + Hangfire)
+- [x] 2. Serilog: console JSON compacto + arquivo rotativo diário (`logs/`)
+- [x] 3. `CorrelationIdMiddleware`: ID por request, response header + LogContext
+- [x] 4. Sentry: sink do Serilog (Error+), ativado por `SENTRY_DSN`
+
+### Decisões
+- Health check do banco usa `AddDbContextCheck` (provider-agnóstico), não
+  `AddNpgSql` — funciona em SQLite (dev) e Postgres (prod).
+- `/health/ready` sem auth: readiness probe é consumido por orquestradores/
+  docker healthcheck, que não autenticam. O response não expõe dado sensível.
+- Sentry via sink do Serilog (não `UseSentry` no WebHost): o
+  `GlobalExceptionHandlerMiddleware` captura todas as exceções, então elas
+  nunca chegariam "não tratadas" ao Sentry — o sink capta o log Error.
+- Sentry não validado end-to-end (requer DSN real). Integração e ativação
+  condicional testadas; sem DSN o Sentry fica desligado.
+
+### Próxima ação concreta
+#20 concluída. **Bloco B 5/6** — falta só #21 (testes frontend).
 
 ---
 
