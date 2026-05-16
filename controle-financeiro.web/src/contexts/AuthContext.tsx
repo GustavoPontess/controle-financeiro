@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     }
     setCurrentUser(null)
+    api.post('/auth/logout').catch(() => {})
   }
 
   const refreshUser = async () => {

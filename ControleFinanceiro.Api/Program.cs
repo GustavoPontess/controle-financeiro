@@ -99,6 +99,15 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = ctx =>
+        {
+            if (ctx.Request.Cookies.TryGetValue("jwt", out var jwtCookie) && !string.IsNullOrEmpty(jwtCookie))
+                ctx.Token = jwtCookie;
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddHttpClient();

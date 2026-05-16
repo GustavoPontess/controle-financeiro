@@ -25,44 +25,56 @@ public class AuthController : ControllerBase
 
     private void SetAuthCookies(string jwtToken, string refreshToken)
     {
-        var cookieOptions = new CookieOptions
+        // Secure=true only over HTTPS; HTTP is allowed in dev
+        var isSecure = Request.IsHttps;
+
+        Response.Cookies.Append("jwt", jwtToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isSecure,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddHours(1)
-        };
+        });
 
-        Response.Cookies.Append("jwt", jwtToken, cookieOptions);
-
-        var refreshCookieOptions = new CookieOptions
+        Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isSecure,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddDays(7)
-        };
+        });
 
-        Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
-
-        // CSRF token in non-HttpOnly cookie (JS can read it)
         var csrfToken = _csrfTokenService.GenerateToken();
-        var csrfCookieOptions = new CookieOptions
+        Response.Cookies.Append("X-CSRF-Token", csrfToken, new CookieOptions
         {
             HttpOnly = false,
-            Secure = true,
+            Secure = isSecure,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddHours(1)
-        };
+        });
+    }
 
-        Response.Cookies.Append("X-CSRF-Token", csrfToken, csrfCookieOptions);
+    private void ClearAuthCookies()
+    {
+        foreach (var name in new[] { "jwt", "refreshToken", "X-CSRF-Token" })
+            Response.Cookies.Delete(name);
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
         var result = await _authService.RegisterAsync(dto);
-        return CreatedAtAction(nameof(GetMe), null, result);
+        SetAuthCookies(result.Token, result.RefreshToken);
+
+        return CreatedAtAction(nameof(GetMe), null, new AuthResponseDto
+        {
+            UsuarioId = result.UsuarioId,
+            Email = result.Email,
+            Nome = result.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
     }
 
     [HttpPost("login")]
@@ -128,9 +140,13 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
+    public async Task<IActionResult> Refresh()
     {
-        var result = await _authService.RefreshAsync(dto.RefreshToken);
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            throw new UnauthorizedAccessException("Refresh token não encontrado");
+
+        var result = await _authService.RefreshAsync(refreshToken);
         SetAuthCookies(result.Token, result.RefreshToken);
 
         return Ok(new AuthResponseDto
@@ -149,9 +165,13 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout([FromBody] LogoutDto dto)
+    public async Task<IActionResult> Logout()
     {
-        await _authService.LogoutAsync(dto.RefreshToken);
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+            await _authService.LogoutAsync(refreshToken);
+
+        ClearAuthCookies();
         return NoContent();
     }
 
