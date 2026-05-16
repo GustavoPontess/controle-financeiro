@@ -18,8 +18,8 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 **Issue:** #13 — JWT em httpOnly cookie + CSRF token
 **Bloco:** A (Higiene de Produção)
 **Iniciada em:** 2026-05-16 (sessão 16)
-**Sessões nessa issue:** 3
-**Status:** 100% — backend ✅, frontend ✅, testes curl ✅, aguarda validação visual no browser
+**Sessões nessa issue:** 4
+**Status:** 100% CONCLUÍDA ✅ — backend ✅, frontend ✅, testes curl ✅, validação de código ✅, PR #26 mergeado
 
 ### Etapas
 - [x] 1. CsrfTokenService: gerar e validar tokens
@@ -42,13 +42,18 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 - `AuthContext.logout()`: chama `api.post('/auth/logout')` para limpar cookies no servidor
 - Commits: 050b2b0
 
+### Sessão 20 (2026-05-16)
+- Validação de código frontend: zero referências a localStorage com tokens ✅
+- `axiosConfig.ts`: `withCredentials: true`, CSRF header só em mutators, sem `Authorization: Bearer` ✅
+- `AuthContext.tsx`: `savedAccounts` em localStorage (lista de contas, não tokens), logout chama POST /auth/logout ✅
+- PR #26 mergeado
+- Próxima issue: #14 — Rate limiting em endpoints sensíveis (Bloco A)
+
 ### Próxima ação concreta
-Sessão 20:
-1. Validação visual no browser — `npm run dev` + Login em http://localhost:5173
-2. DevTools: Application > Cookies → `jwt` (httpOnly ✅), `X-CSRF-Token` (não httpOnly ✅)
-3. DevTools: Application > Local Storage → vazio (sem tokens) ✅
-4. DevTools: Network → POST request inclui header `X-CSRF-Token` ✅
-5. Mergear PR #26
+Iniciar Issue #14 — Rate limiting:
+- Assignar issue no GitHub
+- Criar branch `feature/14-rate-limiting`
+- Implementar `AspNetCoreRateLimit` ou `dotnet-rate-limiter` em endpoints de auth
 
 
 ---
