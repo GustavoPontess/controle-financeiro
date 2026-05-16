@@ -16,15 +16,15 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Higiene de Produção:          2/5  ✅ #11, #12
+Bloco A — Higiene de Produção:          3/5  ✅ #11, #12, #13
 Bloco B — Infraestrutura para Escalar:  0/6  ⏳
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          2/21 (9%)
+Total Q3 2026:                          3/21 (14%)
 ```
 
-**Status geral:** Bloco A 40% concluído. Issues #11, #12 fechadas em 1 sessão.
+**Status geral:** Bloco A 60% concluído. Issues #11, #12 em 1 sessão; #13 em 4 sessões (backend + frontend + CSRF middleware).
 
 ---
 
@@ -49,11 +49,26 @@ Síntese:
 
 ## Em progresso
 
-Nenhum item em execução. Aguardando início do **Bloco A** (higiene de produção).
+Nenhum item em execução. Próximo: **Issue #14 — Rate limiting** (Bloco A).
 
 ---
 
 ## Histórico de sessões
+
+### Sessões 16–20 — 2026-05-16
+- **Issue #13 — JWT em httpOnly cookie + CSRF token (✅ CONCLUÍDA)**
+  - Backend: `CsrfTokenService`, `SetAuthCookies` (HttpOnly + SameSite=Strict), `CsrfValidationMiddleware`
+  - Middleware skipa endpoints públicos (login, register, password reset)
+  - `Secure` flag adapta ao protocolo (false em HTTP dev, true em HTTPS prod)
+  - Register/Refresh/Logout leem/emitem cookies; JWT não aparece no body
+  - `JwtBearer.OnMessageReceived` lê token do cookie `jwt`
+  - Frontend: `withCredentials: true`, CSRF header automático em mutators, zero tokens em localStorage
+  - `AuthContext`: logout chama `POST /auth/logout` para limpar cookies no servidor
+  - `savedAccounts` em localStorage é lista de contas (não tokens)
+  - Testes curl: 403 sem CSRF header, 200 com header ✅, JWT não em localStorage ✅
+  - PR #26 mergeado, Issue #13 fechada
+
+- **Próxima ação:** Issue #14 (Rate limiting em endpoints sensíveis) — Bloco A
 
 ### Sessão 15 — 2026-05-16
 - **Issue #11 — Segredos via variáveis de ambiente (✅ CONCLUÍDA)**
