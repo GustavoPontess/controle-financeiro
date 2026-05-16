@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-15
-status: AGUARDANDO_INICIO
-issue_atual: nenhum
+last_reviewed: 2026-05-16
+status: EM_EXECUCAO
+issue_atual: '#11 — Segredos via variáveis de ambiente'
 ---
 
 # Implementation State — sessão atual
@@ -15,9 +15,30 @@ issue_atual: nenhum
 
 ## Issue em execução
 
-**Nenhum em execução ativa, mas próxima sessão começa pela Issue #11.**
+**Issue:** #11 — Segredos via variáveis de ambiente
+**Bloco:** A (Higiene de Produção)
+**Iniciada em:** 2026-05-16
+**Sessões nessa issue:** 1
 
-Decidido em 2026-05-15: a próxima sessão de código deve iniciar pelo **Bloco A → Issue #11 — Segredos via variáveis de ambiente**.
+### Etapas
+- [x] 1. Identificar segredos hardcoded (JWT, connection string, CORS origins)
+- [x] 2. Criar `.env.example` versionado com chaves e descrição
+- [x] 3. Adicionar `DotNetEnv` package e configurar carregamento em `Program.cs`
+- [x] 4. Mover JWT Secret, Database URL e CORS para variáveis de ambiente
+- [x] 5. Remover segredos do `appsettings.json` versionado
+- [x] 6. Verificar `.env` já está em `.gitignore`
+- [x] 7. Criar `.env` local com valores de development
+- [x] 8. Testar build ✅
+- [x] 9. Testar API sobe com `.env` ✅
+- [x] 10. Testar erro claro quando `JWT_SECRET` falta ✅
+- [x] 11. Documentar em `docs/STANDARDS.md` ✅
+- [ ] 12. Commit semântico
+
+### Etapa atual
+Pronto para commit. Todos os checkpoints verdes.
+
+### Próxima ação concreta
+Fazer commit com mensagem `feat(security): mover segredos para variáveis de ambiente (#11)` e abrir PR.
 
 ---
 
