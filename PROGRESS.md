@@ -16,15 +16,15 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Higiene de Produção:          0/5  ⏳
+Bloco A — Higiene de Produção:          1/5  ✅ #11
 Bloco B — Infraestrutura para Escalar:  0/6  ⏳
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          0/21 (0%)
+Total Q3 2026:                          1/21 (4%)
 ```
 
-**Status geral:** Backlog recém-criado. Nada iniciado.
+**Status geral:** Bloco A iniciado. Issue #11 concluída em 1 sessão.
 
 ---
 
@@ -55,6 +55,17 @@ Nenhum item em execução. Aguardando início do **Bloco A** (higiene de produç
 
 ## Histórico de sessões
 
+### Sessão 15 — 2026-05-16
+- **Issue #11 — Segredos via variáveis de ambiente (CONCLUÍDA)**
+  - Moveu JWT secret, database URL e CORS origins para variáveis de ambiente via `DotNetEnv`
+  - Criou `.env.example` versionado; `.env` local ignorado
+  - Atualizou `Program.cs` com `Env.Load()` e fallback claro (fail-fast)
+  - Removeu segredos de `appsettings.json` versionado
+  - Testou build ✅, API sobe com `.env` ✅, erro sem vars ✅
+  - Documentou em `docs/STANDARDS.md` §Configuration via Environment Variables
+  - PR #23 aberto, pronto para merge
+- **Próxima ação:** Issue #12 (Corrigir CORS contraditório) — já parcialmente resolvida em #11
+
 ### Sessão 14 — 2026-05-15
 - Análise crítica completa do projeto sob lente de produto B2C (`docs/ANALISE_PRODUTO.md`)
 - Decisão de pivot para nicho de finanças familiares/casais
@@ -62,7 +73,6 @@ Nenhum item em execução. Aguardando início do **Bloco A** (higiene de produç
 - Backlog Q2 arquivado em `docs/history/`
 - Novo backlog Q3 criado com 21 itens em 4 blocos
 - Visão da feature Família escrita (`docs/features/familia/visao.md`)
-- **Próxima ação:** Discutir validação da visão Família com usuários-piloto OU iniciar Bloco A pela Issue #11 (segredos via env var)
 
 ---
 
