@@ -2,14 +2,19 @@ import axios from "axios"
 
 export const api = axios.create({
   baseURL: "http://localhost:5293/api/v1",
+  withCredentials: true, // Include cookies in requests
 })
 
-// Request interceptor to add JWT token
+// Request interceptor to add CSRF token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    // JWT is now in httpOnly cookie, automatically sent
+    // Add CSRF token from non-httpOnly cookie for mutating requests
+    if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
+      const csrfToken = getCookie('X-CSRF-Token')
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken
+      }
     }
     return config
   },
@@ -18,13 +23,24 @@ api.interceptors.request.use(
   }
 )
 
+function getCookie(name: string): string | null {
+  const nameEQ = name + '='
+  const cookies = document.cookie.split(';')
+  for (let cookie of cookies) {
+    cookie = cookie.trim()
+    if (cookie.indexOf(nameEQ) === 0) {
+      return decodeURIComponent(cookie.substring(nameEQ.length))
+    }
+  }
+  return null
+}
+
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('authToken')
+      // Token expired or invalid (cookie will be cleared by backend)
       window.location.href = '/auth/login'
     }
     return Promise.reject(error)

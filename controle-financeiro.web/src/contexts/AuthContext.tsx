@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { api } from '@/api/axiosConfig'
 
 export interface Usuario {
   id: string
@@ -14,12 +15,10 @@ export interface StoredAccount {
   id: string
   email: string
   nome: string
-  token: string
 }
 
 export interface AuthContextType {
   currentUser: Usuario | null
-  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
   accountKey: number
@@ -35,9 +34,7 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const ACTIVE_TOKEN_KEY = 'authToken'
 const SAVED_ACCOUNTS_KEY = 'savedAccounts'
-const API_BASE = 'http://localhost:5296/api'
 
 function loadSavedAccounts(): StoredAccount[] {
   try {
@@ -52,12 +49,10 @@ function persistSavedAccounts(accounts: StoredAccount[]) {
   localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts))
 }
 
-async function fetchUserByToken(authToken: string): Promise<Usuario | null> {
+async function fetchCurrentUser(): Promise<Usuario | null> {
   try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
-    return res.ok ? await res.json() : null
+    const res = await api.get('/auth/me')
+    return res.data
   } catch {
     return null
   }
@@ -65,7 +60,6 @@ async function fetchUserByToken(authToken: string): Promise<Usuario | null> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null)
-  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [savedAccounts, setSavedAccounts] = useState<StoredAccount[]>(loadSavedAccounts)
   const [accountKey, setAccountKey] = useState(0)
@@ -79,19 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(ACTIVE_TOKEN_KEY)
-    if (!savedToken) {
-      setIsLoading(false)
-      return
-    }
-    setToken(savedToken)
-    fetchUserByToken(savedToken).then(usuario => {
+    fetchCurrentUser().then(usuario => {
       if (usuario) {
         setCurrentUser(usuario)
-        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome, token: savedToken })
-      } else {
-        localStorage.removeItem(ACTIVE_TOKEN_KEY)
-        setToken(null)
+        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
       }
       setIsLoading(false)
     })
@@ -99,49 +84,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || 'Erro ao fazer login')
-    }
-    const data = await res.json()
-    localStorage.setItem(ACTIVE_TOKEN_KEY, data.token)
-    setToken(data.token)
-
-    const usuario = await fetchUserByToken(data.token)
-    if (usuario) {
-      setCurrentUser(usuario)
-      upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome, token: data.token })
+    try {
+      await api.post('/auth/login', { email, password })
+      const usuario = await fetchCurrentUser()
+      if (usuario) {
+        setCurrentUser(usuario)
+        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      } else {
+        throw new Error('Falha ao carregar dados do usuário')
+      }
+    } catch (error) {
+      throw new Error((error as any)?.response?.data?.message || 'Erro ao fazer login')
     }
   }
 
   const register = async (email: string, nome: string, dataNascimento: string | null, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome, dataNascimento, password, confirmPassword: password }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || 'Erro ao registrar')
+    try {
+      await api.post('/auth/register', { email, nome, dataNascimento, password, confirmPassword: password })
+      const usuario = await fetchCurrentUser()
+      if (usuario) {
+        setCurrentUser(usuario)
+        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      } else {
+        throw new Error('Falha ao carregar dados do usuário')
+      }
+    } catch (error) {
+      throw new Error((error as any)?.response?.data?.message || 'Erro ao registrar')
     }
-    const data = await res.json()
-    localStorage.setItem(ACTIVE_TOKEN_KEY, data.token)
-    setToken(data.token)
-
-    const usuario: Usuario = {
-      id: data.usuarioId,
-      email: data.email,
-      nome: data.nome,
-      ativo: true,
-      criadoEm: new Date().toISOString(),
-    }
-    setCurrentUser(usuario)
-    upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome, token: data.token })
   }
 
   const logout = () => {
@@ -152,65 +121,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return updated
       })
     }
-    localStorage.removeItem(ACTIVE_TOKEN_KEY)
-    setToken(null)
     setCurrentUser(null)
   }
 
   const refreshUser = async () => {
-    if (!token) return
-    const usuario = await fetchUserByToken(token)
+    const usuario = await fetchCurrentUser()
     if (usuario) setCurrentUser(usuario)
   }
 
   const addAccount = async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || 'Credenciais inválidas')
+    try {
+      await api.post('/auth/login', { email, password })
+      const usuario = await fetchCurrentUser()
+      if (!usuario) throw new Error('Erro ao buscar dados da conta')
+
+      if (savedAccounts.some(a => a.id === usuario.id)) {
+        throw new Error('Esta conta já está conectada')
+      }
+
+      upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+    } catch (error) {
+      throw new Error((error as any)?.response?.data?.message || 'Credenciais inválidas')
     }
-    const data = await res.json()
-
-    const usuario = await fetchUserByToken(data.token)
-    if (!usuario) throw new Error('Erro ao buscar dados da conta')
-
-    if (savedAccounts.some(a => a.id === usuario.id)) {
-      throw new Error('Esta conta já está conectada')
-    }
-
-    upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome, token: data.token })
   }
 
   const switchAccount = async (accountId: string) => {
     const account = savedAccounts.find(a => a.id === accountId)
     if (!account || account.id === currentUser?.id) return
 
-    localStorage.setItem(ACTIVE_TOKEN_KEY, account.token)
-    setToken(account.token)
     setCurrentUser({ id: account.id, email: account.email, nome: account.nome, ativo: true, criadoEm: '' })
     setAccountKey(k => k + 1)
 
-    // Validate in background and update with full data
-    fetchUserByToken(account.token).then(usuario => {
-      if (usuario) {
-        setCurrentUser(usuario)
-        upsertSavedAccount({ ...account, token: account.token })
-      } else {
-        // Token expired — remove from saved
-        setSavedAccounts(prev => {
-          const updated = prev.filter(a => a.id !== accountId)
-          persistSavedAccounts(updated)
-          return updated
-        })
-        localStorage.removeItem(ACTIVE_TOKEN_KEY)
-        setToken(null)
-        setCurrentUser(null)
-      }
-    })
+    const usuario = await fetchCurrentUser()
+    if (usuario) {
+      setCurrentUser(usuario)
+      upsertSavedAccount(account)
+    } else {
+      setSavedAccounts(prev => {
+        const updated = prev.filter(a => a.id !== accountId)
+        persistSavedAccounts(updated)
+        return updated
+      })
+      setCurrentUser(null)
+    }
   }
 
   const removeAccount = (accountId: string) => {
@@ -225,8 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         currentUser,
-        token,
-        isAuthenticated: !!token && !!currentUser,
+        isAuthenticated: !!currentUser,
         isLoading,
         accountKey,
         savedAccounts,
