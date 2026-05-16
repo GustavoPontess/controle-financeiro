@@ -1,8 +1,8 @@
 ---
-owner: Gustavo
+owner: Caio
 last_reviewed: 2026-05-16
-status: EM_EXECUCAO
-issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
+status: CONCLUIDA
+issue_atual: '#15 — Política de senha forte'
 ---
 
 # Implementation State — sessão atual
@@ -89,12 +89,38 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
   não precisou de `PackageReference`.
 
 ### Próxima ação concreta
-Issue #14 concluída. Próxima: #15 — Política de senha forte (Bloco A).
+Issue #15 concluída. Bloco A 100% concluído. Próxima: #16 — Migrar SQLite para Postgres (Bloco B).
 
 ### Contexto da sessão 21 (fixes pré-existentes)
 Antes de iniciar #14, foram corrigidos bugs pré-existentes nesta branch
 (commits ec895e3..f2d3baa): CORS AllowCredentials, redirect loop 401,
 desempacote de PagedResult em 5 services. Não fazem parte de #14.
+
+---
+
+---
+
+## Issue em execução
+
+**Issue:** #15 — Política de senha forte
+**Bloco:** A (Higiene de Produção)
+**Iniciada em:** 2026-05-16 (sessão 22)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — build verde backend ✅, build verde frontend ✅, commit c9eedcd, PR aberto (aguarda merge)
+
+### Etapas
+- [x] 1. `PasswordPolicyService.cs`: validar 10+ chars, minúscula, maiúscula, número, especial, lista senhas comuns
+- [x] 2. `AuthService.cs`: substituir checks `< 6` em RegisterAsync, ResetSenhaAsync, ChangePasswordAsync
+- [x] 3. `RegisterPage.tsx`: indicador de força em tempo real (LinearProgress + checklist ✓/○)
+- [x] 4. Builds verdes (backend + frontend)
+- [x] 5. Commit + push + PR (gh não disponível; PR criado manualmente no GitHub)
+
+### Fix colateral
+- `RecorrentesPage.tsx`: bug pré-existente (`notify` não declarado). Fix: `useOutletContext<OutletContextType>()`.
+
+### Próxima ação concreta
+Issue #15 concluída. **Bloco A 100% concluído.** Próxima: #16 — Migrar SQLite para Postgres (Bloco B).
+Branch: criar `feature/16-migrar-postgres`.
 
 ---
 
