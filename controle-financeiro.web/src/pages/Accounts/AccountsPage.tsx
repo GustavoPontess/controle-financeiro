@@ -43,9 +43,14 @@ export default function AccountsPage() {
   const [editingConta, setEditingConta] = useState<Conta | null>(null)
 
   const loadData = async () => {
-    const [cs, bs] = await Promise.all([getContas(), getBancos()])
-    setContas(cs)
-    setBancos(bs)
+    try {
+      const [cs, bs] = await Promise.all([getContas(), getBancos()])
+      setContas(cs)
+      setBancos(bs)
+    } catch (error) {
+      console.error("Erro ao carregar contas:", error)
+      notify({ open: true, message: "Erro ao carregar contas", severity: "error" })
+    }
   }
 
   useEffect(() => {

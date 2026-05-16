@@ -128,10 +128,15 @@ export default function CreditCardsPage() {
   const [pagarLoading, setPagarLoading] = useState(false)
 
   const loadData = async () => {
-    const [cs, conts, bs] = await Promise.all([getCartoes(), getContas(), getBancos()])
-    setCartoes(cs)
-    setContas(conts.filter(c => !c.isCarteira))
-    setBancos(bs)
+    try {
+      const [cs, conts, bs] = await Promise.all([getCartoes(), getContas(), getBancos()])
+      setCartoes(cs)
+      setContas(conts.filter(c => !c.isCarteira))
+      setBancos(bs)
+    } catch (error) {
+      console.error("Erro ao carregar cartões:", error)
+      notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
+    }
   }
 
   useEffect(() => { loadData() }, [])

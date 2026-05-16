@@ -17,9 +17,10 @@ export const ParcelamentoService = {
   // ── Parcelamentos ──
 
   async listar(ativo?: boolean): Promise<Parcelamento[]> {
-    const params = ativo !== undefined ? { ativo } : {}
+    const params: Record<string, unknown> = { pageSize: 1000 }
+    if (ativo !== undefined) params.ativo = ativo
     const res = await api.get('/parcelamentos', { params })
-    return res.data
+    return res.data.items
   },
 
   async obterDetalhe(id: string): Promise<ParcelamentoDetalhe> {

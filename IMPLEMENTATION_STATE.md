@@ -49,12 +49,52 @@ issue_atual: '#13 — JWT em httpOnly cookie + CSRF token'
 - PR #26 mergeado
 - Próxima issue: #14 — Rate limiting em endpoints sensíveis (Bloco A)
 
-### Próxima ação concreta
-Iniciar Issue #14 — Rate limiting:
-- Assignar issue no GitHub
-- Criar branch `feature/14-rate-limiting`
-- Implementar `AspNetCoreRateLimit` ou `dotnet-rate-limiter` em endpoints de auth
+---
 
+## Issue em execução
+
+**Issue:** #14 — Rate limiting em endpoints sensíveis
+**Bloco:** A (Higiene de Produção)
+**Iniciada em:** 2026-05-16 (sessão 21)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — build verde, testes curl ✅
+
+### Escopo
+- Rate limiting em `/auth/login`, `/auth/register`, `/auth/forgot-password`
+- Limites (todos particionados por IP):
+  - login: 5 tentativas / 5min
+  - register: 3 / 1h
+  - forgot-password: 1 / 15min
+- `Microsoft.AspNetCore.RateLimiting` (middleware nativo .NET 8)
+- Resposta `429 Too Many Requests` com header `Retry-After`
+
+### Decisões
+- forgot-password particionado por IP (não por e-mail) — consistente com
+  login/register, sem necessidade de buffering do request body. Decisão do
+  usuário em 2026-05-16.
+
+### Etapas
+- [x] 1. `AddRateLimiter` com 3 políticas particionadas por IP em `Program.cs`
+- [x] 2. `OnRejected` → setar `Retry-After` + status 429
+- [x] 3. `UseRateLimiter` no pipeline
+- [x] 4. `[EnableRateLimiting]` nos 3 endpoints do `AuthController`
+- [x] 5. Build verde (`dotnet build`)
+- [x] 6. Testar curl — login 6º→429 (Retry-After:300), register 4º→429, forgot-password 2º→429
+- [x] 7. Commit (8ab9317), atualizar docs, PR
+
+### Resultado
+- `FixedWindowRateLimiter` escolhido sobre `SlidingWindow`: SlidingWindow não
+  popula o metadata `RetryAfter`, e o escopo exige o header `Retry-After`.
+- `Microsoft.AspNetCore.RateLimiting` é parte do shared framework .NET 8 —
+  não precisou de `PackageReference`.
+
+### Próxima ação concreta
+Issue #14 concluída. Próxima: #15 — Política de senha forte (Bloco A).
+
+### Contexto da sessão 21 (fixes pré-existentes)
+Antes de iniciar #14, foram corrigidos bugs pré-existentes nesta branch
+(commits ec895e3..f2d3baa): CORS AllowCredentials, redirect loop 401,
+desempacote de PagedResult em 5 services. Não fazem parte de #14.
 
 ---
 

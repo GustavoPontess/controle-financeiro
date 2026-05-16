@@ -88,7 +88,7 @@ Total realista: **4-6 meses part-time** ou **2-3 meses full-time**.
 
 ### 🟡 #14 — Rate limiting em endpoints sensíveis
 
-**Severidade:** 🟡 ALTA • **Esforço:** 3h • **Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟡 ALTA • **Esforço:** 3h • **Status:** ✅ CONCLUÍDO
 
 **Problema:** `/auth/login`, `/auth/register`, `/auth/forgot-password` sem rate limiting — brute force trivial.
 

@@ -2,8 +2,8 @@ import { api } from "../api/axiosConfig"
 import type { Transaction } from "../types/Transaction"
 
 export const getTransactions = async (): Promise<Transaction[]> => {
-  const res = await api.get("/transacoes")
-  return res.data
+  const res = await api.get("/transacoes", { params: { pageSize: 1000 } })
+  return res.data.items
 }
 
 export const createTransaction = async (transaction: Omit<Transaction, "id">) => {
