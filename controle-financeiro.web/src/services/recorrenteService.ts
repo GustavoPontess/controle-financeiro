@@ -2,8 +2,8 @@ import { api } from "../api/axiosConfig"
 import type { Recorrente, CriarRecorrente } from "../types/Recorrente"
 
 export const getRecorrentes = async (): Promise<Recorrente[]> => {
-  const res = await api.get("/recorrentes")
-  return res.data
+  const res = await api.get("/recorrentes", { params: { pageSize: 1000 } })
+  return res.data.items
 }
 
 export const createRecorrente = async (dto: CriarRecorrente): Promise<Recorrente> => {
