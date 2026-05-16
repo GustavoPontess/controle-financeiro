@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: ./ControleFinanceiro.Api
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "Data Source=/app/data/controlefinanceiro.db"
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-mude-em-producao-min32chars}
+      JWT_ISSUER: ControleFinanceiro
+      JWT_AUDIENCE: ControleFinanceiroUsers
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://web
+    volumes:
+      - api_data:/app/data
+
+  web:
+    build:
+      context: ./controle-financeiro.web
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  api_data:
