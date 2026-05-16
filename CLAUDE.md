@@ -16,6 +16,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em prod, `MemoryStorage` em dev SQLite. Dashboard `/hangfire` exige autenticação
+- **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
 - **Backlog ativo:** ver `ISSUES.md` — 4 blocos sequenciais (A: higiene → B: infra → C: pivot Família → D: UX B2C)
 
 ## Commands
