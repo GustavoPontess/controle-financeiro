@@ -12,6 +12,7 @@ using Hangfire;
 using Hangfire.MemoryStorage;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,8 @@ using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 using System.Threading.RateLimiting;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 // Load environment variables from .env file if it exists
 if (File.Exists(".env"))
@@ -27,6 +30,30 @@ if (File.Exists(".env"))
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog — logs estruturados em JSON: console + arquivo rotativo diário.
+// Sentry só é anexado se SENTRY_DSN estiver definido (produção): captura
+// logs de nível Error+ (o GlobalExceptionHandlerMiddleware loga exceções
+// como Error, então erros não tratados chegam ao Sentry com o CorrelationId).
+builder.Host.UseSerilog((context, config) =>
+{
+    config
+        .Enrich.FromLogContext()
+        .WriteTo.Console(new CompactJsonFormatter())
+        .WriteTo.File(new CompactJsonFormatter(), "logs/log-.json", rollingInterval: RollingInterval.Day);
+
+    var sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN");
+    if (!string.IsNullOrEmpty(sentryDsn))
+    {
+        config.WriteTo.Sentry(o =>
+        {
+            o.Dsn = sentryDsn;
+            o.Environment = context.HostingEnvironment.EnvironmentName;
+            o.MinimumEventLevel = Serilog.Events.LogEventLevel.Error;
+            o.MinimumBreadcrumbLevel = Serilog.Events.LogEventLevel.Information;
+        });
+    }
+});
 
 builder.Services.AddControllers(options =>
 {
@@ -89,6 +116,13 @@ builder.Services.AddHangfire(config =>
         config.UseMemoryStorage();
 });
 builder.Services.AddHangfireServer();
+
+// Health checks: /health (liveness, leve) e /health/ready (readiness:
+// banco + Hangfire). Usa AddDbContextCheck — provider-agnóstico, funciona
+// tanto em SQLite quanto Postgres.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" })
+    .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire", tags: new[] { "ready" });
 
 // Rate Limiting — protege endpoints de autenticação contra brute force.
 // Todas as políticas particionam por IP de origem.
@@ -291,6 +325,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+app.UseSerilogRequestLogging();
+
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseMiddleware<CsrfValidationMiddleware>();
 
@@ -349,5 +387,17 @@ recManager.AddOrUpdate<RecalcularLimitesJob>(
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapControllers();
+
+// /health — liveness: responde se o processo está de pé (sem checar deps)
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+
+// /health/ready — readiness: checa banco e Hangfire
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
