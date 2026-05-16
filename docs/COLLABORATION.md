@@ -16,10 +16,10 @@ Este projeto é desenvolvido por **dois devs em assíncrono**, ambos usando Clau
 ## 1. Princípios
 
 1. **GitHub é a fonte de verdade da coordenação operacional.** Quem está em qual Issue, qual é o estado de cada PR, quem revisou o quê — tudo vive no GitHub. Markdown na raiz (`ISSUES.md`, `PROGRESS.md`) reflete o roadmap arquitetural, não o estado momentâneo.
-2. **Nenhum push direto em `main`.** Toda mudança passa por PR com aprovação do outro.
+2. **Nenhum push direto em `main`.** Toda mudança passa por PR (mas o autor pode auto-aprovar e mergear — ver §6).
 3. **Uma Issue por vez por pessoa.** Não picada de mosquito — terminar o que pegou antes de pegar outra.
 4. **Comunicação no Issue/PR, não no chat.** Tudo decidido em conversa de Slack que afeta código fica registrado como comentário no Issue ou PR correspondente.
-5. **Quem fez não aprova o próprio PR.** Sempre o outro revisa.
+5. **Review é cortesia, não obrigação.** Auto-merge é permitido. Pedir review do outro é boa prática em PRs grandes ou de decisão arquitetural (ver §6.3).
 
 ---
 
@@ -173,20 +173,36 @@ Alternativa (mais simples): adicione `IMPLEMENTATION_STATE.md` ao `.gitignore` e
 
 - Abra como **Draft** se quer feedback antecipado ou está parando no meio.
 - Marque como **Ready for review** quando todos os checkboxes do template estão verdes.
-- **Auto-assigne-se** como autor. **Não auto-aprove.**
+- **Auto-assigne-se** como autor.
 
 ### 6.2 Template de PR
 
 O template está em `.github/pull_request_template.md`. Aparece automaticamente ao abrir PR no GitHub.
 
-### 6.3 Revisão
+### 6.3 Review — quando pedir, quando dispensar
 
-Quem revisa:
+Review do outro dev **não é obrigatório**. É cortesia em casos onde faz diferença e pula em casos triviais.
 
-- **O outro dev, sempre.** Nunca o autor do PR aprova ele mesmo.
-- Tempo de resposta esperado: **24h em dias úteis**. Se vai demorar mais, comente "vou demorar X" pra autor saber.
+**Pedir review do outro (recomendado):**
 
-O que revisar:
+- Mudança arquitetural (nova entidade, mudança em fluxo de domínio, escolha de biblioteca).
+- Mexe em código que o outro escreveu recentemente e tem mais contexto.
+- Você está inseguro sobre uma decisão e quer segunda opinião.
+- Mudança grande (>200 linhas, vários arquivos correlacionados).
+- Mudança em segurança, auth, isolamento de dados.
+
+**Pode auto-mergear sem review:**
+
+- Mudança pequena e isolada (ajuste de copy, fix de bug óbvio, atualização de doc).
+- Trabalho seu de ponta a ponta numa Issue inteira que você dominou.
+- Refactor cosmético sem mudança de comportamento.
+- Atualização de dependência rotineira.
+
+**Critério mental simples:** "Se eu errar isso, qual o tamanho do estrago?" Estrago pequeno e reversível = auto-merge. Estrago grande ou difícil de desfazer = pede olho extra.
+
+**Tempo de resposta de review (se pedido):** **24h em dias úteis**. Se vai demorar mais, comente "vou demorar X" pra autor saber. Após 48h sem resposta, autor pode mergear sozinho documentando a tentativa de review no comentário do PR.
+
+**O que olhar quando revisar:**
 
 - Build verde (CI quando existir; manualmente até lá)
 - Testes passam
@@ -196,8 +212,8 @@ O que revisar:
 
 ### 6.4 Approval e merge
 
-- **Approval por 1 revisor** é mandatório.
-- **Quem aprova não faz o merge** — quem abriu o PR faz, depois de aprovado.
+- **Approval do outro é cortesia, não obrigação.** Sem barreira técnica — o branch protection não exige.
+- **Quem abriu o PR faz o merge** (independente de quem aprovou, se aprovou alguém).
 - **Squash merge é o default.** A branch inteira vira 1 commit no `main` com a mensagem do PR.
 - **Branch é deletada após merge** (botão automático do GitHub).
 
@@ -206,10 +222,9 @@ O que revisar:
 Se vocês discordarem em PR e não chegarem a acordo:
 
 1. Discutam nos comentários do PR (registro escrito).
-2. Se não resolver em 1 hora de troca, escolham 1 dos caminhos:
-   - **Marcar reunião rápida** (15min) pra alinhar.
-   - **Atalho:** quem abriu o PR tem voto de decisão na própria PR, **desde que** documente o porquê no comentário. O outro pode discordar depois com refactor proposto em PR novo.
-3. **Não desfaz merge.** Se algo entrou e o outro discorda em retrospecto, abre PR novo de reversão/refactor com justificativa.
+2. **Atalho padrão:** quem abriu o PR tem voto de decisão na própria PR, **desde que** documente o porquê no comentário. O outro pode discordar depois com refactor proposto em PR novo.
+3. Se preferir alinhar antes: marcar reunião rápida (15min).
+4. **Não desfaz merge.** Se algo entrou e o outro discorda em retrospecto, abre PR novo de reversão/refactor com justificativa.
 
 ---
 
