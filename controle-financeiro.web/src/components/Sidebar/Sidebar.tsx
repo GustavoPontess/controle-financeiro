@@ -50,8 +50,8 @@ function Avatar({ initials, size = 30 }: { initials: string; size?: number }) {
         width: size,
         height: size,
         borderRadius: "50%",
-        bgcolor: "#111827",
-        color: "white",
+        bgcolor: "var(--icon-bg)",
+        color: "var(--icon-color)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -138,7 +138,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
         "& .MuiDrawer-paper": {
           width: drawerWidth,
           boxSizing: "border-box",
-          background: "#f5f6fa",
+          background: "var(--bg-sidebar)",
           borderRight: 0,
         },
       }}
@@ -259,10 +259,10 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                   <Avatar initials={initials} size={34} />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
+                    <Typography fontSize={13} fontWeight={600} color="var(--text-primary)" noWrap>
                       {currentUser.nome}
                     </Typography>
-                    <Typography fontSize={11} color="#6b7280" noWrap>
+                    <Typography fontSize={11} color="var(--text-secondary)" noWrap>
                       Plano Free
                     </Typography>
                   </Box>
@@ -330,8 +330,8 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                     }}
                   >
                     {/* Email identifier */}
-                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #f3f4f6" }}>
-                      <Typography fontSize={12} color="#6b7280" noWrap>
+                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid var(--border-color)" }}>
+                      <Typography fontSize={12} color="var(--text-secondary)" noWrap>
                         {currentUser.email}
                       </Typography>
                     </Box>
@@ -342,7 +342,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                           <Avatar initials={initials} size={28} />
                           <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
+                            <Typography fontSize={13} fontWeight={600} color="var(--text-primary)" noWrap>
                               {currentUser.nome}
                             </Typography>
                           </Box>
@@ -360,10 +360,10 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                             <Avatar initials={getInitials(account.nome)} size={28} />
                             <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography fontSize={13} fontWeight={500} color="#111827" noWrap>
+                              <Typography fontSize={13} fontWeight={500} color="var(--text-primary)" noWrap>
                                 {account.nome}
                               </Typography>
-                              <Typography fontSize={11} color="#9ca3af" noWrap>
+                              <Typography fontSize={11} color="var(--text-secondary)" noWrap>
                                 {account.email}
                               </Typography>
                             </Box>

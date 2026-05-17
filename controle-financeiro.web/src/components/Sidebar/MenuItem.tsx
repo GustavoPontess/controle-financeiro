@@ -22,7 +22,7 @@ export default function MenuItem({ to, label, icon, disabled }: MenuItemProps) {
       className={`${styles.menuItem} ${isActive ? styles.active : ""} ${disabled ? styles.disabled : ""}`}
       sx={{ py: "5px", px: "10px" }}
     >
-      <ListItemIcon className={styles.icon} sx={{ color: "#111827", minWidth: 28 }}>
+      <ListItemIcon className={styles.icon} sx={{ color: "var(--text-primary)", minWidth: 28 }}>
         {icon}
       </ListItemIcon>
       <ListItemText
@@ -31,7 +31,7 @@ export default function MenuItem({ to, label, icon, disabled }: MenuItemProps) {
           primary: {
             fontSize: 13,
             fontWeight: isActive ? 600 : 400,
-            color: "#111827",
+            color: "var(--text-primary)",
             lineHeight: 1.2,
           },
         }}

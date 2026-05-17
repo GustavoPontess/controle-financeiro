@@ -1,3 +1,29 @@
+:root {
+  --bg-outer: #f5f6fa;
+  --bg-container: #ffffff;
+  --bg-sidebar: #f5f6fa;
+  --border-color: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #9ca3af;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --active-bg: #e5e7eb;
+  --icon-bg: #111827;
+  --icon-color: #ffffff;
+}
+
+[data-theme="dark"] {
+  --bg-outer: #0f1117;
+  --bg-container: #1a1d23;
+  --bg-sidebar: #161920;
+  --border-color: #2d3748;
+  --text-primary: #f1f5f9;
+  --text-secondary: #64748b;
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --active-bg: #2d3748;
+  --icon-bg: #374151;
+  --icon-color: #f1f5f9;
+}
+
 html, body, #root {
   height: 100%;
 }
@@ -5,6 +31,6 @@ html, body, #root {
 body {
   margin: 0;
   overflow: hidden;
-  background: #f5f6fa;
+  background: var(--bg-outer);
   font-family: Inter, system-ui, sans-serif;
 }

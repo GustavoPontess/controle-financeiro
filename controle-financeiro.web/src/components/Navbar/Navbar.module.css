@@ -1,6 +1,6 @@
 .navbar {
   height: 50px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -10,5 +10,5 @@
 .title {
   font-weight: 600;
   font-size: 13px;
-  color: #111827;
+  color: var(--text-primary);
 }

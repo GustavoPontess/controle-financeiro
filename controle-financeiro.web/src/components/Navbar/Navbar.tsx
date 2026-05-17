@@ -1,10 +1,13 @@
 import { useLocation } from "react-router-dom"
 import IconButton from "@mui/material/IconButton"
 import Tooltip from "@mui/material/Tooltip"
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined"
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined"
 import SidebarToggleIcon from "./SidebarToggleIcon"
 import HamburgerIcon from "./HamburgerIcon"
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded"
 import CustomButton from "../CustomButton"
+import { useThemeContext } from "../../contexts/ThemeContext"
 import styles from "./Navbar.module.css"
 
 type Props = {
@@ -16,6 +19,7 @@ type Props = {
 
 export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, canCreateTransaction }: Props) {
   const location = useLocation()
+  const { mode, toggleMode } = useThemeContext()
 
   const getTitle = () => {
     switch (location.pathname) {
@@ -33,17 +37,26 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
   return (
     <div className={styles.navbar}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <IconButton size="small" onClick={toggleDrawer} sx={{ color: "#111827" }}>
+        <IconButton size="small" onClick={toggleDrawer} sx={{ color: "var(--text-primary)" }}>
           {sidebarOpen ? (
-            <SidebarToggleIcon sx={{ fontSize: 16, color: "#111827", transition: "all 0.2s ease" }} />
+            <SidebarToggleIcon sx={{ fontSize: 16, color: "var(--text-primary)", transition: "all 0.2s ease" }} />
           ) : (
-            <HamburgerIcon sx={{ fontSize: 16, color: "#111827", transition: "all 0.2s ease" }} />
+            <HamburgerIcon sx={{ fontSize: 16, color: "var(--text-primary)", transition: "all 0.2s ease" }} />
           )}
         </IconButton>
         <div className={styles.title}>{getTitle()}</div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Tooltip title={mode === 'dark' ? 'Modo claro' : 'Modo escuro'}>
+          <IconButton size="small" onClick={toggleMode} sx={{ color: "var(--text-primary)" }}>
+            {mode === 'dark'
+              ? <LightModeOutlinedIcon sx={{ fontSize: 16 }} />
+              : <DarkModeOutlinedIcon sx={{ fontSize: 16 }} />
+            }
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title={canCreateTransaction ? "" : "Cadastre pelo menos uma categoria antes de adicionar transações"}>
           <span>
             <CustomButton
