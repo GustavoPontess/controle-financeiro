@@ -17,14 +17,14 @@ status: CURRENT
 
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
-Bloco B — Infraestrutura para Escalar:  3/6  ✅ #16, #17, #18  ⏳ #19 (em andamento), #20, #21
+Bloco B — Infraestrutura para Escalar:  5/6  ✅ #16, #17, #18, #20  ⏳ #19 (em andamento), #21
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          8/21 (38%)
+Total Q3 2026:                          10/21 (48%)
 ```
 
-**Status geral:** Bloco A 100% 🎉. Bloco B 50% — #16/#17/#18 concluídos. Em andamento: #19 (CI). Próximo: #20 (Health checks).
+**Status geral:** Bloco A 100% 🎉. Bloco B 83% — #16/#17/#18/#20 concluídos. Em andamento: #19 (CI). Falta: #21 (testes frontend).
 
 ---
 
@@ -49,7 +49,7 @@ Síntese:
 
 ## Em progresso
 
-**Issue #19 — GitHub Actions CI** em andamento (sócio). Próximo livre: **Issue #20 — Health checks + observabilidade** (reservada).
+**Issue #19 — GitHub Actions CI** em andamento (sócio). Falta no Bloco B: **#21 — Testes frontend (Vitest + RTL)**.
 
 ---
 
@@ -66,8 +66,12 @@ Síntese:
   - Storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em Postgres, `MemoryStorage` em dev SQLite
   - Dashboard `/hangfire` protegido (`HangfireDashboardAuthFilter` — exige autenticação)
   - Validado: 5 jobs recorrentes persistem após restart da API
+- **Issue #20 — Health checks + observabilidade (✅ CONCLUÍDA)** — PR #39
+  - Health checks: `/health` (liveness) e `/health/ready` (banco + Hangfire)
+  - Serilog: console JSON + arquivo rotativo diário; `CorrelationIdMiddleware` (ID por request)
+  - Sentry: sink do Serilog, ativado por `SENTRY_DSN` (não validado end-to-end — requer DSN real)
 - **Fixes pré-existentes** (em branch própria, PRs separados): CORS, redirect loop, PagedResult
-- **Próxima ação:** Issue #20 — Health checks + observabilidade (Bloco B)
+- **Próxima ação:** Issue #21 — Testes frontend (Vitest + RTL), Bloco B
 
 ### Sessão 22 — 2026-05-16
 - **Issue #15 — Política de senha forte (✅ CONCLUÍDA) — Bloco A 100% completo 🎉**
