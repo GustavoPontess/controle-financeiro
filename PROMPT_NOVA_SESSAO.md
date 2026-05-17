@@ -122,6 +122,10 @@ Se a próxima ação vai te empurrar para ponto perigoso e tokens estão escasso
 
 ## 7. Procedimento de encerramento de sessão (obrigatório)
 
+> ⚠️ **`PROGRESS.md`, `IMPLEMENTATION_STATE.md` e `ISSUES.md` são arquivos de estado críticos.** O projeto é desenvolvido por **dois devs em assíncrono** — cada um (e o Claude de cada um) depende desses arquivos para saber o que já foi feito, o que está em execução e o que vem a seguir. Um arquivo de estado desatualizado faz o outro dev (ou a próxima sessão) trabalhar com informação errada: pegar Issue já feita, duplicar trabalho, ou perder contexto.
+>
+> **Regra:** terminou uma Issue ou etapa relevante → atualize esses arquivos **na mesma sessão**, antes de encerrar. Nunca deixe `PROGRESS.md` refletindo um estado que já mudou. Se notar qualquer um deles desatualizado ao abrir a sessão, **corrija antes de seguir**.
+
 Quando decidir parar (limite de tokens, fim natural de etapa, ou usuário pediu):
 
 1. **Garantir build verde** — `dotnet build` no backend, `npm run build` no frontend se mexeu lá.
