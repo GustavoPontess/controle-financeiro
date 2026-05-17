@@ -217,12 +217,12 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+**Status:** EM_EXECUCAO — backend concluído (etapas 1-3), validado end-to-end
 
 ### Etapas
 - [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
-- [ ] 2. DTOs + `FamiliaService` + `ConviteService`
-- [ ] 3. `FamiliasController` + `ConvitesController`
+- [x] 2. DTOs + `FamiliaService` + `ConviteService`
+- [x] 3. `FamiliasController` + `ConvitesController`
 - [ ] 4. Frontend: serviço + páginas (lista, detalhe, criar, convidar, aceitar)
 - [ ] 5. Testes de serviço
 
@@ -241,9 +241,16 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 - #23 (Sub-feature 2) está CLOSED no GitHub com `stateReason: COMPLETED` sem PR
   visível — possível fechamento por engano; confirmar com o usuário/sócio.
 
+### Validação do backend
+Fluxo testado via SQLite (curl): criar família → convidar → aceitar → família
+com 2 membros, convites pendentes zerados. Fix aplicado: `ConviteFamiliaDto`
+não expunha `Token` (convidado não conseguia aceitar).
+
 ### Próxima ação concreta
-Etapa 2: criar DTOs em `DTOs/Familia/` e `FamiliaService` + `ConviteService` em
-`Services/`. Ver endpoints e regras na spec `arquitetura.md` §3-§4.
+Etapa 4 — Frontend: criar `src/services/familiaService.ts` e páginas em
+`src/pages/Familia/` (lista de famílias, detalhe com membros/convites, criar
+família, convidar membro, aceitar convite pendente). Endpoints em
+`arquitetura.md` §3. Etapa 5: testes de `FamiliaService`/`ConviteService`.
 
 ---
 
