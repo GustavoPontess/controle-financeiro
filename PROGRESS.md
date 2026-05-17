@@ -18,13 +18,13 @@ status: CURRENT
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
-Bloco C — Pivot Família:                0/5  ⏳
-Bloco D — Retenção e UX B2C:            0/5  ⏳
+Bloco C — Pivot Família:                1/5  ✅ #22  ⏳ #23, #24, #25, #26
+Bloco D — Retenção e UX B2C:            0/5  ⏳ #31 (em andamento)
 
-Total Q3 2026:                          11/21 (52%)
+Total Q3 2026:                          12/21 (57%)
 ```
 
-**Status geral:** Blocos A e B 100% 🎉. Próximo: Bloco C — Pivot Família, começando por #22 (Família + Membros).
+**Status geral:** Blocos A e B 100% 🎉. Bloco C iniciado — #22 (Família + Membros) concluída. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,11 +49,21 @@ Síntese:
 
 ## Em progresso
 
-Nenhum item em execução. **Blocos A e B concluídos.** Próximo: **Bloco C — Pivot Família**, Issue #22 (Família + Membros). Ver `docs/features/familia/visao.md`.
+#22 concluída. Próximo do Bloco C: **#24 — Dependentes** (#23 Despesa Compartilhada está CLOSED no GitHub — verificar se foi engano). Sócio em #31 (Dark mode, Bloco D).
 
 ---
 
 ## Histórico de sessões
+
+### Sessão 24 — 2026-05-17
+- **Issue #22 — Sub-feature 1: Família + Membros (✅ CONCLUÍDA)** — PR #42
+  - Entidades `Familia`, `MembroFamilia`, `ConviteFamilia` + migration
+  - `FamiliaService` + `ConviteService`; `FamiliasController` + `ConvitesController`
+  - Frontend: `familiaService`, `FamiliasPage`, rota `/familias`, item no Sidebar
+  - 14 testes de serviço (suíte 48 → 62)
+  - Validado em SQLite e Postgres
+- **Postgres vira default de dev** (PR #43) — paridade dev/prod
+- **Próxima ação:** Bloco C — #24 Dependentes
 
 ### Bloco B — itens do sócio
 - **Issue #18 — Docker + docker-compose (✅ CONCLUÍDA)** — PR #34
