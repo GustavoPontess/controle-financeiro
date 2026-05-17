@@ -262,7 +262,7 @@ aceitar).
 - [x] 1. `Transacao.FamiliaId` + FK + índice + migration `AddFamiliaIdToTransacao`
 - [x] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
 - [x] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
-- [ ] 4. Frontend: marcar transação compartilhada + aba despesas/balanço na família
+- [~] 4. Frontend: [x] visualização (balanço + despesas na FamiliasPage) · [ ] marcar transação como compartilhada na tela de transações
 - [ ] 5. Testes de serviço
 
 ### Validação do backend
@@ -282,10 +282,11 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
 
 ### Próxima ação concreta
-Etapa 4 — Frontend: opção de marcar transação como compartilhada (escolher
-família) na tela de transações; aba/seção de despesas compartilhadas + balanço
-na `FamiliasPage`. Endpoints prontos. Etapa 5: testes de
-`DespesaCompartilhadaService`.
+Etapa 4 parte 2 — adicionar ação "compartilhar" na `TransactionTable`
+(`components/transactions/TransactionTable/`): IconButton por linha que abre
+dialog para escolher a família (usa `getFamilias` + `compartilharTransacao`).
+A TransactionTable é componente compartilhado — mexer com cuidado.
+Etapa 5 — testes de `DespesaCompartilhadaService`.
 
 ---
 
