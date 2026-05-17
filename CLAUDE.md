@@ -10,7 +10,7 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
-- **Backend:** .NET 8 Web API com EF Core. Provider escolhido em runtime pela connection string: SQLite em dev, Postgres em prod (ver `Infrastructure/DatabaseProvider.cs`)
+- **Backend:** .NET 8 Web API com EF Core. **Dev e prod usam Postgres** (paridade dev/prod, via `docker compose up -d postgres`). Provider escolhido em runtime pela connection string (`Infrastructure/DatabaseProvider.cs`); SQLite continua suportado como fallback opcional sem Docker
 - **Frontend:** React 19 + TypeScript + Vite + Material-UI v7
 - **Banco de dados:** 18 entidades. Provider dinâmico SQLite/Postgres (Issue #16 concluída); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
@@ -23,6 +23,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 
 ### Backend (ControleFinanceiro.Api/)
 ```powershell
+docker compose up -d postgres # Sobe o Postgres de dev (rodar uma vez)
 dotnet restore
 dotnet build
 dotnet run                    # API at http://localhost:5293, Swagger at /swagger
