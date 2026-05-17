@@ -256,14 +256,14 @@ aceitar).
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — backend concluído (etapas 1-3), validado end-to-end
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 69 testes verdes
 
 ### Etapas
 - [x] 1. `Transacao.FamiliaId` + FK + índice + migration `AddFamiliaIdToTransacao`
 - [x] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
 - [x] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
-- [~] 4. Frontend: [x] visualização (balanço + despesas na FamiliasPage) · [ ] marcar transação como compartilhada na tela de transações
-- [ ] 5. Testes de serviço
+- [x] 4. Frontend: visualização (balanço + despesas na FamiliasPage) + ação compartilhar na TransactionTable
+- [x] 5. Testes de serviço — 7 testes (DespesaCompartilhadaService), suíte 62→69
 
 ### Validação do backend
 Testado em Postgres (curl): compartilhar transação → 204; feed retorna a
@@ -282,11 +282,8 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
 
 ### Próxima ação concreta
-Etapa 4 parte 2 — adicionar ação "compartilhar" na `TransactionTable`
-(`components/transactions/TransactionTable/`): IconButton por linha que abre
-dialog para escolher a família (usa `getFamilias` + `compartilharTransacao`).
-A TransactionTable é componente compartilhado — mexer com cuidado.
-Etapa 5 — testes de `DespesaCompartilhadaService`.
+#23 concluída — PR #46 Ready for review. Próxima Sub-feature do Bloco C:
+#24 (Dependentes).
 
 ---
 
