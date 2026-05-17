@@ -85,7 +85,7 @@ public class FamiliaService
         var convites = familia.Convites
             .Select(c => new ConviteFamiliaDto(
                 c.Id, c.FamiliaId, familia.Nome, c.EmailConvidado, c.Papel,
-                c.Status, c.ExpiraEm, c.CriadoEm))
+                c.Status, c.ExpiraEm, c.CriadoEm, c.Token))
             .ToList();
 
         return new FamiliaDetalheDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,

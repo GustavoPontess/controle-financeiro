@@ -105,7 +105,7 @@ public class ConviteService
                 && c.ExpiraEm > agora)
             .Select(c => new ConviteFamiliaDto(
                 c.Id, c.FamiliaId, c.Familia!.Nome, c.EmailConvidado, c.Papel,
-                c.Status, c.ExpiraEm, c.CriadoEm))
+                c.Status, c.ExpiraEm, c.CriadoEm, c.Token))
             .AsNoTracking()
             .ToListAsync();
     }
@@ -191,7 +191,7 @@ public class ConviteService
 
     private static ConviteFamiliaDto ToDto(ConviteFamilia c, string nomeFamilia) =>
         new(c.Id, c.FamiliaId, nomeFamilia, c.EmailConvidado, c.Papel,
-            c.Status, c.ExpiraEm, c.CriadoEm);
+            c.Status, c.ExpiraEm, c.CriadoEm, c.Token);
 
     private static string GerarToken()
     {

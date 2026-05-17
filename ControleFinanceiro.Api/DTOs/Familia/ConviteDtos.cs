@@ -12,4 +12,5 @@ public record ConviteFamiliaDto(
     string Papel,
     StatusConvite Status,
     DateTime ExpiraEm,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    string Token);
