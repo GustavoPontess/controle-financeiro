@@ -12,13 +12,18 @@ import EmptyState from "../../components/EmptyState/EmptyState"
 import {
   getFamilias, getFamilia, criarFamilia, dissolverFamilia, convidarMembro,
   revogarConvite, removerMembro, getConvitesPendentes, aceitarConvite, recusarConvite,
+  getDespesasFamilia, getBalancoFamilia,
 } from "../../services/familiaService"
-import type { Familia, FamiliaDetalhe, ConviteFamilia } from "../../types/Familia"
+import type {
+  Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
+} from "../../types/Familia"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
+const formatMoney = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 export default function FamiliasPage() {
   const { notify } = useOutletContext<OutletContextType>()
@@ -31,6 +36,8 @@ export default function FamiliasPage() {
 
   const [detalhe, setDetalhe] = useState<FamiliaDetalhe | null>(null)
   const [detalheLoading, setDetalheLoading] = useState(false)
+  const [despesas, setDespesas] = useState<DespesaCompartilhada[]>([])
+  const [balanco, setBalanco] = useState<BalancoFamilia | null>(null)
 
   const [convidarOpen, setConvidarOpen] = useState(false)
   const [conviteEmail, setConviteEmail] = useState("")
@@ -54,7 +61,17 @@ export default function FamiliasPage() {
   const abrirDetalhe = async (familiaId: string) => {
     setDetalheLoading(true)
     try {
-      setDetalhe(await getFamilia(familiaId))
+      const agora = new Date()
+      const mes = agora.getMonth() + 1
+      const ano = agora.getFullYear()
+      const [d, desp, bal] = await Promise.all([
+        getFamilia(familiaId),
+        getDespesasFamilia(familiaId, mes, ano),
+        getBalancoFamilia(familiaId, mes, ano),
+      ])
+      setDetalhe(d)
+      setDespesas(desp)
+      setBalanco(bal)
     } catch {
       notify({ open: true, message: "Erro ao carregar a família", severity: "error" })
     } finally {
@@ -287,6 +304,50 @@ export default function FamiliasPage() {
                   ))}
                 </>
               )}
+
+              {/* Balanço do mês */}
+              {balanco && (
+                <>
+                  <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>
+                    Balanço do mês — {formatMoney(balanco.total)} em despesas
+                  </Typography>
+                  {balanco.saldos.map(s => (
+                    <Box key={s.usuarioId} sx={{
+                      display: "flex", justifyContent: "space-between",
+                      py: 0.75, borderBottom: "1px solid #f1f5f9",
+                    }}>
+                      <Typography fontSize={13}>{s.nome} — pagou {formatMoney(s.pagou)}</Typography>
+                      <Typography fontSize={13} fontWeight={600}
+                        color={s.saldo >= 0 ? "#15803d" : "#dc2626"}>
+                        {s.saldo >= 0
+                          ? `recebe ${formatMoney(s.saldo)}`
+                          : `deve ${formatMoney(-s.saldo)}`}
+                      </Typography>
+                    </Box>
+                  ))}
+                </>
+              )}
+
+              {/* Despesas compartilhadas do mês */}
+              <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>
+                Despesas compartilhadas
+              </Typography>
+              {despesas.length === 0 ? (
+                <Typography fontSize={13} color="#9ca3af">
+                  Nenhuma despesa compartilhada neste mês.
+                </Typography>
+              ) : despesas.map(d => (
+                <Box key={d.id} sx={{
+                  display: "flex", justifyContent: "space-between",
+                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                }}>
+                  <Typography fontSize={13}>
+                    {d.descricao} <Typography component="span" fontSize={12} color="#9ca3af">
+                      · {d.pagadorNome} · {formatDate(d.data)}</Typography>
+                  </Typography>
+                  <Typography fontSize={13} fontWeight={600}>{formatMoney(d.valor)}</Typography>
+                </Box>
+              ))}
             </DialogContent>
             <DialogActions sx={{ justifyContent: "space-between" }}>
               <Box>

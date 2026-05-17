@@ -246,9 +246,44 @@ Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
 aceitar).
 
 ### Próxima ação concreta
-#22 concluída — PR #42 Ready for review. Próxima Sub-feature do Bloco C:
-#24 (Dependentes) — #23 (Despesa Compartilhada) está CLOSED no GitHub
-(verificar com o usuário se foi engano antes de pular).
+#22 concluída — PR #42 mergeado.
+
+---
+
+## Issue em execução
+
+**Issue:** #23 — Sub-feature 2: Despesa Compartilhada (modo igualitário)
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 69 testes verdes
+
+### Etapas
+- [x] 1. `Transacao.FamiliaId` + FK + índice + migration `AddFamiliaIdToTransacao`
+- [x] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
+- [x] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
+- [x] 4. Frontend: visualização (balanço + despesas na FamiliasPage) + ação compartilhar na TransactionTable
+- [x] 5. Testes de serviço — 7 testes (DespesaCompartilhadaService), suíte 62→69
+
+### Validação do backend
+Testado em Postgres (curl): compartilhar transação → 204; feed retorna a
+despesa com pagador; balanço igualitário correto (total 300, cota 300 com
+1 membro, saldo 0).
+
+### Contexto
+- #23 estava CLOSED por engano (issue GitHub #13 com título trocado — tracking
+  de JWT/CSRF). Reaberta nesta sessão.
+- Spec completa em `docs/features/familia/sub-2-despesa-compartilhada/arquitetura.md`.
+
+### Decisões
+- Despesa compartilhada = `Transacao` com `FamiliaId` preenchido. Sem entidade
+  nova: rateio igualitário é calculado (total ÷ nº membros). Pagador =
+  `Transacao.CriadoPor`. Entidades de pagador/beneficiário só em #25.
+- MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
+
+### Próxima ação concreta
+#23 concluída — PR #46 Ready for review. Próxima Sub-feature do Bloco C:
+#24 (Dependentes).
 
 ---
 

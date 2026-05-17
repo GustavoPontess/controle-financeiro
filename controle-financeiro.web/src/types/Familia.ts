@@ -39,3 +39,28 @@ export interface FamiliaDetalhe {
   membros: MembroFamilia[]
   convitesPendentes: ConviteFamilia[]
 }
+
+export interface DespesaCompartilhada {
+  id: string
+  descricao: string
+  valor: number
+  data: string
+  categoriaNome: string | null
+  pagadorUsuarioId: string
+  pagadorNome: string
+}
+
+export interface SaldoMembro {
+  usuarioId: string
+  nome: string
+  pagou: number
+  saldo: number
+}
+
+export interface BalancoFamilia {
+  mes: number
+  ano: number
+  total: number
+  cota: number
+  saldos: SaldoMembro[]
+}

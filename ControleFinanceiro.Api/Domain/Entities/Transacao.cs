@@ -37,6 +37,11 @@ public class Transacao
 
     public Guid CriadoPor { get; set; }
 
+    /// <summary>Issue #23 — quando preenchido, esta Transacao é uma despesa
+    /// compartilhada com a família indicada. Null = despesa pessoal.</summary>
+    public Guid? FamiliaId { get; set; }
+    public Familia? Familia { get; set; }
+
     [Required]
     public DateTime Data { get; set; }
 

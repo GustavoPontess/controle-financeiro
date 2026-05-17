@@ -91,6 +91,9 @@ builder.Services.AddScoped<OrcamentoService>();
 builder.Services.AddScoped<FamiliaService>();
 builder.Services.AddScoped<ConviteService>();
 
+// Issue #23 — Despesa Compartilhada
+builder.Services.AddScoped<DespesaCompartilhadaService>();
+
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
