@@ -18,13 +18,13 @@ status: CURRENT
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
-Bloco C — Pivot Família:                1/5  ✅ #22  ⏳ #23, #24, #25, #26
+Bloco C — Pivot Família:                2/5  ✅ #22, #23  ⏳ #24, #25, #26
 Bloco D — Retenção e UX B2C:            0/5  ⏳ #31 (em andamento)
 
-Total Q3 2026:                          12/21 (57%)
+Total Q3 2026:                          13/21 (62%)
 ```
 
-**Status geral:** Blocos A e B 100% 🎉. Bloco C iniciado — #22 (Família + Membros) concluída. Sócio em #31 (Dark mode).
+**Status geral:** Blocos A e B 100% 🎉. Bloco C 2/5 — #22 (Família + Membros) e #23 (Despesa Compartilhada) concluídas. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,13 +49,18 @@ Síntese:
 
 ## Em progresso
 
-#22 concluída. Próximo do Bloco C: **#24 — Dependentes** (#23 Despesa Compartilhada está CLOSED no GitHub — verificar se foi engano). Sócio em #31 (Dark mode, Bloco D).
+#22 e #23 concluídas. Próximo do Bloco C: **#24 — Dependentes**. Sócio em #31 (Dark mode, Bloco D).
 
 ---
 
 ## Histórico de sessões
 
 ### Sessão 24 — 2026-05-17
+- **Issue #23 — Sub-feature 2: Despesa Compartilhada (✅ CONCLUÍDA)** — PR #46
+  - `Transacao.FamiliaId`; `DespesaCompartilhadaService`; endpoints de compartilhamento, feed e balanço
+  - Frontend: ação compartilhar na TransactionTable, balanço/despesas na FamiliasPage
+  - 7 testes (suíte 62 → 69)
+  - #23 estava CLOSED por engano (tracking trocado) — reaberta e concluída
 - **Issue #22 — Sub-feature 1: Família + Membros (✅ CONCLUÍDA)** — PR #42
   - Entidades `Familia`, `MembroFamilia`, `ConviteFamilia` + migration
   - `FamiliaService` + `ConviteService`; `FamiliasController` + `ConvitesController`
