@@ -87,6 +87,10 @@ builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();
 
+// Issue #22 — Família + Membros
+builder.Services.AddScoped<FamiliaService>();
+builder.Services.AddScoped<ConviteService>();
+
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();

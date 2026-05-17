@@ -207,7 +207,48 @@ Issue #15 concluída. **Bloco A 100% concluído.**
   condicional testadas; sem DSN o Sentry fica desligado.
 
 ### Próxima ação concreta
-#20 concluída. **Bloco B 5/6** — falta só #21 (testes frontend).
+#20 concluída. Bloco B 6/6 (sócio fechou #19 e #21).
+
+---
+
+## Issue em execução
+
+**Issue:** #22 — Sub-feature 1: Família + Membros (sem rateio)
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 62 testes verdes
+
+### Etapas
+- [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
+- [x] 2. DTOs + `FamiliaService` + `ConviteService`
+- [x] 3. `FamiliasController` + `ConvitesController`
+- [x] 4. Frontend: `familiaService` + `FamiliasPage` + rota `/familias` + Sidebar
+- [x] 5. Testes de serviço — 14 testes (FamiliaService + ConviteService), suíte 48→62
+
+### Contexto
+- Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
+  — ler antes de continuar (entidades, endpoints, regras de negócio).
+- Migration `AddFamiliaMembros` aplicada e validada em Postgres real (docker-compose).
+
+### Decisões
+- `Papel` é string livre (presets só na UI). Admin = membro cujo `UsuarioId`
+  == `Familia.CriadoPorUsuarioId`.
+- Unicidade de membro ativo `(FamiliaId, UsuarioId)` validada no service (soft
+  delete permite reentrada — índice único impediria).
+- #23 (Sub-feature 2) está CLOSED no GitHub com `stateReason: COMPLETED` sem PR
+  visível — possível fechamento por engano; confirmar com o usuário/sócio.
+
+### Validação do backend
+Fluxo testado em **SQLite e Postgres** (curl): migration `AddFamiliaMembros`
+aplica em Postgres; criar família → convidar → aceitar → família com 2 membros.
+Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
+aceitar).
+
+### Próxima ação concreta
+#22 concluída — PR #42 Ready for review. Próxima Sub-feature do Bloco C:
+#24 (Dependentes) — #23 (Despesa Compartilhada) está CLOSED no GitHub
+(verificar com o usuário se foi engano antes de pular).
 
 ---
 
