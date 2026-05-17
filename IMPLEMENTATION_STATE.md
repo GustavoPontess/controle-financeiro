@@ -211,6 +211,36 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 
 ---
 
+## Issue em execução
+
+**Issue:** #31 — Dark mode
+**Bloco:** D (Retenção e UX B2C)
+**GitHub Issue:** #21
+**Iniciada em:** 2026-05-17 (sessão 25)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — build verde, PR #44 aberto
+
+### Etapas
+- [x] 1. `ThemeContext.tsx`: toggle, localStorage, prefers-color-scheme
+- [x] 2. `muiTheme.ts`: paleta light/dark via `createTheme`
+- [x] 3. `App.tsx`: ThemeContextProvider + MUI ThemeProvider + CssBaseline
+- [x] 4. `Navbar.tsx`: botão toggle sol/lua
+- [x] 5. CSS variables em `global.css` + CSS modules (DefaultLayout, Navbar, Sidebar)
+- [x] 6. Sidebar.tsx + MenuItem.tsx: cores hardcoded → CSS variables
+- [x] 7. Build verde (`npm run build`) ✅
+
+### Decisões
+- CSS variables (`data-theme` no `<html>`) para cores de layout; MUI `palette.mode`
+  para componentes MUI (Paper, Menu, Divider, etc.) — híbrido evita overhead de
+  `useTheme()` em cada componente custom.
+- `prefers-color-scheme` como fallback apenas na primeira visita (sem valor em localStorage).
+
+### Próxima ação concreta
+Issue #31 concluída. PR #44 aberto (pronto para review/auto-merge).
+Próxima: aguardar merge de #22 (Gustavo, PR #42 — Família + Membros) para iniciar Bloco C.
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
