@@ -207,7 +207,43 @@ Issue #15 concluída. **Bloco A 100% concluído.**
   condicional testadas; sem DSN o Sentry fica desligado.
 
 ### Próxima ação concreta
-#20 concluída. **Bloco B 5/6** — falta só #21 (testes frontend).
+#20 concluída. Bloco B 6/6 (sócio fechou #19 e #21).
+
+---
+
+## Issue em execução
+
+**Issue:** #22 — Sub-feature 1: Família + Membros (sem rateio)
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+
+### Etapas
+- [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
+- [ ] 2. DTOs + `FamiliaService` + `ConviteService`
+- [ ] 3. `FamiliasController` + `ConvitesController`
+- [ ] 4. Frontend: serviço + páginas (lista, detalhe, criar, convidar, aceitar)
+- [ ] 5. Testes de serviço
+
+### Contexto
+- Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
+  — ler antes de continuar (entidades, endpoints, regras de negócio).
+- Migration `AddFamiliaMembros` gerada para Postgres; build verde. Não aplicada
+  em Postgres runtime (Docker estava parado) — validar no `dotnet ef database
+  update`/startup quando o Postgres subir.
+
+### Decisões
+- `Papel` é string livre (presets só na UI). Admin = membro cujo `UsuarioId`
+  == `Familia.CriadoPorUsuarioId`.
+- Unicidade de membro ativo `(FamiliaId, UsuarioId)` validada no service (soft
+  delete permite reentrada — índice único impediria).
+- #23 (Sub-feature 2) está CLOSED no GitHub com `stateReason: COMPLETED` sem PR
+  visível — possível fechamento por engano; confirmar com o usuário/sócio.
+
+### Próxima ação concreta
+Etapa 2: criar DTOs em `DTOs/Familia/` e `FamiliaService` + `ConviteService` em
+`Services/`. Ver endpoints e regras na spec `arquitetura.md` §3-§4.
 
 ---
 
