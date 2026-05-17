@@ -217,14 +217,14 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — backend concluído (etapas 1-3), validado end-to-end
+**Status:** EM_EXECUCAO — backend + frontend concluídos (etapas 1-4)
 
 ### Etapas
 - [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
 - [x] 2. DTOs + `FamiliaService` + `ConviteService`
 - [x] 3. `FamiliasController` + `ConvitesController`
-- [ ] 4. Frontend: serviço + páginas (lista, detalhe, criar, convidar, aceitar)
-- [ ] 5. Testes de serviço
+- [x] 4. Frontend: `familiaService` + `FamiliasPage` + rota `/familias` + Sidebar
+- [ ] 5. Testes de serviço (`FamiliaService`, `ConviteService`)
 
 ### Contexto
 - Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
@@ -246,10 +246,11 @@ Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
 aceitar).
 
 ### Próxima ação concreta
-Etapa 4 — Frontend: criar `src/services/familiaService.ts` e páginas em
-`src/pages/Familia/` (lista de famílias, detalhe com membros/convites, criar
-família, convidar membro, aceitar convite pendente). Endpoints em
-`arquitetura.md` §3. Etapa 5: testes de `FamiliaService`/`ConviteService`.
+Etapa 5 — testes de serviço em `ControleFinanceiro.Api.Tests/Services/`:
+`FamiliaServiceTests` e `ConviteServiceTests` (xUnit + EF InMemory, padrão dos
+testes existentes). Cobrir: criar família/admin, convidar (limite, duplicado),
+aceitar (e-mail, expirado, reentrada), papel, sair (admin bloqueado).
+Depois: marcar PR #42 como Ready for review.
 
 ---
 
