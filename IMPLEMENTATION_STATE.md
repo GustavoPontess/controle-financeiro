@@ -282,8 +282,35 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
 
 ### Próxima ação concreta
-#23 concluída — PR #46 Ready for review. Próxima Sub-feature do Bloco C:
-#24 (Dependentes).
+#23 concluída — PR #46 mergeado.
+
+---
+
+## Issue em execução
+
+**Issue:** #24 — Sub-feature 3: Dependentes
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+
+### Etapas
+- [x] 1. Entidade `Dependente` + enum `TipoDependente` + `Transacao.DependenteId` + AppDbContext + migration
+- [ ] 2. DTOs + `DependenteService` (CRUD, atribuir despesa, gasto por dependente)
+- [ ] 3. Endpoints — `DependentesController` + `TransacoesController` (atribuir)
+- [ ] 4. Frontend: CRUD de dependentes na `FamiliasPage` + atribuir na `TransactionTable`
+- [ ] 5. Testes de serviço
+
+### Contexto
+- Spec completa em `docs/features/familia/sub-3-dependentes/arquitetura.md`.
+- Dependente = entidade sem login (rótulo de atribuição de despesa). `Transacao`
+  ganhou `DependenteId` nullable — independente de `FamiliaId` (#23).
+
+### Próxima ação concreta
+Etapa 2 — DTOs (`CriarDependenteDto`, `DependenteDto`, `AtribuirDependenteDto`,
+`GastoDependenteDto`) e `DependenteService` (CRUD de dependente, atribuir/
+desatribuir despesa, total de gasto por dependente no mês). Ver `arquitetura.md`
+§3-§5.
 
 ---
 
