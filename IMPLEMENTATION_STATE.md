@@ -217,14 +217,14 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — backend + frontend concluídos (etapas 1-4)
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 62 testes verdes
 
 ### Etapas
 - [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
 - [x] 2. DTOs + `FamiliaService` + `ConviteService`
 - [x] 3. `FamiliasController` + `ConvitesController`
 - [x] 4. Frontend: `familiaService` + `FamiliasPage` + rota `/familias` + Sidebar
-- [ ] 5. Testes de serviço (`FamiliaService`, `ConviteService`)
+- [x] 5. Testes de serviço — 14 testes (FamiliaService + ConviteService), suíte 48→62
 
 ### Contexto
 - Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
@@ -246,11 +246,9 @@ Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
 aceitar).
 
 ### Próxima ação concreta
-Etapa 5 — testes de serviço em `ControleFinanceiro.Api.Tests/Services/`:
-`FamiliaServiceTests` e `ConviteServiceTests` (xUnit + EF InMemory, padrão dos
-testes existentes). Cobrir: criar família/admin, convidar (limite, duplicado),
-aceitar (e-mail, expirado, reentrada), papel, sair (admin bloqueado).
-Depois: marcar PR #42 como Ready for review.
+#22 concluída — PR #42 Ready for review. Próxima Sub-feature do Bloco C:
+#24 (Dependentes) — #23 (Despesa Compartilhada) está CLOSED no GitHub
+(verificar com o usuário se foi engano antes de pular).
 
 ---
 
