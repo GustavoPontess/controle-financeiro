@@ -256,14 +256,19 @@ aceitar).
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+**Status:** EM_EXECUCAO — backend concluído (etapas 1-3), validado end-to-end
 
 ### Etapas
 - [x] 1. `Transacao.FamiliaId` + FK + índice + migration `AddFamiliaIdToTransacao`
-- [ ] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
-- [ ] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
+- [x] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
+- [x] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
 - [ ] 4. Frontend: marcar transação compartilhada + aba despesas/balanço na família
 - [ ] 5. Testes de serviço
+
+### Validação do backend
+Testado em Postgres (curl): compartilhar transação → 204; feed retorna a
+despesa com pagador; balanço igualitário correto (total 300, cota 300 com
+1 membro, saldo 0).
 
 ### Contexto
 - #23 estava CLOSED por engano (issue GitHub #13 com título trocado — tracking
@@ -277,10 +282,10 @@ aceitar).
 - MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
 
 ### Próxima ação concreta
-Etapa 2 — DTOs em `DTOs/Familia/` (`CompartilharTransacaoDto`,
-`DespesaCompartilhadaDto`, `BalancoFamiliaDto`, `SaldoMembroDto`) e
-`DespesaCompartilhadaService` (marcar/desmarcar transação, feed por mês,
-balanço igualitário). Ver `arquitetura.md` §2-§5.
+Etapa 4 — Frontend: opção de marcar transação como compartilhada (escolher
+família) na tela de transações; aba/seção de despesas compartilhadas + balanço
+na `FamiliasPage`. Endpoints prontos. Etapa 5: testes de
+`DespesaCompartilhadaService`.
 
 ---
 
