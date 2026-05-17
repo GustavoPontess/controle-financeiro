@@ -32,6 +32,7 @@ import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
 import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 
 import MenuItem from "./MenuItem";
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog";
@@ -216,6 +217,11 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
               to="/categories"
               label="Categorias"
               icon={<CategoryOutlinedIcon sx={{ fontSize: 18 }} />}
+            />
+            <MenuItem
+              to="/familias"
+              label="Famílias"
+              icon={<GroupsOutlinedIcon sx={{ fontSize: 18 }} />}
             />
           </List>
         </div>

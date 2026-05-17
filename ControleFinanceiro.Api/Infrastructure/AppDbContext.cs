@@ -32,6 +32,11 @@ public class AppDbContext : DbContext
     // ── Issue #10 Orçamento/Metas ──
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
 
+    // ── Issue #22 Família + Membros ──
+    public DbSet<Familia> Familias => Set<Familia>();
+    public DbSet<MembroFamilia> MembrosFamilia => Set<MembroFamilia>();
+    public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -229,5 +234,53 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Orcamento>()
             .HasIndex(o => new { o.UsuarioId, o.CategoriaId, o.Mes, o.Ano })
             .IsUnique();
+
+        // ── Issue #22 Família + Membros ──
+
+        // Familia → CriadoPor (Restrict: não deletar usuário que criou família)
+        modelBuilder.Entity<Familia>()
+            .HasOne(f => f.CriadoPor)
+            .WithMany()
+            .HasForeignKey(f => f.CriadoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Familia → Membros / Convites (Cascade: somem com a família)
+        modelBuilder.Entity<Familia>()
+            .HasMany(f => f.Membros)
+            .WithOne(m => m.Familia)
+            .HasForeignKey(m => m.FamiliaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Familia>()
+            .HasMany(f => f.Convites)
+            .WithOne(c => c.Familia)
+            .HasForeignKey(c => c.FamiliaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MembroFamilia → Usuario (Restrict: não deletar usuário que é membro)
+        modelBuilder.Entity<MembroFamilia>()
+            .HasOne(m => m.Usuario)
+            .WithMany()
+            .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Unicidade (FamiliaId, UsuarioId) entre membros ativos é validada no
+        // service — soft delete permite reentrada, o que um índice único impediria.
+        modelBuilder.Entity<MembroFamilia>()
+            .HasIndex(m => new { m.FamiliaId, m.UsuarioId });
+
+        // ConviteFamilia → CriadoPor (Restrict)
+        modelBuilder.Entity<ConviteFamilia>()
+            .HasOne(c => c.CriadoPor)
+            .WithMany()
+            .HasForeignKey(c => c.CriadoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ConviteFamilia>()
+            .HasIndex(c => c.Token)
+            .IsUnique();
+
+        modelBuilder.Entity<ConviteFamilia>()
+            .HasIndex(c => new { c.FamiliaId, c.EmailConvidado });
     }
 }
