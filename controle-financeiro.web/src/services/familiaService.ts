@@ -1,5 +1,8 @@
 import { api } from "../api/axiosConfig"
-import type { Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia } from "../types/Familia"
+import type {
+  Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia,
+  DespesaCompartilhada, BalancoFamilia,
+} from "../types/Familia"
 
 export const getFamilias = async (): Promise<Familia[]> => {
   const res = await api.get("/familias")
@@ -53,4 +56,30 @@ export const aceitarConvite = async (token: string): Promise<void> => {
 
 export const recusarConvite = async (token: string): Promise<void> => {
   await api.post(`/convites/${token}/recusar`)
+}
+
+// ── Despesa compartilhada (#23) ──
+
+export const compartilharTransacao = async (
+  transacaoId: string, familiaId: string,
+): Promise<void> => {
+  await api.put(`/transacoes/${transacaoId}/compartilhamento`, { familiaId })
+}
+
+export const descompartilharTransacao = async (transacaoId: string): Promise<void> => {
+  await api.delete(`/transacoes/${transacaoId}/compartilhamento`)
+}
+
+export const getDespesasFamilia = async (
+  familiaId: string, mes: number, ano: number,
+): Promise<DespesaCompartilhada[]> => {
+  const res = await api.get(`/familias/${familiaId}/despesas`, { params: { mes, ano } })
+  return res.data
+}
+
+export const getBalancoFamilia = async (
+  familiaId: string, mes: number, ano: number,
+): Promise<BalancoFamilia> => {
+  const res = await api.get(`/familias/${familiaId}/balanco`, { params: { mes, ano } })
+  return res.data
 }

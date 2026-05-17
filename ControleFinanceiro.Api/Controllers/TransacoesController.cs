@@ -1,6 +1,7 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
+using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Services;
@@ -16,10 +17,13 @@ namespace ControleFinanceiro.Api.Controllers
     public class TransacoesController : ControllerBase
     {
         private readonly TransacaoService _service;
+        private readonly DespesaCompartilhadaService _despesaCompartilhada;
 
-        public TransacoesController(TransacaoService service)
+        public TransacoesController(
+            TransacaoService service, DespesaCompartilhadaService despesaCompartilhada)
         {
             _service = service;
+            _despesaCompartilhada = despesaCompartilhada;
         }
 
         private Guid GetUserId()
@@ -160,6 +164,24 @@ namespace ControleFinanceiro.Api.Controllers
             var resumo = await _service.ObterResumoPorContaAsync(contaId, usuarioId);
 
             return Ok(resumo);
+        }
+
+        /// <summary>Marca a transação como despesa compartilhada com uma família.</summary>
+        [HttpPut("{id:guid}/compartilhamento")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Compartilhar(Guid id, [FromBody] CompartilharTransacaoDto dto)
+        {
+            await _despesaCompartilhada.CompartilharAsync(id, dto.FamiliaId, GetUserId());
+            return NoContent();
+        }
+
+        /// <summary>Desfaz o compartilhamento — a transação volta a ser pessoal.</summary>
+        [HttpDelete("{id:guid}/compartilhamento")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Descompartilhar(Guid id)
+        {
+            await _despesaCompartilhada.DescompartilharAsync(id, GetUserId());
+            return NoContent();
         }
     }
 }

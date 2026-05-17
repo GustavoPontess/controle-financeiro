@@ -282,5 +282,19 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<ConviteFamilia>()
             .HasIndex(c => new { c.FamiliaId, c.EmailConvidado });
+
+        // ── Issue #23 Despesa Compartilhada ──
+
+        // Transacao → Familia (SetNull: transação compartilhada volta a pessoal
+        // se a família for removida)
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.Familia)
+            .WithMany()
+            .HasForeignKey(t => t.FamiliaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Transacao>()
+            .HasIndex(t => t.FamiliaId);
     }
 }

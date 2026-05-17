@@ -834,6 +834,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("FamiliaId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("FaturaId")
                         .HasColumnType("uuid");
 
@@ -875,6 +878,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("CategoriaId");
 
                     b.HasIndex("ContaId");
+
+                    b.HasIndex("FamiliaId");
 
                     b.HasIndex("FaturaId");
 
@@ -1220,6 +1225,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("ContaId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Fatura", "Fatura")
                         .WithMany("Transacoes")
                         .HasForeignKey("FaturaId")
@@ -1245,6 +1255,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("Familia");
 
                     b.Navigation("Fatura");
 

@@ -13,11 +13,16 @@ public class FamiliasController : ControllerBase
 {
     private readonly FamiliaService _familiaService;
     private readonly ConviteService _conviteService;
+    private readonly DespesaCompartilhadaService _despesaCompartilhada;
 
-    public FamiliasController(FamiliaService familiaService, ConviteService conviteService)
+    public FamiliasController(
+        FamiliaService familiaService,
+        ConviteService conviteService,
+        DespesaCompartilhadaService despesaCompartilhada)
     {
         _familiaService = familiaService;
         _conviteService = conviteService;
+        _despesaCompartilhada = despesaCompartilhada;
     }
 
     private Guid GetUserId()
@@ -96,5 +101,29 @@ public class FamiliasController : ControllerBase
     {
         await _conviteService.RevogarAsync(id, conviteId, GetUserId());
         return NoContent();
+    }
+
+    /// <summary>Feed de despesas compartilhadas da família no mês/ano.</summary>
+    [HttpGet("{id:guid}/despesas")]
+    [ProducesResponseType(typeof(List<DespesaCompartilhadaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarDespesas(
+        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+    {
+        var agora = DateTime.UtcNow;
+        var result = await _despesaCompartilhada.ListarDespesasAsync(
+            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
+        return Ok(result);
+    }
+
+    /// <summary>Balanço mensal da família no modo igualitário.</summary>
+    [HttpGet("{id:guid}/balanco")]
+    [ProducesResponseType(typeof(BalancoFamiliaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterBalanco(
+        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+    {
+        var agora = DateTime.UtcNow;
+        var result = await _despesaCompartilhada.ObterBalancoAsync(
+            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
+        return Ok(result);
     }
 }
