@@ -229,9 +229,7 @@ Issue #15 concluída. **Bloco A 100% concluído.**
 ### Contexto
 - Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
   — ler antes de continuar (entidades, endpoints, regras de negócio).
-- Migration `AddFamiliaMembros` gerada para Postgres; build verde. Não aplicada
-  em Postgres runtime (Docker estava parado) — validar no `dotnet ef database
-  update`/startup quando o Postgres subir.
+- Migration `AddFamiliaMembros` aplicada e validada em Postgres real (docker-compose).
 
 ### Decisões
 - `Papel` é string livre (presets só na UI). Admin = membro cujo `UsuarioId`
@@ -242,9 +240,10 @@ Issue #15 concluída. **Bloco A 100% concluído.**
   visível — possível fechamento por engano; confirmar com o usuário/sócio.
 
 ### Validação do backend
-Fluxo testado via SQLite (curl): criar família → convidar → aceitar → família
-com 2 membros, convites pendentes zerados. Fix aplicado: `ConviteFamiliaDto`
-não expunha `Token` (convidado não conseguia aceitar).
+Fluxo testado em **SQLite e Postgres** (curl): migration `AddFamiliaMembros`
+aplica em Postgres; criar família → convidar → aceitar → família com 2 membros.
+Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
+aceitar).
 
 ### Próxima ação concreta
 Etapa 4 — Frontend: criar `src/services/familiaService.ts` e páginas em
