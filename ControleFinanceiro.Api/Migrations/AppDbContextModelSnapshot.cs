@@ -269,6 +269,43 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("ConvitesFamilia");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Dependente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Apelido")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DataNascimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamiliaId");
+
+                    b.ToTable("Dependentes");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -826,6 +863,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime>("Data")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<Guid?>("DependenteId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -878,6 +918,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("CategoriaId");
 
                     b.HasIndex("ContaId");
+
+                    b.HasIndex("DependenteId");
 
                     b.HasIndex("FamiliaId");
 
@@ -1059,6 +1101,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Familia");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Dependente", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Familia");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "CriadoPor")
@@ -1225,6 +1278,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("ContaId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Dependente", "Dependente")
+                        .WithMany()
+                        .HasForeignKey("DependenteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
                         .WithMany()
                         .HasForeignKey("FamiliaId")
@@ -1255,6 +1313,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("Dependente");
 
                     b.Navigation("Familia");
 
