@@ -2,11 +2,16 @@ import { useState } from "react"
 import {
   Box, Table, TableHead, TableBody, TableRow, TableCell,
   TableContainer, Typography, Chip, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
+import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
 import { deleteTransaction } from "../../../services/transactionService"
+import { getFamilias, compartilharTransacao } from "../../../services/familiaService"
+import type { Familia } from "../../../types/Familia"
+import CustomButton from "../../CustomButton"
 
 export interface TransactionRow {
   id: string
@@ -46,6 +51,28 @@ const cellSx = { fontSize: 13, color: "#374151", py: 1.5, borderBottom: "1px sol
 
 export default function TransactionTable({ rows, onRefresh, notify, emptyMessage }: Props) {
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
+  const [sharing, setSharing] = useState<TransactionRow | null>(null)
+  const [familias, setFamilias] = useState<Familia[]>([])
+
+  const openShare = async (row: TransactionRow) => {
+    setSharing(row)
+    try {
+      setFamilias(await getFamilias())
+    } catch {
+      notify({ open: true, message: "Erro ao carregar famílias", severity: "error" })
+    }
+  }
+
+  const handleShare = async (familiaId: string) => {
+    if (!sharing) return
+    try {
+      await compartilharTransacao(sharing.id, familiaId)
+      notify({ open: true, message: "Despesa compartilhada com a família", severity: "success" })
+      setSharing(null)
+    } catch {
+      notify({ open: true, message: "Erro ao compartilhar despesa", severity: "error" })
+    }
+  }
 
   const handleDelete = async (id: string, descricao: string) => {
     if (!confirm(`Excluir "${descricao}"?`)) return
@@ -143,6 +170,13 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ ...cellSx, textAlign: "center" }}>
+                    {!isReceita && (
+                      <IconButton size="small" onClick={() => openShare(row)}
+                        title="Compartilhar com família"
+                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
+                        <GroupAddOutlinedIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    )}
                     <IconButton size="small" onClick={() => openEdit(row)}
                       sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
                       <EditIcon sx={{ fontSize: 15 }} />
@@ -165,6 +199,41 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
         onSaved={onRefresh}
         notify={notify}
       />
+
+      <Dialog open={sharing !== null} onClose={() => setSharing(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Compartilhar com a família</DialogTitle>
+        <DialogContent>
+          {familias.length === 0 ? (
+            <Typography fontSize={13} color="#9ca3af">
+              Você não participa de nenhuma família.
+            </Typography>
+          ) : (
+            <>
+              <Typography fontSize={13} color="#6b7280" mb={1.5}>
+                Em qual família lançar "{sharing?.descricao}"?
+              </Typography>
+              {familias.map(f => (
+                <Box
+                  key={f.id}
+                  onClick={() => handleShare(f.id)}
+                  sx={{
+                    py: 1.25, px: 1.5, mb: 0.5, borderRadius: "8px", cursor: "pointer",
+                    border: "1px solid #e5e7eb",
+                    "&:hover": { bgcolor: "#f9fafb", borderColor: "#9ca3af" },
+                  }}
+                >
+                  <Typography fontSize={14} fontWeight={500}>{f.nome}</Typography>
+                </Box>
+              ))}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <CustomButton variant="secondary" size="small" onClick={() => setSharing(null)}>
+            Cancelar
+          </CustomButton>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }
