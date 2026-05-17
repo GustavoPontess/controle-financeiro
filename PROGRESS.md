@@ -17,14 +17,14 @@ status: CURRENT
 
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
-Bloco B — Infraestrutura para Escalar:  5/6  ✅ #16, #17, #18, #20  ⏳ #19 (em andamento), #21
+Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
 Bloco C — Pivot Família:                0/5  ⏳
 Bloco D — Retenção e UX B2C:            0/5  ⏳
 
-Total Q3 2026:                          10/21 (48%)
+Total Q3 2026:                          11/21 (52%)
 ```
 
-**Status geral:** Bloco A 100% 🎉. Bloco B 83% — #16/#17/#18/#20 concluídos. Em andamento: #19 (CI). Falta: #21 (testes frontend).
+**Status geral:** Blocos A e B 100% 🎉. Próximo: Bloco C — Pivot Família, começando por #22 (Família + Membros).
 
 ---
 
@@ -49,11 +49,16 @@ Síntese:
 
 ## Em progresso
 
-**Issue #19 — GitHub Actions CI** em andamento (sócio). Falta no Bloco B: **#21 — Testes frontend (Vitest + RTL)**.
+Nenhum item em execução. **Blocos A e B concluídos.** Próximo: **Bloco C — Pivot Família**, Issue #22 (Família + Membros). Ver `docs/features/familia/visao.md`.
 
 ---
 
 ## Histórico de sessões
+
+### Bloco B — itens do sócio
+- **Issue #18 — Docker + docker-compose (✅ CONCLUÍDA)** — PR #34
+- **Issue #19 — GitHub Actions CI (✅ CONCLUÍDA)** — PR #38 (corrige lint, CI verde)
+- **Issue #21 — Testes frontend Vitest + RTL (✅ CONCLUÍDA)**
 
 ### Sessão 23 — 2026-05-16
 - **Issue #16 — Migrar SQLite para Postgres (✅ CONCLUÍDA)** — PR #35
