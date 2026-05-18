@@ -386,14 +386,14 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 4 de 5 concluída
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 107 testes verdes
 
 ### Etapas
 - [x] 1. `Transacao.ImportacaoFitId` + migration + DTOs
 - [x] 2. `ExtratoImportService` — parsers OFX e CSV
 - [x] 3. Endpoints preview + confirmar (`ImportacaoController`) — dedup + sugestão
 - [x] 4. Frontend: página de importação (upload + revisão)
-- [ ] 5. Testes de serviço
+- [x] 5. Testes de serviço — 14 testes, suíte 93→107
 
 ### Contexto
 - Spec completa em `docs/features/importacao/arquitetura.md`.
@@ -406,9 +406,8 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Sem upload de arquivo persistido — parse em memória, limite 2 MB.
 
 ### Próxima ação concreta
-Etapa 5 — Testes de serviço: `ExtratoImportService` (parse OFX SGML, parse CSV
-com vírgula/ponto-e-vírgula, formato BR de valor) e `ImportacaoService`
-(dedup por FITID e heurística, sugestão de categoria).
+#27 concluída — PR #51 (atualizar de Draft para Ready). Próximo no Bloco D:
+#29 — Onboarding guiado (depende de #27, agora disponível).
 
 ---
 
