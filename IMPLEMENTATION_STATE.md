@@ -440,6 +440,38 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 
 ---
 
+## Issue em execução
+
+**Issue:** #30 — Notificações
+**Bloco:** D (Retenção e UX B2C)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 130 testes verdes
+
+### Etapas
+- [x] 1. Entidade `Notificacao` + enum `TipoNotificacao` + AppDbContext + migration + DTOs
+- [x] 2. `NotificacaoService` + `NotificacoesController`
+- [x] 3. Integração: convite, despesa compartilhada e acerto geram notificação
+- [x] 4. Frontend: sino de notificações (contador + lista)
+- [x] 5. Testes de serviço — 7 testes (`NotificacaoServiceTests`), suíte 123→130
+
+### Contexto
+- Spec completa em `docs/features/notificacoes/arquitetura.md`.
+- Branch `feature/30-notificacoes` (de `origin/main`). PR #53 (Draft).
+
+### Decisões
+- Escopo = notificações in-app. Web Push e e-mail ficam para etapa de entrega
+  posterior (exigem VAPID/SMTP e config de produção, não validáveis aqui).
+- Criar notificação nunca derruba a operação de origem (falha tolerada).
+- Não notifica o próprio autor do evento.
+
+### Próxima ação concreta
+#30 concluída — PR #53 (atualizar de Draft para Ready). Bloco D 3/5 (#27, #29,
+#30). Resta #28 (PWA) — #31 (Dark mode) é do sócio. Entrega de notificação por
+Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```

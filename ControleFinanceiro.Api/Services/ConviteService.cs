@@ -13,10 +13,12 @@ public class ConviteService
     private static readonly TimeSpan ValidadeConvite = TimeSpan.FromDays(7);
 
     private readonly AppDbContext _context;
+    private readonly NotificacaoService _notificacaoService;
 
-    public ConviteService(AppDbContext context)
+    public ConviteService(AppDbContext context, NotificacaoService notificacaoService)
     {
         _context = context;
+        _notificacaoService = notificacaoService;
     }
 
     public async Task<ConviteFamiliaDto> CriarAsync(Guid familiaId, CriarConviteDto dto, Guid usuarioId)
@@ -69,6 +71,19 @@ public class ConviteService
 
         _context.ConvitesFamilia.Add(convite);
         await _context.SaveChangesAsync();
+
+        // Issue #30 — notifica o convidado, se já tiver conta no app.
+        var convidado = await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+        if (convidado is not null)
+        {
+            await _notificacaoService.CriarAsync(
+                convidado.Id,
+                TipoNotificacao.ConviteFamilia,
+                "Novo convite de família",
+                $"Você foi convidado(a) para a família \"{familia.Nome}\".",
+                "/familias");
+        }
 
         return ToDto(convite, familia.Nome);
     }

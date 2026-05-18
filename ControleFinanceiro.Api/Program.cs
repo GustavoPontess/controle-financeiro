@@ -110,6 +110,9 @@ builder.Services.AddScoped<ImportacaoService>();
 // Issue #29 — Onboarding guiado
 builder.Services.AddScoped<OnboardingService>();
 
+// Issue #30 — Notificações
+builder.Services.AddScoped<NotificacaoService>();
+
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();

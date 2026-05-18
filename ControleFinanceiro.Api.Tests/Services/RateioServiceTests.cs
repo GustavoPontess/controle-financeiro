@@ -262,7 +262,7 @@ public class RateioServiceTests
 
         SeedDespesa(ctx, ana, 400m, familiaId); // total 400, renda 3000+1000
 
-        var balanco = await new DespesaCompartilhadaService(ctx)
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         var ax = balanco.Saldos.First(s => s.UsuarioId == ana);
@@ -286,7 +286,7 @@ public class RateioServiceTests
 
         SeedDespesa(ctx, ana, 200m, familiaId);
 
-        var balanco = await new DespesaCompartilhadaService(ctx)
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         Assert.All(balanco.Saldos, s => Assert.Equal(100m, s.Cota)); // 200/2
@@ -307,7 +307,7 @@ public class RateioServiceTests
             new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = txId, UsuarioId = bia, Percentual = 75m });
         ctx.SaveChanges();
 
-        var balanco = await new DespesaCompartilhadaService(ctx)
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         Assert.Equal(25m, balanco.Saldos.First(s => s.UsuarioId == ana).Cota);

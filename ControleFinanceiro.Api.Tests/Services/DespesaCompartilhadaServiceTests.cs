@@ -67,7 +67,7 @@ public class DespesaCompartilhadaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var txId = SeedTransacao(ctx, dono, 100m);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => svc.CompartilharAsync(txId, familiaId, Guid.NewGuid()));
@@ -80,7 +80,7 @@ public class DespesaCompartilhadaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var txId = SeedTransacao(ctx, dono, 100m, TipoTransacao.Receita);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.CompartilharAsync(txId, familiaId, dono));
@@ -94,7 +94,7 @@ public class DespesaCompartilhadaServiceTests
         var estranho = SeedUsuario(ctx, "estranho@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var txId = SeedTransacao(ctx, estranho, 100m);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.CompartilharAsync(txId, familiaId, estranho));
@@ -107,7 +107,7 @@ public class DespesaCompartilhadaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var txId = SeedTransacao(ctx, dono, 100m);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await svc.CompartilharAsync(txId, familiaId, dono);
 
@@ -122,7 +122,7 @@ public class DespesaCompartilhadaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var txId = SeedTransacao(ctx, dono, 100m, TipoTransacao.Despesa, familiaId);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await svc.DescompartilharAsync(txId, dono);
 
@@ -136,7 +136,7 @@ public class DespesaCompartilhadaServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.ListarDespesasAsync(familiaId, Guid.NewGuid(), 5, 2026));
@@ -154,7 +154,7 @@ public class DespesaCompartilhadaServiceTests
         SeedTransacao(ctx, ana, 300m, TipoTransacao.Despesa, familiaId);
         SeedTransacao(ctx, bia, 100m, TipoTransacao.Despesa, familiaId);
 
-        var svc = new DespesaCompartilhadaService(ctx);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
         var balanco = await svc.ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         Assert.Equal(400m, balanco.Total);
