@@ -416,11 +416,11 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 1 de 3 concluída
+**Status:** EM_EXECUCAO — etapa 2 de 3 concluída
 
 ### Etapas
 - [x] 1. `Usuario.OnboardingConcluido` + migration + `OnboardingService` + `OnboardingController` + DTOs
-- [ ] 2. Frontend: `OnboardingPage` (4 passos) + rota + redirect no registro
+- [x] 2. Frontend: `OnboardingPage` (4 passos) + rota + redirect no registro
 - [ ] 3. Testes de serviço
 
 ### Contexto
@@ -435,9 +435,8 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Passo "criar família" é opcional, não bloqueia a conclusão.
 
 ### Próxima ação concreta
-Etapa 2 — Frontend: `onboardingService.ts`, `OnboardingPage` com os 4 passos
-(estado feito/pendente + CTA), rota `/onboarding`, e `RegisterPage` redireciona
-para `/onboarding` após cadastro. Ver `arquitetura.md` §1-§3.
+Etapa 3 — Testes de `OnboardingService`: status com checklist computado
+(tem conta/cartão/transação/família) e `ConcluirAsync` idempotente.
 
 ---
 
