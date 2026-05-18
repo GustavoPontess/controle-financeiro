@@ -90,8 +90,21 @@ export const theme = createTheme({
           fontWeight: tokens.typography.fontWeight.medium,
           textTransform: 'none',
           transition: tokens.transition.fast,
+        },
+        containedPrimary: {
           '&:hover': {
             backgroundColor: tokens.color.brand.hover,
+            boxShadow: 'none',
+          },
+        },
+        outlinedPrimary: {
+          '&:hover': {
+            backgroundColor: tokens.color.brand.subtle,
+          },
+        },
+        textPrimary: {
+          '&:hover': {
+            backgroundColor: tokens.color.brand.subtle,
           },
         },
       },
