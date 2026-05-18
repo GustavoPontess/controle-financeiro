@@ -6,6 +6,7 @@ import Navbar from "../../components/Navbar/Navbar";
 import Sidebar from "../../components/Sidebar/Sidebar";
 
 import NewTransactionDialog from "../../components/transactions/NewTransactionDialog/NewTransactionDialog";
+import InstallPrompt from "../../components/Pwa/InstallPrompt";
 
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -83,6 +84,8 @@ export default function DefaultLayout() {
         onClose={() => setOpenTransaction(false)}
         notify={setNotification}
       />
+
+      <InstallPrompt />
 
       <Snackbar
         open={notification.open}

@@ -19,12 +19,12 @@ status: CURRENT
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
 Bloco C — Pivot Família:                5/5  ✅ #22, #23, #24, #25, #26  🎉 BLOCO COMPLETO
-Bloco D — Retenção e UX B2C:            3/5  ✅ #27, #29, #30  ⏳ #28, #31
+Bloco D — Retenção e UX B2C:            4/5  ✅ #27, #28, #29, #30  ⏳ #31
 
-Total Q3 2026:                          18/21 (86%)
+Total Q3 2026:                          20/21 (95%)
 ```
 
-**Status geral:** Blocos A, B e C 100% 🎉. Bloco D 3/5 — #27 (Importação OFX/CSV), #29 (Onboarding) e #30 (Notificações) concluídas. Resta #28 (PWA). Sócio em #31 (Dark mode).
+**Status geral:** Blocos A, B e C 100% 🎉. Bloco D 4/5 — #27 (Importação OFX/CSV), #28 (PWA), #29 (Onboarding) e #30 (Notificações) concluídas. Resta só #31 (Dark mode — sócio).
 
 ---
 
@@ -49,13 +49,17 @@ Síntese:
 
 ## Em progresso
 
-Bloco D em andamento — #27, #29 e #30 concluídas. Resta **#28 (PWA)**. Sócio em #31 (Dark mode).
+Bloco D quase completo — #27, #28, #29 e #30 concluídas. Resta só **#31 (Dark mode)**, com o sócio.
 
 ---
 
 ## Histórico de sessões
 
 ### Sessão 24 — 2026-05-17/18
+- **Issue #28 — PWA instalável + offline básico (✅ CONCLUÍDA)** — PR #54
+  - `vite-plugin-pwa`: manifest + Service Worker (Workbox, autoUpdate, precache do shell)
+  - Ícone SVG do app + metatags theme-color/apple-touch-icon
+  - Componente `InstallPrompt` (banner "instalar", exibe a partir da 2ª sessão)
 - **Issue #30 — Notificações (✅ CONCLUÍDA — escopo in-app)** — PR #53
   - Entidade `Notificacao` + enum `TipoNotificacao` + migration
   - `NotificacaoService` (criar tolerante a falha, listar, contar, marcar lida(s)) + `NotificacoesController`
