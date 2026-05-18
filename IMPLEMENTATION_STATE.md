@@ -477,12 +477,12 @@ Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 1 de 3 concluída
+**Status:** 100% CONCLUÍDA ✅ — build verde, artefatos PWA gerados, 43 testes front verdes
 
 ### Etapas
 - [x] 1. `vite-plugin-pwa` (manifest + SW Workbox) + ícone SVG + metatags
-- [ ] 2. Componente `InstallPrompt` (beforeinstallprompt, exibe após 2ª sessão)
-- [ ] 3. Build verde + validação dos artefatos PWA
+- [x] 2. Componente `InstallPrompt` (beforeinstallprompt, exibe após 2ª sessão)
+- [x] 3. Build verde + validação dos artefatos PWA (`sw.js`, `manifest.webmanifest`, `registerSW.js`)
 
 ### Contexto
 - Spec completa em `docs/features/pwa/arquitetura.md`. Feature 100% frontend.
@@ -495,9 +495,8 @@ Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 - Offline = só shell (precache Workbox); cache de dados de API fica para depois.
 
 ### Próxima ação concreta
-Etapa 2 — componente `InstallPrompt`: captura `beforeinstallprompt`, conta
-sessões no `localStorage`, exibe banner de instalação a partir da 2ª sessão;
-montar no `DefaultLayout`. Ver `arquitetura.md` §1.
+#28 concluída — PR #54 (atualizar de Draft para Ready). Bloco D 4/5 (#27, #28,
+#29, #30). Resta só #31 (Dark mode — sócio).
 
 ---
 
