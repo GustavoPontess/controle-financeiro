@@ -416,12 +416,12 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 2 de 3 concluída
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 101 testes verdes
 
 ### Etapas
 - [x] 1. `Usuario.OnboardingConcluido` + migration + `OnboardingService` + `OnboardingController` + DTOs
 - [x] 2. Frontend: `OnboardingPage` (4 passos) + rota + redirect no registro
-- [ ] 3. Testes de serviço
+- [x] 3. Testes de serviço — 8 testes (`OnboardingServiceTests`), suíte 93→101
 
 ### Contexto
 - Spec completa em `docs/features/onboarding/arquitetura.md`.
@@ -435,8 +435,8 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Passo "criar família" é opcional, não bloqueia a conclusão.
 
 ### Próxima ação concreta
-Etapa 3 — Testes de `OnboardingService`: status com checklist computado
-(tem conta/cartão/transação/família) e `ConcluirAsync` idempotente.
+#29 concluída — PR #52 (atualizar de Draft para Ready). Próximo no Bloco D:
+#30 — Notificações (push + e-mail) ou #28 — PWA.
 
 ---
 

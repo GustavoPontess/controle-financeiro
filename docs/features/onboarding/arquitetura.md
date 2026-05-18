@@ -1,7 +1,7 @@
 ---
 feature: onboarding
 issue: '#29'
-status: EM_IMPLEMENTACAO
+status: CONCLUIDA
 owner: Gustavo
 created: 2026-05-18
 ---
