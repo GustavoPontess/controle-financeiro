@@ -1,502 +1,93 @@
 ---
-owner: Caio
-last_reviewed: 2026-05-16
-status: CONCLUIDA
-issue_atual: '#15 — Política de senha forte'
+owner: Gustavo
+last_reviewed: 2026-05-18
+status: AGUARDANDO_INICIO
+issue_atual: '#32 — Atlas Playwright (não iniciada)'
 ---
 
 # Implementation State — sessão atual
 
 **Este arquivo é o checkpoint vivo entre sessões.** Toda sessão começa lendo este arquivo, e termina atualizando-o.
 
-> O estado anterior (Issue #1 — Parcelamento Flexível, 13 sessões) está arquivado em `docs/history/IMPLEMENTATION_STATE_2026Q2_parcelamento.md`.
+> O estado do ciclo anterior (Q3 2026, 21/21 itens) está arquivado em `docs/history/IMPLEMENTATION_STATE_2026Q3.md`.
+
+---
+
+## Ciclo em execução
+
+**Ciclo:** Q4 2026 — Redesign UX inspirado em Monarch Money
+**Iniciado em:** 2026-05-18 (após encerramento do Q3)
+**Backlog:** 5 issues (#32-#36) em bloco único
+**Spec da iniciativa:** `docs/features/redesign-ux/visao.md`
 
 ---
 
 ## Issue em execução
 
-**Issue:** #13 — JWT em httpOnly cookie + CSRF token
-**Bloco:** A (Higiene de Produção)
-**Iniciada em:** 2026-05-16 (sessão 16)
-**Sessões nessa issue:** 4
-**Status:** 100% CONCLUÍDA ✅ — backend ✅, frontend ✅, testes curl ✅, validação de código ✅, PR #26 mergeado
+**Issue:** Nenhuma iniciada ainda — próxima é **#32 — Fase 1: Atlas Playwright**
+**Bloco:** A (Redesign UX)
+**Status:** AGUARDANDO INÍCIO
 
-### Etapas
-- [x] 1. CsrfTokenService: gerar e validar tokens
-- [x] 2. AuthController: SetAuthCookies com HttpOnly, Secure, SameSite=Strict
-- [x] 3. Login/Refresh: emitir em cookies, não no body
-- [x] 4. CsrfValidationMiddleware: validar X-CSRF-Token em POST/PUT/DELETE/PATCH
-- [x] 5. Frontend: remover JWT de localStorage
-- [x] 6. Frontend: axiosConfig com withCredentials: true
-- [x] 7. Frontend: incluir X-CSRF-Token em headers (mutators)
-- [x] 8. Frontend: remover Token/RefreshToken de storage — refatorado AuthContext
-- [x] 9. Testar: JWT não aparece em localStorage (curl: token vazio no body ✅)
-- [x] 10. Testar: CSRF bloqueado — 403 sem header, 200/400 com header ✅
-
-### Fixes aplicados na sessão 19
-- `SetAuthCookies`: `Secure = Request.IsHttps` (falso em dev HTTP, verdadeiro em prod HTTPS)
-- `Register`: agora chama `SetAuthCookies`, retorna body sem tokens
-- `Refresh`: lê refreshToken do cookie (não do body)
-- `Logout`: lê refreshToken do cookie, chama `ClearAuthCookies()`
-- `JwtBearer.OnMessageReceived`: lê token do cookie `jwt`
-- `AuthContext.logout()`: chama `api.post('/auth/logout')` para limpar cookies no servidor
-- Commits: 050b2b0
-
-### Sessão 20 (2026-05-16)
-- Validação de código frontend: zero referências a localStorage com tokens ✅
-- `axiosConfig.ts`: `withCredentials: true`, CSRF header só em mutators, sem `Authorization: Bearer` ✅
-- `AuthContext.tsx`: `savedAccounts` em localStorage (lista de contas, não tokens), logout chama POST /auth/logout ✅
-- PR #26 mergeado
-- Próxima issue: #14 — Rate limiting em endpoints sensíveis (Bloco A)
-
----
-
-## Issue em execução
-
-**Issue:** #14 — Rate limiting em endpoints sensíveis
-**Bloco:** A (Higiene de Produção)
-**Iniciada em:** 2026-05-16 (sessão 21)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — build verde, testes curl ✅
-
-### Escopo
-- Rate limiting em `/auth/login`, `/auth/register`, `/auth/forgot-password`
-- Limites (todos particionados por IP):
-  - login: 5 tentativas / 5min
-  - register: 3 / 1h
-  - forgot-password: 1 / 15min
-- `Microsoft.AspNetCore.RateLimiting` (middleware nativo .NET 8)
-- Resposta `429 Too Many Requests` com header `Retry-After`
-
-### Decisões
-- forgot-password particionado por IP (não por e-mail) — consistente com
-  login/register, sem necessidade de buffering do request body. Decisão do
-  usuário em 2026-05-16.
-
-### Etapas
-- [x] 1. `AddRateLimiter` com 3 políticas particionadas por IP em `Program.cs`
-- [x] 2. `OnRejected` → setar `Retry-After` + status 429
-- [x] 3. `UseRateLimiter` no pipeline
-- [x] 4. `[EnableRateLimiting]` nos 3 endpoints do `AuthController`
-- [x] 5. Build verde (`dotnet build`)
-- [x] 6. Testar curl — login 6º→429 (Retry-After:300), register 4º→429, forgot-password 2º→429
-- [x] 7. Commit (8ab9317), atualizar docs, PR
-
-### Resultado
-- `FixedWindowRateLimiter` escolhido sobre `SlidingWindow`: SlidingWindow não
-  popula o metadata `RetryAfter`, e o escopo exige o header `Retry-After`.
-- `Microsoft.AspNetCore.RateLimiting` é parte do shared framework .NET 8 —
-  não precisou de `PackageReference`.
+### Pré-requisitos para começar
+- [x] Q3 arquivado em `docs/history/`
+- [x] PROGRESS.md, ISSUES.md e este arquivo resetados para Q4
+- [x] `docs/features/redesign-ux/visao.md` criado
+- [ ] Sócio confirma alinhamento do plano (revisão pelos 2 devs)
+- [ ] Sócio termina captura de screenshots internos do Monarch (em paralelo, não bloqueante)
 
 ### Próxima ação concreta
-Issue #15 concluída. Bloco A 100% concluído. Próxima: #16 — Migrar SQLite para Postgres (Bloco B).
-
-### Contexto da sessão 21 (fixes pré-existentes)
-Antes de iniciar #14, foram corrigidos bugs pré-existentes nesta branch
-(commits ec895e3..f2d3baa): CORS AllowCredentials, redirect loop 401,
-desempacote de PagedResult em 5 services. Não fazem parte de #14.
-
----
-
----
-
-## Issue em execução
-
-**Issue:** #15 — Política de senha forte
-**Bloco:** A (Higiene de Produção)
-**Iniciada em:** 2026-05-16 (sessão 22)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — build verde backend ✅, build verde frontend ✅, commit c9eedcd, PR aberto (aguarda merge)
-
-### Etapas
-- [x] 1. `PasswordPolicyService.cs`: validar 10+ chars, minúscula, maiúscula, número, especial, lista senhas comuns
-- [x] 2. `AuthService.cs`: substituir checks `< 6` em RegisterAsync, ResetSenhaAsync, ChangePasswordAsync
-- [x] 3. `RegisterPage.tsx`: indicador de força em tempo real (LinearProgress + checklist ✓/○)
-- [x] 4. Builds verdes (backend + frontend)
-- [x] 5. Commit + push + PR (gh não disponível; PR criado manualmente no GitHub)
-
-### Fix colateral
-- `RecorrentesPage.tsx`: bug pré-existente (`notify` não declarado). Fix: `useOutletContext<OutletContextType>()`.
-
-### Próxima ação concreta
-Issue #15 concluída. **Bloco A 100% concluído.**
+1. Revisão do `docs/features/redesign-ux/visao.md` pelos 2 devs
+2. Criar branch `feature/32-atlas-playwright` a partir de `main`
+3. `npm install -D playwright @playwright/test`
+4. `npx playwright install chromium`
+5. Criar `scripts/snapshot.ts` (especificação completa em `docs/features/redesign-ux/visao.md` → seção "Fase 1")
+6. Rodar localmente e gerar primeiro atlas
+7. Compartilhar atlas com o sócio para análise lado a lado com Monarch
 
 ---
 
-## Issue em execução
+## Roadmap visual do ciclo
 
-**Issue:** #16 — Migrar SQLite para Postgres
-**Bloco:** B (Infraestrutura para Escalar)
-**Iniciada em:** 2026-05-16 (sessão 23)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — validado em Postgres, 48 testes verdes
+```
+Fase 1 — Atlas (#32)            ⏳ Aguardando início
+  ↓
+Fase 2 — Design Tokens (#33)    ⏳ Pendente
+  ↓
+Fase 3 — Telas piloto (#34)     ⏳ Pendente (3 telas: Dashboard, FamiliasPage, Adicionar Transação)
+  ↓
+Fase 4 — Propagação (#35)       ⏳ Pendente
+  ↓
+Fase 5 — Dark mode revisão (#36) ⏳ Pendente
+```
 
-### Etapas
-- [x] 1. `Npgsql.EntityFrameworkCore.PostgreSQL` + `DatabaseProvider` (seleção por connection string)
-- [x] 2. `Program.cs`: provider dinâmico — Postgres `Migrate()`, SQLite `EnsureCreated()`
-- [x] 3. `AppDbContextFactory` (design-time fixa Postgres) + migrations regeneradas para Postgres
-- [x] 4. `docker-compose.yml` com Postgres 16
-- [x] 5. Fix `Npgsql.EnableLegacyTimestampBehavior` (DateTime naïve → `timestamp without time zone`)
-- [x] 6. Validado: API roda em Postgres, CRUD completo, 48 testes verdes
-
-### Decisões
-- Detecção de provider: connection string com `Host=` → Postgres, senão SQLite.
-- SQLite (dev) usa `EnsureCreated` (sem migrations); Postgres (prod) usa migrations
-  versionadas. Migrations multi-provider no mesmo assembly causam conflito de
-  snapshot — separar por provider de runtime evita isso.
-- Migrations SQLite antigas (27) descartadas e regeneradas como uma `InitialCreate`
-  Postgres — não havia banco de produção a preservar.
-- `EnableLegacyTimestampBehavior`: o domínio usa `DateTime` naïve; o modo legado
-  mapeia para `timestamp without time zone`. Migrar o domínio para UTC-aware está
-  fora do escopo de #16.
-
-### Próxima ação concreta
-#16 concluída.
+Cada fase tem checkpoint próprio no `ISSUES.md`. Não pular fases — cada uma valida a próxima.
 
 ---
 
-## Issue em execução
+## Divisão de trabalho prevista (a confirmar com sócio)
 
-**Issue:** #17 — Hangfire com PostgresStorage
-**Bloco:** B (Infraestrutura para Escalar)
-**Iniciada em:** 2026-05-16 (sessão 23)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — validado em Postgres, 48 testes verdes
-
-### Etapas
-- [x] 1. Package `Hangfire.PostgreSql`
-- [x] 2. Storage dinâmico: Postgres → `PostgreSqlStorage` (schema `hangfire`, `PrepareSchemaIfNecessary`), SQLite → `MemoryStorage`
-- [x] 3. Dashboard `/hangfire` protegido (`HangfireDashboardAuthFilter` — exige autenticação)
-- [x] 4. Validado: schema `hangfire` criado, 5 jobs recorrentes persistem após restart, dashboard 401 sem auth
-
-### Decisões
-- Storage segue o provider (igual ao DbContext de #16): MemoryStorage em dev
-  SQLite, PostgreSqlStorage em prod. Hangfire.PostgreSql só funciona com Postgres.
-- Dashboard exige usuário autenticado (não papel admin — papéis não existem
-  ainda; virão no Bloco C).
-- Health check do Hangfire fica para #20 (Health checks + observabilidade).
-
-### Próxima ação concreta
-#17 concluída.
+- **Pontes (Gustavo):** lidera #32 (atlas Playwright) e #33 (extração de tokens). É a fase mais técnica/menos visual; trabalha bem solo.
+- **Sócio:** lidera #34 (telas piloto) com input do Pontes na revisão. Forte em frontend, mais próximo de design visual.
+- **Ambos:** revisão cruzada em #35 e #36. Telas restantes podem ser divididas por área (sócio: relatórios; Pontes: importação/onboarding).
+- **Em paralelo:** sócio está criando conta real no Monarch para capturar screenshots internos. Material que enriquece #33 (tokens) sem bloquear o início de #32.
 
 ---
 
-## Issue em execução
+## Decisões registradas
 
-**Issue:** #20 — Health checks + observabilidade
-**Bloco:** B (Infraestrutura para Escalar)
-**Iniciada em:** 2026-05-16 (sessão 23)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — build verde, 48 testes verdes
-
-### Etapas
-- [x] 1. Health checks: `/health` (liveness) e `/health/ready` (banco + Hangfire)
-- [x] 2. Serilog: console JSON compacto + arquivo rotativo diário (`logs/`)
-- [x] 3. `CorrelationIdMiddleware`: ID por request, response header + LogContext
-- [x] 4. Sentry: sink do Serilog (Error+), ativado por `SENTRY_DSN`
-
-### Decisões
-- Health check do banco usa `AddDbContextCheck` (provider-agnóstico), não
-  `AddNpgSql` — funciona em SQLite (dev) e Postgres (prod).
-- `/health/ready` sem auth: readiness probe é consumido por orquestradores/
-  docker healthcheck, que não autenticam. O response não expõe dado sensível.
-- Sentry via sink do Serilog (não `UseSentry` no WebHost): o
-  `GlobalExceptionHandlerMiddleware` captura todas as exceções, então elas
-  nunca chegariam "não tratadas" ao Sentry — o sink capta o log Error.
-- Sentry não validado end-to-end (requer DSN real). Integração e ativação
-  condicional testadas; sem DSN o Sentry fica desligado.
-
-### Próxima ação concreta
-#20 concluída. Bloco B 6/6 (sócio fechou #19 e #21).
+- **Ciclo monobloc:** sem segunda frente paralela. Os 2 devs concentram no redesign para ter ganho visível rápido.
+- **Atlas Playwright em vez de Storybook:** Storybook é mais robusto mas tem overhead de setup alto. Atlas resolve a necessidade imediata (ver o que temos, baseline visual). Storybook fica como possibilidade futura quando os componentes estabilizarem.
+- **Material público + acesso interno via conta do sócio:** sem custo de Mobbin/Pageflows. Conta real do Monarch (free trial ou plano básico) dá screenshots internos que valem mais que catálogos pagos.
+- **Tokens primeiro, refator depois:** evita opinião subjetiva no piloto. Tokens viram contrato objetivo.
 
 ---
 
-## Issue em execução
+## Pontos pendentes / dúvidas
 
-**Issue:** #22 — Sub-feature 1: Família + Membros (sem rateio)
-**Bloco:** C (Pivot Família)
-**Iniciada em:** 2026-05-17 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 62 testes verdes
-
-### Etapas
-- [x] 1. Entidades (Familia, MembroFamilia, ConviteFamilia) + enum + AppDbContext + migration
-- [x] 2. DTOs + `FamiliaService` + `ConviteService`
-- [x] 3. `FamiliasController` + `ConvitesController`
-- [x] 4. Frontend: `familiaService` + `FamiliasPage` + rota `/familias` + Sidebar
-- [x] 5. Testes de serviço — 14 testes (FamiliaService + ConviteService), suíte 48→62
-
-### Contexto
-- Spec técnica completa em `docs/features/familia/sub-1-familia-membros/arquitetura.md`
-  — ler antes de continuar (entidades, endpoints, regras de negócio).
-- Migration `AddFamiliaMembros` aplicada e validada em Postgres real (docker-compose).
-
-### Decisões
-- `Papel` é string livre (presets só na UI). Admin = membro cujo `UsuarioId`
-  == `Familia.CriadoPorUsuarioId`.
-- Unicidade de membro ativo `(FamiliaId, UsuarioId)` validada no service (soft
-  delete permite reentrada — índice único impediria).
-- #23 (Sub-feature 2) está CLOSED no GitHub com `stateReason: COMPLETED` sem PR
-  visível — possível fechamento por engano; confirmar com o usuário/sócio.
-
-### Validação do backend
-Fluxo testado em **SQLite e Postgres** (curl): migration `AddFamiliaMembros`
-aplica em Postgres; criar família → convidar → aceitar → família com 2 membros.
-Fix aplicado: `ConviteFamiliaDto` não expunha `Token` (convidado não conseguia
-aceitar).
-
-### Próxima ação concreta
-#22 concluída — PR #42 mergeado.
-
----
-
-## Issue em execução
-
-**Issue:** #23 — Sub-feature 2: Despesa Compartilhada (modo igualitário)
-**Bloco:** C (Pivot Família)
-**Iniciada em:** 2026-05-17 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 69 testes verdes
-
-### Etapas
-- [x] 1. `Transacao.FamiliaId` + FK + índice + migration `AddFamiliaIdToTransacao`
-- [x] 2. DTOs + `DespesaCompartilhadaService` (marcar, desmarcar, feed, balanço)
-- [x] 3. Endpoints — `TransacoesController` (compartilhamento) + `FamiliasController` (despesas, balanço)
-- [x] 4. Frontend: visualização (balanço + despesas na FamiliasPage) + ação compartilhar na TransactionTable
-- [x] 5. Testes de serviço — 7 testes (DespesaCompartilhadaService), suíte 62→69
-
-### Validação do backend
-Testado em Postgres (curl): compartilhar transação → 204; feed retorna a
-despesa com pagador; balanço igualitário correto (total 300, cota 300 com
-1 membro, saldo 0).
-
-### Contexto
-- #23 estava CLOSED por engano (issue GitHub #13 com título trocado — tracking
-  de JWT/CSRF). Reaberta nesta sessão.
-- Spec completa em `docs/features/familia/sub-2-despesa-compartilhada/arquitetura.md`.
-
-### Decisões
-- Despesa compartilhada = `Transacao` com `FamiliaId` preenchido. Sem entidade
-  nova: rateio igualitário é calculado (total ÷ nº membros). Pagador =
-  `Transacao.CriadoPor`. Entidades de pagador/beneficiário só em #25.
-- MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
-
-### Próxima ação concreta
-#23 concluída — PR #46 mergeado.
-
----
-
-## Issue em execução
-
-**Issue:** #24 — Sub-feature 3: Dependentes
-**Bloco:** C (Pivot Família)
-**Iniciada em:** 2026-05-17 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 79 testes verdes
-
-### Etapas
-- [x] 1. Entidade `Dependente` + enum `TipoDependente` + `Transacao.DependenteId` + AppDbContext + migration
-- [x] 2. DTOs + `DependenteService` (CRUD, atribuir despesa, gasto por dependente)
-- [x] 3. Endpoints — `FamiliasController` (dependentes) + `TransacoesController` (atribuir)
-- [x] 4. Frontend: CRUD de dependentes na `FamiliasPage` + atribuir na `TransactionTable`
-- [x] 5. Testes de serviço — 10 testes (`DependenteServiceTests`), suíte 69→79
-
-### Contexto
-- Spec completa em `docs/features/familia/sub-3-dependentes/arquitetura.md`.
-- Dependente = entidade sem login (rótulo de atribuição de despesa). `Transacao`
-  ganhou `DependenteId` nullable — independente de `FamiliaId` (#23).
-
-### Decisões
-- Endpoints de dependente foram adicionados ao `FamiliasController` (não um
-  `DependentesController` separado) — consistente com despesas/balanço, que já
-  ficam aninhados sob `/familias/{id}`.
-
-### Próxima ação concreta
-#24 concluída — PR #48 (atualizar de Draft para Ready). Próxima no Bloco C:
-#25 — modos de rateio.
-
----
-
-## Issue em execução
-
-**Issue:** #25 — Sub-feature 4: Modos de rateio (proporcional + custom)
-**Bloco:** C (Pivot Família)
-**Iniciada em:** 2026-05-17 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 83 testes verdes
-
-### Etapas
-- [x] 1. Enum `ModoRateio` + `Familia.ModoRateioPadrao` + `MembroFamilia.RendaMensal` + `Transacao.ModoRateio` + entidade `RateioTransacao` + AppDbContext + migration
-- [x] 2. DTOs + `RateioService` + refatorar `DespesaCompartilhadaService.ObterBalancoAsync`
-- [x] 3. Endpoints — `FamiliasController` + `TransacoesController`
-- [x] 4. Frontend: seletor de modo, renda por membro, rateio custom
-- [x] 5. Testes de serviço — 14 testes (`RateioServiceTests`), suíte 69→83
-
-### Contexto
-- Spec completa em `docs/features/familia/sub-4-rateio/arquitetura.md`.
-- Branch `feature/25-rateio` (de `origin/main` — não inclui #24, que é ortogonal).
-- Issues #25 e #26 (dependente) assinadas. PR #49 (Draft).
-
-### Decisões
-- Modo definido em dois níveis: `Familia.ModoRateioPadrao` (default) e
-  `Transacao.ModoRateio` (override por despesa, nullable).
-- `RateioTransacao` (percentual por membro) só existe em modo Personalizado;
-  substituído por completo a cada PUT.
-- Balanço continua dinâmico — nada persistido além das definições.
-
-### Próxima ação concreta
-#25 concluída — PR #49 (atualizar de Draft para Ready). Próxima e última do
-Bloco C: #26 — Acerto de contas (issue dependente já assinada).
-
----
-
-## Issue em execução
-
-**Issue:** #26 — Sub-feature 5: Acerto de contas
-**Bloco:** C (Pivot Família)
-**Iniciada em:** 2026-05-18 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 101 testes verdes
-
-### Etapas
-- [x] 1. Entidade `AcertoContas` + AppDbContext + migration
-- [x] 2. DTOs + `AcertoService` (registrar, listar, cancelar) + integrar no balanço
-- [x] 3. Endpoints — `FamiliasController`
-- [x] 4. Frontend: seção "Acerto de contas" na `FamiliasPage`
-- [x] 5. Testes de serviço — 8 testes (`AcertoServiceTests`), suíte 93→101
-
-### Contexto
-- Spec completa em `docs/features/familia/sub-5-acerto/arquitetura.md`.
-- Branch `feature/26-acerto` (de `origin/main` — já inclui #24 e #25). PR #50 (Draft).
-- Última issue do Bloco C.
-
-### Decisões
-- Acerto = registro interno (`AcertoContas`), não mexe em saldo de conta real.
-- Comprovante por arquivo fica fora — `Observacao` aceita texto/link.
-- Balanço subtrai acertos ativos do mês: `Saldo = pagou − cota + acertosPagos − acertosRecebidos`.
-
-### Próxima ação concreta
-#26 concluída — PR #50 (atualizar de Draft para Ready). **Bloco C 5/5 — pivot
-Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
-
----
-
-## Issue em execução
-**Issue:** #27 — Importação OFX/CSV de extrato bancário
-**Bloco:** D (Retenção e UX B2C)
-**Iniciada em:** 2026-05-18 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 107 testes verdes
-
-### Etapas
-- [x] 1. `Transacao.ImportacaoFitId` + migration + DTOs
-- [x] 2. `ExtratoImportService` — parsers OFX e CSV
-- [x] 3. Endpoints preview + confirmar (`ImportacaoController`) — dedup + sugestão
-- [x] 4. Frontend: página de importação (upload + revisão)
-- [x] 5. Testes de serviço — 14 testes, suíte 93→107
-
-### Contexto
-- Spec completa em `docs/features/importacao/arquitetura.md`.
-- Branch `feature/27-importacao-ofx` (de `origin/main`). PR #51 (Draft).
-- Primeira issue do Bloco D. #26 ainda em PR aberto (#50, não mergeado).
-
-### Decisões
-- Dedup OFX por `ImportacaoFitId`; CSV por conta+data+valor+descrição.
-- Importação só cria transações em conta (não cartão) nesta entrega.
-- Sem upload de arquivo persistido — parse em memória, limite 2 MB.
-
-### Próxima ação concreta
-#27 concluída — PR #51 (atualizar de Draft para Ready). Próximo no Bloco D:
-#29 — Onboarding guiado (depende de #27, agora disponível).
-
----
-
-## Issue em execução
-**Issue:** #29 — Onboarding guiado pós-cadastro
-**Bloco:** D (Retenção e UX B2C)
-**Iniciada em:** 2026-05-18 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 101 testes verdes
-
-### Etapas
-- [x] 1. `Usuario.OnboardingConcluido` + migration + `OnboardingService` + `OnboardingController` + DTOs
-- [x] 2. Frontend: `OnboardingPage` (4 passos) + rota + redirect no registro
-- [x] 3. Testes de serviço — 8 testes (`OnboardingServiceTests`), suíte 93→101
-
-### Contexto
-- Spec completa em `docs/features/onboarding/arquitetura.md`.
-- Branch `feature/29-onboarding` (de `origin/main`). PR #52 (Draft).
-- O passo "importar extrato" do onboarding aponta para `/importacao` (rota do
-  #27 — PR #51, ainda não mergeado).
-
-### Decisões
-- Checklist computado a cada consulta; só a flag `OnboardingConcluido` persiste.
-- Trigger do onboarding = redirect pós-registro (não guard global).
-- Passo "criar família" é opcional, não bloqueia a conclusão.
-
-### Próxima ação concreta
-#29 concluída — PR #52 (atualizar de Draft para Ready). Próximo no Bloco D:
-#30 — Notificações (push + e-mail) ou #28 — PWA.
-
----
-
-## Issue em execução
-
-**Issue:** #30 — Notificações
-**Bloco:** D (Retenção e UX B2C)
-**Iniciada em:** 2026-05-18 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 130 testes verdes
-
-### Etapas
-- [x] 1. Entidade `Notificacao` + enum `TipoNotificacao` + AppDbContext + migration + DTOs
-- [x] 2. `NotificacaoService` + `NotificacoesController`
-- [x] 3. Integração: convite, despesa compartilhada e acerto geram notificação
-- [x] 4. Frontend: sino de notificações (contador + lista)
-- [x] 5. Testes de serviço — 7 testes (`NotificacaoServiceTests`), suíte 123→130
-
-### Contexto
-- Spec completa em `docs/features/notificacoes/arquitetura.md`.
-- Branch `feature/30-notificacoes` (de `origin/main`). PR #53 (Draft).
-
-### Decisões
-- Escopo = notificações in-app. Web Push e e-mail ficam para etapa de entrega
-  posterior (exigem VAPID/SMTP e config de produção, não validáveis aqui).
-- Criar notificação nunca derruba a operação de origem (falha tolerada).
-- Não notifica o próprio autor do evento.
-
-### Próxima ação concreta
-#30 concluída — PR #53 (atualizar de Draft para Ready). Bloco D 3/5 (#27, #29,
-#30). Resta #28 (PWA) — #31 (Dark mode) é do sócio. Entrega de notificação por
-Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
-
----
-
-## Issue em execução
-**Issue:** #28 — PWA instalável + offline básico
-**Bloco:** D (Retenção e UX B2C)
-**Iniciada em:** 2026-05-18 (sessão 24)
-**Sessões nessa issue:** 1
-**Status:** 100% CONCLUÍDA ✅ — build verde, artefatos PWA gerados, 43 testes front verdes
-
-### Etapas
-- [x] 1. `vite-plugin-pwa` (manifest + SW Workbox) + ícone SVG + metatags
-- [x] 2. Componente `InstallPrompt` (beforeinstallprompt, exibe após 2ª sessão)
-- [x] 3. Build verde + validação dos artefatos PWA (`sw.js`, `manifest.webmanifest`, `registerSW.js`)
-
-### Contexto
-- Spec completa em `docs/features/pwa/arquitetura.md`. Feature 100% frontend.
-- Branch `feature/28-pwa` (de `origin/main`). PR #54 (Draft).
-- Build gera `sw.js`, `manifest.webmanifest`, `registerSW.js` — validado.
-
-### Decisões
-- `registerType: autoUpdate` — sem prompt de "nova versão".
-- Ícone SVG (sem PNG binário) — cobre instalação na maioria dos navegadores.
-- Offline = só shell (precache Workbox); cache de dados de API fica para depois.
-
-### Próxima ação concreta
-#28 concluída — PR #54 (atualizar de Draft para Ready). Bloco D 4/5 (#27, #28,
-#29, #30). Resta só #31 (Dark mode — sócio).
+- Confirmar com o sócio: divisão de issues entre os 2 está OK?
+- Definir usuário de teste para o script Playwright (criar `dev@controle.test` com dados seed?)
+- O atlas vai no repo ou em pasta separada? Sugestão: `screenshots/` no `.gitignore`; gerar sob demanda.
+- Quando rodar atlas: localmente, em CI, ou ambos? Sugestão: localmente por enquanto; CI quando virar regressão visual ativa.
 
 ---
 
@@ -506,29 +97,23 @@ Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 ## Issue em execução
 
 **Issue:** #XX — [nome]
-**Bloco:** [A/B/C/D]
+**Bloco:** A (Redesign UX)
 **Iniciada em:** YYYY-MM-DD
 **Sessões nessa issue:** N
 
 ### Etapas
 - [x] 1. [descrição] — checkpoint: [...]
 - [ ] 2. [descrição] — checkpoint: [...]
-- [ ] 3. [descrição] — checkpoint: [...]
 
 ### Etapa atual
 [Qual etapa, o que falta pra fechar]
 
 ### Próxima ação concreta
-[Exatamente o próximo passo — arquivo a tocar, método a criar, etc]
+[Exatamente o próximo passo]
 
 ### Decisões tomadas nesta sessão
 - [Decisão importante que afeta outros pontos]
-
-### Pontos pendentes / dúvidas para o usuário
-- [Coisa que precisa de input antes de avançar]
 ```
-
----
 
 ---
 
@@ -538,4 +123,4 @@ Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 - **PROGRESS.md** = dashboard de quanto já foi feito, histórico de sessões. Atualizado ao final de cada sessão.
 - **IMPLEMENTATION_STATE.md (este)** = estado granular de **uma** issue em execução. Atualizado a cada etapa concluída dentro da sessão.
 
-Os três funcionam em camadas: este é o mais granular, PROGRESS.md é a visão mensal, ISSUES.md é o catálogo trimestral.
+Os três funcionam em camadas: este é o mais granular, PROGRESS.md é a visão do ciclo, ISSUES.md é o catálogo trimestral.
