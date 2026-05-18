@@ -44,22 +44,75 @@ A ordem das fases é sequencial — cada uma alimenta a próxima.
 
 ### 🟡 #33 — Fase 2: Design tokens do Monarch
 
-**Severidade:** 🟡 ALTA • **Esforço:** 2 dias • **Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟡 ALTA • **Esforço:** 2-3 dias • **Status:** ⏳ NÃO INICIADO
 
 **Por quê:** Sem tokens bem definidos, "redesign" vira opinião subjetiva. Tokens dão objetivo executável.
 
-**Escopo:**
-- Extrair de fontes públicas + screenshots reais do app interno (via conta do sócio):
-  - **Paleta:** 3-5 cores principais + escala de neutros (mínimo 10 tons de cinza) + cores semânticas (sucesso, erro, atenção, info)
-  - **Tipografia:** família, escala (1.125x ou 1.25x), pesos usados, line-height
-  - **Espaçamento:** unidade base (4px ou 8px) e escala
-  - **Raio de borda:** valores
-  - **Sombras:** níveis de elevação (mínimo 3)
-  - **Estados:** hover, focus, active, disabled para botões e inputs
-- Output: `docs/design-tokens.md` com tabelas + arquivo `src/theme/tokens.ts` no frontend exportando as constantes
-- Adaptar tokens MUI (`createTheme`) para usar os novos valores em vez dos defaults
+Esta fase tem **3 sub-tasks**. A 1 é puramente tooling (script Playwright); a 2 é navegação do sócio (manual, ~1-2h); a 3 é análise + documentação.
 
-**Checkpoint:** `docs/design-tokens.md` revisado pelos 2 devs; `tokens.ts` importável e usado em pelo menos 1 componente.
+---
+
+#### 🛠️ Sub-task 1 — Monarch Session Recorder
+
+**Esforço:** 3-4h • **Para o Code implementar**
+
+Script Playwright passivo que captura automaticamente toda a navegação do sócio pelo Monarch (telas, HTML, CSS, design tokens, ordem do fluxo). Especificação completa em `docs/features/redesign-ux/visao.md` seção 4.2.
+
+**Entregáveis:**
+
+- `scripts/monarch-recorder.ts` (ou `.mjs`) — ~120 linhas
+- Lib: `playwright` (já será adicionada como dev dep em #32 — reaproveitar)
+- Modo: `launchPersistentContext` em pasta `.playwright-monarch-profile/` (gitignorada) para preservar login entre runs
+- Viewport: 1920×1080 (full-page screenshots cobrem scroll)
+- Event listener: `page.on('load', captureSnapshot)`
+- `captureSnapshot()` deve gerar em `docs/features/redesign-ux/monarch-session/step-NNN-<slug>/`:
+  - `screenshot.png` (full-page)
+  - `page.html` (`page.content()`)
+  - `styles.css` (consolidado de `document.styleSheets`, tratando CORS-blocked)
+  - `tokens.json` (CSS custom properties no `:root`, via `getComputedStyle`)
+  - Entrada em `journey.json` no root da sessão (n°, timestamp, url, título, slug)
+- Comando: `npm run monarch:record` no `package.json` chamando `npx tsx scripts/monarch-recorder.ts`
+- Tratamento: ao fechar o browser, script encerra graceful (não trava)
+- `docs/features/redesign-ux/monarch-session/` adicionado ao `.gitignore`
+- `.playwright-monarch-profile/` adicionado ao `.gitignore`
+
+**Checkpoint:** sócio roda `npm run monarch:record`, navega 3 telas teste, fecha o browser. Output em disco tem 3 pastas `step-001-*`, `step-002-*`, `step-003-*` com os 4 arquivos cada, e `journey.json` com 3 entradas.
+
+---
+
+#### 🚶 Sub-task 2 — Navegação completa do sócio no Monarch
+
+**Esforço:** 1-2h • **Para o sócio executar (manual)**
+
+Com o recorder rodando, sócio percorre as telas listadas em `docs/features/redesign-ux/visao.md` seção 4.2 ("Lista mínima para ele navegar"). Não precisa otimizar — o recorder pega tudo, então melhor exagerar na navegação.
+
+**Checkpoint:** `journey.json` tem ≥ 30 entradas cobrindo Dashboard, Transactions, Adicionar Transação, Shared Views, Reports, Goals, Settings e Onboarding.
+
+---
+
+#### 🧪 Sub-task 3 — Análise da captura + extração de tokens
+
+**Esforço:** 1-2 dias • **Para Pontes + sócio em revisão cruzada**
+
+Com a sessão capturada, extrair os tokens visuais e documentar.
+
+**Extrair de `monarch-session/`:**
+
+- **Paleta:** 3-5 cores principais + escala de neutros (mínimo 10 tons de cinza) + cores semânticas (sucesso, erro, atenção, info). Fonte: `tokens.json` consolidado + `styles.css` (procurar `--color-*`, `--bg-*`, hex values recorrentes)
+- **Tipografia:** família, escala (1.125x ou 1.25x), pesos usados, line-height. Fonte: `styles.css` + computed em `tokens.json`
+- **Espaçamento:** unidade base (4px ou 8px) e escala. Fonte: `--space-*` + valores recorrentes em `padding`/`margin`
+- **Raio de borda:** valores. Fonte: `--radius-*` ou `border-radius` recorrentes
+- **Sombras:** níveis de elevação (mínimo 3). Fonte: `box-shadow` recorrentes
+- **Estados:** hover, focus, active, disabled para botões e inputs. Fonte: regras `:hover`, `:focus`, `:active`, `[disabled]` em `styles.css`
+
+**Outputs:**
+
+- `docs/design-tokens.md` com tabelas legíveis (paleta, tipografia, espaçamento, etc.)
+- `controle-financeiro.web/src/theme/tokens.ts` exportando constantes TypeScript
+- `controle-financeiro.web/src/theme/theme.ts` ajustado para usar os novos tokens via `createTheme(...)` MUI
+- Pelo menos 1 componente já refatorado para validar que os tokens funcionam end-to-end
+
+**Checkpoint:** `docs/design-tokens.md` revisado pelos 2 devs; `tokens.ts` importável e usado em pelo menos 1 componente; toggle dark/light no novo componente usa as variantes corretas.
 
 ---
 

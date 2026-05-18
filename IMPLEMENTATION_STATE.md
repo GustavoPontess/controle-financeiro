@@ -32,17 +32,28 @@ issue_atual: '#32 — Atlas Playwright (não iniciada)'
 - [x] Q3 arquivado em `docs/history/`
 - [x] PROGRESS.md, ISSUES.md e este arquivo resetados para Q4
 - [x] `docs/features/redesign-ux/visao.md` criado
+- [x] Sócio com acesso ao Monarch (conta criada, logado)
 - [ ] Sócio confirma alinhamento do plano (revisão pelos 2 devs)
-- [ ] Sócio termina captura de screenshots internos do Monarch (em paralelo, não bloqueante)
 
-### Próxima ação concreta
-1. Revisão do `docs/features/redesign-ux/visao.md` pelos 2 devs
-2. Criar branch `feature/32-atlas-playwright` a partir de `main`
-3. `npm install -D playwright @playwright/test`
-4. `npx playwright install chromium`
-5. Criar `scripts/snapshot.ts` (especificação completa em `docs/features/redesign-ux/visao.md` → seção "Fase 1")
-6. Rodar localmente e gerar primeiro atlas
-7. Compartilhar atlas com o sócio para análise lado a lado com Monarch
+### Próxima ação concreta (duas frentes paralelizáveis pelo Code)
+
+**Frente 1 — #32 Atlas Playwright (nosso app):**
+1. Criar branch `feature/32-atlas-playwright` a partir de `main`
+2. `npm install -D playwright @playwright/test`
+3. `npx playwright install chromium`
+4. Criar `scripts/snapshot.ts` conforme spec em `docs/features/redesign-ux/visao.md` → Fase 1
+5. Comando `npm run snapshot` no `package.json`
+6. Rodar localmente e gerar primeiro atlas em `screenshots/atlas/` (gitignored)
+
+**Frente 2 — #33 sub-task 1: Monarch Session Recorder:**
+1. Criar branch `feature/33-monarch-recorder` (ou incluir no mesmo PR que #32 — Playwright é dependência comum)
+2. Reaproveitar a instalação de `playwright` da Frente 1
+3. Criar `scripts/monarch-recorder.ts` conforme spec em `docs/features/redesign-ux/visao.md` → seção 4.2 e `ISSUES.md` → #33 sub-task 1
+4. Comando `npm run monarch:record`
+5. Adicionar `docs/features/redesign-ux/monarch-session/` e `.playwright-monarch-profile/` ao `.gitignore`
+6. Sócio executa: roda o comando, navega Monarch livremente, fecha browser quando satisfeito. Output completo em disco.
+
+**Sequência sugerida do Code:** ambas as frentes em um único PR (`feature/32-33-playwright-tooling`), já que compartilham a dependência `playwright`. Reduz fricção de instalar/configurar duas vezes.
 
 ---
 
