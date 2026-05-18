@@ -1,11 +1,16 @@
+import { ThemeProvider, CssBaseline } from '@mui/material'
 import AppRoutes from "./routes/AppRoutes"
 import { AuthProvider } from "./contexts/AuthContext"
+import { theme } from "./theme/theme"
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
