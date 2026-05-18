@@ -47,6 +47,11 @@ public class Transacao
     public Guid? DependenteId { get; set; }
     public Dependente? Dependente { get; set; }
 
+    /// <summary>Issue #25 — override do modo de rateio para esta despesa. Null =
+    /// usa o modo padrão da família.</summary>
+    public ModoRateio? ModoRateio { get; set; }
+    public ICollection<RateioTransacao> Rateios { get; set; } = new List<RateioTransacao>();
+
     [Required]
     public DateTime Data { get; set; }
 
