@@ -1,3 +1,5 @@
+using ControleFinanceiro.Api.Domain.Enums;
+
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record CompartilharTransacaoDto(Guid FamiliaId);
@@ -15,11 +17,13 @@ public record SaldoMembroDto(
     Guid UsuarioId,
     string Nome,
     decimal Pagou,
+    decimal Cota,
     decimal Saldo);
 
 public record BalancoFamiliaDto(
     int Mes,
     int Ano,
+    ModoRateio Modo,
     decimal Total,
     decimal Cota,
     List<SaldoMembroDto> Saldos);

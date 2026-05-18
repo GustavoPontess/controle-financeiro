@@ -364,6 +364,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("CriadoPorUsuarioId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("ModoRateioPadrao")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -498,6 +501,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<decimal?>("RendaMensal")
+                        .HasColumnType("numeric");
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
@@ -704,6 +710,31 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RateioTransacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Percentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("TransacaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransacaoId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("RateiosTransacao");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -884,6 +915,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int?>("MeioPagamento")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ModoRateio")
                         .HasColumnType("integer");
 
                     b.Property<string>("MotivoCancelamento")
@@ -1218,6 +1252,25 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RateioTransacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "Transacao")
+                        .WithMany("Rateios")
+                        .HasForeignKey("TransacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Transacao");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
@@ -1398,6 +1451,11 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("CompartilhamentosContas");
 
                     b.Navigation("Usuario2");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
+                {
+                    b.Navigation("Rateios");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>

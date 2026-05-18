@@ -19,15 +19,18 @@ namespace ControleFinanceiro.Api.Controllers
         private readonly TransacaoService _service;
         private readonly DespesaCompartilhadaService _despesaCompartilhada;
         private readonly DependenteService _dependenteService;
+        private readonly RateioService _rateioService;
 
         public TransacoesController(
             TransacaoService service,
             DespesaCompartilhadaService despesaCompartilhada,
-            DependenteService dependenteService)
+            DependenteService dependenteService,
+            RateioService rateioService)
         {
             _service = service;
             _despesaCompartilhada = despesaCompartilhada;
             _dependenteService = dependenteService;
+            _rateioService = rateioService;
         }
 
         private Guid GetUserId()
@@ -194,6 +197,32 @@ namespace ControleFinanceiro.Api.Controllers
         public async Task<IActionResult> AtribuirDependente(Guid id, [FromBody] AtribuirDependenteDto dto)
         {
             await _dependenteService.AtribuirAsync(id, GetUserId(), dto.DependenteId);
+            return NoContent();
+        }
+
+        /// <summary>Lê o modo de rateio (e itens personalizados) da despesa.</summary>
+        [HttpGet("{id:guid}/rateio")]
+        [ProducesResponseType(typeof(RateioTransacaoDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ObterRateio(Guid id)
+        {
+            return Ok(await _rateioService.ObterRateioTransacaoAsync(id, GetUserId()));
+        }
+
+        /// <summary>Define o modo de rateio (e itens, se Personalizado) da despesa.</summary>
+        [HttpPut("{id:guid}/rateio")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> DefinirRateio(Guid id, [FromBody] DefinirRateioTransacaoDto dto)
+        {
+            await _rateioService.DefinirRateioTransacaoAsync(id, GetUserId(), dto);
+            return NoContent();
+        }
+
+        /// <summary>Remove o override de rateio — a despesa volta ao padrão da família.</summary>
+        [HttpDelete("{id:guid}/rateio")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> RemoverRateio(Guid id)
+        {
+            await _rateioService.RemoverRateioTransacaoAsync(id, GetUserId());
             return NoContent();
         }
     }

@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<Familia> Familias => Set<Familia>();
     public DbSet<MembroFamilia> MembrosFamilia => Set<MembroFamilia>();
     public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
+    public DbSet<RateioTransacao> RateiosTransacao => Set<RateioTransacao>();
 
     // ── Issue #24 Dependentes ──
     public DbSet<Dependente> Dependentes => Set<Dependente>();
@@ -320,5 +321,28 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Transacao>()
             .HasIndex(t => t.DependenteId);
+
+        // ── Issue #25 Modos de rateio ──
+
+        // RateioTransacao → Transacao (Cascade: somem com a despesa)
+        modelBuilder.Entity<RateioTransacao>()
+            .HasOne(r => r.Transacao)
+            .WithMany(t => t.Rateios)
+            .HasForeignKey(r => r.TransacaoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RateioTransacao → Usuario (Restrict: não deletar usuário com rateios)
+        modelBuilder.Entity<RateioTransacao>()
+            .HasOne(r => r.Usuario)
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RateioTransacao>()
+            .HasIndex(r => r.TransacaoId);
+
+        modelBuilder.Entity<RateioTransacao>()
+            .Property(r => r.Percentual)
+            .HasPrecision(5, 2);
     }
 }
