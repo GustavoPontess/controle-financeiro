@@ -5,6 +5,7 @@ import SidebarToggleIcon from "./SidebarToggleIcon"
 import HamburgerIcon from "./HamburgerIcon"
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded"
 import CustomButton from "../CustomButton"
+import NotificationBell from "../Notificacoes/NotificationBell"
 import styles from "./Navbar.module.css"
 
 type Props = {
@@ -43,7 +44,8 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
         <div className={styles.title}>{getTitle()}</div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <NotificationBell />
         <Tooltip title={canCreateTransaction ? "" : "Cadastre pelo menos uma categoria antes de adicionar transações"}>
           <span>
             <CustomButton
