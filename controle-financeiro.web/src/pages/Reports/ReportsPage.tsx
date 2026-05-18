@@ -61,17 +61,17 @@ export default function ReportsPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">
+          <Typography fontSize={22} fontWeight={700} color="text.primary">
             Relatórios
           </Typography>
-          <Typography fontSize={13} color="#6b7280">
+          <Typography fontSize={13} color="text.secondary">
             Análise financeira detalhada
           </Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <IconButton
             onClick={() => setAno(a => a - 1)}
-            sx={{ width: 32, height: 32, border: "1.5px solid #e5e7eb", borderRadius: "8px", color: "#374151" }}
+            sx={{ width: 32, height: 32, border: 1.5, borderColor: "divider", borderRadius: "8px", color: "text.primary" }}
           >
             <ChevronLeftIcon sx={{ fontSize: 18 }} />
           </IconButton>
@@ -87,7 +87,7 @@ export default function ReportsPage() {
           </Select>
           <IconButton
             onClick={() => setAno(a => a + 1)}
-            sx={{ width: 32, height: 32, border: "1.5px solid #e5e7eb", borderRadius: "8px", color: "#374151" }}
+            sx={{ width: 32, height: 32, border: 1.5, borderColor: "divider", borderRadius: "8px", color: "text.primary" }}
           >
             <ChevronRightIcon sx={{ fontSize: 18 }} />
           </IconButton>
@@ -99,12 +99,12 @@ export default function ReportsPage() {
       {data && (
         <>
           {/* Evolução mensal — linha */}
-          <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-            <Typography fontSize={15} fontWeight={600} color="#111827" mb={3}>
+          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+            <Typography fontSize={15} fontWeight={600} color="text.primary" mb={3}>
               Evolução do Saldo Mensal
             </Typography>
             {evolucaoComDados.length === 0 ? (
-              <Typography fontSize={13} color="#9ca3af" textAlign="center" py={4}>
+              <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                 Nenhuma transação em {ano}
               </Typography>
             ) : (
@@ -128,12 +128,12 @@ export default function ReportsPage() {
           </Paper>
 
           {/* Receitas vs Despesas — barra */}
-          <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-            <Typography fontSize={15} fontWeight={600} color="#111827" mb={3}>
+          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+            <Typography fontSize={15} fontWeight={600} color="text.primary" mb={3}>
               Receitas vs Despesas por Mês
             </Typography>
             {evolucaoComDados.length === 0 ? (
-              <Typography fontSize={13} color="#9ca3af" textAlign="center" py={4}>
+              <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                 Nenhuma transação em {ano}
               </Typography>
             ) : (
@@ -158,12 +158,12 @@ export default function ReportsPage() {
           {/* Gastos por categoria */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             {/* Pizza */}
-            <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-              <Typography fontSize={15} fontWeight={600} color="#111827" mb={3}>
+            <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+              <Typography fontSize={15} fontWeight={600} color="text.primary" mb={3}>
                 Distribuição de Despesas
               </Typography>
               {data.gastosPorCategoria.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af" textAlign="center" py={4}>
+                <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                   Nenhuma despesa em {ano}
                 </Typography>
               ) : (
@@ -195,12 +195,12 @@ export default function ReportsPage() {
             </Paper>
 
             {/* Lista detalhada */}
-            <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-              <Typography fontSize={15} fontWeight={600} color="#111827" mb={2.5}>
+            <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+              <Typography fontSize={15} fontWeight={600} color="text.primary" mb={2.5}>
                 Detalhamento por Categoria
               </Typography>
               {data.gastosPorCategoria.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af" textAlign="center" py={4}>
+                <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                   Nenhuma despesa em {ano}
                 </Typography>
               ) : (
@@ -210,13 +210,13 @@ export default function ReportsPage() {
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: PIE_COLORS[index % PIE_COLORS.length], flexShrink: 0 }} />
-                          <Typography fontSize={13} fontWeight={500} color="#374151">
+                          <Typography fontSize={13} fontWeight={500} color="text.primary">
                             {cat.descricao}
                           </Typography>
                         </Box>
                         <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                          <Typography fontSize={12} color="#9ca3af">{cat.percentual}%</Typography>
-                          <Typography fontSize={13} fontWeight={600} color="#111827">{formatMoney(cat.valor)}</Typography>
+                          <Typography fontSize={12} color="text.secondary">{cat.percentual}%</Typography>
+                          <Typography fontSize={13} fontWeight={600} color="text.primary">{formatMoney(cat.valor)}</Typography>
                         </Box>
                       </Box>
                       <LinearProgress
@@ -225,7 +225,7 @@ export default function ReportsPage() {
                         sx={{
                           height: 5,
                           borderRadius: 3,
-                          bgcolor: "#f3f4f6",
+                          bgcolor: "action.hover",
                           "& .MuiLinearProgress-bar": { bgcolor: PIE_COLORS[index % PIE_COLORS.length], borderRadius: 3 },
                         }}
                       />

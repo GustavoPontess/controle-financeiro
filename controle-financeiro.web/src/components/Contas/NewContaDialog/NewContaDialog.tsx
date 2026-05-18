@@ -45,7 +45,7 @@ export default function NewContaDialog({ open, onClose, onSaved, notify, bancos,
       <DialogTitle sx={{ p: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2, fontWeight: 600, fontSize: 16 }}>
           {editingConta ? "Editar Conta" : "Adicionar Conta"}
-          <IconButton onClick={onClose} sx={{ width: 24, height: 24, color: "#9ca3af", "&:hover": { backgroundColor: "#f3f4f6", color: "#374151" } }}>
+          <IconButton onClick={onClose} sx={{ width: 24, height: 24, color: "text.secondary", "&:hover": { bgcolor: "action.hover", color: "text.primary" } }}>
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>

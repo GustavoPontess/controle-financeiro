@@ -32,10 +32,7 @@ type Props = {
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
-    backgroundColor: "#f9fafb", borderRadius: "8px", fontSize: "14px",
-    "& fieldset": { borderColor: "#e5e7eb" },
-    "&:hover fieldset": { borderColor: "#d1d5db" },
-    "&.Mui-focused fieldset": { borderColor: "#111827", borderWidth: "1.5px" },
+    backgroundColor: "background.paper", borderRadius: "8px", fontSize: "14px",
   },
 }
 
@@ -100,7 +97,7 @@ export default function EditTransactionDialog({ transaction, onClose, onSaved, n
       <DialogTitle sx={{ p: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2 }}>
           <Typography fontSize={16} fontWeight={600}>Editar Transação</Typography>
-          <IconButton size="small" onClick={onClose} sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
+          <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>

@@ -28,28 +28,28 @@ type Props = {
 
 export default function ContasTable({ contas, onEdit, onDelete }: Props) {
   return (
-    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-      <Box sx={{ px: 2.5, py: 1.5, borderBottom: "1px solid #f1f5f9", fontWeight: 600, fontSize: 13 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+      <Box sx={{ px: 2.5, py: 1.5, borderBottom: 1, borderColor: "divider", fontWeight: 600, fontSize: 13 }}>
         Lista de Contas
       </Box>
       <TableContainer>
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#fafafa" }}>
-              <TableCell sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Nome</TableCell>
-              <TableCell sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Tipo</TableCell>
-              <TableCell sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Saldo Inicial</TableCell>
-              <TableCell align="right" sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Ações</TableCell>
+            <TableRow sx={{ bgcolor: "action.hover" }}>
+              <TableCell sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Nome</TableCell>
+              <TableCell sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Tipo</TableCell>
+              <TableCell sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Saldo Inicial</TableCell>
+              <TableCell align="right" sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {contas.map(c => {
-              const colors = tipoColor[c.tipo] ?? { bg: "#f3f4f6", color: "#374151" }
+              const colors = tipoColor[c.tipo] ?? { bg: "#f3f4f6", color: "#6b7280" }
               return (
                 <TableRow
                   key={c.id}
                   hover
-                  sx={{ "&:hover": { backgroundColor: "#f9fafb" }, "&:last-child td": { borderBottom: 0 } }}
+                  sx={{ "&:hover": { bgcolor: "action.hover" }, "&:last-child td": { borderBottom: 0 } }}
                 >
                   <TableCell sx={{ fontSize: 13, fontWeight: 500, py: 1.5 }}>{c.nome}</TableCell>
                   <TableCell sx={{ py: 1.5 }}>
@@ -70,7 +70,7 @@ export default function ContasTable({ contas, onEdit, onDelete }: Props) {
                   <TableCell align="right" sx={{ py: 0.5 }}>
                     {!c.isCarteira && (
                       <>
-                        <IconButton size="small" onClick={() => onEdit(c)} sx={{ color: "#6b7280" }}>
+                        <IconButton size="small" onClick={() => onEdit(c)} sx={{ color: "text.secondary" }}>
                           <EditIcon sx={{ fontSize: 15 }} />
                         </IconButton>
                         <IconButton size="small" onClick={() => onDelete(c.id)} sx={{ color: "#ef4444" }}>

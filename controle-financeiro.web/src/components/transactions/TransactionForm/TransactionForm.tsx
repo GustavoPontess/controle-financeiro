@@ -16,28 +16,20 @@ const MEIOS_PAGAMENTO = [
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
-    backgroundColor: "#f9fafb",
     borderRadius: "8px",
     fontSize: "14px",
-    "& fieldset": { borderColor: "#e5e7eb" },
-    "&:hover fieldset": { borderColor: "#d1d5db" },
-    "&.Mui-focused fieldset": { borderColor: "#111827", borderWidth: "1.5px" },
   },
 };
 
 const selectSx = {
-  backgroundColor: "#f9fafb",
   borderRadius: "8px",
   fontSize: "14px",
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e5e7eb" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#d1d5db" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#111827", borderWidth: "1.5px" },
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <Box>
-      <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>
+      <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>
         {label}
       </Typography>
       {children}

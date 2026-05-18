@@ -29,7 +29,8 @@ export default function TransactionsTable({
     <Paper
       elevation={0}
       sx={{
-        border: "1px solid #e5e7eb",
+        border: 1,
+        borderColor: "divider",
         borderRadius: "12px",
         overflow: "hidden"
       }}
@@ -39,7 +40,8 @@ export default function TransactionsTable({
         sx={{
           px: 3,
           py: 2,
-          borderBottom: "1px solid #f1f5f9",
+          borderBottom: 1,
+          borderColor: "divider",
           fontWeight: 600,
           fontSize: 15
         }}
@@ -53,21 +55,21 @@ export default function TransactionsTable({
 
           <TableHead>
 
-            <TableRow sx={{ backgroundColor: "#fafafa" }}>
+            <TableRow sx={{ bgcolor: "action.hover" }}>
 
-              <TableCell sx={{ fontSize: 13, color: "#6b7280" }}>
+              <TableCell sx={{ fontSize: 13, color: "text.secondary" }}>
                 Descrição
               </TableCell>
 
-              <TableCell align="right" sx={{ fontSize: 13, color: "#6b7280" }}>
+              <TableCell align="right" sx={{ fontSize: 13, color: "text.secondary" }}>
                 Valor
               </TableCell>
 
-              <TableCell sx={{ fontSize: 13, color: "#6b7280" }}>
+              <TableCell sx={{ fontSize: 13, color: "text.secondary" }}>
                 Tipo
               </TableCell>
 
-              <TableCell sx={{ fontSize: 13, color: "#6b7280" }}>
+              <TableCell sx={{ fontSize: 13, color: "text.secondary" }}>
                 Categoria
               </TableCell>
 
@@ -87,7 +89,7 @@ export default function TransactionsTable({
                   key={t.id}
                   hover
                   sx={{
-                    "&:hover": { backgroundColor: "#f9fafb" },
+                    "&:hover": { bgcolor: "action.hover" },
                     "&:last-child td": { borderBottom: 0 }
                   }}
                 >

@@ -9,22 +9,14 @@ type ContaFormData = Omit<Conta, "id" | "tipoDescricao" | "tipoCartaoDescricao" 
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
-    backgroundColor: "#f9fafb",
     borderRadius: "8px",
     fontSize: "14px",
-    "& fieldset": { borderColor: "#e5e7eb" },
-    "&:hover fieldset": { borderColor: "#d1d5db" },
-    "&.Mui-focused fieldset": { borderColor: "#111827", borderWidth: "1.5px" },
   },
 }
 
 const selectSx = {
-  backgroundColor: "#f9fafb",
   borderRadius: "8px",
   fontSize: "14px",
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e5e7eb" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#d1d5db" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#111827", borderWidth: "1.5px" },
 }
 
 const TIPOS = [
@@ -61,7 +53,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
   return (
     <Box component="form" key={editingConta?.id ?? "new"} onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Banco / Instituição</Typography>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Banco / Instituição</Typography>
         <Select
           name="bancoId"
           defaultValue={editingConta?.bancoId ?? preSelectedBancoId ?? ""}
@@ -78,7 +70,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
       </Box>
 
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Nome da Conta</Typography>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Nome da Conta</Typography>
         <TextField
           name="nome"
           placeholder="Ex: NuConta, Conta Corrente BB"
@@ -93,7 +85,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
       </Box>
 
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Número da Conta</Typography>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Número da Conta</Typography>
         <TextField
           name="numeroConta"
           placeholder="Ex: 1234-5"
@@ -107,7 +99,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
       </Box>
 
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Tipo</Typography>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Tipo</Typography>
         <Select name="tipo" value={tipo} onChange={(e) => setTipo(Number(e.target.value))} size="small" fullWidth required displayEmpty sx={selectSx}>
           <MenuItem value={0} disabled>Selecione o tipo</MenuItem>
           {TIPOS.map(t => (
@@ -118,7 +110,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
 
       {!editingConta && (
         <Box>
-          <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>Saldo Inicial</Typography>
+          <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Saldo Inicial</Typography>
           <TextField
             name="saldoInicial"
             placeholder="0,00"

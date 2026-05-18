@@ -19,16 +19,16 @@ const getFinalidade = (f: number) => {
 
 export default function CategoriesTable({ categories }: Props) {
   return (
-    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-      <Box sx={{ px: 2.5, py: 1.5, borderBottom: "1px solid #f1f5f9", fontWeight: 600, fontSize: 13 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+      <Box sx={{ px: 2.5, py: 1.5, borderBottom: 1, borderColor: "divider", fontWeight: 600, fontSize: 13 }}>
         Lista de Categorias
       </Box>
       <TableContainer>
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#fafafa" }}>
-              <TableCell sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Descrição</TableCell>
-              <TableCell sx={{ fontSize: 12, color: "#9ca3af", py: 1 }}>Finalidade</TableCell>
+            <TableRow sx={{ bgcolor: "action.hover" }}>
+              <TableCell sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Descrição</TableCell>
+              <TableCell sx={{ fontSize: 12, color: "text.secondary", py: 1 }}>Finalidade</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -36,7 +36,7 @@ export default function CategoriesTable({ categories }: Props) {
               <TableRow
                 key={c.id}
                 hover
-                sx={{ "&:hover": { backgroundColor: "#f9fafb" }, "&:last-child td": { borderBottom: 0 } }}
+                sx={{ "&:hover": { bgcolor: "action.hover" }, "&:last-child td": { borderBottom: 0 } }}
               >
                 <TableCell sx={{ fontSize: 13, fontWeight: 500, py: 1 }}>{c.descricao}</TableCell>
                 <TableCell sx={{ fontSize: 13, py: 1 }}>{getFinalidade(c.finalidade)}</TableCell>

@@ -134,8 +134,8 @@ export default function ParcelamentosPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">Parcelamentos</Typography>
-          <Typography fontSize={13} color="#6b7280">Acompanhe seus parcelamentos</Typography>
+          <Typography fontSize={22} fontWeight={700} color="text.primary">Parcelamentos</Typography>
+          <Typography fontSize={13} color="text.secondary">Acompanhe seus parcelamentos</Typography>
         </Box>
         <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={handleAbrir}>
           Novo Parcelamento
@@ -144,12 +144,12 @@ export default function ParcelamentosPage() {
 
       {/* Stats */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Ativos</Typography>
-          <Typography fontSize={26} fontWeight={800} color="#111827">{ativos}</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Ativos</Typography>
+          <Typography fontSize={26} fontWeight={800} color="text.primary">{ativos}</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>A pagar</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>A pagar</Typography>
           <Typography fontSize={22} fontWeight={800} color="#dc2626">
             {formatMoney(totalRestante)}
           </Typography>
@@ -157,16 +157,16 @@ export default function ParcelamentosPage() {
       </Box>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9" }}>
-          <Typography fontSize={15} fontWeight={600} color="#111827">Seus Parcelamentos</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography fontSize={15} fontWeight={600} color="text.primary">Seus Parcelamentos</Typography>
         </Box>
 
         {parcelamentos.length === 0 ? (
           <Box sx={{ py: 8, textAlign: "center" }}>
-            <InfoOutlinedIcon sx={{ fontSize: 40, color: "#d1d5db", mb: 1 }} />
-            <Typography fontSize={14} color="#9ca3af">Nenhum parcelamento cadastrado</Typography>
-            <Typography fontSize={13} color="#d1d5db">Crie um novo parcelamento para começar</Typography>
+            <InfoOutlinedIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
+            <Typography fontSize={14} color="text.secondary">Nenhum parcelamento cadastrado</Typography>
+            <Typography fontSize={13} color="text.secondary">Crie um novo parcelamento para começar</Typography>
           </Box>
         ) : (
           parcelamentos.map((p, i) => {
@@ -177,9 +177,9 @@ export default function ParcelamentosPage() {
                 elevation={0}
                 sx={{
                   borderRadius: 0,
-                  borderBottom: i < parcelamentos.length - 1 ? "1px solid #f1f5f9" : "none",
+                  borderBottom: i < parcelamentos.length - 1 ? 1 : 0, borderColor: "divider",
                   opacity: p.ativo ? 1 : 0.5,
-                  "&:hover": { bgcolor: "#fafafa" },
+                  "&:hover": { bgcolor: "action.hover" },
                 }}
               >
                 <CardContent sx={{ p: 2, pb: 1.5, "&:last-child": { pb: 1.5 } }}>
@@ -192,24 +192,24 @@ export default function ParcelamentosPage() {
                           size="small"
                           sx={{ fontSize: 11, height: 20 }}
                         />
-                        <Typography fontSize={12} color="#6b7280">
+                        <Typography fontSize={12} color="text.secondary">
                           {p.quantidadeParcelas} parcelas
                         </Typography>
                       </Box>
                     </Box>
                     <Box sx={{ textAlign: "right" }}>
                       <Typography fontWeight={700} fontSize={16}>{formatMoney(p.valorOriginal)}</Typography>
-                      <Typography fontSize={12} color="#6b7280">{p.parcelasPagas}/{p.quantidadeParcelas} pago</Typography>
+                      <Typography fontSize={12} color="text.secondary">{p.parcelasPagas}/{p.quantidadeParcelas} pago</Typography>
                     </Box>
                   </Box>
 
                   {/* Progress */}
                   <Box sx={{ mb: 1.5 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                      <Typography fontSize={12} color="#6b7280">
+                      <Typography fontSize={12} color="text.secondary">
                         Progresso
                       </Typography>
-                      <Typography fontSize={12} color="#6b7280">
+                      <Typography fontSize={12} color="text.secondary">
                         {percentual.toFixed(0)}%
                       </Typography>
                     </Box>
@@ -222,8 +222,8 @@ export default function ParcelamentosPage() {
 
                   {/* Próxima parcela */}
                   {p.proximaParcela && (
-                    <Box sx={{ p: 1.5, bgcolor: "#f9fafb", borderRadius: 1, mb: 1.5 }}>
-                      <Typography fontSize={11} color="#6b7280" mb={0.3}>Próxima parcela</Typography>
+                    <Box sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 1, mb: 1.5 }}>
+                      <Typography fontSize={11} color="text.secondary" mb={0.3}>Próxima parcela</Typography>
                       <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                         <Typography fontSize={12} fontWeight={500}>
                           Fatura {formatarMesAno(p.proximaParcela.dataVencimento.split("T")[0].substring(0, 7))}
@@ -235,8 +235,8 @@ export default function ParcelamentosPage() {
 
                   {/* Restante */}
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                    <Typography fontSize={12} color="#6b7280">
-                      Restante: <span style={{ fontWeight: 600, color: "#111827" }}>{formatMoney(p.valorRestante)}</span>
+                    <Typography fontSize={12} color="text.secondary">
+                      Restante: <span style={{ fontWeight: 600 }}>{formatMoney(p.valorRestante)}</span>
                     </Typography>
                   </Box>
 
@@ -253,7 +253,7 @@ export default function ParcelamentosPage() {
                     <IconButton
                       size="small"
                       onClick={() => handleCancelar(p.id)}
-                      sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}
+                      sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
                     >
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
