@@ -370,5 +370,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<AcertoContas>()
             .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
+        // ── Issue #27 Importação de extrato ──
+
+        // Índice para deduplicar reimportações de OFX pelo FITID.
+        modelBuilder.Entity<Transacao>()
+            .HasIndex(t => t.ImportacaoFitId);
     }
 }

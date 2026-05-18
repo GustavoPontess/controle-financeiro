@@ -19,12 +19,12 @@ status: CURRENT
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
 Bloco C — Pivot Família:                5/5  ✅ #22, #23, #24, #25, #26  🎉 BLOCO COMPLETO
-Bloco D — Retenção e UX B2C:            0/5  ⏳ #31 (em andamento)
+Bloco D — Retenção e UX B2C:            1/5  ✅ #27  ⏳ #28, #29, #30, #31
 
-Total Q3 2026:                          16/21 (76%)
+Total Q3 2026:                          17/21 (81%)
 ```
 
-**Status geral:** Blocos A, B e C 100% 🎉. Pivot Família completo (#22–#26). Resta o Bloco D — retenção e UX B2C. Sócio em #31 (Dark mode).
+**Status geral:** Blocos A, B e C 100% 🎉. Pivot Família completo (#22–#26). Bloco D 1/5 — #27 (Importação OFX/CSV) concluída. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,19 +49,26 @@ Síntese:
 
 ## Em progresso
 
-Bloco C (pivot Família) 100% — #22 a #26 concluídas. Próximo: **Bloco D** (#27 Importação OFX/CSV, #28 PWA, #29 Onboarding, #30 Notificações). Sócio em #31 (Dark mode).
+Bloco C (pivot Família) 100%. Bloco D iniciado: **#27 (Importação OFX/CSV) concluída**. Próximo: #29 — Onboarding guiado. Sócio em #31 (Dark mode).
 
 ---
 
 ## Histórico de sessões
 
 ### Sessão 24 — 2026-05-17/18
+- **Issue #27 — Importação OFX/CSV de extrato bancário (✅ CONCLUÍDA)** — PR #51
+  - `Transacao.ImportacaoFitId` + migration
+  - `ExtratoImportService` — parsers OFX (SGML/XML) e CSV (BR)
+  - `ImportacaoService` — preview com dedup (FITID/heurística) + sugestão de categoria; confirmar cria transações
+  - Endpoints `POST /importacao/preview` (multipart) e `/importacao/confirmar`
+  - Frontend: página `ImportacaoPage` (upload + tela de revisão), rota e Sidebar
+  - 14 testes
 - **Issue #26 — Sub-feature 5: Acerto de contas (✅ CONCLUÍDA)** — PR #50
   - Entidade `AcertoContas` (registro interno de pagamento de dívida, soft delete) + migration
   - `AcertoService` (registrar, listar, cancelar); balanço abate acertos ativos do mês
   - Endpoints `POST/GET/DELETE /familias/{id}/acertos` no FamiliasController
   - Frontend: seção "Acerto de contas" na FamiliasPage (registrar + histórico)
-  - 8 testes (suíte 93 → 101)
+  - 8 testes
   - 🎉 Bloco C (pivot Família) completo
 - **Issue #25 — Sub-feature 4: Modos de rateio (✅ CONCLUÍDA)** — PR #49
   - Enum `ModoRateio`, `Familia.ModoRateioPadrao`, `MembroFamilia.RendaMensal`, `Transacao.ModoRateio`, entidade `RateioTransacao` + migration
