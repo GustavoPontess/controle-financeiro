@@ -5,7 +5,8 @@
  * captura automaticamente cada tela que o usuário visitar enquanto navega o
  * Monarch (ou qualquer referência). Não automatiza nada — só observa.
  *
- * A cada `load`, grava em docs/features/redesign-ux/monarch-session/step-NNN-<slug>/:
+ * A cada navegação (inclusive troca de rota SPA, via `framenavigated`),
+ * grava em docs/features/redesign-ux/monarch-session/step-NNN-<slug>/:
  *   - screenshot.png  — full-page
  *   - page.html       — DOM completo
  *   - styles.css      — CSS consolidado de todas as stylesheets (CORS-safe)
@@ -25,7 +26,7 @@
  * O login persiste entre runs (perfil em .playwright-monarch-profile/).
  */
 import { chromium, type BrowserContext, type Page } from 'playwright'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const PROFILE_DIR = join(process.cwd(), '.playwright-monarch-profile')
@@ -77,16 +78,34 @@ const COLLECT_TOKENS = `(() => {
   return tokens;
 })()`
 
+let lastCapturedUrl = ''
+let captureChain: Promise<void> = Promise.resolve()
+const captureTimers = new WeakMap<Page, ReturnType<typeof setTimeout>>()
+
+/** Páginas que são puro ruído (login OAuth, CAPTCHA) — não interessam ao estudo. */
+function isNoise(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith('google.com')
+  } catch {
+    return true
+  }
+}
+
 async function captureSnapshot(page: Page): Promise<void> {
+  const url = page.url()
+  if (url === 'about:blank' || !url.startsWith('http')) return
+  if (isNoise(url)) return
+  if (url === lastCapturedUrl) return
+
+  // Deixa a SPA renderizar a rota nova antes de capturar.
+  await page.waitForLoadState('domcontentloaded').catch(() => {})
+  await page.waitForTimeout(900)
+  if (page.url() !== url) return // navegou de novo no meio — a próxima captura pega
+
   stepCount += 1
   const step = stepCount
-  const url = page.url()
-  if (url === 'about:blank' || !url.startsWith('http')) {
-    stepCount -= 1
-    return
-  }
-
   try {
+    lastCapturedUrl = url
     const title = await page.title()
     const slug = slugFromUrl(url)
     const dirName = `step-${String(step).padStart(3, '0')}-${slug}`
@@ -108,17 +127,37 @@ async function captureSnapshot(page: Page): Promise<void> {
     console.log(`  step ${String(step).padStart(3, '0')}  ${title || slug}  (${url})`)
   } catch (err) {
     // Browser fechado no meio da captura ou navegação abortada — ignora.
-    console.warn(`  step ${step} pulado: ${(err as Error).message}`)
+    stepCount -= 1
+    console.warn(`  step pulado: ${(err as Error).message}`)
   }
 }
 
+/**
+ * Debounce (1s sem novas navegações) + serialização. Monarch é SPA: cada
+ * troca de rota dispara `framenavigated` sem `load`. O debounce colapsa
+ * navegações rápidas na tela final estabilizada.
+ */
+function scheduleCapture(page: Page): void {
+  const existing = captureTimers.get(page)
+  if (existing) clearTimeout(existing)
+  captureTimers.set(
+    page,
+    setTimeout(() => {
+      captureChain = captureChain.then(() => captureSnapshot(page))
+    }, 1000),
+  )
+}
+
 function watch(page: Page): void {
-  page.on('load', () => {
-    void captureSnapshot(page)
+  page.on('load', () => scheduleCapture(page))
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) scheduleCapture(page)
   })
 }
 
 async function main(): Promise<void> {
+  // Limpa a sessão anterior para não misturar runs.
+  await rm(SESSION_DIR, { recursive: true, force: true })
   await mkdir(SESSION_DIR, { recursive: true })
 
   // MONARCH_CHANNEL=chrome usa o Chrome instalado; vazio usa o Chromium do Playwright.
@@ -131,7 +170,7 @@ async function main(): Promise<void> {
   })
 
   console.log('Monarch Session Recorder ativo.')
-  console.log('Navegue à vontade. Cada tela carregada vira um snapshot.')
+  console.log('Navegue à vontade. Cada tela visitada (inclusive SPA) vira um snapshot.')
   console.log(`Saída: ${SESSION_DIR}`)
   console.log('Feche o browser para encerrar.\n')
 
