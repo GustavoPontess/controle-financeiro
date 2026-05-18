@@ -92,7 +92,7 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(screen.getByText(/senha não atende/i)).toBeInTheDocument())
   })
 
-  it('navega para / após registro bem-sucedido', async () => {
+  it('navega para /onboarding após registro bem-sucedido', async () => {
     mockRegister.mockResolvedValueOnce(undefined)
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
@@ -103,7 +103,7 @@ describe('RegisterPage', () => {
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/onboarding'))
   })
 
   it('exibe erro retornado pelo backend', async () => {

@@ -20,6 +20,7 @@ import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
+import OnboardingPage from "../pages/Onboarding/OnboardingPage"
 import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
 
 export default function AppRoutes() {
@@ -29,6 +30,16 @@ export default function AppRoutes() {
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+
+        {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected Routes */}
         <Route
