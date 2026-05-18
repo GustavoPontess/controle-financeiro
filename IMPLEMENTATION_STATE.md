@@ -446,14 +446,14 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 4 de 5 concluída
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 130 testes verdes
 
 ### Etapas
 - [x] 1. Entidade `Notificacao` + enum `TipoNotificacao` + AppDbContext + migration + DTOs
 - [x] 2. `NotificacaoService` + `NotificacoesController`
 - [x] 3. Integração: convite, despesa compartilhada e acerto geram notificação
 - [x] 4. Frontend: sino de notificações (contador + lista)
-- [ ] 5. Testes de serviço
+- [x] 5. Testes de serviço — 7 testes (`NotificacaoServiceTests`), suíte 123→130
 
 ### Contexto
 - Spec completa em `docs/features/notificacoes/arquitetura.md`.
@@ -466,8 +466,9 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Não notifica o próprio autor do evento.
 
 ### Próxima ação concreta
-Etapa 5 — Testes de `NotificacaoService` (criar, listar ordenado, contar
-não lidas, marcar lida(s) idempotente, isolamento por usuário).
+#30 concluída — PR #53 (atualizar de Draft para Ready). Bloco D 3/5 (#27, #29,
+#30). Resta #28 (PWA) — #31 (Dark mode) é do sócio. Entrega de notificação por
+Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 
 ---
 

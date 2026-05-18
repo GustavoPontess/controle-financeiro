@@ -1,7 +1,7 @@
 ---
 feature: notificacoes
 issue: '#30'
-status: EM_IMPLEMENTACAO
+status: CONCLUIDA
 owner: Gustavo
 created: 2026-05-18
 ---
