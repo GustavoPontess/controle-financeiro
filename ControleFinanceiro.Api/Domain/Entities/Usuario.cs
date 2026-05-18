@@ -22,6 +22,10 @@ public class Usuario
 
     public bool Ativo { get; set; } = true;
 
+    /// <summary>Issue #29 — true depois que o usuário concluiu (ou pulou) o
+    /// onboarding guiado. Evita reexibir o fluxo de primeiros passos.</summary>
+    public bool OnboardingConcluido { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
