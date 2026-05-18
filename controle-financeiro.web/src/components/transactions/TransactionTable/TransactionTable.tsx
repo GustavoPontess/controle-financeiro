@@ -38,11 +38,11 @@ const formatMoney = (v: number) =>
 const RECEITA = 2
 
 const headerSx = {
-  fontSize: 12, fontWeight: 600, color: "#6b7280",
-  bgcolor: "#f9fafb", borderBottom: "1px solid #e5e7eb", py: 1.5,
+  fontSize: 12, fontWeight: 600, color: "text.secondary",
+  bgcolor: "action.hover", borderBottom: 1, borderColor: "divider", py: 1.5,
 }
 
-const cellSx = { fontSize: 13, color: "#374151", py: 1.5, borderBottom: "1px solid #f1f5f9" }
+const cellSx = { fontSize: 13, color: "text.primary", py: 1.5, borderBottom: 1, borderColor: "divider" }
 
 export default function TransactionTable({ rows, onRefresh, notify, emptyMessage }: Props) {
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
@@ -75,7 +75,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   if (rows.length === 0) {
     return (
       <Box sx={{ py: 6, textAlign: "center" }}>
-        <Typography fontSize={13} color="#9ca3af">
+        <Typography fontSize={13} color="text.secondary">
           {emptyMessage ?? "Nenhuma transação encontrada"}
         </Typography>
       </Box>
@@ -102,22 +102,22 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
             {rows.map((row) => {
               const isReceita = row.tipo === RECEITA
               return (
-                <TableRow key={row.id} sx={{ "&:hover": { bgcolor: "#fafafa" } }}>
+                <TableRow key={row.id} sx={{ "&:hover": { bgcolor: "action.hover" } }}>
                   <TableCell sx={cellSx}>
                     {new Date(row.data).toLocaleDateString("pt-BR")}
                   </TableCell>
-                  <TableCell sx={{ ...cellSx, fontWeight: 500, color: "#111827", maxWidth: 220 }}>
+                  <TableCell sx={{ ...cellSx, fontWeight: 500, color: "text.primary", maxWidth: 220 }}>
                     <Typography fontSize={13} fontWeight={500} noWrap title={row.descricao}>
                       {row.descricao}
                     </Typography>
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="#6b7280">
+                    <Typography fontSize={12} color="text.secondary">
                       {row.categoriaDescricao ?? "—"}
                     </Typography>
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="#6b7280">
+                    <Typography fontSize={12} color="text.secondary">
                       {row.contaNome ?? "—"}
                     </Typography>
                   </TableCell>
@@ -133,7 +133,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                     />
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="#6b7280">
+                    <Typography fontSize={12} color="text.secondary">
                       {row.meioPagamentoDescricao ?? "—"}
                     </Typography>
                   </TableCell>
@@ -144,11 +144,11 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                   </TableCell>
                   <TableCell sx={{ ...cellSx, textAlign: "center" }}>
                     <IconButton size="small" onClick={() => openEdit(row)}
-                      sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
+                      sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
                       <EditIcon sx={{ fontSize: 15 }} />
                     </IconButton>
                     <IconButton size="small" onClick={() => handleDelete(row.id, row.descricao)}
-                      sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}>
+                      sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}>
                       <DeleteOutlineIcon sx={{ fontSize: 15 }} />
                     </IconButton>
                   </TableCell>

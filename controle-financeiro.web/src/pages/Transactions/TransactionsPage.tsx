@@ -48,9 +48,9 @@ function SummaryCard({
   subtitle?: string;
 }) {
   return (
-    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
-        <Typography fontSize={13} fontWeight={600} color="#6b7280">
+        <Typography fontSize={13} fontWeight={600} color="text.secondary">
           {title}
         </Typography>
         <Box sx={{
@@ -62,11 +62,11 @@ function SummaryCard({
           {icon}
         </Box>
       </Box>
-      <Typography fontSize={24} fontWeight={700} color="#111827">
+      <Typography fontSize={24} fontWeight={700} color="text.primary">
         {value}
       </Typography>
       {subtitle && (
-        <Typography fontSize={12} color="#9ca3af" mt={0.5}>
+        <Typography fontSize={12} color="text.secondary" mt={0.5}>
           {subtitle}
         </Typography>
       )}
@@ -155,10 +155,10 @@ export default function TransactionsPage() {
             onClick={prevMonth}
             sx={{
               width: 32, height: 32,
-              border: "1.5px solid #e5e7eb",
+              border: 1.5, borderColor: "divider",
               borderRadius: "8px",
-              color: "#374151",
-              "&:hover": { backgroundColor: "#f9fafb", borderColor: "#d1d5db" },
+              color: "text.primary",
+              "&:hover": { bgcolor: "action.hover" },
             }}
           >
             <ChevronLeftIcon sx={{ fontSize: 18 }} />
@@ -170,10 +170,10 @@ export default function TransactionsPage() {
             onClick={nextMonth}
             sx={{
               width: 32, height: 32,
-              border: "1.5px solid #e5e7eb",
+              border: 1.5, borderColor: "divider",
               borderRadius: "8px",
-              color: "#374151",
-              "&:hover": { backgroundColor: "#f9fafb", borderColor: "#d1d5db" },
+              color: "text.primary",
+              "&:hover": { bgcolor: "action.hover" },
             }}
           >
             <ChevronRightIcon sx={{ fontSize: 18 }} />
@@ -246,9 +246,9 @@ export default function TransactionsPage() {
       </Box>
 
       {/* Transactions table */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9" }}>
-          <Typography fontSize={15} fontWeight={600} color="#111827">Todas as Transações</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography fontSize={15} fontWeight={600} color="text.primary">Todas as Transações</Typography>
         </Box>
         <TransactionTable
           rows={filtered.map((t: Transaction): TransactionRow => ({

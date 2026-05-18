@@ -82,8 +82,8 @@ export default function NewCategoryDialog({
             sx={{
               width: 24,
               height: 24,
-              color: "#9ca3af",
-              "&:hover": { backgroundColor: "#f3f4f6", color: "#374151" }
+              color: "text.secondary",
+              "&:hover": { bgcolor: "action.hover", color: "text.primary" }
             }}
           >
             <CloseIcon sx={{ fontSize: 16 }} />

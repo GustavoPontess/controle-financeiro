@@ -13,9 +13,9 @@ export default function EmptyState({ title, description, actionLabel, onAction }
   return (
     <Paper
       elevation={0}
-      sx={{ border: "1px dashed #e5e7eb", borderRadius: "12px", p: 4, textAlign: "center" }}
+      sx={{ border: "1px dashed", borderColor: "divider", borderRadius: "12px", p: 4, textAlign: "center" }}
     >
-      <InboxOutlinedIcon sx={{ fontSize: 32, color: "#d1d5db", mb: 1.5 }} />
+      <InboxOutlinedIcon sx={{ fontSize: 32, color: "action.selected", mb: 1.5 }} />
 
       <Typography fontWeight={600} fontSize={13} mb={0.5}>
         {title}

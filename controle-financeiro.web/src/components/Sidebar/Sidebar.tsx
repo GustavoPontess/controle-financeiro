@@ -266,7 +266,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                       Plano Free
                     </Typography>
                   </Box>
-                  <ChevronRightIcon sx={{ fontSize: 14, color: "#9ca3af", flexShrink: 0 }} />
+                  <ChevronRightIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
                 </Box>
               </MuiMenuItem>
 
@@ -274,27 +274,27 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
 
               {/* Upgrade de plano */}
               <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <TrendingUpIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                <TrendingUpIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                 Upgrade de plano
               </MuiMenuItem>
 
               <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <PaletteIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                <PaletteIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                 Personalização
               </MuiMenuItem>
               <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <PersonIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                <PersonIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                 Perfil
               </MuiMenuItem>
               <MuiMenuItem
                 onClick={() => { closeAll(); navigate("/settings"); }}
                 sx={{ fontSize: 13, py: 0.8, px: 1.5 }}
               >
-                <SettingsIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                <SettingsIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                 Configurações
               </MuiMenuItem>
               <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <HelpIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                <HelpIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                 Ajuda
               </MuiMenuItem>
               <Divider sx={{ my: 0.5 }} />
@@ -346,7 +346,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                               {currentUser.nome}
                             </Typography>
                           </Box>
-                          <CheckIcon sx={{ fontSize: 14, color: "#6b7280", flexShrink: 0 }} />
+                          <CheckIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
                         </Box>
                       </MuiMenuItem>
 
@@ -376,9 +376,9 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                       {/* Add account */}
                       <MuiMenuItem
                         onClick={() => { closeAll(); setAddAccountOpen(true); }}
-                        sx={{ fontSize: 13, color: "#374151", py: 0.8, px: 1.5 }}
+                        sx={{ fontSize: 13, color: "text.primary", py: 0.8, px: 1.5 }}
                       >
-                        <AddIcon sx={{ fontSize: 16, mr: 1.5, color: "#6b7280" }} />
+                        <AddIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
                         Adicionar conta
                       </MuiMenuItem>
                     </MenuList>
