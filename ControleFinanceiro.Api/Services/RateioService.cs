@@ -103,7 +103,8 @@ public class RateioService
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Lê o rateio de uma despesa (modo override + itens personalizados).</summary>
+    /// <summary>Lê o rateio de uma despesa: modo override + membros da família
+    /// com o percentual personalizado atual de cada um.</summary>
     public async Task<RateioTransacaoDto> ObterRateioTransacaoAsync(Guid transacaoId, Guid usuarioId)
     {
         var transacao = await _context.Transacoes
@@ -114,11 +115,24 @@ public class RateioService
         if (transacao.CriadoPor != usuarioId)
             throw new UnauthorizedAccessException("Você só pode ver suas próprias transações.");
 
-        var itens = transacao.Rateios
-            .Select(r => new RateioItemDto(r.UsuarioId, r.Percentual))
-            .ToList();
+        var percentualPorMembro = transacao.Rateios
+            .ToDictionary(r => r.UsuarioId, r => r.Percentual);
 
-        return new RateioTransacaoDto(transacao.ModoRateio, itens);
+        var membros = new List<RateioMembroDto>();
+        if (transacao.FamiliaId is { } familiaId)
+        {
+            var membrosFamilia = await _context.MembrosFamilia
+                .Where(m => m.FamiliaId == familiaId && m.Ativo)
+                .Select(m => new { m.UsuarioId, m.Usuario!.Nome })
+                .ToListAsync();
+
+            membros = membrosFamilia
+                .Select(m => new RateioMembroDto(
+                    m.UsuarioId, m.Nome, percentualPorMembro.GetValueOrDefault(m.UsuarioId, 0m)))
+                .ToList();
+        }
+
+        return new RateioTransacaoDto(transacao.ModoRateio, transacao.FamiliaId, membros);
     }
 
     private async Task ValidarItensAsync(Guid familiaId, List<RateioItemDto> itens)

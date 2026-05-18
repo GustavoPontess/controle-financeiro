@@ -323,12 +323,12 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 2 de 5 concluída
+**Status:** EM_EXECUCAO — etapa 3 de 5 concluída
 
 ### Etapas
 - [x] 1. Enum `ModoRateio` + `Familia.ModoRateioPadrao` + `MembroFamilia.RendaMensal` + `Transacao.ModoRateio` + entidade `RateioTransacao` + AppDbContext + migration
 - [x] 2. DTOs + `RateioService` + refatorar `DespesaCompartilhadaService.ObterBalancoAsync`
-- [ ] 3. Endpoints — `FamiliasController` + `TransacoesController`
+- [x] 3. Endpoints — `FamiliasController` + `TransacoesController`
 - [ ] 4. Frontend: seletor de modo, renda por membro, rateio custom
 - [ ] 5. Testes de serviço
 
@@ -345,10 +345,10 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - Balanço continua dinâmico — nada persistido além das definições.
 
 ### Próxima ação concreta
-Etapa 3 — endpoints: `PUT /familias/{id}/modo-rateio`,
-`PUT /familias/{id}/membros/{membroId}/renda` no `FamiliasController`;
-`PUT /transacoes/{id}/rateio`, `DELETE /transacoes/{id}/rateio`,
-`GET /transacoes/{id}/rateio` no `TransacoesController`. Ver `arquitetura.md` §4.
+Etapa 4 — Frontend: tipos `ModoRateio`/rateio em `types/Familia.ts`,
+funções no `familiaService` (definir modo, renda, rateio da transação);
+seletor de modo + campo de renda por membro na `FamiliasPage`; ação
+"definir rateio" na `TransactionTable`. Ver `arquitetura.md` §4-§5.
 
 ---
 
