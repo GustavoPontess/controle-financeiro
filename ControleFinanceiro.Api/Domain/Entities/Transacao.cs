@@ -42,6 +42,11 @@ public class Transacao
     public Guid? FamiliaId { get; set; }
     public Familia? Familia { get; set; }
 
+    /// <summary>Issue #24 — despesa atribuída a um dependente (gasto com filho,
+    /// idoso, pet). Null = não atribuída.</summary>
+    public Guid? DependenteId { get; set; }
+    public Dependente? Dependente { get; set; }
+
     [Required]
     public DateTime Data { get; set; }
 

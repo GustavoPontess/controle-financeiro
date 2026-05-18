@@ -1,22 +1,34 @@
 import { useEffect, useState } from "react"
 import {
   Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, IconButton, CircularProgress,
+  TextField, Chip, IconButton, CircularProgress, MenuItem,
 } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
 import GroupAddIcon from "@mui/icons-material/GroupAdd"
 import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined"
 import CustomButton from "../../components/CustomButton"
 import EmptyState from "../../components/EmptyState/EmptyState"
 import {
   getFamilias, getFamilia, criarFamilia, dissolverFamilia, convidarMembro,
   revogarConvite, removerMembro, getConvitesPendentes, aceitarConvite, recusarConvite,
   getDespesasFamilia, getBalancoFamilia,
+  getDependentes, criarDependente, atualizarDependente, inativarDependente,
 } from "../../services/familiaService"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
+  Dependente, TipoDependente,
 } from "../../types/Familia"
+
+const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
+  { value: 1, label: "Criança" },
+  { value: 2, label: "Idoso" },
+  { value: 3, label: "Pet" },
+  { value: 4, label: "Outro" },
+]
+const tipoDependenteLabel = (t: TipoDependente) =>
+  TIPOS_DEPENDENTE.find(x => x.value === t)?.label ?? "Outro"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -43,6 +55,14 @@ export default function FamiliasPage() {
   const [conviteEmail, setConviteEmail] = useState("")
   const [convitePapel, setConvitePapel] = useState("")
 
+  const [dependentes, setDependentes] = useState<Dependente[]>([])
+  const [depOpen, setDepOpen] = useState(false)
+  const [depEditando, setDepEditando] = useState<Dependente | null>(null)
+  const [depNome, setDepNome] = useState("")
+  const [depApelido, setDepApelido] = useState("")
+  const [depNascimento, setDepNascimento] = useState("")
+  const [depTipo, setDepTipo] = useState<TipoDependente>(4)
+
   const loadData = async () => {
     try {
       const [fs, cs] = await Promise.all([getFamilias(), getConvitesPendentes()])
@@ -64,14 +84,16 @@ export default function FamiliasPage() {
       const agora = new Date()
       const mes = agora.getMonth() + 1
       const ano = agora.getFullYear()
-      const [d, desp, bal] = await Promise.all([
+      const [d, desp, bal, deps] = await Promise.all([
         getFamilia(familiaId),
         getDespesasFamilia(familiaId, mes, ano),
         getBalancoFamilia(familiaId, mes, ano),
+        getDependentes(familiaId),
       ])
       setDetalhe(d)
       setDespesas(desp)
       setBalanco(bal)
+      setDependentes(deps)
     } catch {
       notify({ open: true, message: "Erro ao carregar a família", severity: "error" })
     } finally {
@@ -157,6 +179,44 @@ export default function FamiliasPage() {
           ?? "Erro ao remover membro",
         severity: "error",
       })
+    }
+  }
+
+  const abrirDepDialog = (dep: Dependente | null) => {
+    setDepEditando(dep)
+    setDepNome(dep?.nome ?? "")
+    setDepApelido(dep?.apelido ?? "")
+    setDepNascimento(dep?.dataNascimento ? dep.dataNascimento.slice(0, 10) : "")
+    setDepTipo(dep?.tipo ?? 4)
+    setDepOpen(true)
+  }
+
+  const handleSalvarDependente = async () => {
+    if (!detalhe || !depNome.trim()) return
+    const input = {
+      nome: depNome.trim(),
+      apelido: depApelido.trim() || null,
+      dataNascimento: depNascimento || null,
+      tipo: depTipo,
+    }
+    try {
+      if (depEditando) await atualizarDependente(detalhe.id, depEditando.id, input)
+      else await criarDependente(detalhe.id, input)
+      notify({ open: true, message: "Dependente salvo", severity: "success" })
+      setDepOpen(false)
+      setDependentes(await getDependentes(detalhe.id))
+    } catch {
+      notify({ open: true, message: "Erro ao salvar dependente", severity: "error" })
+    }
+  }
+
+  const handleInativarDependente = async (depId: string) => {
+    if (!detalhe || !confirm("Inativar este dependente? O histórico é preservado.")) return
+    try {
+      await inativarDependente(detalhe.id, depId)
+      setDependentes(await getDependentes(detalhe.id))
+    } catch {
+      notify({ open: true, message: "Erro ao inativar dependente", severity: "error" })
     }
   }
 
@@ -328,6 +388,38 @@ export default function FamiliasPage() {
                 </>
               )}
 
+              {/* Dependentes */}
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2, mb: 1 }}>
+                <Typography fontSize={14} fontWeight={600}>Dependentes</Typography>
+                <CustomButton size="small" startIcon={<PersonAddIcon />} onClick={() => abrirDepDialog(null)}>
+                  Adicionar
+                </CustomButton>
+              </Box>
+              {dependentes.length === 0 ? (
+                <Typography fontSize={13} color="#9ca3af">
+                  Nenhum dependente cadastrado.
+                </Typography>
+              ) : dependentes.map(dep => (
+                <Box key={dep.id} sx={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                }}>
+                  <Typography fontSize={13}>
+                    {dep.nome}
+                    {dep.apelido && <Typography component="span" fontSize={12} color="#9ca3af"> ({dep.apelido})</Typography>}
+                    {" "}<Chip label={tipoDependenteLabel(dep.tipo)} size="small" />
+                  </Typography>
+                  <Box>
+                    <IconButton size="small" onClick={() => abrirDepDialog(dep)}>
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleInativarDependente(dep.id)}>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ))}
+
               {/* Despesas compartilhadas do mês */}
               <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>
                 Despesas compartilhadas
@@ -380,6 +472,38 @@ export default function FamiliasPage() {
         <DialogActions>
           <CustomButton variant="secondary" size="small" onClick={() => setConvidarOpen(false)}>Cancelar</CustomButton>
           <CustomButton size="small" onClick={handleConvidar}>Enviar convite</CustomButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog criar/editar dependente */}
+      <Dialog open={depOpen} onClose={() => setDepOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{depEditando ? "Editar dependente" : "Novo dependente"}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus fullWidth label="Nome" margin="dense"
+            value={depNome} onChange={e => setDepNome(e.target.value)}
+          />
+          <TextField
+            fullWidth label="Apelido (opcional)" margin="dense"
+            value={depApelido} onChange={e => setDepApelido(e.target.value)}
+          />
+          <TextField
+            fullWidth label="Data de nascimento (opcional)" margin="dense" type="date"
+            InputLabelProps={{ shrink: true }}
+            value={depNascimento} onChange={e => setDepNascimento(e.target.value)}
+          />
+          <TextField
+            select fullWidth label="Tipo" margin="dense"
+            value={depTipo} onChange={e => setDepTipo(Number(e.target.value) as TipoDependente)}
+          >
+            {TIPOS_DEPENDENTE.map(t => (
+              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <CustomButton variant="secondary" size="small" onClick={() => setDepOpen(false)}>Cancelar</CustomButton>
+          <CustomButton size="small" onClick={handleSalvarDependente}>Salvar</CustomButton>
         </DialogActions>
       </Dialog>
     </Box>

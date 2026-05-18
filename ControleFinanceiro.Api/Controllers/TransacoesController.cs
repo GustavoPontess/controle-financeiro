@@ -18,12 +18,16 @@ namespace ControleFinanceiro.Api.Controllers
     {
         private readonly TransacaoService _service;
         private readonly DespesaCompartilhadaService _despesaCompartilhada;
+        private readonly DependenteService _dependenteService;
 
         public TransacoesController(
-            TransacaoService service, DespesaCompartilhadaService despesaCompartilhada)
+            TransacaoService service,
+            DespesaCompartilhadaService despesaCompartilhada,
+            DependenteService dependenteService)
         {
             _service = service;
             _despesaCompartilhada = despesaCompartilhada;
+            _dependenteService = dependenteService;
         }
 
         private Guid GetUserId()
@@ -181,6 +185,15 @@ namespace ControleFinanceiro.Api.Controllers
         public async Task<IActionResult> Descompartilhar(Guid id)
         {
             await _despesaCompartilhada.DescompartilharAsync(id, GetUserId());
+            return NoContent();
+        }
+
+        /// <summary>Atribui (ou desatribui, com dependenteId null) a transação a um dependente.</summary>
+        [HttpPut("{id:guid}/dependente")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> AtribuirDependente(Guid id, [FromBody] AtribuirDependenteDto dto)
+        {
+            await _dependenteService.AtribuirAsync(id, GetUserId(), dto.DependenteId);
             return NoContent();
         }
     }

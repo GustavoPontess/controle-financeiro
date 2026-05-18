@@ -37,6 +37,9 @@ public class AppDbContext : DbContext
     public DbSet<MembroFamilia> MembrosFamilia => Set<MembroFamilia>();
     public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
 
+    // ── Issue #24 Dependentes ──
+    public DbSet<Dependente> Dependentes => Set<Dependente>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -296,5 +299,26 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Transacao>()
             .HasIndex(t => t.FamiliaId);
+
+        // ── Issue #24 Dependentes ──
+
+        // Dependente → Familia (Cascade: dependentes somem com a família)
+        modelBuilder.Entity<Dependente>()
+            .HasOne(d => d.Familia)
+            .WithMany()
+            .HasForeignKey(d => d.FamiliaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Transacao → Dependente (SetNull: a despesa sobrevive se o dependente
+        // for removido — só perde a atribuição)
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.Dependente)
+            .WithMany()
+            .HasForeignKey(t => t.DependenteId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Transacao>()
+            .HasIndex(t => t.DependenteId);
     }
 }

@@ -2,7 +2,15 @@ import { api } from "../api/axiosConfig"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia,
   DespesaCompartilhada, BalancoFamilia,
+  Dependente, GastoDependente, TipoDependente,
 } from "../types/Familia"
+
+export interface DependenteInput {
+  nome: string
+  apelido?: string | null
+  dataNascimento?: string | null
+  tipo: TipoDependente
+}
 
 export const getFamilias = async (): Promise<Familia[]> => {
   const res = await api.get("/familias")
@@ -82,4 +90,45 @@ export const getBalancoFamilia = async (
 ): Promise<BalancoFamilia> => {
   const res = await api.get(`/familias/${familiaId}/balanco`, { params: { mes, ano } })
   return res.data
+}
+
+// ── Dependentes (#24) ──
+
+export const getDependentes = async (familiaId: string): Promise<Dependente[]> => {
+  const res = await api.get(`/familias/${familiaId}/dependentes`)
+  return res.data
+}
+
+export const criarDependente = async (
+  familiaId: string, input: DependenteInput,
+): Promise<Dependente> => {
+  const res = await api.post(`/familias/${familiaId}/dependentes`, input)
+  return res.data
+}
+
+export const atualizarDependente = async (
+  familiaId: string, depId: string, input: DependenteInput,
+): Promise<Dependente> => {
+  const res = await api.put(`/familias/${familiaId}/dependentes/${depId}`, input)
+  return res.data
+}
+
+export const inativarDependente = async (
+  familiaId: string, depId: string,
+): Promise<void> => {
+  await api.delete(`/familias/${familiaId}/dependentes/${depId}`)
+}
+
+export const getGastoDependente = async (
+  familiaId: string, depId: string, mes: number, ano: number,
+): Promise<GastoDependente> => {
+  const res = await api.get(
+    `/familias/${familiaId}/dependentes/${depId}/gastos`, { params: { mes, ano } })
+  return res.data
+}
+
+export const atribuirDependente = async (
+  transacaoId: string, dependenteId: string | null,
+): Promise<void> => {
+  await api.put(`/transacoes/${transacaoId}/dependente`, { dependenteId })
 }
