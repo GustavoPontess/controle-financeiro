@@ -154,6 +154,10 @@ public static class DevDataSeeder
             transacoes.Add(Nova("Projeto freelance", rng.Next(800, 2200),
                 TipoTransacao.Receita, CatReceita("Freelance"), corrente.Id,
                 new DateTime(refMes.Year, refMes.Month, 18)));
+            // Saque em dinheiro: abastece a carteira para os gastos pequenos.
+            transacoes.Add(Nova("Saque em dinheiro", 600m, TipoTransacao.Receita,
+                CatReceita("Outros"), carteira.Id,
+                new DateTime(refMes.Year, refMes.Month, 3)));
 
             // Despesas do mês
             foreach (var d in despesas)
@@ -162,7 +166,10 @@ public static class DevDataSeeder
                     ? d.min
                     : Math.Round(d.min + (decimal)rng.NextDouble() * (d.max - d.min), 2);
                 var dia = rng.Next(1, 28);
-                var conta = rng.Next(3) == 0 ? carteira.Id : corrente.Id;
+                // Gastos pequenos do dia a dia saem da carteira; o resto da conta corrente.
+                var conta = d.desc is "Café" or "Uber" or "Restaurante"
+                    ? carteira.Id
+                    : corrente.Id;
                 // Algumas despesas de casa entram como compartilhadas com a família.
                 Guid? fam = d.desc is "Aluguel" or "Conta de luz" or "Supermercado"
                     ? familia.Id
