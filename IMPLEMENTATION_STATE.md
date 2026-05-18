@@ -440,6 +440,38 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 
 ---
 
+## Issue em execução
+
+**Issue:** #30 — Notificações
+**Bloco:** D (Retenção e UX B2C)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+
+### Etapas
+- [x] 1. Entidade `Notificacao` + enum `TipoNotificacao` + AppDbContext + migration + DTOs
+- [ ] 2. `NotificacaoService` + `NotificacoesController`
+- [ ] 3. Integração: convite, despesa compartilhada e acerto geram notificação
+- [ ] 4. Frontend: sino de notificações (contador + lista)
+- [ ] 5. Testes de serviço
+
+### Contexto
+- Spec completa em `docs/features/notificacoes/arquitetura.md`.
+- Branch `feature/30-notificacoes` (de `origin/main`). PR #53 (Draft).
+
+### Decisões
+- Escopo = notificações in-app. Web Push e e-mail ficam para etapa de entrega
+  posterior (exigem VAPID/SMTP e config de produção, não validáveis aqui).
+- Criar notificação nunca derruba a operação de origem (falha tolerada).
+- Não notifica o próprio autor do evento.
+
+### Próxima ação concreta
+Etapa 2 — `NotificacaoService` (criar, listar, contar não lidas, marcar
+lida(s)) + `NotificacoesController` (GET lista, GET contagem, PUT lida,
+PUT lidas). Ver `arquitetura.md` §3-§5.
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
