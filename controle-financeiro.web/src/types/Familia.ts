@@ -64,3 +64,25 @@ export interface BalancoFamilia {
   cota: number
   saldos: SaldoMembro[]
 }
+
+// ── Dependentes (#24) ──
+
+export type TipoDependente = 1 | 2 | 3 | 4 // Crianca, Idoso, Pet, Outro
+
+export interface Dependente {
+  id: string
+  familiaId: string
+  nome: string
+  apelido: string | null
+  dataNascimento: string | null
+  tipo: TipoDependente
+  ativo: boolean
+}
+
+export interface GastoDependente {
+  dependenteId: string
+  nome: string
+  mes: number
+  ano: number
+  total: number
+}
