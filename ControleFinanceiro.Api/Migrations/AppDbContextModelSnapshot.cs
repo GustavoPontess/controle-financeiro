@@ -962,6 +962,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("FaturaPagaId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ImportacaoFitId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<int?>("MeioPagamento")
                         .HasColumnType("integer");
 
@@ -1008,6 +1012,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("FaturaId");
 
                     b.HasIndex("FaturaPagaId");
+
+                    b.HasIndex("ImportacaoFitId");
 
                     b.HasIndex("ParcelaTransacaoId");
 
