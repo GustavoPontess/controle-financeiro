@@ -79,7 +79,8 @@ public class FamiliaService
 
         var membros = familia.Membros
             .Select(m => new MembroFamiliaDto(
-                m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm))
+                m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
+                m.RendaMensal))
             .ToList();
 
         var convites = familia.Convites
@@ -89,7 +90,8 @@ public class FamiliaService
             .ToList();
 
         return new FamiliaDetalheDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,
-            familia.CriadoEm, familia.CriadoPorUsuarioId == usuarioId, membros, convites);
+            familia.CriadoEm, familia.CriadoPorUsuarioId == usuarioId,
+            familia.ModoRateioPadrao, membros, convites);
     }
 
     public async Task DissolverAsync(Guid familiaId, Guid usuarioId)
@@ -123,7 +125,7 @@ public class FamiliaService
         await _context.SaveChangesAsync();
 
         return new MembroFamiliaDto(membro.Id, membro.UsuarioId, membro.Usuario!.Nome,
-            membro.Usuario.Email, membro.Papel, membro.EntrouEm);
+            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal);
     }
 
     public async Task RemoverMembroAsync(Guid familiaId, Guid membroId, Guid usuarioId)

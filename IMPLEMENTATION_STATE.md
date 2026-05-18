@@ -317,6 +317,42 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 
 ---
 
+## Issue em execução
+
+**Issue:** #25 — Sub-feature 4: Modos de rateio (proporcional + custom)
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+
+### Etapas
+- [x] 1. Enum `ModoRateio` + `Familia.ModoRateioPadrao` + `MembroFamilia.RendaMensal` + `Transacao.ModoRateio` + entidade `RateioTransacao` + AppDbContext + migration
+- [ ] 2. DTOs + `RateioService` + refatorar `DespesaCompartilhadaService.ObterBalancoAsync`
+- [ ] 3. Endpoints — `FamiliasController` + `TransacoesController`
+- [ ] 4. Frontend: seletor de modo, renda por membro, rateio custom
+- [ ] 5. Testes de serviço
+
+### Contexto
+- Spec completa em `docs/features/familia/sub-4-rateio/arquitetura.md`.
+- Branch `feature/25-rateio` (de `origin/main` — não inclui #24, que é ortogonal).
+- Issues #25 e #26 (dependente) assinadas. PR #49 (Draft).
+
+### Decisões
+- Modo definido em dois níveis: `Familia.ModoRateioPadrao` (default) e
+  `Transacao.ModoRateio` (override por despesa, nullable).
+- `RateioTransacao` (percentual por membro) só existe em modo Personalizado;
+  substituído por completo a cada PUT.
+- Balanço continua dinâmico — nada persistido além das definições.
+
+### Próxima ação concreta
+Etapa 2 — DTOs (`DefinirModoRateioDto`, `DefinirRendaDto`,
+`DefinirRateioTransacaoDto`, `RateioItemDto`, `RateioTransacaoDto`) +
+`RateioService` (definir modo da família, renda do membro, rateio custom da
+transação) + refatorar `DespesaCompartilhadaService.ObterBalancoAsync` para
+calcular cota por modo efetivo. Ver `arquitetura.md` §3-§5.
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```

@@ -97,6 +97,9 @@ builder.Services.AddScoped<DespesaCompartilhadaService>();
 // Issue #24 — Dependentes
 builder.Services.AddScoped<DependenteService>();
 
+// Issue #25 — Modos de rateio
+builder.Services.AddScoped<RateioService>();
+
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();
