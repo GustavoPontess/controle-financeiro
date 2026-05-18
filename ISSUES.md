@@ -25,7 +25,7 @@ Referência escolhida: **Monarch Money** (monarch.com). Empresa de $850M (Série
 
 A ordem das fases é sequencial — cada uma alimenta a próxima.
 
-### 🟡 #32 — Fase 1: Atlas Playwright das telas atuais
+### 🟡 #59 — Fase 1: Atlas Playwright das telas atuais
 
 **Severidade:** 🟡 ALTA • **Esforço:** 1 dia • **Status:** ⏳ NÃO INICIADO
 
@@ -42,7 +42,7 @@ A ordem das fases é sequencial — cada uma alimenta a próxima.
 
 ---
 
-### 🟡 #33 — Fase 2: Design tokens do Monarch
+### 🟡 #60 — Fase 2: Design tokens do Monarch
 
 **Severidade:** 🟡 ALTA • **Esforço:** 2-3 dias • **Status:** ⏳ NÃO INICIADO
 
@@ -61,7 +61,7 @@ Script Playwright passivo que captura automaticamente toda a navegação do sóc
 **Entregáveis:**
 
 - `scripts/monarch-recorder.ts` (ou `.mjs`) — ~120 linhas
-- Lib: `playwright` (já será adicionada como dev dep em #32 — reaproveitar)
+- Lib: `playwright` (já será adicionada como dev dep em #59 — reaproveitar)
 - Modo: `launchPersistentContext` em pasta `.playwright-monarch-profile/` (gitignorada) para preservar login entre runs
 - Viewport: 1920×1080 (full-page screenshots cobrem scroll)
 - Event listener: `page.on('load', captureSnapshot)`
@@ -116,7 +116,7 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 
 ---
 
-### 🟡 #34 — Fase 3: Refator de 3 telas piloto
+### 🟡 #61 — Fase 3: Refator de 3 telas piloto
 
 **Severidade:** 🟡 ALTA • **Esforço:** 3-5 dias • **Status:** ⏳ NÃO INICIADO
 
@@ -126,31 +126,31 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 - **Tela A — Dashboard:** densidade de informação, hierarquia visual, gráficos. Referência Monarch direta.
 - **Tela B — FamiliasPage:** lista de membros, balanço, despesas compartilhadas. Diferencial competitivo nosso.
 - **Tela C — Adicionar/editar transação:** formulário mais usado. UX de input critica.
-- Cada tela: print do "antes" (atlas da #32) lado a lado com print do "depois" no PR
+- Cada tela: print do "antes" (atlas da #59) lado a lado com print do "depois" no PR
 - Componentes reutilizáveis criados durante o piloto devem ser documentados (Storybook fica para depois — overhead alto agora)
 
 **Checkpoint:** 3 telas em produção com novos tokens; revisão entre os 2 devs aprova a direção.
 
 ---
 
-### 🟠 #35 — Fase 4: Propagação dos tokens para o resto do app
+### 🟠 #62 — Fase 4: Propagação dos tokens para o resto do app
 
 **Severidade:** 🟠 MÉDIA • **Esforço:** 1 semana • **Status:** ⏳ NÃO INICIADO
 
 **Por quê:** Telas piloto valeram pra calibrar; agora aplica em todas as outras (transações, faturas, cartões, contas, importação, onboarding, etc.).
 
 **Escopo:**
-- Listar todas as páginas remanescentes a partir do atlas da #32
+- Listar todas as páginas remanescentes a partir do atlas da #59
 - Aplicar tokens novos página a página
 - Refator de componentes compartilhados (Navbar, Sidebar, Modais, Tabelas, Cards)
 - Garantir consistência: nenhum hex hardcoded fora de `tokens.ts`/MUI theme
-- Atualizar atlas Playwright (`npm run snapshot`) ao final — comparar com baseline da #32
+- Atualizar atlas Playwright (`npm run snapshot`) ao final — comparar com baseline da #59
 
 **Checkpoint:** Atlas pós-propagação consistente visualmente; nenhuma página destoa.
 
 ---
 
-### 🟠 #36 — Fase 5: Refinar dark mode sobre os novos tokens
+### 🟠 #63 — Fase 5: Refinar dark mode sobre os novos tokens
 
 **Severidade:** 🟠 MÉDIA • **Esforço:** 1-2 dias • **Status:** ⏳ NÃO INICIADO
 

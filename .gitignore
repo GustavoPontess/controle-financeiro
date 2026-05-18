@@ -440,3 +440,7 @@ FodyWeavers.xsd
 
 # Cache de IDE
 *.lscache
+
+# Monarch Session Recorder (#60) — captura local da navegacao do socio.
+# PNGs full-page pesados + HTML/CSS reais; nao comitar (ver visao.md secao 4.2).
+docs/features/redesign-ux/monarch-session/
