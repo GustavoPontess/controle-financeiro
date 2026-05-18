@@ -18,13 +18,13 @@ status: CURRENT
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
-Bloco C — Pivot Família:                4/5  ✅ #22, #23, #24, #25  ⏳ #26
+Bloco C — Pivot Família:                5/5  ✅ #22, #23, #24, #25, #26  🎉 BLOCO COMPLETO
 Bloco D — Retenção e UX B2C:            0/5  ⏳ #31 (em andamento)
 
-Total Q3 2026:                          15/21 (71%)
+Total Q3 2026:                          16/21 (76%)
 ```
 
-**Status geral:** Blocos A e B 100% 🎉. Bloco C 4/5 — #22 (Família), #23 (Despesa Compartilhada), #24 (Dependentes) e #25 (Modos de rateio) concluídas; falta #26 (Acerto de contas). Sócio em #31 (Dark mode).
+**Status geral:** Blocos A, B e C 100% 🎉. Pivot Família completo (#22–#26). Resta o Bloco D — retenção e UX B2C. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,13 +49,20 @@ Síntese:
 
 ## Em progresso
 
-#22, #23, #24 e #25 concluídas. Última do Bloco C: **#26 — Acerto de contas**. Sócio em #31 (Dark mode, Bloco D).
+Bloco C (pivot Família) 100% — #22 a #26 concluídas. Próximo: **Bloco D** (#27 Importação OFX/CSV, #28 PWA, #29 Onboarding, #30 Notificações). Sócio em #31 (Dark mode).
 
 ---
 
 ## Histórico de sessões
 
-### Sessão 24 — 2026-05-17
+### Sessão 24 — 2026-05-17/18
+- **Issue #26 — Sub-feature 5: Acerto de contas (✅ CONCLUÍDA)** — PR #50
+  - Entidade `AcertoContas` (registro interno de pagamento de dívida, soft delete) + migration
+  - `AcertoService` (registrar, listar, cancelar); balanço abate acertos ativos do mês
+  - Endpoints `POST/GET/DELETE /familias/{id}/acertos` no FamiliasController
+  - Frontend: seção "Acerto de contas" na FamiliasPage (registrar + histórico)
+  - 8 testes (suíte 93 → 101)
+  - 🎉 Bloco C (pivot Família) completo
 - **Issue #25 — Sub-feature 4: Modos de rateio (✅ CONCLUÍDA)** — PR #49
   - Enum `ModoRateio`, `Familia.ModoRateioPadrao`, `MembroFamilia.RendaMensal`, `Transacao.ModoRateio`, entidade `RateioTransacao` + migration
   - `RateioService` (modo da família, renda, rateio personalizado); balanço recalcula cota por modo efetivo (igualitário/proporcional/personalizado)

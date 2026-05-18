@@ -2,7 +2,7 @@
 feature: familia
 sub-feature: sub-5-acerto
 issue: '#26'
-status: EM_IMPLEMENTACAO
+status: CONCLUIDA
 owner: Gustavo
 created: 2026-05-18
 ---
