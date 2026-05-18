@@ -40,8 +40,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid (cookie will be cleared by backend)
-      if (window.location.pathname !== '/auth/login') {
+      // Token expired or invalid (cookie will be cleared by backend).
+      // Não redirecionar quando já estamos em uma página de auth (/auth/login,
+      // /auth/register): nessas páginas o 401 do probe de sessão é esperado e
+      // redirecionar quebraria o acesso à tela de cadastro.
+      if (!window.location.pathname.startsWith('/auth/')) {
         window.location.href = '/auth/login'
       }
     }
