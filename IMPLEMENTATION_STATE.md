@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-18
-status: EM_EXECUCAO
-issue_atual: '#59 concluída + #60 sub-task 1 concluída — falta #60 sub-tasks 2 e 3'
+status: AGUARDANDO_INICIO
+issue_atual: '#59 e #60 concluídas — próxima é #61 (3 telas piloto)'
 ---
 
 # Implementation State — sessão atual
@@ -24,61 +24,57 @@ issue_atual: '#59 concluída + #60 sub-task 1 concluída — falta #60 sub-tasks
 
 ## Issue em execução
 
-**Issue:** **#60 — Fase 2: Design tokens** (sub-tasks 2 e 3 pendentes)
+**Issue:** Nenhuma iniciada — próxima é **#61 — Fase 3: Refator de 3 telas piloto**
 **Bloco:** A (Redesign UX)
-**Status:** EM EXECUÇÃO — branch `feature/32-33-playwright-tooling`
+**Status:** AGUARDANDO INÍCIO
 
-### Concluído nesta sessão (PR a abrir)
+### Concluído (#59 e #60)
 
-**#59 — Atlas Playwright:** ✅ COMPLETA
-- `playwright` + `tsx` instalados como dev deps; chromium baixado
+**#59 — Atlas Playwright:** ✅ COMPLETA (PR #64)
 - `scripts/snapshot.ts` — login via UI, varre 18 rotas, screenshot full-page
-  desktop (1440x900) + mobile (390x844)
-- `npm run snapshot` no `package.json`
-- `screenshots/` no `.gitignore`
-- Validado: 18 rotas x 2 viewports = 36 PNGs em 47.5s (< 3min ✓)
-- Doc no `controle-financeiro.web/README.md`
+  desktop (1440x900) + mobile (390x844); `npm run snapshot`
+- `screenshots/` no `.gitignore`; doc no README do frontend
 
-**#60 sub-task 1 — Monarch Session Recorder:** ✅ COMPLETA
-- `scripts/monarch-recorder.ts` — Playwright passivo, `launchPersistentContext`,
-  captura screenshot/HTML/CSS/tokens por tela, `journey.json`
-- `npm run monarch:record` no `package.json`
-- `monarch-session/` e `.playwright-monarch-profile/` no `.gitignore`
-- Typecheck OK; checkpoint funcional depende do sócio rodar (precisa conta Monarch)
+**#60 — Design tokens:** ✅ COMPLETA
+- sub-task 1 — `scripts/monarch-recorder.ts` (PR #64); recorder com Chrome
+  instalado + captura SPA (PR #66)
+- sub-task 2 — Caio rodou o recorder no Monarch
+- sub-task 3 — `src/theme/tokens.ts`, `src/theme/theme.ts`,
+  `docs/design-tokens.md`, `EmptyState` refatorado (PR #67)
+- pós-review (PR #68): cor de marca = teal placeholder (`#0d9488`), não o
+  laranja do Monarch; `borderRadius`/`fontSize` via token
 
-### Decisão: seguir solo
+### Apoio: DevDataSeeder (PR #69)
 
-Sócio sumiu — sem revisão cruzada do plano. Decisão de tocar #59/#60 solo;
-o PR serve de revisão assíncrona quando o sócio voltar. Pré-requisito de
-acesso ao Monarch fica com o sócio (sub-task 2).
+`ControleFinanceiro.Api/Data/DevDataSeeder.cs` — só Development, idempotente.
+Cria `dev@controle.test` (com família/casal), `conjuge@controle.test` e
+`solo@controle.test` (sem família), com contas e ~transações realistas.
+Faz o atlas capturar telas cheias em vez de vazias.
 
-### Próxima ação concreta
+### Próxima ação concreta — #61
 
-**#60 sub-task 2 — Navegação do sócio no Monarch (manual, bloqueado):**
-- Aguarda o sócio passar acesso à conta Monarch
-- Sócio roda `npm run monarch:record`, navega as telas de `visao.md` §4.2
-- Checkpoint: `journey.json` >= 30 entradas
+Refatorar 3 telas piloto aplicando os tokens (`src/theme/`):
+1. **Dashboard** — densidade, hierarquia, gráficos
+2. **FamiliasPage** — membros, balanço, despesas compartilhadas
+3. **Adicionar/editar transação** — formulário
 
-**#60 sub-task 3 — Análise + extração de tokens (depois da sub-task 2):**
-- Extrair paleta, tipografia, espaçamento, raio, sombras, estados de
-  `monarch-session/`
-- Outputs: `docs/design-tokens.md`, `src/theme/tokens.ts`, `src/theme/theme.ts`,
-  >= 1 componente refatorado
-
-**Enquanto bloqueado:** atlas da #59 já dá baseline do nosso app — pode
-adiantar análise visual comparando com material público do Monarch
-(`visao.md` §4.1).
+- Componentes novos do piloto vão em `src/components/v2/` (não tocar em
+  `src/components/` ainda — evita regressão), ver `visao.md` Fase 3
+- Cada tela: print antes (atlas #59) x depois no PR
+- Caio lidera #61; Pontes revisa
+- Antes de começar: subir backend (Postgres + seeder) e rodar
+  `npm run snapshot` para o baseline com dados
 
 ---
 
 ## Roadmap visual do ciclo
 
 ```
-Fase 1 — Atlas (#59)            ⏳ Aguardando início
+Fase 1 — Atlas (#59)            ✅ Concluída
   ↓
-Fase 2 — Design Tokens (#60)    ⏳ Pendente
+Fase 2 — Design Tokens (#60)    ✅ Concluída
   ↓
-Fase 3 — Telas piloto (#61)     ⏳ Pendente (3 telas: Dashboard, FamiliasPage, Adicionar Transação)
+Fase 3 — Telas piloto (#61)     ⏳ Próxima (3 telas: Dashboard, FamiliasPage, Adicionar Transação)
   ↓
 Fase 4 — Propagação (#62)       ⏳ Pendente
   ↓

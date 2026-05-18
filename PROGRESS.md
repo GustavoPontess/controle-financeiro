@@ -16,12 +16,12 @@ status: CURRENT
 ## Dashboard
 
 ```
-Bloco A — Redesign UX (inspirado em Monarch Money):  1/5  ✅ #59  ⏳ #60, #61, #62, #63
+Bloco A — Redesign UX (inspirado em Monarch Money):  2/5  ✅ #59 #60  ⏳ #61, #62, #63
 
-Total Q4 2026:                                       1/5 (20%)
+Total Q4 2026:                                       2/5 (40%)
 ```
 
-**Status geral:** ciclo em andamento. #59 (Atlas Playwright) concluída. Q3 2026 encerrou com 21/21 (100%) — ver `docs/history/PROGRESS_2026Q3.md`. A decisão estratégica deste ciclo: pausar entrega de features novas e investir no nível visual/UX do produto, porque o frontend funcional não é suficiente para B2C de finanças pago. Referência escolhida: Monarch Money (US-only, foco em casais/família, design system maduro, $850M de valor).
+**Status geral:** ciclo em andamento. #59 (Atlas Playwright) e #60 (Design tokens) concluídas. Q3 2026 encerrou com 21/21 (100%) — ver `docs/history/PROGRESS_2026Q3.md`. A decisão estratégica deste ciclo: pausar entrega de features novas e investir no nível visual/UX do produto, porque o frontend funcional não é suficiente para B2C de finanças pago. Referência escolhida: Monarch Money (US-only, foco em casais/família, design system maduro, $850M de valor).
 
 Ambos os devs trabalhando no front juntos. Distribuição prevista: Pontes lidera atlas + extração de tokens; sócio lidera telas piloto; revisão cruzada.
 
@@ -29,7 +29,9 @@ Ambos os devs trabalhando no front juntos. Distribuição prevista: Pontes lider
 
 ## Em progresso
 
-**#60 — Fase 2: Design tokens.** Sub-task 1 (Monarch Session Recorder, script Playwright) concluída no mesmo PR da #59. Sub-task 2 (navegação do sócio no Monarch) bloqueada aguardando acesso à conta. Sub-task 3 (análise + extração de tokens) depende da 2.
+Nada em execução. Próxima: **#61 — Fase 3: Refator de 3 telas piloto** (Dashboard, FamiliasPage, Adicionar Transação). Sócio (Caio) lidera, Pontes revisa.
+
+Baseline pronto: `DevDataSeeder` popula o banco e `npm run snapshot` gera o atlas com dados reais para o comparativo antes/depois.
 
 ---
 
@@ -53,14 +55,25 @@ Suíte de testes: 130+ ao fim do Q3.
 
 ### Sessão 27 — 2026-05-18
 - Início do ciclo Q4 — Redesign UX
-- Criadas issues #59-#63 no GitHub (GH #59-#63)
-- **#59 concluída** — `scripts/snapshot.ts` (atlas Playwright), `npm run snapshot`,
-  validado: 36 PNGs em 47.5s. Doc no README do frontend.
-- **#60 sub-task 1 concluída** — `scripts/monarch-recorder.ts` (Monarch Session
-  Recorder), `npm run monarch:record`
-- Branch `feature/32-33-playwright-tooling`, PR a abrir (Closes #59)
-- Próxima ação: #60 sub-task 2 — sócio navega o Monarch com o recorder
-  (bloqueado: aguarda acesso à conta Monarch)
+- Criadas issues #59-#63 no GitHub
+- **#59 concluída** (PR #64) — `scripts/snapshot.ts` (atlas Playwright),
+  `npm run snapshot`, validado: 36 PNGs em 47.5s
+- **#60 sub-task 1 concluída** — `scripts/monarch-recorder.ts` (Monarch
+  Session Recorder), `npm run monarch:record`
+- PR #65 — fix: `/auth/register` inacessível (interceptor 401 redirecionava)
+- Numeração interna alinhada à do GitHub (#59-#63)
+
+### Sessão 28 — 2026-05-18
+- **#60 concluído** — Caio rodou o recorder no Monarch (sub-task 2) e
+  extraiu os design tokens (sub-task 3, PR #67): `tokens.ts`, `theme.ts`,
+  `design-tokens.md`, `EmptyState` refatorado
+- PR #66 — recorder: suporte a Chrome instalado (`MONARCH_CHANNEL`) +
+  captura de navegação SPA (`framenavigated`)
+- PR #68 — fix pós-review: cor de marca trocada do laranja Monarch para
+  teal placeholder; `borderRadius`/`fontSize` via token
+- PR #69 — `DevDataSeeder`: dados de exemplo (dev com família + solo),
+  saldos realistas via "Saldo Inicial". Valida o atlas com telas cheias.
+- **Q4 em 2/5.** Próxima ação: #61 — refator das 3 telas piloto, Caio lidera
 
 ---
 
