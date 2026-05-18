@@ -323,13 +323,13 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-17 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 3 de 5 concluída
+**Status:** EM_EXECUCAO — etapa 4 de 5 concluída
 
 ### Etapas
 - [x] 1. Enum `ModoRateio` + `Familia.ModoRateioPadrao` + `MembroFamilia.RendaMensal` + `Transacao.ModoRateio` + entidade `RateioTransacao` + AppDbContext + migration
 - [x] 2. DTOs + `RateioService` + refatorar `DespesaCompartilhadaService.ObterBalancoAsync`
 - [x] 3. Endpoints — `FamiliasController` + `TransacoesController`
-- [ ] 4. Frontend: seletor de modo, renda por membro, rateio custom
+- [x] 4. Frontend: seletor de modo, renda por membro, rateio custom
 - [ ] 5. Testes de serviço
 
 ### Contexto
@@ -345,10 +345,10 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - Balanço continua dinâmico — nada persistido além das definições.
 
 ### Próxima ação concreta
-Etapa 4 — Frontend: tipos `ModoRateio`/rateio em `types/Familia.ts`,
-funções no `familiaService` (definir modo, renda, rateio da transação);
-seletor de modo + campo de renda por membro na `FamiliasPage`; ação
-"definir rateio" na `TransactionTable`. Ver `arquitetura.md` §4-§5.
+Etapa 5 — Testes de serviço para `RateioService` (definir modo, renda,
+rateio personalizado; validação de soma 100% e membros) e para o balanço
+por modo (`DespesaCompartilhadaService.ObterBalancoAsync` proporcional e
+personalizado, incluindo fallbacks). Ver `DespesaCompartilhadaServiceTests`.
 
 ---
 
