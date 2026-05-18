@@ -1,20 +1,28 @@
 import { useState } from "react"
 import {
   Box, Table, TableHead, TableBody, TableRow, TableCell,
-  TableContainer, Typography, Chip, IconButton,
+  TableContainer, Typography, Chip, IconButton, TextField, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined"
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline"
+import CallSplitIcon from "@mui/icons-material/CallSplit"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
 import { deleteTransaction } from "../../../services/transactionService"
 import {
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
+  getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
 } from "../../../services/familiaService"
-import type { Familia, Dependente } from "../../../types/Familia"
+import type { Familia, Dependente, ModoRateio, RateioTransacao } from "../../../types/Familia"
 import CustomButton from "../../CustomButton"
+
+const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
+  { value: 1, label: "Igualitário" },
+  { value: 2, label: "Proporcional à renda" },
+  { value: 3, label: "Personalizado" },
+]
 
 export interface TransactionRow {
   id: string
@@ -59,6 +67,11 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   const [assigning, setAssigning] = useState<TransactionRow | null>(null)
   const [dependentes, setDependentes] = useState<Dependente[]>([])
 
+  const [ratear, setRatear] = useState<TransactionRow | null>(null)
+  const [rateio, setRateio] = useState<RateioTransacao | null>(null)
+  const [rateioModo, setRateioModo] = useState<ModoRateio>(1)
+  const [percentuais, setPercentuais] = useState<Record<string, string>>({})
+
   const openShare = async (row: TransactionRow) => {
     setSharing(row)
     try {
@@ -102,6 +115,59 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
       setAssigning(null)
     } catch {
       notify({ open: true, message: "Erro ao atribuir despesa", severity: "error" })
+    }
+  }
+
+  const openRatear = async (row: TransactionRow) => {
+    setRatear(row)
+    setRateio(null)
+    try {
+      const r = await getRateioTransacao(row.id)
+      setRateio(r)
+      setRateioModo(r.modo ?? 1)
+      setPercentuais(Object.fromEntries(
+        r.membros.map(m => [m.usuarioId, m.percentual ? String(m.percentual) : ""])))
+    } catch {
+      notify({
+        open: true,
+        message: "Defina a despesa como compartilhada antes de ratear",
+        severity: "error",
+      })
+      setRatear(null)
+    }
+  }
+
+  const handleSalvarRateio = async () => {
+    if (!ratear) return
+    let itens = null
+    if (rateioModo === 3) {
+      itens = (rateio?.membros ?? []).map(m => ({
+        usuarioId: m.usuarioId,
+        percentual: Number(percentuais[m.usuarioId] ?? 0),
+      }))
+      const soma = itens.reduce((s, i) => s + i.percentual, 0)
+      if (Math.abs(soma - 100) > 0.01) {
+        notify({ open: true, message: "Os percentuais devem somar 100%", severity: "error" })
+        return
+      }
+    }
+    try {
+      await definirRateioTransacao(ratear.id, rateioModo, itens)
+      notify({ open: true, message: "Rateio definido", severity: "success" })
+      setRatear(null)
+    } catch {
+      notify({ open: true, message: "Erro ao definir rateio", severity: "error" })
+    }
+  }
+
+  const handleRemoverRateio = async () => {
+    if (!ratear) return
+    try {
+      await removerRateioTransacao(ratear.id)
+      notify({ open: true, message: "Override de rateio removido", severity: "success" })
+      setRatear(null)
+    } catch {
+      notify({ open: true, message: "Erro ao remover rateio", severity: "error" })
     }
   }
 
@@ -215,6 +281,13 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                         <PersonOutlineIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     )}
+                    {!isReceita && (
+                      <IconButton size="small" onClick={() => openRatear(row)}
+                        title="Definir rateio"
+                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
+                        <CallSplitIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    )}
                     <IconButton size="small" onClick={() => openEdit(row)}
                       sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
                       <EditIcon sx={{ fontSize: 15 }} />
@@ -310,6 +383,44 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
           <CustomButton variant="secondary" size="small" onClick={() => setAssigning(null)}>
             Cancelar
           </CustomButton>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={ratear !== null} onClose={() => setRatear(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Rateio de "{ratear?.descricao}"</DialogTitle>
+        <DialogContent>
+          <Typography fontSize={13} color="#6b7280" mb={1}>
+            Define o modo de rateio só para esta despesa, sobrepondo o padrão da família.
+          </Typography>
+          <TextField
+            select fullWidth size="small" margin="dense" label="Modo"
+            value={rateioModo}
+            onChange={e => setRateioModo(Number(e.target.value) as ModoRateio)}
+          >
+            {MODOS_RATEIO.map(m => (
+              <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+            ))}
+          </TextField>
+          {rateioModo === 3 && (rateio?.membros ?? []).map(m => (
+            <TextField
+              key={m.usuarioId}
+              fullWidth size="small" margin="dense" type="number"
+              label={`${m.nome} (%)`}
+              value={percentuais[m.usuarioId] ?? ""}
+              onChange={e => setPercentuais(p => ({ ...p, [m.usuarioId]: e.target.value }))}
+            />
+          ))}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between" }}>
+          <CustomButton variant="secondary" size="small" onClick={handleRemoverRateio}>
+            Remover override
+          </CustomButton>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <CustomButton variant="secondary" size="small" onClick={() => setRatear(null)}>
+              Cancelar
+            </CustomButton>
+            <CustomButton size="small" onClick={handleSalvarRateio}>Salvar</CustomButton>
+          </Box>
         </DialogActions>
       </Dialog>
     </>

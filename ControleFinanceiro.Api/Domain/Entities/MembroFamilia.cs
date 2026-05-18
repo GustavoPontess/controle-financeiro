@@ -17,6 +17,10 @@ public class MembroFamilia
     [MaxLength(60)]
     public string Papel { get; set; } = string.Empty;
 
+    /// <summary>Issue #25 — renda mensal do membro, usada no rateio proporcional.
+    /// Null = não informada.</summary>
+    public decimal? RendaMensal { get; set; }
+
     public DateTime EntrouEm { get; set; } = DateTime.UtcNow;
 
     public bool Ativo { get; set; } = true;

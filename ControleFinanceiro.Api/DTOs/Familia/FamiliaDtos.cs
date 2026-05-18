@@ -1,3 +1,5 @@
+using ControleFinanceiro.Api.Domain.Enums;
+
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record CriarFamiliaDto(string Nome);
@@ -18,7 +20,8 @@ public record MembroFamiliaDto(
     string NomeUsuario,
     string EmailUsuario,
     string Papel,
-    DateTime EntrouEm);
+    DateTime EntrouEm,
+    decimal? RendaMensal);
 
 public record FamiliaDetalheDto(
     Guid Id,
@@ -26,5 +29,6 @@ public record FamiliaDetalheDto(
     Guid CriadoPorUsuarioId,
     DateTime CriadoEm,
     bool EhAdmin,
+    ModoRateio ModoRateioPadrao,
     List<MembroFamiliaDto> Membros,
     List<ConviteFamiliaDto> ConvitesPendentes);

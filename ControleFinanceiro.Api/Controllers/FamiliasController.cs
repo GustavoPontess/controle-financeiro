@@ -15,17 +15,20 @@ public class FamiliasController : ControllerBase
     private readonly ConviteService _conviteService;
     private readonly DespesaCompartilhadaService _despesaCompartilhada;
     private readonly DependenteService _dependenteService;
+    private readonly RateioService _rateioService;
 
     public FamiliasController(
         FamiliaService familiaService,
         ConviteService conviteService,
         DespesaCompartilhadaService despesaCompartilhada,
-        DependenteService dependenteService)
+        DependenteService dependenteService,
+        RateioService rateioService)
     {
         _familiaService = familiaService;
         _conviteService = conviteService;
         _despesaCompartilhada = despesaCompartilhada;
         _dependenteService = dependenteService;
+        _rateioService = rateioService;
     }
 
     private Guid GetUserId()
@@ -118,7 +121,7 @@ public class FamiliasController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Balanço mensal da família no modo igualitário.</summary>
+    /// <summary>Balanço mensal da família, respeitando o modo de rateio.</summary>
     [HttpGet("{id:guid}/balanco")]
     [ProducesResponseType(typeof(BalancoFamiliaDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ObterBalanco(
@@ -175,5 +178,24 @@ public class FamiliasController : ControllerBase
         var result = await _dependenteService.ObterGastoAsync(
             id, depId, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
         return Ok(result);
+    }
+
+    /// <summary>Define o modo de rateio padrão da família.</summary>
+    [HttpPut("{id:guid}/modo-rateio")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DefinirModoRateio(Guid id, [FromBody] DefinirModoRateioDto dto)
+    {
+        await _rateioService.DefinirModoFamiliaAsync(id, GetUserId(), dto.Modo);
+        return NoContent();
+    }
+
+    /// <summary>Define a renda mensal de um membro (usada no rateio proporcional).</summary>
+    [HttpPut("{id:guid}/membros/{membroId:guid}/renda")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DefinirRenda(
+        Guid id, Guid membroId, [FromBody] DefinirRendaDto dto)
+    {
+        await _rateioService.DefinirRendaAsync(id, membroId, GetUserId(), dto.RendaMensal);
+        return NoContent();
     }
 }

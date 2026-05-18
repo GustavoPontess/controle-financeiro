@@ -14,6 +14,28 @@ export interface MembroFamilia {
   emailUsuario: string
   papel: string
   entrouEm: string
+  rendaMensal: number | null
+}
+
+// ── Modos de rateio (#25) ──
+
+export type ModoRateio = 1 | 2 | 3 // Igualitário, Proporcional, Personalizado
+
+export interface RateioItem {
+  usuarioId: string
+  percentual: number
+}
+
+export interface RateioMembro {
+  usuarioId: string
+  nome: string
+  percentual: number
+}
+
+export interface RateioTransacao {
+  modo: ModoRateio | null
+  familiaId: string | null
+  membros: RateioMembro[]
 }
 
 export type StatusConvite = 1 | 2 | 3 | 4 | 5 // Pendente, Aceito, Recusado, Revogado, Expirado
@@ -36,6 +58,7 @@ export interface FamiliaDetalhe {
   criadoPorUsuarioId: string
   criadoEm: string
   ehAdmin: boolean
+  modoRateioPadrao: ModoRateio
   membros: MembroFamilia[]
   convitesPendentes: ConviteFamilia[]
 }
@@ -54,12 +77,14 @@ export interface SaldoMembro {
   usuarioId: string
   nome: string
   pagou: number
+  cota: number
   saldo: number
 }
 
 export interface BalancoFamilia {
   mes: number
   ano: number
+  modo: ModoRateio
   total: number
   cota: number
   saldos: SaldoMembro[]
