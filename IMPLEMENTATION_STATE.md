@@ -282,8 +282,38 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 - MVP só modo igualitário; só `Tipo = Despesa` compartilhável.
 
 ### Próxima ação concreta
-#23 concluída — PR #46 Ready for review. Próxima Sub-feature do Bloco C:
-#24 (Dependentes).
+#23 concluída — PR #46 mergeado.
+
+---
+
+## Issue em execução
+
+**Issue:** #24 — Sub-feature 3: Dependentes
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 79 testes verdes
+
+### Etapas
+- [x] 1. Entidade `Dependente` + enum `TipoDependente` + `Transacao.DependenteId` + AppDbContext + migration
+- [x] 2. DTOs + `DependenteService` (CRUD, atribuir despesa, gasto por dependente)
+- [x] 3. Endpoints — `FamiliasController` (dependentes) + `TransacoesController` (atribuir)
+- [x] 4. Frontend: CRUD de dependentes na `FamiliasPage` + atribuir na `TransactionTable`
+- [x] 5. Testes de serviço — 10 testes (`DependenteServiceTests`), suíte 69→79
+
+### Contexto
+- Spec completa em `docs/features/familia/sub-3-dependentes/arquitetura.md`.
+- Dependente = entidade sem login (rótulo de atribuição de despesa). `Transacao`
+  ganhou `DependenteId` nullable — independente de `FamiliaId` (#23).
+
+### Decisões
+- Endpoints de dependente foram adicionados ao `FamiliasController` (não um
+  `DependentesController` separado) — consistente com despesas/balanço, que já
+  ficam aninhados sob `/familias/{id}`.
+
+### Próxima ação concreta
+#24 concluída — PR #48 (atualizar de Draft para Ready). Próxima no Bloco C:
+#25 — modos de rateio.
 
 ---
 
