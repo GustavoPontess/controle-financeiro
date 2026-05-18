@@ -446,12 +446,12 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 2 de 5 concluída
+**Status:** EM_EXECUCAO — etapa 3 de 5 concluída
 
 ### Etapas
 - [x] 1. Entidade `Notificacao` + enum `TipoNotificacao` + AppDbContext + migration + DTOs
 - [x] 2. `NotificacaoService` + `NotificacoesController`
-- [ ] 3. Integração: convite, despesa compartilhada e acerto geram notificação
+- [x] 3. Integração: convite, despesa compartilhada e acerto geram notificação
 - [ ] 4. Frontend: sino de notificações (contador + lista)
 - [ ] 5. Testes de serviço
 
@@ -466,10 +466,9 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Não notifica o próprio autor do evento.
 
 ### Próxima ação concreta
-Etapa 3 — integrar `NotificacaoService.CriarAsync` em `ConviteService`
-(convite → convidado), `DespesaCompartilhadaService.CompartilharAsync`
-(despesa → demais membros) e `AcertoService.RegistrarAsync` (acerto →
-recebedor). Ver `arquitetura.md` §1.
+Etapa 4 — Frontend: `notificacaoService.ts`, sino de notificações no layout
+(contador de não lidas + dropdown com a lista, marcar lida ao clicar). Ver
+`arquitetura.md` §3-§4.
 
 ---
 
