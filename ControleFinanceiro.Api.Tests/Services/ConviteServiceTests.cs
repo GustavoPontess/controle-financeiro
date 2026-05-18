@@ -33,7 +33,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
@@ -46,7 +46,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
@@ -63,7 +63,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
@@ -78,7 +78,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
@@ -94,7 +94,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var convidado = SeedUsuario(ctx, "convidado@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
@@ -117,7 +117,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var convidado = SeedUsuario(ctx, "convidado@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
@@ -135,7 +135,7 @@ public class ConviteServiceTests
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
-        var conviteSvc = new ConviteService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
         var convite = await conviteSvc.CriarAsync(

@@ -8,10 +8,12 @@ namespace ControleFinanceiro.Api.Services;
 public class DespesaCompartilhadaService
 {
     private readonly AppDbContext _context;
+    private readonly NotificacaoService _notificacaoService;
 
-    public DespesaCompartilhadaService(AppDbContext context)
+    public DespesaCompartilhadaService(AppDbContext context, NotificacaoService notificacaoService)
     {
         _context = context;
+        _notificacaoService = notificacaoService;
     }
 
     /// <summary>Marca uma transação como despesa compartilhada com uma família.</summary>
@@ -31,6 +33,22 @@ public class DespesaCompartilhadaService
 
         transacao.FamiliaId = familiaId;
         await _context.SaveChangesAsync();
+
+        // Issue #30 — notifica os demais membros ativos da família.
+        var outrosMembros = await _context.MembrosFamilia
+            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.UsuarioId != usuarioId)
+            .Select(m => m.UsuarioId)
+            .ToListAsync();
+
+        foreach (var membroId in outrosMembros)
+        {
+            await _notificacaoService.CriarAsync(
+                membroId,
+                TipoNotificacao.DespesaCompartilhada,
+                "Nova despesa compartilhada",
+                $"\"{transacao.Descricao}\" foi compartilhada na família.",
+                "/familias");
+        }
     }
 
     /// <summary>Desfaz o compartilhamento — a transação volta a ser pessoal.</summary>
