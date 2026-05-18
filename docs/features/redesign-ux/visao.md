@@ -7,7 +7,7 @@ status: ATIVO
 # Visão — Redesign UX inspirado em Monarch Money
 
 > Iniciativa do ciclo Q4 2026. Spec de visão.
-> Acompanha: `ISSUES.md` (5 issues #32–#36) e `IMPLEMENTATION_STATE.md`.
+> Acompanha: `ISSUES.md` (5 issues #59–#63) e `IMPLEMENTATION_STATE.md`.
 
 ---
 
@@ -76,7 +76,7 @@ Isso significa que existe **janela de tempo** para estabelecer a categoria "fina
 
 **Status:** sócio já tem acesso ao Monarch (conta criada e logada, problema do Plaid contornado).
 
-Em vez de printar manualmente, vamos capturar a navegação dele com um **script Playwright passivo** (`scripts/monarch-recorder.ts`) que registra automaticamente cada tela visitada — implementação delegada ao Code (ver `ISSUES.md` #33, sub-task 1).
+Em vez de printar manualmente, vamos capturar a navegação dele com um **script Playwright passivo** (`scripts/monarch-recorder.ts`) que registra automaticamente cada tela visitada — implementação delegada ao Code (ver `ISSUES.md` #60, sub-task 1).
 
 **Funcionamento:**
 
@@ -96,7 +96,7 @@ Em vez de printar manualmente, vamos capturar a navegação dele com um **script
 
 - Não precisamos enumerar "quais telas printar" — qualquer tela visitada vira snapshot
 - Captura **fluxos**, não só telas (ordem importa: onboarding tem N passos, settings tem subseções)
-- HTML/CSS reais permitem extração **objetiva** de tokens (cores, fontes, espaçamentos) na fase #33 — sem inspecionar pixel a pixel
+- HTML/CSS reais permitem extração **objetiva** de tokens (cores, fontes, espaçamentos) na fase #60 — sem inspecionar pixel a pixel
 - Reutilizável para outras referências (Copilot, Lunch Money) sem reescrever
 - Output em texto/PNG é indexável e pesquisável (`grep` em todos os HTMLs)
 
@@ -136,7 +136,7 @@ Conclusão: zero custo de ferramenta. Conta real + material público resolvem.
 
 ## 5. Fases do redesign
 
-### Fase 1 — Atlas Playwright (#32) — 1 dia
+### Fase 1 — Atlas Playwright (#59) — 1 dia
 
 **Objetivo:** ter visão objetiva de tudo que temos hoje, antes de mudar qualquer pixel.
 
@@ -152,7 +152,7 @@ Conclusão: zero custo de ferramenta. Conta real + material público resolvem.
 
 **Saída:** 30+ PNGs comparáveis lado a lado com os screenshots do Monarch.
 
-### Fase 2 — Design tokens (#33) — 2 dias
+### Fase 2 — Design tokens (#60) — 2 dias
 
 **Objetivo:** transformar "queremos algo bonito" em contrato objetivo e versionado.
 
@@ -178,7 +178,7 @@ Extrair do Monarch e formalizar:
 - `controle-financeiro.web/src/theme/tokens.ts` — TypeScript exportando as constantes
 - `controle-financeiro.web/src/theme/theme.ts` — `createTheme(...)` MUI usando os tokens
 
-### Fase 3 — 3 telas piloto (#34) — 3-5 dias
+### Fase 3 — 3 telas piloto (#61) — 3-5 dias
 
 **Objetivo:** validar a direção antes de aplicar em todo o app.
 
@@ -193,17 +193,17 @@ Para cada uma:
 - Revisão pelos 2 devs
 - Componentes reutilizáveis extraídos viram pasta `src/components/v2/` (não toca em `src/components/` ainda para evitar regressão)
 
-### Fase 4 — Propagação (#35) — 1 semana
+### Fase 4 — Propagação (#62) — 1 semana
 
 **Objetivo:** aplicar tokens e padrões nas páginas restantes.
 
-- Listar páginas remanescentes a partir do atlas da #32
+- Listar páginas remanescentes a partir do atlas da #59
 - Aplicar tokens página a página
 - Refator de componentes compartilhados (Navbar, Sidebar, Modais, Tabelas, Cards)
 - Garantir: zero hex hardcoded fora de `tokens.ts`/theme MUI
-- Re-rodar `npm run snapshot` ao final e comparar com baseline da #32
+- Re-rodar `npm run snapshot` ao final e comparar com baseline da #59
 
-### Fase 5 — Dark mode revisão (#36) — 1-2 dias
+### Fase 5 — Dark mode revisão (#63) — 1-2 dias
 
 **Objetivo:** dark mode entregue em #31 foi sobre a base antiga. Sobre os tokens novos, vale revalidar.
 
