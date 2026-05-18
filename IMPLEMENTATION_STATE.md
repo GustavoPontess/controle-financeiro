@@ -472,6 +472,34 @@ Web Push / e-mail fica como follow-up (precisa de VAPID/SMTP).
 
 ---
 
+## Issue em execução
+**Issue:** #28 — PWA instalável + offline básico
+**Bloco:** D (Retenção e UX B2C)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — build verde, artefatos PWA gerados, 43 testes front verdes
+
+### Etapas
+- [x] 1. `vite-plugin-pwa` (manifest + SW Workbox) + ícone SVG + metatags
+- [x] 2. Componente `InstallPrompt` (beforeinstallprompt, exibe após 2ª sessão)
+- [x] 3. Build verde + validação dos artefatos PWA (`sw.js`, `manifest.webmanifest`, `registerSW.js`)
+
+### Contexto
+- Spec completa em `docs/features/pwa/arquitetura.md`. Feature 100% frontend.
+- Branch `feature/28-pwa` (de `origin/main`). PR #54 (Draft).
+- Build gera `sw.js`, `manifest.webmanifest`, `registerSW.js` — validado.
+
+### Decisões
+- `registerType: autoUpdate` — sem prompt de "nova versão".
+- Ícone SVG (sem PNG binário) — cobre instalação na maioria dos navegadores.
+- Offline = só shell (precache Workbox); cache de dados de API fica para depois.
+
+### Próxima ação concreta
+#28 concluída — PR #54 (atualizar de Draft para Ready). Bloco D 4/5 (#27, #28,
+#29, #30). Resta só #31 (Dark mode — sócio).
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
