@@ -103,6 +103,10 @@ builder.Services.AddScoped<RateioService>();
 // Issue #26 — Acerto de contas
 builder.Services.AddScoped<AcertoService>();
 
+// Issue #27 — Importação de extrato OFX/CSV
+builder.Services.AddScoped<ExtratoImportService>();
+builder.Services.AddScoped<ImportacaoService>();
+
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
 builder.Services.AddScoped<LimiteCalculatorService>();

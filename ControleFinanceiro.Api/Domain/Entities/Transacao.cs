@@ -89,4 +89,9 @@ public class Transacao
 
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Issue #27 — FITID do OFX quando a transação veio de importação
+    /// de extrato. Usado para deduplicar reimportações. Null = lançamento manual.</summary>
+    [MaxLength(120)]
+    public string? ImportacaoFitId { get; set; }
 }
