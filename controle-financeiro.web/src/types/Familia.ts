@@ -111,3 +111,18 @@ export interface GastoDependente {
   ano: number
   total: number
 }
+
+// ── Acerto de contas (#26) ──
+
+export interface AcertoContas {
+  id: string
+  deUsuarioId: string
+  deNome: string
+  paraUsuarioId: string
+  paraNome: string
+  valor: number
+  mes: number
+  ano: number
+  observacao: string | null
+  criadoEm: string
+}

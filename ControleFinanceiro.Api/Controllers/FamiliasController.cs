@@ -16,19 +16,22 @@ public class FamiliasController : ControllerBase
     private readonly DespesaCompartilhadaService _despesaCompartilhada;
     private readonly DependenteService _dependenteService;
     private readonly RateioService _rateioService;
+    private readonly AcertoService _acertoService;
 
     public FamiliasController(
         FamiliaService familiaService,
         ConviteService conviteService,
         DespesaCompartilhadaService despesaCompartilhada,
         DependenteService dependenteService,
-        RateioService rateioService)
+        RateioService rateioService,
+        AcertoService acertoService)
     {
         _familiaService = familiaService;
         _conviteService = conviteService;
         _despesaCompartilhada = despesaCompartilhada;
         _dependenteService = dependenteService;
         _rateioService = rateioService;
+        _acertoService = acertoService;
     }
 
     private Guid GetUserId()
@@ -196,6 +199,33 @@ public class FamiliasController : ControllerBase
         Guid id, Guid membroId, [FromBody] DefinirRendaDto dto)
     {
         await _rateioService.DefinirRendaAsync(id, membroId, GetUserId(), dto.RendaMensal);
+        return NoContent();
+    }
+
+    /// <summary>Registra um acerto de contas entre dois membros da família.</summary>
+    [HttpPost("{id:guid}/acertos")]
+    [ProducesResponseType(typeof(AcertoContasDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> RegistrarAcerto(Guid id, [FromBody] RegistrarAcertoDto dto)
+    {
+        var result = await _acertoService.RegistrarAsync(id, GetUserId(), dto);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    /// <summary>Histórico de acertos da família (mês/ano opcionais).</summary>
+    [HttpGet("{id:guid}/acertos")]
+    [ProducesResponseType(typeof(List<AcertoContasDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarAcertos(
+        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+    {
+        return Ok(await _acertoService.ListarAsync(id, GetUserId(), mes, ano));
+    }
+
+    /// <summary>Cancela um acerto (soft delete — preserva o histórico).</summary>
+    [HttpDelete("{id:guid}/acertos/{acertoId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> CancelarAcerto(Guid id, Guid acertoId)
+    {
+        await _acertoService.CancelarAsync(id, acertoId, GetUserId());
         return NoContent();
     }
 }
