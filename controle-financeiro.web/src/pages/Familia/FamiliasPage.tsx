@@ -8,6 +8,7 @@ import GroupAddIcon from "@mui/icons-material/GroupAdd"
 import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined"
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined"
 import CustomButton from "../../components/CustomButton"
 import EmptyState from "../../components/EmptyState/EmptyState"
 import {
@@ -15,10 +16,11 @@ import {
   revogarConvite, removerMembro, getConvitesPendentes, aceitarConvite, recusarConvite,
   getDespesasFamilia, getBalancoFamilia,
   getDependentes, criarDependente, atualizarDependente, inativarDependente,
+  definirModoRateio, definirRendaMembro,
 } from "../../services/familiaService"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
-  Dependente, TipoDependente,
+  Dependente, TipoDependente, MembroFamilia, ModoRateio,
 } from "../../types/Familia"
 
 const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
@@ -36,6 +38,14 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
+
+const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
+  { value: 1, label: "Igualitário" },
+  { value: 2, label: "Proporcional à renda" },
+  { value: 3, label: "Personalizado por despesa" },
+]
+const modoRateioLabel = (m: ModoRateio) =>
+  MODOS_RATEIO.find(x => x.value === m)?.label ?? "Igualitário"
 
 export default function FamiliasPage() {
   const { notify } = useOutletContext<OutletContextType>()
@@ -62,6 +72,9 @@ export default function FamiliasPage() {
   const [depApelido, setDepApelido] = useState("")
   const [depNascimento, setDepNascimento] = useState("")
   const [depTipo, setDepTipo] = useState<TipoDependente>(4)
+
+  const [rendaMembro, setRendaMembro] = useState<MembroFamilia | null>(null)
+  const [rendaValor, setRendaValor] = useState("")
 
   const loadData = async () => {
     try {
@@ -220,6 +233,40 @@ export default function FamiliasPage() {
     }
   }
 
+  const handleDefinirModo = async (modo: ModoRateio) => {
+    if (!detalhe) return
+    try {
+      await definirModoRateio(detalhe.id, modo)
+      notify({ open: true, message: "Modo de rateio atualizado", severity: "success" })
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao atualizar modo de rateio", severity: "error" })
+    }
+  }
+
+  const abrirRendaDialog = (m: MembroFamilia) => {
+    setRendaMembro(m)
+    setRendaValor(m.rendaMensal != null ? String(m.rendaMensal) : "")
+  }
+
+  const handleSalvarRenda = async () => {
+    if (!detalhe || !rendaMembro) return
+    const trimmed = rendaValor.trim()
+    const renda = trimmed === "" ? null : Number(trimmed)
+    if (renda != null && (Number.isNaN(renda) || renda < 0)) {
+      notify({ open: true, message: "Renda inválida", severity: "error" })
+      return
+    }
+    try {
+      await definirRendaMembro(detalhe.id, rendaMembro.id, renda)
+      notify({ open: true, message: "Renda atualizada", severity: "success" })
+      setRendaMembro(null)
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao atualizar renda", severity: "error" })
+    }
+  }
+
   const handleDissolver = async () => {
     if (!detalhe || !confirm("Dissolver a família? Esta ação não pode ser desfeita.")) return
     try {
@@ -335,14 +382,21 @@ export default function FamiliasPage() {
                 }}>
                   <Box>
                     <Typography fontSize={14}>{m.nomeUsuario} <Chip label={m.papel} size="small" /></Typography>
-                    <Typography fontSize={12} color="#9ca3af">{m.emailUsuario} · desde {formatDate(m.entrouEm)}</Typography>
+                    <Typography fontSize={12} color="#9ca3af">
+                      {m.emailUsuario} · desde {formatDate(m.entrouEm)}
+                      {m.rendaMensal != null && ` · renda ${formatMoney(m.rendaMensal)}`}
+                    </Typography>
                   </Box>
-                  <IconButton size="small" onClick={() => handleRemoverMembro(
-                    m.id, m.usuarioId === detalhe.criadoPorUsuarioId ? false : true)}>
-                    {m.usuarioId === detalhe.criadoPorUsuarioId
-                      ? null
-                      : <DeleteOutlineIcon fontSize="small" />}
-                  </IconButton>
+                  <Box>
+                    <IconButton size="small" onClick={() => abrirRendaDialog(m)} title="Definir renda">
+                      <PaymentsOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    {m.usuarioId !== detalhe.criadoPorUsuarioId && (
+                      <IconButton size="small" onClick={() => handleRemoverMembro(m.id, true)}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
                 </Box>
               ))}
 
@@ -365,6 +419,24 @@ export default function FamiliasPage() {
                 </>
               )}
 
+              {/* Modo de rateio */}
+              <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>Modo de rateio</Typography>
+              {detalhe.ehAdmin ? (
+                <TextField
+                  select fullWidth size="small" margin="dense"
+                  value={detalhe.modoRateioPadrao}
+                  onChange={e => handleDefinirModo(Number(e.target.value) as ModoRateio)}
+                >
+                  {MODOS_RATEIO.map(m => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography fontSize={13} color="#6b7280">
+                  {modoRateioLabel(detalhe.modoRateioPadrao)}
+                </Typography>
+              )}
+
               {/* Balanço do mês */}
               {balanco && (
                 <>
@@ -376,7 +448,11 @@ export default function FamiliasPage() {
                       display: "flex", justifyContent: "space-between",
                       py: 0.75, borderBottom: "1px solid #f1f5f9",
                     }}>
-                      <Typography fontSize={13}>{s.nome} — pagou {formatMoney(s.pagou)}</Typography>
+                      <Typography fontSize={13}>
+                        {s.nome} — pagou {formatMoney(s.pagou)}
+                        <Typography component="span" fontSize={12} color="#9ca3af">
+                          {" "}· cota {formatMoney(s.cota)}</Typography>
+                      </Typography>
                       <Typography fontSize={13} fontWeight={600}
                         color={s.saldo >= 0 ? "#15803d" : "#dc2626"}>
                         {s.saldo >= 0
@@ -504,6 +580,24 @@ export default function FamiliasPage() {
         <DialogActions>
           <CustomButton variant="secondary" size="small" onClick={() => setDepOpen(false)}>Cancelar</CustomButton>
           <CustomButton size="small" onClick={handleSalvarDependente}>Salvar</CustomButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog definir renda */}
+      <Dialog open={rendaMembro !== null} onClose={() => setRendaMembro(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Renda mensal — {rendaMembro?.nomeUsuario}</DialogTitle>
+        <DialogContent>
+          <Typography fontSize={13} color="#6b7280" mb={1}>
+            Usada no rateio proporcional. Deixe vazio para não informar.
+          </Typography>
+          <TextField
+            autoFocus fullWidth label="Renda mensal (R$)" margin="dense" type="number"
+            value={rendaValor} onChange={e => setRendaValor(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <CustomButton variant="secondary" size="small" onClick={() => setRendaMembro(null)}>Cancelar</CustomButton>
+          <CustomButton size="small" onClick={handleSalvarRenda}>Salvar</CustomButton>
         </DialogActions>
       </Dialog>
     </Box>

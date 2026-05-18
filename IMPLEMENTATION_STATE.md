@@ -317,6 +317,39 @@ despesa com pagador; balanço igualitário correto (total 300, cota 300 com
 
 ---
 
+## Issue em execução
+
+**Issue:** #25 — Sub-feature 4: Modos de rateio (proporcional + custom)
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-17 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 83 testes verdes
+
+### Etapas
+- [x] 1. Enum `ModoRateio` + `Familia.ModoRateioPadrao` + `MembroFamilia.RendaMensal` + `Transacao.ModoRateio` + entidade `RateioTransacao` + AppDbContext + migration
+- [x] 2. DTOs + `RateioService` + refatorar `DespesaCompartilhadaService.ObterBalancoAsync`
+- [x] 3. Endpoints — `FamiliasController` + `TransacoesController`
+- [x] 4. Frontend: seletor de modo, renda por membro, rateio custom
+- [x] 5. Testes de serviço — 14 testes (`RateioServiceTests`), suíte 69→83
+
+### Contexto
+- Spec completa em `docs/features/familia/sub-4-rateio/arquitetura.md`.
+- Branch `feature/25-rateio` (de `origin/main` — não inclui #24, que é ortogonal).
+- Issues #25 e #26 (dependente) assinadas. PR #49 (Draft).
+
+### Decisões
+- Modo definido em dois níveis: `Familia.ModoRateioPadrao` (default) e
+  `Transacao.ModoRateio` (override por despesa, nullable).
+- `RateioTransacao` (percentual por membro) só existe em modo Personalizado;
+  substituído por completo a cada PUT.
+- Balanço continua dinâmico — nada persistido além das definições.
+
+### Próxima ação concreta
+#25 concluída — PR #49 (atualizar de Draft para Ready). Próxima e última do
+Bloco C: #26 — Acerto de contas (issue dependente já assinada).
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
