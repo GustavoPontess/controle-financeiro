@@ -66,7 +66,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, nome, dataNascimento || null, password)
-      navigate('/')
+      navigate('/onboarding')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar')
     } finally {

@@ -411,6 +411,36 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 
 ---
 
+## Issue em execução
+**Issue:** #29 — Onboarding guiado pós-cadastro
+**Bloco:** D (Retenção e UX B2C)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 3 concluída
+
+### Etapas
+- [x] 1. `Usuario.OnboardingConcluido` + migration + `OnboardingService` + `OnboardingController` + DTOs
+- [ ] 2. Frontend: `OnboardingPage` (4 passos) + rota + redirect no registro
+- [ ] 3. Testes de serviço
+
+### Contexto
+- Spec completa em `docs/features/onboarding/arquitetura.md`.
+- Branch `feature/29-onboarding` (de `origin/main`). PR #52 (Draft).
+- O passo "importar extrato" do onboarding aponta para `/importacao` (rota do
+  #27 — PR #51, ainda não mergeado).
+
+### Decisões
+- Checklist computado a cada consulta; só a flag `OnboardingConcluido` persiste.
+- Trigger do onboarding = redirect pós-registro (não guard global).
+- Passo "criar família" é opcional, não bloqueia a conclusão.
+
+### Próxima ação concreta
+Etapa 2 — Frontend: `onboardingService.ts`, `OnboardingPage` com os 4 passos
+(estado feito/pendente + CTA), rota `/onboarding`, e `RegisterPage` redireciona
+para `/onboarding` após cadastro. Ver `arquitetura.md` §1-§3.
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
