@@ -7,10 +7,13 @@ import {
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined"
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
 import { deleteTransaction } from "../../../services/transactionService"
-import { getFamilias, compartilharTransacao } from "../../../services/familiaService"
-import type { Familia } from "../../../types/Familia"
+import {
+  getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
+} from "../../../services/familiaService"
+import type { Familia, Dependente } from "../../../types/Familia"
 import CustomButton from "../../CustomButton"
 
 export interface TransactionRow {
@@ -53,6 +56,8 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
   const [sharing, setSharing] = useState<TransactionRow | null>(null)
   const [familias, setFamilias] = useState<Familia[]>([])
+  const [assigning, setAssigning] = useState<TransactionRow | null>(null)
+  const [dependentes, setDependentes] = useState<Dependente[]>([])
 
   const openShare = async (row: TransactionRow) => {
     setSharing(row)
@@ -71,6 +76,32 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
       setSharing(null)
     } catch {
       notify({ open: true, message: "Erro ao compartilhar despesa", severity: "error" })
+    }
+  }
+
+  const openAssign = async (row: TransactionRow) => {
+    setAssigning(row)
+    try {
+      const fams = await getFamilias()
+      const listas = await Promise.all(fams.map(f => getDependentes(f.id)))
+      setDependentes(listas.flat())
+    } catch {
+      notify({ open: true, message: "Erro ao carregar dependentes", severity: "error" })
+    }
+  }
+
+  const handleAssign = async (dependenteId: string | null) => {
+    if (!assigning) return
+    try {
+      await atribuirDependente(assigning.id, dependenteId)
+      notify({
+        open: true,
+        message: dependenteId ? "Despesa atribuída ao dependente" : "Atribuição removida",
+        severity: "success",
+      })
+      setAssigning(null)
+    } catch {
+      notify({ open: true, message: "Erro ao atribuir despesa", severity: "error" })
     }
   }
 
@@ -177,6 +208,13 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                         <GroupAddOutlinedIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     )}
+                    {!isReceita && (
+                      <IconButton size="small" onClick={() => openAssign(row)}
+                        title="Atribuir a dependente"
+                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
+                        <PersonOutlineIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    )}
                     <IconButton size="small" onClick={() => openEdit(row)}
                       sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
                       <EditIcon sx={{ fontSize: 15 }} />
@@ -230,6 +268,46 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
         </DialogContent>
         <DialogActions>
           <CustomButton variant="secondary" size="small" onClick={() => setSharing(null)}>
+            Cancelar
+          </CustomButton>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={assigning !== null} onClose={() => setAssigning(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Atribuir a um dependente</DialogTitle>
+        <DialogContent>
+          {dependentes.length === 0 ? (
+            <Typography fontSize={13} color="#9ca3af">
+              Nenhum dependente cadastrado nas suas famílias.
+            </Typography>
+          ) : (
+            <>
+              <Typography fontSize={13} color="#6b7280" mb={1.5}>
+                A quem atribuir "{assigning?.descricao}"?
+              </Typography>
+              {dependentes.map(d => (
+                <Box
+                  key={d.id}
+                  onClick={() => handleAssign(d.id)}
+                  sx={{
+                    py: 1.25, px: 1.5, mb: 0.5, borderRadius: "8px", cursor: "pointer",
+                    border: "1px solid #e5e7eb",
+                    "&:hover": { bgcolor: "#f9fafb", borderColor: "#9ca3af" },
+                  }}
+                >
+                  <Typography fontSize={14} fontWeight={500}>
+                    {d.nome}{d.apelido ? ` (${d.apelido})` : ""}
+                  </Typography>
+                </Box>
+              ))}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between" }}>
+          <CustomButton variant="secondary" size="small" onClick={() => handleAssign(null)}>
+            Remover atribuição
+          </CustomButton>
+          <CustomButton variant="secondary" size="small" onClick={() => setAssigning(null)}>
             Cancelar
           </CustomButton>
         </DialogActions>
