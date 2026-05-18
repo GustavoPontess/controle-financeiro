@@ -57,7 +57,7 @@ export const theme = createTheme({
     overline: { fontSize: tokens.typography.fontSize['2xs'], lineHeight: tokens.typography.lineHeight.default },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: parseInt(tokens.radius.lg, 10),
   },
   components: {
     MuiPaper: {
