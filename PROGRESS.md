@@ -19,12 +19,12 @@ status: CURRENT
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
 Bloco C — Pivot Família:                5/5  ✅ #22, #23, #24, #25, #26  🎉 BLOCO COMPLETO
-Bloco D — Retenção e UX B2C:            1/5  ✅ #27  ⏳ #28, #29, #30, #31
+Bloco D — Retenção e UX B2C:            2/5  ✅ #27, #29  ⏳ #28, #30, #31
 
 Total Q3 2026:                          17/21 (81%)
 ```
 
-**Status geral:** Blocos A, B e C 100% 🎉. Pivot Família completo (#22–#26). Bloco D 1/5 — #27 (Importação OFX/CSV) concluída. Sócio em #31 (Dark mode).
+**Status geral:** Blocos A, B e C 100% 🎉. Pivot Família completo (#22–#26). Bloco D 2/5 — #27 (Importação OFX/CSV) e #29 (Onboarding) concluídas. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,13 +49,18 @@ Síntese:
 
 ## Em progresso
 
-Bloco C (pivot Família) 100%. Bloco D iniciado: **#27 (Importação OFX/CSV) concluída**. Próximo: #29 — Onboarding guiado. Sócio em #31 (Dark mode).
+Bloco D em andamento — #27 e #29 concluídas. Próximo: **#30 (Notificações)** ou **#28 (PWA)**. Sócio em #31 (Dark mode).
 
 ---
 
 ## Histórico de sessões
 
 ### Sessão 24 — 2026-05-17/18
+- **Issue #29 — Onboarding guiado pós-cadastro (✅ CONCLUÍDA)** — PR #52
+  - `Usuario.OnboardingConcluido` + migration
+  - `OnboardingService` (checklist computado de primeiros passos + concluir idempotente) + `OnboardingController`
+  - Frontend: `OnboardingPage` em tela cheia (4 passos), rota `/onboarding`, redirect pós-registro
+  - 8 testes
 - **Issue #27 — Importação OFX/CSV de extrato bancário (✅ CONCLUÍDA)** — PR #51
   - `Transacao.ImportacaoFitId` + migration
   - `ExtratoImportService` — parsers OFX (SGML/XML) e CSV (BR)
