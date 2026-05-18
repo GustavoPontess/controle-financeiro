@@ -22,6 +22,54 @@ namespace ControleFinanceiro.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.AcertoContas", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DeUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<Guid>("ParaUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeUsuarioId");
+
+                    b.HasIndex("ParaUsuarioId");
+
+                    b.HasIndex("FamiliaId", "Ano", "Mes");
+
+                    b.ToTable("AcertosContas");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1056,6 +1104,33 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.AcertoContas", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "DeUsuario")
+                        .WithMany()
+                        .HasForeignKey("DeUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "ParaUsuario")
+                        .WithMany()
+                        .HasForeignKey("ParaUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DeUsuario");
+
+                    b.Navigation("Familia");
+
+                    b.Navigation("ParaUsuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", b =>

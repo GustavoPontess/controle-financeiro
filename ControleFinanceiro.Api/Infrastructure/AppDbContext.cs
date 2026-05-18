@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<MembroFamilia> MembrosFamilia => Set<MembroFamilia>();
     public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
     public DbSet<RateioTransacao> RateiosTransacao => Set<RateioTransacao>();
+    public DbSet<AcertoContas> AcertosContas => Set<AcertoContas>();
 
     // ── Issue #24 Dependentes ──
     public DbSet<Dependente> Dependentes => Set<Dependente>();
@@ -344,5 +345,30 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RateioTransacao>()
             .Property(r => r.Percentual)
             .HasPrecision(5, 2);
+
+        // ── Issue #26 Acerto de contas ──
+
+        // AcertoContas → Familia (Cascade: somem com a família)
+        modelBuilder.Entity<AcertoContas>()
+            .HasOne(a => a.Familia)
+            .WithMany()
+            .HasForeignKey(a => a.FamiliaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // AcertoContas → De/Para Usuario (Restrict: não deletar usuário com acertos)
+        modelBuilder.Entity<AcertoContas>()
+            .HasOne(a => a.DeUsuario)
+            .WithMany()
+            .HasForeignKey(a => a.DeUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AcertoContas>()
+            .HasOne(a => a.ParaUsuario)
+            .WithMany()
+            .HasForeignKey(a => a.ParaUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AcertoContas>()
+            .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
     }
 }

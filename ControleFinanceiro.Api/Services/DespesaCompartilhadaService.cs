@@ -134,12 +134,22 @@ public class DespesaCompartilhadaService
             }
         }
 
+        // Acertos ativos do mês (Issue #26): o pagador "abate" da dívida, o
+        // recebedor tem o saldo reduzido pelo que já recebeu.
+        var acertos = await _context.AcertosContas
+            .Where(a => a.FamiliaId == familiaId && a.Ativo && a.Mes == mes && a.Ano == ano)
+            .Select(a => new { a.DeUsuarioId, a.ParaUsuarioId, a.Valor })
+            .ToListAsync();
+
         var saldos = membros
             .Select(m =>
             {
                 var pagou = despesas.Where(d => d.CriadoPor == m.UsuarioId).Sum(d => d.Valor);
                 var cota = cotaDevida[m.UsuarioId];
-                return new SaldoMembroDto(m.UsuarioId, m.Nome, pagou, cota, pagou - cota);
+                var acertosPagos = acertos.Where(a => a.DeUsuarioId == m.UsuarioId).Sum(a => a.Valor);
+                var acertosRecebidos = acertos.Where(a => a.ParaUsuarioId == m.UsuarioId).Sum(a => a.Valor);
+                var saldo = pagou - cota + acertosPagos - acertosRecebidos;
+                return new SaldoMembroDto(m.UsuarioId, m.Nome, pagou, cota, saldo);
             })
             .ToList();
 

@@ -17,10 +17,11 @@ import {
   getDespesasFamilia, getBalancoFamilia,
   getDependentes, criarDependente, atualizarDependente, inativarDependente,
   definirModoRateio, definirRendaMembro,
+  getAcertos, registrarAcerto, cancelarAcerto,
 } from "../../services/familiaService"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
-  Dependente, TipoDependente, MembroFamilia, ModoRateio,
+  Dependente, TipoDependente, MembroFamilia, ModoRateio, AcertoContas,
 } from "../../types/Familia"
 
 const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
@@ -76,6 +77,13 @@ export default function FamiliasPage() {
   const [rendaMembro, setRendaMembro] = useState<MembroFamilia | null>(null)
   const [rendaValor, setRendaValor] = useState("")
 
+  const [acertos, setAcertos] = useState<AcertoContas[]>([])
+  const [acertoOpen, setAcertoOpen] = useState(false)
+  const [acertoDe, setAcertoDe] = useState("")
+  const [acertoPara, setAcertoPara] = useState("")
+  const [acertoValor, setAcertoValor] = useState("")
+  const [acertoObs, setAcertoObs] = useState("")
+
   const loadData = async () => {
     try {
       const [fs, cs] = await Promise.all([getFamilias(), getConvitesPendentes()])
@@ -97,16 +105,18 @@ export default function FamiliasPage() {
       const agora = new Date()
       const mes = agora.getMonth() + 1
       const ano = agora.getFullYear()
-      const [d, desp, bal, deps] = await Promise.all([
+      const [d, desp, bal, deps, acs] = await Promise.all([
         getFamilia(familiaId),
         getDespesasFamilia(familiaId, mes, ano),
         getBalancoFamilia(familiaId, mes, ano),
         getDependentes(familiaId),
+        getAcertos(familiaId, mes, ano),
       ])
       setDetalhe(d)
       setDespesas(desp)
       setBalanco(bal)
       setDependentes(deps)
+      setAcertos(acs)
     } catch {
       notify({ open: true, message: "Erro ao carregar a família", severity: "error" })
     } finally {
@@ -264,6 +274,54 @@ export default function FamiliasPage() {
       await abrirDetalhe(detalhe.id)
     } catch {
       notify({ open: true, message: "Erro ao atualizar renda", severity: "error" })
+    }
+  }
+
+  const abrirAcertoDialog = () => {
+    setAcertoDe("")
+    setAcertoPara("")
+    setAcertoValor("")
+    setAcertoObs("")
+    setAcertoOpen(true)
+  }
+
+  const handleRegistrarAcerto = async () => {
+    if (!detalhe) return
+    const valor = Number(acertoValor.trim())
+    if (!acertoDe || !acertoPara) {
+      notify({ open: true, message: "Selecione quem pagou e quem recebeu", severity: "error" })
+      return
+    }
+    if (acertoDe === acertoPara) {
+      notify({ open: true, message: "Pagador e recebedor devem ser diferentes", severity: "error" })
+      return
+    }
+    if (Number.isNaN(valor) || valor <= 0) {
+      notify({ open: true, message: "Valor do acerto inválido", severity: "error" })
+      return
+    }
+    try {
+      await registrarAcerto(detalhe.id, {
+        deUsuarioId: acertoDe,
+        paraUsuarioId: acertoPara,
+        valor,
+        observacao: acertoObs.trim() || null,
+      })
+      notify({ open: true, message: "Acerto registrado", severity: "success" })
+      setAcertoOpen(false)
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao registrar acerto", severity: "error" })
+    }
+  }
+
+  const handleCancelarAcerto = async (acertoId: string) => {
+    if (!detalhe || !confirm("Cancelar este acerto? O histórico é preservado.")) return
+    try {
+      await cancelarAcerto(detalhe.id, acertoId)
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao cancelar acerto", severity: "error" })
     }
   }
 
@@ -516,6 +574,36 @@ export default function FamiliasPage() {
                   <Typography fontSize={13} fontWeight={600}>{formatMoney(d.valor)}</Typography>
                 </Box>
               ))}
+
+              {/* Acerto de contas */}
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2, mb: 1 }}>
+                <Typography fontSize={14} fontWeight={600}>Acerto de contas</Typography>
+                <CustomButton size="small" startIcon={<PaymentsOutlinedIcon />} onClick={abrirAcertoDialog}>
+                  Registrar acerto
+                </CustomButton>
+              </Box>
+              {acertos.length === 0 ? (
+                <Typography fontSize={13} color="#9ca3af">
+                  Nenhum acerto registrado neste mês.
+                </Typography>
+              ) : acertos.map(a => (
+                <Box key={a.id} sx={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                }}>
+                  <Typography fontSize={13}>
+                    {a.deNome} → {a.paraNome}
+                    <Typography component="span" fontSize={12} color="#9ca3af">
+                      {a.observacao ? ` · ${a.observacao}` : ""} · {formatDate(a.criadoEm)}</Typography>
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Typography fontSize={13} fontWeight={600}>{formatMoney(a.valor)}</Typography>
+                    <IconButton size="small" onClick={() => handleCancelarAcerto(a.id)}>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ))}
             </DialogContent>
             <DialogActions sx={{ justifyContent: "space-between" }}>
               <Box>
@@ -598,6 +686,44 @@ export default function FamiliasPage() {
         <DialogActions>
           <CustomButton variant="secondary" size="small" onClick={() => setRendaMembro(null)}>Cancelar</CustomButton>
           <CustomButton size="small" onClick={handleSalvarRenda}>Salvar</CustomButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog registrar acerto */}
+      <Dialog open={acertoOpen} onClose={() => setAcertoOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Registrar acerto</DialogTitle>
+        <DialogContent>
+          <Typography fontSize={13} color="#6b7280" mb={1}>
+            Registra que um membro pagou a outro o saldo pendente. Não mexe nas contas reais.
+          </Typography>
+          <TextField
+            select fullWidth label="Quem pagou" margin="dense"
+            value={acertoDe} onChange={e => setAcertoDe(e.target.value)}
+          >
+            {(detalhe?.membros ?? []).map(m => (
+              <MenuItem key={m.usuarioId} value={m.usuarioId}>{m.nomeUsuario}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select fullWidth label="Quem recebeu" margin="dense"
+            value={acertoPara} onChange={e => setAcertoPara(e.target.value)}
+          >
+            {(detalhe?.membros ?? []).map(m => (
+              <MenuItem key={m.usuarioId} value={m.usuarioId}>{m.nomeUsuario}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            fullWidth label="Valor (R$)" margin="dense" type="number"
+            value={acertoValor} onChange={e => setAcertoValor(e.target.value)}
+          />
+          <TextField
+            fullWidth label="Observação / comprovante (opcional)" margin="dense"
+            value={acertoObs} onChange={e => setAcertoObs(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <CustomButton variant="secondary" size="small" onClick={() => setAcertoOpen(false)}>Cancelar</CustomButton>
+          <CustomButton size="small" onClick={handleRegistrarAcerto}>Registrar</CustomButton>
         </DialogActions>
       </Dialog>
     </Box>
