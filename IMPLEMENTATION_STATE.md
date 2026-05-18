@@ -381,6 +381,37 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 
 ---
 
+## Issue em execução
+**Issue:** #27 — Importação OFX/CSV de extrato bancário
+**Bloco:** D (Retenção e UX B2C)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** EM_EXECUCAO — etapa 1 de 5 concluída
+
+### Etapas
+- [x] 1. `Transacao.ImportacaoFitId` + migration + DTOs
+- [ ] 2. `ExtratoImportService` — parsers OFX e CSV
+- [ ] 3. Endpoints preview + confirmar (`ImportacaoController`) — dedup + sugestão
+- [ ] 4. Frontend: página de importação (upload + revisão)
+- [ ] 5. Testes de serviço
+
+### Contexto
+- Spec completa em `docs/features/importacao/arquitetura.md`.
+- Branch `feature/27-importacao-ofx` (de `origin/main`). PR #51 (Draft).
+- Primeira issue do Bloco D. #26 ainda em PR aberto (#50, não mergeado).
+
+### Decisões
+- Dedup OFX por `ImportacaoFitId`; CSV por conta+data+valor+descrição.
+- Importação só cria transações em conta (não cartão) nesta entrega.
+- Sem upload de arquivo persistido — parse em memória, limite 2 MB.
+
+### Próxima ação concreta
+Etapa 2 — `ExtratoImportService` com `ParseOfx` (SGML tolerante, blocos
+`STMTTRN`) e `ParseCsv` (delimitador `;`/`,`, colunas por cabeçalho com
+fallback posicional). Ver `arquitetura.md` §3.
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
