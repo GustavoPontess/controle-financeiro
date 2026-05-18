@@ -132,6 +132,8 @@ export const atribuirDependente = async (
   transacaoId: string, dependenteId: string | null,
 ): Promise<void> => {
   await api.put(`/transacoes/${transacaoId}/dependente`, { dependenteId })
+}
+
 // ── Modos de rateio (#25) ──
 
 export const definirModoRateio = async (
