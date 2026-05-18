@@ -61,11 +61,44 @@ http://localhost:5173
 
 ### Scripts
 ```bash
-npm run dev      # Servidor de desenvolvimento
-npm run build    # Build de produção
-npm run preview  # Preview do build
-npm run lint     # Executa linter
+npm run dev            # Servidor de desenvolvimento
+npm run build          # Build de produção
+npm run preview        # Preview do build
+npm run lint           # Executa linter
+npm run test           # Testes (Vitest)
+npm run snapshot       # Atlas Playwright das telas (ver Redesign UX)
+npm run monarch:record # Captura sessão Monarch Money (ver Redesign UX)
 ```
+
+## Ferramentas de redesign (ciclo Q4)
+
+### `npm run snapshot` — Atlas Playwright (#59)
+
+Varre todas as rotas do app e gera screenshots full-page em desktop
+(1440x900) e mobile (390x844). Baseline visual para o redesign.
+
+Pré-requisitos: backend e frontend rodando, e um usuário de teste.
+
+Saída em `screenshots/atlas/{desktop,mobile}/<rota>.png` (gitignored).
+
+Variáveis de ambiente opcionais: `SNAPSHOT_BASE_URL` (default
+`http://localhost:5173`), `SNAPSHOT_EMAIL` (default `dev@controle.test`),
+`SNAPSHOT_PASSWORD` (default `Dev@123456`).
+
+Crie o usuário de teste uma vez via API:
+```bash
+curl -X POST http://localhost:5293/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@controle.test","nome":"Dev Atlas","password":"Dev@123456","confirmPassword":"Dev@123456"}'
+```
+
+### `npm run monarch:record` — Monarch Session Recorder (#60)
+
+Abre um Chromium persistente e captura automaticamente cada tela visitada
+(screenshot, HTML, CSS, design tokens) enquanto o usuário navega o Monarch
+Money. Logue no browser que abrir, navegue à vontade, feche quando terminar.
+Saída em `docs/features/redesign-ux/monarch-session/` (gitignored); o login
+persiste entre runs (`.playwright-monarch-profile/`).
 
 ## Funcionalidades
 

@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Atlas Playwright (#59) — gerado sob demanda, nao comitar
+screenshots/
+
+# Monarch Session Recorder (#60) — perfil de browser persistente
+.playwright-monarch-profile/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
