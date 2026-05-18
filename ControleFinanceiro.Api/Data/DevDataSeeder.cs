@@ -111,7 +111,7 @@ public static class DevDataSeeder
         var rng = new Random(42); // seed fixo → atlas determinístico
         var transacoes = new List<Transacao>();
 
-        Transacao Nova(string desc, decimal valor, TipoTransacao tipo, Guid catId,
+        Transacao Nova(string desc, decimal valor, TipoTransacao tipo, Guid? catId,
             Guid contaId, DateTime data, Guid? familiaId = null) => new()
         {
             Id = Guid.NewGuid(),
@@ -143,6 +143,13 @@ public static class DevDataSeeder
             ("Café", 8m, 25m, "Alimentação"),
         };
 
+        // Saldo inicial de cada conta — mesmo padrão do ContaService.CriarAsync:
+        // uma Receita "Saldo Inicial" sem categoria, datada na abertura da conta.
+        var abertura = hoje.AddMonths(-3).AddDays(-10);
+        transacoes.Add(Nova("Saldo Inicial", 5000m, TipoTransacao.Receita, null, corrente.Id, abertura));
+        transacoes.Add(Nova("Saldo Inicial", 8000m, TipoTransacao.Receita, null, poupanca.Id, abertura));
+        transacoes.Add(Nova("Saldo Inicial", 200m, TipoTransacao.Receita, null, carteira.Id, abertura));
+
         for (int m = 0; m < 3; m++)
         {
             var refMes = hoje.AddMonths(-m);
@@ -158,6 +165,10 @@ public static class DevDataSeeder
             transacoes.Add(Nova("Saque em dinheiro", 600m, TipoTransacao.Receita,
                 CatReceita("Outros"), carteira.Id,
                 new DateTime(refMes.Year, refMes.Month, 3)));
+            // Rendimento mensal da poupança.
+            transacoes.Add(Nova("Rendimentos", Math.Round(35m + (decimal)rng.NextDouble() * 30, 2),
+                TipoTransacao.Receita, CatReceita("Rendimentos"), poupanca.Id,
+                new DateTime(refMes.Year, refMes.Month, 1)));
 
             // Despesas do mês
             foreach (var d in despesas)
