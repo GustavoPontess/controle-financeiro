@@ -22,11 +22,11 @@ export default function EmptyState({ title, description, actionLabel, onAction }
     >
       <InboxOutlinedIcon sx={{ fontSize: 32, color: "action.selected", mb: 1.5 }} />
 
-      <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={13} mb={0.5}>
+      <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.sm} mb={0.5}>
         {title}
       </Typography>
 
-      <Typography color="text.secondary" fontSize={12} mb={2.5}>
+      <Typography color="text.secondary" fontSize={tokens.typography.fontSize.xs} mb={2.5}>
         {description}
       </Typography>
 

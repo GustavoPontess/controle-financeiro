@@ -5,10 +5,14 @@
 
 export const tokens = {
   color: {
+    // PLACEHOLDER — cor de marca provisória (teal). Trocar quando a
+    // identidade visual for definida. Todo o app deriva daqui
+    // (tokens.ts -> theme.ts -> componentes): mudar estes 3 valores propaga.
+    // Não usar o laranja do Monarch (#ff692d) — é marca registrada deles.
     brand: {
-      primary: '#ff692d',
-      hover: '#f35b16',
-      subtle: '#ffe9de',
+      primary: '#0d9488',
+      hover: '#0f766e',
+      subtle: '#ccfbf1',
     },
     background: {
       page: '#f6f5f3',

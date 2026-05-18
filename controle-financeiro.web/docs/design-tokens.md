@@ -12,11 +12,16 @@ Tokens derivados das CSS custom properties do dashboard do Monarch Money (Issue 
 
 ### Marca
 
+> ⚠️ **PLACEHOLDER.** A cor de marca abaixo (teal) é provisória. Não usamos o
+> laranja do Monarch (`#ff692d`) — é a marca registrada deles; ser "o Monarch
+> brasileiro" não pode ser ser um Monarch pintado igual. Definir a identidade
+> visual em passo próprio; ao trocar, alterar só `brand.*` em `tokens.ts`.
+
 | Token | Valor | Uso |
 |-------|-------|-----|
-| `brand.primary` | `#ff692d` | CTAs, links ativos, indicadores |
-| `brand.hover` | `#f35b16` | Estado hover do primário |
-| `brand.subtle` | `#ffe9de` | Fundo de chips/badges da marca |
+| `brand.primary` | `#0d9488` | CTAs, links ativos, indicadores |
+| `brand.hover` | `#0f766e` | Estado hover do primário |
+| `brand.subtle` | `#ccfbf1` | Fundo de chips/badges da marca |
 
 ### Backgrounds
 
