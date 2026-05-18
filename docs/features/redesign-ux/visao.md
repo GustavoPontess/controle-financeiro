@@ -72,23 +72,59 @@ Isso significa que existe **janela de tempo** para estabelecer a categoria "fina
 - **API reversa em GraphQL:** github.com/hammem/monarchmoney — mostra o modelo de dados deles (útil pra inspirar nosso schema futuro)
 - **Inspetor do navegador:** abrir monarch.com no Chrome, F12, ver CSS variables do tema deles (paleta + tipografia + espaçamentos)
 
-### 4.2 Acesso interno via conta do sócio (em andamento)
+### 4.2 Captura interna via Monarch Session Recorder
 
-O sócio está criando conta no Monarch para capturar screenshots reais do app populado. Vai dar visão muito mais rica que material público de marketing.
+**Status:** sócio já tem acesso ao Monarch (conta criada e logada, problema do Plaid contornado).
 
-**Atenção prática com a conta:**
+Em vez de printar manualmente, vamos capturar a navegação dele com um **script Playwright passivo** (`scripts/monarch-recorder.ts`) que registra automaticamente cada tela visitada — implementação delegada ao Code (ver `ISSUES.md` #33, sub-task 1).
 
-- **Free tier do Monarch não existe** — só free trial de 7 dias com cartão. Plano básico é $14.99/mês ou $99.99/ano. Para o estudo de UX, 7 dias é suficiente; cancelar antes do fim.
-- **Plaid não cobre Brasil bem.** Se Monarch pedir conexão de banco obrigatória durante onboarding, o sócio vai esbarrar nisso. Opções:
-  1. **Plaid Sandbox** — Monarch deveria oferecer "skip" da conexão de banco para uso manual. Se não oferecer, alguns devs usam credenciais sandbox do Plaid (`user_good` / `pass_good`) com bancos fictícios tipo "First Platypus Bank" (não recomendado — viola ToS)
-  2. **Manual mode** — Monarch tem modo "sem sincronização", só lançamento manual. Pode ter que cavucar nas settings de onboarding para encontrar
-  3. **Cadastrar conta manual qualquer** — criar "conta corrente" sem conectar banco, lançar 5-10 transações manuais para popular o dashboard com dado real
-- **Foco do print:** páginas internas críticas pro nosso estudo são (1) Dashboard, (2) Transactions list, (3) Adicionar transação, (4) Shared Views (família/casal), (5) Reports, (6) Goals, (7) Settings
-- **Resolução do print:** capturar em desktop full HD (1920x1080) e em mobile (390x844 / iPhone 14). Vamos comparar lado a lado com nosso atlas
+**Funcionamento:**
 
-Salvar todos os screenshots em `docs/features/redesign-ux/screenshots-monarch/` (criar pasta) com nome descritivo (`dashboard-desktop.png`, `transacao-novo-mobile.png`, etc.).
+1. Script abre um Chromium controlado pelo Playwright (visível, não headless), com persistent context (cookies/login persistem entre runs)
+2. Sócio loga no Monarch nesse Chromium e navega normalmente
+3. A cada nova navegação (`page.on('load')`), o script captura automaticamente:
+   - **Screenshot full-page** em desktop (1920×1080) — página inteira, incluindo scroll
+   - **HTML** completo do DOM (`page.html`)
+   - **CSS** consolidado de todas as stylesheets (`styles.css`) — `getRules()` em cada `document.styleSheets`
+   - **Design tokens publicados** (CSS custom properties no `:root`) extraídos para `tokens.json`
+   - **Metadata**: URL, título, timestamp, n° do step
+4. Tudo organizado em `docs/features/redesign-ux/monarch-session/step-NNN-<slug-da-rota>/`
+5. Um `journey.json` no root da sessão agrega a sequência completa (ordem real de navegação)
+6. Quando sócio fecha o browser, script encerra automaticamente
 
-### 4.3 Catálogos pagos avaliados e descartados
+**Por que isso vale mais que screenshots manuais:**
+
+- Não precisamos enumerar "quais telas printar" — qualquer tela visitada vira snapshot
+- Captura **fluxos**, não só telas (ordem importa: onboarding tem N passos, settings tem subseções)
+- HTML/CSS reais permitem extração **objetiva** de tokens (cores, fontes, espaçamentos) na fase #33 — sem inspecionar pixel a pixel
+- Reutilizável para outras referências (Copilot, Lunch Money) sem reescrever
+- Output em texto/PNG é indexável e pesquisável (`grep` em todos os HTMLs)
+
+**Trade-off:** sócio tem que usar o Chromium que o script abre (re-login no Monarch, ~1 min).
+
+**Lista mínima para ele navegar** (recorder pega tudo, mas garante cobertura):
+
+- Login / signup / onboarding (multi-step)
+- Dashboard (após pular conexão de banco ou cadastrar conta manual)
+- Transactions list + filtros + busca + detalhe de uma transação
+- Adicionar transação (form completo, todos os campos)
+- Categorias / orçamento
+- Goals (metas)
+- Reports / Insights
+- Shared Views / settings de família/couples (CORE pra nosso estudo)
+- Settings → Account, Notifications, Subscription
+- Help / FAQ (mostra padrão de página estática)
+
+Tempo estimado: 1–2h de navegação + 5–10 min nossos para revisar output.
+
+**Privacidade e tamanho:** `docs/features/redesign-ux/monarch-session/` vai no `.gitignore`. PNGs full-page pesam (estimo 50–100 MB no total) e podem conter dados (fictícios ou não) que não devem subir pro repo público. Só o `journey.json` (estrutura, sem screenshot) pode ser comitado se quisermos rastreabilidade.
+
+### 4.3 Lembrete prático sobre a conta do Monarch
+
+- **Free tier não existe** — só trial de 7 dias com cartão. Plano básico $14.99/mês. Cancelar antes do fim do trial.
+- **Plaid não cobre Brasil** — se aparecer obrigatoriedade de conectar banco durante navegação, pular ou usar conta manual. Sócio já passou desse ponto.
+
+### 4.4 Catálogos pagos avaliados e descartados
 
 - **Mobbin** ($40/mês) — biblioteca de UX patterns mobile. Útil mas escopo amplo demais; conta do sócio entrega melhor pro nosso caso específico.
 - **Page Flows** (~$25/mês) — catalogou 607 telas do Monarch, mas tudo gated.
