@@ -356,13 +356,13 @@ Bloco C: #26 — Acerto de contas (issue dependente já assinada).
 **Bloco:** C (Pivot Família)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 3 de 5 concluída
+**Status:** EM_EXECUCAO — etapa 4 de 5 concluída
 
 ### Etapas
 - [x] 1. Entidade `AcertoContas` + AppDbContext + migration
 - [x] 2. DTOs + `AcertoService` (registrar, listar, cancelar) + integrar no balanço
 - [x] 3. Endpoints — `FamiliasController`
-- [ ] 4. Frontend: seção "Acerto de contas" na `FamiliasPage`
+- [x] 4. Frontend: seção "Acerto de contas" na `FamiliasPage`
 - [ ] 5. Testes de serviço
 
 ### Contexto
@@ -376,9 +376,9 @@ Bloco C: #26 — Acerto de contas (issue dependente já assinada).
 - Balanço subtrai acertos ativos do mês: `Saldo = pagou − cota + acertosPagos − acertosRecebidos`.
 
 ### Próxima ação concreta
-Etapa 4 — Frontend: tipos `AcertoContas` em `types/Familia.ts`, funções no
-`familiaService` (registrar/listar/cancelar acerto); seção "Acerto de contas"
-na `FamiliasPage` (registrar a partir do balanço + histórico). Ver `arquitetura.md` §3-§4.
+Etapa 5 — Testes de serviço para `AcertoService` (registrar com validações:
+mesmo pagador/recebedor, valor, membro; listar; cancelar) e para o efeito do
+acerto no balanço (`ObterBalancoAsync` abate acertos do mês).
 
 ---
 
