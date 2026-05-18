@@ -81,8 +81,8 @@ export default function AccountsPage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={800} color="#111827">Contas</Typography>
-          <Typography fontSize={13} color="#6b7280">Cartões, contas correntes e a carteira automática do sistema.</Typography>
+          <Typography fontSize={22} fontWeight={800} color="text.primary">Contas</Typography>
+          <Typography fontSize={13} color="text.secondary">Cartões, contas correntes e a carteira automática do sistema.</Typography>
         </Box>
         <CustomButton
           size="small"
@@ -94,17 +94,17 @@ export default function AccountsPage() {
       </Box>
 
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.2, border: "1px solid #e5e7eb", borderRadius: "16px", background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Saldo Total</Typography>
+        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: "divider", borderRadius: "16px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Saldo Total</Typography>
           <Typography fontSize={28} fontWeight={800} color="#15803d">{formatMoney(totalSaldo)}</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.2, border: "1px solid #e5e7eb", borderRadius: "16px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Contas Bancárias</Typography>
-          <Typography fontSize={28} fontWeight={800} color="#111827">{totalContas}</Typography>
+        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: "divider", borderRadius: "16px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Contas Bancárias</Typography>
+          <Typography fontSize={28} fontWeight={800} color="text.primary">{totalContas}</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.2, border: "1px solid #e5e7eb", borderRadius: "16px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Carteira Física</Typography>
-          <Typography fontSize={28} fontWeight={800} color="#111827">{formatMoney(totalCarteira)}</Typography>
+        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: "divider", borderRadius: "16px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Carteira Física</Typography>
+          <Typography fontSize={28} fontWeight={800} color="text.primary">{formatMoney(totalCarteira)}</Typography>
         </Paper>
       </Box>
 
@@ -144,18 +144,18 @@ export default function AccountsPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 2 }}>
           {contasBancarias.map(conta => {
             const banco = bancos.find(b => b.id === conta.bancoId)
-            const colors = tipoContaColor[conta.tipo] ?? { bg: "#f3f4f6", color: "#374151" }
+            const colors = tipoContaColor[conta.tipo] ?? { bg: "#f3f4f6", color: "#6b7280" }
             return (
               <Box key={conta.id} sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
-                <Paper elevation={0} sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: "18px", background: "#fff" }}>
+                <Paper elevation={0} sx={{ p: 2, border: 1, borderColor: "divider", borderRadius: "18px", bgcolor: "background.paper" }}>
                   <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2, mb: 2 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                       <Box sx={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: banco?.cor || colors.bg, display: "flex", alignItems: "center", justifyContent: "center", color: banco?.cor ? "#fff" : colors.color, fontWeight: 800 }}>
                         {(banco?.nomeFantasia ?? conta.nome).charAt(0).toUpperCase()}
                       </Box>
                       <Box>
-                        <Typography fontSize={15} fontWeight={700} color="#111827">{conta.nome}</Typography>
-                        <Typography fontSize={12} color="#6b7280">{banco?.nomeFantasia ?? "Sem banco vinculado"}</Typography>
+                        <Typography fontSize={15} fontWeight={700} color="text.primary">{conta.nome}</Typography>
+                        <Typography fontSize={12} color="text.secondary">{banco?.nomeFantasia ?? "Sem banco vinculado"}</Typography>
                       </Box>
                     </Box>
                     <Chip label={conta.tipoDescricao} size="small" sx={{ backgroundColor: colors.bg, color: colors.color, fontWeight: 700 }} />
@@ -163,17 +163,17 @@ export default function AccountsPage() {
 
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 2 }}>
                     <Box>
-                      <Typography fontSize={12} color="#6b7280">Saldo atual</Typography>
+                      <Typography fontSize={12} color="text.secondary">Saldo atual</Typography>
                       <Typography fontSize={22} fontWeight={800} color="#15803d">{formatMoney(getContaBalance(conta))}</Typography>
                     </Box>
                     <Box sx={{ textAlign: "right" }}>
-                      <Typography fontSize={12} color="#6b7280">Número</Typography>
-                      <Typography fontSize={13} fontWeight={600} color="#111827">{conta.numeroConta || "—"}</Typography>
+                      <Typography fontSize={12} color="text.secondary">Número</Typography>
+                      <Typography fontSize={13} fontWeight={600} color="text.primary">{conta.numeroConta || "—"}</Typography>
                     </Box>
                   </Box>
 
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                    <Typography fontSize={12} color="#6b7280">{conta.isCarteira ? "Carteira física" : "Conta vinculada"}</Typography>
+                    <Typography fontSize={12} color="text.secondary">{conta.isCarteira ? "Carteira física" : "Conta vinculada"}</Typography>
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <CustomButton 
                         size="small" 

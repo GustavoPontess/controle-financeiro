@@ -74,7 +74,7 @@ const BANDEIRA_COLOR: Record<number, { bg: string; color: string }> = {
   3: { bg: "#dcfce7", color: "#15803d" },
   4: { bg: "#ffe4e6", color: "#be123c" },
   5: { bg: "#ede9fe", color: "#7c3aed" },
-  6: { bg: "#f3f4f6", color: "#374151" },
+  6: { bg: "#f3f4f6", color: "#6b7280" },
 }
 
 const STATUS_COLOR: Record<number, { bg: string; color: string; label: string }> = {
@@ -245,16 +245,16 @@ export default function CreditCardsPage() {
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find(c => c.id === faturasCartaoId)
 
-  const headerSx = { fontSize: 12, fontWeight: 600, color: "#6b7280", bgcolor: "#f9fafb", py: 1.25 }
-  const cellSx = { fontSize: 13, color: "#374151", py: 1.25 }
+  const headerSx = { fontSize: 12, fontWeight: 600, color: "text.secondary", bgcolor: "action.hover", py: 1.25 }
+  const cellSx = { fontSize: 13, color: "text.primary", py: 1.25 }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">Cartões</Typography>
-          <Typography fontSize={13} color="#6b7280">Gerencie seus cartões e acompanhe faturas</Typography>
+          <Typography fontSize={22} fontWeight={700} color="text.primary">Cartões</Typography>
+          <Typography fontSize={13} color="text.secondary">Gerencie seus cartões e acompanhe faturas</Typography>
         </Box>
         <CustomButton size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />} onClick={openCreate}>
           Novo Cartão
@@ -263,19 +263,19 @@ export default function CreditCardsPage() {
 
       {/* Stats */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Total de Cartões</Typography>
-          <Typography fontSize={26} fontWeight={800} color="#111827">{cartoes.length}</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Total de Cartões</Typography>
+          <Typography fontSize={26} fontWeight={800} color="text.primary">{cartoes.length}</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Limite Total</Typography>
-          <Typography fontSize={22} fontWeight={800} color="#111827">{formatMoney(totalLimite)}</Typography>
-          <Typography fontSize={11} color="#9ca3af">cartões com crédito</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Limite Total</Typography>
+          <Typography fontSize={22} fontWeight={800} color="text.primary">{formatMoney(totalLimite)}</Typography>
+          <Typography fontSize={11} color="text.secondary">cartões com crédito</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="#6b7280" mb={0.5}>Gastos no Ciclo</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
+          <Typography fontSize={12} color="text.secondary" mb={0.5}>Gastos no Ciclo</Typography>
           <Typography fontSize={22} fontWeight={800} color="#dc2626">{formatMoney(totalGastos)}</Typography>
-          <Typography fontSize={11} color="#9ca3af">ciclo atual</Typography>
+          <Typography fontSize={11} color="text.secondary">ciclo atual</Typography>
         </Paper>
       </Box>
 
@@ -296,18 +296,19 @@ export default function CreditCardsPage() {
 
             return (
               <Paper key={c.id} elevation={0} sx={{
-                border: `1.5px solid ${isSelected ? "#2563eb" : "#e5e7eb"}`,
+                border: `1.5px solid ${isSelected ? "#2563eb" : "transparent"}`,
+                borderColor: isSelected ? "#2563eb" : "divider",
                 borderRadius: "12px", overflow: "hidden",
                 transition: "border-color 0.15s",
               }}>
-                <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box sx={{ px: 3, py: 2.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                     <Box sx={{ width: 38, height: 38, borderRadius: "10px", bgcolor: colors.bg, color: colors.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <CreditCardIcon sx={{ fontSize: 20 }} />
                     </Box>
                     <Box>
-                      <Typography fontSize={14} fontWeight={700} color="#111827">{c.nome}</Typography>
-                      <Typography fontSize={12} color="#6b7280">
+                      <Typography fontSize={14} fontWeight={700} color="text.primary">{c.nome}</Typography>
+                      <Typography fontSize={12} color="text.secondary">
                         {c.bandeiraDescricao}{c.ultimosDigitos ? ` · ****${c.ultimosDigitos}` : ""}
                       </Typography>
                     </Box>
@@ -315,15 +316,15 @@ export default function CreditCardsPage() {
                   <Box sx={{ display: "flex" }}>
                     {c.temCredito && (
                       <IconButton size="small" onClick={() => openFaturas(c.id)}
-                        sx={{ color: isSelected ? "#2563eb" : "#9ca3af", "&:hover": { color: "#2563eb" } }}
+                        sx={{ color: isSelected ? "#2563eb" : "text.secondary", "&:hover": { color: "#2563eb" } }}
                         title="Ver faturas">
                         <ReceiptIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     )}
-                    <IconButton size="small" onClick={() => openEdit(c)} sx={{ color: "#9ca3af", "&:hover": { color: "#374151" } }}>
+                    <IconButton size="small" onClick={() => openEdit(c)} sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
                       <EditIcon sx={{ fontSize: 15 }} />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(c.id)} sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}>
+                    <IconButton size="small" onClick={() => handleDelete(c.id)} sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}>
                       <DeleteIcon sx={{ fontSize: 15 }} />
                     </IconButton>
                   </Box>
@@ -333,33 +334,33 @@ export default function CreditCardsPage() {
                   <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                     {c.temCredito && <Chip label="Crédito" size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#dbeafe", color: "#1d4ed8" }} />}
                     {c.temDebito  && <Chip label="Débito"  size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#dcfce7", color: "#15803d" }} />}
-                    {c.ehPrePago  && <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#f3f4f6", color: "#374151" }} />}
+                    {c.ehPrePago  && <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, bgcolor: "action.hover", color: "text.primary" }} />}
                   </Box>
                   {c.contaNome && (
                     <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                      <Typography fontSize={12} color="#6b7280">Conta vinculada</Typography>
-                      <Typography fontSize={12} fontWeight={600} color="#374151">{c.contaNome}</Typography>
+                      <Typography fontSize={12} color="text.secondary">Conta vinculada</Typography>
+                      <Typography fontSize={12} fontWeight={600} color="text.primary">{c.contaNome}</Typography>
                     </Box>
                   )}
                   {(c.diaFechamento || c.diaVencimento) && (
                     <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      {c.diaFechamento && <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#f3f4f6", color: "#374151" }} />}
+                      {c.diaFechamento && <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, bgcolor: "action.hover", color: "text.primary" }} />}
                       {c.diaVencimento && <Chip label={`Vence dia ${c.diaVencimento}`} size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#fef3c7", color: "#b45309" }} />}
                     </Box>
                   )}
                   {c.temCredito && c.limite && (
                     <Box>
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                        <Typography fontSize={12} color="#6b7280">Gastos no ciclo</Typography>
-                        <Typography fontSize={12} fontWeight={600} color={pct > 80 ? "#dc2626" : "#374151"}>
+                        <Typography fontSize={12} color="text.secondary">Gastos no ciclo</Typography>
+                        <Typography fontSize={12} fontWeight={600} color={pct > 80 ? "#dc2626" : "text.primary"}>
                           {formatMoney(c.gastosNoCicloAtual)} / {formatMoney(c.limite)}
                         </Typography>
                       </Box>
                       <LinearProgress variant="determinate" value={pct} sx={{
-                        height: 5, borderRadius: 3, bgcolor: "#f3f4f6",
+                        height: 5, borderRadius: 3, bgcolor: "action.hover",
                         "& .MuiLinearProgress-bar": { bgcolor: pct > 80 ? "#dc2626" : pct > 60 ? "#f59e0b" : "#16a34a", borderRadius: 3 },
                       }} />
-                      <Typography fontSize={11} color="#9ca3af" mt={0.5}>Disponível: {formatMoney(c.limiteDisponivel ?? 0)}</Typography>
+                      <Typography fontSize={11} color="text.secondary" mt={0.5}>Disponível: {formatMoney(c.limiteDisponivel ?? 0)}</Typography>
                     </Box>
                   )}
                 </Box>
@@ -371,13 +372,13 @@ export default function CreditCardsPage() {
 
       {/* Painel de Faturas */}
       {faturasCartaoId && cartaoAtivo && (
-        <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-          <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+          <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Box>
-              <Typography fontSize={15} fontWeight={600} color="#111827">
+              <Typography fontSize={15} fontWeight={600} color="text.primary">
                 Faturas — {cartaoAtivo.nome}
               </Typography>
-              <Typography fontSize={12} color="#6b7280">
+              <Typography fontSize={12} color="text.secondary">
                 Histórico de faturas do cartão
               </Typography>
             </Box>
@@ -387,7 +388,7 @@ export default function CreditCardsPage() {
             <LinearProgress />
           ) : faturas.length === 0 ? (
             <Box sx={{ py: 6, textAlign: "center" }}>
-              <Typography fontSize={13} color="#9ca3af">
+              <Typography fontSize={13} color="text.secondary">
                 Nenhuma fatura encontrada. Registre uma transação de crédito para criar a primeira fatura.
               </Typography>
             </Box>
@@ -409,9 +410,9 @@ export default function CreditCardsPage() {
                   const sc = STATUS_COLOR[f.status] ?? STATUS_COLOR[1]
                   const vencidaStyle = f.vencida ? { color: "#dc2626" } : {}
                   return (
-                    <TableRow key={f.id} sx={{ "&:hover": { bgcolor: "#fafafa" } }}>
+                    <TableRow key={f.id} sx={{ "&:hover": { bgcolor: "action.hover" } }}>
                       <TableCell sx={cellSx}>
-                        <Typography fontSize={12} color="#374151">
+                        <Typography fontSize={12} color="text.primary">
                           {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
                         </Typography>
                       </TableCell>

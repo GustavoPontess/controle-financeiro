@@ -10,12 +10,8 @@ import type { Category } from "../../../types/Category";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
-    backgroundColor: "#f9fafb",
     borderRadius: "8px",
     fontSize: "14px",
-    "& fieldset": { borderColor: "#e5e7eb" },
-    "&:hover fieldset": { borderColor: "#d1d5db" },
-    "&.Mui-focused fieldset": { borderColor: "#111827", borderWidth: "1.5px" },
   },
 };
 
@@ -38,7 +34,7 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>
           Descrição
         </Typography>
         <TextField
@@ -54,7 +50,7 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
       </Box>
 
       <Box>
-        <Typography fontSize={13} fontWeight={500} color="#111827" mb={0.75}>
+        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>
           Finalidade
         </Typography>
         <Select
@@ -66,10 +62,6 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
           displayEmpty
           sx={{
             ...inputSx["& .MuiOutlinedInput-root"],
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e5e7eb" },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#d1d5db" },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#111827", borderWidth: "1.5px" },
-            backgroundColor: "#f9fafb",
             borderRadius: "8px",
             fontSize: "14px",
           }}
@@ -83,7 +75,7 @@ export default function CategoryForm({ onSubmit, onCancel }: Props) {
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <input type="checkbox" name="isPadrao" id="isPadrao" />
-        <label htmlFor="isPadrao" style={{ fontSize: "13px", color: "#6b7280", cursor: "pointer" }}>
+        <label htmlFor="isPadrao" style={{ fontSize: "13px", cursor: "pointer" }}>
           Categoria padrão
         </label>
       </Box>

@@ -50,7 +50,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
       </DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ pt: 1 }}>
-          <Typography fontSize={13} color="#6b7280" mb={2.5}>
+          <Typography fontSize={13} color="text.secondary" mb={2.5}>
             Entre com as credenciais da conta que deseja conectar. Você poderá alternar entre contas sem precisar fazer login novamente.
           </Typography>
           {error && (
@@ -86,7 +86,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
           <Button
             onClick={handleClose}
             disabled={loading}
-            sx={{ fontSize: 13, color: "#6b7280", textTransform: "none" }}
+            sx={{ fontSize: 13, color: "text.secondary", textTransform: "none" }}
           >
             Cancelar
           </Button>

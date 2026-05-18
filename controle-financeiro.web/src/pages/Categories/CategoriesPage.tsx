@@ -18,7 +18,7 @@ type OutletContextType = {
 const FINALIDADE_LABEL: Record<number, { label: string; bg: string; color: string }> = {
   1: { label: "Despesa", bg: "#fee2e2", color: "#dc2626" },
   2: { label: "Receita", bg: "#dcfce7", color: "#16a34a" },
-  3: { label: "Ambas",   bg: "#f3f4f6", color: "#374151" },
+  3: { label: "Ambas",   bg: "#f3f4f6", color: "#6b7280" },
 }
 
 function CategoryRow({ cat, onDelete }: { cat: Category; onDelete?: () => void }) {
@@ -26,18 +26,18 @@ function CategoryRow({ cat, onDelete }: { cat: Category; onDelete?: () => void }
   return (
     <Box sx={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      px: 2.5, py: 1.5, borderBottom: "1px solid #f1f5f9",
+      px: 2.5, py: 1.5, borderBottom: 1, borderColor: "divider",
       "&:last-child": { borderBottom: 0 },
-      "&:hover": { bgcolor: "#fafafa" },
+      "&:hover": { bgcolor: "action.hover" },
     }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Typography fontSize={13} fontWeight={500} color="#111827">{cat.descricao}</Typography>
+        <Typography fontSize={13} fontWeight={500} color="text.primary">{cat.descricao}</Typography>
         <Chip label={fin.label} size="small" sx={{ fontSize: 11, height: 18, bgcolor: fin.bg, color: fin.color }} />
       </Box>
       {cat.isPadrao ? (
-        <LockOutlinedIcon sx={{ fontSize: 15, color: "#d1d5db" }} titleAccess="Categoria padrão" />
+        <LockOutlinedIcon sx={{ fontSize: 15, color: "action.selected" }} titleAccess="Categoria padrão" />
       ) : (
-        <IconButton size="small" onClick={onDelete} sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}>
+        <IconButton size="small" onClick={onDelete} sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}>
           <DeleteOutlineIcon sx={{ fontSize: 16 }} />
         </IconButton>
       )}
@@ -77,8 +77,8 @@ export default function CategoriesPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">Categorias</Typography>
-          <Typography fontSize={13} color="#6b7280">Organize suas receitas e despesas</Typography>
+          <Typography fontSize={22} fontWeight={700} color="text.primary">Categorias</Typography>
+          <Typography fontSize={13} color="text.secondary">Organize suas receitas e despesas</Typography>
         </Box>
         <CustomButton size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />} onClick={() => setOpenDialog(true)}>
           Nova Categoria
@@ -86,19 +86,19 @@ export default function CategoriesPage() {
       </Box>
 
       {/* Minhas categorias */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box>
-            <Typography fontSize={15} fontWeight={600} color="#111827">Minhas Categorias</Typography>
-            <Typography fontSize={12} color="#9ca3af">Criadas por você — podem ser removidas</Typography>
+            <Typography fontSize={15} fontWeight={600} color="text.primary">Minhas Categorias</Typography>
+            <Typography fontSize={12} color="text.secondary">Criadas por você — podem ser removidas</Typography>
           </Box>
-          <Chip label={pessoais.length} size="small" sx={{ fontWeight: 700, bgcolor: "#f3f4f6", color: "#374151" }} />
+          <Chip label={pessoais.length} size="small" sx={{ fontWeight: 700, bgcolor: "action.hover", color: "text.primary" }} />
         </Box>
 
         {pessoais.length === 0 ? (
           <Box sx={{ py: 5, textAlign: "center" }}>
-            <Typography fontSize={13} color="#9ca3af">Você ainda não criou nenhuma categoria pessoal</Typography>
-            <Typography fontSize={12} color="#d1d5db" mt={0.5}>Clique em "Nova Categoria" para adicionar</Typography>
+            <Typography fontSize={13} color="text.secondary">Você ainda não criou nenhuma categoria pessoal</Typography>
+            <Typography fontSize={12} color="text.secondary" mt={0.5}>Clique em "Nova Categoria" para adicionar</Typography>
           </Box>
         ) : (
           pessoais.map(cat => <CategoryRow key={cat.id} cat={cat} onDelete={() => handleDelete(cat)} />)
@@ -106,13 +106,13 @@ export default function CategoriesPage() {
       </Paper>
 
       {/* Padrão */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box>
-            <Typography fontSize={15} fontWeight={600} color="#111827">Categorias Padrão</Typography>
-            <Typography fontSize={12} color="#9ca3af">Disponíveis para todos — não podem ser removidas</Typography>
+            <Typography fontSize={15} fontWeight={600} color="text.primary">Categorias Padrão</Typography>
+            <Typography fontSize={12} color="text.secondary">Disponíveis para todos — não podem ser removidas</Typography>
           </Box>
-          <Chip label={padrao.length} size="small" sx={{ fontWeight: 700, bgcolor: "#f3f4f6", color: "#374151" }} />
+          <Chip label={padrao.length} size="small" sx={{ fontWeight: 700, bgcolor: "action.hover", color: "text.primary" }} />
         </Box>
 
         {padrao.map(cat => <CategoryRow key={cat.id} cat={cat} />)}
