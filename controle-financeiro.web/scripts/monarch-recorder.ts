@@ -14,8 +14,13 @@
  *
  * Uso:
  *   npm run monarch:record
- *   -> loga no Monarch no Chromium que abrir, navega à vontade.
+ *   -> loga no Monarch no browser que abrir, navega à vontade.
  *   -> fecha o browser quando terminar; o script encerra sozinho.
+ *
+ * Por padrão usa o Chromium embutido do Playwright. Para usar o Google
+ * Chrome instalado na máquina (dispensa `npx playwright install chromium`):
+ *   MONARCH_CHANNEL=chrome npm run monarch:record
+ * Outros valores válidos: msedge, chrome-beta, etc.
  *
  * O login persiste entre runs (perfil em .playwright-monarch-profile/).
  */
@@ -116,8 +121,12 @@ function watch(page: Page): void {
 async function main(): Promise<void> {
   await mkdir(SESSION_DIR, { recursive: true })
 
+  // MONARCH_CHANNEL=chrome usa o Chrome instalado; vazio usa o Chromium do Playwright.
+  const channel = process.env.MONARCH_CHANNEL?.trim() || undefined
+
   const context: BrowserContext = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: false,
+    channel,
     viewport: { width: 1920, height: 1080 },
   })
 

@@ -94,11 +94,18 @@ curl -X POST http://localhost:5293/api/v1/auth/register \
 
 ### `npm run monarch:record` — Monarch Session Recorder (#60)
 
-Abre um Chromium persistente e captura automaticamente cada tela visitada
+Abre um navegador persistente e captura automaticamente cada tela visitada
 (screenshot, HTML, CSS, design tokens) enquanto o usuário navega o Monarch
 Money. Logue no browser que abrir, navegue à vontade, feche quando terminar.
 Saída em `docs/features/redesign-ux/monarch-session/` (gitignored); o login
 persiste entre runs (`.playwright-monarch-profile/`).
+
+Por padrão usa o Chromium do Playwright. Para usar o Google Chrome
+instalado (dispensa `npx playwright install chromium`):
+
+```bash
+MONARCH_CHANNEL=chrome npm run monarch:record
+```
 
 ## Funcionalidades
 
