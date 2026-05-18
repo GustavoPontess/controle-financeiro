@@ -4,6 +4,7 @@ import type {
   DespesaCompartilhada, BalancoFamilia,
   Dependente, GastoDependente, TipoDependente,
   ModoRateio, RateioItem, RateioTransacao,
+  AcertoContas,
 } from "../types/Familia"
 
 export interface DependenteInput {
@@ -163,4 +164,35 @@ export const definirRateioTransacao = async (
 
 export const removerRateioTransacao = async (transacaoId: string): Promise<void> => {
   await api.delete(`/transacoes/${transacaoId}/rateio`)
+}
+
+// ── Acerto de contas (#26) ──
+
+export interface RegistrarAcertoInput {
+  deUsuarioId: string
+  paraUsuarioId: string
+  valor: number
+  mes?: number | null
+  ano?: number | null
+  observacao?: string | null
+}
+
+export const registrarAcerto = async (
+  familiaId: string, input: RegistrarAcertoInput,
+): Promise<AcertoContas> => {
+  const res = await api.post(`/familias/${familiaId}/acertos`, input)
+  return res.data
+}
+
+export const getAcertos = async (
+  familiaId: string, mes?: number, ano?: number,
+): Promise<AcertoContas[]> => {
+  const res = await api.get(`/familias/${familiaId}/acertos`, { params: { mes, ano } })
+  return res.data
+}
+
+export const cancelarAcerto = async (
+  familiaId: string, acertoId: string,
+): Promise<void> => {
+  await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
 }

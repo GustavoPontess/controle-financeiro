@@ -350,6 +350,37 @@ Bloco C: #26 — Acerto de contas (issue dependente já assinada).
 
 ---
 
+## Issue em execução
+
+**Issue:** #26 — Sub-feature 5: Acerto de contas
+**Bloco:** C (Pivot Família)
+**Iniciada em:** 2026-05-18 (sessão 24)
+**Sessões nessa issue:** 1
+**Status:** 100% CONCLUÍDA ✅ — backend + frontend + testes, 101 testes verdes
+
+### Etapas
+- [x] 1. Entidade `AcertoContas` + AppDbContext + migration
+- [x] 2. DTOs + `AcertoService` (registrar, listar, cancelar) + integrar no balanço
+- [x] 3. Endpoints — `FamiliasController`
+- [x] 4. Frontend: seção "Acerto de contas" na `FamiliasPage`
+- [x] 5. Testes de serviço — 8 testes (`AcertoServiceTests`), suíte 93→101
+
+### Contexto
+- Spec completa em `docs/features/familia/sub-5-acerto/arquitetura.md`.
+- Branch `feature/26-acerto` (de `origin/main` — já inclui #24 e #25). PR #50 (Draft).
+- Última issue do Bloco C.
+
+### Decisões
+- Acerto = registro interno (`AcertoContas`), não mexe em saldo de conta real.
+- Comprovante por arquivo fica fora — `Observacao` aceita texto/link.
+- Balanço subtrai acertos ativos do mês: `Saldo = pagou − cota + acertosPagos − acertosRecebidos`.
+
+### Próxima ação concreta
+#26 concluída — PR #50 (atualizar de Draft para Ready). **Bloco C 5/5 — pivot
+Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
+
+---
+
 ## Template para preencher quando começar uma issue
 
 ```
