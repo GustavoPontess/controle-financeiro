@@ -64,7 +64,7 @@ public class AcertoServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.RegistrarAsync(familiaId, Guid.NewGuid(),
@@ -77,7 +77,7 @@ public class AcertoServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => svc.RegistrarAsync(familiaId, dono,
@@ -92,7 +92,7 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => svc.RegistrarAsync(familiaId, ana,
@@ -106,7 +106,7 @@ public class AcertoServiceTests
         var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
         var estranho = SeedUsuario(ctx, "estranho@test.com", "Estranho");
         var familiaId = await SeedFamilia(ctx, ana);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => svc.RegistrarAsync(familiaId, ana,
@@ -121,7 +121,7 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         var dto = await svc.RegistrarAsync(familiaId, ana,
             new RegistrarAcertoDto(ana, bia, 150m, null, null, "PIX"));
@@ -141,7 +141,7 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         await svc.RegistrarAsync(familiaId, ana, new RegistrarAcertoDto(ana, bia, 10m, 5, 2026, null));
         await svc.RegistrarAsync(familiaId, ana, new RegistrarAcertoDto(ana, bia, 20m, 4, 2026, null));
@@ -160,7 +160,7 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx);
+        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
 
         var acerto = await svc.RegistrarAsync(
             familiaId, ana, new RegistrarAcertoDto(ana, bia, 10m, 5, 2026, null));
@@ -185,12 +185,12 @@ public class AcertoServiceTests
         // Ana pagou 200, igualitário: cota 100 cada. Bia deve 100 a Ana.
         SeedDespesa(ctx, ana, 200m, familiaId);
 
-        var acertoSvc = new AcertoService(ctx);
+        var acertoSvc = new AcertoService(ctx, TestHelpers.Notif(ctx));
         // Bia paga os 100 que devia a Ana.
         await acertoSvc.RegistrarAsync(
             familiaId, ana, new RegistrarAcertoDto(bia, ana, 100m, 5, 2026, null));
 
-        var balanco = await new DespesaCompartilhadaService(ctx)
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         // Após o acerto, ambos os saldos vão a zero.

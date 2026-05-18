@@ -8,10 +8,12 @@ namespace ControleFinanceiro.Api.Services;
 public class AcertoService
 {
     private readonly AppDbContext _context;
+    private readonly NotificacaoService _notificacaoService;
 
-    public AcertoService(AppDbContext context)
+    public AcertoService(AppDbContext context, NotificacaoService notificacaoService)
     {
         _context = context;
+        _notificacaoService = notificacaoService;
     }
 
     /// <summary>Registra um acerto: um membro pagou a outro o que devia.</summary>
@@ -46,7 +48,20 @@ public class AcertoService
         _context.AcertosContas.Add(acerto);
         await _context.SaveChangesAsync();
 
-        return await MapToDtoAsync(acerto);
+        var resultado = await MapToDtoAsync(acerto);
+
+        // Issue #30 — notifica quem recebeu o acerto (se não foi quem registrou).
+        if (acerto.ParaUsuarioId != usuarioId)
+        {
+            await _notificacaoService.CriarAsync(
+                acerto.ParaUsuarioId,
+                Domain.Enums.TipoNotificacao.AcertoContas,
+                "Acerto de contas recebido",
+                $"{resultado.DeNome} registrou um acerto de {resultado.Valor:C} com você.",
+                "/familias");
+        }
+
+        return resultado;
     }
 
     /// <summary>Lista os acertos ativos da família (opcionalmente filtrados por mês/ano).</summary>
