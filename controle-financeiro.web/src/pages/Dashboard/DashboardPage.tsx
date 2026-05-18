@@ -39,9 +39,9 @@ function SummaryCard({
   subtitle?: string
 }) {
   return (
-    <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
-        <Typography fontSize={13} fontWeight={600} color="#6b7280">
+        <Typography fontSize={13} fontWeight={600} color="text.secondary">
           {title}
         </Typography>
         <Box
@@ -59,11 +59,11 @@ function SummaryCard({
           {icon}
         </Box>
       </Box>
-      <Typography fontSize={24} fontWeight={700} color="#111827">
+      <Typography fontSize={24} fontWeight={700} color="text.primary">
         {value}
       </Typography>
       {subtitle && (
-        <Typography fontSize={12} color="#9ca3af" mt={0.5}>
+        <Typography fontSize={12} color="text.secondary" mt={0.5}>
           {subtitle}
         </Typography>
       )}
@@ -106,17 +106,17 @@ export default function DashboardPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">
+          <Typography fontSize={22} fontWeight={700} color="text.primary">
             Visão Geral
           </Typography>
-          <Typography fontSize={13} color="#6b7280">
+          <Typography fontSize={13} color="text.secondary">
             Resumo financeiro do período
           </Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <IconButton
             onClick={prevMonth}
-            sx={{ width: 32, height: 32, border: "1.5px solid #e5e7eb", borderRadius: "8px", color: "#374151" }}
+            sx={{ width: 32, height: 32, border: 1.5, borderColor: "divider", borderRadius: "8px", color: "text.primary" }}
           >
             <ChevronLeftIcon sx={{ fontSize: 18 }} />
           </IconButton>
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           </Typography>
           <IconButton
             onClick={nextMonth}
-            sx={{ width: 32, height: 32, border: "1.5px solid #e5e7eb", borderRadius: "8px", color: "#374151" }}
+            sx={{ width: 32, height: 32, border: 1.5, borderColor: "divider", borderRadius: "8px", color: "text.primary" }}
           >
             <ChevronRightIcon sx={{ fontSize: 18 }} />
           </IconButton>
@@ -169,12 +169,12 @@ export default function DashboardPage() {
           {/* Middle section */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             {/* Top categorias */}
-            <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-              <Typography fontSize={15} fontWeight={600} color="#111827" mb={2.5}>
+            <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+              <Typography fontSize={15} fontWeight={600} color="text.primary" mb={2.5}>
                 Top Categorias (Despesas)
               </Typography>
               {data.topCategorias.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af" textAlign="center" py={3}>
+                <Typography fontSize={13} color="text.secondary" textAlign="center" py={3}>
                   Nenhuma despesa no período
                 </Typography>
               ) : (
@@ -182,14 +182,14 @@ export default function DashboardPage() {
                   {data.topCategorias.map((cat) => (
                     <Box key={cat.descricao}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                        <Typography fontSize={13} fontWeight={500} color="#374151">
+                        <Typography fontSize={13} fontWeight={500} color="text.primary">
                           {cat.descricao}
                         </Typography>
                         <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                          <Typography fontSize={13} color="#6b7280">
+                          <Typography fontSize={13} color="text.secondary">
                             {cat.percentual}%
                           </Typography>
-                          <Typography fontSize={13} fontWeight={600} color="#111827">
+                          <Typography fontSize={13} fontWeight={600} color="text.primary">
                             {formatMoney(cat.valor)}
                           </Typography>
                         </Box>
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                         sx={{
                           height: 6,
                           borderRadius: 3,
-                          bgcolor: "#f3f4f6",
+                          bgcolor: "action.hover",
                           "& .MuiLinearProgress-bar": { bgcolor: "#dc2626", borderRadius: 3 },
                         }}
                       />
@@ -211,12 +211,12 @@ export default function DashboardPage() {
             </Paper>
 
             {/* Saldo por conta */}
-            <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 3 }}>
-              <Typography fontSize={15} fontWeight={600} color="#111827" mb={2.5}>
+            <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+              <Typography fontSize={15} fontWeight={600} color="text.primary" mb={2.5}>
                 Saldo por Conta
               </Typography>
               {data.saldoContas.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af" textAlign="center" py={3}>
+                <Typography fontSize={13} color="text.secondary" textAlign="center" py={3}>
                   Nenhuma conta cadastrada
                 </Typography>
               ) : (
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                         justifyContent: "space-between",
                         p: 1.5,
                         borderRadius: "8px",
-                        bgcolor: "#f9fafb",
+                        bgcolor: "action.hover",
                       }}
                     >
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -239,19 +239,19 @@ export default function DashboardPage() {
                             width: 32,
                             height: 32,
                             borderRadius: "8px",
-                            bgcolor: "#e5e7eb",
+                            bgcolor: "action.selected",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                           }}
                         >
-                          <AccountBalanceOutlinedIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                          <AccountBalanceOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
                         </Box>
                         <Box>
-                          <Typography fontSize={13} fontWeight={600} color="#111827">
+                          <Typography fontSize={13} fontWeight={600} color="text.primary">
                             {conta.nome}
                           </Typography>
-                          <Typography fontSize={11} color="#9ca3af">
+                          <Typography fontSize={11} color="text.secondary">
                             {conta.tipoDescricao}
                           </Typography>
                         </Box>
@@ -259,7 +259,7 @@ export default function DashboardPage() {
                       <Typography
                         fontSize={14}
                         fontWeight={700}
-                        color={conta.saldo >= 0 ? "#111827" : "#dc2626"}
+                        color={conta.saldo >= 0 ? "text.primary" : "#dc2626"}
                       >
                         {formatMoney(conta.saldo)}
                       </Typography>
@@ -271,9 +271,9 @@ export default function DashboardPage() {
           </Box>
 
           {/* Transações recentes */}
-          <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-            <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9" }}>
-              <Typography fontSize={15} fontWeight={600} color="#111827">
+          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+            <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+              <Typography fontSize={15} fontWeight={600} color="text.primary">
                 Transações Recentes
               </Typography>
             </Box>

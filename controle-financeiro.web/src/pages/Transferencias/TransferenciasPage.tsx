@@ -88,8 +88,8 @@ export default function TransferenciasPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">Transferências</Typography>
-          <Typography fontSize={13} color="#6b7280">Mova dinheiro entre suas contas</Typography>
+          <Typography fontSize={22} fontWeight={700} color="text.primary">Transferências</Typography>
+          <Typography fontSize={13} color="text.secondary">Mova dinheiro entre suas contas</Typography>
         </Box>
         <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
           Nova Transferência
@@ -97,16 +97,16 @@ export default function TransferenciasPage() {
       </Box>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #f1f5f9" }}>
-          <Typography fontSize={15} fontWeight={600} color="#111827">Histórico de Transferências</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography fontSize={15} fontWeight={600} color="text.primary">Histórico de Transferências</Typography>
         </Box>
 
         {transferencias.length === 0 ? (
           <Box sx={{ py: 8, textAlign: "center" }}>
-            <SwapHorizIcon sx={{ fontSize: 40, color: "#d1d5db", mb: 1 }} />
-            <Typography fontSize={14} color="#9ca3af">Nenhuma transferência realizada</Typography>
-            <Typography fontSize={13} color="#d1d5db">Clique em "Nova Transferência" para começar</Typography>
+            <SwapHorizIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
+            <Typography fontSize={14} color="text.secondary">Nenhuma transferência realizada</Typography>
+            <Typography fontSize={13} color="text.secondary">Clique em "Nova Transferência" para começar</Typography>
           </Box>
         ) : (
           transferencias.map((t, i) => (
@@ -115,8 +115,8 @@ export default function TransferenciasPage() {
               sx={{
                 px: 3, py: 2,
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                borderBottom: i < transferencias.length - 1 ? "1px solid #f1f5f9" : "none",
-                "&:hover": { bgcolor: "#fafafa" }, transition: "background 0.15s",
+                borderBottom: i < transferencias.length - 1 ? 1 : 0, borderColor: "divider",
+                "&:hover": { bgcolor: "action.hover" }, transition: "background 0.15s",
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -127,9 +127,9 @@ export default function TransferenciasPage() {
                   <Typography fontWeight={600} fontSize={14}>{t.descricao}</Typography>
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.3 }}>
                     <Chip label={t.contaOrigemNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#fee2e2", color: "#dc2626" }} />
-                    <SwapHorizIcon sx={{ fontSize: 12, color: "#9ca3af" }} />
+                    <SwapHorizIcon sx={{ fontSize: 12, color: "text.secondary" }} />
                     <Chip label={t.contaDestinoNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#dcfce7", color: "#16a34a" }} />
-                    <Typography fontSize={12} color="#9ca3af">
+                    <Typography fontSize={12} color="text.secondary">
                       {new Date(t.data).toLocaleDateString("pt-BR")}
                     </Typography>
                   </Box>
@@ -142,7 +142,7 @@ export default function TransferenciasPage() {
                 <IconButton
                   size="small"
                   onClick={() => handleDeletar(t.id)}
-                  sx={{ color: "#9ca3af", "&:hover": { color: "#dc2626" } }}
+                  sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
                 >
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
