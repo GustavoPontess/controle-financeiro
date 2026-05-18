@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
     public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
     public DbSet<RateioTransacao> RateiosTransacao => Set<RateioTransacao>();
     public DbSet<AcertoContas> AcertosContas => Set<AcertoContas>();
+    public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
 
     // ── Issue #24 Dependentes ──
     public DbSet<Dependente> Dependentes => Set<Dependente>();
@@ -375,5 +376,17 @@ public class AppDbContext : DbContext
         // Índice para deduplicar reimportações de OFX pelo FITID.
         modelBuilder.Entity<Transacao>()
             .HasIndex(t => t.ImportacaoFitId);
+
+        // ── Issue #30 Notificações ──
+
+        // Notificacao → Usuario (Cascade: somem com o usuário)
+        modelBuilder.Entity<Notificacao>()
+            .HasOne(n => n.Usuario)
+            .WithMany()
+            .HasForeignKey(n => n.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notificacao>()
+            .HasIndex(n => new { n.UsuarioId, n.Lida });
     }
 }
