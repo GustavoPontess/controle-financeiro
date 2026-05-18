@@ -18,13 +18,13 @@ status: CURRENT
 ```
 Bloco A — Higiene de Produção:          5/5  ✅ #11, #12, #13, #14, #15  🎉 BLOCO COMPLETO
 Bloco B — Infraestrutura para Escalar:  6/6  ✅ #16, #17, #18, #19, #20, #21  🎉 BLOCO COMPLETO
-Bloco C — Pivot Família:                2/5  ✅ #22, #23  ⏳ #24, #25, #26
+Bloco C — Pivot Família:                3/5  ✅ #22, #23, #24  ⏳ #25, #26
 Bloco D — Retenção e UX B2C:            0/5  ⏳ #31 (em andamento)
 
-Total Q3 2026:                          13/21 (62%)
+Total Q3 2026:                          14/21 (67%)
 ```
 
-**Status geral:** Blocos A e B 100% 🎉. Bloco C 2/5 — #22 (Família + Membros) e #23 (Despesa Compartilhada) concluídas. Sócio em #31 (Dark mode).
+**Status geral:** Blocos A e B 100% 🎉. Bloco C 3/5 — #22 (Família + Membros), #23 (Despesa Compartilhada) e #24 (Dependentes) concluídas. Sócio em #31 (Dark mode).
 
 ---
 
@@ -49,13 +49,19 @@ Síntese:
 
 ## Em progresso
 
-#22 e #23 concluídas. Próximo do Bloco C: **#24 — Dependentes**. Sócio em #31 (Dark mode, Bloco D).
+#22, #23 e #24 concluídas. Próximo do Bloco C: **#25 — modos de rateio**. Sócio em #31 (Dark mode, Bloco D).
 
 ---
 
 ## Histórico de sessões
 
 ### Sessão 24 — 2026-05-17
+- **Issue #24 — Sub-feature 3: Dependentes (✅ CONCLUÍDA)** — PR #48
+  - Entidade `Dependente` (sem login) + enum `TipoDependente` + `Transacao.DependenteId` + migration
+  - `DependenteService` (CRUD, atribuir/desatribuir despesa, gasto por dependente no mês)
+  - Endpoints sob `/familias/{id}/dependentes` + `PUT /transacoes/{id}/dependente`
+  - Frontend: CRUD na FamiliasPage, ação atribuir na TransactionTable
+  - 10 testes (suíte 69 → 79)
 - **Issue #23 — Sub-feature 2: Despesa Compartilhada (✅ CONCLUÍDA)** — PR #46
   - `Transacao.FamiliaId`; `DespesaCompartilhadaService`; endpoints de compartilhamento, feed e balanço
   - Frontend: ação compartilhar na TransactionTable, balanço/despesas na FamiliasPage

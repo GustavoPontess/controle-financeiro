@@ -2,7 +2,7 @@
 feature: familia
 sub-feature: sub-3-dependentes
 issue: '#24'
-status: EM_IMPLEMENTACAO
+status: CONCLUIDA
 owner: Gustavo
 created: 2026-05-17
 ---
