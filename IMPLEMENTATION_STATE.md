@@ -386,12 +386,12 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 **Bloco:** D (Retenção e UX B2C)
 **Iniciada em:** 2026-05-18 (sessão 24)
 **Sessões nessa issue:** 1
-**Status:** EM_EXECUCAO — etapa 2 de 5 concluída
+**Status:** EM_EXECUCAO — etapa 3 de 5 concluída
 
 ### Etapas
 - [x] 1. `Transacao.ImportacaoFitId` + migration + DTOs
 - [x] 2. `ExtratoImportService` — parsers OFX e CSV
-- [ ] 3. Endpoints preview + confirmar (`ImportacaoController`) — dedup + sugestão
+- [x] 3. Endpoints preview + confirmar (`ImportacaoController`) — dedup + sugestão
 - [ ] 4. Frontend: página de importação (upload + revisão)
 - [ ] 5. Testes de serviço
 
@@ -406,10 +406,9 @@ Família 100% concluído.** Próximo: Bloco D (#27 Importação OFX/CSV, etc.).
 - Sem upload de arquivo persistido — parse em memória, limite 2 MB.
 
 ### Próxima ação concreta
-Etapa 3 — `ImportacaoService` (preview: parse + dedup + sugestão de categoria;
-confirmar: cria transações via `TransacaoService.CriarTransacaoAsync`) +
-`ImportacaoController` (`POST /importacao/preview` multipart, `POST
-/importacao/confirmar`). Ver `arquitetura.md` §4-§8.
+Etapa 4 — Frontend: `importacaoService.ts`, página de importação (upload de
+arquivo + escolha da conta + tela de revisão das linhas) + rota + item no
+Sidebar. Ver `arquitetura.md` §1.
 
 ---
 

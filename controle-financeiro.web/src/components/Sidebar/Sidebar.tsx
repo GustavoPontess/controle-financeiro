@@ -199,10 +199,9 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
               icon={<HandshakeOutlinedIcon sx={{ fontSize: 18 }} />}
             />
             <MenuItem
-              to="/import"
-              label="Importar Excel"
+              to="/importacao"
+              label="Importar Extrato"
               icon={<UploadFileOutlinedIcon sx={{ fontSize: 18 }} />}
-              disabled
             />
           </List>
 

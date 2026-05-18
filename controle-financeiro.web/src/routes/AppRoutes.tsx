@@ -19,6 +19,7 @@ import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
+import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
 
 export default function AppRoutes() {
@@ -50,6 +51,7 @@ export default function AppRoutes() {
           <Route path="/emprestimos" element={<EmprestimosPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
+          <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/design-system" element={<DesignSystemShowcase />} />
         </Route>
