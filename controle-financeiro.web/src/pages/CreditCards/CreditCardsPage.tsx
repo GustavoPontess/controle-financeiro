@@ -338,7 +338,6 @@ export default function CreditCardsPage() {
             const grad = BANDEIRA_GRAD[c.bandeira] ?? BANDEIRA_GRAD[6]
             const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
             const isSelected = faturasCartaoId === c.id
-            const barColor = pct > 80 ? tokens.color.status.error.main : pct > 60 ? tokens.color.status.warning.main : tokens.color.status.success.main
 
             return (
               <Paper key={c.id} elevation={0} sx={{
