@@ -166,6 +166,44 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 
 ---
 
+---
+
+## 🅱️ BLOCO B — Dívida técnica & regras de negócio
+
+### 🟠 #64 — Refatoração do frontend
+
+**Severidade:** 🟠 MÉDIA • **Esforço:** 2-3 dias • **Status:** ⏳ NÃO INICIADO
+
+**Por quê:** Com o redesign das telas piloto (issues #59-#61), o `CreditCardsPage.tsx` e outros componentes cresceram em responsabilidade. Antes de propagar o redesign (#62), vale dividir componentes grandes, eliminar lógica inline e padronizar padrões de estado.
+
+**Escopo:**
+- `CreditCardsPage.tsx` — extrair `FaturaTable`, `FaturaRow`, `FaturaTransacaoRows` em componentes próprios
+- Padronizar tratamento de loading/error em todas as páginas (hook `useAsync` ou similar)
+- Eliminar props drilling profundo — avaliar Context ou query cache (React Query)
+- Garantir que nenhuma página tenha mais de ~300 linhas
+- Revisar e unificar os padrões de service (`axiosClient`) e tipagem das respostas
+
+**Checkpoint:** `CreditCardsPage.tsx` < 300 linhas; componentes de fatura reutilizáveis; lint sem warnings.
+
+---
+
+### 🔴 #65 — Refatoração das regras de negócio do cartão de crédito
+
+**Severidade:** 🔴 ALTA • **Esforço:** 1-2 dias • **Status:** ⏳ NÃO INICIADO
+
+**Por quê:** Durante o desenvolvimento da sessão de maio/2026 foram descobertos inconsistências entre `EstadoPagamento` (persistido no banco) e `valorRestante` (calculado dinamicamente). O flag pode ficar "sujo" quando uma transação é adicionada a uma fatura já paga. Isso causa bugs visuais e pode causar bloqueio indevido de pagamento.
+
+**Escopo:**
+- `FaturaService`: ao adicionar transação a uma fatura com `EstadoPagamento = Pago`, recalcular e corrigir o estado (`Pago → Parcial` ou `Pago → NaoPago`)
+- `FaturaService.PagarFaturaAsync`: proteger contra double-payment usando `valorRestante` calculado on-the-fly, não o valor armazenado
+- `CartaoCreditoService`: validar invariante — `estadoPagamento = Pago` implica `valorRestante = 0`; logar warning se inconsistente
+- Cobrir os cenários com testes unitários: pagar fatura, adicionar transação pós-pagamento, recalcular estado
+- Atualizar `docs/features/cartao-credito/regras.md` com o comportamento corrigido
+
+**Checkpoint:** Adicionar transação a fatura já paga atualiza `EstadoPagamento` corretamente; testes cobrem os 3 cenários de estado.
+
+---
+
 ## Histórico
 
 Backlog anterior (Q3 2026, Issues #11-#31) — todos concluídos.
