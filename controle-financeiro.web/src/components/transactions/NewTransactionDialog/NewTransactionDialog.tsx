@@ -1,26 +1,17 @@
 import { useEffect, useState } from "react"
-
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
-  Box
-} from "@mui/material"
-
+import { Dialog, DialogTitle, DialogContent, IconButton, Box, Typography, Divider } from "@mui/material"
 import CloseIcon from "@mui/icons-material/Close"
-
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import TransactionForm from "../TransactionForm/TransactionForm"
-
 import { getCategories } from "../../../services/categoryService"
 import { createTransaction } from "../../../services/transactionService"
 import { getContas } from "../../../services/contaService"
 import { getCartoes } from "../../../services/cartaoCreditoService"
-
 import type { Category } from "../../../types/Category"
 import type { Conta } from "../../../types/Conta"
 import type { CartaoCredito } from "../../../types/CartaoCredito"
 import type { TransactionFormData } from "../TransactionForm/TransactionForm"
+import { tokens } from "../../../theme/tokens"
 
 type Notification = {
   open: boolean
@@ -35,19 +26,17 @@ type Props = {
 }
 
 export default function NewTransactionDialog({ open, onClose, notify }: Props) {
-
   const [categories, setCategories] = useState<Category[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
 
   useEffect(() => {
-    const loadData = async () => {
-      const [cats, cts, carts] = await Promise.all([getCategories(), getContas(), getCartoes()])
+    if (!open) return
+    Promise.all([getCategories(), getContas(), getCartoes()]).then(([cats, cts, carts]) => {
       setCategories(cats)
       setContas(cts)
       setCartoes(carts)
-    }
-    if (open) loadData()
+    })
   }, [open])
 
   const handleCreate = async (data: TransactionFormData) => {
@@ -74,37 +63,67 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
   }
 
   return (
-
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
-
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: tokens.radius.xl,
+          border: `1px solid ${tokens.color.border.subtle}`,
+          boxShadow: tokens.shadow.lg,
+        },
+      }}
+    >
       <DialogTitle sx={{ p: 0 }}>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            gap: 1.5,
             px: 3,
-            py: 2,
-            fontWeight: 600,
-            fontSize: 16
+            py: 2.5,
           }}
         >
-          Nova Transação
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: tokens.radius.md,
+              background: `linear-gradient(135deg, ${tokens.color.brand.primary}, ${tokens.color.brand.hover})`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              flexShrink: 0,
+            }}
+          >
+            <AddCircleOutlineIcon sx={{ fontSize: 18 }} />
+          </Box>
+          <Typography
+            fontWeight={tokens.typography.fontWeight.bold}
+            fontSize={tokens.typography.fontSize.base}
+            color={tokens.color.text.primary}
+          >
+            Nova Transação
+          </Typography>
           <IconButton
             onClick={onClose}
+            size="small"
             sx={{
-              width: 24,
-              height: 24,
-              color: "text.secondary",
-              "&:hover": { bgcolor: "action.hover", color: "text.primary" }
+              ml: "auto",
+              color: tokens.color.text.secondary,
+              "&:hover": { bgcolor: tokens.color.background.secondary, color: tokens.color.text.primary },
             }}
           >
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
+        <Divider sx={{ borderColor: tokens.color.border.subtle }} />
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3 }}>
+      <DialogContent sx={{ px: 3, py: 3 }}>
         <TransactionForm
           categories={categories}
           contas={contas}
@@ -113,9 +132,6 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           onCancel={onClose}
         />
       </DialogContent>
-
     </Dialog>
-
   )
-
 }
