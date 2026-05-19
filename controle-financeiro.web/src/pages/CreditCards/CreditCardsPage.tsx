@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   Box, Typography, Paper, IconButton, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Select, MenuItem as MuiMenuItem,
@@ -533,9 +533,8 @@ export default function CreditCardsPage() {
                     return ids
                   })()
                   return (
-                    <>
+                    <React.Fragment key={f.id}>
                       <TableRow
-                        key={f.id}
                         onClick={() => toggleFatura(f.id, faturasCartaoId!)}
                         sx={{ cursor: "pointer", "&:hover": { bgcolor: tokens.color.background.hover }, bgcolor: isExpanded ? tokens.color.background.secondary : undefined }}
                       >
@@ -638,7 +637,7 @@ export default function CreditCardsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   )
                 })}
               </TableBody>
