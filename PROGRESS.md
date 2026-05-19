@@ -78,6 +78,21 @@ Suíte de testes: 130+ ao fim do Q3.
   saldos realistas via "Saldo Inicial". Valida o atlas com telas cheias.
 - **Q4 em 2/5.** Próxima ação: #61 — refator das 3 telas piloto, Caio lidera
 
+### Sessão 29 — 2026-05-18
+- **#61 iniciada** — branch `feature/61-telas-piloto`, redesign visual ao vivo
+  via Claude Preview
+- ✅ Dashboard (`fb1abe3`) — saudação, hero teal, cards de conta com avatar,
+  seção mensal, donut de categorias, KPIs com avatar; `TransactionTable`
+  tokenizado, linhas com ícone/chips, ações em menu `⋮` responsivo
+- ✅ FamiliasPage (`1a03d0a`) — cards com avatar, dialog tokenizado, bug HTML
+  corrigido (`Chip` dentro de `Typography`)
+- Decisão: FamiliasPage fica com redesign leve — será reformada por features
+  no Q5; refator visual pesado seria desperdício
+- Backlog Q5 registrado: `familia/visao.md` §16 (alternador de visão, renda
+  não-manual, fluxo de aprovação de despesa, §16.5 despesa × saldo real) e
+  `redesign-ux/visao.md` §8 (logos de banco)
+- Próxima ação: 3ª tela piloto — Adicionar/editar transação — depois fecha #61
+
 ---
 
 ## Checklist de encerramento de sessão
