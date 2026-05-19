@@ -1,15 +1,20 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   Box, Table, TableHead, TableBody, TableRow, TableCell,
   TableContainer, Typography, Chip, IconButton, TextField, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
+  Menu, ListItemIcon, ListItemText,
 } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined"
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline"
 import CallSplitIcon from "@mui/icons-material/CallSplit"
+import TrendingUpIcon from "@mui/icons-material/TrendingUp"
+import TrendingDownIcon from "@mui/icons-material/TrendingDown"
+import MoreVertIcon from "@mui/icons-material/MoreVert"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
+import { tokens } from "../../../theme/tokens"
 import { deleteTransaction } from "../../../services/transactionService"
 import {
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
@@ -54,11 +59,113 @@ const formatMoney = (v: number) =>
 const RECEITA = 2
 
 const headerSx = {
-  fontSize: 12, fontWeight: 600, color: "text.secondary",
-  bgcolor: "action.hover", borderBottom: 1, borderColor: "divider", py: 1.5,
+  fontSize: tokens.typography.fontSize["2xs"],
+  fontWeight: tokens.typography.fontWeight.medium,
+  color: tokens.color.text.secondary,
+  textTransform: "uppercase" as const,
+  letterSpacing: 0.5,
+  bgcolor: tokens.color.background.secondary,
+  borderBottom: `1px solid ${tokens.color.border.default}`,
+  py: 1.5,
 }
 
-const cellSx = { fontSize: 13, color: "text.primary", py: 1.5, borderBottom: 1, borderColor: "divider" }
+const cellSx = {
+  fontSize: tokens.typography.fontSize.sm,
+  color: tokens.color.text.primary,
+  py: 1.75,
+  borderBottom: `1px solid ${tokens.color.border.subtle}`,
+}
+
+type RowActionsProps = {
+  isReceita: boolean
+  compact: boolean
+  onShare: () => void
+  onAssign: () => void
+  onRatear: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+/**
+ * Ações de uma linha. Com a tabela larga mostra os ícones em linha; quando o
+ * container fica estreito (`compact`) colapsa num botão "⋮" que abre um menu
+ * (ícone + descrição). O menu fecha quando o ponteiro sai dele.
+ */
+function RowActions({ isReceita, compact, onShare, onAssign, onRatear, onEdit, onDelete }: RowActionsProps) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const close = () => setAnchor(null)
+
+  const actions = [
+    ...(!isReceita
+      ? [
+          { icon: <GroupAddOutlinedIcon sx={{ fontSize: 18 }} />, label: "Compartilhar com família", run: onShare },
+          { icon: <PersonOutlineIcon sx={{ fontSize: 18 }} />, label: "Atribuir a dependente", run: onAssign },
+          { icon: <CallSplitIcon sx={{ fontSize: 18 }} />, label: "Definir rateio", run: onRatear },
+        ]
+      : []),
+    { icon: <EditIcon sx={{ fontSize: 18 }} />, label: "Editar", run: onEdit },
+    { icon: <DeleteOutlineIcon sx={{ fontSize: 18 }} />, label: "Excluir", run: onDelete, danger: true },
+  ]
+
+  if (!compact) {
+    return (
+      <Box sx={{ display: "flex", flexWrap: "nowrap", justifyContent: "flex-end", gap: 0.25 }}>
+        {actions.map((a, i) => (
+          <IconButton
+            key={i}
+            size="small"
+            title={a.label}
+            onClick={a.run}
+            sx={{
+              p: 0.5,
+              color: tokens.color.text.secondary,
+              "&:hover": { color: a.danger ? tokens.color.status.error.main : tokens.color.brand.primary },
+            }}
+          >
+            {a.icon}
+          </IconButton>
+        ))}
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <IconButton
+        size="small"
+        title="Ações"
+        onClick={(e) => setAnchor(e.currentTarget)}
+        sx={{ p: 0.5, color: tokens.color.text.secondary }}
+      >
+        <MoreVertIcon sx={{ fontSize: 18 }} />
+      </IconButton>
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={close}
+        MenuListProps={{ dense: true, onMouseLeave: close }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {actions.map((a, i) => (
+          <MenuItem
+            key={i}
+            onClick={() => {
+              a.run()
+              close()
+            }}
+            sx={{ color: a.danger ? tokens.color.status.error.main : tokens.color.text.primary }}
+          >
+            <ListItemIcon sx={{ color: "inherit", minWidth: 32 }}>{a.icon}</ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: tokens.typography.fontSize.sm }}>
+              {a.label}
+            </ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </Box>
+  )
+}
 
 export default function TransactionTable({ rows, onRefresh, notify, emptyMessage }: Props) {
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
@@ -71,6 +178,18 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   const [rateio, setRateio] = useState<RateioTransacao | null>(null)
   const [rateioModo, setRateioModo] = useState<ModoRateio>(1)
   const [percentuais, setPercentuais] = useState<Record<string, string>>({})
+
+  // Colapsa as ações num menu "⋮" quando a tabela fica estreita demais
+  // para os ícones em linha. Mede o container real (não o viewport).
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [compact, setCompact] = useState(false)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setCompact(el.clientWidth < 1000))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const openShare = async (row: TransactionRow) => {
     setSharing(row)
@@ -208,7 +327,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
 
   return (
     <>
-      <TableContainer>
+      <TableContainer ref={containerRef}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -219,29 +338,65 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
               <TableCell sx={headerSx}>Tipo</TableCell>
               <TableCell sx={headerSx}>Pagamento</TableCell>
               <TableCell sx={{ ...headerSx, textAlign: "right" }}>Valor</TableCell>
-              <TableCell sx={{ ...headerSx, textAlign: "center", width: 80 }}>Ações</TableCell>
+              <TableCell sx={{ ...headerSx, textAlign: "right", whiteSpace: "nowrap", width: 1 }}>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => {
               const isReceita = row.tipo === RECEITA
               return (
-                <TableRow key={row.id} sx={{ "&:hover": { bgcolor: "action.hover" } }}>
-                  <TableCell sx={cellSx}>
+                <TableRow key={row.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
+                  <TableCell sx={{ ...cellSx, color: tokens.color.text.secondary, whiteSpace: "nowrap" }}>
                     {new Date(row.data).toLocaleDateString("pt-BR")}
                   </TableCell>
-                  <TableCell sx={{ ...cellSx, fontWeight: 500, color: "text.primary", maxWidth: 220 }}>
-                    <Typography fontSize={13} fontWeight={500} noWrap title={row.descricao}>
-                      {row.descricao}
-                    </Typography>
+                  <TableCell sx={{ ...cellSx, maxWidth: 260 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: tokens.radius.md,
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
+                          color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main,
+                        }}
+                      >
+                        {isReceita ? <TrendingUpIcon sx={{ fontSize: 18 }} /> : <TrendingDownIcon sx={{ fontSize: 18 }} />}
+                      </Box>
+                      <Typography
+                        fontSize={tokens.typography.fontSize.sm}
+                        fontWeight={tokens.typography.fontWeight.medium}
+                        color={tokens.color.text.primary}
+                        noWrap
+                        title={row.descricao}
+                      >
+                        {row.descricao}
+                      </Typography>
+                    </Box>
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="text.secondary">
-                      {row.categoriaDescricao ?? "—"}
-                    </Typography>
+                    {row.categoriaDescricao ? (
+                      <Chip
+                        label={row.categoriaDescricao}
+                        size="small"
+                        sx={{
+                          fontSize: tokens.typography.fontSize["2xs"],
+                          height: 22,
+                          borderRadius: tokens.radius.sm,
+                          bgcolor: tokens.color.background.tertiary,
+                          color: tokens.color.text.secondary,
+                          fontWeight: tokens.typography.fontWeight.medium,
+                        }}
+                      />
+                    ) : (
+                      <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}>—</Typography>
+                    )}
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="text.secondary">
+                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
                       {row.contaNome ?? "—"}
                     </Typography>
                   </TableCell>
@@ -250,52 +405,39 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       label={isReceita ? "Receita" : "Despesa"}
                       size="small"
                       sx={{
-                        fontSize: 11, height: 20, borderRadius: "4px",
-                        bgcolor: isReceita ? "#dcfce7" : "#fee2e2",
-                        color: isReceita ? "#16a34a" : "#dc2626",
+                        fontSize: tokens.typography.fontSize["2xs"],
+                        height: 22,
+                        borderRadius: tokens.radius.sm,
+                        fontWeight: tokens.typography.fontWeight.medium,
+                        bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
+                        color: isReceita ? tokens.color.status.success.dark : tokens.color.status.error.dark,
                       }}
                     />
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Typography fontSize={12} color="text.secondary">
+                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
                       {row.meioPagamentoDescricao ?? "—"}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
-                    <Typography fontSize={13} fontWeight={600} color={isReceita ? "#16a34a" : "#dc2626"}>
+                  <TableCell sx={{ ...cellSx, textAlign: "right", whiteSpace: "nowrap" }}>
+                    <Typography
+                      fontSize={tokens.typography.fontSize.sm}
+                      fontWeight={tokens.typography.fontWeight.bold}
+                      color={isReceita ? tokens.color.status.success.main : tokens.color.status.error.main}
+                    >
                       {isReceita ? "+" : "−"}{formatMoney(row.valor)}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ ...cellSx, textAlign: "center" }}>
-                    {!isReceita && (
-                      <IconButton size="small" onClick={() => openShare(row)}
-                        title="Compartilhar com família"
-                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
-                        <GroupAddOutlinedIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    )}
-                    {!isReceita && (
-                      <IconButton size="small" onClick={() => openAssign(row)}
-                        title="Atribuir a dependente"
-                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
-                        <PersonOutlineIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    )}
-                    {!isReceita && (
-                      <IconButton size="small" onClick={() => openRatear(row)}
-                        title="Definir rateio"
-                        sx={{ color: "#9ca3af", "&:hover": { color: "#2563eb" } }}>
-                        <CallSplitIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    )}
-                    <IconButton size="small" onClick={() => openEdit(row)}
-                      sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
-                      <EditIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(row.id, row.descricao)}
-                      sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}>
-                      <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
+                  <TableCell sx={{ ...cellSx, whiteSpace: "nowrap" }}>
+                    <RowActions
+                      isReceita={isReceita}
+                      compact={compact}
+                      onShare={() => openShare(row)}
+                      onAssign={() => openAssign(row)}
+                      onRatear={() => openRatear(row)}
+                      onEdit={() => openEdit(row)}
+                      onDelete={() => handleDelete(row.id, row.descricao)}
+                    />
                   </TableCell>
                 </TableRow>
               )
