@@ -455,8 +455,8 @@ export default function CreditCardsPage() {
                       </Box>
                       <LinearProgress variant="determinate" value={pct} sx={{
                         height: 6, borderRadius: tokens.radius.pill,
-                        bgcolor: tokens.color.background.tertiary,
-                        "& .MuiLinearProgress-bar": { bgcolor: barColor, borderRadius: tokens.radius.pill },
+                        bgcolor: tokens.color.status.success.light,
+                        "& .MuiLinearProgress-bar": { bgcolor: tokens.color.status.error.main, borderRadius: tokens.radius.pill },
                       }} />
                       <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
                         <Typography fontSize={11} color={tokens.color.text.secondary}>Disponível</Typography>

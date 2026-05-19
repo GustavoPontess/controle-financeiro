@@ -168,9 +168,16 @@ public class CartaoCreditoService(AppDbContext context)
     {
         var (inicio, fim) = CicloAtual(c.DiaFechamento);
 
-        // Faturas pagas têm limite restaurado — excluir transações delas do cálculo
+        // Fatura efetivamente paga = ValorPago cobre o total real das transações.
+        // Não usar EstadoPagamento — pode estar desatualizado se nova transação foi
+        // adicionada após o pagamento (bug #65).
+        var totalPorFatura = c.Transacoes
+            .Where(t => t.FaturaId.HasValue && t.UsadoComoCredito && t.Ativo)
+            .GroupBy(t => t.FaturaId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(t => t.Valor));
+
         var faturasPagas = c.Faturas
-            .Where(f => f.EstadoPagamento == EstadoPagamentoFatura.Pago)
+            .Where(f => totalPorFatura.TryGetValue(f.Id, out var total) && total > 0 && f.ValorPago >= total)
             .Select(f => f.Id)
             .ToHashSet();
 
