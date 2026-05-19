@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-18
-status: AGUARDANDO_INICIO
-issue_atual: '#59 e #60 concluídas — próxima é #61 (3 telas piloto)'
+status: EM_EXECUCAO
+issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falta Adicionar Transação'
 ---
 
 # Implementation State — sessão atual
@@ -24,9 +24,39 @@ issue_atual: '#59 e #60 concluídas — próxima é #61 (3 telas piloto)'
 
 ## Issue em execução
 
-**Issue:** Nenhuma iniciada — próxima é **#61 — Fase 3: Refator de 3 telas piloto**
+**Issue:** **#61 — Fase 3: Refator de 3 telas piloto**
 **Bloco:** A (Redesign UX)
-**Status:** AGUARDANDO INÍCIO
+**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (5/5 telas implementadas, aguardando review de Gustavo)
+
+### Progresso #61
+- ✅ Dashboard (commit `fb1abe3`) — saudação, hero teal, cards de conta com
+  avatar gradiente, seção mensal, donut de categorias, KPIs com avatar.
+  `TransactionTable` (compartilhado) tokenizado, linhas com ícone/chips,
+  ações em menu `⋮` quando o container estreita.
+- ✅ FamiliasPage (commit `1a03d0a`) — cards de família com avatar, dialog
+  tokenizado, bug HTML corrigido (`Chip` dentro de `Typography`).
+- ✅ Adicionar/editar transação (commit `af84c67`) — `TransactionForm`
+  com toggle Despesa/Receita visual (vermelho/verde), campo valor com
+  adornment `R$` colorido por tipo, labels uppercase via tokens, borders
+  hover/focus via tokens. `NewTransactionDialog` e `EditTransactionDialog`
+  com header avatar gradiente + divider, borderRadius/shadow via tokens.
+- ✅ Relatórios (commits na mesma sessão) — donut chart com hover sync
+  (activeSlice), center label dinâmico (idle=total, hover=% + nome),
+  AreaChart com gradientes SVG (receitas/despesas/saldo), BarChart com
+  ReferenceLine y=0, grid/axes sem linhas. Bug % mismatch corrigido.
+  `TransactionTable` responsive: slim mode (<640px) = só Data/Descrição/Valor/Ações;
+  ResizeObserver callback ref corrige stuck-slim ao trocar de mês.
+- ✅ Cartões de Crédito (commit `4e71d0f`) — card físico com gradiente por
+  bandeira (`BANDEIRA_GRAD`), chip decorativo, número mascarado em mono,
+  stats cards com avatares gradientes via tokens. Dialogs atualizados
+  para o padrão novo (avatar + Divider + CloseIcon). Todos hardcoded colors → tokens.
+
+### Próxima ação concreta
+Review visual de Gustavo no PR [#71](https://github.com/GustavoPontess/controle-financeiro/pull/71):
+1. `docker compose up -d postgres` + `dotnet run` (porta 5293)
+2. Login com `dev@controle.test`
+3. Conferir: Dashboard, FamiliasPage, Add Transação, Relatórios, Cartões
+4. Se aprovado: marcar PR como Ready for Review e fechar #61
 
 ### Concluído (#59 e #60)
 
@@ -51,20 +81,6 @@ Cria `dev@controle.test` (com família/casal), `conjuge@controle.test` e
 `solo@controle.test` (sem família), com contas e ~transações realistas.
 Faz o atlas capturar telas cheias em vez de vazias.
 
-### Próxima ação concreta — #61
-
-Refatorar 3 telas piloto aplicando os tokens (`src/theme/`):
-1. **Dashboard** — densidade, hierarquia, gráficos
-2. **FamiliasPage** — membros, balanço, despesas compartilhadas
-3. **Adicionar/editar transação** — formulário
-
-- Componentes novos do piloto vão em `src/components/v2/` (não tocar em
-  `src/components/` ainda — evita regressão), ver `visao.md` Fase 3
-- Cada tela: print antes (atlas #59) x depois no PR
-- Caio lidera #61; Pontes revisa
-- Antes de começar: subir backend (Postgres + seeder) e rodar
-  `npm run snapshot` para o baseline com dados
-
 ---
 
 ## Roadmap visual do ciclo
@@ -74,7 +90,7 @@ Fase 1 — Atlas (#59)            ✅ Concluída
   ↓
 Fase 2 — Design Tokens (#60)    ✅ Concluída
   ↓
-Fase 3 — Telas piloto (#61)     ⏳ Próxima (3 telas: Dashboard, FamiliasPage, Adicionar Transação)
+Fase 3 — Telas piloto (#61)     🔵 Em execução (5/5 implementadas, aguardando review PR #71)
   ↓
 Fase 4 — Propagação (#62)       ⏳ Pendente
   ↓

@@ -10,6 +10,12 @@ namespace ControleFinanceiro.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+public class PreviewUploadForm
+{
+    public IFormFile Arquivo { get; set; } = null!;
+    public Guid ContaId { get; set; }
+}
+
 public class ImportacaoController : ControllerBase
 {
     private const long TamanhoMaximoBytes = 2 * 1024 * 1024; // 2 MB
@@ -32,13 +38,13 @@ public class ImportacaoController : ControllerBase
 
     /// <summary>Lê um extrato OFX/CSV e devolve a preview (sem salvar nada).</summary>
     [HttpPost("preview")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(PreviewImportacaoDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Preview(
-        [FromForm] IFormFile arquivo, [FromForm] Guid contaId)
+    public async Task<IActionResult> Preview([FromForm] PreviewUploadForm form)
     {
-        var conteudo = LerArquivo(arquivo);
+        var conteudo = LerArquivo(form.Arquivo);
         var preview = await _importacaoService.PreviewAsync(
-            contaId, GetUserId(), arquivo.FileName, conteudo);
+            form.ContaId, GetUserId(), form.Arquivo.FileName, conteudo);
         return Ok(preview);
     }
 

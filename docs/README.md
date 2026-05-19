@@ -50,6 +50,7 @@ Cada feature complexa tem sua própria pasta com spec técnica e UX. Ao iniciar 
 
 | Feature | Status | Arquivos |
 |---|---|---|
+| [cartao-credito](./features/cartao-credito/) | ✅ Ativo | [regras.md](./features/cartao-credito/regras.md) — ciclo, limite, fatura, pagamento |
 | [parcelamento](./features/parcelamento/) | ✅ Concluída (Q2 2026) | [arquitetura.md](./features/parcelamento/arquitetura.md), [ux.md](./features/parcelamento/ux.md) |
 | [familia](./features/familia/) | 🔵 Em visão (Q3 2026) | [visao.md](./features/familia/visao.md) |
 
