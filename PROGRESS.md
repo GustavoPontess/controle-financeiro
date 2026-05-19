@@ -29,9 +29,12 @@ Ambos os devs trabalhando no front juntos. Distribuição prevista: Pontes lider
 
 ## Em progresso
 
-Nada em execução. Próxima: **#61 — Fase 3: Refator de 3 telas piloto** (Dashboard, FamiliasPage, Adicionar Transação). Sócio (Caio) lidera, Pontes revisa.
+**#61 — Fase 3: Refator de 3 telas piloto.** Branch `feature/61-telas-piloto`, 2/3 telas:
+- ✅ Dashboard — hero, cards de conta, donut, KPIs, tabela tokenizada
+- ✅ FamiliasPage — cards com avatar, dialog tokenizado, bug HTML corrigido
+- ⏳ Adicionar/editar transação
 
-Baseline pronto: `DevDataSeeder` popula o banco e `npm run snapshot` gera o atlas com dados reais para o comparativo antes/depois.
+`DevDataSeeder` popula o banco; `npm run snapshot` gera o atlas com dados reais.
 
 ---
 

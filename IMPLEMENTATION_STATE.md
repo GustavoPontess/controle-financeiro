@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-18
-status: AGUARDANDO_INICIO
-issue_atual: '#59 e #60 concluídas — próxima é #61 (3 telas piloto)'
+status: EM_EXECUCAO
+issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falta Adicionar Transação'
 ---
 
 # Implementation State — sessão atual
@@ -24,9 +24,24 @@ issue_atual: '#59 e #60 concluídas — próxima é #61 (3 telas piloto)'
 
 ## Issue em execução
 
-**Issue:** Nenhuma iniciada — próxima é **#61 — Fase 3: Refator de 3 telas piloto**
+**Issue:** **#61 — Fase 3: Refator de 3 telas piloto**
 **Bloco:** A (Redesign UX)
-**Status:** AGUARDANDO INÍCIO
+**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (2/3 telas)
+
+### Progresso #61
+- ✅ Dashboard (commit `fb1abe3`) — saudação, hero teal, cards de conta com
+  avatar gradiente, seção mensal, donut de categorias, KPIs com avatar.
+  `TransactionTable` (compartilhado) tokenizado, linhas com ícone/chips,
+  ações em menu `⋮` quando o container estreita.
+- ✅ FamiliasPage (commit `1a03d0a`) — cards de família com avatar, dialog
+  tokenizado, bug HTML corrigido (`Chip` dentro de `Typography`).
+- ⏳ Adicionar/editar transação — pendente.
+
+### Próxima ação concreta
+Refatorar a 3ª tela piloto: formulário de adicionar/editar transação
+(`EditTransactionDialog` e o fluxo de "Nova Transação"). Aplicar tokens,
+mesmo padrão visual do Dashboard/FamiliasPage. Build + commit, depois
+abrir PR fechando o #61.
 
 ### Concluído (#59 e #60)
 
@@ -51,20 +66,6 @@ Cria `dev@controle.test` (com família/casal), `conjuge@controle.test` e
 `solo@controle.test` (sem família), com contas e ~transações realistas.
 Faz o atlas capturar telas cheias em vez de vazias.
 
-### Próxima ação concreta — #61
-
-Refatorar 3 telas piloto aplicando os tokens (`src/theme/`):
-1. **Dashboard** — densidade, hierarquia, gráficos
-2. **FamiliasPage** — membros, balanço, despesas compartilhadas
-3. **Adicionar/editar transação** — formulário
-
-- Componentes novos do piloto vão em `src/components/v2/` (não tocar em
-  `src/components/` ainda — evita regressão), ver `visao.md` Fase 3
-- Cada tela: print antes (atlas #59) x depois no PR
-- Caio lidera #61; Pontes revisa
-- Antes de começar: subir backend (Postgres + seeder) e rodar
-  `npm run snapshot` para o baseline com dados
-
 ---
 
 ## Roadmap visual do ciclo
@@ -74,7 +75,7 @@ Fase 1 — Atlas (#59)            ✅ Concluída
   ↓
 Fase 2 — Design Tokens (#60)    ✅ Concluída
   ↓
-Fase 3 — Telas piloto (#61)     ⏳ Próxima (3 telas: Dashboard, FamiliasPage, Adicionar Transação)
+Fase 3 — Telas piloto (#61)     🔵 Em execução (2/3: Dashboard ✅, FamiliasPage ✅, Add Transação ⏳)
   ↓
 Fase 4 — Propagação (#62)       ⏳ Pendente
   ↓
