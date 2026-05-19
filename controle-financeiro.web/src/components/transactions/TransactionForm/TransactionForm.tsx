@@ -103,9 +103,7 @@ export default function TransactionForm({ categories, contas, cartoes, onSubmit,
     return true;
   });
 
-  const cartoesDisponiveis = cartoes.filter(
-    (c) => c.temCredito && (form.contaId ? c.contaId === form.contaId : true)
-  );
+  const cartoesDisponiveis = cartoes.filter((c) => c.temCredito);
 
   const set = (field: keyof TransactionFormData, value: string | number) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -242,25 +240,27 @@ export default function TransactionForm({ categories, contas, cartoes, onSubmit,
         </Select>
       </Field>
 
-      {/* Conta */}
-      <Field label={isCredito ? "Conta que paga a fatura" : "Conta"}>
-        <FormControl size="small" fullWidth>
-          <Select
-            value={form.contaId}
-            displayEmpty
-            required
-            sx={selectSx}
-            onChange={(e) => setForm((f) => ({ ...f, contaId: e.target.value, cartaoCreditoId: "" }))}
-          >
-            <MenuItem value="" disabled>Selecione a conta</MenuItem>
-            {contas.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.nome}{c.bancoNome ? ` — ${c.bancoNome}` : ""}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Field>
+      {/* Conta — oculta para crédito (o cartão já carrega a conta vinculada) */}
+      {!isCredito && (
+        <Field label="Conta">
+          <FormControl size="small" fullWidth>
+            <Select
+              value={form.contaId}
+              displayEmpty
+              required
+              sx={selectSx}
+              onChange={(e) => setForm((f) => ({ ...f, contaId: e.target.value }))}
+            >
+              <MenuItem value="" disabled>Selecione a conta</MenuItem>
+              {contas.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.nome}{c.bancoNome ? ` — ${c.bancoNome}` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Field>
+      )}
 
       {/* Cartão de crédito */}
       {isCredito && (
@@ -274,11 +274,7 @@ export default function TransactionForm({ categories, contas, cartoes, onSubmit,
               onChange={(e) => set("cartaoCreditoId", e.target.value)}
             >
               <MenuItem value="" disabled>
-                {form.contaId
-                  ? cartoesDisponiveis.length === 0
-                    ? "Nenhum cartão nesta conta"
-                    : "Selecione o cartão"
-                  : "Selecione a conta primeiro"}
+                {cartoesDisponiveis.length === 0 ? "Nenhum cartão disponível" : "Selecione o cartão"}
               </MenuItem>
               {cartoesDisponiveis.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
