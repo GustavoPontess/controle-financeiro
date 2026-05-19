@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import {
   Box, Paper, Typography, CircularProgress,
 } from "@mui/material"
+import { tokens } from "../../theme/tokens"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked"
 import CustomButton from "../../components/CustomButton"
@@ -81,17 +82,17 @@ export default function OnboardingPage() {
 
   return (
     <Box sx={{
-      minHeight: "100vh", bgcolor: "#f5f6fa",
+      minHeight: "100vh", bgcolor: tokens.color.background.page,
       display: "flex", alignItems: "center", justifyContent: "center", p: 3,
     }}>
       <Paper elevation={0} sx={{
         width: "100%", maxWidth: 560, p: 4,
-        border: "1px solid #e5e7eb", borderRadius: "16px",
+        border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.xl,
       }}>
-        <Typography fontSize={24} fontWeight={700} color="#111827">
+        <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
           Bem-vindo(a)! Vamos começar
         </Typography>
-        <Typography fontSize={14} color="#6b7280" mt={0.5} mb={3}>
+        <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary} mt={0.5} mb={3}>
           Alguns passos rápidos para o app ficar útil de verdade.
         </Typography>
 
@@ -101,20 +102,20 @@ export default function OnboardingPage() {
             return (
               <Box key={passo.rota} sx={{
                 display: "flex", alignItems: "center", gap: 1.5,
-                p: 2, borderRadius: "12px", border: "1px solid #e5e7eb",
-                bgcolor: feito ? "#f0fdf4" : "#ffffff",
+                p: 2, borderRadius: tokens.radius.lg, border: `1px solid ${tokens.color.border.default}`,
+                bgcolor: feito ? tokens.color.status.success.light : tokens.color.background.surface,
               }}>
                 {feito
-                  ? <CheckCircleIcon sx={{ color: "#16a34a" }} />
-                  : <RadioButtonUncheckedIcon sx={{ color: "#9ca3af" }} />}
+                  ? <CheckCircleIcon sx={{ color: tokens.color.status.success.main }} />
+                  : <RadioButtonUncheckedIcon sx={{ color: tokens.color.text.disabled }} />}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontSize={14} fontWeight={600} color="#111827">
+                  <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
                     {passo.titulo}
                     {passo.opcional && (
-                      <Typography component="span" fontSize={12} color="#9ca3af"> · opcional</Typography>
+                      <Typography component="span" fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}> · opcional</Typography>
                     )}
                   </Typography>
-                  <Typography fontSize={12} color="#6b7280">{passo.descricao}</Typography>
+                  <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>{passo.descricao}</Typography>
                 </Box>
                 {!feito && (
                   <CustomButton size="small" variant="secondary"
