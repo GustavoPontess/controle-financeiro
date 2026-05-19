@@ -287,13 +287,14 @@ public class FaturaService
         PreencherDto(dto, fatura, fatura.CartaoCredito.Nome);
         dto.Transacoes = fatura.Transacoes
             .Where(t => t.UsadoComoCredito)
-            .OrderByDescending(t => t.Data)
+            .OrderByDescending(t => t.CriadoEm)
             .Select(t => new FaturaTransacaoDto
             {
                 Id = t.Id,
                 Descricao = t.Descricao,
                 Valor = t.Valor,
                 Data = t.Data,
+                CriadoEm = t.CriadoEm,
                 CategoriaId = t.CategoriaId,
                 CategoriaDescricao = t.Categoria?.Descricao,
             }).ToList();

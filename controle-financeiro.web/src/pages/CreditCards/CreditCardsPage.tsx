@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, IconButton, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Select, MenuItem as MuiMenuItem,
   FormControl, InputLabel, LinearProgress, Table, TableHead, TableBody,
-  TableRow, TableCell, Divider,
+  TableRow, TableCell, Divider, Collapse,
 } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
@@ -14,16 +14,18 @@ import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined"
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined"
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined"
 import CloseIcon from "@mui/icons-material/Close"
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight"
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
 import CustomButton from "../../components/CustomButton"
 import EmptyState from "../../components/EmptyState/EmptyState"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
-import { getFaturasByCartao, pagarFatura } from "../../services/faturaService"
+import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Fatura, PagarFaturaPayload } from "../../types/Fatura"
+import type { Fatura, FaturaDetalhe, PagarFaturaPayload } from "../../types/Fatura"
 import { tokens } from "../../theme/tokens"
 
 const formatMoney = (v: number) =>
@@ -121,6 +123,8 @@ export default function CreditCardsPage() {
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [loadingFaturas, setLoadingFaturas] = useState(false)
+  const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
+  const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
 
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
@@ -151,6 +155,19 @@ export default function CreditCardsPage() {
     try {
       setFaturas(await getFaturasByCartao(cartaoId))
     } finally { setLoadingFaturas(false) }
+  }
+
+  const toggleFatura = async (faturaId: string, cartaoId: string) => {
+    if (expandedFaturaId === faturaId) { setExpandedFaturaId(null); return }
+    setExpandedFaturaId(faturaId)
+    if (!faturaDetalhes[faturaId]) {
+      try {
+        const detalhe = await getFaturaDetalhe(cartaoId, faturaId)
+        setFaturaDetalhes(prev => ({ ...prev, [faturaId]: detalhe }))
+      } catch {
+        notify({ open: true, message: "Erro ao carregar transações da fatura", severity: "error" })
+      }
+    }
   }
 
   const openPagar = (faturaId: string, cartaoId: string, valorRestante: number, contaId?: string) => {
@@ -484,6 +501,7 @@ export default function CreditCardsPage() {
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ ...headerSx, width: 32 }} />
                   <TableCell sx={headerSx}>Período</TableCell>
                   <TableCell sx={headerSx}>Vencimento</TableCell>
                   <TableCell sx={headerSx}>Status</TableCell>
@@ -495,45 +513,119 @@ export default function CreditCardsPage() {
               </TableHead>
               <TableBody>
                 {faturas.map(f => {
-                  const sc = STATUS_STYLE[f.status] ?? STATUS_STYLE[1]
+                  const isPaga = f.estadoPagamento === 2
+                  const isFechada = f.estadoCiclo === 1
+                  const statusKey = isPaga ? 3 : isFechada ? 2 : 1
+                  const sc = STATUS_STYLE[statusKey]
+                  const isExpanded = expandedFaturaId === f.id
+                  const detalhe = faturaDetalhes[f.id]
                   return (
-                    <TableRow key={f.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
-                      <TableCell sx={cellSx}>
-                        <Typography fontSize={12} color={tokens.color.text.primary}>
-                          {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={cellSx}>
-                        <Typography fontSize={12} color={f.vencida ? tokens.color.status.error.main : tokens.color.text.primary} fontWeight={f.vencida ? 600 : 400}>
-                          {formatDate(f.dataVencimento)}
-                        </Typography>
-                        {f.vencida && (
-                          <Typography fontSize={10} color={tokens.color.status.error.main} fontWeight={600}>Vencida</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell sx={cellSx}>
-                        <Chip label={sc.label} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: sc.bg, color: sc.color, fontWeight: tokens.typography.fontWeight.medium }} />
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
-                        {formatMoney(f.valorTotal)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", color: tokens.color.status.success.main, fontWeight: tokens.typography.fontWeight.medium }}>
-                        {formatMoney(f.valorPago)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700, color: f.valorRestante > 0 ? tokens.color.status.error.main : tokens.color.status.success.main }}>
-                        {formatMoney(f.valorRestante)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "center" }}>
-                        {f.status !== 3 && f.valorRestante > 0 && (
-                          <IconButton size="small"
-                            onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}
-                            title="Pagar fatura"
-                            sx={{ p: 0.75, color: tokens.color.brand.primary, borderRadius: tokens.radius.sm, "&:hover": { bgcolor: tokens.color.brand.subtle } }}>
-                            <PaymentOutlinedIcon sx={{ fontSize: 16 }} />
+                    <>
+                      <TableRow
+                        key={f.id}
+                        onClick={() => toggleFatura(f.id, faturasCartaoId!)}
+                        sx={{ cursor: "pointer", "&:hover": { bgcolor: tokens.color.background.hover }, bgcolor: isExpanded ? tokens.color.background.secondary : undefined }}
+                      >
+                        <TableCell sx={{ ...cellSx, pr: 0 }}>
+                          <IconButton size="small" sx={{ p: 0.25, color: tokens.color.text.secondary }}>
+                            {isExpanded
+                              ? <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                              : <KeyboardArrowRightIcon sx={{ fontSize: 16 }} />}
                           </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize={12} color={tokens.color.text.primary}>
+                            {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize={12} color={f.vencida ? tokens.color.status.error.main : tokens.color.text.primary} fontWeight={f.vencida ? 600 : 400}>
+                            {formatDate(f.dataVencimento)}
+                          </Typography>
+                          {f.vencida && (
+                            <Typography fontSize={10} color={tokens.color.status.error.main} fontWeight={600}>Vencida</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Chip label={sc.label} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: sc.bg, color: sc.color, fontWeight: tokens.typography.fontWeight.medium }} />
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
+                          {formatMoney(f.valorTotal)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", color: tokens.color.status.success.main, fontWeight: tokens.typography.fontWeight.medium }}>
+                          {formatMoney(f.valorPago)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700, color: f.valorRestante > 0 ? tokens.color.status.error.main : tokens.color.status.success.main }}>
+                          {formatMoney(f.valorRestante)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                          {!isPaga && f.valorRestante > 0 && (
+                            <IconButton size="small"
+                              onClick={() => openPagar(f.id, faturasCartaoId!, f.valorRestante, cartaoAtivo.contaId)}
+                              title="Pagar fatura"
+                              sx={{ p: 0.75, color: tokens.color.brand.primary, borderRadius: tokens.radius.sm, "&:hover": { bgcolor: tokens.color.brand.subtle } }}>
+                              <PaymentOutlinedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Sub-linhas de transações */}
+                      {isExpanded && (
+                        <TableRow key={`${f.id}-detail`}>
+                          <TableCell colSpan={8} sx={{ p: 0, borderBottom: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ bgcolor: tokens.color.background.secondary, borderBottom: `1px solid ${tokens.color.border.subtle}` }}>
+                                {!detalhe ? (
+                                  <Box sx={{ py: 2, px: 4 }}><LinearProgress /></Box>
+                                ) : detalhe.transacoes.length === 0 ? (
+                                  <Typography fontSize={12} color={tokens.color.text.secondary} sx={{ py: 1.5, px: 4 }}>
+                                    Nenhuma transação nesta fatura.
+                                  </Typography>
+                                ) : (
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ ...headerSx, pl: 5, width: "30%" }}>Data</TableCell>
+                                        <TableCell sx={headerSx}>Horário</TableCell>
+                                        <TableCell sx={headerSx}>Descrição</TableCell>
+                                        <TableCell sx={headerSx}>Categoria</TableCell>
+                                        <TableCell sx={{ ...headerSx, textAlign: "right" }}>Valor</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {detalhe.transacoes.map(t => (
+                                        <TableRow key={t.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
+                                          <TableCell sx={{ ...cellSx, pl: 5 }}>
+                                            <Typography fontSize={12} color={tokens.color.text.primary}>
+                                              {new Date(t.data).toLocaleDateString("pt-BR")}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.secondary} fontFamily="monospace">
+                                              {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.primary}>{t.descricao}</Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.secondary}>{t.categoriaDescricao ?? "—"}</Typography>
+                                          </TableCell>
+                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: tokens.color.status.error.main }}>
+                                            {formatMoney(t.valor)}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                )}
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   )
                 })}
               </TableBody>
