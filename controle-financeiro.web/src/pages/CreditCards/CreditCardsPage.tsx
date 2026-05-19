@@ -176,6 +176,7 @@ export default function CreditCardsPage() {
       await pagarFatura(pagarCartaoId, pagarFaturaId, payload)
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
       setPagarFaturaId(null)
+      await loadData()
       if (faturasCartaoId) setFaturas(await getFaturasByCartao(faturasCartaoId))
     } catch {
       notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })

@@ -17,6 +17,7 @@ public class CartaoCreditoService(AppDbContext context)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
+            .Include(c => c.Faturas)
             .OrderBy(c => c.Nome)
             .ToListAsync();
 
@@ -30,6 +31,7 @@ public class CartaoCreditoService(AppDbContext context)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
+            .Include(c => c.Faturas)
             .FirstOrDefaultAsync();
 
         return cartao is null ? null : ToDto(cartao);
@@ -165,9 +167,20 @@ public class CartaoCreditoService(AppDbContext context)
     private static CartaoCreditoDto ToDto(CartaoCredito c)
     {
         var (inicio, fim) = CicloAtual(c.DiaFechamento);
+
+        // Faturas pagas têm limite restaurado — excluir transações delas do cálculo
+        var faturasPagas = c.Faturas
+            .Where(f => f.EstadoPagamento == EstadoPagamentoFatura.Pago)
+            .Select(f => f.Id)
+            .ToHashSet();
+
         var gastos = c.TemCredito
             ? c.Transacoes
-                .Where(t => t.UsadoComoCredito && t.Tipo == TipoTransacao.Despesa && t.Data.Date >= inicio && t.Data.Date <= fim)
+                .Where(t => t.UsadoComoCredito
+                    && t.Tipo == TipoTransacao.Despesa
+                    && t.Data.Date >= inicio
+                    && t.Data.Date <= fim
+                    && (t.FaturaId == null || !faturasPagas.Contains(t.FaturaId.Value)))
                 .Sum(t => t.Valor)
             : 0;
 
