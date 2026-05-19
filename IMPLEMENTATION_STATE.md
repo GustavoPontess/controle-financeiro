@@ -26,7 +26,7 @@ issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falt
 
 **Issue:** **#61 — Fase 3: Refator de 3 telas piloto**
 **Bloco:** A (Redesign UX)
-**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (2/3 telas)
+**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (3/3 telas implementadas, aguardando review visual)
 
 ### Progresso #61
 - ✅ Dashboard (commit `fb1abe3`) — saudação, hero teal, cards de conta com
@@ -35,13 +35,18 @@ issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falt
   ações em menu `⋮` quando o container estreita.
 - ✅ FamiliasPage (commit `1a03d0a`) — cards de família com avatar, dialog
   tokenizado, bug HTML corrigido (`Chip` dentro de `Typography`).
-- ⏳ Adicionar/editar transação — pendente.
+- ✅ Adicionar/editar transação (commit `af84c67`) — `TransactionForm`
+  com toggle Despesa/Receita visual (vermelho/verde), campo valor com
+  adornment `R$` colorido por tipo, labels uppercase via tokens, borders
+  hover/focus via tokens. `NewTransactionDialog` e `EditTransactionDialog`
+  com header avatar gradiente + divider, borderRadius/shadow via tokens.
 
 ### Próxima ação concreta
-Refatorar a 3ª tela piloto: formulário de adicionar/editar transação
-(`EditTransactionDialog` e o fluxo de "Nova Transação"). Aplicar tokens,
-mesmo padrão visual do Dashboard/FamiliasPage. Build + commit, depois
-abrir PR fechando o #61.
+Review visual das 3 telas com backend no ar:
+1. `docker compose up -d postgres` + `dotnet run` (porta 5293)
+2. Login com `dev@controle.test`
+3. Conferir Dashboard, FamiliasPage e dialog Nova Transação
+4. Se aprovado: marcar PR #71 como Ready for Review e fechar #61
 
 ### Concluído (#59 e #60)
 
