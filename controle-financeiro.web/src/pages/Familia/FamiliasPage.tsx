@@ -9,8 +9,10 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined"
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined"
+import Diversity3Icon from "@mui/icons-material/Diversity3"
 import CustomButton from "../../components/CustomButton"
 import EmptyState from "../../components/EmptyState/EmptyState"
+import { tokens } from "../../theme/tokens"
 import {
   getFamilias, getFamilia, criarFamilia, dissolverFamilia, convidarMembro,
   revogarConvite, removerMembro, getConvitesPendentes, aceitarConvite, recusarConvite,
@@ -345,8 +347,12 @@ export default function FamiliasPage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="#111827">Famílias</Typography>
-          <Typography fontSize={13} color="#6b7280">Organize as finanças com quem você divide a vida.</Typography>
+          <Typography fontSize={tokens.typography.fontSize["2xl"]} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} sx={{ letterSpacing: -0.5 }}>
+            Famílias
+          </Typography>
+          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
+            Organize as finanças com quem você divide a vida.
+          </Typography>
         </Box>
         <CustomButton size="small" startIcon={<GroupAddIcon />} onClick={() => setCriarOpen(true)}>
           Nova Família
@@ -355,14 +361,21 @@ export default function FamiliasPage() {
 
       {/* Convites pendentes */}
       {convitesPendentes.length > 0 && (
-        <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 2.5 }}>
-          <Typography fontSize={15} fontWeight={600} mb={1.5}>Convites pendentes</Typography>
-          {convitesPendentes.map(c => (
+        <Paper elevation={0} sx={{ p: 2.5, bgcolor: tokens.color.brand.subtle }}>
+          <Typography
+            fontSize={tokens.typography.fontSize.base}
+            fontWeight={tokens.typography.fontWeight.bold}
+            color={tokens.color.text.primary}
+            mb={1.5}
+          >
+            Convites pendentes
+          </Typography>
+          {convitesPendentes.map((c, i) => (
             <Box key={c.id} sx={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
-              py: 1, borderBottom: "1px solid #f1f5f9",
+              py: 1.25, borderTop: i === 0 ? "none" : `1px solid ${tokens.color.border.subtle}`,
             }}>
-              <Typography fontSize={14}>
+              <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.primary}>
                 <strong>{c.nomeFamilia}</strong> — convidou você como {c.papel}
               </Typography>
               <Box sx={{ display: "flex", gap: 1 }}>
@@ -381,22 +394,58 @@ export default function FamiliasPage() {
           description="Crie uma família para compartilhar despesas."
         />
       ) : (
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 2 }}>
           {familias.map(f => (
             <Paper
               key={f.id}
               elevation={0}
               onClick={() => abrirDetalhe(f.id)}
               sx={{
-                border: "1px solid #e5e7eb", borderRadius: "12px", p: 2.5, cursor: "pointer",
-                "&:hover": { borderColor: "#9ca3af" }, transition: "border-color 0.15s",
+                p: 2.5,
+                cursor: "pointer",
+                transition: "box-shadow .15s ease, transform .15s ease",
+                "&:hover": { boxShadow: tokens.shadow.md, transform: "translateY(-2px)" },
               }}
             >
-              <Typography fontSize={16} fontWeight={700} color="#111827">{f.nome}</Typography>
-              <Typography fontSize={13} color="#6b7280" mt={0.5}>
-                {f.totalMembros} {f.totalMembros === 1 ? "membro" : "membros"}
-              </Typography>
-              {f.ehAdmin && <Chip label="Administrador" size="small" sx={{ mt: 1 }} />}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: tokens.radius.lg,
+                    background: `linear-gradient(135deg, ${tokens.color.brand.primary}, ${tokens.color.brand.hover})`,
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Diversity3Icon sx={{ fontSize: 24 }} />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography fontSize={tokens.typography.fontSize.base} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} noWrap>
+                    {f.nome}
+                  </Typography>
+                  <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
+                    {f.totalMembros} {f.totalMembros === 1 ? "membro" : "membros"}
+                  </Typography>
+                </Box>
+              </Box>
+              {f.ehAdmin && (
+                <Chip
+                  label="Administrador"
+                  size="small"
+                  sx={{
+                    fontSize: tokens.typography.fontSize["2xs"],
+                    height: 22,
+                    borderRadius: tokens.radius.sm,
+                    fontWeight: tokens.typography.fontWeight.medium,
+                    bgcolor: tokens.color.brand.subtle,
+                    color: tokens.color.brand.hover,
+                  }}
+                />
+              )}
             </Paper>
           ))}
         </Box>
@@ -436,11 +485,26 @@ export default function FamiliasPage() {
               {detalhe.membros.map(m => (
                 <Box key={m.id} sx={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 1, borderBottom: "1px solid #f1f5f9",
+                  py: 1, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                 }}>
                   <Box>
-                    <Typography fontSize={14}>{m.nomeUsuario} <Chip label={m.papel} size="small" /></Typography>
-                    <Typography fontSize={12} color="#9ca3af">
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.primary}>
+                        {m.nomeUsuario}
+                      </Typography>
+                      <Chip
+                        label={m.papel}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: tokens.typography.fontSize["2xs"],
+                          borderRadius: tokens.radius.sm,
+                          bgcolor: tokens.color.brand.subtle,
+                          color: tokens.color.brand.hover,
+                        }}
+                      />
+                    </Box>
+                    <Typography fontSize={12} color={tokens.color.text.disabled}>
                       {m.emailUsuario} · desde {formatDate(m.entrouEm)}
                       {m.rendaMensal != null && ` · renda ${formatMoney(m.rendaMensal)}`}
                     </Typography>
@@ -464,9 +528,9 @@ export default function FamiliasPage() {
                   {detalhe.convitesPendentes.map(c => (
                     <Box key={c.id} sx={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      py: 1, borderBottom: "1px solid #f1f5f9",
+                      py: 1, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                     }}>
-                      <Typography fontSize={13} color="#6b7280">{c.emailConvidado} — {c.papel}</Typography>
+                      <Typography fontSize={13} color={tokens.color.text.secondary}>{c.emailConvidado} — {c.papel}</Typography>
                       {detalhe.ehAdmin && (
                         <IconButton size="small" onClick={() => handleRevogarConvite(c.id)}>
                           <DeleteOutlineIcon fontSize="small" />
@@ -490,7 +554,7 @@ export default function FamiliasPage() {
                   ))}
                 </TextField>
               ) : (
-                <Typography fontSize={13} color="#6b7280">
+                <Typography fontSize={13} color={tokens.color.text.secondary}>
                   {modoRateioLabel(detalhe.modoRateioPadrao)}
                 </Typography>
               )}
@@ -504,15 +568,15 @@ export default function FamiliasPage() {
                   {balanco.saldos.map(s => (
                     <Box key={s.usuarioId} sx={{
                       display: "flex", justifyContent: "space-between",
-                      py: 0.75, borderBottom: "1px solid #f1f5f9",
+                      py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                     }}>
                       <Typography fontSize={13}>
                         {s.nome} — pagou {formatMoney(s.pagou)}
-                        <Typography component="span" fontSize={12} color="#9ca3af">
+                        <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
                           {" "}· cota {formatMoney(s.cota)}</Typography>
                       </Typography>
                       <Typography fontSize={13} fontWeight={600}
-                        color={s.saldo >= 0 ? "#15803d" : "#dc2626"}>
+                        color={s.saldo >= 0 ? tokens.color.status.success.main : tokens.color.status.error.main}>
                         {s.saldo >= 0
                           ? `recebe ${formatMoney(s.saldo)}`
                           : `deve ${formatMoney(-s.saldo)}`}
@@ -530,19 +594,35 @@ export default function FamiliasPage() {
                 </CustomButton>
               </Box>
               {dependentes.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af">
+                <Typography fontSize={13} color={tokens.color.text.disabled}>
                   Nenhum dependente cadastrado.
                 </Typography>
               ) : dependentes.map(dep => (
                 <Box key={dep.id} sx={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                 }}>
-                  <Typography fontSize={13}>
-                    {dep.nome}
-                    {dep.apelido && <Typography component="span" fontSize={12} color="#9ca3af"> ({dep.apelido})</Typography>}
-                    {" "}<Chip label={tipoDependenteLabel(dep.tipo)} size="small" />
-                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.primary}>
+                      {dep.nome}
+                      {dep.apelido && (
+                        <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
+                          {" "}({dep.apelido})
+                        </Typography>
+                      )}
+                    </Typography>
+                    <Chip
+                      label={tipoDependenteLabel(dep.tipo)}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: tokens.typography.fontSize["2xs"],
+                        borderRadius: tokens.radius.sm,
+                        bgcolor: tokens.color.background.tertiary,
+                        color: tokens.color.text.secondary,
+                      }}
+                    />
+                  </Box>
                   <Box>
                     <IconButton size="small" onClick={() => abrirDepDialog(dep)}>
                       <EditOutlinedIcon fontSize="small" />
@@ -559,16 +639,16 @@ export default function FamiliasPage() {
                 Despesas compartilhadas
               </Typography>
               {despesas.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af">
+                <Typography fontSize={13} color={tokens.color.text.disabled}>
                   Nenhuma despesa compartilhada neste mês.
                 </Typography>
               ) : despesas.map(d => (
                 <Box key={d.id} sx={{
                   display: "flex", justifyContent: "space-between",
-                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                 }}>
                   <Typography fontSize={13}>
-                    {d.descricao} <Typography component="span" fontSize={12} color="#9ca3af">
+                    {d.descricao} <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
                       · {d.pagadorNome} · {formatDate(d.data)}</Typography>
                   </Typography>
                   <Typography fontSize={13} fontWeight={600}>{formatMoney(d.valor)}</Typography>
@@ -583,17 +663,17 @@ export default function FamiliasPage() {
                 </CustomButton>
               </Box>
               {acertos.length === 0 ? (
-                <Typography fontSize={13} color="#9ca3af">
+                <Typography fontSize={13} color={tokens.color.text.disabled}>
                   Nenhum acerto registrado neste mês.
                 </Typography>
               ) : acertos.map(a => (
                 <Box key={a.id} sx={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 0.75, borderBottom: "1px solid #f1f5f9",
+                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
                 }}>
                   <Typography fontSize={13}>
                     {a.deNome} → {a.paraNome}
-                    <Typography component="span" fontSize={12} color="#9ca3af">
+                    <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
                       {a.observacao ? ` · ${a.observacao}` : ""} · {formatDate(a.criadoEm)}</Typography>
                   </Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -675,7 +755,7 @@ export default function FamiliasPage() {
       <Dialog open={rendaMembro !== null} onClose={() => setRendaMembro(null)} fullWidth maxWidth="xs">
         <DialogTitle>Renda mensal — {rendaMembro?.nomeUsuario}</DialogTitle>
         <DialogContent>
-          <Typography fontSize={13} color="#6b7280" mb={1}>
+          <Typography fontSize={13} color={tokens.color.text.secondary} mb={1}>
             Usada no rateio proporcional. Deixe vazio para não informar.
           </Typography>
           <TextField
@@ -693,7 +773,7 @@ export default function FamiliasPage() {
       <Dialog open={acertoOpen} onClose={() => setAcertoOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Registrar acerto</DialogTitle>
         <DialogContent>
-          <Typography fontSize={13} color="#6b7280" mb={1}>
+          <Typography fontSize={13} color={tokens.color.text.secondary} mb={1}>
             Registra que um membro pagou a outro o saldo pendente. Não mexe nas contas reais.
           </Typography>
           <TextField
