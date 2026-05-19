@@ -1,27 +1,32 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   Box, Typography, Paper, IconButton, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Select, MenuItem as MuiMenuItem,
   FormControl, InputLabel, LinearProgress, Table, TableHead, TableBody,
-  TableRow, TableCell,
+  TableRow, TableCell, Divider, Collapse,
 } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import CreditCardIcon from "@mui/icons-material/CreditCard"
-import ReceiptIcon from "@mui/icons-material/Receipt"
-import PaymentIcon from "@mui/icons-material/Payment"
+import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined"
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined"
+import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined"
+import CloseIcon from "@mui/icons-material/Close"
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight"
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
 import CustomButton from "../../components/CustomButton"
 import EmptyState from "../../components/EmptyState/EmptyState"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
-import { getFaturasByCartao, pagarFatura } from "../../services/faturaService"
+import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Fatura, PagarFaturaPayload } from "../../types/Fatura"
+import type { Fatura, FaturaDetalhe, PagarFaturaPayload } from "../../types/Fatura"
+import { tokens } from "../../theme/tokens"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -68,33 +73,37 @@ const booleansParaModo = (c: CartaoCredito): Modo => {
   return "debito"
 }
 
-const BANDEIRA_COLOR: Record<number, { bg: string; color: string }> = {
-  1: { bg: "#dbeafe", color: "#1d4ed8" },
-  2: { bg: "#fef3c7", color: "#b45309" },
-  3: { bg: "#dcfce7", color: "#15803d" },
-  4: { bg: "#ffe4e6", color: "#be123c" },
-  5: { bg: "#ede9fe", color: "#7c3aed" },
-  6: { bg: "#f3f4f6", color: "#6b7280" },
+const BANDEIRA_GRAD: Record<number, string> = {
+  1: "linear-gradient(135deg, #1e40af, #3b82f6)",       // Visa — azul
+  2: "linear-gradient(135deg, #7c2d12, #dc2626)",        // Mastercard — vermelho escuro
+  3: "linear-gradient(135deg, #0f766e, #14b8a6)",        // Elo — teal
+  4: "linear-gradient(135deg, #9f1239, #e11d48)",        // Hipercard — carmim
+  5: "linear-gradient(135deg, #14532d, #16a34a)",        // Amex — verde
+  6: "linear-gradient(135deg, #374151, #6b7280)",        // Outros — cinza
 }
 
-const STATUS_COLOR: Record<number, { bg: string; color: string; label: string }> = {
-  1: { bg: "#dbeafe", color: "#1d4ed8", label: "Aberta" },
-  2: { bg: "#fef3c7", color: "#b45309", label: "Fechada" },
-  3: { bg: "#dcfce7", color: "#15803d", label: "Paga" },
+const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }> = {
+  1: { bg: tokens.color.status.info.light,    color: tokens.color.status.info.dark,    label: "Aberta"  },
+  2: { bg: tokens.color.status.warning.light, color: tokens.color.status.warning.dark, label: "Fechada" },
+  3: { bg: tokens.color.status.success.light, color: tokens.color.status.success.dark, label: "Paga"    },
 }
 
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
 
 const emptyForm: FormState = {
-  nome: "",
-  ultimosDigitos: undefined,
-  bandeira: 6,
-  modo: "credito_debito",
-  limite: undefined,
-  diaFechamento: undefined,
-  diaVencimento: undefined,
-  contaId: undefined,
-  bancoId: undefined,
+  nome: "", ultimosDigitos: undefined, bandeira: 6, modo: "credito_debito",
+  limite: undefined, diaFechamento: undefined, diaVencimento: undefined,
+  contaId: undefined, bancoId: undefined,
+}
+
+const fieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: tokens.radius.md,
+    fontSize: tokens.typography.fontSize.sm,
+    "& fieldset": { borderColor: tokens.color.border.default },
+    "&:hover fieldset": { borderColor: tokens.color.border.strong },
+    "&.Mui-focused fieldset": { borderColor: tokens.color.brand.primary },
+  },
 }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -111,17 +120,16 @@ export default function CreditCardsPage() {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState("")
 
-  // Faturas
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [loadingFaturas, setLoadingFaturas] = useState(false)
+  const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
+  const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
 
-  // Pagamento
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
   const [pagarForm, setPagarForm] = useState({
-    contaId: "",
-    valor: "",
+    contaId: "", valor: "",
     dataPagamento: new Date().toISOString().split("T")[0],
     meioPagamento: 4,
   })
@@ -133,8 +141,7 @@ export default function CreditCardsPage() {
       setCartoes(cs)
       setContas(conts.filter(c => !c.isCarteira))
       setBancos(bs)
-    } catch (error) {
-      console.error("Erro ao carregar cartões:", error)
+    } catch {
       notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
     }
   }
@@ -146,10 +153,20 @@ export default function CreditCardsPage() {
     setFaturasCartaoId(cartaoId)
     setLoadingFaturas(true)
     try {
-      const f = await getFaturasByCartao(cartaoId)
-      setFaturas(f)
-    } finally {
-      setLoadingFaturas(false)
+      setFaturas(await getFaturasByCartao(cartaoId))
+    } finally { setLoadingFaturas(false) }
+  }
+
+  const toggleFatura = async (faturaId: string, cartaoId: string) => {
+    if (expandedFaturaId === faturaId) { setExpandedFaturaId(null); return }
+    setExpandedFaturaId(faturaId)
+    if (!faturaDetalhes[faturaId]) {
+      try {
+        const detalhe = await getFaturaDetalhe(cartaoId, faturaId)
+        setFaturaDetalhes(prev => ({ ...prev, [faturaId]: detalhe }))
+      } catch {
+        notify({ open: true, message: "Erro ao carregar transações da fatura", severity: "error" })
+      }
     }
   }
 
@@ -157,10 +174,8 @@ export default function CreditCardsPage() {
     setPagarFaturaId(faturaId)
     setPagarCartaoId(cartaoId)
     setPagarForm({
-      contaId: contaId ?? "",
-      valor: String(valorRestante.toFixed(2)),
-      dataPagamento: new Date().toISOString().split("T")[0],
-      meioPagamento: 4,
+      contaId: contaId ?? "", valor: String(valorRestante.toFixed(2)),
+      dataPagamento: new Date().toISOString().split("T")[0], meioPagamento: 4,
     })
   }
 
@@ -172,28 +187,20 @@ export default function CreditCardsPage() {
     setPagarLoading(true)
     try {
       const payload: PagarFaturaPayload = {
-        contaId: pagarForm.contaId,
-        valor: Number(pagarForm.valor),
-        dataPagamento: pagarForm.dataPagamento,
-        meioPagamento: pagarForm.meioPagamento,
+        contaId: pagarForm.contaId, valor: Number(pagarForm.valor),
+        dataPagamento: pagarForm.dataPagamento, meioPagamento: pagarForm.meioPagamento,
       }
       await pagarFatura(pagarCartaoId, pagarFaturaId, payload)
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
       setPagarFaturaId(null)
-      // Recarregar faturas do cartão ativo
-      if (faturasCartaoId) {
-        const f = await getFaturasByCartao(faturasCartaoId)
-        setFaturas(f)
-      }
+      await loadData()
+      if (faturasCartaoId) setFaturas(await getFaturasByCartao(faturasCartaoId))
     } catch {
       notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
-    } finally {
-      setPagarLoading(false)
-    }
+    } finally { setPagarLoading(false) }
   }
 
   const openCreate = () => { setForm(emptyForm); setErro(""); setEditingId(null); setDialogOpen(true) }
-
   const openEdit = (c: CartaoCredito) => {
     setForm({
       nome: c.nome, ultimosDigitos: c.ultimosDigitos, bandeira: c.bandeira,
@@ -245,16 +252,30 @@ export default function CreditCardsPage() {
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find(c => c.id === faturasCartaoId)
 
-  const headerSx = { fontSize: 12, fontWeight: 600, color: "text.secondary", bgcolor: "action.hover", py: 1.25 }
-  const cellSx = { fontSize: 13, color: "text.primary", py: 1.25 }
+  const headerSx = {
+    fontSize: tokens.typography.fontSize["2xs"],
+    fontWeight: tokens.typography.fontWeight.medium,
+    color: tokens.color.text.secondary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    bgcolor: tokens.color.background.secondary,
+    borderBottom: `1px solid ${tokens.color.border.default}`,
+    py: 1.5,
+  }
+  const cellSx = {
+    fontSize: tokens.typography.fontSize.sm,
+    color: tokens.color.text.primary,
+    py: 1.75,
+    borderBottom: `1px solid ${tokens.color.border.subtle}`,
+  }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="text.primary">Cartões</Typography>
-          <Typography fontSize={13} color="text.secondary">Gerencie seus cartões e acompanhe faturas</Typography>
+          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Cartões</Typography>
+          <Typography fontSize={13} color={tokens.color.text.secondary}>Gerencie seus cartões e acompanhe faturas</Typography>
         </Box>
         <CustomButton size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />} onClick={openCreate}>
           Novo Cartão
@@ -263,20 +284,44 @@ export default function CreditCardsPage() {
 
       {/* Stats */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Total de Cartões</Typography>
-          <Typography fontSize={26} fontWeight={800} color="text.primary">{cartoes.length}</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Limite Total</Typography>
-          <Typography fontSize={22} fontWeight={800} color="text.primary">{formatMoney(totalLimite)}</Typography>
-          <Typography fontSize={11} color="text.secondary">cartões com crédito</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Gastos no Ciclo</Typography>
-          <Typography fontSize={22} fontWeight={800} color="#dc2626">{formatMoney(totalGastos)}</Typography>
-          <Typography fontSize={11} color="text.secondary">ciclo atual</Typography>
-        </Paper>
+        {[
+          {
+            label: "Total de Cartões",
+            value: String(cartoes.length),
+            sub: cartoes.length === 1 ? "cartão cadastrado" : "cartões cadastrados",
+            grad: `linear-gradient(135deg, ${tokens.color.brand.primary}, ${tokens.color.brand.hover})`,
+            icon: <CreditCardOutlinedIcon sx={{ fontSize: 18 }} />,
+          },
+          {
+            label: "Limite Total",
+            value: formatMoney(totalLimite),
+            sub: "cartões com crédito",
+            grad: "linear-gradient(135deg, #6366f1, #4f46e5)",
+            icon: <CreditCardIcon sx={{ fontSize: 18 }} />,
+          },
+          {
+            label: "Gastos no Ciclo",
+            value: formatMoney(totalGastos),
+            sub: "ciclo atual",
+            grad: `linear-gradient(135deg, ${tokens.color.status.error.main}, ${tokens.color.status.error.dark})`,
+            icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 18 }} />,
+          },
+        ].map(s => (
+          <Paper key={s.label} elevation={0} sx={{ p: 2.5, border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+              <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.secondary} sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                {s.label}
+              </Typography>
+              <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: s.grad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+                {s.icon}
+              </Box>
+            </Box>
+            <Typography fontSize={22} fontWeight={800} color={tokens.color.text.primary} lineHeight={1.2}>
+              {s.value}
+            </Typography>
+            <Typography fontSize={11} color={tokens.color.text.secondary} mt={0.5}>{s.sub}</Typography>
+          </Paper>
+        ))}
       </Box>
 
       {/* Cards grid */}
@@ -290,77 +335,134 @@ export default function CreditCardsPage() {
       ) : (
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 2 }}>
           {cartoes.map(c => {
-            const colors = BANDEIRA_COLOR[c.bandeira] ?? BANDEIRA_COLOR[6]
+            const grad = BANDEIRA_GRAD[c.bandeira] ?? BANDEIRA_GRAD[6]
             const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
             const isSelected = faturasCartaoId === c.id
 
             return (
               <Paper key={c.id} elevation={0} sx={{
-                border: `1.5px solid ${isSelected ? "#2563eb" : "transparent"}`,
-                borderColor: isSelected ? "#2563eb" : "divider",
-                borderRadius: "12px", overflow: "hidden",
-                transition: "border-color 0.15s",
+                border: `1.5px solid ${isSelected ? tokens.color.brand.primary : tokens.color.border.default}`,
+                borderRadius: tokens.radius.xl,
+                overflow: "hidden",
+                transition: tokens.transition.fast,
+                boxShadow: isSelected ? `0 0 0 3px ${tokens.color.brand.subtle}` : tokens.shadow.card,
               }}>
-                <Box sx={{ px: 3, py: 2.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    <Box sx={{ width: 38, height: 38, borderRadius: "10px", bgcolor: colors.bg, color: colors.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <CreditCardIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Box>
-                      <Typography fontSize={14} fontWeight={700} color="text.primary">{c.nome}</Typography>
-                      <Typography fontSize={12} color="text.secondary">
-                        {c.bandeiraDescricao}{c.ultimosDigitos ? ` · ****${c.ultimosDigitos}` : ""}
-                      </Typography>
-                    </Box>
+                {/* Visual do cartão físico */}
+                <Box sx={{
+                  background: grad,
+                  px: 3,
+                  pt: 2.5,
+                  pb: 2,
+                  position: "relative",
+                  overflow: "hidden",
+                  minHeight: 110,
+                }}>
+                  {/* Círculos decorativos de fundo */}
+                  <Box sx={{
+                    position: "absolute", right: -24, top: -24,
+                    width: 120, height: 120, borderRadius: "50%",
+                    background: "rgba(255,255,255,0.08)",
+                  }} />
+                  <Box sx={{
+                    position: "absolute", right: 20, bottom: -32,
+                    width: 90, height: 90, borderRadius: "50%",
+                    background: "rgba(255,255,255,0.06)",
+                  }} />
+
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                    <Typography fontSize={tokens.typography.fontSize.base} fontWeight={tokens.typography.fontWeight.bold} color="#fff" sx={{ textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}>
+                      {c.nome}
+                    </Typography>
+                    {/* Chip do cartão */}
+                    <Box sx={{
+                      width: 28, height: 22, borderRadius: tokens.radius.xs,
+                      background: "linear-gradient(135deg, #fde68a, #f59e0b)",
+                      flexShrink: 0,
+                      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.1)",
+                    }} />
                   </Box>
-                  <Box sx={{ display: "flex" }}>
-                    {c.temCredito && (
-                      <IconButton size="small" onClick={() => openFaturas(c.id)}
-                        sx={{ color: isSelected ? "#2563eb" : "text.secondary", "&:hover": { color: "#2563eb" } }}
-                        title="Ver faturas">
-                        <ReceiptIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    )}
-                    <IconButton size="small" onClick={() => openEdit(c)} sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
-                      <EditIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(c.id)} sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}>
-                      <DeleteIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
+
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                    <Typography fontSize={tokens.typography.fontSize.sm} color="rgba(255,255,255,0.85)" letterSpacing="0.15em" fontFamily={tokens.typography.fontFamily.mono}>
+                      {c.ultimosDigitos ? `•••• •••• •••• ${c.ultimosDigitos}` : "•••• •••• •••• ••••"}
+                    </Typography>
+                    <Typography fontSize={tokens.typography.fontSize.xs} color="rgba(255,255,255,0.7)" fontWeight={tokens.typography.fontWeight.medium}>
+                      {c.bandeiraDescricao}
+                    </Typography>
                   </Box>
                 </Box>
 
+                {/* Info + ações */}
                 <Box sx={{ px: 3, py: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                  <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                    {c.temCredito && <Chip label="Crédito" size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#dbeafe", color: "#1d4ed8" }} />}
-                    {c.temDebito  && <Chip label="Débito"  size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#dcfce7", color: "#15803d" }} />}
-                    {c.ehPrePago  && <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, bgcolor: "action.hover", color: "text.primary" }} />}
+                  {/* Tipo chips */}
+                  <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                      {c.temCredito && (
+                        <Chip label="Crédito" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.status.info.light, color: tokens.color.status.info.dark, fontWeight: tokens.typography.fontWeight.medium }} />
+                      )}
+                      {c.temDebito && (
+                        <Chip label="Débito" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.dark, fontWeight: tokens.typography.fontWeight.medium }} />
+                      )}
+                      {c.ehPrePago && (
+                        <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: tokens.color.text.secondary, fontWeight: tokens.typography.fontWeight.medium }} />
+                      )}
+                    </Box>
+                    <Box sx={{ display: "flex", gap: 0.25 }}>
+                      {c.temCredito && (
+                        <IconButton size="small" onClick={() => openFaturas(c.id)} title="Ver faturas"
+                          sx={{ p: 0.75, color: isSelected ? tokens.color.brand.primary : tokens.color.text.secondary, bgcolor: isSelected ? tokens.color.brand.subtle : "transparent", borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.brand.primary, bgcolor: tokens.color.brand.subtle } }}>
+                          <ReceiptLongOutlinedIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      )}
+                      <IconButton size="small" onClick={() => openEdit(c)}
+                        sx={{ p: 0.75, color: tokens.color.text.secondary, borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.text.primary, bgcolor: tokens.color.background.secondary } }}>
+                        <EditIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDelete(c.id)}
+                        sx={{ p: 0.75, color: tokens.color.text.secondary, borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.status.error.main, bgcolor: tokens.color.status.error.light } }}>
+                        <DeleteIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Box>
                   </Box>
+
                   {c.contaNome && (
-                    <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                      <Typography fontSize={12} color="text.secondary">Conta vinculada</Typography>
-                      <Typography fontSize={12} fontWeight={600} color="text.primary">{c.contaNome}</Typography>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Typography fontSize={12} color={tokens.color.text.secondary}>Conta vinculada</Typography>
+                      <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.primary}>{c.contaNome}</Typography>
                     </Box>
                   )}
+
                   {(c.diaFechamento || c.diaVencimento) && (
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      {c.diaFechamento && <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, bgcolor: "action.hover", color: "text.primary" }} />}
-                      {c.diaVencimento && <Chip label={`Vence dia ${c.diaVencimento}`} size="small" sx={{ fontSize: 11, height: 20, bgcolor: "#fef3c7", color: "#b45309" }} />}
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                      {c.diaFechamento && (
+                        <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: tokens.color.text.secondary }} />
+                      )}
+                      {c.diaVencimento && (
+                        <Chip label={`Vence dia ${c.diaVencimento}`} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.status.warning.light, color: tokens.color.status.warning.dark }} />
+                      )}
                     </Box>
                   )}
+
                   {c.temCredito && c.limite && (
                     <Box>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                        <Typography fontSize={12} color="text.secondary">Gastos no ciclo</Typography>
-                        <Typography fontSize={12} fontWeight={600} color={pct > 80 ? "#dc2626" : "text.primary"}>
-                          {formatMoney(c.gastosNoCicloAtual)} / {formatMoney(c.limite)}
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.75 }}>
+                        <Typography fontSize={12} color={tokens.color.text.secondary}>Utilizado</Typography>
+                        <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.bold} color={pct > 80 ? tokens.color.status.error.main : tokens.color.text.primary}>
+                          {formatMoney(c.gastosNoCicloAtual)}
+                          <Typography component="span" fontSize={11} fontWeight={400} color={tokens.color.text.secondary}> / {formatMoney(c.limite)}</Typography>
                         </Typography>
                       </Box>
                       <LinearProgress variant="determinate" value={pct} sx={{
-                        height: 5, borderRadius: 3, bgcolor: "action.hover",
-                        "& .MuiLinearProgress-bar": { bgcolor: pct > 80 ? "#dc2626" : pct > 60 ? "#f59e0b" : "#16a34a", borderRadius: 3 },
+                        height: 6, borderRadius: tokens.radius.pill,
+                        bgcolor: tokens.color.status.success.light,
+                        "& .MuiLinearProgress-bar": { bgcolor: tokens.color.status.error.main, borderRadius: tokens.radius.pill },
                       }} />
-                      <Typography fontSize={11} color="text.secondary" mt={0.5}>Disponível: {formatMoney(c.limiteDisponivel ?? 0)}</Typography>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
+                        <Typography fontSize={11} color={tokens.color.text.secondary}>Disponível</Typography>
+                        <Typography fontSize={11} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.status.success.dark}>
+                          {formatMoney(c.limiteDisponivel ?? 0)}
+                        </Typography>
+                      </Box>
                     </Box>
                   )}
                 </Box>
@@ -372,23 +474,25 @@ export default function CreditCardsPage() {
 
       {/* Painel de Faturas */}
       {faturasCartaoId && cartaoAtivo && (
-        <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
-          <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+          <Box sx={{ px: 3, py: 2.5, display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: BANDEIRA_GRAD[cartaoAtivo.bandeira] ?? BANDEIRA_GRAD[6], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+              <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} />
+            </Box>
             <Box>
-              <Typography fontSize={15} fontWeight={600} color="text.primary">
+              <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
                 Faturas — {cartaoAtivo.nome}
               </Typography>
-              <Typography fontSize={12} color="text.secondary">
-                Histórico de faturas do cartão
-              </Typography>
+              <Typography fontSize={12} color={tokens.color.text.secondary}>Histórico de faturas</Typography>
             </Box>
           </Box>
+          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
 
           {loadingFaturas ? (
             <LinearProgress />
           ) : faturas.length === 0 ? (
             <Box sx={{ py: 6, textAlign: "center" }}>
-              <Typography fontSize={13} color="text.secondary">
+              <Typography fontSize={13} color={tokens.color.text.secondary}>
                 Nenhuma fatura encontrada. Registre uma transação de crédito para criar a primeira fatura.
               </Typography>
             </Box>
@@ -396,6 +500,7 @@ export default function CreditCardsPage() {
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ ...headerSx, width: 32 }} />
                   <TableCell sx={headerSx}>Período</TableCell>
                   <TableCell sx={headerSx}>Vencimento</TableCell>
                   <TableCell sx={headerSx}>Status</TableCell>
@@ -407,44 +512,131 @@ export default function CreditCardsPage() {
               </TableHead>
               <TableBody>
                 {faturas.map(f => {
-                  const sc = STATUS_COLOR[f.status] ?? STATUS_COLOR[1]
-                  const vencidaStyle = f.vencida ? { color: "#dc2626" } : {}
+                  const isPaga = f.estadoPagamento === 2
+                  const isFechada = f.estadoCiclo === 1
+                  const statusKey = isPaga ? 3 : isFechada ? 2 : 1
+                  const sc = STATUS_STYLE[statusKey]
+                  const isExpanded = expandedFaturaId === f.id
+                  const detalhe = faturaDetalhes[f.id]
+                  const paidTransacaoIds = (() => {
+                    const ids = new Set<string>()
+                    if (!detalhe?.transacoes?.length) return ids
+                    const sorted = [...detalhe.transacoes].sort(
+                      (a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime()
+                    )
+                    let cumulative = 0
+                    for (const t of sorted) {
+                      cumulative += t.valor
+                      if (f.valorPago >= cumulative) ids.add(t.id)
+                    }
+                    return ids
+                  })()
                   return (
-                    <TableRow key={f.id} sx={{ "&:hover": { bgcolor: "action.hover" } }}>
-                      <TableCell sx={cellSx}>
-                        <Typography fontSize={12} color="text.primary">
-                          {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, ...vencidaStyle }}>
-                        {formatDate(f.dataVencimento)}
-                        {f.vencida && (
-                          <Typography fontSize={10} color="#dc2626">Vencida</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell sx={cellSx}>
-                        <Chip label={sc.label} size="small" sx={{ fontSize: 11, height: 20, bgcolor: sc.bg, color: sc.color }} />
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
-                        {formatMoney(f.valorTotal)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", color: "#16a34a" }}>
-                        {formatMoney(f.valorPago)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", color: f.valorRestante > 0 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                        {formatMoney(f.valorRestante)}
-                      </TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "center" }}>
-                        {f.status !== 3 && f.valorRestante > 0 && (
-                          <IconButton size="small"
-                            onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}
-                            sx={{ color: "#2563eb", "&:hover": { bgcolor: "#dbeafe" } }}
-                            title="Pagar fatura">
-                            <PaymentIcon sx={{ fontSize: 15 }} />
+                    <React.Fragment key={f.id}>
+                      <TableRow
+                        onClick={() => toggleFatura(f.id, faturasCartaoId!)}
+                        sx={{ cursor: "pointer", "&:hover": { bgcolor: tokens.color.background.hover }, bgcolor: isExpanded ? tokens.color.background.secondary : undefined }}
+                      >
+                        <TableCell sx={{ ...cellSx, pr: 0 }}>
+                          <IconButton size="small" sx={{ p: 0.25, color: tokens.color.text.secondary }}>
+                            {isExpanded
+                              ? <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                              : <KeyboardArrowRightIcon sx={{ fontSize: 16 }} />}
                           </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize={12} color={tokens.color.text.primary}>
+                            {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize={12} color={f.vencida ? tokens.color.status.error.main : tokens.color.text.primary} fontWeight={f.vencida ? 600 : 400}>
+                            {formatDate(f.dataVencimento)}
+                          </Typography>
+                          {f.vencida && (
+                            <Typography fontSize={10} color={tokens.color.status.error.main} fontWeight={600}>Vencida</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Chip label={sc.label} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: sc.bg, color: sc.color, fontWeight: tokens.typography.fontWeight.medium }} />
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
+                          {formatMoney(f.valorTotal)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", color: tokens.color.status.success.main, fontWeight: tokens.typography.fontWeight.medium }}>
+                          {formatMoney(f.valorPago)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700, color: f.valorRestante > 0 ? tokens.color.status.error.main : tokens.color.status.success.main }}>
+                          {formatMoney(f.valorRestante)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                          {f.valorRestante > 0 && (
+                            <IconButton size="small"
+                              onClick={() => openPagar(f.id, faturasCartaoId!, f.valorRestante, cartaoAtivo.contaId)}
+                              title="Pagar fatura"
+                              sx={{ p: 0.75, color: tokens.color.brand.primary, borderRadius: tokens.radius.sm, "&:hover": { bgcolor: tokens.color.brand.subtle } }}>
+                              <PaymentOutlinedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Sub-linhas de transações */}
+                      {isExpanded && (
+                        <TableRow key={`${f.id}-detail`}>
+                          <TableCell colSpan={8} sx={{ p: 0, borderBottom: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ bgcolor: tokens.color.background.secondary, borderBottom: `1px solid ${tokens.color.border.subtle}` }}>
+                                {!detalhe ? (
+                                  <Box sx={{ py: 2, px: 4 }}><LinearProgress /></Box>
+                                ) : detalhe.transacoes.length === 0 ? (
+                                  <Typography fontSize={12} color={tokens.color.text.secondary} sx={{ py: 1.5, px: 4 }}>
+                                    Nenhuma transação nesta fatura.
+                                  </Typography>
+                                ) : (
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ ...headerSx, pl: 5, width: "30%" }}>Data</TableCell>
+                                        <TableCell sx={headerSx}>Horário</TableCell>
+                                        <TableCell sx={headerSx}>Descrição</TableCell>
+                                        <TableCell sx={headerSx}>Categoria</TableCell>
+                                        <TableCell sx={{ ...headerSx, textAlign: "right" }}>Valor</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {detalhe.transacoes.map(t => (
+                                        <TableRow key={t.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
+                                          <TableCell sx={{ ...cellSx, pl: 5 }}>
+                                            <Typography fontSize={12} color={tokens.color.text.primary}>
+                                              {new Date(t.data).toLocaleDateString("pt-BR")}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.secondary} fontFamily="monospace">
+                                              {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.primary}>{t.descricao}</Typography>
+                                          </TableCell>
+                                          <TableCell sx={cellSx}>
+                                            <Typography fontSize={12} color={tokens.color.text.secondary}>{t.categoriaDescricao ?? "—"}</Typography>
+                                          </TableCell>
+                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: paidTransacaoIds.has(t.id) ? tokens.color.status.success.main : tokens.color.status.error.main }}>
+                                            {formatMoney(t.valor)}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                )}
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   )
                 })}
               </TableBody>
@@ -454,30 +646,41 @@ export default function CreditCardsPage() {
       )}
 
       {/* Dialog Criar/Editar Cartão */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>
-          {editingId ? "Editar Cartão" : "Novo Cartão"}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: `1px solid ${tokens.color.border.subtle}`, boxShadow: tokens.shadow.lg } }}>
+        <DialogTitle sx={{ p: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 3, py: 2.5 }}>
+            <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: BANDEIRA_GRAD[form.bandeira] ?? BANDEIRA_GRAD[6], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+              <CreditCardIcon sx={{ fontSize: 17 }} />
+            </Box>
+            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color={tokens.color.text.primary}>
+              {editingId ? "Editar Cartão" : "Novo Cartão"}
+            </Typography>
+            <IconButton size="small" onClick={() => setDialogOpen(false)} sx={{ ml: "auto", color: tokens.color.text.secondary, "&:hover": { bgcolor: tokens.color.background.secondary } }}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
         </DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
+
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, py: 3 }}>
           <FormControl size="small" fullWidth>
             <InputLabel>Modalidade *</InputLabel>
             <Select value={form.modo} label="Modalidade *"
-              onChange={(e) => setForm(f => ({
-                ...f, modo: e.target.value as Modo,
-                contaId: undefined, limite: undefined, diaFechamento: undefined, diaVencimento: undefined,
-              }))}>
+              sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
+              onChange={(e) => setForm(f => ({ ...f, modo: e.target.value as Modo, contaId: undefined, limite: undefined, diaFechamento: undefined, diaVencimento: undefined }))}>
               {MODOS.map(m => <MuiMenuItem key={m.value} value={m.value}>{m.label}</MuiMenuItem>)}
             </Select>
           </FormControl>
 
-          <TextField label="Nome do cartão *" size="small" fullWidth
-            value={form.nome}
+          <TextField label="Nome do cartão *" size="small" fullWidth value={form.nome}
             onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))}
-            placeholder="Ex: Nubank Roxinho" />
+            placeholder="Ex: Nubank Roxinho" sx={fieldSx} />
 
           <FormControl size="small" fullWidth>
             <InputLabel>Bandeira</InputLabel>
             <Select value={form.bandeira} label="Bandeira"
+              sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
               onChange={(e) => setForm(f => ({ ...f, bandeira: Number(e.target.value) }))}>
               {BANDEIRAS.map(b => <MuiMenuItem key={b.value} value={b.value}>{b.label}</MuiMenuItem>)}
             </Select>
@@ -486,13 +689,14 @@ export default function CreditCardsPage() {
           <TextField label="Últimos 4 dígitos" size="small" fullWidth
             value={form.ultimosDigitos ?? ""}
             onChange={(e) => setForm(f => ({ ...f, ultimosDigitos: e.target.value || undefined }))}
-            inputProps={{ maxLength: 4 }} placeholder="0000" />
+            inputProps={{ maxLength: 4 }} placeholder="0000" sx={fieldSx} />
 
           {!isPrePago && (
             <FormControl size="small" fullWidth>
               <InputLabel>{temCredito ? "Conta que paga a fatura *" : "Conta vinculada *"}</InputLabel>
               <Select value={form.contaId ?? ""}
                 label={temCredito ? "Conta que paga a fatura *" : "Conta vinculada *"}
+                sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
                 onChange={(e) => {
                   const conta = contas.find(c => c.id === e.target.value)
                   setForm(f => ({ ...f, contaId: e.target.value || undefined, bancoId: conta?.bancoId }))
@@ -507,6 +711,7 @@ export default function CreditCardsPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Banco emissor</InputLabel>
               <Select value={form.bancoId ?? ""} label="Banco emissor"
+                sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
                 onChange={(e) => setForm(f => ({ ...f, bancoId: e.target.value || undefined }))}>
                 <MuiMenuItem value="">Sem vínculo</MuiMenuItem>
                 {bancos.map(b => <MuiMenuItem key={b.id} value={b.id}>{b.nome}</MuiMenuItem>)}
@@ -518,7 +723,7 @@ export default function CreditCardsPage() {
             <TextField label="Limite de crédito" size="small" fullWidth type="number"
               value={form.limite ?? ""}
               onChange={(e) => setForm(f => ({ ...f, limite: e.target.value ? Number(e.target.value) : undefined }))}
-              inputProps={{ min: 0, step: "0.01" }} />
+              inputProps={{ min: 0, step: "0.01" }} sx={fieldSx} />
           )}
 
           {temCredito && (
@@ -526,17 +731,21 @@ export default function CreditCardsPage() {
               <TextField label="Dia fechamento" size="small" fullWidth type="number"
                 value={form.diaFechamento ?? ""}
                 onChange={(e) => setForm(f => ({ ...f, diaFechamento: e.target.value ? Number(e.target.value) : undefined }))}
-                inputProps={{ min: 1, max: 31 }} helperText="1 a 31" />
+                inputProps={{ min: 1, max: 31 }} helperText="1 a 31" sx={fieldSx} />
               <TextField label="Dia vencimento" size="small" fullWidth type="number"
                 value={form.diaVencimento ?? ""}
                 onChange={(e) => setForm(f => ({ ...f, diaVencimento: e.target.value ? Number(e.target.value) : undefined }))}
-                inputProps={{ min: 1, max: 31 }} helperText="1 a 31" />
+                inputProps={{ min: 1, max: 31 }} helperText="1 a 31" sx={fieldSx} />
             </Box>
           )}
 
-          {erro && <Typography fontSize={13} color="#dc2626">{erro}</Typography>}
+          {erro && (
+            <Typography fontSize={13} color={tokens.color.status.error.main}>{erro}</Typography>
+          )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+
+        <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
           <CustomButton variant="primary" size="small" onClick={handleSalvar} disabled={loading}>
             {loading ? "Salvando..." : editingId ? "Atualizar" : "Cadastrar"}
@@ -545,12 +754,28 @@ export default function CreditCardsPage() {
       </Dialog>
 
       {/* Dialog Pagar Fatura */}
-      <Dialog open={!!pagarFaturaId} onClose={() => setPagarFaturaId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>Pagar Fatura</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
+      <Dialog open={!!pagarFaturaId} onClose={() => setPagarFaturaId(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: `1px solid ${tokens.color.border.subtle}`, boxShadow: tokens.shadow.lg } }}>
+        <DialogTitle sx={{ p: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 3, py: 2.5 }}>
+            <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: `linear-gradient(135deg, ${tokens.color.status.success.main}, ${tokens.color.status.success.dark})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+              <PaymentOutlinedIcon sx={{ fontSize: 17 }} />
+            </Box>
+            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color={tokens.color.text.primary}>
+              Pagar Fatura
+            </Typography>
+            <IconButton size="small" onClick={() => setPagarFaturaId(null)} sx={{ ml: "auto", color: tokens.color.text.secondary, "&:hover": { bgcolor: tokens.color.background.secondary } }}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+        </DialogTitle>
+
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, py: 3 }}>
           <FormControl size="small" fullWidth>
             <InputLabel>Conta de débito *</InputLabel>
             <Select value={pagarForm.contaId} label="Conta de débito *"
+              sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
               onChange={(e) => setPagarForm(f => ({ ...f, contaId: e.target.value }))}>
               <MuiMenuItem value="">Selecione a conta</MuiMenuItem>
               {contas.map(c => <MuiMenuItem key={c.id} value={c.id}>{c.nome}</MuiMenuItem>)}
@@ -561,22 +786,25 @@ export default function CreditCardsPage() {
             value={pagarForm.valor}
             onChange={(e) => setPagarForm(f => ({ ...f, valor: e.target.value }))}
             inputProps={{ min: 0.01, step: "0.01" }}
-            helperText="Pode pagar parcialmente" />
+            helperText="Pode pagar parcialmente" sx={fieldSx} />
 
           <TextField label="Data do pagamento *" size="small" fullWidth type="date"
             value={pagarForm.dataPagamento}
             onChange={(e) => setPagarForm(f => ({ ...f, dataPagamento: e.target.value }))}
-            InputLabelProps={{ shrink: true }} />
+            InputLabelProps={{ shrink: true }} sx={fieldSx} />
 
           <FormControl size="small" fullWidth>
             <InputLabel>Meio de pagamento</InputLabel>
             <Select value={pagarForm.meioPagamento} label="Meio de pagamento"
+              sx={{ borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
               onChange={(e) => setPagarForm(f => ({ ...f, meioPagamento: Number(e.target.value) }))}>
               {MEIOS_PAGAMENTO.map(m => <MuiMenuItem key={m.value} value={m.value}>{m.label}</MuiMenuItem>)}
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+
+        <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setPagarFaturaId(null)}>Cancelar</CustomButton>
           <CustomButton variant="primary" size="small" onClick={handlePagar} disabled={pagarLoading}>
             {pagarLoading ? "Registrando..." : "Confirmar Pagamento"}

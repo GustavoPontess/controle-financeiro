@@ -249,4 +249,10 @@ Para não inflar o escopo, ficam **fora**:
 - Refator de backend (escopo é puramente front)
 - Marketing site / landing page nova (separado)
 - Logo / identidade de marca (separado; vale fazer depois com os tokens já definidos)
+- **Logos de bancos nos cards de conta** — mostrar o logo real do banco (Nubank,
+  Itaú, etc) em vez do avatar genérico por tipo; a carteira em dinheiro segue
+  genérica. O modelo já suporta (`Conta.BancoId`, `Banco.LogoUrl`, `Banco.Cor`),
+  mas falta: popular `LogoUrl`/`Cor` no `BancoSeeder` (BrasilAPI não dá logo),
+  vincular contas a bancos no `DevDataSeeder`, expor o banco no DTO do Dashboard,
+  e ter os assets dos logos. Feature à parte — não entra no #61.
 - Novas features de produto (Q5 já tem candidatos: Open Finance BR, categorização automática, notificações push/e-mail)

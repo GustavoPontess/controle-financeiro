@@ -341,3 +341,85 @@ Antes de detalhar entidades, contratos e telas, **validar essa visão**:
 3. Iterar antes de codar.
 
 Spec técnica de cada sub-feature começa **depois** que essa visão estiver consensuada.
+
+---
+
+## 16. Backlog Q5 — evoluções da feature Família
+
+Ideias levantadas durante o ciclo Q4 (redesign UX). **São features novas,
+fora do escopo do Q4** — registradas aqui para o ciclo Q5. Ordem e prioridade
+a definir.
+
+### 16.1 Alternador de visão no Dashboard (visão única ↔ visão família)
+
+O Dashboard hoje mostra só as finanças individuais. Adicionar um alternador
+no topo: **"Minha visão"** vs **"Visão da família"**. Na visão família, os
+números (saldo, receitas, despesas, categorias) agregam o que é compartilhado
+entre os membros. Permite o casal ver "como estamos juntos" sem sair da tela.
+
+### 16.2 Renda do membro não-manual
+
+Hoje a renda mensal de cada membro é digitada na mão na tela de Família, e é
+usada no rateio proporcional. Problema: renda varia — aumento de salário,
+renda extra, freelance, mês sem trabalho. Um número fixo digitado fica
+desatualizado e distorce o rateio.
+
+Repensar: derivar a renda das **receitas reais** lançadas pelo membro no
+período (ou uma média móvel dos últimos N meses), em vez de um campo manual.
+O membro pode ter um valor de referência, mas o sistema deveria sugerir/atualizar
+a partir do que de fato entrou.
+
+### 16.3 Fluxo de aprovação de despesa compartilhada
+
+Hoje compartilhar uma despesa com a família é unilateral — quem lança decide.
+Deveria virar um **fluxo de aprovação entre os membros**:
+
+1. Um membro marca uma despesa como compartilhada (ou cria uma).
+2. A despesa vai para o(s) outro(s) membro(s) como uma **solicitação pendente**.
+3. Quem recebe vê todas as informações antes de aceitar: descrição, valor,
+   conta de origem, se é recorrente ou avulsa, modo de rateio aplicado, cota
+   de cada um.
+4. Só depois do aceite a despesa entra no balanço compartilhado.
+
+Vale nos dois sentidos (eu mando pra ela, ela manda pra mim). Reaproveita a
+ideia de convite/aceite que já existe para entrada na família.
+
+### 16.4 Múltiplas famílias — já suportado
+
+Ter mais de uma família é caso real e comum no Brasil (filhos de
+relacionamentos diferentes, pensão, família atual + família estendida). O
+domínio já suporta múltiplas famílias por usuário e isso **está bem feito** —
+manter, sem regressão, ao evoluir os itens acima.
+
+### 16.5 Despesa compartilhada × saldo real da conta — QUESTÃO CRÍTICA
+
+**Precisa ser discutida melhor antes de qualquer spec.** É a pergunta de
+modelagem mais importante da feature Família.
+
+**Problema.** Hoje uma despesa compartilhada é **uma transação só, do pagador,
+na conta dele, pelo valor cheio**. Ex: conta de luz R$200 dividida 50/50 —
+vira uma transação de R$200 na conta de quem pagou. O saldo real dessa conta
+cai R$200. O rateio ("o outro deve R$100") é **virtual**: o balanço calcula a
+cota, e o "acerto de contas" é só um registro — *não credita os R$100 de volta
+na conta real* (a própria UI do acerto diz "Não mexe nas contas reais").
+
+**Consequência.** O saldo da conta do pagador fica permanentemente "errado"
+em relação ao que ele de fato gastou (gastou R$100, conta mostra -R$200). E
+se a família dissolve (ex: namoro que terminou), o balanço some e o pagador
+fica com o registro de R$200 sem nada indicando que metade era do outro.
+
+**Opções de modelagem a discutir:**
+- **A)** O acerto vira transação real — quando o outro paga sua parte, entra
+  uma receita na conta do pagador. O saldo real fecha. Mantém o conceito de
+  acerto.
+- **B)** A despesa compartilhada já nasce dividida — cada membro tem a sua
+  transação pela sua cota (R$100 + R$100). O registro de cada um reflete o que
+  de fato pagou. Mais limpo para o caixa individual.
+- **C)** Mantém virtual, mas a UI deixa explícito "você pagou R$200, tem
+  R$100 a receber" — não conserta o saldo, só dá visibilidade.
+
+Decisão pendente. Afeta entidades, cálculo de saldo e o fluxo de acerto.
+
+> Estas evoluções **não** entram no ciclo Q4. A FamiliasPage no Q4 recebe
+> apenas o redesign visual leve (#61) — não vale refator visual pesado num
+> screen que será reformado por estas features no Q5.
