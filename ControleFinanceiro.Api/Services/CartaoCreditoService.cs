@@ -168,28 +168,31 @@ public class CartaoCreditoService(AppDbContext context)
     {
         var (inicio, fim) = CicloAtual(c.DiaFechamento);
 
-        // Fatura efetivamente paga = ValorPago cobre o total real das transações.
-        // Não usar EstadoPagamento — pode estar desatualizado se nova transação foi
-        // adicionada após o pagamento (bug #65).
-        var totalPorFatura = c.Transacoes
-            .Where(t => t.FaturaId.HasValue && t.UsadoComoCredito && t.Ativo)
-            .GroupBy(t => t.FaturaId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(t => t.Valor));
-
-        var faturasPagas = c.Faturas
-            .Where(f => totalPorFatura.TryGetValue(f.Id, out var total) && total > 0 && f.ValorPago >= total)
-            .Select(f => f.Id)
-            .ToHashSet();
-
-        var gastos = c.TemCredito
+        // Gastos no ciclo = total bruto das transações de crédito no período
+        // menos o que já foi pago nas faturas correspondentes.
+        // Fatura parcialmente paga libera apenas o valor pago (não a fatura inteira).
+        var transacoesNoCiclo = c.TemCredito
             ? c.Transacoes
                 .Where(t => t.UsadoComoCredito
                     && t.Tipo == TipoTransacao.Despesa
+                    && t.Ativo
                     && t.Data.Date >= inicio
-                    && t.Data.Date <= fim
-                    && (t.FaturaId == null || !faturasPagas.Contains(t.FaturaId.Value)))
-                .Sum(t => t.Valor)
-            : 0;
+                    && t.Data.Date <= fim)
+                .ToList()
+            : new();
+
+        var totalBruto = transacoesNoCiclo.Sum(t => t.Valor);
+
+        var faturaIdsNoCiclo = transacoesNoCiclo
+            .Where(t => t.FaturaId.HasValue)
+            .Select(t => t.FaturaId!.Value)
+            .ToHashSet();
+
+        var totalPagoNasFaturas = c.Faturas
+            .Where(f => faturaIdsNoCiclo.Contains(f.Id))
+            .Sum(f => f.ValorPago);
+
+        var gastos = Math.Max(0m, totalBruto - totalPagoNasFaturas);
 
         var limiteDisponivel = c.TemCredito && c.LimiteTotal.HasValue ? c.LimiteTotal.Value - gastos : (decimal?)null;
 
