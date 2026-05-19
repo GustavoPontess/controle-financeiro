@@ -341,3 +341,56 @@ Antes de detalhar entidades, contratos e telas, **validar essa visão**:
 3. Iterar antes de codar.
 
 Spec técnica de cada sub-feature começa **depois** que essa visão estiver consensuada.
+
+---
+
+## 16. Backlog Q5 — evoluções da feature Família
+
+Ideias levantadas durante o ciclo Q4 (redesign UX). **São features novas,
+fora do escopo do Q4** — registradas aqui para o ciclo Q5. Ordem e prioridade
+a definir.
+
+### 16.1 Alternador de visão no Dashboard (visão única ↔ visão família)
+
+O Dashboard hoje mostra só as finanças individuais. Adicionar um alternador
+no topo: **"Minha visão"** vs **"Visão da família"**. Na visão família, os
+números (saldo, receitas, despesas, categorias) agregam o que é compartilhado
+entre os membros. Permite o casal ver "como estamos juntos" sem sair da tela.
+
+### 16.2 Renda do membro não-manual
+
+Hoje a renda mensal de cada membro é digitada na mão na tela de Família, e é
+usada no rateio proporcional. Problema: renda varia — aumento de salário,
+renda extra, freelance, mês sem trabalho. Um número fixo digitado fica
+desatualizado e distorce o rateio.
+
+Repensar: derivar a renda das **receitas reais** lançadas pelo membro no
+período (ou uma média móvel dos últimos N meses), em vez de um campo manual.
+O membro pode ter um valor de referência, mas o sistema deveria sugerir/atualizar
+a partir do que de fato entrou.
+
+### 16.3 Fluxo de aprovação de despesa compartilhada
+
+Hoje compartilhar uma despesa com a família é unilateral — quem lança decide.
+Deveria virar um **fluxo de aprovação entre os membros**:
+
+1. Um membro marca uma despesa como compartilhada (ou cria uma).
+2. A despesa vai para o(s) outro(s) membro(s) como uma **solicitação pendente**.
+3. Quem recebe vê todas as informações antes de aceitar: descrição, valor,
+   conta de origem, se é recorrente ou avulsa, modo de rateio aplicado, cota
+   de cada um.
+4. Só depois do aceite a despesa entra no balanço compartilhado.
+
+Vale nos dois sentidos (eu mando pra ela, ela manda pra mim). Reaproveita a
+ideia de convite/aceite que já existe para entrada na família.
+
+### 16.4 Múltiplas famílias — já suportado
+
+Ter mais de uma família é caso real e comum no Brasil (filhos de
+relacionamentos diferentes, pensão, família atual + família estendida). O
+domínio já suporta múltiplas famílias por usuário e isso **está bem feito** —
+manter, sem regressão, ao evoluir os itens acima.
+
+> Estas evoluções **não** entram no ciclo Q4. A FamiliasPage no Q4 recebe
+> apenas o redesign visual leve (#61) — não vale refator visual pesado num
+> screen que será reformado por estas features no Q5.
