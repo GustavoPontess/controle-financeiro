@@ -391,6 +391,35 @@ relacionamentos diferentes, pensão, família atual + família estendida). O
 domínio já suporta múltiplas famílias por usuário e isso **está bem feito** —
 manter, sem regressão, ao evoluir os itens acima.
 
+### 16.5 Despesa compartilhada × saldo real da conta — QUESTÃO CRÍTICA
+
+**Precisa ser discutida melhor antes de qualquer spec.** É a pergunta de
+modelagem mais importante da feature Família.
+
+**Problema.** Hoje uma despesa compartilhada é **uma transação só, do pagador,
+na conta dele, pelo valor cheio**. Ex: conta de luz R$200 dividida 50/50 —
+vira uma transação de R$200 na conta de quem pagou. O saldo real dessa conta
+cai R$200. O rateio ("o outro deve R$100") é **virtual**: o balanço calcula a
+cota, e o "acerto de contas" é só um registro — *não credita os R$100 de volta
+na conta real* (a própria UI do acerto diz "Não mexe nas contas reais").
+
+**Consequência.** O saldo da conta do pagador fica permanentemente "errado"
+em relação ao que ele de fato gastou (gastou R$100, conta mostra -R$200). E
+se a família dissolve (ex: namoro que terminou), o balanço some e o pagador
+fica com o registro de R$200 sem nada indicando que metade era do outro.
+
+**Opções de modelagem a discutir:**
+- **A)** O acerto vira transação real — quando o outro paga sua parte, entra
+  uma receita na conta do pagador. O saldo real fecha. Mantém o conceito de
+  acerto.
+- **B)** A despesa compartilhada já nasce dividida — cada membro tem a sua
+  transação pela sua cota (R$100 + R$100). O registro de cada um reflete o que
+  de fato pagou. Mais limpo para o caixa individual.
+- **C)** Mantém virtual, mas a UI deixa explícito "você pagou R$200, tem
+  R$100 a receber" — não conserta o saldo, só dá visibilidade.
+
+Decisão pendente. Afeta entidades, cálculo de saldo e o fluxo de acerto.
+
 > Estas evoluções **não** entram no ciclo Q4. A FamiliasPage no Q4 recebe
 > apenas o redesign visual leve (#61) — não vale refator visual pesado num
 > screen que será reformado por estas features no Q5.
