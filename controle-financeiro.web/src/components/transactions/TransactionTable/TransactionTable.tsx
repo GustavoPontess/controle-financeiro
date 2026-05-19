@@ -183,10 +183,14 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   // para os ícones em linha. Mede o container real (não o viewport).
   const containerRef = useRef<HTMLDivElement>(null)
   const [compact, setCompact] = useState(false)
+  const [slim, setSlim] = useState(false)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => setCompact(el.clientWidth < 1000))
+    const ro = new ResizeObserver(() => {
+      setCompact(el.clientWidth < 1000)
+      setSlim(el.clientWidth < 640)
+    })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -333,10 +337,10 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
             <TableRow>
               <TableCell sx={headerSx}>Data</TableCell>
               <TableCell sx={headerSx}>Descrição</TableCell>
-              <TableCell sx={headerSx}>Categoria</TableCell>
-              <TableCell sx={headerSx}>Conta</TableCell>
-              <TableCell sx={headerSx}>Tipo</TableCell>
-              <TableCell sx={headerSx}>Pagamento</TableCell>
+              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Categoria</TableCell>
+              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Conta</TableCell>
+              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Tipo</TableCell>
+              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Pagamento</TableCell>
               <TableCell sx={{ ...headerSx, textAlign: "right" }}>Valor</TableCell>
               <TableCell sx={{ ...headerSx, textAlign: "right", whiteSpace: "nowrap", width: 1 }}>Ações</TableCell>
             </TableRow>
@@ -377,7 +381,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       </Typography>
                     </Box>
                   </TableCell>
-                  <TableCell sx={cellSx}>
+                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
                     {row.categoriaDescricao ? (
                       <Chip
                         label={row.categoriaDescricao}
@@ -395,12 +399,12 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}>—</Typography>
                     )}
                   </TableCell>
-                  <TableCell sx={cellSx}>
+                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
                     <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
                       {row.contaNome ?? "—"}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={cellSx}>
+                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
                     <Chip
                       label={isReceita ? "Receita" : "Despesa"}
                       size="small"
@@ -414,7 +418,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       }}
                     />
                   </TableCell>
-                  <TableCell sx={cellSx}>
+                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
                     <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
                       {row.meioPagamentoDescricao ?? "—"}
                     </Typography>
