@@ -26,7 +26,7 @@ issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falt
 
 **Issue:** **#61 — Fase 3: Refator de 3 telas piloto**
 **Bloco:** A (Redesign UX)
-**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (3/3 telas implementadas, aguardando review visual)
+**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (5/5 telas implementadas, aguardando review de Gustavo)
 
 ### Progresso #61
 - ✅ Dashboard (commit `fb1abe3`) — saudação, hero teal, cards de conta com
@@ -40,13 +40,23 @@ issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falt
   adornment `R$` colorido por tipo, labels uppercase via tokens, borders
   hover/focus via tokens. `NewTransactionDialog` e `EditTransactionDialog`
   com header avatar gradiente + divider, borderRadius/shadow via tokens.
+- ✅ Relatórios (commits na mesma sessão) — donut chart com hover sync
+  (activeSlice), center label dinâmico (idle=total, hover=% + nome),
+  AreaChart com gradientes SVG (receitas/despesas/saldo), BarChart com
+  ReferenceLine y=0, grid/axes sem linhas. Bug % mismatch corrigido.
+  `TransactionTable` responsive: slim mode (<640px) = só Data/Descrição/Valor/Ações;
+  ResizeObserver callback ref corrige stuck-slim ao trocar de mês.
+- ✅ Cartões de Crédito (commit `4e71d0f`) — card físico com gradiente por
+  bandeira (`BANDEIRA_GRAD`), chip decorativo, número mascarado em mono,
+  stats cards com avatares gradientes via tokens. Dialogs atualizados
+  para o padrão novo (avatar + Divider + CloseIcon). Todos hardcoded colors → tokens.
 
 ### Próxima ação concreta
-Review visual das 3 telas com backend no ar:
+Review visual de Gustavo no PR [#71](https://github.com/GustavoPontess/controle-financeiro/pull/71):
 1. `docker compose up -d postgres` + `dotnet run` (porta 5293)
 2. Login com `dev@controle.test`
-3. Conferir Dashboard, FamiliasPage e dialog Nova Transação
-4. Se aprovado: marcar PR #71 como Ready for Review e fechar #61
+3. Conferir: Dashboard, FamiliasPage, Add Transação, Relatórios, Cartões
+4. Se aprovado: marcar PR como Ready for Review e fechar #61
 
 ### Concluído (#59 e #60)
 
@@ -80,7 +90,7 @@ Fase 1 — Atlas (#59)            ✅ Concluída
   ↓
 Fase 2 — Design Tokens (#60)    ✅ Concluída
   ↓
-Fase 3 — Telas piloto (#61)     🔵 Em execução (2/3: Dashboard ✅, FamiliasPage ✅, Add Transação ⏳)
+Fase 3 — Telas piloto (#61)     🔵 Em execução (5/5 implementadas, aguardando review PR #71)
   ↓
 Fase 4 — Propagação (#62)       ⏳ Pendente
   ↓
