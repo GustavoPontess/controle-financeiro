@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useCallback } from "react"
 import {
   Box, Table, TableHead, TableBody, TableRow, TableCell,
   TableContainer, Typography, Chip, IconButton, TextField, MenuItem,
@@ -181,18 +181,19 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
 
   // Colapsa as ações num menu "⋮" quando a tabela fica estreita demais
   // para os ícones em linha. Mede o container real (não o viewport).
-  const containerRef = useRef<HTMLDivElement>(null)
   const [compact, setCompact] = useState(false)
   const [slim, setSlim] = useState(false)
-  useEffect(() => {
-    const el = containerRef.current
+  const roRef = useRef<ResizeObserver | null>(null)
+  const containerRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect()
+    roRef.current = null
     if (!el) return
     const ro = new ResizeObserver(() => {
       setCompact(el.clientWidth < 1000)
       setSlim(el.clientWidth < 640)
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    roRef.current = ro
   }, [])
 
   const openShare = async (row: TransactionRow) => {
