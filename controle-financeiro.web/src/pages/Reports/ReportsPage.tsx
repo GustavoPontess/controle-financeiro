@@ -226,7 +226,7 @@ export default function ReportsPage() {
                           noWrap
                           sx={{ maxWidth: 100 }}
                         >
-                          {(data.gastosPorCategoria[activeSlice].percentual).toFixed(0)}%
+                          {data.gastosPorCategoria[activeSlice].percentual}%
                         </Typography>
                         <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} noWrap sx={{ maxWidth: 100 }}>
                           {data.gastosPorCategoria[activeSlice].descricao}
