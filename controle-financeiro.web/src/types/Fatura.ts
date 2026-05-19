@@ -24,6 +24,7 @@ export interface FaturaTransacao {
   descricao: string
   valor: number
   data: string
+  criadoEm: string
   categoriaId?: string
   categoriaDescricao?: string
   parcelas?: number

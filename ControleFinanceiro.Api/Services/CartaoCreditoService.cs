@@ -17,6 +17,7 @@ public class CartaoCreditoService(AppDbContext context)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
+            .Include(c => c.Faturas)
             .OrderBy(c => c.Nome)
             .ToListAsync();
 
@@ -30,6 +31,7 @@ public class CartaoCreditoService(AppDbContext context)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
+            .Include(c => c.Faturas)
             .FirstOrDefaultAsync();
 
         return cartao is null ? null : ToDto(cartao);
@@ -165,11 +167,32 @@ public class CartaoCreditoService(AppDbContext context)
     private static CartaoCreditoDto ToDto(CartaoCredito c)
     {
         var (inicio, fim) = CicloAtual(c.DiaFechamento);
-        var gastos = c.TemCredito
+
+        // Gastos no ciclo = total bruto das transações de crédito no período
+        // menos o que já foi pago nas faturas correspondentes.
+        // Fatura parcialmente paga libera apenas o valor pago (não a fatura inteira).
+        var transacoesNoCiclo = c.TemCredito
             ? c.Transacoes
-                .Where(t => t.UsadoComoCredito && t.Tipo == TipoTransacao.Despesa && t.Data.Date >= inicio && t.Data.Date <= fim)
-                .Sum(t => t.Valor)
-            : 0;
+                .Where(t => t.UsadoComoCredito
+                    && t.Tipo == TipoTransacao.Despesa
+                    && t.Ativo
+                    && t.Data.Date >= inicio
+                    && t.Data.Date <= fim)
+                .ToList()
+            : new();
+
+        var totalBruto = transacoesNoCiclo.Sum(t => t.Valor);
+
+        var faturaIdsNoCiclo = transacoesNoCiclo
+            .Where(t => t.FaturaId.HasValue)
+            .Select(t => t.FaturaId!.Value)
+            .ToHashSet();
+
+        var totalPagoNasFaturas = c.Faturas
+            .Where(f => faturaIdsNoCiclo.Contains(f.Id))
+            .Sum(f => f.ValorPago);
+
+        var gastos = Math.Max(0m, totalBruto - totalPagoNasFaturas);
 
         var limiteDisponivel = c.TemCredito && c.LimiteTotal.HasValue ? c.LimiteTotal.Value - gastos : (decimal?)null;
 
