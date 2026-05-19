@@ -519,6 +519,19 @@ export default function CreditCardsPage() {
                   const sc = STATUS_STYLE[statusKey]
                   const isExpanded = expandedFaturaId === f.id
                   const detalhe = faturaDetalhes[f.id]
+                  const paidTransacaoIds = (() => {
+                    const ids = new Set<string>()
+                    if (!detalhe?.transacoes?.length) return ids
+                    const sorted = [...detalhe.transacoes].sort(
+                      (a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime()
+                    )
+                    let cumulative = 0
+                    for (const t of sorted) {
+                      cumulative += t.valor
+                      if (f.valorPago >= cumulative) ids.add(t.id)
+                    }
+                    return ids
+                  })()
                   return (
                     <>
                       <TableRow
@@ -612,7 +625,7 @@ export default function CreditCardsPage() {
                                           <TableCell sx={cellSx}>
                                             <Typography fontSize={12} color={tokens.color.text.secondary}>{t.categoriaDescricao ?? "—"}</Typography>
                                           </TableCell>
-                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: isPaga ? tokens.color.status.success.main : tokens.color.status.error.main }}>
+                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: paidTransacaoIds.has(t.id) ? tokens.color.status.success.main : tokens.color.status.error.main }}>
                                             {formatMoney(t.valor)}
                                           </TableCell>
                                         </TableRow>
