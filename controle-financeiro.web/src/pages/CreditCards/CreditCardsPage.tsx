@@ -572,7 +572,7 @@ export default function CreditCardsPage() {
                           {formatMoney(f.valorRestante)}
                         </TableCell>
                         <TableCell sx={{ ...cellSx, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                          {!isPaga && f.valorRestante > 0 && (
+                          {f.valorRestante > 0 && (
                             <IconButton size="small"
                               onClick={() => openPagar(f.id, faturasCartaoId!, f.valorRestante, cartaoAtivo.contaId)}
                               title="Pagar fatura"
