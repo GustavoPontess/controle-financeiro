@@ -11,11 +11,12 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   Cell,
   PieChart,
   Pie,
+  ReferenceLine,
 } from "recharts"
 
 import { getRelatorio } from "../../services/relatorioService"
@@ -100,58 +101,156 @@ export default function ReportsPage() {
 
       {data && (
         <>
-          {/* Evolução mensal — linha */}
-          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
-            <Typography fontSize={15} fontWeight={600} color="text.primary" mb={3}>
-              Evolução do Saldo Mensal
-            </Typography>
+          {/* Evolução mensal — área */}
+          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: tokens.radius.lg, p: 3 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
+              <Box>
+                <Typography fontSize={15} fontWeight={600} color="text.primary">
+                  Evolução do Saldo Mensal
+                </Typography>
+                <Typography fontSize={12} color="text.secondary">
+                  Receitas, despesas e saldo acumulado
+                </Typography>
+              </Box>
+            </Box>
             {evolucaoComDados.length === 0 ? (
               <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                 Nenhuma transação em {ano}
               </Typography>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={data.evolucaoMensal}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: "#6b7280" }} />
-                  <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: "#6b7280" }} />
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={evolucaoComDados} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradReceitas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={tokens.color.status.success.main} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={tokens.color.status.success.main} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradDespesas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={tokens.color.status.error.main} stopOpacity={0.12} />
+                      <stop offset="95%" stopColor={tokens.color.status.error.main} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradSaldo" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={tokens.color.brand.primary} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={tokens.color.brand.primary} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={tokens.color.border.subtle} vertical={false} />
+                  <XAxis
+                    dataKey="mesLabel"
+                    tick={{ fontSize: 12, fill: tokens.color.text.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={formatMoneyShort}
+                    tick={{ fontSize: 12, fill: tokens.color.text.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={52}
+                  />
                   <Tooltip
                     // @ts-expect-error recharts formatter types are loose
-                    formatter={(val: number) => formatMoney(val)}
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13 }}
+                    formatter={(val: number, name: string) => [formatMoney(val), name]}
+                    contentStyle={{
+                      borderRadius: tokens.radius.md,
+                      border: `1px solid ${tokens.color.border.default}`,
+                      fontSize: 13,
+                      boxShadow: tokens.shadow.md,
+                      color: tokens.color.text.primary,
+                    }}
+                    labelStyle={{ fontWeight: 600, marginBottom: 4, color: tokens.color.text.primary }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 13 }} />
-                  <Line type="monotone" dataKey="receitas" name="Receitas" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="saldo" name="Saldo" stroke="#2563eb" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3 }} />
-                </LineChart>
+                  <Legend
+                    wrapperStyle={{ fontSize: 13, paddingTop: 12, color: tokens.color.text.secondary }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="receitas"
+                    name="Receitas"
+                    stroke={tokens.color.status.success.main}
+                    strokeWidth={2}
+                    fill="url(#gradReceitas)"
+                    dot={{ r: 4, fill: tokens.color.status.success.main, strokeWidth: 0 }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="despesas"
+                    name="Despesas"
+                    stroke={tokens.color.status.error.main}
+                    strokeWidth={2}
+                    fill="url(#gradDespesas)"
+                    dot={{ r: 4, fill: tokens.color.status.error.main, strokeWidth: 0 }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="saldo"
+                    name="Saldo"
+                    stroke={tokens.color.brand.primary}
+                    strokeWidth={2}
+                    strokeDasharray="5 3"
+                    fill="url(#gradSaldo)"
+                    dot={{ r: 4, fill: tokens.color.brand.primary, strokeWidth: 0 }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </Paper>
 
           {/* Receitas vs Despesas — barra */}
-          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
-            <Typography fontSize={15} fontWeight={600} color="text.primary" mb={3}>
-              Receitas vs Despesas por Mês
-            </Typography>
+          <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: tokens.radius.lg, p: 3 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
+              <Box>
+                <Typography fontSize={15} fontWeight={600} color="text.primary">
+                  Receitas vs Despesas por Mês
+                </Typography>
+                <Typography fontSize={12} color="text.secondary">
+                  Comparativo mensal
+                </Typography>
+              </Box>
+            </Box>
             {evolucaoComDados.length === 0 ? (
               <Typography fontSize={13} color="text.secondary" textAlign="center" py={4}>
                 Nenhuma transação em {ano}
               </Typography>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={data.evolucaoMensal} barSize={14} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: "#6b7280" }} />
-                  <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: "#6b7280" }} />
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={evolucaoComDados} barSize={20} barGap={6} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={tokens.color.border.subtle} vertical={false} />
+                  <XAxis
+                    dataKey="mesLabel"
+                    tick={{ fontSize: 12, fill: tokens.color.text.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={formatMoneyShort}
+                    tick={{ fontSize: 12, fill: tokens.color.text.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={52}
+                  />
                   <Tooltip
                     // @ts-expect-error recharts formatter types are loose
-                    formatter={(val: number) => formatMoney(val)}
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13 }}
+                    formatter={(val: number, name: string) => [formatMoney(val), name]}
+                    contentStyle={{
+                      borderRadius: tokens.radius.md,
+                      border: `1px solid ${tokens.color.border.default}`,
+                      fontSize: 13,
+                      boxShadow: tokens.shadow.md,
+                      color: tokens.color.text.primary,
+                    }}
+                    labelStyle={{ fontWeight: 600, marginBottom: 4, color: tokens.color.text.primary }}
+                    cursor={{ fill: tokens.color.background.secondary }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 13 }} />
-                  <Bar dataKey="receitas" name="Receitas" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesas" name="Despesas" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                  <Legend
+                    wrapperStyle={{ fontSize: 13, paddingTop: 12, color: tokens.color.text.secondary }}
+                  />
+                  <ReferenceLine y={0} stroke={tokens.color.border.default} />
+                  <Bar dataKey="receitas" name="Receitas" fill={tokens.color.status.success.main} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill={tokens.color.status.error.main} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
