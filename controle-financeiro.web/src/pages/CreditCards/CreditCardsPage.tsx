@@ -612,7 +612,7 @@ export default function CreditCardsPage() {
                                           <TableCell sx={cellSx}>
                                             <Typography fontSize={12} color={tokens.color.text.secondary}>{t.categoriaDescricao ?? "—"}</Typography>
                                           </TableCell>
-                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: tokens.color.status.error.main }}>
+                                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: isPaga ? tokens.color.status.success.main : tokens.color.status.error.main }}>
                                             {formatMoney(t.valor)}
                                           </TableCell>
                                         </TableRow>
