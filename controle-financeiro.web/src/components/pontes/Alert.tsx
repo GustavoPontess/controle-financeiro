@@ -1,35 +1,38 @@
 /**
  * Alert — banner inline (info/success/warning/error).
  * Renderiza ícone + título strong + corpo.
+ *
+ * IMPORTANTE: cores são FIXAS (semantic), NÃO mudam com paleta.
+ * Alerta é padrão universal — vermelho = erro, verde = sucesso, sempre.
+ * Só `font` muda com personalização.
  */
 
-import { semantic, type Palette } from "./theme"
+import { semantic } from "./theme"
 
 export type PontesAlertTone = "info" | "success" | "warning" | "error"
 
 export type PontesAlertProps = {
-  p: Palette
   font: string
   tone?: PontesAlertTone
   title?: string
   children: React.ReactNode
   icon?: React.ReactNode
   onClose?: () => void
+  /** @deprecated mantido pra retrocompat — Alert ignora paleta. */
+  p?: unknown
 }
 
 const TONE_MAP: Record<PontesAlertTone, { bg: string; border: string; text: string; defaultIcon: string }> = {
-  info: { bg: "", border: "", text: "", defaultIcon: "ℹ" },
+  info: { bg: semantic.infoSoft, border: `${semantic.info}40`, text: "#075985", defaultIcon: "ℹ" },
   success: { bg: semantic.successSoft, border: `${semantic.success}40`, text: "#065F46", defaultIcon: "✓" },
   warning: { bg: semantic.warningSoft, border: `${semantic.warning}40`, text: "#92400E", defaultIcon: "⚠" },
   error: { bg: semantic.dangerSoft, border: `${semantic.danger}40`, text: "#991B1B", defaultIcon: "✕" },
 }
 
 export function PontesAlert({
-  p, font, tone = "info", title, children, icon, onClose,
+  font, tone = "info", title, children, icon, onClose,
 }: PontesAlertProps) {
-  const conf = tone === "info"
-    ? { bg: p.primarySoft, border: `${p.primary}40`, text: p.text, defaultIcon: "ℹ" }
-    : TONE_MAP[tone]
+  const conf = TONE_MAP[tone]
 
   return (
     <div style={{

@@ -182,6 +182,7 @@ src/components/
 11. **Quando #90 entregar context global** (`PontesProvider` envolvendo `<App>`): refatora todas as telas pra ler do context em vez de prop drill. API da biblioteca muda de `<PontesButton p={p} font={font} />` pra `<PontesButton />` (consome do context).
 12. **Wordmark "Pontes" é sempre Plus Jakarta** (marca fixa, não muda com personalização — só UI/corpo muda).
 13. **Cores semânticas (success/warning/danger/info)** vêm de `semantic` em `theme.ts` — NÃO mudam com paleta (vermelho de erro sempre vermelho).
+14. **`PontesAlert` e `PontesToast` são 100% imunes à paleta.** Mantêm padrão universal de alerta (cores semânticas + fundo neutro fixo). Só `font` muda. Não passar `p` pra eles (assinatura ignora — aceita só pra retrocompat).
 
 **Legado vs Novo — convivência durante Q5:**
 
