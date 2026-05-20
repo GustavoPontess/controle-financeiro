@@ -1,11 +1,13 @@
 /**
- * Brand Preview — landing premium nível Linear/Vercel/Stripe/Pierre.
- * Rota pública /brand-preview. Sem mascote.
+ * Home — página de entrada pública do site Pontes.
+ * Rota pública /site (será `/` quando o app suportar root público).
  *
- * Trocador de paleta e fonte ao vivo no topo.
+ * Trocador de paleta e fonte ao vivo no topo (sai quando paleta vier de
+ * personalização do usuário).
  */
 
 import { useEffect, useRef, useState } from "react"
+import Logo from "../../components/Logo/Logo"
 import {
   ResponsiveContainer, LineChart, Line, AreaChart, Area, BarChart as RBarChart, Bar,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,7 +16,7 @@ import {
 // =============================================================================
 // PALETAS
 // =============================================================================
-type Palette = {
+export type Palette = {
   id: string
   label: string
   description: string
@@ -31,7 +33,7 @@ type Palette = {
   heroFg: string
 }
 
-const palettes: Palette[] = [
+export const palettes: Palette[] = [
   { id: "A", label: "Cobalto + Âmbar", description: "Azul vibrante + âmbar quente",
     primary: "#1E40AF", primaryDark: "#1E3A8A", primarySoft: "#EEF2FF",
     accent: "#F59E0B", accentSoft: "#FEF3C7",
@@ -97,9 +99,9 @@ const palettes: Palette[] = [
 // =============================================================================
 // FONTES
 // =============================================================================
-type FontOption = { id: string; label: string; description: string; family: string; url: string }
+export type FontOption = { id: string; label: string; description: string; family: string; url: string }
 
-const fonts: FontOption[] = [
+export const fonts: FontOption[] = [
   { id: "inter", label: "Inter", description: "Neutra SaaS",
     family: "'Inter', system-ui, sans-serif",
     url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" },
@@ -127,22 +129,9 @@ const fonts: FontOption[] = [
 // PRIMITIVOS VISUAIS
 // =============================================================================
 
-function Wordmark({ color, font, size = 22 }: { color: string; font: string; size?: number }) {
-  const icon = Math.round(size * 1.45)
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <svg width={icon} height={icon} viewBox="0 0 32 32" fill="none">
-        <path d="M3 23 Q16 6 29 23" stroke={color} strokeWidth="2.6" strokeLinecap="round" fill="none" />
-        <line x1="3" y1="25" x2="29" y2="25" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
-        <line x1="9" y1="25" x2="9" y2="19" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-        <line x1="16" y1="25" x2="16" y2="14" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-        <line x1="23" y1="25" x2="23" y2="19" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-      </svg>
-      <span style={{ fontSize: size, fontWeight: 700, color, letterSpacing: "-0.02em", fontFamily: font }}>
-        Pontes
-      </span>
-    </div>
-  )
+/** Wordmark agora delega para o componente Logo oficial (conceito 20). */
+function Wordmark({ color, size = 22 }: { color: string; font?: string; size?: number }) {
+  return <Logo color={color} size={size} variant="full" />
 }
 
 function CheckIcon({ color }: { color: string }) {
@@ -192,16 +181,249 @@ function GlobalAnims() {
     <style>{`
       @keyframes bp-pulse { 0% { transform: scale(1); opacity: 0.65 } 100% { transform: scale(2.4); opacity: 0 } }
       @keyframes bp-spin { to { transform: rotate(360deg) } }
+      @keyframes bp-spin-slow { to { transform: rotate(360deg) } }
       @keyframes bp-marquee { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
       @keyframes bp-fade-up { 0% { opacity: 0; transform: translateY(24px) } 100% { opacity: 1; transform: translateY(0) } }
       @keyframes bp-toast-in { 0% { opacity: 0; transform: translateY(-20px) scale(0.9) } 100% { opacity: 1; transform: translateY(0) scale(1) } }
       @keyframes bp-glow { 0%, 100% { opacity: 0.5 } 50% { opacity: 0.85 } }
       @keyframes bp-slide-in { 0% { opacity: 0; transform: translateX(20px) } 100% { opacity: 1; transform: translateX(0) } }
       @keyframes bp-shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+      @keyframes bp-mesh-move {
+        0%, 100% { transform: translate(0, 0) scale(1) }
+        33% { transform: translate(30px, -20px) scale(1.1) }
+        66% { transform: translate(-20px, 30px) scale(0.95) }
+      }
+      @keyframes bp-typing-fade { 0%, 100% { opacity: 0; transform: translateY(8px) } 15%, 85% { opacity: 1; transform: translateY(0) } }
+      @keyframes bp-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
       .bp-fade-up { animation: bp-fade-up 0.6s ease-out backwards }
       .bp-marquee-track { animation: bp-marquee 30s linear infinite }
       .bp-marquee-track:hover { animation-play-state: paused }
+      .bp-noise {
+        position: absolute; inset: 0; pointer-events: none; opacity: 0.05;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+      }
+      .bp-spotlight { position: relative; overflow: hidden; transition: transform 200ms; }
+      .bp-spotlight::before {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), var(--spot, rgba(255,255,255,0.1)), transparent 40%);
+        opacity: 0; transition: opacity 200ms;
+      }
+      .bp-spotlight:hover::before { opacity: 1 }
+      .bp-tilt { transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1) }
     `}</style>
+  )
+}
+
+/** Hook: progresso do scroll [0, 1]. */
+function useScrollProgress() {
+  const [p, setP] = useState(0)
+  useEffect(() => {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      setP(max > 0 ? window.scrollY / max : 0)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+  return p
+}
+
+/** Card com spotlight cursor-follow. */
+function SpotlightCard({ children, style, spotColor = "rgba(255,255,255,0.12)" }: { children: React.ReactNode; style?: React.CSSProperties; spotColor?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div
+      ref={ref}
+      className="bp-spotlight"
+      onMouseMove={(e) => {
+        const el = ref.current
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        el.style.setProperty("--mx", `${e.clientX - rect.left}px`)
+        el.style.setProperty("--my", `${e.clientY - rect.top}px`)
+      }}
+      style={{ "--spot": spotColor, ...style } as React.CSSProperties}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** Card com tilt 3D mouse-follow. */
+function TiltCard({ children, style, intensity = 8 }: { children: React.ReactNode; style?: React.CSSProperties; intensity?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div
+      ref={ref}
+      className="bp-tilt"
+      onMouseMove={(e) => {
+        const el = ref.current
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top + rect.height / 2
+        const rx = ((e.clientY - cy) / rect.height) * -intensity
+        const ry = ((e.clientX - cx) / rect.width) * intensity
+        el.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`
+      }}
+      onMouseLeave={() => {
+        const el = ref.current
+        if (el) el.style.transform = "perspective(1200px) rotateX(0) rotateY(0) translateZ(0)"
+      }}
+      style={{ transformStyle: "preserve-3d", ...style }}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** Typing headline — palavra trocando. */
+function TypingWord({ words, color, intervalMs = 2500 }: { words: string[]; color: string; intervalMs?: number }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setI((x) => (x + 1) % words.length), intervalMs)
+    return () => clearInterval(id)
+  }, [words.length, intervalMs])
+  return (
+    <span style={{ position: "relative", display: "inline-block", color, minWidth: "5ch", textAlign: "left" }}>
+      {words.map((w, idx) => (
+        <span
+          key={w}
+          style={{
+            position: idx === i ? "relative" : "absolute",
+            left: 0, top: 0,
+            opacity: idx === i ? 1 : 0,
+            transform: idx === i ? "translateY(0)" : "translateY(12px)",
+            transition: "opacity 350ms ease, transform 350ms ease",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {w}
+        </span>
+      ))}
+      <span style={{ display: "inline-block", width: 4, height: "0.85em", background: color, marginLeft: 4, animation: "bp-glow 1s infinite", verticalAlign: "middle" }} />
+    </span>
+  )
+}
+
+/** Comparison slider antes/depois — drag horizontal. */
+function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p }: { leftLabel: string; rightLabel: string; leftContent: React.ReactNode; rightContent: React.ReactNode; p: Palette }) {
+  const [pos, setPos] = useState(50)
+  const ref = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+
+  const onMove = (clientX: number) => {
+    if (!dragging.current || !ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left))
+    setPos((x / rect.width) * 100)
+  }
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 18, overflow: "hidden", cursor: "ew-resize", userSelect: "none", border: `1px solid ${p.border}` }}
+      onMouseDown={() => (dragging.current = true)}
+      onMouseUp={() => (dragging.current = false)}
+      onMouseLeave={() => (dragging.current = false)}
+      onMouseMove={(e) => onMove(e.clientX)}
+    >
+      {/* Direita (Pontes) — fundo completo */}
+      <div style={{ position: "absolute", inset: 0 }}>{rightContent}</div>
+      <div style={{ position: "absolute", top: 12, right: 16, background: p.primary, color: p.heroFg, padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{rightLabel}</div>
+
+      {/* Esquerda (planilha) — clipada pela posição */}
+      <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 ${100 - pos}% 0 0)` }}>{leftContent}</div>
+      <div style={{ position: "absolute", top: 12, left: 16, background: "#0B1220", color: "#FFFFFF", padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, opacity: pos > 10 ? 1 : 0, transition: "opacity 150ms" }}>{leftLabel}</div>
+
+      {/* Handle */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${pos}%`, width: 3, background: "#FFFFFF", boxShadow: "0 0 0 1px rgba(0,0,0,0.15), 0 4px 14px rgba(0,0,0,0.3)" }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 40, height: 40, background: "#FFFFFF", borderRadius: "50%", boxShadow: "0 6px 20px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: p.text, fontWeight: 800 }}>↔</div>
+      </div>
+    </div>
+  )
+}
+
+/** Logos clouds 3D — rotação suave dos logos. */
+function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: string[] }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap", perspective: "800px" }}>
+      {logos.map((l, i) => (
+        <div
+          key={l}
+          style={{
+            fontWeight: 700, fontSize: 22, color: p.text, fontFamily: font, opacity: 0.55,
+            animation: `bp-float 3.5s ease-in-out ${i * 0.18}s infinite`,
+            transform: `rotateY(${(i % 2 === 0 ? 1 : -1) * 4}deg)`,
+          }}
+        >
+          {l}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Card stack — 3 cards empilhados que se separam no hover do pai. */
+function CardStack({ p, items }: { p: Palette; items: { icon: string; title: string; v: string }[] }) {
+  return (
+    <div style={{ position: "relative", height: 200, width: 280 }} className="bp-card-stack-host">
+      {items.map((it, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute", top: 0, left: 0, right: 0,
+            background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 18,
+            transform: `translateY(${i * 14}px) scale(${1 - i * 0.05})`,
+            zIndex: items.length - i,
+            transition: "transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+            boxShadow: "0 10px 24px -8px rgba(0,0,0,0.12)",
+          }}
+        >
+          <style>{`
+            .bp-card-stack-host:hover > div:nth-child(1) { transform: translateY(0) translateX(-40px) rotate(-4deg) scale(1) !important }
+            .bp-card-stack-host:hover > div:nth-child(2) { transform: translateY(40px) translateX(0) rotate(0deg) scale(1) !important }
+            .bp-card-stack-host:hover > div:nth-child(3) { transform: translateY(80px) translateX(40px) rotate(4deg) scale(1) !important }
+          `}</style>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>{it.icon}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: p.text, marginBottom: 2 }}>{it.title}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: p.primary }}>{it.v}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Mesh gradient com 3 blobs animados — bolinhas inteiras, sem corte nas bordas. */
+function MeshGradientAnimated({ c1, c2, c3 }: { c1: string; c2: string; c3: string }) {
+  const blobBase = {
+    position: "absolute" as const,
+    borderRadius: "50%",
+    filter: "blur(70px)",
+    willChange: "transform",
+  }
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <div style={{
+        ...blobBase,
+        top: "15%", left: "12%", width: 360, height: 360,
+        background: `${c1}55`,
+        animation: "bp-mesh-move 14s ease-in-out infinite",
+      }} />
+      <div style={{
+        ...blobBase,
+        top: "45%", right: "10%", width: 300, height: 300,
+        background: `${c2}45`,
+        animation: "bp-mesh-move 18s ease-in-out infinite reverse",
+      }} />
+      <div style={{
+        ...blobBase,
+        bottom: "18%", left: "38%", width: 280, height: 280,
+        background: `${c3}40`,
+        animation: "bp-mesh-move 22s ease-in-out infinite",
+      }} />
+    </div>
   )
 }
 
@@ -252,13 +474,18 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   )
 }
 
-/** Mesh gradient background (3 blobs). */
+/** Mesh gradient estática — bolinhas inteiras, sem corte nas bordas. */
 function MeshGradient({ c1, c2, c3 }: { c1: string; c2: string; c3: string }) {
+  const blobBase = {
+    position: "absolute" as const,
+    borderRadius: "50%",
+    filter: "blur(70px)",
+  }
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-      <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "70%", background: `radial-gradient(circle, ${c1}66 0%, transparent 60%)` }} />
-      <div style={{ position: "absolute", top: "30%", right: "-10%", width: "55%", height: "70%", background: `radial-gradient(circle, ${c2}55 0%, transparent 60%)` }} />
-      <div style={{ position: "absolute", bottom: "-20%", left: "30%", width: "55%", height: "70%", background: `radial-gradient(circle, ${c3}44 0%, transparent 60%)` }} />
+      <div style={{ ...blobBase, top: "15%", left: "12%", width: 360, height: 360, background: `${c1}55` }} />
+      <div style={{ ...blobBase, top: "45%", right: "10%", width: 300, height: 300, background: `${c2}45` }} />
+      <div style={{ ...blobBase, bottom: "18%", left: "38%", width: 280, height: 280, background: `${c3}40` }} />
     </div>
   )
 }
@@ -913,31 +1140,252 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 // LANDING
 // =============================================================================
+/** Navbar pill flutuante fixed — adapta visual conforme scroll (transparente sobre hero, sólido depois). */
+function NavbarFloating({ p, font }: { p: Palette; font: string }) {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 400)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  // Sobre o hero: visual claro (glass sobre gradient escuro)
+  // Após rolar: visual sólido (fundo branco, texto escuro)
+  const bg = scrolled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)"
+  const border = scrolled ? p.border : "rgba(255,255,255,0.2)"
+  const textColor = scrolled ? p.text : p.heroFg
+  const wordmarkColor = scrolled ? p.primary : p.heroFg
+  const outlineBorder = scrolled ? p.border : "rgba(255,255,255,0.3)"
+
+  return (
+    <nav style={{
+      position: "fixed", top: scrolled ? 70 : 110, left: 0, right: 0, padding: "0 48px",
+      display: "flex", justifyContent: "center", zIndex: 90,
+      transition: "top 250ms ease, background 250ms ease",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 32, padding: "10px 16px 10px 22px",
+        background: bg,
+        border: `1px solid ${border}`, borderRadius: 999,
+        boxShadow: scrolled ? "0 8px 24px -8px rgba(0,0,0,0.12)" : "0 8px 24px -8px rgba(0,0,0,0.18)",
+        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+        minWidth: 920, maxWidth: 1100, width: "100%",
+        transition: "all 250ms ease",
+      }}>
+        <Wordmark color={wordmarkColor} font={font} />
+        <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
+          {["Recursos", "Família", "Contador", "Preços", "Blog"].map((l) => (
+            <a key={l} style={{ color: textColor, fontSize: 14, fontWeight: 500, textDecoration: "none", cursor: "pointer", opacity: scrolled ? 1 : 0.92, transition: "color 250ms" }}>{l}</a>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+            Entrar
+          </button>
+          <button style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+            Criar conta
+          </button>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+/** Bloco de feature zig-zag (texto + mockup alternando lado). */
+function FeatureBlock({ p, font, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", padding: "60px 0", direction: reverse ? "rtl" : "ltr" }}>
+      <div style={{ direction: "ltr" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>{tag}</div>
+        <h3 style={{ fontSize: 40, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 20, fontFamily: "'Fraunces', serif" }}>{title}</h3>
+        <p style={{ fontSize: 17, color: p.textMuted, lineHeight: 1.6, margin: 0, marginBottom: 24 }}>{text}</p>
+        <a style={{ color: p.primary, fontSize: 14, fontWeight: 700, textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          Saiba mais <span style={{ fontSize: 16 }}>→</span>
+        </a>
+      </div>
+      <div style={{ direction: "ltr", display: "flex", justifyContent: "center" }}>
+        {mockup}
+      </div>
+    </div>
+  )
+}
+
+/** Mockup do rateio (Conta de luz). */
+function RateioMockup({ p, font }: { p: Palette; font: string }) {
+  return (
+    <div style={{ position: "relative", width: 420, fontFamily: font }}>
+      {/* Card principal */}
+      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 24, boxShadow: "0 24px 60px -20px rgba(0,0,0,0.15)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: p.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚡</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>Conta de luz</div>
+              <div style={{ fontSize: 11, color: p.textMuted }}>Maio · vence 25/05</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: p.text }}>R$ 240,00</div>
+        </div>
+        <div style={{ borderTop: `1px solid ${p.border}`, paddingTop: 14, marginTop: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 10, textTransform: "uppercase" }}>Rateio</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 6, background: p.primary, color: "#FFFFFF", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&auto=format&fit=crop&q=80" alt="" style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(255,255,255,0.5)" }} />
+                <span style={{ fontSize: 11, opacity: 0.85 }}>Gustavo · 60%</span>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>R$ 144</div>
+            </div>
+            <div style={{ flex: 4, background: p.accent, color: "#0B1220", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&auto=format&fit=crop&q=80" alt="" style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(11,18,32,0.3)" }} />
+                <span style={{ fontSize: 11, opacity: 0.85 }}>Maria · 40%</span>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>R$ 96</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Mini card flutuante */}
+      <div style={{ position: "absolute", top: -20, right: -40, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: "12px 14px", boxShadow: "0 18px 40px -10px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }} />
+          MARIA APROVOU
+        </div>
+        <div style={{ fontSize: 11, color: p.textMuted }}>Há 2 minutos</div>
+      </div>
+    </div>
+  )
+}
+
+/** Mockup da família — membros com avatares. */
+function FamiliaMockup({ p, font }: { p: Palette; font: string }) {
+  const members = [
+    { name: "Gustavo", role: "Admin", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&auto=format&fit=crop&q=80", saldo: "R$ 18.4k" },
+    { name: "Maria", role: "Parceira", photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&auto=format&fit=crop&q=80", saldo: "R$ 13.6k" },
+    { name: "Lucas (16)", role: "Dependente", photo: "https://images.unsplash.com/photo-1503185912284-5271ff81b9a8?w=120&h=120&auto=format&fit=crop&q=80", saldo: "R$ 250" },
+    { name: "Pedro (CPA)", role: "Contador", photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&h=120&auto=format&fit=crop&q=80", saldo: "—" },
+  ]
+  return (
+    <div style={{ position: "relative", width: 420, fontFamily: font }}>
+      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 24, boxShadow: "0 24px 60px -20px rgba(0,0,0,0.15)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: p.textMuted, textTransform: "uppercase" }}>Família Pontes</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: p.text, marginTop: 4, letterSpacing: "-0.02em" }}>R$ 32.220</div>
+          </div>
+          <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: font }}>+ Convidar</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {members.map((m) => (
+            <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: p.bg, borderRadius: 12 }}>
+              <div style={{ position: "relative", width: 32, height: 32 }}>
+                <img src={m.photo} alt={m.name} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: "#10B981", border: `2px solid ${p.bg}` }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>{m.name}</div>
+                <div style={{ fontSize: 10, color: p.textMuted }}>{m.role}</div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: p.text }}>{m.saldo}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Mockup do cartão — fatura + limite. */
+function CartaoMockup({ p, font }: { p: Palette; font: string }) {
+  return (
+    <div style={{ position: "relative", width: 420, fontFamily: font }}>
+      {/* Cartão visual */}
+      <div style={{ background: `linear-gradient(135deg, ${p.primary}, ${p.primaryDark})`, borderRadius: 16, padding: 22, color: "#FFFFFF", aspectRatio: "1.586/1", position: "relative", boxShadow: "0 20px 50px -10px rgba(0,0,0,0.3)" }}>
+        <div style={{ fontSize: 11, opacity: 0.7, letterSpacing: "0.12em", fontWeight: 700 }}>NUBANK · GOLD</div>
+        <div style={{ position: "absolute", bottom: 20, left: 22 }}>
+          <div style={{ fontSize: 16, letterSpacing: "0.2em", fontWeight: 700, marginBottom: 4 }}>•••• 4218</div>
+          <div style={{ fontSize: 11, opacity: 0.75 }}>GUSTAVO N PONTES</div>
+        </div>
+        <div style={{ position: "absolute", top: 22, right: 22, width: 36, height: 26, background: "rgba(255,255,255,0.2)", borderRadius: 4 }} />
+      </div>
+      {/* Fatura sobreposta */}
+      <div style={{ position: "absolute", bottom: -40, right: -30, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 16, boxShadow: "0 24px 50px -10px rgba(0,0,0,0.25)", width: 220 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Fatura aberta</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: p.text, marginBottom: 12 }}>R$ 4.456,30</div>
+        <div style={{ height: 6, background: p.bg, borderRadius: 3, overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ width: "55%", height: "100%", background: p.primary }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: p.textMuted }}>
+          <span>Fecha em 18d</span>
+          <span style={{ fontWeight: 700, color: p.text }}>55% limite</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** CTA flutuante fixo no canto inferior direito. */
+function FloatCTA({ p, font }: { p: Palette; font: string }) {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 600)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+  return (
+    <button
+      style={{
+        position: "fixed", bottom: 24, right: 24, zIndex: 999,
+        background: p.accent, color: "#0B1220", border: "none",
+        padding: "14px 22px", borderRadius: 999, fontSize: 14, fontWeight: 700,
+        cursor: "pointer", fontFamily: font,
+        boxShadow: `0 12px 32px ${p.accent}88`,
+        opacity: show ? 1 : 0,
+        transform: show ? "translateY(0)" : "translateY(20px)",
+        pointerEvents: show ? "auto" : "none",
+        transition: "opacity 300ms ease, transform 300ms ease",
+        display: "flex", alignItems: "center", gap: 8,
+      }}
+    >
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0B1220" }} />
+      Criar conta grátis
+    </button>
+  )
+}
+
+/** Barra de progresso de scroll no topo absoluto. */
+function ScrollProgressBar({ p }: { p: Palette }) {
+  const progress = useScrollProgress()
+  return (
+    <div style={{ position: "fixed", top: 56, left: 0, right: 0, height: 3, background: "rgba(0,0,0,0.05)", zIndex: 999 }}>
+      <div style={{ height: "100%", width: `${progress * 100}%`, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, transition: "width 80ms linear" }} />
+    </div>
+  )
+}
+
 function Landing({ p, font }: { p: Palette; font: string }) {
   const [annual, setAnnual] = useState(true)
 
   return (
     <div style={{ fontFamily: font, color: p.text, background: p.surface }}>
       <GlobalAnims />
-      {/* NAVBAR */}
-      <nav style={{ padding: "18px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.95)", borderBottom: `1px solid ${p.border}`, position: "sticky", top: 0, zIndex: 10 }}>
-        <Wordmark color={p.primary} font={font} />
-        <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
-          {["Recursos", "Família", "Contador", "Preços", "Blog"].map((l) => (
-            <a key={l} style={{ color: p.text, fontSize: 14, fontWeight: 500, textDecoration: "none" }}>{l}</a>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <a style={{ color: p.text, fontSize: 14, fontWeight: 500, textDecoration: "none" }}>Entrar</a>
-          <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-            Criar conta grátis
-          </button>
-        </div>
-      </nav>
+      {/* TOPBAR PROMOCIONAL — só no topo do hero (some quando rola) */}
+      <div style={{ position: "absolute", top: 56, left: 0, right: 0, background: `linear-gradient(90deg, ${p.primary}, ${p.accent}, ${p.primary})`, color: "#FFFFFF", padding: "10px 24px", textAlign: "center", fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", zIndex: 5 }}>
+        ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
+      </div>
 
-      {/* HERO */}
-      <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "110px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
+      {/* NAVBAR pill-shape flutuante — fixed, sempre visível com glass effect */}
+      <NavbarFloating p={p} font={font} />
+
+      {/* HERO com mesh animado + noise + headline typing */}
+      <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "180px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
         <GridPattern color={p.heroFg} opacity={0.08} />
+        <MeshGradientAnimated c1={p.accent} c2={p.primary} c3={p.accent} />
+        <div className="bp-noise" />
 
         <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1.05fr 1fr", gap: 56, alignItems: "center", position: "relative", zIndex: 1 }}>
           <div>
@@ -946,19 +1394,30 @@ function Landing({ p, font }: { p: Palette; font: string }) {
               Beta aberto · vagas limitadas
             </div>
 
-            <h1 style={{ fontSize: 72, fontWeight: 900, lineHeight: 0.98, letterSpacing: "-0.04em", margin: 0, marginBottom: 28 }}>
-              Finanças em família,<br />
-              <span style={{ color: p.accent }}>sem briga</span> e <span style={{ color: p.accent }}>sem planilha.</span>
+            <h1 style={{ fontSize: 76, fontWeight: 600, lineHeight: 1.02, letterSpacing: "-0.035em", margin: 0, marginBottom: 28, fontFamily: "'Fraunces', serif" }}>
+              Finanças pra{" "}
+              <TypingWord
+                words={["casal", "família", "contador", "você"]}
+                color={p.accent}
+              />
+              <br />
+              <em style={{
+                fontStyle: "italic", fontFamily: "'Instrument Serif', serif", fontWeight: 400,
+                color: p.accent,
+              }}>
+                sem briga
+              </em>{" "}
+              e sem planilha.
             </h1>
             <p style={{ fontSize: 21, opacity: 0.88, lineHeight: 1.5, marginBottom: 40, maxWidth: 520 }}>
               Conecte bancos, divida despesas com seu parceiro e abra acesso pro seu contador. Um produto, uma família, uma fonte da verdade.
             </p>
 
             <div style={{ display: "flex", gap: 12, marginBottom: 40 }}>
-              <button style={{ background: p.accent, color: "#0B1220", border: "none", padding: "17px 30px", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: `0 12px 32px ${p.accent}88, 0 0 0 1px ${p.accent}22`, position: "relative" }}>
+              <button style={{ background: p.accent, color: "#0B1220", border: "none", padding: "16px 28px", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: `0 12px 32px ${p.accent}66` }}>
                 Criar conta grátis →
               </button>
-              <button style={{ background: "rgba(255,255,255,0.08)", color: p.heroFg, border: "1px solid rgba(255,255,255,0.25)", padding: "17px 30px", borderRadius: 14, fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
+              <button style={{ background: "rgba(255,255,255,0.08)", color: p.heroFg, border: "1px solid rgba(255,255,255,0.25)", padding: "16px 28px", borderRadius: 999, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
                 ▷ Ver demo 90s
               </button>
             </div>
@@ -1065,22 +1524,67 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       <section style={{ padding: "120px 48px", background: p.surface }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 72 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>Como funciona</div>
-            <h2 style={{ fontSize: 44, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em" }}>3 passos. Nada de planilha.</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>Como funciona</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, fontFamily: "'Fraunces', serif" }}>
+              3 passos. <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>Nada de planilha.</em>
+            </h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
             {[
               { n: "01", t: "Conecte seus bancos", d: "Via Open Finance autorizado pelo BCB. Transações chegam sozinhas, sem digitação." },
               { n: "02", t: "Convide sua família", d: "Parceiro, filhos, contador. Cada um com papel próprio e privacidade respeitada." },
               { n: "03", t: "Acompanhe junto", d: "Visão única ou família. Rateio claro. Aprovação de despesa. Tudo num só lugar." },
             ].map((step) => (
-              <div key={step.n} style={{ position: "relative" }}>
+              <SpotlightCard key={step.n} spotColor={`${p.primary}22`} style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 22, padding: 32 }}>
                 <div style={{ fontSize: 72, fontWeight: 900, color: p.primary, opacity: 0.12, lineHeight: 1, letterSpacing: "-0.04em", marginBottom: 16 }}>{step.n}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: p.text, marginBottom: 10, letterSpacing: "-0.01em" }}>{step.t}</div>
                 <div style={{ fontSize: 15, color: p.textMuted, lineHeight: 1.6 }}>{step.d}</div>
-              </div>
+              </SpotlightCard>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION HUMANA — foto de família grande */}
+      <section style={{ padding: "120px 48px", background: p.surface }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 64, alignItems: "center" }}>
+          <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", aspectRatio: "4/5", boxShadow: "0 30px 60px -20px rgba(0,0,0,0.18)" }}>
+            <img
+              src="https://images.unsplash.com/photo-1609220136736-443140cffec6?w=900&auto=format&fit=crop&q=80"
+              alt="Família brasileira"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+            {/* Card flutuante sobre foto */}
+            <div style={{ position: "absolute", bottom: 24, left: 24, right: 24, background: "rgba(255,255,255,0.95)", padding: 18, borderRadius: 16, fontFamily: font, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ display: "flex" }}>
+                {[
+                  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&auto=format&fit=crop&q=80",
+                  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&auto=format&fit=crop&q=80",
+                  "https://images.unsplash.com/photo-1503185912284-5271ff81b9a8?w=120&h=120&auto=format&fit=crop&q=80",
+                ].map((src, i) => (
+                  <img key={i} src={src} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", marginLeft: i > 0 ? -10 : 0, border: "3px solid #FFFFFF" }} />
+                ))}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: p.textMuted }}>Família Pontes</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>3 membros · ativos hoje</div>
+              </div>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#10B981" }} />
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>POR QUE FAMÍLIA</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: 24, fontFamily: "'Fraunces', serif" }}>
+              Família brasileira não é{" "}
+              <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>uma planilha</em>
+            </h2>
+            <p style={{ fontSize: 17, color: p.textMuted, lineHeight: 1.6, marginBottom: 16 }}>
+              Casal, dependentes, contador — cada um com sua parte na história. Aplicativos foram feitos pra solteiro. Pontes foi pensado pra família brasileira de verdade.
+            </p>
+            <p style={{ fontSize: 17, color: p.textMuted, lineHeight: 1.6 }}>
+              Sem complicar. Sem expor o que ninguém precisa ver. Com respeito ao que cada um decide compartilhar.
+            </p>
           </div>
         </div>
       </section>
@@ -1091,81 +1595,37 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       {/* VEJA POR DENTRO — TABS INTERATIVAS */}
       <InsideTabs p={p} font={font} />
 
-      {/* FEATURES BENTO */}
+      {/* FEATURES — 3 blocos alternados (Monarch style) */}
       <section style={{ padding: "120px 48px", background: p.bg }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 64, maxWidth: 720, marginInline: "auto" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>Recursos</div>
-            <h2 style={{ fontSize: 48, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 16 }}>
-              Tudo que casal e família precisam.
-              <br />
-              <span style={{ color: p.primary }}>Nada que confunda.</span>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 80, maxWidth: 720, marginInline: "auto" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>O que é Pontes</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: 16, fontFamily: "'Fraunces', serif" }}>
+              Sua família, sua grana,<br />
+              <em style={{ fontFamily: "'Instrument Serif', serif", fontWeight: 400, fontStyle: "italic", color: p.primary }}>no mesmo lugar</em>
             </h2>
-            <p style={{ fontSize: 18, color: p.textMuted, lineHeight: 1.5, margin: 0 }}>
-              Aplicativos foram feitos pra solteiro. Pontes foi feito pra família brasileira.
-            </p>
           </div>
 
-          {/* Bento grid 4x2 com tamanhos mistos */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 20, minHeight: 560 }}>
-            {/* Card grande — Rateio */}
-            <div style={{ gridColumn: "1 / 2", gridRow: "1 / 3", background: p.surface, border: `1px solid ${p.border}`, borderRadius: 22, padding: 40, display: "flex", flexDirection: "column" }}>
-              <div style={{ marginBottom: 28 }}><FeatureIllustration kind="rateio" p={p} /></div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: p.text, marginBottom: 12, letterSpacing: "-0.02em" }}>Rateio explícito.<br />Sem &quot;achismo&quot;.</div>
-              <div style={{ fontSize: 16, color: p.textMuted, lineHeight: 1.55, marginBottom: 24 }}>
-                50/50, por porcentagem, valor fixo ou consumo real. Cada despesa cai pra quem deve, com histórico de quem decidiu o quê.
-              </div>
-              {/* Mini-mockup do rateio */}
-              <div style={{ marginTop: "auto", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 10, textTransform: "uppercase" }}>Conta de luz</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: p.text, marginBottom: 14 }}>R$ 240,00</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ flex: 1, background: p.primary, color: "#FFFFFF", borderRadius: 8, padding: "10px 12px" }}>
-                    <div style={{ fontSize: 10, opacity: 0.75 }}>Gustavo · 60%</div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>R$ 144</div>
-                  </div>
-                  <div style={{ flex: 1, background: p.accent, color: "#0B1220", borderRadius: 8, padding: "10px 12px" }}>
-                    <div style={{ fontSize: 10, opacity: 0.75 }}>Parceira · 40%</div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>R$ 96</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Bloco 1 — Rateio (texto esq + mockup dir) */}
+          <FeatureBlock p={p} font={font} reverse={false}
+            tag="RATEIO"
+            title="Cada centavo onde ele deve estar"
+            text="A despesa cai 50/50, por porcentagem, valor fixo ou consumo real. Cada um vê o que pagou, o que deve, o que recebe. Sem 'achismo'."
+            mockup={<RateioMockup p={p} font={font} />} />
 
-            {/* Card médio — Família */}
-            <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 22, padding: 28 }}>
-              <div style={{ marginBottom: 18 }}><FeatureIllustration kind="familia" p={p} /></div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: p.text, marginBottom: 8, letterSpacing: "-0.01em" }}>Família com papéis</div>
-              <div style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55 }}>Convide parceiro, filhos e contador. Cada um vê só o que precisa.</div>
-            </div>
+          {/* Bloco 2 — Família (mockup esq + texto dir) */}
+          <FeatureBlock p={p} font={font} reverse={true}
+            tag="FAMÍLIA"
+            title="Cada um vê o que precisa ver"
+            text="Convide parceiro, filhos, contador. Cada um com papel próprio e privacidade respeitada. Você decide o que compartilha e o que fica só seu."
+            mockup={<FamiliaMockup p={p} font={font} />} />
 
-            {/* Card médio — Visão */}
-            <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 22, padding: 28 }}>
-              <div style={{ marginBottom: 18 }}><FeatureIllustration kind="visao" p={p} /></div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: p.text, marginBottom: 8, letterSpacing: "-0.01em" }}>6 KPIs do mês</div>
-              <div style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55 }}>Receitas, despesas, pago, a pagar, recebido, a receber.</div>
-            </div>
-
-            {/* Card médio — Cartão */}
-            <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 22, padding: 28 }}>
-              <div style={{ marginBottom: 18 }}><FeatureIllustration kind="cartao" p={p} /></div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: p.text, marginBottom: 8, letterSpacing: "-0.01em" }}>Cartão na régua</div>
-              <div style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55 }}>Fatura aberta, fechada, paga. Limite real em barra.</div>
-            </div>
-
-            {/* Card médio com fundo destaque — Recorrente */}
-            <div style={{ background: p.primary, color: p.heroFg, borderRadius: 22, padding: 28 }}>
-              <div style={{ marginBottom: 18 }}>
-                <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-                  <path d="M20 22 A14 14 0 1 1 18 42" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M18 16 L18 24 L26 24" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                  <circle cx="32" cy="32" r="6" fill={p.accent} />
-                </svg>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: "-0.01em" }}>Recorrente sem dor</div>
-              <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.55 }}>Aluguel, streaming, salário. Cadastra uma vez.</div>
-            </div>
-          </div>
+          {/* Bloco 3 — Cartão (texto esq + mockup dir) */}
+          <FeatureBlock p={p} font={font} reverse={false}
+            tag="CARTÃO"
+            title="Fatura na régua"
+            text="Aberta, fechada, paga. Limite real em barra. Pagamento parcial mantido. Cada compra parcelada distribuída automaticamente nas faturas certas."
+            mockup={<CartaoMockup p={p} font={font} />} />
         </div>
       </section>
 
@@ -1173,8 +1633,9 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       <section style={{ padding: "120px 48px", background: p.surface }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 style={{ fontSize: 42, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em" }}>
-              Por que <span style={{ color: p.primary }}>Pontes</span> e não os outros
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>Comparativo</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, fontFamily: "'Fraunces', serif" }}>
+              Por que <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>Pontes</em> e não os outros
             </h2>
           </div>
 
@@ -1217,19 +1678,62 @@ function Landing({ p, font }: { p: Palette; font: string }) {
         </div>
       </section>
 
+      {/* COMUNIDADE — estilo Monarch (foto + 2 cards) */}
+      <section style={{ padding: "120px 48px", background: p.bg }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 64, alignItems: "center" }}>
+          <div style={{ position: "relative", borderRadius: 22, overflow: "hidden", aspectRatio: "4/5" }}>
+            <img
+              src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop&q=80"
+              alt="Pessoa sorrindo usando Pontes"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+            <div style={{ position: "absolute", bottom: 20, left: 20, background: "rgba(255,255,255,0.95)", padding: "10px 16px", borderRadius: 12, fontFamily: font, fontSize: 13, color: p.text, fontWeight: 600 }}>
+              💬 &quot;Mudou nossa rotina financeira em 2 semanas&quot;
+            </div>
+          </div>
+          <div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: 32, fontFamily: "'Fraunces', serif" }}>
+              Comunidade Pontes
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 24, fontFamily: font }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: p.text, marginBottom: 8 }}>WhatsApp BR</div>
+                <p style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55, margin: 0, marginBottom: 18 }}>
+                  Entre na nossa comunidade brasileira no WhatsApp. Famílias trocando dicas, primeiros usuários do beta.
+                </p>
+                <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
+                  Entrar
+                </button>
+              </div>
+              <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 24, fontFamily: font }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: p.text, marginBottom: 8 }}>Blog</div>
+                <p style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55, margin: 0, marginBottom: 18 }}>
+                  Artigos sobre finanças de casal, dependentes, como conversar com contador sem trauma.
+                </p>
+                <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
+                  Ler agora
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* TESTIMONIALS GRID */}
       <section style={{ padding: "120px 48px", background: p.bg }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>Quem usa, fala</div>
-            <h2 style={{ fontSize: 42, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em" }}>Famílias reais. Resultados reais.</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>Quem usa, fala</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, fontFamily: "'Fraunces', serif" }}>
+              Famílias reais. <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>Resultados reais.</em>
+            </h2>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
             {[
-              { name: "Ricardo Moraes", role: "Casal · SP", quote: "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas paramos. Tudo virou explícito." },
-              { name: "Ana Pereira", role: "Família com filhos · RJ", quote: "Finalmente um app que entende que minha família não é uma planilha. O rateio mudou a casa." },
-              { name: "Carlos Silveira", role: "Contador · MG", quote: "Acompanho 12 clientes pelo Pontes. Em vez de cobrar PDF, vejo em tempo real. Mudou meu fluxo." },
+              { name: "Ricardo Moraes", role: "Casal · SP", quote: "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas paramos. Tudo virou explícito.", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&auto=format&fit=crop&q=80" },
+              { name: "Ana Pereira", role: "Família com filhos · RJ", quote: "Finalmente um app que entende que minha família não é uma planilha. O rateio mudou a casa.", photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&auto=format&fit=crop&q=80" },
+              { name: "Carlos Silveira", role: "Contador · MG", quote: "Acompanho 12 clientes pelo Pontes. Em vez de cobrar PDF, vejo em tempo real. Mudou meu fluxo.", photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&auto=format&fit=crop&q=80" },
             ].map((t) => (
               <div key={t.name} style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 28 }}>
                 <div style={{ display: "flex", gap: 2, marginBottom: 16, color: p.accent }}>
@@ -1241,9 +1745,7 @@ function Landing({ p, font }: { p: Palette; font: string }) {
                 </div>
                 <p style={{ fontSize: 15, color: p.text, lineHeight: 1.55, margin: 0, marginBottom: 24 }}>&ldquo;{t.quote}&rdquo;</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(135deg, ${p.primary}, ${p.accent})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontWeight: 700, fontSize: 14 }}>
-                    {t.name.split(" ").map((n) => n[0]).join("").slice(0,2)}
-                  </div>
+                  <img src={t.photo} alt={t.name} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
                   <div>
                     <div style={{ fontWeight: 700, color: p.text, fontSize: 14 }}>{t.name}</div>
                     <div style={{ fontSize: 12, color: p.textMuted }}>{t.role}</div>
@@ -1259,8 +1761,10 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       <section style={{ padding: "120px 48px", background: p.surface }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>Planos</div>
-            <h2 style={{ fontSize: 44, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em", marginBottom: 12 }}>Sem pegadinha. Pra todo bolso.</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>Planos</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: 14, fontFamily: "'Fraunces', serif" }}>
+              Sem pegadinha. <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>Pra todo bolso.</em>
+            </h2>
             <p style={{ fontSize: 17, color: p.textMuted, marginBottom: 24 }}>Começa grátis. Cresce com você.</p>
 
             {/* Toggle mensal/anual */}
@@ -1275,15 +1779,22 @@ function Landing({ p, font }: { p: Palette; font: string }) {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+            {/* Tilt 3D em cada card */}
+            <TiltCard intensity={6}>
             <PriceCard p={p} font={font} name="Solo" price="Grátis" period="" tagline="Pra começar a organizar"
               features={["1 conta + 1 cartão", "Lançamento ilimitado", "Categorias e relatórios", "Importação OFX/CSV"]}
               cta="Criar conta" highlight={false} />
+            </TiltCard>
+            <TiltCard intensity={6}>
             <PriceCard p={p} font={font} name="Família" price={annual ? "R$ 15" : "R$ 19"} period="/mês" tagline="Casal + dependentes"
               features={["Tudo do Solo", "Até 6 membros", "Rateio e aprovação", "Metas conjuntas", "Suporte por chat"]}
               cta="Escolher Família" highlight={true} note={annual ? "Cobrado anualmente · R$ 180" : "Cobrado mensalmente"} />
+            </TiltCard>
+            <TiltCard intensity={6}>
             <PriceCard p={p} font={font} name="Contador" price={annual ? "R$ 39" : "R$ 49"} period="/mês" tagline="Pra profissionais"
               features={["Tudo do Família", "Até 20 clientes", "Dashboard multi-cliente", "Relatórios contábeis", "Suporte prioritário"]}
               cta="Falar com vendas" highlight={false} note={annual ? "Cobrado anualmente · R$ 468" : "Cobrado mensalmente"} />
+            </TiltCard>
           </div>
         </div>
       </section>
@@ -1292,7 +1803,10 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       <section style={{ padding: "120px 48px", background: p.bg }}>
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <h2 style={{ fontSize: 40, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em" }}>Perguntas frequentes</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>FAQ</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.05, fontFamily: "'Fraunces', serif" }}>
+              Perguntas <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>frequentes</em>
+            </h2>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1312,33 +1826,41 @@ function Landing({ p, font }: { p: Palette; font: string }) {
         </div>
       </section>
 
-      {/* COMPONENTES */}
-      <ComponentShowcase p={p} font={font} />
-
-      {/* CTA FINAL */}
-      <section style={{ padding: "120px 48px", background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, color: p.heroFg, textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <GridPattern color={p.heroFg} opacity={0.06} />
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto" }}>
-          <h2 style={{ fontSize: 56, fontWeight: 900, margin: 0, letterSpacing: "-0.03em", lineHeight: 1.05, marginBottom: 20 }}>
-            Coloque sua família em Pontes.
-          </h2>
-          <p style={{ fontSize: 19, opacity: 0.88, marginBottom: 40, lineHeight: 1.5 }}>
-            Crie sua conta em 2 minutos. Sem cartão, sem fidelidade.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            <button style={{ background: p.accent, color: "#0B1220", border: "none", padding: "18px 36px", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: "0 12px 28px rgba(0,0,0,0.3)" }}>
-              Criar conta grátis →
-            </button>
-            <button style={{ background: "rgba(255,255,255,0.1)", color: p.heroFg, border: "1px solid rgba(255,255,255,0.25)", padding: "18px 36px", borderRadius: 14, fontSize: 17, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-              Falar com vendas
-            </button>
+      {/* CTA FINAL com foto de celular estilo Monarch */}
+      <section style={{ padding: "60px 48px", background: p.bg }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", background: p.surface, borderRadius: 24, border: `1px solid ${p.border}`, overflow: "hidden", display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch", minHeight: 380 }}>
+          <div style={{ padding: "64px 56px", display: "flex", flexDirection: "column", justifyContent: "center", fontFamily: font }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>PREÇOS</div>
+            <h2 style={{ fontSize: 52, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.025em", lineHeight: 1.02, marginBottom: 20, fontFamily: "'Fraunces', serif" }}>
+              Use Pontes <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>grátis</em> por 14 dias
+            </h2>
+            <p style={{ fontSize: 17, color: p.textMuted, lineHeight: 1.5, marginBottom: 32, maxWidth: 420 }}>
+              Veja todas as suas finanças num só lugar. Sem ads, sem fidelidade. Convide parceiro e contador sem custo extra.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "14px 24px", borderRadius: 999, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: `0 8px 24px ${p.primary}55` }}>
+                Começar grátis →
+              </button>
+              <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "14px 24px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
+                Ver planos
+              </button>
+            </div>
+          </div>
+          <div style={{ position: "relative", overflow: "hidden", minHeight: 380, background: `linear-gradient(135deg, ${p.primary}, ${p.primaryDark})` }}>
+            <img
+              src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=900&auto=format&fit=crop&q=80"
+              alt="Pontes no celular"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.92 }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(45deg, ${p.primary}55, transparent 60%)` }} />
           </div>
         </div>
       </section>
 
       {/* FOOTER com mesh gradient */}
       <footer style={{ background: "#0B1220", color: "rgba(255,255,255,0.7)", padding: "72px 48px 28px", fontFamily: font, position: "relative", overflow: "hidden" }}>
-        <MeshGradient c1={p.primary} c2={p.accent} c3={p.primary} />
+        <MeshGradientAnimated c1={p.primary} c2={p.accent} c3={p.primary} />
+        <div className="bp-noise" />
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr", gap: 40, marginBottom: 56, position: "relative", zIndex: 1 }}>
           <div>
             <Wordmark color="#FFFFFF" font={font} />
@@ -1367,7 +1889,7 @@ function Landing({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 type TabId = "botoes" | "form" | "data" | "graficos" | "feedback" | "navegacao" | "tokens"
 
-function ComponentShowcase({ p, font }: { p: Palette; font: string }) {
+export function ComponentShowcase({ p, font }: { p: Palette; font: string }) {
   const [tab, setTab] = useState<TabId>("botoes")
   return (
     <section style={{ padding: "120px 48px", background: p.surface, borderTop: `1px solid ${p.border}` }}>
@@ -2745,7 +3267,7 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
 // =============================================================================
 // PÁGINA + CONTROLES
 // =============================================================================
-export default function BrandPreview() {
+export default function HomePage() {
   const [paletteId, setPaletteId] = useState("A")
   const [fontId, setFontId] = useState("inter")
 
@@ -2813,6 +3335,8 @@ export default function BrandPreview() {
       <div style={{ paddingTop: 56 }}>
         <Landing p={palette} font={font.family} />
       </div>
+      <FloatCTA p={palette} font={font.family} />
+      <ScrollProgressBar p={palette} />
     </div>
   )
 }

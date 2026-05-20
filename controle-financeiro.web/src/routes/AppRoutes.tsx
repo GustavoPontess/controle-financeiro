@@ -21,8 +21,9 @@ import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
-import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
-import BrandPreview from "../pages/BrandPreview/BrandPreview"
+import HomePage from "../pages/Site/HomePage"
+import LogoConcepts from "../pages/Site/LogoConcepts"
+import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
 export default function AppRoutes() {
   return (
@@ -32,8 +33,10 @@ export default function AppRoutes() {
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
-        {/* Brand preview — público, sem auth (decisão visual de marca) */}
-        <Route path="/brand-preview" element={<BrandPreview />} />
+        {/* Páginas públicas sem auth */}
+        <Route path="/site" element={<HomePage />} />
+        <Route path="/logo-concepts" element={<LogoConcepts />} />
+        <Route path="/design-system" element={<DesignSystemPage />} />
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
         <Route
@@ -68,7 +71,6 @@ export default function AppRoutes() {
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/design-system" element={<DesignSystemShowcase />} />
         </Route>
 
         {/* Fallback */}
