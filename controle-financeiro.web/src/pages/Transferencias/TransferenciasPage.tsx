@@ -4,6 +4,7 @@ import {
   DialogActions, TextField, Select, MenuItem as MuiMenuItem,
   FormControl, InputLabel, IconButton, Chip,
 } from "@mui/material"
+import { tokens } from "../../theme/tokens"
 import AddIcon from "@mui/icons-material/Add"
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz"
@@ -88,8 +89,8 @@ export default function TransferenciasPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="text.primary">Transferências</Typography>
-          <Typography fontSize={13} color="text.secondary">Mova dinheiro entre suas contas</Typography>
+          <Typography fontSize={22} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Transferências</Typography>
+          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Mova dinheiro entre suas contas</Typography>
         </Box>
         <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
           Nova Transferência
@@ -97,16 +98,16 @@ export default function TransferenciasPage() {
       </Box>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Typography fontSize={15} fontWeight={600} color="text.primary">Histórico de Transferências</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Histórico de Transferências</Typography>
         </Box>
 
         {transferencias.length === 0 ? (
           <Box sx={{ py: 8, textAlign: "center" }}>
             <SwapHorizIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
-            <Typography fontSize={14} color="text.secondary">Nenhuma transferência realizada</Typography>
-            <Typography fontSize={13} color="text.secondary">Clique em "Nova Transferência" para começar</Typography>
+            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Nenhuma transferência realizada</Typography>
+            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Clique em "Nova Transferência" para começar</Typography>
           </Box>
         ) : (
           transferencias.map((t, i) => (
@@ -115,34 +116,34 @@ export default function TransferenciasPage() {
               sx={{
                 px: 3, py: 2,
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                borderBottom: i < transferencias.length - 1 ? 1 : 0, borderColor: "divider",
-                "&:hover": { bgcolor: "action.hover" }, transition: "background 0.15s",
+                borderBottom: i < transferencias.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
+                "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box sx={{ width: 36, height: 36, borderRadius: "8px", bgcolor: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <SwapHorizIcon sx={{ fontSize: 18, color: "#2563eb" }} />
+                <Box sx={{ width: 36, height: 36, borderRadius: tokens.radius.md, bgcolor: tokens.color.status.info.light, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <SwapHorizIcon sx={{ fontSize: 18, color: tokens.color.status.info.main }} />
                 </Box>
                 <Box>
-                  <Typography fontWeight={600} fontSize={14}>{t.descricao}</Typography>
+                  <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.sm}>{t.descricao}</Typography>
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.3 }}>
-                    <Chip label={t.contaOrigemNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#fee2e2", color: "#dc2626" }} />
-                    <SwapHorizIcon sx={{ fontSize: 12, color: "text.secondary" }} />
-                    <Chip label={t.contaDestinoNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#dcfce7", color: "#16a34a" }} />
-                    <Typography fontSize={12} color="text.secondary">
+                    <Chip label={t.contaOrigemNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.error.light, color: tokens.color.status.error.main }} />
+                    <SwapHorizIcon sx={{ fontSize: 12, color: tokens.color.text.secondary }} />
+                    <Chip label={t.contaDestinoNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.main }} />
+                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
                       {new Date(t.data).toLocaleDateString("pt-BR")}
                     </Typography>
                   </Box>
                 </Box>
               </Box>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Typography fontWeight={700} fontSize={15} color="#2563eb">
+                <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={15} color={tokens.color.status.info.main}>
                   {formatMoney(t.valor)}
                 </Typography>
                 <IconButton
                   size="small"
                   onClick={() => handleDeletar(t.id)}
-                  sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
+                  sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
                 >
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
@@ -209,7 +210,7 @@ export default function TransferenciasPage() {
             onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))}
           />
 
-          {erro && <Typography fontSize={13} color="#dc2626">{erro}</Typography>}
+          {erro && <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.status.error.main}>{erro}</Typography>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
