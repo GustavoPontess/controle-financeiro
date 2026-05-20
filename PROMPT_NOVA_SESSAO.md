@@ -83,20 +83,73 @@ Conforme o trabalho da sessão exigir, leia adicionalmente:
 
 ---
 
-## 5. Estrutura mental do trabalho
+## 5. Estrutura mental do trabalho — Q5 2026
 
-Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Cada Issue pertence a um dos 4 blocos:
+Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Q5 tem 18 issues (#75-#92) sem agrupamento em blocos — **modelo pull**: cada dev pega a próxima livre.
 
-| Bloco | Tema | Ordem |
-|---|---|---|
-| A | Higiene de produção (segredos, CORS, auth, rate limit) | Primeiro |
-| B | Infraestrutura para escalar (Postgres, Docker, CI/CD) | Segundo |
-| C | Pivot Família (a feature diferenciadora) | Terceiro |
-| D | Retenção e UX B2C (OFX, PWA, notificações) | Quarto |
+### Ordem sugerida (não obrigatória)
 
-**Ordem dos blocos é obrigatória** — pular A para fazer C cria dívida que custa caro depois.
+**Site público (frente — desbloqueia fluxo de entrada):**
+- #75 ✅ root público com fallback Dashboard
+- #76 Login + Register refator
+- #77 Para Casais
+- #78 Para Contadores
+- #79 Recursos
+- #80 Sobre
 
-Quando a Issue estiver clara em `IMPLEMENTATION_STATE.md`, siga as etapas dela em ordem. Cada etapa tem um **checkpoint** que precisa estar verde antes de passar para a próxima.
+**Telas internas (em paralelo):**
+- #81-#89 (Dashboard, Transação, Categorias, Cartão, Família, Metas, Limites, Bancos, Recorrentes)
+
+**Infra/qualidade:**
+- #90 Personalização in-app
+- #91 CI/CD gate
+- #92 Cobertura E2E
+
+### Marca decidida (sessão 30, 2026-05-21)
+
+- Nome: **Pontes**
+- Logo: `src/components/Logo/Logo.tsx` (wordmark + arco sublinhado, conceito 20)
+- Fonte da marca: **Plus Jakarta Sans** (fixa, pré-carregada em `index.html`)
+- Tipografia institucional: Plus Jakarta + Fraunces (h2 grandes) + Instrument Serif (acentos italic)
+- Paleta + fonte do produto: escolha do usuário via personalização in-app (#90)
+
+### Estrutura de pastas (atualizada Q5)
+
+```
+src/pages/
+├── Site/                    # tudo público do site institucional
+│   ├── HomePage.tsx         # rota /site (futuro /)
+│   ├── LogoConcepts.tsx     # temporário
+│   └── theme.ts             # palettes + fonts + types
+├── DesignSystem/
+│   └── DesignSystemPage.tsx # rota /design-system
+├── Auth/, Dashboard/, etc   # internos autenticados
+src/components/
+├── Logo/Logo.tsx            # logo oficial Pontes
+├── Auth/RootRoute.tsx       # decide HomePage vs Dashboard em /
+└── Auth/ProtectedRoute.tsx
+```
+
+### Pre-flight em cada nova issue
+
+1. `git checkout main && git pull --ff-only origin main`
+2. `gh issue list --state open` — ver livres
+3. `gh issue edit <N> --add-assignee @me`
+4. `git checkout -b feature/<N>-<slug-kebab>`
+5. Atualizar `IMPLEMENTATION_STATE.md` com a issue em execução
+6. Trabalhar
+7. PR com `Closes #N` no body
+8. CI verde (build + lint + testes)
+9. Merge (squash) + delete branch
+10. Atualizar `PROGRESS.md` em PR separado (`chore/docs-sessao-N`)
+
+### Critério "done" universal
+
+- Build verde (back: `dotnet build`; front: `npm run build`)
+- Lint zero erros (`npm run lint`)
+- Teste novo cobrindo a feature/refator
+- Família real (você ou sócio) homologa em dev
+- PR mergeado pra `main`
 
 ---
 
