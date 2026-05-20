@@ -1,27 +1,16 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Box, TextField, Typography, Alert, CircularProgress, InputAdornment, IconButton } from '@mui/material'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import CustomButton from '../../components/CustomButton'
+import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { tokens } from '../../theme/tokens'
+import { inputSx } from '../../theme/inputStyles'
 import Logo from '../../components/Logo/Logo'
 
 const BRAND = tokens.color.brand.primary
 const BRAND_DARK = tokens.color.brand.hover
-
-const inputSx = {
-  '& .MuiOutlinedInput-root': {
-    backgroundColor: '#fafaf9',
-    borderRadius: tokens.radius.lg,
-    fontSize: tokens.typography.fontSize.sm,
-    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-    '& fieldset': { borderColor: tokens.color.border.default },
-    '&:hover fieldset': { borderColor: BRAND },
-    '&.Mui-focused fieldset': { borderColor: BRAND, borderWidth: '2px' },
-  },
-  '& .MuiInputLabel-root.Mui-focused': { color: BRAND },
-}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -182,28 +171,7 @@ export default function LoginPage() {
       >
         <Box sx={{ width: '100%', maxWidth: '400px' }}>
           {/* Voltar para homepage */}
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: 'inline-flex', alignItems: 'center', gap: 0.75,
-              color: tokens.color.text.secondary,
-              textDecoration: 'none',
-              fontSize: tokens.typography.fontSize.sm,
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-              fontWeight: 500,
-              mb: 3,
-              px: 1.5, py: 0.75,
-              borderRadius: tokens.radius.md,
-              border: `1px solid ${tokens.color.border.default}`,
-              backgroundColor: '#fafaf9',
-              transition: 'all 0.15s',
-              '&:hover': { color: BRAND, borderColor: BRAND, backgroundColor: `${BRAND}08` },
-            }}
-          >
-            <ArrowLeft size={16} />
-            Voltar à página inicial
-          </Box>
+          <BackButton to="/" />
 
           {/* Logo mobile */}
           <Box sx={{ display: { md: 'none' }, mb: 4, textAlign: 'center' }}>

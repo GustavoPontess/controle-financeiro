@@ -8,7 +8,6 @@
  * Variantes:
  * - "full"     — wordmark + arco sublinhado (default)
  * - "wordmark" — só texto, sem arco
- * - "mark"     — só o arco isolado (favicon, perfil social)
  */
 
 type LogoProps = {
@@ -17,30 +16,13 @@ type LogoProps = {
   /** Altura do logo em px. Default: 32. */
   size?: number
   /** Variante de exibição. Default: "full". */
-  variant?: "full" | "wordmark" | "mark"
+  variant?: "full" | "wordmark"
   /** Override de className/style opcional. */
   className?: string
   style?: React.CSSProperties
 }
 
 export default function Logo({ color = "currentColor", size = 32, variant = "full", className, style }: LogoProps) {
-  // Arco isolado (variante "mark")
-  if (variant === "mark") {
-    const w = size
-    const h = size * 0.55
-    return (
-      <svg width={w} height={h} viewBox="0 0 200 50" fill="none" className={className} style={style} aria-label="Pontes">
-        <path
-          d="M8 40 Q100 -8 192 40"
-          stroke={color}
-          strokeWidth="9"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </svg>
-    )
-  }
-
   // fontSize calculado: size é a altura visual aprox; texto ocupa ~80% da altura
   const fontSize = size
   const archHeight = Math.max(8, size * 0.22)

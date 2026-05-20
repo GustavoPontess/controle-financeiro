@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button as MuiButton } from '@mui/material'
 import type { ButtonProps as MuiButtonProps } from '@mui/material/Button'
+import { tokens } from '../theme/tokens'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 type ButtonSize = 'small' | 'medium' | 'large'
@@ -13,15 +14,15 @@ interface CustomButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
 
 const variantStyles = {
   primary: {
-    backgroundColor: '#111827',
+    backgroundColor: tokens.color.brand.primary,
     color: '#ffffff',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.10)',
+    boxShadow: '0 1px 2px rgba(13,148,136,0.20)',
     '&:hover': {
-      backgroundColor: '#1f2937',
-      boxShadow: '0 3px 8px rgba(0,0,0,0.18)',
+      backgroundColor: tokens.color.brand.hover,
+      boxShadow: '0 3px 8px rgba(13,148,136,0.30)',
     },
-    '&:active': { backgroundColor: '#374151', boxShadow: 'none' },
-    '&:disabled': { backgroundColor: '#d1d5db', color: '#9ca3af', boxShadow: 'none' },
+    '&:active': { backgroundColor: '#115e59', boxShadow: 'none' },
+    '&:disabled': { backgroundColor: tokens.color.brand.subtle, color: tokens.color.brand.hover, boxShadow: 'none' },
   },
   secondary: {
     backgroundColor: '#ffffff',
