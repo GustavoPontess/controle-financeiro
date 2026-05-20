@@ -135,7 +135,7 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 
 ### 🟠 #62 — Fase 4: Propagação dos tokens para o resto do app
 
-**Severidade:** 🟠 MÉDIA • **Esforço:** 1 semana • **Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟠 MÉDIA • **Esforço:** 1 semana • **Status:** ✅ CONCLUÍDO — PR #72 mergeado em main (2026-05-20)
 
 **Por quê:** Telas piloto valeram pra calibrar; agora aplica em todas as outras (transações, faturas, cartões, contas, importação, onboarding, etc.).
 
@@ -152,7 +152,7 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 
 ### 🟠 #63 — Fase 5: Refinar dark mode sobre os novos tokens
 
-**Severidade:** 🟠 MÉDIA • **Esforço:** 1-2 dias • **Status:** ⏳ NÃO INICIADO
+**Severidade:** 🟠 MÉDIA • **Esforço:** 1-2 dias • **Status:** 🔄 EM REVISÃO — PR #73 aberto (2026-05-20)
 
 **Por quê:** O dark mode entregue no #31 foi construído sobre a base visual antiga. Com tokens novos, vale revalidar e ajustar.
 
