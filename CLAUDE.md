@@ -60,9 +60,11 @@ npm run lint
 - **src/routes/** — React Router v7 configuration
 - **src/types/** — TypeScript interfaces mirroring backend DTOs
 - **src/components/Logo/Logo.tsx** — logo oficial Pontes (conceito 20). Props: `color`, `size`, `variant` ("full" | "wordmark" | "mark"). Fonte da marca: Plus Jakarta Sans (fixa, global em `index.html`).
+- **src/components/pontes/** — ⭐ **Biblioteca oficial Q5 de componentes UI.** 36 componentes (`PontesButton`, `PontesField`, `PontesInput`, `PontesSelect`, `PontesModal`, `PontesNavbar`, `PontesFooter`, etc) + tokens em `theme.ts` (15 paletas, 7 fontes, spacing, radii, shadows, semantic). Import via barrel `@/components/pontes`. **TELAS REFATORADAS Q5 IMPORTAM SOMENTE DAQUI.** Ícones via `lucide-react`. Demo: rota `/design-system`. Componentes novos reutilizáveis (2+ telas) **DEVEM** ser adicionados aqui — regra detalhada em `PROMPT_NOVA_SESSAO.md` §5.
+- **src/components/* (raiz, NÃO pontes/)** — componentes legados (`CustomButton`, MUI direto, `tokens.ts` antigo). Telas legadas continuam usando até o refator chegar. Final do Q5: deleta em PR separado. **Não criar componentes novos aqui.**
 - **src/pages/Site/** — todas as páginas públicas do site institucional (HomePage, futuras Couples/Professionals/Pricing/About). Rotas `/site/*`.
-- **src/pages/DesignSystem/** — Design System documentado em rota dedicada `/design-system`. Reusa `ComponentShowcase` exportado de `Site/HomePage.tsx` (será extraído depois).
-- **src/pages/Auth/, Dashboard/, Transactions/, etc** — telas internas autenticadas.
+- **src/pages/DesignSystem/** — showroom da biblioteca em rota dedicada `/design-system`, com paleta + fonte trocáveis ao vivo.
+- **src/pages/Auth/, Dashboard/, Transactions/, etc** — telas internas autenticadas (legadas até serem refatoradas em #76, #81-#89).
 
 ### Key Domain Concepts
 

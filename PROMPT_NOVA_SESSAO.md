@@ -138,54 +138,68 @@ src/components/
 └── Auth/ProtectedRoute.tsx
 ```
 
-### Design System — base de TODO front Q5 ⭐
+### Biblioteca Pontes — fundação OBRIGATÓRIA do front Q5 ⭐⭐⭐
 
-**Rota:** `/design-system` (pública, sem auth)
-**Arquivo:** `src/pages/DesignSystem/DesignSystemPage.tsx`
-**Showcase:** `ComponentShowcase` exportado de `pages/Site/HomePage.tsx`
+**Pasta:** `src/components/pontes/` — biblioteca real e única de componentes UI.
+**Barrel:** `import { PontesButton, PontesInput, ... } from "@/components/pontes"`
+**Showroom:** `/design-system` (rota pública) — demo de cada componente, com paleta e fonte trocáveis ao vivo.
+**Origem:** issue #101 (PR #102, sessão 32).
 
-**7 abas com componentes prontos pra reuso:**
+**O que tem hoje (36 componentes):**
 
-1. **Botões** — 9 variantes (primary, accent, outline, ghost, soft, danger, link, disabled) + 5 tamanhos (XS→XL) + icon-only + FAB + button group segmented + estados REST/HOVER/FOCUS/ACTIVE/DISABLED
-2. **Form & Inputs** — inputs com focus state, `<PontesSelect>` custom (NÃO usar `<select>` nativo), money input gigante, OTP, range slider, date picker, file upload drop zone, tag input, color picker, rating, kbd shortcuts, switches/checkboxes/radios clicáveis
-3. **Cards & Dados** — chips, avatares com status dot, alerts (info/success/warn/error), progress bars, stat cards, tabela completa com sort + paginação
-4. **Feedback** — toasts, modal/dialog (abrem real ao clicar), skeleton shimmer, empty state ilustrado, loading dots, drawer, tooltip, popover
-5. **Navegação** — breadcrumb, tabs pills + underline, stepper 4 passos com glow, paginação, command palette ⌘K
-6. **Gráficos** — recharts reais: line (ritmo de gastos com tooltip dark rico), area (saldo), bar (gastos/mês), donut (categorias) — todos consomem `p.primary` e `p.accent`
-7. **Tokens** — cores 10 shades 50-900 (HSL gerado), tipografia escala display-2xl→caption, spacing, radii, shadows, easing animado
+- **Botões:** `PontesButton`, `PontesIconButton`, `PontesFab`, `PontesButtonGroup`, `PontesLink`
+- **Form:** `PontesField` (wrapper), `PontesInput`, `PontesMoneyInput`, `PontesTextarea`, `PontesSelect` (custom, **NÃO** usar `<select>` nativo), `PontesToggle`, `PontesCheckbox`, `PontesRadio`/`PontesRadioGroup`, `PontesOtpInput`, `PontesSlider`, `PontesDatePicker`, `PontesFileDrop`, `PontesTagInput`, `PontesColorPicker`, `PontesRating`, `PontesKbd`/`PontesKbdGroup`
+- **Dados:** `PontesBadge`, `PontesAvatar`/`PontesAvatarStack`, `PontesAlert`, `PontesProgress`, `PontesStatCard`, `PontesCard`, `PontesTable`
+- **Feedback:** `PontesToast`, `PontesModal`, `PontesDialog`, `PontesSkeleton`/`PontesSkeletonRow`/`PontesSkeletonList`, `PontesEmptyState`, `PontesLoadingDots`, `PontesDrawer`, `PontesTooltip`, `PontesPopover`
+- **Navegação:** `PontesBreadcrumb`, `PontesTabs`, `PontesStepper`, `PontesPagination`, `PontesCommandPalette`
+- **Site:** `PontesNavbar`, `PontesFooter`
+- **Tema:** `theme.ts` — 15 paletas, 7 fontes, `spacing`, `radii`, `shadows`, `semantic`, `adjustColor`
+- **Ícones:** `lucide-react` (já instalado, v1.16) — use `<Plus size={16} strokeWidth={2.5} />`. **NÃO** passar char texto (`"+"`, `"→"`, etc) — quebra alinhamento vertical.
 
-**Regras pra refator das telas (#81-#89):**
+**Regras OBRIGATÓRIAS de refator (#76, #77, #78, #79, #80, #81, #82, #83, #84, #86, #87, #89):**
 
-1. **NUNCA** criar botão/input/card do zero — usa o que já tá no `ComponentShowcase` e extrai pra `src/components/ui/` se precisar reusar
-2. **NUNCA** usar `<select>` nativo (estilo zero) — usa `PontesSelect`
-3. Todo gráfico via **recharts** com `BarChartReal`, `LineChartReal`, `LineAreaChartReal`, `DonutChartReal` (helpers exportar pra `src/components/charts/` quando virarem necessários)
-4. Tipografia: Plus Jakarta no corpo, Fraunces nos h2/h3 grandes da landing, Instrument Serif só em acentos italic
-5. Espaçamento: padrão Tokens da aba 7 (`space-4`, `space-6`, etc — mantém consistência)
-6. Cor: SEMPRE via `p.primary`, `p.accent`, `p.text` etc — nunca hex hardcoded
-7. Sombras/radii: use os definidos em Tokens (`shadow-sm/md/lg`, `radius-md/lg`)
+1. **Telas refatoradas do Q5 importam SOMENTE de `@/components/pontes`.** Sem exceção. Sem inline. Sem MUI direto. Sem `CustomButton`. Sem `tokens.ts` antigo.
+2. **NUNCA** criar botão/input/card/etc do zero numa tela. Procura na biblioteca. Se não tem o que precisa → vai pra **regra 4**.
+3. **NUNCA** usar `<select>` nativo, `<button style={...}>` solto, `<TextField>` da MUI, ou qualquer primitive não-Pontes nas telas Q5.
+4. **Componente novo necessário pro refator → adiciona em `src/components/pontes/` ANTES de usar na tela.** Critério: se vai aparecer em 2+ telas OU substitui um padrão visual genérico (botão, input, card), vai pra biblioteca. Mesmo PR (ou PR bloqueante curto). Inclui:
+   - Arquivo próprio em `src/components/pontes/NovoComponente.tsx`
+   - Re-export em `src/components/pontes/index.ts`
+   - Demonstração na aba apropriada de `DesignSystemPage.tsx`
+   - Smoke test em `src/test/components/pontes.test.tsx`
+5. **Componente específico de uma única tela** (ex: `RateioCalculator` em Família) fica em `src/pages/Familia/`. Não polui biblioteca.
+6. **Ícones via lucide-react.** Stroke 2-2.5 pra ícones decorativos, 2.5-3 pra ícones-ação dentro de botões.
+7. **Cor:** SEMPRE via `p.primary`, `p.accent`, `p.text` etc (recebidos por prop). Nunca hex hardcoded fora da theme.ts. Para feedback (success/warning/danger/info) usar `semantic.success` etc.
+8. **Tipografia:** Plus Jakarta no corpo, Fraunces nos h1/h2 grandes (landing/site), Instrument Serif só em acentos italic. Wordmark "Pontes" SEMPRE Plus Jakarta.
+9. **Espaçamento/radii/sombras:** use `spacing`, `radii`, `shadows` de `theme.ts`. Não inventar valores.
 
-**Regras de adição ao Design System (obrigatório):**
+**Sistema cor + fonte = TODAS as telas (obrigatório):**
 
-8. **Componente novo que pode ser reusado → adiciona no Design System imediatamente.** Se criar `PontesAccordion`, `PontesDatePicker`, `PontesBadge`, `PontesFamilyAvatar` ou qualquer coisa que outras telas vão usar, **inclui no `ComponentShowcase` na aba apropriada** (Botões, Form, Cards & Dados, Feedback, Navegação, Gráficos) na mesma PR. Critério: se vai aparecer em 2+ telas, vai pro DS.
-9. **Componente que NÃO vai ser reusado** (tipo específico de uma única tela) fica na própria pasta da tela — não polui DS.
-10. **PR de feature SEMPRE checa:** rodar `/design-system` e ver se algum componente criado deveria estar ali. Reviewer cobra.
+10. **TODA tela nova ou refatorada — site público OU interna autenticada — DEVE consumir paleta + fonte vivos.** Sem exceção. Hoje (até #90 entregar context global), cada tela:
+    - Importa `palettes`, `fonts` de `@/components/pontes`
+    - Recebe ou armazena `paletteId` + `fontId` (state local até #90)
+    - Renderiza `<ControlBar>` ou aceita prop `p: Palette` + `font: string` que passa adiante pros componentes
+    - Trocar paleta no `/site` ou `/design-system` aplica em tudo da tela ao vivo, sem reload
+11. **Quando #90 entregar context global** (`PontesProvider` envolvendo `<App>`): refatora todas as telas pra ler do context em vez de prop drill. API da biblioteca muda de `<PontesButton p={p} font={font} />` pra `<PontesButton />` (consome do context).
+12. **Wordmark "Pontes" é sempre Plus Jakarta** (marca fixa, não muda com personalização — só UI/corpo muda).
+13. **Cores semânticas (success/warning/danger/info)** vêm de `semantic` em `theme.ts` — NÃO mudam com paleta (vermelho de erro sempre vermelho).
+14. **`PontesAlert` e `PontesToast` são 100% imunes à paleta.** Mantêm padrão universal de alerta (cores semânticas + fundo neutro fixo). Só `font` muda. Não passar `p` pra eles (assinatura ignora — aceita só pra retrocompat).
 
-**Sistema de cores + fontes — aplica em TODAS as telas (não só site):**
+**Legado vs Novo — convivência durante Q5:**
 
-11. **Toda tela autenticada do app (Dashboard, Transações, Cartões, Família, etc) também segue a paleta + fonte do usuário** (decisão final via #90 Personalização in-app). Hoje as telas internas ainda usam tokens do Q4 — vão migrar pra mesmo sistema do `/site` + `/design-system` conforme o refator (#81-#89).
-12. **Quem usa o app:** vê a paleta + fonte escolhida nas Configurações refletida em tudo — landing, login, dashboard, cada tela interna. Sem inconsistência.
-13. **Quem usa o site público sem logar:** vê paleta padrão (decidida no controle bar do `/site` enquanto não fechamos definitiva).
-14. **Wordmark "Pontes" é sempre Plus Jakarta** (marca, não muda com personalização — só corpo de texto e UI muda).
+12. **Legado** (`src/components/CustomButton.tsx`, `src/theme/tokens.ts`, `pages/*` usando MUI direto): fica no lugar. Telas legadas continuam usando até refator chegar nelas.
+13. **Final do Q5** (todas as telas refatoradas e mergeadas): PR separado deleta o legado. Não antes.
 
-**Fluxo recomendado pra atacar tela do app (Dashboard, Transação, Cartão, etc):**
+**Fluxo recomendado pra atacar tela:**
 
-1. Abre `/design-system` no preview
-2. Identifica os componentes que a tela precisa (ex: tabela, stat cards, donut, modal)
-3. Copia padrão visual + comportamento do showcase pra dentro da tela
-4. Se algum componente vai ser usado em 3+ lugares, extrai pra `src/components/ui/` (issue separada, marca dívida)
-5. Refator visual + funcional na mesma branch da issue
+1. Abre `/design-system` (paleta A, fonte Plus Jakarta default — testar A→O depois).
+2. Identifica quais componentes a tela precisa (tabela, stat cards, modal, etc).
+3. Importa de `@/components/pontes` e monta a tela.
+4. Se faltar algo reutilizável → adiciona em `src/components/pontes/` primeiro (regra 4), depois usa.
+5. Se faltar algo único da tela → cria local em `src/pages/<Tela>/`.
+6. Tudo na mesma branch da issue (incluindo expansão da biblioteca).
+7. PR descreve no body quais componentes da biblioteca foram criados/atualizados.
 
-**Issue #90 (Personalização) vai promover o `ComponentShowcase` a sistema real** — extrair componentes pra `src/components/ui/`, migrar MUI gradual.
+**Issue #90 (Personalização in-app)** vai trocar a prop `p`/`font` por context global — refatora todos os componentes pra consumir do context. Hoje cada call passa props explicitamente.
 
 ### Pre-flight em cada nova issue
 
@@ -204,9 +218,42 @@ src/components/
 
 - Build verde (back: `dotnet build`; front: `npm run build`)
 - Lint zero erros (`npm run lint`)
-- Teste novo cobrindo a feature/refator
+- **Teste automatizado novo OBRIGATÓRIO** — front (vitest) E back (xUnit) quando aplicável. Sem exceção. Detalhes abaixo.
 - Família real (você ou sócio) homologa em dev
 - PR mergeado pra `main`
+
+### Testes automatizados — regra OBRIGATÓRIA ⭐
+
+**Toda mudança em código precisa de teste novo cobrindo o que mudou. Front E back.** Sem teste = PR não merga.
+
+**Front (vitest + @testing-library/react):**
+- Componente novo na biblioteca Pontes → smoke test em `src/test/components/pontes.test.tsx` (renderiza, dispara onClick, valida output)
+- Tela nova ou refatorada → teste em `src/test/pages/<Tela>.test.tsx` cobrindo: render principal, interação chave (submit/click), edge case (loading/erro)
+- Service novo → teste em `src/test/services/<Service>.test.ts` com axios mockado
+- Hook custom → teste em `src/test/hooks/`
+- Bug fix → teste de regressão que falharia ANTES do fix
+
+**Back (xUnit + WebApplicationFactory):**
+- Endpoint novo → teste de integração em `ControleFinanceiro.Tests/Controllers/` cobrindo: happy path, 400 (validação), 401 (sem auth), 404 (não existe), 403 (outro usuário)
+- Service novo → teste unitário em `ControleFinanceiro.Tests/Services/` (regras de negócio, edge cases)
+- Migration → smoke test que cria DB e roda migration
+- Bug fix → teste de regressão
+
+**O que NÃO precisa de teste:**
+- Mudança puramente de copy/texto (sem lógica)
+- Mudança puramente de estilo CSS (sem comportamento)
+- Docs (`.md`, comentários)
+
+**Comando local antes do push:**
+```bash
+# Frontend
+cd controle-financeiro.web && npm test -- --run
+
+# Backend
+cd ControleFinanceiro.Api && dotnet test
+```
+
+Reviewer SEMPRE cobra: "qual teste cobre essa mudança?". Sem resposta → PR não merga.
 
 ---
 
