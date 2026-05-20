@@ -7,6 +7,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import { tokens } from "../../theme/tokens";
 import CustomButton from "../../components/CustomButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -48,13 +49,13 @@ function SummaryCard({
   subtitle?: string;
 }) {
   return (
-    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", p: 3 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
-        <Typography fontSize={13} fontWeight={600} color="text.secondary">
+        <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.secondary}>
           {title}
         </Typography>
         <Box sx={{
-          width: 36, height: 36, borderRadius: "8px",
+          width: 36, height: 36, borderRadius: tokens.radius.md,
           bgcolor: `${color}15`,
           display: "flex", alignItems: "center", justifyContent: "center",
           color,
@@ -62,11 +63,11 @@ function SummaryCard({
           {icon}
         </Box>
       </Box>
-      <Typography fontSize={24} fontWeight={700} color="text.primary">
+      <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
         {value}
       </Typography>
       {subtitle && (
-        <Typography fontSize={12} color="text.secondary" mt={0.5}>
+        <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} mt={0.5}>
           {subtitle}
         </Typography>
       )}
@@ -155,25 +156,25 @@ export default function TransactionsPage() {
             onClick={prevMonth}
             sx={{
               width: 32, height: 32,
-              border: 1.5, borderColor: "divider",
-              borderRadius: "8px",
-              color: "text.primary",
-              "&:hover": { bgcolor: "action.hover" },
+              border: 1.5, borderColor: tokens.color.border.default,
+              borderRadius: tokens.radius.md,
+              color: tokens.color.text.primary,
+              "&:hover": { bgcolor: tokens.color.background.hover },
             }}
           >
             <ChevronLeftIcon sx={{ fontSize: 18 }} />
           </IconButton>
-          <Typography fontWeight={700} fontSize={19} letterSpacing="0.04em" sx={{ minWidth: 200, textAlign: "center" }}>
+          <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={19} letterSpacing="0.04em" sx={{ minWidth: 200, textAlign: "center" }}>
             {monthLabel}
           </Typography>
           <IconButton
             onClick={nextMonth}
             sx={{
               width: 32, height: 32,
-              border: 1.5, borderColor: "divider",
-              borderRadius: "8px",
-              color: "text.primary",
-              "&:hover": { bgcolor: "action.hover" },
+              border: 1.5, borderColor: tokens.color.border.default,
+              borderRadius: tokens.radius.md,
+              color: tokens.color.text.primary,
+              "&:hover": { bgcolor: tokens.color.background.hover },
             }}
           >
             <ChevronRightIcon sx={{ fontSize: 18 }} />
@@ -203,26 +204,26 @@ export default function TransactionsPage() {
         <SummaryCard
           title="Saldo Total"
           value={formatMoney(saldoTotal)}
-          color="#2563eb"
+          color={tokens.color.status.info.main}
           icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
           subtitle="todas as contas"
         />
         <SummaryCard
           title="Total Entradas"
           value={formatMoney(totalEntradas)}
-          color="#16a34a"
+          color={tokens.color.status.success.main}
           icon={<TrendingUpIcon sx={{ fontSize: 18 }} />}
         />
         <SummaryCard
           title="Total Saídas"
           value={formatMoney(totalSaidas)}
-          color="#dc2626"
+          color={tokens.color.status.error.main}
           icon={<TrendingDownIcon sx={{ fontSize: 18 }} />}
         />
         <SummaryCard
           title="Saldo do Mês"
           value={formatMoney(saldoFinal)}
-          color="#374151"
+          color={tokens.color.text.secondary}
           icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
         />
       </Box>
@@ -234,7 +235,7 @@ export default function TransactionsPage() {
           value={filterCategoryId}
           onChange={(e) => setFilterCategoryId(e.target.value)}
           size="small"
-          sx={{ minWidth: 180, borderRadius: "8px", fontSize: 14 }}
+          sx={{ minWidth: 180, borderRadius: tokens.radius.md, fontSize: tokens.typography.fontSize.sm }}
         >
           <MenuItem value="">Categoria</MenuItem>
           {categories.map((c) => (
@@ -246,9 +247,9 @@ export default function TransactionsPage() {
       </Box>
 
       {/* Transactions table */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Typography fontSize={15} fontWeight={600} color="text.primary">Todas as Transações</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Todas as Transações</Typography>
         </Box>
         <TransactionTable
           rows={filtered.map((t: Transaction): TransactionRow => ({

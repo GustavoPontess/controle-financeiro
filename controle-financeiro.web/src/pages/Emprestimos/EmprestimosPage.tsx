@@ -15,6 +15,7 @@ import {
   getEmprestimos, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
 } from "../../services/emprestimoService"
 import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
+import { tokens } from "../../theme/tokens"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -119,8 +120,8 @@ export default function EmprestimosPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="text.primary">Empréstimos</Typography>
-          <Typography fontSize={13} color="text.secondary">Controle de dinheiro emprestado e recebido</Typography>
+          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Empréstimos</Typography>
+          <Typography fontSize={13} color={tokens.color.text.secondary}>Controle de dinheiro emprestado e recebido</Typography>
         </Box>
         <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={openDialog}>
           Novo Empréstimo
@@ -129,33 +130,33 @@ export default function EmprestimosPage() {
 
       {/* Stats */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>A receber</Typography>
-          <Typography fontSize={22} fontWeight={800} color="#15803d">{formatMoney(totalAReceber)}</Typography>
-          <Typography fontSize={11} color="text.secondary">dinheiro que emprestei</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>A receber</Typography>
+          <Typography fontSize={22} fontWeight={800} color={tokens.color.status.success.dark}>{formatMoney(totalAReceber)}</Typography>
+          <Typography fontSize={11} color={tokens.color.text.secondary}>dinheiro que emprestei</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>A pagar</Typography>
-          <Typography fontSize={22} fontWeight={800} color="#dc2626">{formatMoney(totalAPagar)}</Typography>
-          <Typography fontSize={11} color="text.secondary">dinheiro que peguei emprestado</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>A pagar</Typography>
+          <Typography fontSize={22} fontWeight={800} color={tokens.color.status.error.main}>{formatMoney(totalAPagar)}</Typography>
+          <Typography fontSize={11} color={tokens.color.text.secondary}>dinheiro que peguei emprestado</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Ativos</Typography>
-          <Typography fontSize={26} fontWeight={800} color="text.primary">{ativos.length}</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Ativos</Typography>
+          <Typography fontSize={26} fontWeight={800} color={tokens.color.text.primary}>{ativos.length}</Typography>
         </Paper>
       </Box>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Typography fontSize={15} fontWeight={600} color="text.primary">Seus Empréstimos</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Seus Empréstimos</Typography>
         </Box>
 
         {emprestimos.length === 0 ? (
           <Box sx={{ py: 8, textAlign: "center" }}>
-            <HandshakeOutlinedIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
-            <Typography fontSize={14} color="text.secondary">Nenhum empréstimo cadastrado</Typography>
-            <Typography fontSize={13} color="text.secondary">Registre dinheiro emprestado ou que você tomou emprestado</Typography>
+            <HandshakeOutlinedIcon sx={{ fontSize: 40, color: tokens.color.text.disabled, mb: 1 }} />
+            <Typography fontSize={14} color={tokens.color.text.secondary}>Nenhum empréstimo cadastrado</Typography>
+            <Typography fontSize={13} color={tokens.color.text.secondary}>Registre dinheiro emprestado ou que você tomou emprestado</Typography>
           </Box>
         ) : (
           emprestimos.map((e, i) => {
@@ -165,35 +166,35 @@ export default function EmprestimosPage() {
                 key={e.id}
                 sx={{
                   px: 3, py: 2,
-                  borderBottom: i < emprestimos.length - 1 ? 1 : 0, borderColor: "divider",
+                  borderBottom: i < emprestimos.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
                   opacity: e.quitado ? 0.55 : 1,
-                  "&:hover": { bgcolor: "action.hover" }, transition: "background 0.15s",
+                  "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
                   {/* Left */}
                   <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, minWidth: 0, flex: 1 }}>
                     <Box sx={{
-                      width: 36, height: 36, borderRadius: "8px", flexShrink: 0, mt: 0.3,
-                      bgcolor: isEmprestei ? "#dcfce7" : "#fee2e2",
+                      width: 36, height: 36, borderRadius: tokens.radius.md, flexShrink: 0, mt: 0.3,
+                      bgcolor: isEmprestei ? tokens.color.status.success.light : tokens.color.status.error.light,
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
                       {isEmprestei
-                        ? <TrendingUpIcon sx={{ fontSize: 18, color: "#16a34a" }} />
-                        : <TrendingDownIcon sx={{ fontSize: 18, color: "#dc2626" }} />
+                        ? <TrendingUpIcon sx={{ fontSize: 18, color: tokens.color.status.success.main }} />
+                        : <TrendingDownIcon sx={{ fontSize: 18, color: tokens.color.status.error.main }} />
                       }
                     </Box>
                     <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                         <Typography fontWeight={600} fontSize={14}>{e.descricao}</Typography>
                         {e.quitado && (
-                          <Chip label="Quitado" size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#dcfce7", color: "#15803d" }} />
+                          <Chip label="Quitado" size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.dark }} />
                         )}
                         {e.vencido && (
-                          <Chip label="Vencido" size="small" sx={{ fontSize: 11, height: 18, bgcolor: "#fee2e2", color: "#dc2626" }} />
+                          <Chip label="Vencido" size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.error.light, color: tokens.color.status.error.main }} />
                         )}
                       </Box>
-                      <Typography fontSize={12} color="text.secondary" mt={0.2}>
+                      <Typography fontSize={12} color={tokens.color.text.secondary} mt={0.2}>
                         {isEmprestei ? "Para:" : "De:"} <strong>{e.pessoa}</strong>
                         {e.dataVencimento && ` · vence ${formatDate(e.dataVencimento)}`}
                       </Typography>
@@ -201,10 +202,10 @@ export default function EmprestimosPage() {
                       {!e.quitado && (
                         <Box sx={{ mt: 1, maxWidth: 280 }}>
                           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.3 }}>
-                            <Typography fontSize={11} color="text.secondary">
+                            <Typography fontSize={11} color={tokens.color.text.secondary}>
                               {formatMoney(e.valorPago)} pago de {formatMoney(e.valorTotal)}
                             </Typography>
-                            <Typography fontSize={11} color="text.secondary" fontWeight={600}>
+                            <Typography fontSize={11} color={tokens.color.text.secondary} fontWeight={tokens.typography.fontWeight.bold}>
                               {e.percentualPago}%
                             </Typography>
                           </Box>
@@ -213,8 +214,8 @@ export default function EmprestimosPage() {
                             value={e.percentualPago}
                             sx={{
                               height: 5, borderRadius: 3,
-                              bgcolor: "action.hover",
-                              "& .MuiLinearProgress-bar": { bgcolor: isEmprestei ? "#16a34a" : "#dc2626", borderRadius: 3 },
+                              bgcolor: tokens.color.background.hover,
+                              "& .MuiLinearProgress-bar": { bgcolor: isEmprestei ? tokens.color.status.success.main : tokens.color.status.error.main, borderRadius: 3 },
                             }}
                           />
                         </Box>
@@ -224,17 +225,17 @@ export default function EmprestimosPage() {
 
                   {/* Right */}
                   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0 }}>
-                    <Typography fontWeight={700} fontSize={15} color={isEmprestei ? "#16a34a" : "#dc2626"}>
+                    <Typography fontWeight={700} fontSize={15} color={isEmprestei ? tokens.color.status.success.main : tokens.color.status.error.main}>
                       {formatMoney(e.valorRestante)}
                     </Typography>
-                    <Typography fontSize={11} color="text.secondary">restante</Typography>
+                    <Typography fontSize={11} color={tokens.color.text.secondary}>restante</Typography>
                     {!e.quitado && (
                       <Box sx={{ display: "flex", gap: 0.5 }}>
                         <IconButton
                           size="small"
                           title="Registrar pagamento"
                           onClick={() => { setSelectedId(e.id); setValorPagamento(""); setPagamentoDialogOpen(true) }}
-                          sx={{ color: "text.secondary", "&:hover": { color: "#2563eb" } }}
+                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.brand.primary } }}
                         >
                           <PaidOutlinedIcon fontSize="small" />
                         </IconButton>
@@ -242,14 +243,14 @@ export default function EmprestimosPage() {
                           size="small"
                           title="Marcar como quitado"
                           onClick={() => handleQuitar(e.id)}
-                          sx={{ color: "text.secondary", "&:hover": { color: "#16a34a" } }}
+                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.success.main } }}
                         >
                           <HandshakeOutlinedIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDeletar(e.id)}
-                          sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
+                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
                         >
                           <DeleteOutlineIcon fontSize="small" />
                         </IconButton>
@@ -259,7 +260,7 @@ export default function EmprestimosPage() {
                       <IconButton
                         size="small"
                         onClick={() => handleDeletar(e.id)}
-                        sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
+                        sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
                       >
                         <DeleteOutlineIcon fontSize="small" />
                       </IconButton>
@@ -348,7 +349,7 @@ export default function EmprestimosPage() {
             onChange={(e) => setForm(f => ({ ...f, observacao: e.target.value || undefined }))}
           />
 
-          {erro && <Typography fontSize={13} color="#dc2626">{erro}</Typography>}
+          {erro && <Typography fontSize={13} color={tokens.color.status.error.main}>{erro}</Typography>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>

@@ -19,6 +19,7 @@ import { getCategories } from "../../services/categoryService"
 import type { Recorrente, CriarRecorrente } from "../../types/Recorrente"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
+import { tokens } from "../../theme/tokens"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -32,9 +33,9 @@ const formatDate = (d?: string) =>
 const today = () => new Date().toISOString().slice(0, 10)
 
 const freqBadgeColor: Record<number, { bg: string; color: string }> = {
-  1: { bg: "#fef3c7", color: "#b45309" },
+  1: { bg: tokens.color.status.warning.light, color: tokens.color.status.warning.dark },
   2: { bg: "#ede9fe", color: "#7c3aed" },
-  3: { bg: "#dbeafe", color: "#1d4ed8" },
+  3: { bg: tokens.color.status.info.light, color: tokens.color.status.info.dark },
 }
 
 const emptyForm: CriarRecorrente = {
@@ -126,8 +127,8 @@ export default function RecorrentesPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color="text.primary">Assinaturas</Typography>
-          <Typography fontSize={13} color="text.secondary">Assinaturas e pagamentos automáticos</Typography>
+          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Assinaturas</Typography>
+          <Typography fontSize={13} color={tokens.color.text.secondary}>Assinaturas e pagamentos automáticos</Typography>
         </Box>
         <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={openDialog}>
           Nova Assinatura
@@ -136,30 +137,30 @@ export default function RecorrentesPage() {
 
       {/* Stats */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Ativos</Typography>
-          <Typography fontSize={26} fontWeight={800} color="text.primary">{ativos}</Typography>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Ativos</Typography>
+          <Typography fontSize={26} fontWeight={800} color={tokens.color.text.primary}>{ativos}</Typography>
         </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: "divider", borderRadius: "12px" }}>
-          <Typography fontSize={12} color="text.secondary" mb={0.5}>Impacto mensal</Typography>
-          <Typography fontSize={22} fontWeight={800} color={totalMensal >= 0 ? "#15803d" : "#dc2626"}>
+        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Impacto mensal</Typography>
+          <Typography fontSize={22} fontWeight={800} color={totalMensal >= 0 ? tokens.color.status.success.dark : tokens.color.status.error.main}>
             {formatMoney(Math.abs(totalMensal))}
           </Typography>
-          <Typography fontSize={11} color="text.secondary">{totalMensal >= 0 ? "saldo positivo" : "saldo negativo"}</Typography>
+          <Typography fontSize={11} color={tokens.color.text.secondary}>{totalMensal >= 0 ? "saldo positivo" : "saldo negativo"}</Typography>
         </Paper>
       </Box>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: "12px", overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Typography fontSize={15} fontWeight={600} color="text.primary">Suas Assinaturas</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Suas Assinaturas</Typography>
         </Box>
 
         {recorrentes.length === 0 ? (
           <Box sx={{ py: 8, textAlign: "center" }}>
-            <RepeatIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
-            <Typography fontSize={14} color="text.secondary">Nenhuma assinatura cadastrada</Typography>
-            <Typography fontSize={13} color="text.secondary">Cadastre assinaturas como Netflix, academia, etc.</Typography>
+            <RepeatIcon sx={{ fontSize: 40, color: tokens.color.text.disabled, mb: 1 }} />
+            <Typography fontSize={14} color={tokens.color.text.secondary}>Nenhuma assinatura cadastrada</Typography>
+            <Typography fontSize={13} color={tokens.color.text.secondary}>Cadastre assinaturas como Netflix, academia, etc.</Typography>
           </Box>
         ) : (
           recorrentes.map((r, i) => {
@@ -171,20 +172,20 @@ export default function RecorrentesPage() {
                 sx={{
                   px: 3, py: 2,
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
-                  borderBottom: i < recorrentes.length - 1 ? 1 : 0, borderColor: "divider",
+                  borderBottom: i < recorrentes.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
                   opacity: r.ativo ? 1 : 0.5,
-                  "&:hover": { bgcolor: "action.hover" }, transition: "background 0.15s",
+                  "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
                   <Box sx={{
-                    width: 36, height: 36, borderRadius: "8px", flexShrink: 0,
-                    bgcolor: isDespesa ? "#fee2e2" : "#dcfce7",
+                    width: 36, height: 36, borderRadius: tokens.radius.md, flexShrink: 0,
+                    bgcolor: isDespesa ? tokens.color.status.error.light : tokens.color.status.success.light,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {isDespesa
-                      ? <TrendingDownIcon sx={{ fontSize: 18, color: "#dc2626" }} />
-                      : <TrendingUpIcon sx={{ fontSize: 18, color: "#16a34a" }} />
+                      ? <TrendingDownIcon sx={{ fontSize: 18, color: tokens.color.status.error.main }} />
+                      : <TrendingUpIcon sx={{ fontSize: 18, color: tokens.color.status.success.main }} />
                     }
                   </Box>
                   <Box sx={{ minWidth: 0 }}>
@@ -196,10 +197,10 @@ export default function RecorrentesPage() {
                         sx={{ fontSize: 11, height: 18, bgcolor: freq.bg, color: freq.color }}
                       />
                       {r.categoriaNome && (
-                        <Chip label={r.categoriaNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: "action.hover", color: "text.primary" }} />
+                        <Chip label={r.categoriaNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.background.hover, color: tokens.color.text.primary }} />
                       )}
-                      <Typography fontSize={12} color="text.secondary">{r.contaNome}</Typography>
-                      <Typography fontSize={12} color="text.secondary">próxima: {formatDate(r.dataProximaGeracao)}</Typography>
+                      <Typography fontSize={12} color={tokens.color.text.secondary}>{r.contaNome}</Typography>
+                      <Typography fontSize={12} color={tokens.color.text.secondary}>próxima: {formatDate(r.dataProximaGeracao)}</Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -207,7 +208,7 @@ export default function RecorrentesPage() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexShrink: 0 }}>
                   <Typography
                     fontWeight={700} fontSize={15}
-                    color={isDespesa ? "#dc2626" : "#16a34a"}
+                    color={isDespesa ? tokens.color.status.error.main : tokens.color.status.success.main}
                   >
                     {isDespesa ? "-" : "+"}{formatMoney(r.valor)}
                   </Typography>
@@ -220,7 +221,7 @@ export default function RecorrentesPage() {
                   <IconButton
                     size="small"
                     onClick={() => handleDeletar(r.id)}
-                    sx={{ color: "text.secondary", "&:hover": { color: "#dc2626" } }}
+                    sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
                   >
                     <DeleteOutlineIcon fontSize="small" />
                   </IconButton>
@@ -342,7 +343,7 @@ export default function RecorrentesPage() {
             />
           </Box>
 
-          {erro && <Typography fontSize={13} color="#dc2626">{erro}</Typography>}
+          {erro && <Typography fontSize={13} color={tokens.color.status.error.main}>{erro}</Typography>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>

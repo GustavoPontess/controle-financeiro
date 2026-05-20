@@ -12,6 +12,7 @@ import { previewImportacao, confirmarImportacao } from "../../services/importaca
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import type { PreviewImportacao } from "../../types/Importacao"
+import { tokens } from "../../theme/tokens"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -113,14 +114,14 @@ export default function ImportacaoPage() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box>
-        <Typography fontSize={22} fontWeight={700} color="#111827">Importar extrato</Typography>
-        <Typography fontSize={13} color="#6b7280">
+        <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Importar extrato</Typography>
+        <Typography fontSize={13} color={tokens.color.text.secondary}>
           Suba o extrato do banco (OFX ou CSV) e revise antes de salvar.
         </Typography>
       </Box>
 
       {/* Passo 1 — upload */}
-      <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 2.5 }}>
+      <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
             select size="small" label="Conta de destino" sx={{ minWidth: 220 }}
@@ -153,7 +154,7 @@ export default function ImportacaoPage() {
 
       {/* Passo 2 — revisão */}
       {preview && !carregando && (
-        <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "12px", p: 2.5 }}>
+        <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
             <Typography fontSize={15} fontWeight={600}>
               {preview.total} transações lidas · {preview.duplicadas} possíveis duplicatas
@@ -164,7 +165,7 @@ export default function ImportacaoPage() {
           </Box>
 
           {preview.total === 0 ? (
-            <Typography fontSize={13} color="#9ca3af">
+            <Typography fontSize={13} color={tokens.color.text.disabled}>
               Nenhuma transação encontrada no arquivo.
             </Typography>
           ) : (
@@ -187,7 +188,7 @@ export default function ImportacaoPage() {
                     const catsCompat = categorias.filter(
                       c => c.finalidade === 3 || c.finalidade === l.tipo)
                     return (
-                      <TableRow key={`${l.fitId ?? ""}-${i}`} sx={{ bgcolor: l.duplicada ? "#fff7ed" : undefined }}>
+                      <TableRow key={`${l.fitId ?? ""}-${i}`} sx={{ bgcolor: l.duplicada ? tokens.color.status.warning.light : undefined }}>
                         <TableCell padding="checkbox">
                           <Checkbox
                             size="small" checked={est?.selecionada ?? false}
@@ -207,13 +208,13 @@ export default function ImportacaoPage() {
                             label={isReceita ? "Receita" : "Despesa"} size="small"
                             sx={{
                               fontSize: 11, height: 20,
-                              bgcolor: isReceita ? "#dcfce7" : "#fee2e2",
-                              color: isReceita ? "#16a34a" : "#dc2626",
+                              bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
+                              color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main,
                             }}
                           />
                         </TableCell>
-                        <TableCell sx={{ fontSize: 13, fontWeight: 600, textAlign: "right",
-                          color: isReceita ? "#16a34a" : "#dc2626" }}>
+                        <TableCell sx={{ fontSize: 13, fontWeight: tokens.typography.fontWeight.bold, textAlign: "right",
+                          color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main }}>
                           {formatMoney(l.valor)}
                         </TableCell>
                         <TableCell>
