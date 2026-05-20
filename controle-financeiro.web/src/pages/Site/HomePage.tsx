@@ -308,7 +308,8 @@ function TypingWord({ words, color, intervalMs = 2500 }: { words: string[]; colo
 }
 
 /** Comparison slider antes/depois — drag horizontal. */
-function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p }: { leftLabel: string; rightLabel: string; leftContent: React.ReactNode; rightContent: React.ReactNode; p: Palette }) {
+/** Utilitário reutilizável (exportado pra outras páginas). */
+export function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p }: { leftLabel: string; rightLabel: string; leftContent: React.ReactNode; rightContent: React.ReactNode; p: Palette }) {
   const [pos, setPos] = useState(50)
   const ref = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -346,7 +347,8 @@ function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p 
 }
 
 /** Logos clouds 3D — rotação suave dos logos. */
-function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: string[] }) {
+/** Utilitário reutilizável. */
+export function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: string[] }) {
   return (
     <div style={{ display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap", perspective: "800px" }}>
       {logos.map((l, i) => (
@@ -366,7 +368,8 @@ function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: str
 }
 
 /** Card stack — 3 cards empilhados que se separam no hover do pai. */
-function CardStack({ p, items }: { p: Palette; items: { icon: string; title: string; v: string }[] }) {
+/** Utilitário reutilizável. */
+export function CardStack({ p, items }: { p: Palette; items: { icon: string; title: string; v: string }[] }) {
   return (
     <div style={{ position: "relative", height: 200, width: 280 }} className="bp-card-stack-host">
       {items.map((it, i) => (
@@ -626,7 +629,8 @@ function MobileMockup({ p, font }: { p: Palette; font: string }) {
 }
 
 /** Ilustração abstrata. */
-function FeatureIllustration({ kind, p }: { kind: string; p: Palette }) {
+/** Ilustração abstrata de feature (rateio, familia, etc). */
+export function FeatureIllustration({ kind, p }: { kind: string; p: Palette }) {
   const stroke = p.primary, fill = p.primarySoft
   switch (kind) {
     case "rateio": return (
@@ -693,7 +697,7 @@ function BarChartReal({ p, data, height = 160 }: { p: Palette; data: { label: st
           contentStyle={{ background: p.text, border: "none", borderRadius: 10, fontSize: 12, color: "#FFFFFF", padding: "10px 12px" }}
           labelStyle={{ color: "#FFFFFF", fontWeight: 700, marginBottom: 4 }}
           itemStyle={{ color: "#FFFFFF" }}
-          formatter={(v: number) => [`R$ ${v.toFixed(1)}k`, "Gasto"]}
+          formatter={(v) => [`R$ ${Number(v).toFixed(1)}k`, "Gasto"]}
         />
         <Bar dataKey="v" radius={[6, 6, 0, 0]}>
           {data.map((_, i) => (
@@ -725,7 +729,7 @@ function LineAreaChartReal({ p, data, height = 160 }: { p: Palette; data: { labe
           contentStyle={{ background: p.text, border: "none", borderRadius: 10, fontSize: 12, color: "#FFFFFF", padding: "10px 12px" }}
           labelStyle={{ color: "#FFFFFF", fontWeight: 700, marginBottom: 4 }}
           itemStyle={{ color: "#FFFFFF" }}
-          formatter={(v: number) => [fmt(v), "Saldo"]}
+          formatter={(v) => [fmt(Number(v)), "Saldo"]}
         />
         <Area type="monotone" dataKey="v" stroke={p.primary} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, fill: p.accent, stroke: "#FFFFFF", strokeWidth: 2 }} />
       </AreaChart>
@@ -798,7 +802,7 @@ function DonutChartReal({ p, data, height = 200 }: { p: Palette; data: { name: s
         <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2} dataKey="value">
           {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
-        <Tooltip contentStyle={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`R$ ${v}`, ""]} />
+        <Tooltip contentStyle={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 12 }} formatter={(v) => [`R$ ${v}`, ""]} />
       </PieChart>
     </ResponsiveContainer>
   )
@@ -1194,7 +1198,7 @@ function NavbarFloating({ p, font }: { p: Palette; font: string }) {
 }
 
 /** Bloco de feature zig-zag (texto + mockup alternando lado). */
-function FeatureBlock({ p, font, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
+function FeatureBlock({ p, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", padding: "60px 0", direction: reverse ? "rtl" : "ltr" }}>
       <div style={{ direction: "ltr" }}>
@@ -2293,7 +2297,7 @@ function CSFeedback({ p, font }: { p: Palette; font: string }) {
                 { i: "↗", label: "Duplicar" },
                 { i: "🔗", label: "Compartilhar" },
                 { i: "✕", label: "Excluir", danger: true },
-              ].map((item, idx, arr) => (
+              ].map((item, idx) => (
                 <div key={item.label}>
                   {item.danger && idx > 0 && <div style={{ height: 1, background: p.border, margin: "4px 0" }} />}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", fontSize: 13, color: item.danger ? "#DC2626" : p.text, cursor: "pointer", borderRadius: 6 }}>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
 import DefaultLayout from "../layouts/Default/DefaultLayout"
 import ProtectedRoute from "../components/Auth/ProtectedRoute"
+import RootRoute from "../components/Auth/RootRoute"
 
 import LoginPage from "../pages/Auth/LoginPage"
 import RegisterPage from "../pages/Auth/RegisterPage"
@@ -29,6 +30,9 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Root público: HomePage se deslogado, redirect /dashboard se logado (#75) */}
+        <Route path="/" element={<RootRoute />} />
+
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
@@ -56,7 +60,6 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
@@ -73,7 +76,7 @@ export default function AppRoutes() {
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
-        {/* Fallback */}
+        {/* Fallback — qualquer rota inexistente vai pra root (que decide HomePage ou Dashboard) */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
