@@ -24,12 +24,12 @@ issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
 
 ## Issue em execução
 
-**Nenhuma issue está em execução agora.** Q5 recém iniciado. Dev pega a próxima livre da ordem sugerida:
+**Nenhuma issue está em execução agora.** Próxima livre: **#76 Login + Register refator**.
 
 ### Ordem sugerida do backlog
 
 **Site público (primeiro — desbloqueia fluxo de entrada):**
-1. **#75** — `/` vira root público com fallback Dashboard
+1. ~~#75 — `/` vira root público com fallback Dashboard~~ ✅ MERGEADA (PR #94)
 2. **#76** — Refator Login + Register
 3. **#77** — Página Para Casais
 4. **#78** — Página Para Contadores
