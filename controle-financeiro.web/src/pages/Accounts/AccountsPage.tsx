@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Box, Typography, Paper, Chip } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
 import { tokens } from "../../theme/tokens"
@@ -43,7 +43,7 @@ export default function AccountsPage() {
   const [openContaDialog, setOpenContaDialog] = useState(false)
   const [editingConta, setEditingConta] = useState<Conta | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [cs, bs] = await Promise.all([getContas(), getBancos()])
       setContas(cs)
@@ -52,13 +52,9 @@ export default function AccountsPage() {
       console.error("Erro ao carregar contas:", error)
       notify({ open: true, message: "Erro ao carregar contas", severity: "error" })
     }
-  }
+  }, [notify])
 
-  useEffect(() => {
-    (async () => {
-      await loadData()
-    })()
-  }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
   const handleDeleteConta = async (id: string) => {
     if (!confirm("Deseja realmente excluir esta conta?")) return
