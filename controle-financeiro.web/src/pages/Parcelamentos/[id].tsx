@@ -130,23 +130,23 @@ export default function ParcelamentoDetalhePage() {
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate("/parcelamentos")}
-          sx={{ textTransform: "none", color: tokens.color.text.secondary }}
+          sx={{ textTransform: "none", color: "text.secondary" }}
         >
           Voltar
         </Button>
       </Box>
 
       {/* Informações principais */}
-      <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
+      <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: "divider", borderRadius: tokens.radius.lg }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
           <Box>
-            <Typography fontSize={26} fontWeight={700} color={tokens.color.text.primary}>{parcelamento.descricao}</Typography>
+            <Typography fontSize={26} fontWeight={700} color="text.primary">{parcelamento.descricao}</Typography>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}>
               <Chip
                 label={parcelamento.tipo === 0 ? "Compra Parcelada" : "PIX Crédito"}
                 size="small"
               />
-              <Typography fontSize={12} color={tokens.color.text.secondary}>
+              <Typography fontSize={12} color="text.secondary">
                 {parcelamento.quantidadeParcelas} parcelas
               </Typography>
             </Box>
@@ -157,7 +157,7 @@ export default function ParcelamentoDetalhePage() {
         {/* Progress */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-            <Typography fontSize={13} color={tokens.color.text.secondary}>Progresso</Typography>
+            <Typography fontSize={13} color="text.secondary">Progresso</Typography>
             <Typography fontSize={13} fontWeight={tokens.typography.fontWeight.bold}>{percentual.toFixed(0)}%</Typography>
           </Box>
           <LinearProgress variant="determinate" value={percentual} sx={{ height: 8, borderRadius: tokens.radius.xs }} />
@@ -165,9 +165,9 @@ export default function ParcelamentoDetalhePage() {
 
         {/* Stats */}
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 2 }}>
-          <Card elevation={0} sx={{ bgcolor: tokens.color.background.hover, border: 1, borderColor: tokens.color.border.default }}>
+          <Card elevation={0} sx={{ bgcolor: tokens.color.background.hover, border: 1, borderColor: "divider" }}>
             <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-              <Typography fontSize={11} color={tokens.color.text.secondary} mb={0.5}>Valor Original</Typography>
+              <Typography fontSize={11} color="text.secondary" mb={0.5}>Valor Original</Typography>
               <Typography fontSize={16} fontWeight={tokens.typography.fontWeight.bold}>{formatMoney(parcelamento.valorOriginal)}</Typography>
             </CardContent>
           </Card>
@@ -207,25 +207,25 @@ export default function ParcelamentoDetalhePage() {
       )}
 
       {/* Tabela de parcelas */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Parcelas ({parcelamento.parcelas.length})</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">Parcelas ({parcelamento.parcelas.length})</Typography>
         </Box>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow sx={{ bgcolor: tokens.color.background.hover }}>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Nº</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Fatura</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Vencimento</TableCell>
-                <TableCell align="right" sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Valor</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Ações</TableCell>
+                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Nº</TableCell>
+                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Fatura</TableCell>
+                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Vencimento</TableCell>
+                <TableCell align="right" sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Valor</TableCell>
+                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: "text.secondary" }}>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {parcelamento.parcelas.map((parcela, i) => (
-                <TableRow key={parcela.id} sx={{ borderBottom: 1, borderColor: tokens.color.border.default, "&:hover": { bgcolor: tokens.color.background.hover } }}>
+                <TableRow key={parcela.id} sx={{ borderBottom: 1, borderColor: "divider", "&:hover": { bgcolor: tokens.color.background.hover } }}>
                   <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{i + 1}</TableCell>
                   <TableCell sx={{ fontSize: 13 }}>
                     {formatarMesAno(parcela.dataVencimento)}
@@ -256,13 +256,13 @@ export default function ParcelamentoDetalhePage() {
                           setParcelaIdSelecionada(parcela.id)
                           setModalPagar(true)
                         }}
-                        sx={{ textTransform: "none", color: tokens.color.text.primary, "&:hover": { bgcolor: tokens.color.background.hover } }}
+                        sx={{ textTransform: "none", color: "text.primary", "&:hover": { bgcolor: tokens.color.background.hover } }}
                       >
                         Pagar
                       </Button>
                     )}
                     {parcela.status === 1 && (
-                      <Typography fontSize={12} color={tokens.color.text.secondary}>{formatDate(parcela.pagoEm)}</Typography>
+                      <Typography fontSize={12} color="text.secondary">{formatDate(parcela.pagoEm)}</Typography>
                     )}
                   </TableCell>
                 </TableRow>

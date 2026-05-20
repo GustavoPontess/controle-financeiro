@@ -327,7 +327,7 @@ export default function ReportsPage() {
                         >
                           {data.gastosPorCategoria[activeSlice].percentual}%
                         </Typography>
-                        <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} noWrap sx={{ maxWidth: 100 }}>
+                        <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary" noWrap sx={{ maxWidth: 100 }}>
                           {data.gastosPorCategoria[activeSlice].descricao}
                         </Typography>
                       </>
@@ -335,7 +335,7 @@ export default function ReportsPage() {
                       <>
                         <Typography
                           fontSize={tokens.typography.fontSize.xs}
-                          color={tokens.color.text.secondary}
+                          color="text.secondary"
                           sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }}
                         >
                           Total
@@ -343,7 +343,7 @@ export default function ReportsPage() {
                         <Typography
                           fontSize={tokens.typography.fontSize.sm}
                           fontWeight={tokens.typography.fontWeight.bold}
-                          color={tokens.color.text.primary}
+                          color="text.primary"
                           lineHeight={1.3}
                         >
                           {formatMoney(data.gastosPorCategoria.reduce((s, c) => s + c.valor, 0))}
@@ -377,20 +377,20 @@ export default function ReportsPage() {
                               <Typography
                                 fontSize={tokens.typography.fontSize.sm}
                                 fontWeight={isActive ? tokens.typography.fontWeight.bold : tokens.typography.fontWeight.medium}
-                                color={tokens.color.text.primary}
+                                color="text.primary"
                                 noWrap
                               >
                                 {cat.descricao}
                               </Typography>
                             </Box>
                             <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexShrink: 0 }}>
-                              <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
+                              <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary">
                                 {cat.percentual}%
                               </Typography>
                               <Typography
                                 fontSize={tokens.typography.fontSize.sm}
                                 fontWeight={tokens.typography.fontWeight.bold}
-                                color={tokens.color.text.primary}
+                                color="text.primary"
                               >
                                 {formatMoney(cat.valor)}
                               </Typography>

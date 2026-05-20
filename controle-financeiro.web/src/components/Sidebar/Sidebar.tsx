@@ -14,12 +14,15 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpIcon from "@mui/icons-material/Help";
-import PaletteIcon from "@mui/icons-material/Palette";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CheckIcon from "@mui/icons-material/Check";
 import AddIcon from "@mui/icons-material/Add";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import Divider from "@mui/material/Divider";
+
+import { useThemeMode } from "../../hooks/useThemeMode";
 
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -51,7 +54,7 @@ function Avatar({ initials, size = 30 }: { initials: string; size?: number }) {
         width: size,
         height: size,
         borderRadius: "50%",
-        bgcolor: "#111827",
+        bgcolor: "var(--avatar-bg)",
         color: "white",
         display: "flex",
         alignItems: "center",
@@ -73,6 +76,7 @@ function getInitials(nome: string) {
 export default function Sidebar({ open, drawerWidth }: SidebarProps) {
   const navigate = useNavigate();
   const { currentUser, savedAccounts, logout, switchAccount } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [accountAnchorEl, setAccountAnchorEl] = useState<null | HTMLElement>(null);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
@@ -139,7 +143,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
         "& .MuiDrawer-paper": {
           width: drawerWidth,
           boxSizing: "border-box",
-          background: "#f5f6fa",
+          background: "var(--sidebar-bg)",
           borderRight: 0,
         },
       }}
@@ -264,10 +268,10 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                   <Avatar initials={initials} size={34} />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
+                    <Typography fontSize={13} fontWeight={600} color="text.primary" noWrap>
                       {currentUser.nome}
                     </Typography>
-                    <Typography fontSize={11} color="#6b7280" noWrap>
+                    <Typography fontSize={11} color="text.secondary" noWrap>
                       Plano Free
                     </Typography>
                   </Box>
@@ -283,9 +287,12 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                 Upgrade de plano
               </MuiMenuItem>
 
-              <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <PaletteIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Personalização
+              <MuiMenuItem onClick={() => { toggleMode(); closeAll(); }} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
+                {mode === 'dark'
+                  ? <LightModeOutlinedIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
+                  : <DarkModeOutlinedIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
+                }
+                {mode === 'dark' ? 'Modo claro' : 'Modo escuro'}
               </MuiMenuItem>
               <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
                 <PersonIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
@@ -335,8 +342,8 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                     }}
                   >
                     {/* Email identifier */}
-                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #f3f4f6" }}>
-                      <Typography fontSize={12} color="#6b7280" noWrap>
+                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+                      <Typography fontSize={12} color="text.secondary" noWrap>
                         {currentUser.email}
                       </Typography>
                     </Box>
@@ -347,7 +354,7 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                           <Avatar initials={initials} size={28} />
                           <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
+                            <Typography fontSize={13} fontWeight={600} color="text.primary" noWrap>
                               {currentUser.nome}
                             </Typography>
                           </Box>
@@ -365,10 +372,10 @@ export default function Sidebar({ open, drawerWidth }: SidebarProps) {
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
                             <Avatar initials={getInitials(account.nome)} size={28} />
                             <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography fontSize={13} fontWeight={500} color="#111827" noWrap>
+                              <Typography fontSize={13} fontWeight={500} color="text.primary" noWrap>
                                 {account.nome}
                               </Typography>
-                              <Typography fontSize={11} color="#9ca3af" noWrap>
+                              <Typography fontSize={11} color="text.secondary" noWrap>
                                 {account.email}
                               </Typography>
                             </Box>

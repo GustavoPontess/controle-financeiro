@@ -255,18 +255,20 @@ export default function CreditCardsPage() {
   const headerSx = {
     fontSize: tokens.typography.fontSize["2xs"],
     fontWeight: tokens.typography.fontWeight.medium,
-    color: tokens.color.text.secondary,
+    color: "text.secondary",
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
     bgcolor: tokens.color.background.secondary,
-    borderBottom: `1px solid ${tokens.color.border.default}`,
+    borderBottom: "1px solid",
+    borderColor: "divider",
     py: 1.5,
   }
   const cellSx = {
     fontSize: tokens.typography.fontSize.sm,
-    color: tokens.color.text.primary,
+    color: "text.primary",
     py: 1.75,
-    borderBottom: `1px solid ${tokens.color.border.subtle}`,
+    borderBottom: "1px solid",
+    borderColor: "divider",
   }
 
   return (
@@ -274,8 +276,8 @@ export default function CreditCardsPage() {
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Cartões</Typography>
-          <Typography fontSize={13} color={tokens.color.text.secondary}>Gerencie seus cartões e acompanhe faturas</Typography>
+          <Typography fontSize={22} fontWeight={700} color="text.primary">Cartões</Typography>
+          <Typography fontSize={13} color="text.secondary">Gerencie seus cartões e acompanhe faturas</Typography>
         </Box>
         <CustomButton size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />} onClick={openCreate}>
           Novo Cartão
@@ -307,19 +309,19 @@ export default function CreditCardsPage() {
             icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 18 }} />,
           },
         ].map(s => (
-          <Paper key={s.label} elevation={0} sx={{ p: 2.5, border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg }}>
+          <Paper key={s.label} elevation={0} sx={{ p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: tokens.radius.lg }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
-              <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.secondary} sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 {s.label}
               </Typography>
               <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: s.grad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
                 {s.icon}
               </Box>
             </Box>
-            <Typography fontSize={22} fontWeight={800} color={tokens.color.text.primary} lineHeight={1.2}>
+            <Typography fontSize={22} fontWeight={800} color="text.primary" lineHeight={1.2}>
               {s.value}
             </Typography>
-            <Typography fontSize={11} color={tokens.color.text.secondary} mt={0.5}>{s.sub}</Typography>
+            <Typography fontSize={11} color="text.secondary" mt={0.5}>{s.sub}</Typography>
           </Paper>
         ))}
       </Box>
@@ -341,7 +343,8 @@ export default function CreditCardsPage() {
 
             return (
               <Paper key={c.id} elevation={0} sx={{
-                border: `1.5px solid ${isSelected ? tokens.color.brand.primary : tokens.color.border.default}`,
+                border: "1.5px solid",
+                borderColor: isSelected ? tokens.color.brand.primary : "divider",
                 borderRadius: tokens.radius.xl,
                 overflow: "hidden",
                 transition: tokens.transition.fast,
@@ -404,22 +407,22 @@ export default function CreditCardsPage() {
                         <Chip label="Débito" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.dark, fontWeight: tokens.typography.fontWeight.medium }} />
                       )}
                       {c.ehPrePago && (
-                        <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: tokens.color.text.secondary, fontWeight: tokens.typography.fontWeight.medium }} />
+                        <Chip label="Pré-Pago" size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: "text.secondary", fontWeight: tokens.typography.fontWeight.medium }} />
                       )}
                     </Box>
                     <Box sx={{ display: "flex", gap: 0.25 }}>
                       {c.temCredito && (
                         <IconButton size="small" onClick={() => openFaturas(c.id)} title="Ver faturas"
-                          sx={{ p: 0.75, color: isSelected ? tokens.color.brand.primary : tokens.color.text.secondary, bgcolor: isSelected ? tokens.color.brand.subtle : "transparent", borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.brand.primary, bgcolor: tokens.color.brand.subtle } }}>
+                          sx={{ p: 0.75, color: isSelected ? tokens.color.brand.primary : "text.secondary", bgcolor: isSelected ? tokens.color.brand.subtle : "transparent", borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.brand.primary, bgcolor: tokens.color.brand.subtle } }}>
                           <ReceiptLongOutlinedIcon sx={{ fontSize: 15 }} />
                         </IconButton>
                       )}
                       <IconButton size="small" onClick={() => openEdit(c)}
-                        sx={{ p: 0.75, color: tokens.color.text.secondary, borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.text.primary, bgcolor: tokens.color.background.secondary } }}>
+                        sx={{ p: 0.75, color: "text.secondary", borderRadius: tokens.radius.sm, "&:hover": { color: "text.primary", bgcolor: tokens.color.background.secondary } }}>
                         <EditIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                       <IconButton size="small" onClick={() => handleDelete(c.id)}
-                        sx={{ p: 0.75, color: tokens.color.text.secondary, borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.status.error.main, bgcolor: tokens.color.status.error.light } }}>
+                        sx={{ p: 0.75, color: "text.secondary", borderRadius: tokens.radius.sm, "&:hover": { color: tokens.color.status.error.main, bgcolor: tokens.color.status.error.light } }}>
                         <DeleteIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     </Box>
@@ -427,15 +430,15 @@ export default function CreditCardsPage() {
 
                   {c.contaNome && (
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <Typography fontSize={12} color={tokens.color.text.secondary}>Conta vinculada</Typography>
-                      <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.primary}>{c.contaNome}</Typography>
+                      <Typography fontSize={12} color="text.secondary">Conta vinculada</Typography>
+                      <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.medium} color="text.primary">{c.contaNome}</Typography>
                     </Box>
                   )}
 
                   {(c.diaFechamento || c.diaVencimento) && (
                     <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                       {c.diaFechamento && (
-                        <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: tokens.color.text.secondary }} />
+                        <Chip label={`Fecha dia ${c.diaFechamento}`} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.background.tertiary, color: "text.secondary" }} />
                       )}
                       {c.diaVencimento && (
                         <Chip label={`Vence dia ${c.diaVencimento}`} size="small" sx={{ fontSize: 11, height: 20, borderRadius: tokens.radius.sm, bgcolor: tokens.color.status.warning.light, color: tokens.color.status.warning.dark }} />
@@ -446,10 +449,10 @@ export default function CreditCardsPage() {
                   {c.temCredito && c.limite && (
                     <Box>
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.75 }}>
-                        <Typography fontSize={12} color={tokens.color.text.secondary}>Utilizado</Typography>
-                        <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.bold} color={pct > 80 ? tokens.color.status.error.main : tokens.color.text.primary}>
+                        <Typography fontSize={12} color="text.secondary">Utilizado</Typography>
+                        <Typography fontSize={12} fontWeight={tokens.typography.fontWeight.bold} color={pct > 80 ? tokens.color.status.error.main : "text.primary"}>
                           {formatMoney(c.gastosNoCicloAtual)}
-                          <Typography component="span" fontSize={11} fontWeight={400} color={tokens.color.text.secondary}> / {formatMoney(c.limite)}</Typography>
+                          <Typography component="span" fontSize={11} fontWeight={400} color="text.secondary"> / {formatMoney(c.limite)}</Typography>
                         </Typography>
                       </Box>
                       <LinearProgress variant="determinate" value={pct} sx={{
@@ -458,7 +461,7 @@ export default function CreditCardsPage() {
                         "& .MuiLinearProgress-bar": { bgcolor: tokens.color.status.error.main, borderRadius: tokens.radius.pill },
                       }} />
                       <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                        <Typography fontSize={11} color={tokens.color.text.secondary}>Disponível</Typography>
+                        <Typography fontSize={11} color="text.secondary">Disponível</Typography>
                         <Typography fontSize={11} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.status.success.dark}>
                           {formatMoney(c.limiteDisponivel ?? 0)}
                         </Typography>
@@ -474,25 +477,25 @@ export default function CreditCardsPage() {
 
       {/* Painel de Faturas */}
       {faturasCartaoId && cartaoAtivo && (
-        <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: tokens.radius.lg, overflow: "hidden" }}>
           <Box sx={{ px: 3, py: 2.5, display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: BANDEIRA_GRAD[cartaoAtivo.bandeira] ?? BANDEIRA_GRAD[6], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
               <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} />
             </Box>
             <Box>
-              <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+              <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
                 Faturas — {cartaoAtivo.nome}
               </Typography>
-              <Typography fontSize={12} color={tokens.color.text.secondary}>Histórico de faturas</Typography>
+              <Typography fontSize={12} color="text.secondary">Histórico de faturas</Typography>
             </Box>
           </Box>
-          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+          <Divider />
 
           {loadingFaturas ? (
             <LinearProgress />
           ) : faturas.length === 0 ? (
             <Box sx={{ py: 6, textAlign: "center" }}>
-              <Typography fontSize={13} color={tokens.color.text.secondary}>
+              <Typography fontSize={13} color="text.secondary">
                 Nenhuma fatura encontrada. Registre uma transação de crédito para criar a primeira fatura.
               </Typography>
             </Box>
@@ -538,19 +541,19 @@ export default function CreditCardsPage() {
                         sx={{ cursor: "pointer", "&:hover": { bgcolor: tokens.color.background.hover }, bgcolor: isExpanded ? tokens.color.background.secondary : undefined }}
                       >
                         <TableCell sx={{ ...cellSx, pr: 0 }}>
-                          <IconButton size="small" sx={{ p: 0.25, color: tokens.color.text.secondary }}>
+                          <IconButton size="small" sx={{ p: 0.25, color: "text.secondary" }}>
                             {isExpanded
                               ? <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
                               : <KeyboardArrowRightIcon sx={{ fontSize: 16 }} />}
                           </IconButton>
                         </TableCell>
                         <TableCell sx={cellSx}>
-                          <Typography fontSize={12} color={tokens.color.text.primary}>
+                          <Typography fontSize={12} color="text.primary">
                             {formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={cellSx}>
-                          <Typography fontSize={12} color={f.vencida ? tokens.color.status.error.main : tokens.color.text.primary} fontWeight={f.vencida ? 600 : 400}>
+                          <Typography fontSize={12} color={f.vencida ? tokens.color.status.error.main : "text.primary"} fontWeight={f.vencida ? 600 : 400}>
                             {formatDate(f.dataVencimento)}
                           </Typography>
                           {f.vencida && (
@@ -586,11 +589,11 @@ export default function CreditCardsPage() {
                         <TableRow key={`${f.id}-detail`}>
                           <TableCell colSpan={8} sx={{ p: 0, borderBottom: 0 }}>
                             <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                              <Box sx={{ bgcolor: tokens.color.background.secondary, borderBottom: `1px solid ${tokens.color.border.subtle}` }}>
+                              <Box sx={{ bgcolor: tokens.color.background.secondary, borderBottom: "1px solid", borderColor: "divider" }}>
                                 {!detalhe ? (
                                   <Box sx={{ py: 2, px: 4 }}><LinearProgress /></Box>
                                 ) : detalhe.transacoes.length === 0 ? (
-                                  <Typography fontSize={12} color={tokens.color.text.secondary} sx={{ py: 1.5, px: 4 }}>
+                                  <Typography fontSize={12} color="text.secondary" sx={{ py: 1.5, px: 4 }}>
                                     Nenhuma transação nesta fatura.
                                   </Typography>
                                 ) : (
@@ -608,20 +611,20 @@ export default function CreditCardsPage() {
                                       {detalhe.transacoes.map(t => (
                                         <TableRow key={t.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
                                           <TableCell sx={{ ...cellSx, pl: 5 }}>
-                                            <Typography fontSize={12} color={tokens.color.text.primary}>
+                                            <Typography fontSize={12} color="text.primary">
                                               {new Date(t.data).toLocaleDateString("pt-BR")}
                                             </Typography>
                                           </TableCell>
                                           <TableCell sx={cellSx}>
-                                            <Typography fontSize={12} color={tokens.color.text.secondary} fontFamily="monospace">
+                                            <Typography fontSize={12} color="text.secondary" fontFamily="monospace">
                                               {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                                             </Typography>
                                           </TableCell>
                                           <TableCell sx={cellSx}>
-                                            <Typography fontSize={12} color={tokens.color.text.primary}>{t.descricao}</Typography>
+                                            <Typography fontSize={12} color="text.primary">{t.descricao}</Typography>
                                           </TableCell>
                                           <TableCell sx={cellSx}>
-                                            <Typography fontSize={12} color={tokens.color.text.secondary}>{t.categoriaDescricao ?? "—"}</Typography>
+                                            <Typography fontSize={12} color="text.secondary">{t.categoriaDescricao ?? "—"}</Typography>
                                           </TableCell>
                                           <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600, color: paidTransacaoIds.has(t.id) ? tokens.color.status.success.main : tokens.color.status.error.main }}>
                                             {formatMoney(t.valor)}
@@ -647,20 +650,20 @@ export default function CreditCardsPage() {
 
       {/* Dialog Criar/Editar Cartão */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: `1px solid ${tokens.color.border.subtle}`, boxShadow: tokens.shadow.lg } }}>
+        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: "1px solid", borderColor: "divider", boxShadow: tokens.shadow.lg } }}>
         <DialogTitle sx={{ p: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 3, py: 2.5 }}>
             <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: BANDEIRA_GRAD[form.bandeira] ?? BANDEIRA_GRAD[6], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
               <CreditCardIcon sx={{ fontSize: 17 }} />
             </Box>
-            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color={tokens.color.text.primary}>
+            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color="text.primary">
               {editingId ? "Editar Cartão" : "Novo Cartão"}
             </Typography>
-            <IconButton size="small" onClick={() => setDialogOpen(false)} sx={{ ml: "auto", color: tokens.color.text.secondary, "&:hover": { bgcolor: tokens.color.background.secondary } }}>
+            <IconButton size="small" onClick={() => setDialogOpen(false)} sx={{ ml: "auto", color: "text.secondary", "&:hover": { bgcolor: tokens.color.background.secondary } }}>
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
-          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+          <Divider />
         </DialogTitle>
 
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, py: 3 }}>
@@ -744,7 +747,7 @@ export default function CreditCardsPage() {
           )}
         </DialogContent>
 
-        <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+        <Divider />
         <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
           <CustomButton variant="primary" size="small" onClick={handleSalvar} disabled={loading}>
@@ -755,20 +758,20 @@ export default function CreditCardsPage() {
 
       {/* Dialog Pagar Fatura */}
       <Dialog open={!!pagarFaturaId} onClose={() => setPagarFaturaId(null)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: `1px solid ${tokens.color.border.subtle}`, boxShadow: tokens.shadow.lg } }}>
+        PaperProps={{ sx: { borderRadius: tokens.radius.xl, border: "1px solid", borderColor: "divider", boxShadow: tokens.shadow.lg } }}>
         <DialogTitle sx={{ p: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 3, py: 2.5 }}>
             <Box sx={{ width: 32, height: 32, borderRadius: tokens.radius.md, background: `linear-gradient(135deg, ${tokens.color.status.success.main}, ${tokens.color.status.success.dark})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
               <PaymentOutlinedIcon sx={{ fontSize: 17 }} />
             </Box>
-            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color={tokens.color.text.primary}>
+            <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.base} color="text.primary">
               Pagar Fatura
             </Typography>
-            <IconButton size="small" onClick={() => setPagarFaturaId(null)} sx={{ ml: "auto", color: tokens.color.text.secondary, "&:hover": { bgcolor: tokens.color.background.secondary } }}>
+            <IconButton size="small" onClick={() => setPagarFaturaId(null)} sx={{ ml: "auto", color: "text.secondary", "&:hover": { bgcolor: tokens.color.background.secondary } }}>
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
-          <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+          <Divider />
         </DialogTitle>
 
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, py: 3 }}>
@@ -803,7 +806,7 @@ export default function CreditCardsPage() {
           </FormControl>
         </DialogContent>
 
-        <Divider sx={{ borderColor: tokens.color.border.subtle }} />
+        <Divider />
         <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <CustomButton variant="secondary" size="small" onClick={() => setPagarFaturaId(null)}>Cancelar</CustomButton>
           <CustomButton variant="primary" size="small" onClick={handlePagar} disabled={pagarLoading}>

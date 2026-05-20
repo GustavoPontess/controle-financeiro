@@ -114,3 +114,54 @@ export const tokens = {
     fast: 'all .15s cubic-bezier(.4, 0, .2, 1)',
   },
 } as const
+
+// Dark palette — warm neutrals matching the light-mode identity.
+// Status mains unchanged; light variants use dark surfaces.
+export const darkTokens = {
+  color: {
+    brand: {
+      primary: '#0d9488',
+      hover: '#14b8a6',
+      subtle: '#134e4a',
+    },
+    background: {
+      page: '#141312',
+      surface: '#1c1b19',
+      hover: '#232220',
+      secondary: '#181715',
+      tertiary: '#252321',
+    },
+    text: {
+      primary: '#e8e6e3',
+      secondary: '#908e8b',
+      disabled: '#525050',
+    },
+    border: {
+      subtle: '#2d2b28',
+      default: '#2d2b28',
+      strong: '#3d3b38',
+    },
+    status: {
+      success: {
+        main: '#30a46c',
+        light: '#0c261a',
+        dark: '#4ec88a',
+      },
+      error: {
+        main: '#e5484d',
+        light: '#270d0e',
+        dark: '#f46f73',
+      },
+      warning: {
+        main: '#ffc53d',
+        light: '#26200a',
+        dark: '#ffd97a',
+      },
+      info: {
+        main: '#00a2c7',
+        light: '#001d28',
+        dark: '#38c6e8',
+      },
+    },
+  },
+} as const

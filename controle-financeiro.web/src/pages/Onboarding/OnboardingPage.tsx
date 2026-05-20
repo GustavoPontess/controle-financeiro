@@ -82,17 +82,17 @@ export default function OnboardingPage() {
 
   return (
     <Box sx={{
-      minHeight: "100vh", bgcolor: tokens.color.background.page,
+      minHeight: "100vh", bgcolor: "background.default",
       display: "flex", alignItems: "center", justifyContent: "center", p: 3,
     }}>
       <Paper elevation={0} sx={{
         width: "100%", maxWidth: 560, p: 4,
-        border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.xl,
+        border: "1px solid", borderColor: "divider", borderRadius: tokens.radius.xl,
       }}>
-        <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+        <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
           Bem-vindo(a)! Vamos começar
         </Typography>
-        <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary} mt={0.5} mb={3}>
+        <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary" mt={0.5} mb={3}>
           Alguns passos rápidos para o app ficar útil de verdade.
         </Typography>
 
@@ -102,20 +102,20 @@ export default function OnboardingPage() {
             return (
               <Box key={passo.rota} sx={{
                 display: "flex", alignItems: "center", gap: 1.5,
-                p: 2, borderRadius: tokens.radius.lg, border: `1px solid ${tokens.color.border.default}`,
-                bgcolor: feito ? tokens.color.status.success.light : tokens.color.background.surface,
+                p: 2, borderRadius: tokens.radius.lg, border: "1px solid", borderColor: "divider",
+                bgcolor: feito ? tokens.color.status.success.light : "background.paper",
               }}>
                 {feito
                   ? <CheckCircleIcon sx={{ color: tokens.color.status.success.main }} />
-                  : <RadioButtonUncheckedIcon sx={{ color: tokens.color.text.disabled }} />}
+                  : <RadioButtonUncheckedIcon sx={{ color: "text.disabled" }} />}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+                  <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
                     {passo.titulo}
                     {passo.opcional && (
-                      <Typography component="span" fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}> · opcional</Typography>
+                      <Typography component="span" fontSize={tokens.typography.fontSize.xs} color="text.disabled"> · opcional</Typography>
                     )}
                   </Typography>
-                  <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>{passo.descricao}</Typography>
+                  <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary">{passo.descricao}</Typography>
                 </Box>
                 {!feito && (
                   <CustomButton size="small" variant="secondary"

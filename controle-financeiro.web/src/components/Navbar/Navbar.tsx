@@ -34,11 +34,11 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
   return (
     <div className={styles.navbar}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <IconButton size="small" onClick={toggleDrawer} sx={{ color: "#111827" }}>
+        <IconButton size="small" onClick={toggleDrawer} sx={{ color: "text.primary" }}>
           {sidebarOpen ? (
-            <SidebarToggleIcon sx={{ fontSize: 16, color: "#111827", transition: "all 0.2s ease" }} />
+            <SidebarToggleIcon sx={{ fontSize: 16, color: "text.primary", transition: "all 0.2s ease" }} />
           ) : (
-            <HamburgerIcon sx={{ fontSize: 16, color: "#111827", transition: "all 0.2s ease" }} />
+            <HamburgerIcon sx={{ fontSize: 16, color: "text.primary", transition: "all 0.2s ease" }} />
           )}
         </IconButton>
         <div className={styles.title}>{getTitle()}</div>

@@ -76,7 +76,8 @@ function SummaryCard({
     <Paper
       elevation={0}
       sx={{
-        border: `1px solid ${tokens.color.border.default}`,
+        border: "1px solid",
+        borderColor: "divider",
         borderRadius: tokens.radius.lg,
         boxShadow: tokens.shadow.sm,
         p: 2.5,
@@ -104,7 +105,7 @@ function SummaryCard({
         <Typography
           fontSize={tokens.typography.fontSize["2xs"]}
           fontWeight={tokens.typography.fontWeight.medium}
-          color={tokens.color.text.secondary}
+          color="text.secondary"
           sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
         >
           {title}
@@ -118,7 +119,7 @@ function SummaryCard({
           {value}
         </Typography>
         {subtitle && (
-          <Typography fontSize={tokens.typography.fontSize["2xs"]} color={tokens.color.text.secondary}>
+          <Typography fontSize={tokens.typography.fontSize["2xs"]} color="text.secondary">
             {subtitle}
           </Typography>
         )}
@@ -240,12 +241,12 @@ export default function DashboardPage() {
         <Typography
           fontSize={tokens.typography.fontSize["2xl"]}
           fontWeight={tokens.typography.fontWeight.bold}
-          color={tokens.color.text.primary}
+          color="text.primary"
           sx={{ letterSpacing: -0.5 }}
         >
           {firstName ? `Olá, ${firstName}` : "Visão Geral"}
         </Typography>
-        <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
+        <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary">
           {todayLabel} · aqui está o resumo das suas finanças
         </Typography>
       </Box>
@@ -264,13 +265,13 @@ export default function DashboardPage() {
             <Typography
               fontSize={tokens.typography.fontSize.base}
               fontWeight={tokens.typography.fontWeight.bold}
-              color={tokens.color.text.primary}
+              color="text.primary"
               mb={2}
             >
               Saldo por Conta
             </Typography>
             {data.saldoContas.length === 0 ? (
-              <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary} textAlign="center" py={3}>
+              <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary" textAlign="center" py={3}>
                 Nenhuma conta cadastrada
               </Typography>
             ) : (
@@ -286,7 +287,8 @@ export default function DashboardPage() {
                         gap: 1.5,
                         p: 2,
                         borderRadius: tokens.radius.lg,
-                        border: `1px solid ${tokens.color.border.default}`,
+                        border: "1px solid",
+                        borderColor: "divider",
                         transition: "box-shadow .15s ease, transform .15s ease",
                         "&:hover": { boxShadow: tokens.shadow.md, transform: "translateY(-2px)" },
                       }}
@@ -308,10 +310,10 @@ export default function DashboardPage() {
                           {st.icon}
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} noWrap>
+                          <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color="text.primary" noWrap>
                             {conta.nome}
                           </Typography>
-                          <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} noWrap>
+                          <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary" noWrap>
                             {conta.tipoDescricao}
                           </Typography>
                         </Box>
@@ -319,7 +321,7 @@ export default function DashboardPage() {
                       <Typography
                         fontSize={tokens.typography.fontSize.lg}
                         fontWeight={tokens.typography.fontWeight.bold}
-                        color={conta.saldo >= 0 ? tokens.color.text.primary : tokens.color.status.error.main}
+                        color={conta.saldo >= 0 ? "text.primary" : tokens.color.status.error.main}
                       >
                         {formatMoney(conta.saldo)}
                       </Typography>
@@ -338,7 +340,8 @@ export default function DashboardPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              borderBottom: `1px solid ${tokens.color.border.default}`,
+              borderBottom: "1px solid",
+              borderColor: "divider",
               pb: 1.5,
               mt: 1,
             }}
@@ -346,14 +349,14 @@ export default function DashboardPage() {
             <Typography
               fontSize={tokens.typography.fontSize.lg}
               fontWeight={tokens.typography.fontWeight.bold}
-              color={tokens.color.text.primary}
+              color="text.primary"
             >
               Movimentação do mês
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <IconButton
                 onClick={prevMonth}
-                sx={{ width: 32, height: 32, border: `1.5px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.md, color: tokens.color.text.primary }}
+                sx={{ width: 32, height: 32, border: "1.5px solid", borderColor: "divider", borderRadius: tokens.radius.md, color: "text.primary" }}
               >
                 <ChevronLeftIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -367,7 +370,7 @@ export default function DashboardPage() {
               </Typography>
               <IconButton
                 onClick={nextMonth}
-                sx={{ width: 32, height: 32, border: `1.5px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.md, color: tokens.color.text.primary }}
+                sx={{ width: 32, height: 32, border: "1.5px solid", borderColor: "divider", borderRadius: tokens.radius.md, color: "text.primary" }}
               >
                 <ChevronRightIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -402,13 +405,13 @@ export default function DashboardPage() {
             <Typography
               fontSize={tokens.typography.fontSize.base}
               fontWeight={tokens.typography.fontWeight.bold}
-              color={tokens.color.text.primary}
+              color="text.primary"
               mb={2.5}
             >
               Top Categorias (Despesas)
             </Typography>
             {data.topCategorias.length === 0 ? (
-              <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary} textAlign="center" py={3}>
+              <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary" textAlign="center" py={3}>
                 Nenhuma despesa no período
               </Typography>
             ) : (
@@ -444,10 +447,10 @@ export default function DashboardPage() {
                       pointerEvents: "none",
                     }}
                   >
-                    <Typography fontSize={tokens.typography.fontSize["2xs"]} color={tokens.color.text.secondary} sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    <Typography fontSize={tokens.typography.fontSize["2xs"]} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
                       Total
                     </Typography>
-                    <Typography fontSize={tokens.typography.fontSize.base} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+                    <Typography fontSize={tokens.typography.fontSize.base} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
                       {formatMoney(data.topCategorias.reduce((s, c) => s + c.valor, 0))}
                     </Typography>
                   </Box>
@@ -466,13 +469,13 @@ export default function DashboardPage() {
                           flexShrink: 0,
                         }}
                       />
-                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.primary} sx={{ flex: 1 }}>
+                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.medium} color="text.primary" sx={{ flex: 1 }}>
                         {cat.descricao}
                       </Typography>
-                      <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
+                      <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary">
                         {cat.percentual}%
                       </Typography>
-                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} sx={{ minWidth: 96, textAlign: "right" }}>
+                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color="text.primary" sx={{ minWidth: 96, textAlign: "right" }}>
                         {formatMoney(cat.valor)}
                       </Typography>
                     </Box>

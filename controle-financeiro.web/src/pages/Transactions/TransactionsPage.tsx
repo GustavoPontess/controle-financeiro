@@ -49,9 +49,9 @@ function SummaryCard({
   subtitle?: string;
 }) {
   return (
-    <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, p: 3 }}>
+    <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: tokens.radius.lg, p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
-        <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.secondary}>
+        <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color="text.secondary">
           {title}
         </Typography>
         <Box sx={{
@@ -63,11 +63,11 @@ function SummaryCard({
           {icon}
         </Box>
       </Box>
-      <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+      <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
         {value}
       </Typography>
       {subtitle && (
-        <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} mt={0.5}>
+        <Typography fontSize={tokens.typography.fontSize.xs} color="text.secondary" mt={0.5}>
           {subtitle}
         </Typography>
       )}
@@ -156,9 +156,9 @@ export default function TransactionsPage() {
             onClick={prevMonth}
             sx={{
               width: 32, height: 32,
-              border: 1.5, borderColor: tokens.color.border.default,
+              border: 1.5, borderColor: "divider",
               borderRadius: tokens.radius.md,
-              color: tokens.color.text.primary,
+              color: "text.primary",
               "&:hover": { bgcolor: tokens.color.background.hover },
             }}
           >
@@ -171,9 +171,9 @@ export default function TransactionsPage() {
             onClick={nextMonth}
             sx={{
               width: 32, height: 32,
-              border: 1.5, borderColor: tokens.color.border.default,
+              border: 1.5, borderColor: "divider",
               borderRadius: tokens.radius.md,
-              color: tokens.color.text.primary,
+              color: "text.primary",
               "&:hover": { bgcolor: tokens.color.background.hover },
             }}
           >
@@ -223,7 +223,7 @@ export default function TransactionsPage() {
         <SummaryCard
           title="Saldo do Mês"
           value={formatMoney(saldoFinal)}
-          color={tokens.color.text.secondary}
+          color="text.secondary"
           icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
         />
       </Box>
@@ -247,9 +247,9 @@ export default function TransactionsPage() {
       </Box>
 
       {/* Transactions table */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Todas as Transações</Typography>
+      <Paper elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: tokens.radius.lg, overflow: "hidden" }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">Todas as Transações</Typography>
         </Box>
         <TransactionTable
           rows={filtered.map((t: Transaction): TransactionRow => ({

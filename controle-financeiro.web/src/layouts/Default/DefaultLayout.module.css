@@ -1,14 +1,14 @@
 .layout {
   display: flex;
   height: 100vh;
-  background: #f5f6fa;
+  background: var(--sidebar-bg);
   padding: 10px;
   box-sizing: border-box;
 }
 
 .container {
   flex: 1;
-  background: white;
+  background: var(--surface-bg);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 4px 14px rgba(0,0,0,0.06);

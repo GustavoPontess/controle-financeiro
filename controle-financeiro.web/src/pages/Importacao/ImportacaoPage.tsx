@@ -114,14 +114,14 @@ export default function ImportacaoPage() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box>
-        <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Importar extrato</Typography>
-        <Typography fontSize={13} color={tokens.color.text.secondary}>
+        <Typography fontSize={22} fontWeight={700} color="text.primary">Importar extrato</Typography>
+        <Typography fontSize={13} color="text.secondary">
           Suba o extrato do banco (OFX ou CSV) e revise antes de salvar.
         </Typography>
       </Box>
 
       {/* Passo 1 — upload */}
-      <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
+      <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: tokens.radius.lg, p: 2.5 }}>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
             select size="small" label="Conta de destino" sx={{ minWidth: 220 }}
@@ -154,7 +154,7 @@ export default function ImportacaoPage() {
 
       {/* Passo 2 — revisão */}
       {preview && !carregando && (
-        <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
+        <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: tokens.radius.lg, p: 2.5 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
             <Typography fontSize={15} fontWeight={600}>
               {preview.total} transações lidas · {preview.duplicadas} possíveis duplicatas
@@ -165,7 +165,7 @@ export default function ImportacaoPage() {
           </Box>
 
           {preview.total === 0 ? (
-            <Typography fontSize={13} color={tokens.color.text.disabled}>
+            <Typography fontSize={13} color="text.disabled">
               Nenhuma transação encontrada no arquivo.
             </Typography>
           ) : (

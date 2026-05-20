@@ -29,13 +29,13 @@ export default function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: tokens.color.background.page }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: "background.default" }}>
       <Container maxWidth="sm">
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography fontSize={32} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} mb={1}>
+          <Typography fontSize={32} fontWeight={tokens.typography.fontWeight.bold} color="text.primary" mb={1}>
             Controle Financeiro
           </Typography>
-          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
+          <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary">
             Transparência financeira para casais
           </Typography>
         </Box>
@@ -44,16 +44,17 @@ export default function LoginPage() {
           component="form"
           onSubmit={handleSubmit}
           sx={{
-            backgroundColor: tokens.color.background.surface,
+            backgroundColor: "background.paper",
             padding: 3,
             borderRadius: tokens.radius.lg,
-            border: `1px solid ${tokens.color.border.default}`,
+            border: '1px solid',
+            borderColor: 'divider',
             display: 'flex',
             flexDirection: 'column',
             gap: 2.5,
           }}
         >
-          <Typography fontSize={tokens.typography.fontSize.lg} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+          <Typography fontSize={tokens.typography.fontSize.lg} fontWeight={tokens.typography.fontWeight.bold} color="text.primary">
             Entrar
           </Typography>
 
@@ -104,7 +105,7 @@ export default function LoginPage() {
           </CustomButton>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
+            <Typography fontSize={tokens.typography.fontSize.sm} color="text.secondary">
               Não tem conta?{' '}
               <Link to="/auth/register" style={{ color: tokens.color.brand.primary, textDecoration: 'none', fontWeight: tokens.typography.fontWeight.bold }}>
                 Criar conta
