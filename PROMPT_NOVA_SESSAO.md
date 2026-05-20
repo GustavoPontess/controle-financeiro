@@ -156,6 +156,19 @@ src/components/
 6. Cor: SEMPRE via `p.primary`, `p.accent`, `p.text` etc — nunca hex hardcoded
 7. Sombras/radii: use os definidos em Tokens (`shadow-sm/md/lg`, `radius-md/lg`)
 
+**Regras de adição ao Design System (obrigatório):**
+
+8. **Componente novo que pode ser reusado → adiciona no Design System imediatamente.** Se criar `PontesAccordion`, `PontesDatePicker`, `PontesBadge`, `PontesFamilyAvatar` ou qualquer coisa que outras telas vão usar, **inclui no `ComponentShowcase` na aba apropriada** (Botões, Form, Cards & Dados, Feedback, Navegação, Gráficos) na mesma PR. Critério: se vai aparecer em 2+ telas, vai pro DS.
+9. **Componente que NÃO vai ser reusado** (tipo específico de uma única tela) fica na própria pasta da tela — não polui DS.
+10. **PR de feature SEMPRE checa:** rodar `/design-system` e ver se algum componente criado deveria estar ali. Reviewer cobra.
+
+**Sistema de cores + fontes — aplica em TODAS as telas (não só site):**
+
+11. **Toda tela autenticada do app (Dashboard, Transações, Cartões, Família, etc) também segue a paleta + fonte do usuário** (decisão final via #90 Personalização in-app). Hoje as telas internas ainda usam tokens do Q4 — vão migrar pra mesmo sistema do `/site` + `/design-system` conforme o refator (#81-#89).
+12. **Quem usa o app:** vê a paleta + fonte escolhida nas Configurações refletida em tudo — landing, login, dashboard, cada tela interna. Sem inconsistência.
+13. **Quem usa o site público sem logar:** vê paleta padrão (decidida no controle bar do `/site` enquanto não fechamos definitiva).
+14. **Wordmark "Pontes" é sempre Plus Jakarta** (marca, não muda com personalização — só corpo de texto e UI muda).
+
 **Fluxo recomendado pra atacar tela do app (Dashboard, Transação, Cartão, etc):**
 
 1. Abre `/design-system` no preview
