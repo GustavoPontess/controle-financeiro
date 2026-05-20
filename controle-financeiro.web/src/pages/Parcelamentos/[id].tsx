@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import {
   Box, Paper, Typography, Table, TableBody, TableCell, TableContainer,
@@ -56,7 +56,7 @@ export default function ParcelamentoDetalhePage() {
   const [motivo, setMotivo] = useState("")
   const [loadingCancelar, setLoadingCancelar] = useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!id) return
     try {
       const [p, c] = await Promise.all([
@@ -71,9 +71,9 @@ export default function ParcelamentoDetalhePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
-  useEffect(() => { loadData() }, [id])
+  useEffect(() => { void loadData() }, [loadData])
 
   const handlePagar = async () => {
     setErroPagar("")

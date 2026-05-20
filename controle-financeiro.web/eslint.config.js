@@ -20,7 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      'react-hooks/set-state-in-effect': 'warn',
+      // Regra nova do React 19 — radical contra setState em effect. Sem alternativa
+      // pragmática pra load-on-mount sem framework (Suspense / React Query).
+      // Reavaliar quando adotar React Query (issue futura).
+      'react-hooks/set-state-in-effect': 'off',
+      // exhaustive-deps re-ativada: cada `useEffect` deve ter suas dependências corretas.
+      // Onde loadData é chamado no mount, usar useCallback.
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 ])
