@@ -5,7 +5,8 @@
  */
 
 import { useEffect, useState } from "react"
-import { ComponentShowcase, palettes, fonts } from "../Site/HomePage"
+import { ComponentShowcase } from "../Site/HomePage"
+import { palettes, fonts } from "../Site/theme"
 
 export default function DesignSystemPage() {
   const [paletteId, setPaletteId] = useState("A")
