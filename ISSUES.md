@@ -204,6 +204,25 @@ Com a sessão capturada, extrair os tokens visuais e documentar.
 
 ---
 
+## Backlog futuro (sem quarter definido)
+
+### Spec-Driven Development (SDD)
+
+**Severidade:** 🟢 BAIXA • **Esforço:** processo, não código • **Status:** 💡 IDEIA
+
+**Por quê:** Antes de atacar feature complexa (rateio + aprovação + acerto §16.5, módulo contador, Open Finance), formalizar "spec primeiro, código depois". Reduz drift entre o que se quer e o que sai. IA gera código mais consistente com spec rica.
+
+**Escopo proposto:**
+- Template `docs/features/<feature>/spec.md` com seções: comportamento, regras de negócio, casos de uso, edge cases, contratos de API
+- Convenção: antes de criar branch de feature, escrever spec e abrir PR só de doc
+- Adotar gradual: começa pelo próximo grande pivot (rateio v2 ou módulo contador)
+
+**Referências:** GitHub Spec-Kit (set/2024), AWS Kiro IDE. Conceito: spec é fonte da verdade, código deriva dela.
+
+**Próxima ação:** decidir quando adotar — quando começar feature grande nova.
+
+---
+
 ## Histórico
 
 Backlog anterior (Q3 2026, Issues #11-#31) — todos concluídos.
