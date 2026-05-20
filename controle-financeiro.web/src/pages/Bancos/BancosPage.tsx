@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Box, Typography, Paper, IconButton, Chip } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
 import AddRoundedIcon from "@mui/icons-material/AddRounded"
@@ -50,7 +50,7 @@ export default function BancosPage() {
   const [openContaDialog, setOpenContaDialog] = useState(false)
   const [editingConta, setEditingConta] = useState<Conta | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [bs, cs, ts] = await Promise.all([getBancos(), getContas(), getTransactions()])
       setBancos(bs)
@@ -61,13 +61,9 @@ export default function BancosPage() {
       console.error("Erro ao carregar bancos:", error)
       notify({ open: true, message: "Erro ao carregar bancos", severity: "error" })
     }
-  }
+  }, [notify])
 
-  useEffect(() => {
-    (async () => {
-      await loadData()
-    })()
-  }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
   const handleDeleteConta = async (id: string) => {
     if (!confirm("Deseja realmente excluir esta conta?")) return

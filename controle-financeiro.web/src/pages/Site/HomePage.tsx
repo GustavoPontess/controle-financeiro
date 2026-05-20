@@ -6,7 +6,7 @@
  * personalização do usuário).
  */
 
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import Logo from "../../components/Logo/Logo"
 import { palettes, fonts, type Palette } from "./theme"
@@ -704,14 +704,14 @@ function DonutChartReal({ p, data, height = 200 }: { p: Palette; data: { name: s
 // LIVE ACTIVITY FEED — notificações entrando ao vivo
 // =============================================================================
 function LiveActivity({ p, font }: { p: Palette; font: string }) {
-  const items = [
+  const items = useMemo(() => ([
     { icon: "💸", title: "Maria adicionou despesa", sub: "Mercado · R$ 142,30", time: "agora", color: p.primary },
     { icon: "✓", title: "Aprovou rateio", sub: "Conta de luz · 60/40", time: "1min", color: "#10B981" },
     { icon: "💼", title: "Salário recebido", sub: "Itaú · R$ 4.200,00", time: "3min", color: "#10B981" },
     { icon: "🎯", title: "Meta atingida", sub: "Reserva de emergência · 92%", time: "12min", color: p.accent },
     { icon: "⚠", title: "Limite do cartão", sub: "Nubank · 85% usado", time: "1h", color: "#F59E0B" },
     { icon: "📊", title: "Relatório mensal", sub: "Pronto pra revisar", time: "2h", color: p.primary },
-  ]
+  ]), [p.primary, p.accent])
   const [list, setList] = useState(items.slice(0, 4))
 
   // Cicla itens a cada 3.5s
@@ -722,7 +722,7 @@ function LiveActivity({ p, font }: { p: Palette; font: string }) {
       i++
     }, 3500)
     return () => clearInterval(id)
-  }, [])
+  }, [items])
 
   return (
     <section style={{ padding: "120px 48px", background: p.bg, position: "relative", overflow: "hidden" }}>

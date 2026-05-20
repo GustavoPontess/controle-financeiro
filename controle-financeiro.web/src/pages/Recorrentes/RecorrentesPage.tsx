@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Select, MenuItem as MuiMenuItem, FormControl, InputLabel,
@@ -60,7 +60,7 @@ export default function RecorrentesPage() {
   const [form, setForm] = useState<CriarRecorrente>(emptyForm)
   const [erro, setErro] = useState("")
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [r, c, cat] = await Promise.all([getRecorrentes(), getContas(), getCategories()])
       setRecorrentes(r)
@@ -70,9 +70,9 @@ export default function RecorrentesPage() {
       console.error("Erro ao carregar recorrentes:", error)
       notify({ open: true, message: "Erro ao carregar recorrentes", severity: "error" })
     }
-  }
+  }, [notify])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
   const openDialog = () => {
     setForm(emptyForm)

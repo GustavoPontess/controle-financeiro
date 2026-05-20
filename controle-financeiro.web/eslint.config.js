@@ -20,11 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      // Padrão `useEffect(() => { loadData() }, [])` pra carregar dados no mount está
-      // espalhado no projeto (telas internas). Vai sair conforme refator das telas
-      // (issues #81-#89). Desativado por enquanto pra CI ficar verde sem mascarar real fix.
+      // Regra nova do React 19 — radical contra setState em effect. Sem alternativa
+      // pragmática pra load-on-mount sem framework (Suspense / React Query).
+      // Reavaliar quando adotar React Query (issue futura).
       'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/exhaustive-deps': 'off',
+      // exhaustive-deps re-ativada: cada `useEffect` deve ter suas dependências corretas.
+      // Onde loadData é chamado no mount, usar useCallback.
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 ])

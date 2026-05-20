@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Box,
   Paper,
@@ -209,7 +209,7 @@ export default function DashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const result = await getDashboard(currentDate.getFullYear(), currentDate.getMonth() + 1)
@@ -217,13 +217,14 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentDate])
 
   useEffect(() => {
-    load()
-    window.addEventListener("transactionCreated", load)
-    return () => window.removeEventListener("transactionCreated", load)
-  }, [currentDate])
+    void load()
+    const handler = () => { void load() }
+    window.addEventListener("transactionCreated", handler)
+    return () => window.removeEventListener("transactionCreated", handler)
+  }, [load])
 
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))

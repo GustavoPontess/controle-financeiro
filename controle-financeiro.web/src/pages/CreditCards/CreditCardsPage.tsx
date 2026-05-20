@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import {
   Box, Typography, Paper, IconButton, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Select, MenuItem as MuiMenuItem,
@@ -135,7 +135,7 @@ export default function CreditCardsPage() {
   })
   const [pagarLoading, setPagarLoading] = useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [cs, conts, bs] = await Promise.all([getCartoes(), getContas(), getBancos()])
       setCartoes(cs)
@@ -144,9 +144,9 @@ export default function CreditCardsPage() {
     } catch {
       notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
     }
-  }
+  }, [notify])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }

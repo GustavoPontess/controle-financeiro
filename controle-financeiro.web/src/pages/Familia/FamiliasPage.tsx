@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Chip, IconButton, CircularProgress, MenuItem,
@@ -86,7 +86,7 @@ export default function FamiliasPage() {
   const [acertoValor, setAcertoValor] = useState("")
   const [acertoObs, setAcertoObs] = useState("")
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [fs, cs] = await Promise.all([getFamilias(), getConvitesPendentes()])
       setFamilias(fs)
@@ -97,9 +97,9 @@ export default function FamiliasPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [notify])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
   const abrirDetalhe = async (familiaId: string) => {
     setDetalheLoading(true)
