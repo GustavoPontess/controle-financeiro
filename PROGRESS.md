@@ -17,11 +17,11 @@ status: CURRENT
 ## Dashboard
 
 ```
-Site público (6):       0/6  ⏳ #75 #76 #77 #78 #79 #80
+Site público (6):       1/6  ✅ #75  ⏳ #76 #77 #78 #79 #80
 Telas internas (9):     0/9  ⏳ #81 #82 #83 #84 #85 #86 #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 #91 #92
 
-Total Q5 2026:          0/18 (0%)
+Total Q5 2026:          1/18 (5%)
 ```
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
@@ -36,7 +36,16 @@ Total Q5 2026:          0/18 (0%)
 
 ## Em progresso
 
-(nenhuma issue em execução — Q5 começou)
+(nenhuma issue em execução — próxima livre: #76 Login + Register refator)
+
+## Resolvidos Q5
+
+- **#75** — `/` vira root público com fallback Dashboard (PR #94 mergeado)
+  - RootRoute novo em `src/components/Auth/RootRoute.tsx`
+  - `axiosConfig.publicPaths` ganhou `/` (strict equal)
+  - Botões "Entrar" e "Criar conta" da navbar linkados (`/auth/login`, `/auth/register`)
+  - Bonus: extração de `theme.ts` (palettes + fonts), fix de Math.random no render, re-ativação de `react-hooks/exhaustive-deps` com useCallback em 9 telas
+  - 3 testes novos · suite 46/46
 
 ---
 
@@ -92,6 +101,22 @@ Histórico em `docs/history/PROGRESS_2026Q4.md`.
   ```
 
 **Próxima ação:** dev pega a próxima issue livre da ordem sugerida em `ISSUES.md`. Sugestão: começar por #75 (root público) — desbloqueia o fluxo de entrada do produto.
+
+### Sessão 31 — 2026-05-21
+
+**#75 mergeada (PR #94).**
+
+- `RootRoute.tsx` criado: `/` deslogado → HomePage; logado → redirect `/dashboard`
+- `axiosConfig.publicPaths` ganhou `/` (strict equal — não bate em /dashboard etc)
+- Botões "Entrar"/"Criar conta" da navbar linkados via `useNavigate`
+- Suite testes: 46/46 (3 novos do RootRoute)
+- Bonus: extração `pages/Site/theme.ts` (palettes + fonts + types) — resolve `react-refresh/only-export-components`
+- Bonus: `Math.random()` em render → `useId()` em GridPattern e LineAreaChartReal
+- Bonus: re-ativada `react-hooks/exhaustive-deps` com `useCallback` em 9 telas (Accounts, Bancos, CreditCards, Dashboard, FamiliasPage, Parcelamentos/[id], Recorrentes, HomePage LiveActivity, Transactions)
+- `react-hooks/set-state-in-effect` mantida desativada (regra nova React 19, reavaliar com React Query)
+- CI: backend pass / frontend pass
+
+**Próxima ação:** dev pega #76 (Login + Register refator) ou outra livre.
 
 ---
 
