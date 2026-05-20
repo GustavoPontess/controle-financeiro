@@ -20,8 +20,9 @@ status: CURRENT
 Site público (6):       1/6  ✅ #75  ⏳ #76 #77 #78 #79 #80
 Telas internas (9):     0/9  ⏳ #81 #82 #83 #84 #85 #86 #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 #91 #92
+Fundação (1):           1/1  ✅ #101 biblioteca Pontes
 
-Total Q5 2026:          1/18 (5%)
+Total Q5 2026:          2/19 (10.5%)
 ```
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
@@ -36,9 +37,19 @@ Total Q5 2026:          1/18 (5%)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #76 Login + Register refator)
+(nenhuma issue em execução — próxima livre: #77 Para Casais, #78 Contadores, #79 Recursos, #80 Sobre, ou telas internas #81-#89)
 
 ## Resolvidos Q5
+
+- **#101** — Biblioteca de componentes Pontes (PR #102 mergeado · sessão 32)
+  - 36 componentes em `src/components/pontes/` (Button/Field/Input/Select/Toggle/Checkbox/Radio/Otp/Slider/DatePicker/FileDrop/TagInput/ColorPicker/Rating/Kbd/Badge/Avatar/Alert/Progress/StatCard/Card/Table/Toast/Modal/Dialog/Skeleton/EmptyState/LoadingDots/Drawer/Tooltip/Popover/Breadcrumb/Tabs/Stepper/Pagination/CommandPalette/Navbar/Footer)
+  - `theme.ts` com 15 paletas + 7 fontes + spacing/radii/shadows/semantic
+  - lucide-react v1.16 adotado (chars texto banidos em botões)
+  - DesignSystemPage reescrita: 6 abas (Botões/Form/Cards/Feedback/Navegação/Tokens), control bar troca paleta + fonte ao vivo
+  - Alert + Toast IMUNES à paleta (padrão universal fixo) — só fonte muda
+  - 14 smoke tests novos · suite 60/60
+  - Regras documentadas em PROMPT_NOVA_SESSAO §5 (refator OBRIGATÓRIO importa biblioteca; teste automatizado front+back obrigatório; cor+fonte aplica em todas as telas)
+  - Desbloqueia: #76 #77 #78 #79 #80 #81 #82 #83 #84 #86 #87 #89
 
 - **#75** — `/` vira root público com fallback Dashboard (PR #94 mergeado)
   - RootRoute novo em `src/components/Auth/RootRoute.tsx`
@@ -101,6 +112,28 @@ Histórico em `docs/history/PROGRESS_2026Q4.md`.
   ```
 
 **Próxima ação:** dev pega a próxima issue livre da ordem sugerida em `ISSUES.md`. Sugestão: começar por #75 (root público) — desbloqueia o fluxo de entrada do produto.
+
+### Sessão 32 — 2026-05-21
+
+**#101 mergeada (PR #102) — biblioteca de componentes Pontes.**
+
+- Bloqueio identificado em sessão: Caio começou #76 Login refator, mas DS antigo era só showcase inline (sem biblioteca real). Sem biblioteca, qualquer refator de tela viraria retrabalho/desvio.
+- Criada issue #101 (fundação Q5), priorizada acima de tudo.
+- PR #100 (CouplesPage feito antes) fechado sem merge — branch preservada pra refazer com biblioteca depois.
+- Biblioteca: 36 componentes em `src/components/pontes/`, theme.ts (15 paletas, 7 fontes, spacing/radii/shadows/semantic), barrel export, DesignSystemPage reescrita usando biblioteca.
+- **lucide-react v1.16** adotado pra ícones SVG reais. Chars de texto (`+`, `→`, `←`, etc) banidos em botões — quebram alinhamento vertical.
+- **Alert + Toast IMUNES à paleta** (padrão universal de alerta — vermelho=erro sempre). Só fonte muda. Prop `p` marcada @deprecated nesses dois.
+- **Sombras tintadas removidas** do FAB (`0 12px 28px ${accent}66` → `0 8px 20px rgba(11,18,32,0.18)`).
+- 14 smoke tests novos · suite 60/60.
+- Regras escritas em `PROMPT_NOVA_SESSAO §5`:
+  - **Regra 1-9 (refator):** telas Q5 importam SOMENTE de `@/components/pontes`. Componente novo reutilizável → biblioteca primeiro, depois usa.
+  - **Regra 10-14 (cor+fonte):** TODA tela (site OU interna) consome paleta+fonte ao vivo. Wordmark fixo Plus Jakarta. Cores semânticas independem de paleta.
+  - **Critério done universal:** teste automatizado novo OBRIGATÓRIO (vitest front + xUnit back). Sem teste = PR não merga.
+- Branches limpas. main = `356dbc6`.
+
+**Próxima ação:** dev livre pega próxima issue.
+- Caio: já em #76 (Login + Register) — agora desbloqueado pra importar de `@/components/pontes`.
+- Você: livre. Recomendação: #77 (Para Casais, fácil — refaz CouplesPage que tinha feito antes mas usando biblioteca) ou alguma tela interna (#81 Dashboard, #82 Transação).
 
 ### Sessão 31 — 2026-05-21
 
