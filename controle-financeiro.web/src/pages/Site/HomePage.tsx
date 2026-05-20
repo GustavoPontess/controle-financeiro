@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useId, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import Logo from "../../components/Logo/Logo"
 import { palettes, fonts, type Palette } from "./theme"
 import {
@@ -721,7 +722,6 @@ function LiveActivity({ p, font }: { p: Palette; font: string }) {
       i++
     }, 3500)
     return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -1037,6 +1037,7 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 /** Navbar pill flutuante fixed — adapta visual conforme scroll (transparente sobre hero, sólido depois). */
 function NavbarFloating({ p, font }: { p: Palette; font: string }) {
+  const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 400)
@@ -1076,10 +1077,16 @@ function NavbarFloating({ p, font }: { p: Palette; font: string }) {
           ))}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+          <button
+            onClick={() => navigate("/auth/login")}
+            style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
+          >
             Entrar
           </button>
-          <button style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+          <button
+            onClick={() => navigate("/auth/register")}
+            style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
+          >
             Criar conta
           </button>
         </div>
