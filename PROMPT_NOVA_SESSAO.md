@@ -218,9 +218,42 @@ src/components/
 
 - Build verde (back: `dotnet build`; front: `npm run build`)
 - Lint zero erros (`npm run lint`)
-- Teste novo cobrindo a feature/refator
+- **Teste automatizado novo OBRIGATÓRIO** — front (vitest) E back (xUnit) quando aplicável. Sem exceção. Detalhes abaixo.
 - Família real (você ou sócio) homologa em dev
 - PR mergeado pra `main`
+
+### Testes automatizados — regra OBRIGATÓRIA ⭐
+
+**Toda mudança em código precisa de teste novo cobrindo o que mudou. Front E back.** Sem teste = PR não merga.
+
+**Front (vitest + @testing-library/react):**
+- Componente novo na biblioteca Pontes → smoke test em `src/test/components/pontes.test.tsx` (renderiza, dispara onClick, valida output)
+- Tela nova ou refatorada → teste em `src/test/pages/<Tela>.test.tsx` cobrindo: render principal, interação chave (submit/click), edge case (loading/erro)
+- Service novo → teste em `src/test/services/<Service>.test.ts` com axios mockado
+- Hook custom → teste em `src/test/hooks/`
+- Bug fix → teste de regressão que falharia ANTES do fix
+
+**Back (xUnit + WebApplicationFactory):**
+- Endpoint novo → teste de integração em `ControleFinanceiro.Tests/Controllers/` cobrindo: happy path, 400 (validação), 401 (sem auth), 404 (não existe), 403 (outro usuário)
+- Service novo → teste unitário em `ControleFinanceiro.Tests/Services/` (regras de negócio, edge cases)
+- Migration → smoke test que cria DB e roda migration
+- Bug fix → teste de regressão
+
+**O que NÃO precisa de teste:**
+- Mudança puramente de copy/texto (sem lógica)
+- Mudança puramente de estilo CSS (sem comportamento)
+- Docs (`.md`, comentários)
+
+**Comando local antes do push:**
+```bash
+# Frontend
+cd controle-financeiro.web && npm test -- --run
+
+# Backend
+cd ControleFinanceiro.Api && dotnet test
+```
+
+Reviewer SEMPRE cobra: "qual teste cobre essa mudança?". Sem resposta → PR não merga.
 
 ---
 
