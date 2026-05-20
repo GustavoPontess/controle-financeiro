@@ -11,6 +11,8 @@ status: CURRENT
 
 **Estratégia Q5:** refator completo tela por tela (front + back + testes) seguindo o fluxo natural do produto — site público → auth → telas internas. Não há "blocos" temáticos — cada issue é independente e o time pega a próxima livre na ordem sugerida.
 
+**⭐ Fundação OBRIGATÓRIA pra TODO refator:** biblioteca `src/components/pontes/` (issue #101, sessão 32). Toda tela refatorada importa SOMENTE de `@/components/pontes`. Componentes reutilizáveis novos (2+ telas) DEVEM ser adicionados à biblioteca antes de usar — detalhes em `PROMPT_NOVA_SESSAO.md` §5.
+
 **Marca decidida:** nome "Pontes", logo conceito 20 (wordmark + arco sublinhado), tipografia Plus Jakarta (corpo) + Fraunces (headlines serif) + Instrument Serif (acentos italic). **Paleta e fonte do produto** ficam como personalização do usuário (#90).
 
 **Documentos vivos relacionados:**
@@ -49,6 +51,10 @@ status: CURRENT
 - **#90** — Personalização in-app — usuário escolhe paleta + fonte
 - **#91** — CI/CD revisar gate — build + lint + testes obrigatórios pra merge
 - **#92** — Cobertura E2E Playwright expandir
+
+### Fundação (bloqueia refator de telas)
+
+- **#101** — Biblioteca de componentes Pontes (`src/components/pontes/`) — 36 componentes reutilizáveis + lucide-react + showroom em `/design-system`. Bloqueia/desbloqueia #76, #77, #78, #79, #80, #81, #82, #83, #84, #86, #87, #89.
 
 ---
 
