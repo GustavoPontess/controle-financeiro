@@ -1,8 +1,8 @@
 ---
-owner: Gustavo
-last_reviewed: 2026-05-21
+owner: Caio
+last_reviewed: 2026-05-20
 status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — #101 mergeada (PR #102), biblioteca pronta'
+issue_atual: '#76 concluída (PR #105 aberto) — próxima livre: #77 Página Para Casais'
 ---
 
 # Implementation State — sessão atual
