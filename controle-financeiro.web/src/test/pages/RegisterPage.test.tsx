@@ -30,12 +30,12 @@ describe('RegisterPage', () => {
 
   it('renderiza sem crash', () => {
     renderRegister()
-    expect(screen.getByRole('button', { name: 'Criar Conta' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeInTheDocument()
   })
 
   it('exibe campo de email', () => {
     renderRegister()
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument()
   })
 
   it('exibe campo de nome', () => {
@@ -97,7 +97,7 @@ describe('RegisterPage', () => {
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
     fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
@@ -115,6 +115,6 @@ describe('RegisterPage', () => {
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
-    await waitFor(() => expect(screen.getByText('Email já cadastrado')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
   })
 })

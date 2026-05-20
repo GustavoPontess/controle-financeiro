@@ -35,7 +35,7 @@ describe('LoginPage', () => {
 
   it('exibe campo de email', () => {
     renderLogin()
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument()
   })
 
   it('exibe campo de senha', () => {
@@ -57,7 +57,7 @@ describe('LoginPage', () => {
     mockLogin.mockResolvedValueOnce(undefined)
     renderLogin()
 
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
     fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
     fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
 
@@ -68,11 +68,11 @@ describe('LoginPage', () => {
     mockLogin.mockRejectedValueOnce(new Error('Email ou senha inválidos'))
     renderLogin()
 
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
     fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'errada' } })
     fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
 
-    await waitFor(() => expect(screen.getByText('Email ou senha inválidos')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/email ou senha inválidos/i)).toBeInTheDocument())
   })
 
   it('exibe erro genérico quando exceção não é Error', async () => {
@@ -81,6 +81,6 @@ describe('LoginPage', () => {
 
     fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
 
-    await waitFor(() => expect(screen.getByText('Erro ao fazer login')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/erro ao fazer login/i)).toBeInTheDocument())
   })
 })
