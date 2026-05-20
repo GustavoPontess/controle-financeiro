@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import {
@@ -43,7 +44,7 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
 
   it("PontesSelect abre, lista options e seleciona", () => {
     function Wrapper() {
-      const [v, setV] = (require("react") as typeof import("react")).useState("a")
+      const [v, setV] = useState("a")
       return (
         <PontesSelect
           p={p} font={font}
