@@ -22,6 +22,7 @@ import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
 import DesignSystemShowcase from "../pages/DesignSystem/DesignSystemShowcase"
+import BrandPreview from "../pages/BrandPreview/BrandPreview"
 
 export default function AppRoutes() {
   return (
@@ -30,6 +31,9 @@ export default function AppRoutes() {
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+
+        {/* Brand preview — público, sem auth (decisão visual de marca) */}
+        <Route path="/brand-preview" element={<BrandPreview />} />
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
         <Route
