@@ -26,37 +26,45 @@ Se a skill já estiver ativa de invocação anterior, ignore.
 
 ## 3. Pré-flight de git (antes de qualquer mudança)
 
-Antes de tocar em código, garantir que o ambiente local está sincronizado e que ninguém mais está na Issue que você vai pegar:
+Antes de tocar em código, garantir que o ambiente local está sincronizado e que ninguém mais está na Issue que você vai pegar.
+
+**⚠️ REGRA DE OURO — modelo pull paralelo:** 2 devs trabalham simultâneo (eu + sócio). **SEMPRE** consultar GitHub Issues **PRIMEIRO** antes de decidir qual issue pegar. `ISSUES.md` é só catálogo; a fonte da verdade de "quem está com o quê" é o `assignee` no GitHub.
 
 ```bash
 # 1. Atualizar main local
 git checkout main
 git pull --ff-only origin main
 
-# 2. Ver o estado das Issues no GitHub
-gh issue list --state open                       # tudo aberto
+# 2. Ver o estado das Issues no GitHub (OBRIGATÓRIO — não pular)
+gh issue list --state open                       # todas abertas
 gh issue list --assignee "@me" --state open      # o que está comigo
-gh pr list --state open                          # PRs em andamento
+gh issue list --assignee "Caio-Amarall" --state open  # o que está com o sócio
+gh pr list --state open                          # PRs em andamento (qualquer dev)
 
-# 3. Se já tem Issue assignada a você (sessão anterior em andamento), pula direto pro passo 4
-# 4. Se não tem, escolha a próxima Issue do Bloco A → B → C → D (ver ISSUES.md), assigne-se:
+# 3. Decidir qual pegar:
+#    - Se já tem Issue assignada a você (sessão anterior) → pula pro passo 5
+#    - Se não tem → escolhe a próxima livre (não assignada a ninguém)
+#      Ordem sugerida em ISSUES.md (site público → telas internas → infra),
+#      mas se outra livre fizer mais sentido pro contexto, pode pegar
+#
+# 4. Assigne-se ANTES de criar branch (vira lock contra duplicação de trabalho):
 gh issue edit <numero> --add-assignee @me
 
-# 5. Crie a branch
+# 5. Cria branch
 git checkout -b feature/<numero>-<slug-kebab>
 ```
 
-Não pegue Issue assignada a outro dev. Não pegue Issue fora da ordem dos blocos sem motivo justificado em comentário no GitHub Issue.
+**Não pegue Issue assignada a outro dev** sem combinar antes (pergunta no GitHub Issue ou WhatsApp).
 
-**Reservar Issues dependentes (obrigatório).** Ao se assignar a uma Issue, verifique no `ISSUES.md` se há outras Issues que dependem dela — direta ou transitivamente (ex: #17 "Hangfire PostgresStorage" depende de #16 "Migrar para Postgres"; #20 "Health checks" depende de #16 e #17). Assigne-se **também** a toda a cadeia de dependência:
+**Reservar Issues dependentes (obrigatório).** Ao se assignar a uma Issue, verifique se há outras que dependem dela diretamente. Se sim, assigne-se também à cadeia inteira pra não travar você no meio. Exemplo Q5:
+- #83 (Subcategorias back) é dep de #82 (Transação Adicionar/Editar) → quem pegar #82 pode reservar #83 junto se for atacar na sequência
+- #90 (Personalização) é dep transitiva de TODAS as telas internas (#81-#89) — mas é melhor cada dev pegar uma tela e DEPOIS um deles pega #90 pra aplicar
 
 ```bash
 gh issue edit <numero-dependente> --add-assignee @me
 ```
 
-Motivo: o outro dev trabalha em paralelo. Se ele pegar uma Issue que depende da sua e ela ainda não foi mergeada, ele fica travado esperando seu merge/commit. Reservar a cadeia inteira evita esse bloqueio.
-
-Cuidado para não reservar demais: assigne **apenas** Issues com dependência real. Issues independentes ficam livres para o outro dev — senão ele fica sem trabalho. O equilíbrio é reservar a cadeia de dependência, não o bloco inteiro.
+Cuidado pra não reservar demais — issues independentes ficam livres pro outro dev.
 
 ## 4. Ordem de leitura obrigatória (a cada nova sessão)
 
