@@ -23,6 +23,7 @@ import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
 import HomePage from "../pages/Site/HomePage"
+import CouplesPage from "../pages/Site/CouplesPage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -39,6 +40,7 @@ export default function AppRoutes() {
 
         {/* Páginas públicas sem auth */}
         <Route path="/site" element={<HomePage />} />
+        <Route path="/site/casais" element={<CouplesPage />} />
         <Route path="/logo-concepts" element={<LogoConcepts />} />
         <Route path="/design-system" element={<DesignSystemPage />} />
 

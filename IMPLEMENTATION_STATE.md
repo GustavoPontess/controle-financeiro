@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-21
-status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — #101 mergeada (PR #102), biblioteca pronta'
+status: EM_EXECUCAO
+issue_atual: '#77 — Página Para Casais (/site/casais) — refazendo usando biblioteca Pontes'
 ---
 
 # Implementation State — sessão atual
