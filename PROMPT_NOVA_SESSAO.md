@@ -172,10 +172,16 @@ src/components/
 8. **Tipografia:** Plus Jakarta no corpo, Fraunces nos h1/h2 grandes (landing/site), Instrument Serif só em acentos italic. Wordmark "Pontes" SEMPRE Plus Jakarta.
 9. **Espaçamento/radii/sombras:** use `spacing`, `radii`, `shadows` de `theme.ts`. Não inventar valores.
 
-**Sistema cor + fonte = todas as telas:**
+**Sistema cor + fonte = TODAS as telas (obrigatório):**
 
-10. **Toda tela autenticada do app** (Dashboard, Transações, Cartões, Família, etc) também segue paleta + fonte do usuário via personalização (#90). Telas internas legadas (com MUI) migram pra biblioteca conforme o refator (#81-#89).
-11. **Wordmark "Pontes" é sempre Plus Jakarta** (não muda com personalização — só UI/corpo muda).
+10. **TODA tela nova ou refatorada — site público OU interna autenticada — DEVE consumir paleta + fonte vivos.** Sem exceção. Hoje (até #90 entregar context global), cada tela:
+    - Importa `palettes`, `fonts` de `@/components/pontes`
+    - Recebe ou armazena `paletteId` + `fontId` (state local até #90)
+    - Renderiza `<ControlBar>` ou aceita prop `p: Palette` + `font: string` que passa adiante pros componentes
+    - Trocar paleta no `/site` ou `/design-system` aplica em tudo da tela ao vivo, sem reload
+11. **Quando #90 entregar context global** (`PontesProvider` envolvendo `<App>`): refatora todas as telas pra ler do context em vez de prop drill. API da biblioteca muda de `<PontesButton p={p} font={font} />` pra `<PontesButton />` (consome do context).
+12. **Wordmark "Pontes" é sempre Plus Jakarta** (marca fixa, não muda com personalização — só UI/corpo muda).
+13. **Cores semânticas (success/warning/danger/info)** vêm de `semantic` em `theme.ts` — NÃO mudam com paleta (vermelho de erro sempre vermelho).
 
 **Legado vs Novo — convivência durante Q5:**
 
