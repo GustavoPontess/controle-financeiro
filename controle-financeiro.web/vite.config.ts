@@ -31,10 +31,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  optimizeDeps: {
-    include: [
-      '@mui/icons-material/Visibility',
-      '@mui/icons-material/VisibilityOff',
-    ],
+  server: {
+    hmr: {
+      clientPort: 5173,
+    },
   },
 })

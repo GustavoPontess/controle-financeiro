@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Box, TextField, Typography, Alert, CircularProgress, InputAdornment, IconButton } from '@mui/material'
-import Visibility from '@mui/icons-material/Visibility'
-import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
 import { tokens } from '../../theme/tokens'
@@ -83,7 +82,19 @@ export default function LoginPage() {
 
         {/* Logo */}
         <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Logo color="#ffffff" size={32} variant="full" />
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: 'inline-flex',
+              textDecoration: 'none',
+              opacity: 1,
+              transition: 'opacity 0.2s, transform 0.2s',
+              '&:hover': { opacity: 0.8, transform: 'scale(1.03)' },
+            }}
+          >
+            <Logo color="#ffffff" size={32} variant="full" />
+          </Box>
         </Box>
 
         {/* Headline + features */}
@@ -170,9 +181,45 @@ export default function LoginPage() {
         }}
       >
         <Box sx={{ width: '100%', maxWidth: '400px' }}>
+          {/* Voltar para homepage */}
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: 'inline-flex', alignItems: 'center', gap: 0.75,
+              color: tokens.color.text.secondary,
+              textDecoration: 'none',
+              fontSize: tokens.typography.fontSize.sm,
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontWeight: 500,
+              mb: 3,
+              px: 1.5, py: 0.75,
+              borderRadius: tokens.radius.md,
+              border: `1px solid ${tokens.color.border.default}`,
+              backgroundColor: '#fafaf9',
+              transition: 'all 0.15s',
+              '&:hover': { color: BRAND, borderColor: BRAND, backgroundColor: `${BRAND}08` },
+            }}
+          >
+            <ArrowLeft size={16} />
+            Voltar à página inicial
+          </Box>
+
           {/* Logo mobile */}
           <Box sx={{ display: { md: 'none' }, mb: 4, textAlign: 'center' }}>
-            <Logo color={BRAND} size={28} variant="full" />
+            <Box
+              component={Link}
+              to="/"
+              sx={{
+                display: 'inline-flex',
+                textDecoration: 'none',
+                opacity: 1,
+                transition: 'opacity 0.2s, transform 0.2s',
+                '&:hover': { opacity: 0.75, transform: 'scale(1.03)' },
+              }}
+            >
+              <Logo color={BRAND} size={28} variant="full" />
+            </Box>
           </Box>
 
           {/* Header form */}
@@ -229,7 +276,7 @@ export default function LoginPage() {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" size="small" tabIndex={-1}>
-                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </IconButton>
                   </InputAdornment>
                 ),
