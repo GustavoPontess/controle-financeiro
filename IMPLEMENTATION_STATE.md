@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-21
-status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
+status: EM_EXECUCAO
+issue_atual: '#77 — Página Para Casais (/site/casais)'
 ---
 
 # Implementation State — sessão atual
@@ -24,7 +24,26 @@ issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
 
 ## Issue em execução
 
-**Nenhuma issue está em execução agora.** Próxima livre: **#76 Login + Register refator**.
+**Issue:** #77 — Página Para Casais (`/site/casais`)
+**Iniciada em:** 2026-05-21 (sessão 32)
+**Branch:** `feature/77-site-casais`
+**Contexto:** #76 (Login+Register) está com Caio. Vou de #77 (próxima do site público).
+
+### Etapas
+- [x] 1. Extrair `<SiteNavbar>` de `HomePage.tsx` pra `pages/Site/SiteNavbar.tsx` reutilizável
+- [x] 2. Criar `pages/Site/CouplesPage.tsx` (hero + 4 sections + testimonial + CTA + footer)
+- [x] 3. Registrar rota `/site/casais` em `AppRoutes.tsx`
+- [x] 4. `/site/casais` já público (axiosConfig usa `startsWith('/site')`)
+- [x] 5. Links no menu — SiteNavbar tem "Para Casais" default em todos
+- [x] 6. Build + lint verde
+- [x] 7. Teste smoke (4 testes — hero, 4 sections, CTA, navbar)
+- [ ] 8. PR + merge
+
+### Etapa atual
+8 — abrir PR.
+
+### Próxima ação concreta
+`git push -u origin feature/77-site-casais && gh pr create ...`
 
 ### Ordem sugerida do backlog
 

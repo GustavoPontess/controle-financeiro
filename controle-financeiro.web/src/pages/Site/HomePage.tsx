@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import Logo from "../../components/Logo/Logo"
+import SiteNavbar from "./SiteNavbar"
 import { palettes, fonts, type Palette } from "./theme"
 import {
   ResponsiveContainer, LineChart, Line, AreaChart, Area, BarChart as RBarChart, Bar,
@@ -1036,64 +1036,7 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
 // LANDING
 // =============================================================================
 /** Navbar pill flutuante fixed — adapta visual conforme scroll (transparente sobre hero, sólido depois). */
-function NavbarFloating({ p, font }: { p: Palette; font: string }) {
-  const navigate = useNavigate()
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 400)
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
-  // Sobre o hero: visual claro (glass sobre gradient escuro)
-  // Após rolar: visual sólido (fundo branco, texto escuro)
-  const bg = scrolled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)"
-  const border = scrolled ? p.border : "rgba(255,255,255,0.2)"
-  const textColor = scrolled ? p.text : p.heroFg
-  const wordmarkColor = scrolled ? p.primary : p.heroFg
-  const outlineBorder = scrolled ? p.border : "rgba(255,255,255,0.3)"
-
-  return (
-    <nav style={{
-      position: "fixed", top: scrolled ? 70 : 110, left: 0, right: 0, padding: "0 48px",
-      display: "flex", justifyContent: "center", zIndex: 90,
-      transition: "top 250ms ease, background 250ms ease",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 32, padding: "10px 16px 10px 22px",
-        background: bg,
-        border: `1px solid ${border}`, borderRadius: 999,
-        boxShadow: scrolled ? "0 8px 24px -8px rgba(0,0,0,0.12)" : "0 8px 24px -8px rgba(0,0,0,0.18)",
-        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-        minWidth: 920, maxWidth: 1100, width: "100%",
-        transition: "all 250ms ease",
-      }}>
-        <Wordmark color={wordmarkColor} font={font} />
-        <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
-          {["Recursos", "Família", "Contador", "Preços", "Blog"].map((l) => (
-            <a key={l} style={{ color: textColor, fontSize: 14, fontWeight: 500, textDecoration: "none", cursor: "pointer", opacity: scrolled ? 1 : 0.92, transition: "color 250ms" }}>{l}</a>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            onClick={() => navigate("/auth/login")}
-            style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={() => navigate("/auth/register")}
-            style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
-          >
-            Criar conta
-          </button>
-        </div>
-      </div>
-    </nav>
-  )
-}
+// NavbarFloating extraído para `./SiteNavbar.tsx` (#77 — reuso em todas as páginas do site).
 
 /** Bloco de feature zig-zag (texto + mockup alternando lado). */
 function FeatureBlock({ p, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
@@ -1281,7 +1224,7 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       </div>
 
       {/* NAVBAR pill-shape flutuante — fixed, sempre visível com glass effect */}
-      <NavbarFloating p={p} font={font} />
+      <SiteNavbar p={p} font={font} activePath="/" />
 
       {/* HERO com mesh animado + noise + headline typing */}
       <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "180px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
