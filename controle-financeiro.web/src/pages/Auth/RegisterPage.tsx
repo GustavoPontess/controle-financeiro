@@ -1,17 +1,43 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, Container, TextField, Typography, Alert, CircularProgress, LinearProgress } from '@mui/material'
+import { Box, TextField, Typography, Alert, CircularProgress, LinearProgress, InputAdornment, IconButton } from '@mui/material'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 import { tokens } from '../../theme/tokens'
+import Logo from '../../components/Logo/Logo'
+
+const BRAND = tokens.color.brand.primary
+const BRAND_DARK = tokens.color.brand.hover
+
+const inputSx = {
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: '#fafaf9',
+    borderRadius: tokens.radius.lg,
+    fontSize: tokens.typography.fontSize.sm,
+    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+    '& fieldset': { borderColor: tokens.color.border.default },
+    '&:hover fieldset': { borderColor: BRAND },
+    '&.Mui-focused fieldset': { borderColor: BRAND, borderWidth: '2px' },
+  },
+  '& .MuiInputLabel-root.Mui-focused': { color: BRAND },
+}
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
   const requisitos = getSenhaRequisitos(senha)
   const forca = getSenhaForca(requisitos)
   const progresso = (forca / requisitos.length) * 100
-  const cor = forca <= 2 ? tokens.color.status.error.main : forca <= 3 ? tokens.color.status.warning.main : forca === 4 ? tokens.color.status.info.main : tokens.color.status.success.main
+  const cor =
+    forca <= 2
+      ? tokens.color.status.error.main
+      : forca <= 3
+      ? tokens.color.status.warning.main
+      : forca === 4
+      ? tokens.color.status.info.main
+      : tokens.color.status.success.main
 
   return (
     <Box sx={{ mt: -1 }}>
@@ -19,15 +45,23 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
         variant="determinate"
         value={progresso}
         sx={{
-          height: 4,
+          height: 3,
           borderRadius: 2,
           backgroundColor: tokens.color.border.default,
           '& .MuiLinearProgress-bar': { backgroundColor: cor, borderRadius: 2 },
         }}
       />
-      <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+      <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
         {requisitos.map((r) => (
-          <Typography key={r.label} fontSize={tokens.typography.fontSize['2xs']} color={r.ok ? tokens.color.status.success.main : tokens.color.text.disabled} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography
+            key={r.label}
+            sx={{
+              fontSize: tokens.typography.fontSize['2xs'],
+              color: r.ok ? tokens.color.status.success.main : tokens.color.text.disabled,
+              display: 'flex', alignItems: 'center', gap: 0.5,
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+            }}
+          >
             {r.ok ? '✓' : '○'} {r.label}
           </Typography>
         ))}
@@ -44,6 +78,8 @@ export default function RegisterPage() {
   const [dataNascimento, setDataNascimento] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -64,7 +100,6 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
-
     try {
       await register(email, nome, dataNascimento || null, password)
       navigate('/onboarding')
@@ -76,150 +111,244 @@ export default function RegisterPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: tokens.color.background.page }}>
-      <Container maxWidth="sm">
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography fontSize={32} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} mb={1}>
-            Controle Financeiro
-          </Typography>
-          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
-            Transparência financeira para casais
-          </Typography>
+    <Box sx={{ minHeight: '100vh', display: 'flex' }}>
+      {/* ── PAINEL ESQUERDO — brand ───────────────────────────────────── */}
+      <Box
+        sx={{
+          display: { xs: 'none', md: 'flex' },
+          width: '48%',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          p: '48px',
+          background: `linear-gradient(150deg, ${BRAND} 0%, ${BRAND_DARK} 100%)`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* grade decorativa */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          <defs>
+            <pattern id="reg-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#reg-grid)" />
+        </svg>
+
+        <Box sx={{
+          position: 'absolute', bottom: '-10%', left: '-10%',
+          width: '55%', height: '55%', borderRadius: '50%',
+          background: 'rgba(255,255,255,0.06)',
+          filter: 'blur(40px)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Logo */}
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Logo color="#ffffff" size={32} variant="full" />
         </Box>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{
-            backgroundColor: tokens.color.background.surface,
-            padding: 3,
-            borderRadius: tokens.radius.lg,
-            border: `1px solid ${tokens.color.border.default}`,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2.5,
-          }}
-        >
-          <Typography fontSize={tokens.typography.fontSize.lg} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
-            Criar Conta
+        {/* Headline */}
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography
+            sx={{
+              fontFamily: "'Fraunces', Georgia, serif",
+              fontSize: '40px',
+              fontWeight: 700,
+              color: '#ffffff',
+              lineHeight: 1.1,
+              letterSpacing: '-0.02em',
+              mb: 2,
+            }}
+          >
+            Comece grátis.{' '}
+            <Box component="span" sx={{ opacity: 0.85 }}>Cresça com sua família.</Box>
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+            Crie sua conta em 2 minutos. Sem cartão, sem fidelidade.
           </Typography>
 
-          {error && <Alert severity="error">{error}</Alert>}
+          {/* Planos resumidos */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {[
+              { plan: 'Solo', price: 'Grátis', desc: '1 conta + 1 cartão, lançamentos ilimitados' },
+              { plan: 'Família', price: 'R$ 15/mês', desc: 'Até 6 membros, rateio e aprovação' },
+              { plan: 'Contador', price: 'R$ 39/mês', desc: 'Multi-cliente, relatórios contábeis' },
+            ].map((p) => (
+              <Box key={p.plan} sx={{
+                display: 'flex', alignItems: 'center', gap: 2,
+                background: 'rgba(255,255,255,0.08)',
+                borderRadius: tokens.radius.lg,
+                p: '12px 16px',
+                border: '1px solid rgba(255,255,255,0.12)',
+              }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{p.plan}</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{p.desc}</Typography>
+                </Box>
+                <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", flexShrink: 0 }}>{p.price}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
 
-          <TextField
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: tokens.color.background.secondary,
-                borderRadius: tokens.radius.md,
-                fontSize: tokens.typography.fontSize.sm,
-                '& fieldset': { borderColor: tokens.color.border.default },
-                '&:hover fieldset': { borderColor: tokens.color.border.strong },
-                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
-              },
-            }}
-          />
+        {/* Stats */}
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', gap: 3 }}>
+          {[
+            { n: '98%', l: 'casais recomendam' },
+            { n: '< 2min', l: 'pra criar conta' },
+            { n: '10×', l: 'mais rápido' },
+          ].map((s) => (
+            <Box key={s.l}>
+              <Typography sx={{ color: '#ffffff', fontSize: '22px', fontWeight: 800, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", letterSpacing: '-0.02em' }}>{s.n}</Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{s.l}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
 
-          <TextField
-            label="Nome Completo"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: tokens.color.background.secondary,
-                borderRadius: tokens.radius.md,
-                fontSize: tokens.typography.fontSize.sm,
-                '& fieldset': { borderColor: tokens.color.border.default },
-                '&:hover fieldset': { borderColor: tokens.color.border.strong },
-                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
-              },
-            }}
-          />
+      {/* ── PAINEL DIREITO — form ─────────────────────────────────────── */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 3, sm: 5 },
+          backgroundColor: '#ffffff',
+          overflowY: 'auto',
+        }}
+      >
+        <Box sx={{ width: '100%', maxWidth: '400px', py: 2 }}>
+          {/* Logo mobile */}
+          <Box sx={{ display: { md: 'none' }, mb: 4, textAlign: 'center' }}>
+            <Logo color={BRAND} size={28} variant="full" />
+          </Box>
 
-          <TextField
-            label="Data de Nascimento"
-            type="date"
-            value={dataNascimento}
-            onChange={(e) => setDataNascimento(e.target.value)}
-            fullWidth
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: tokens.color.background.secondary,
-                borderRadius: tokens.radius.md,
-                fontSize: tokens.typography.fontSize.sm,
-                '& fieldset': { borderColor: tokens.color.border.default },
-                '&:hover fieldset': { borderColor: tokens.color.border.strong },
-                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
-              },
-            }}
-          />
-
-          <TextField
-            label="Senha"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: tokens.color.background.secondary,
-                borderRadius: tokens.radius.md,
-                fontSize: tokens.typography.fontSize.sm,
-                '& fieldset': { borderColor: tokens.color.border.default },
-                '&:hover fieldset': { borderColor: tokens.color.border.strong },
-                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
-              },
-            }}
-          />
-          <PasswordStrengthIndicator senha={password} />
-
-          <TextField
-            label="Confirmar Senha"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            fullWidth
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: tokens.color.background.secondary,
-                borderRadius: tokens.radius.md,
-                fontSize: tokens.typography.fontSize.sm,
-                '& fieldset': { borderColor: tokens.color.border.default },
-                '&:hover fieldset': { borderColor: tokens.color.border.strong },
-                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
-              },
-            }}
-          />
-
-          <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading}>
-            {isLoading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Criar Conta'}
-          </CustomButton>
-
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
+          {/* Header */}
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              sx={{
+                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+                fontSize: '28px',
+                fontWeight: 700,
+                color: tokens.color.text.primary,
+                letterSpacing: '-0.02em',
+                mb: 0.5,
+              }}
+            >
+              Criar conta grátis
+            </Typography>
+            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: tokens.color.text.secondary, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
               Já tem conta?{' '}
-              <Link to="/auth/login" style={{ color: tokens.color.brand.primary, textDecoration: 'none', fontWeight: tokens.typography.fontWeight.bold }}>
+              <Link to="/auth/login" style={{ color: BRAND, textDecoration: 'none', fontWeight: 600 }}>
                 Fazer login
               </Link>
             </Typography>
           </Box>
+
+          {/* Form */}
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {error && (
+              <Alert severity="error" sx={{ borderRadius: tokens.radius.lg, fontSize: tokens.typography.fontSize.sm }}>
+                {error}
+              </Alert>
+            )}
+
+            <TextField
+              label="Nome completo"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              fullWidth
+              autoComplete="name"
+              sx={inputSx}
+            />
+
+            <TextField
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              fullWidth
+              autoComplete="email"
+              sx={inputSx}
+            />
+
+            <TextField
+              label="Data de nascimento"
+              type="date"
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              sx={inputSx}
+            />
+
+            <TextField
+              label="Senha"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              fullWidth
+              autoComplete="new-password"
+              sx={inputSx}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" size="small" tabIndex={-1}>
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <PasswordStrengthIndicator senha={password} />
+
+            <TextField
+              label="Confirmar senha"
+              type={showConfirm ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              fullWidth
+              autoComplete="new-password"
+              sx={inputSx}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowConfirm((v) => !v)} edge="end" size="small" tabIndex={-1}>
+                      {showConfirm ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading} style={{ marginTop: 4 }}>
+              {isLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Criar conta grátis'}
+            </CustomButton>
+          </Box>
+
+          {/* Footer */}
+          <Typography
+            sx={{
+              mt: 3, textAlign: 'center',
+              fontSize: tokens.typography.fontSize.xs,
+              color: tokens.color.text.disabled,
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+            }}
+          >
+            Ao criar sua conta você concorda com os{' '}
+            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Termos de Uso</Box>
+            {' '}e{' '}
+            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Política de Privacidade</Box>.
+          </Typography>
         </Box>
-      </Container>
+      </Box>
     </Box>
   )
 }

@@ -5,6 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  cacheDir: 'node_modules/.vite-dev',
   plugins: [
     react(),
     VitePWA({
@@ -29,5 +30,11 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    include: [
+      '@mui/icons-material/Visibility',
+      '@mui/icons-material/VisibilityOff',
+    ],
   },
 })
