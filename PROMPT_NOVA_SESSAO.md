@@ -130,6 +130,42 @@ src/components/
 └── Auth/ProtectedRoute.tsx
 ```
 
+### Design System — base de TODO front Q5 ⭐
+
+**Rota:** `/design-system` (pública, sem auth)
+**Arquivo:** `src/pages/DesignSystem/DesignSystemPage.tsx`
+**Showcase:** `ComponentShowcase` exportado de `pages/Site/HomePage.tsx`
+
+**7 abas com componentes prontos pra reuso:**
+
+1. **Botões** — 9 variantes (primary, accent, outline, ghost, soft, danger, link, disabled) + 5 tamanhos (XS→XL) + icon-only + FAB + button group segmented + estados REST/HOVER/FOCUS/ACTIVE/DISABLED
+2. **Form & Inputs** — inputs com focus state, `<PontesSelect>` custom (NÃO usar `<select>` nativo), money input gigante, OTP, range slider, date picker, file upload drop zone, tag input, color picker, rating, kbd shortcuts, switches/checkboxes/radios clicáveis
+3. **Cards & Dados** — chips, avatares com status dot, alerts (info/success/warn/error), progress bars, stat cards, tabela completa com sort + paginação
+4. **Feedback** — toasts, modal/dialog (abrem real ao clicar), skeleton shimmer, empty state ilustrado, loading dots, drawer, tooltip, popover
+5. **Navegação** — breadcrumb, tabs pills + underline, stepper 4 passos com glow, paginação, command palette ⌘K
+6. **Gráficos** — recharts reais: line (ritmo de gastos com tooltip dark rico), area (saldo), bar (gastos/mês), donut (categorias) — todos consomem `p.primary` e `p.accent`
+7. **Tokens** — cores 10 shades 50-900 (HSL gerado), tipografia escala display-2xl→caption, spacing, radii, shadows, easing animado
+
+**Regras pra refator das telas (#81-#89):**
+
+1. **NUNCA** criar botão/input/card do zero — usa o que já tá no `ComponentShowcase` e extrai pra `src/components/ui/` se precisar reusar
+2. **NUNCA** usar `<select>` nativo (estilo zero) — usa `PontesSelect`
+3. Todo gráfico via **recharts** com `BarChartReal`, `LineChartReal`, `LineAreaChartReal`, `DonutChartReal` (helpers exportar pra `src/components/charts/` quando virarem necessários)
+4. Tipografia: Plus Jakarta no corpo, Fraunces nos h2/h3 grandes da landing, Instrument Serif só em acentos italic
+5. Espaçamento: padrão Tokens da aba 7 (`space-4`, `space-6`, etc — mantém consistência)
+6. Cor: SEMPRE via `p.primary`, `p.accent`, `p.text` etc — nunca hex hardcoded
+7. Sombras/radii: use os definidos em Tokens (`shadow-sm/md/lg`, `radius-md/lg`)
+
+**Fluxo recomendado pra atacar tela do app (Dashboard, Transação, Cartão, etc):**
+
+1. Abre `/design-system` no preview
+2. Identifica os componentes que a tela precisa (ex: tabela, stat cards, donut, modal)
+3. Copia padrão visual + comportamento do showcase pra dentro da tela
+4. Se algum componente vai ser usado em 3+ lugares, extrai pra `src/components/ui/` (issue separada, marca dívida)
+5. Refator visual + funcional na mesma branch da issue
+
+**Issue #90 (Personalização) vai promover o `ComponentShowcase` a sistema real** — extrair componentes pra `src/components/ui/`, migrar MUI gradual.
+
 ### Pre-flight em cada nova issue
 
 1. `git checkout main && git pull --ff-only origin main`
