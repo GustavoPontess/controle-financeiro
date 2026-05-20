@@ -1,142 +1,95 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-18
-status: EM_EXECUCAO
-issue_atual: '#61 — 3 telas piloto, 2/3 feitas (Dashboard, FamiliasPage); falta Adicionar Transação'
+last_reviewed: 2026-05-21
+status: AGUARDANDO_PROXIMA
+issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
 ---
 
 # Implementation State — sessão atual
 
 **Este arquivo é o checkpoint vivo entre sessões.** Toda sessão começa lendo este arquivo, e termina atualizando-o.
 
-> O estado do ciclo anterior (Q3 2026, 21/21 itens) está arquivado em `docs/history/IMPLEMENTATION_STATE_2026Q3.md`.
+> O estado dos ciclos anteriores está arquivado em `docs/history/IMPLEMENTATION_STATE_2026Q*.md`.
 
 ---
 
 ## Ciclo em execução
 
-**Ciclo:** Q4 2026 — Redesign UX inspirado em Monarch Money
-**Iniciado em:** 2026-05-18 (após encerramento do Q3)
-**Backlog:** 5 issues (#59-#63) em bloco único
-**Spec da iniciativa:** `docs/features/redesign-ux/visao.md`
+**Ciclo:** Q5 2026 — Refator completo tela por tela
+**Iniciado em:** 2026-05-21
+**Backlog:** 18 issues (#75-#92)
+**Spec do ciclo:** `ISSUES.md`
 
 ---
 
 ## Issue em execução
 
-**Issue:** **#61 — Fase 3: Refator de 3 telas piloto**
-**Bloco:** A (Redesign UX)
-**Status:** EM EXECUÇÃO — branch `feature/61-telas-piloto` (5/5 telas implementadas, aguardando review de Gustavo)
+**Nenhuma issue está em execução agora.** Q5 recém iniciado. Dev pega a próxima livre da ordem sugerida:
 
-### Progresso #61
-- ✅ Dashboard (commit `fb1abe3`) — saudação, hero teal, cards de conta com
-  avatar gradiente, seção mensal, donut de categorias, KPIs com avatar.
-  `TransactionTable` (compartilhado) tokenizado, linhas com ícone/chips,
-  ações em menu `⋮` quando o container estreita.
-- ✅ FamiliasPage (commit `1a03d0a`) — cards de família com avatar, dialog
-  tokenizado, bug HTML corrigido (`Chip` dentro de `Typography`).
-- ✅ Adicionar/editar transação (commit `af84c67`) — `TransactionForm`
-  com toggle Despesa/Receita visual (vermelho/verde), campo valor com
-  adornment `R$` colorido por tipo, labels uppercase via tokens, borders
-  hover/focus via tokens. `NewTransactionDialog` e `EditTransactionDialog`
-  com header avatar gradiente + divider, borderRadius/shadow via tokens.
-- ✅ Relatórios (commits na mesma sessão) — donut chart com hover sync
-  (activeSlice), center label dinâmico (idle=total, hover=% + nome),
-  AreaChart com gradientes SVG (receitas/despesas/saldo), BarChart com
-  ReferenceLine y=0, grid/axes sem linhas. Bug % mismatch corrigido.
-  `TransactionTable` responsive: slim mode (<640px) = só Data/Descrição/Valor/Ações;
-  ResizeObserver callback ref corrige stuck-slim ao trocar de mês.
-- ✅ Cartões de Crédito (commit `4e71d0f`) — card físico com gradiente por
-  bandeira (`BANDEIRA_GRAD`), chip decorativo, número mascarado em mono,
-  stats cards com avatares gradientes via tokens. Dialogs atualizados
-  para o padrão novo (avatar + Divider + CloseIcon). Todos hardcoded colors → tokens.
+### Ordem sugerida do backlog
+
+**Site público (primeiro — desbloqueia fluxo de entrada):**
+1. **#75** — `/` vira root público com fallback Dashboard
+2. **#76** — Refator Login + Register
+3. **#77** — Página Para Casais
+4. **#78** — Página Para Contadores
+5. **#79** — Página Recursos completa
+6. **#80** — Página Sobre
+
+**Telas internas (em paralelo com site, conforme dev livre):**
+7. **#81** — Dashboard refator 6 KPIs + gráficos
+8. **#82** — Transação Adicionar/Editar (único + recorrente + parcelado)
+9. **#83** — Categorias + Subcategorias
+10. **#84** — Cartão de Crédito (auditar)
+11. **#85** — Família (rateio + aprovação + §16.5)
+12. **#86** — Metas
+13. **#87** — Limites por categoria
+14. **#88** — Bancos com logo real
+15. **#89** — Recorrentes refator
+
+**Infra e qualidade (em paralelo):**
+16. **#90** — Personalização in-app (paleta + fonte + dark mode)
+17. **#91** — CI/CD gate
+18. **#92** — Cobertura E2E Playwright
 
 ### Próxima ação concreta
-Review visual de Gustavo no PR [#71](https://github.com/GustavoPontess/controle-financeiro/pull/71):
-1. `docker compose up -d postgres` + `dotnet run` (porta 5293)
-2. Login com `dev@controle.test`
-3. Conferir: Dashboard, FamiliasPage, Add Transação, Relatórios, Cartões
-4. Se aprovado: marcar PR como Ready for Review e fechar #61
 
-### Concluído (#59 e #60)
-
-**#59 — Atlas Playwright:** ✅ COMPLETA (PR #64)
-- `scripts/snapshot.ts` — login via UI, varre 18 rotas, screenshot full-page
-  desktop (1440x900) + mobile (390x844); `npm run snapshot`
-- `screenshots/` no `.gitignore`; doc no README do frontend
-
-**#60 — Design tokens:** ✅ COMPLETA
-- sub-task 1 — `scripts/monarch-recorder.ts` (PR #64); recorder com Chrome
-  instalado + captura SPA (PR #66)
-- sub-task 2 — Caio rodou o recorder no Monarch
-- sub-task 3 — `src/theme/tokens.ts`, `src/theme/theme.ts`,
-  `docs/design-tokens.md`, `EmptyState` refatorado (PR #67)
-- pós-review (PR #68): cor de marca = teal placeholder (`#0d9488`), não o
-  laranja do Monarch; `borderRadius`/`fontSize` via token
-
-### Apoio: DevDataSeeder (PR #69)
-
-`ControleFinanceiro.Api/Data/DevDataSeeder.cs` — só Development, idempotente.
-Cria `dev@controle.test` (com família/casal), `conjuge@controle.test` e
-`solo@controle.test` (sem família), com contas e ~transações realistas.
-Faz o atlas capturar telas cheias em vez de vazias.
+1. Dev livre escolhe issue (recomendação: começar por **#75** se ainda não está em curso, pois desbloqueia o fluxo de entrada)
+2. Cria branch `feature/<numero>-<slug-kebab>` a partir de `main` atualizado
+3. Atualiza `IMPLEMENTATION_STATE.md` com:
+   - `status: EM_EXECUCAO`
+   - `issue_atual: '#XX — <título curto>'`
+   - Preenche template abaixo
 
 ---
 
-## Roadmap visual do ciclo
+## Decisões registradas (Q5)
 
-```
-Fase 1 — Atlas (#59)            ✅ Concluída
-  ↓
-Fase 2 — Design Tokens (#60)    ✅ Concluída
-  ↓
-Fase 3 — Telas piloto (#61)     🔵 Em execução (5/5 implementadas, aguardando review PR #71)
-  ↓
-Fase 4 — Propagação (#62)       ⏳ Pendente
-  ↓
-Fase 5 — Dark mode revisão (#63) ⏳ Pendente
-```
-
-Cada fase tem checkpoint próprio no `ISSUES.md`. Não pular fases — cada uma valida a próxima.
-
----
-
-## Divisão de trabalho prevista (a confirmar com sócio)
-
-- **Pontes (Gustavo):** lidera #59 (atlas Playwright) e #60 (extração de tokens). É a fase mais técnica/menos visual; trabalha bem solo.
-- **Sócio:** lidera #61 (telas piloto) com input do Pontes na revisão. Forte em frontend, mais próximo de design visual.
-- **Ambos:** revisão cruzada em #62 e #63. Telas restantes podem ser divididas por área (sócio: relatórios; Pontes: importação/onboarding).
-- **Em paralelo:** sócio está criando conta real no Monarch para capturar screenshots internos. Material que enriquece #60 (tokens) sem bloquear o início de #59.
-
----
-
-## Decisões registradas
-
-- **Ciclo monobloc:** sem segunda frente paralela. Os 2 devs concentram no redesign para ter ganho visível rápido.
-- **Atlas Playwright em vez de Storybook:** Storybook é mais robusto mas tem overhead de setup alto. Atlas resolve a necessidade imediata (ver o que temos, baseline visual). Storybook fica como possibilidade futura quando os componentes estabilizarem.
-- **Material público + acesso interno via conta do sócio:** sem custo de Mobbin/Pageflows. Conta real do Monarch (free trial ou plano básico) dá screenshots internos que valem mais que catálogos pagos.
-- **Tokens primeiro, refator depois:** evita opinião subjetiva no piloto. Tokens viram contrato objetivo.
-
----
-
-## Pontos pendentes / dúvidas
-
-- Confirmar com o sócio: divisão de issues entre os 2 está OK?
-- Definir usuário de teste para o script Playwright (criar `dev@controle.test` com dados seed?)
-- O atlas vai no repo ou em pasta separada? Sugestão: `screenshots/` no `.gitignore`; gerar sob demanda.
-- Quando rodar atlas: localmente, em CI, ou ambos? Sugestão: localmente por enquanto; CI quando virar regressão visual ativa.
+- **Pull-based:** sem assignee fixo. Dev livre pega a próxima da ordem sugerida.
+- **Branch por issue:** sempre `feature/<numero>-<slug>`.
+- **Critério done:** build + lint + testes verdes + homologação em dev + PR mergeado.
+- **Personalização vence dark mode:** issue #63 (dark mode dedicado) cancelada — vira parte de #90.
+- **Marca fixa:** nome Pontes, logo conceito 20, Plus Jakarta da marca. Paleta e fonte do produto = escolha do usuário (#90).
+- **Estrutura `pages/Site/`** pra todas as páginas públicas (Home, Couples, Professionals, Pricing, About, etc).
 
 ---
 
 ## Template para preencher quando começar uma issue
 
 ```
+---
+owner: Gustavo
+last_reviewed: YYYY-MM-DD
+status: EM_EXECUCAO
+issue_atual: '#XX — <título curto>'
+---
+
 ## Issue em execução
 
 **Issue:** #XX — [nome]
-**Bloco:** A (Redesign UX)
 **Iniciada em:** YYYY-MM-DD
 **Sessões nessa issue:** N
+**Branch:** feature/XX-slug
 
 ### Etapas
 - [x] 1. [descrição] — checkpoint: [...]
