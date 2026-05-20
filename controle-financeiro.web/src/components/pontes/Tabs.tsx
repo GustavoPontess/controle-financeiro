@@ -3,11 +3,12 @@
  * Variant: "pills" (botões redondos) ou "underline" (linha embaixo).
  */
 
+import type { ReactNode } from "react"
 import type { Palette } from "./theme"
 
 export type PontesTabOption<T extends string = string> = {
   value: T
-  label: string
+  label: ReactNode
 }
 
 export type PontesTabsProps<T extends string = string> = {

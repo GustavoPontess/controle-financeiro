@@ -11,6 +11,10 @@
 
 import { useEffect, useState } from "react"
 import {
+  Plus, Download, ArrowRight, ChevronLeft, ChevronRight,
+  Settings, MoreHorizontal, Bell, Search, Pencil, Copy, Share2, Trash2,
+} from "lucide-react"
+import {
   // theme
   palettes, fonts, semantic, type Palette, type FontOption,
   // botões
@@ -250,9 +254,9 @@ function ButtonsSection({ p, font }: { p: Palette; font: string }) {
 
       <Group title="Com ícone + Estados" p={p}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <PontesButton p={p} font={font} iconStart="+">Nova transação</PontesButton>
-          <PontesButton p={p} font={font} variant="accent" iconStart="↓">Importar OFX</PontesButton>
-          <PontesButton p={p} font={font} variant="outline" iconEnd="→">Salvar e continuar</PontesButton>
+          <PontesButton p={p} font={font} iconStart={<Plus size={18} strokeWidth={2.5} />}>Nova transação</PontesButton>
+          <PontesButton p={p} font={font} variant="accent" iconStart={<Download size={16} strokeWidth={2.5} />}>Importar OFX</PontesButton>
+          <PontesButton p={p} font={font} variant="outline" iconEnd={<ArrowRight size={16} strokeWidth={2.5} />}>Salvar e continuar</PontesButton>
           <PontesButton p={p} font={font} loading>Salvando...</PontesButton>
           <PontesButton p={p} font={font} success>Salvo</PontesButton>
         </div>
@@ -260,13 +264,13 @@ function ButtonsSection({ p, font }: { p: Palette; font: string }) {
 
       <Group title="Icon-only + FAB + Badge" p={p}>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <PontesIconButton p={p} size={32}>+</PontesIconButton>
-          <PontesIconButton p={p} size={40}>+</PontesIconButton>
-          <PontesIconButton p={p} size={48}>+</PontesIconButton>
-          <PontesIconButton p={p} size={40} variant="soft">⚙</PontesIconButton>
-          <PontesIconButton p={p} size={40} variant="outline">⋯</PontesIconButton>
-          <PontesIconButton p={p} size={40} variant="outline" badge={3}>🔔</PontesIconButton>
-          <PontesFab p={p}>+</PontesFab>
+          <PontesIconButton p={p} size={32}><Plus size={18} strokeWidth={3} /></PontesIconButton>
+          <PontesIconButton p={p} size={40}><Plus size={20} strokeWidth={2.5} /></PontesIconButton>
+          <PontesIconButton p={p} size={48}><Plus size={22} strokeWidth={2.5} /></PontesIconButton>
+          <PontesIconButton p={p} size={40} variant="soft"><Settings size={18} strokeWidth={2} /></PontesIconButton>
+          <PontesIconButton p={p} size={40} variant="outline"><MoreHorizontal size={18} strokeWidth={2.5} /></PontesIconButton>
+          <PontesIconButton p={p} size={40} variant="outline" badge={3}><Bell size={18} strokeWidth={2} /></PontesIconButton>
+          <PontesFab p={p}><Plus size={26} strokeWidth={2.5} /></PontesFab>
         </div>
       </Group>
 
@@ -289,9 +293,9 @@ function ButtonsSection({ p, font }: { p: Palette; font: string }) {
             value={periodTab}
             onChange={setPeriodTab}
             options={[
-              { value: "dia", label: "← Anterior" },
+              { value: "dia", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ChevronLeft size={14} strokeWidth={2.5} /> Anterior</span> },
               { value: "semana", label: "Hoje" },
-              { value: "mes", label: "Próximo →" },
+              { value: "mes", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>Próximo <ChevronRight size={14} strokeWidth={2.5} /></span> },
             ]}
           />
         </div>
@@ -332,7 +336,7 @@ function FormSection({ p, font }: { p: Palette; font: string }) {
             <PontesInput p={p} font={font} type="password" defaultValue="senha123" />
           </PontesField>
           <PontesField p={p} font={font} label="Buscar">
-            <PontesInput p={p} font={font} iconStart="🔍" placeholder="Buscar transação..." />
+            <PontesInput p={p} font={font} iconStart={<Search size={16} />} placeholder="Buscar transação..." />
           </PontesField>
           <PontesField p={p} font={font} label="Com erro" error="E-mail inválido">
             <PontesInput p={p} font={font} invalid defaultValue="email-invalido" />
@@ -523,7 +527,7 @@ function DataSection({ p, font }: { p: Palette; font: string }) {
           subtitle="247 lançamentos · R$ 5.140,00 em despesas"
           toolbar={<>
             <PontesButton p={p} font={font} size="sm" variant="outline">Filtros</PontesButton>
-            <PontesButton p={p} font={font} size="sm">+ Nova</PontesButton>
+            <PontesButton p={p} font={font} size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}>Nova</PontesButton>
           </>}
           columns={[
             { key: "date", header: "Data ↓", render: (r) => <span style={{ color: p.textMuted, fontSize: 12 }}>{r.date}</span> },
@@ -644,7 +648,7 @@ function FeedbackSection({ p, font }: { p: Palette; font: string }) {
           title="Nenhuma transação ainda"
           description="Adicione manualmente ou conecte uma conta pra importar tudo."
           actions={<>
-            <PontesButton p={p} font={font} size="sm">+ Nova transação</PontesButton>
+            <PontesButton p={p} font={font} size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}>Nova transação</PontesButton>
             <PontesButton p={p} font={font} size="sm" variant="outline">Conectar banco</PontesButton>
           </>}
         />
@@ -662,12 +666,12 @@ function FeedbackSection({ p, font }: { p: Palette; font: string }) {
 
           <PontesPopover
             p={p} font={font}
-            trigger={<PontesButton p={p} font={font} variant="outline">⋯ Mais ações</PontesButton>}
+            trigger={<PontesButton p={p} font={font} variant="outline" iconStart={<MoreHorizontal size={16} strokeWidth={2.5} />}>Mais ações</PontesButton>}
             items={[
-              { key: "edit", icon: "✎", label: "Editar" },
-              { key: "duplicate", icon: "↗", label: "Duplicar" },
-              { key: "share", icon: "🔗", label: "Compartilhar" },
-              { key: "delete", icon: "✕", label: "Excluir", danger: true, divider: true },
+              { key: "edit", icon: <Pencil size={14} />, label: "Editar" },
+              { key: "duplicate", icon: <Copy size={14} />, label: "Duplicar" },
+              { key: "share", icon: <Share2 size={14} />, label: "Compartilhar" },
+              { key: "delete", icon: <Trash2 size={14} />, label: "Excluir", danger: true, divider: true },
             ]}
           />
         </div>

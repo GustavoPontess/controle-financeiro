@@ -53,9 +53,16 @@ export function PontesButton({
     padding: s.padding, borderRadius: s.radius, fontSize: s.fontSize,
     fontWeight: 600, fontFamily: font, cursor: disabled || loading ? "not-allowed" : "pointer",
     border: "none", transition: "all 150ms ease",
-    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
     width: fullWidth ? "100%" : undefined,
     opacity: disabled ? 0.6 : 1,
+  }
+
+  // Wrapper de ícone: garante tamanho proporcional ao label (~1.3em) e line-height
+  // 1 pra centralizar caracteres de texto curtos como "+" / "→".
+  const iconStyle: React.CSSProperties = {
+    fontSize: "1.3em", lineHeight: 1, display: "inline-flex",
+    alignItems: "center", justifyContent: "center",
   }
 
   let v: React.CSSProperties = {}
@@ -89,10 +96,10 @@ export function PontesButton({
       {...rest}
     >
       {loading && <Spinner color={variant === "outline" || variant === "ghost" ? p.primary : "#FFFFFF"} />}
-      {!loading && success && <span aria-hidden>✓</span>}
-      {!loading && !success && iconStart}
+      {!loading && success && <span aria-hidden style={iconStyle}>✓</span>}
+      {!loading && !success && iconStart && <span style={iconStyle} aria-hidden>{iconStart}</span>}
       {children}
-      {!loading && !success && iconEnd}
+      {!loading && !success && iconEnd && <span style={iconStyle} aria-hidden>{iconEnd}</span>}
     </button>
   )
 }
@@ -178,9 +185,10 @@ export type PontesFabProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type
 export function PontesFab({
   p, font, size = 56, variant = "accent", style, children, type = "button", ...rest
 }: PontesFabProps) {
+  // Sombra neutra (sem glow tintado) — usuário pediu mais sutil.
   const v = variant === "primary"
-    ? { background: p.primary, color: p.heroFg, shadow: `0 12px 28px ${p.primary}66` }
-    : { background: p.accent, color: "#0B1220", shadow: `0 12px 28px ${p.accent}66` }
+    ? { background: p.primary, color: p.heroFg, shadow: "0 8px 20px rgba(11,18,32,0.18)" }
+    : { background: p.accent, color: "#0B1220", shadow: "0 8px 20px rgba(11,18,32,0.18)" }
 
   return (
     <button
@@ -208,7 +216,7 @@ export function PontesFab({
 export type PontesButtonGroupProps<T extends string = string> = {
   p: Palette
   font: string
-  options: { value: T; label: string }[]
+  options: { value: T; label: ReactNode }[]
   value: T
   onChange: (v: T) => void
   variant?: "pills" | "joined"
