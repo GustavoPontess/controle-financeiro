@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-21
-status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
+status: EM_EXECUCAO
+issue_atual: '#101 — Biblioteca de componentes Pontes'
 ---
 
 # Implementation State — sessão atual
@@ -24,7 +24,40 @@ issue_atual: 'Nenhuma — Q5 recém iniciado, dev escolhe próxima livre'
 
 ## Issue em execução
 
-**Nenhuma issue está em execução agora.** Próxima livre: **#76 Login + Register refator**.
+**Issue:** #101 — Biblioteca de componentes Pontes (`src/components/pontes/`)
+**Iniciada em:** 2026-05-21 (sessão 32)
+**Branch:** `feature/101-biblioteca-pontes`
+
+**Por quê:** DS antigo era página showcase com componentes inline. Caio refator Login (#76) e demais issues de tela não tinham o que importar — vira retrabalho e desvio. #101 bloqueia #76, #77, #78, #79, #80, #81, #82, #83, #84, #86, #87, #89.
+
+### Etapas
+- [x] 1. Criar pasta `src/components/pontes/` separada do legado
+- [x] 2. theme.ts (palettes + fonts + spacing + radii + shadows + semantic + adjustColor)
+- [x] 3. Botões: PontesButton (7 variants × 5 sizes × loading/success/disabled) + PontesIconButton + PontesFab + PontesButtonGroup + PontesLink
+- [x] 4. Form: PontesField + PontesInput (com iconStart/End + invalid) + PontesMoneyInput + PontesTextarea + PontesSelect + PontesToggle + PontesCheckbox + PontesRadio/Group
+- [x] 5. Form avançado: PontesOtpInput + PontesSlider + PontesDatePicker + PontesFileDrop + PontesTagInput + PontesColorPicker + PontesRating + PontesKbd/Group
+- [x] 6. Dados: PontesBadge + PontesAvatar + PontesAvatarStack + PontesAlert + PontesProgress + PontesStatCard + PontesCard + PontesTable
+- [x] 7. Feedback: PontesToast + PontesModal + PontesDialog + PontesSkeleton/Row/List + PontesEmptyState + PontesLoadingDots + PontesDrawer + PontesTooltip + PontesPopover
+- [x] 8. Navegação: PontesBreadcrumb + PontesTabs (pills/underline) + PontesStepper + PontesPagination + PontesCommandPalette
+- [x] 9. Site: PontesNavbar (move de SiteNavbar) + PontesFooter (rich/minimal)
+- [x] 10. index.ts barrel
+- [x] 11. DesignSystemPage reescrita usando biblioteca (zero inline)
+- [x] 12. Build verde + lint zero
+- [x] 13. 14 smoke tests novos · suite 60/60
+- [ ] 14. Commit + PR
+
+### Etapa atual
+14 — commit e abrir PR.
+
+### Próxima ação concreta
+`git add ... && git commit && git push && gh pr create`
+
+### Decisões tomadas nesta sessão
+- **Separação clara legado vs novo:** componentes antigos (CustomButton, MUI direto, tokens.ts) ficam em `components/` raiz; novos somente em `components/pontes/`. Telas refatoradas Q5 importam SÓ daqui. Final do Q5, deleta legado em PR separado.
+- **API uniforme:** todos os componentes recebem `p: Palette` + `font: string` por prop. Quando #90 entregar context global, refatora todos para consumir do context.
+- **Cores semânticas independentes de paleta:** success/warning/danger/info fixas em theme.ts → não mudam com troca de paleta (vermelho de erro sempre vermelho).
+- **Footer com duas variants:** `rich` (4 cols + brand + social) e `minimal` (linha única). HomePage usa rich, CouplesPage minimal (mais discreto).
+- **PR #100 (CouplesPage) fechado sem mergear:** branch `feature/77-site-casais` preservada. Vai ser refeita usando biblioteca quando #101 mergear.
 
 ### Ordem sugerida do backlog
 
