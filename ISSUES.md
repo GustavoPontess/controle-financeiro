@@ -25,7 +25,7 @@ status: CURRENT
 
 ### Site público (frente)
 
-- **#75** — `/` vira root público com fallback Dashboard quando autenticado
+- ~~**#75** — `/` vira root público com fallback Dashboard quando autenticado~~ ✅ MERGEADA (PR #94 · sessão 31)
 - **#76** — Refator Login + Register usando design system Pontes
 - **#77** — Página Para Casais (`/site/casais`)
 - **#78** — Página Para Contadores (`/site/contadores`)
