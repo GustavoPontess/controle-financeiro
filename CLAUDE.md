@@ -54,11 +54,15 @@ npm run lint
 - **Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`)
 
 ### Frontend Structure
-- **src/api/axiosClient.ts** — single Axios instance; request interceptor injects JWT from localStorage; response interceptor redirects to `/auth/login` on 401
+- **src/api/axiosConfig.ts** — single Axios instance; request interceptor injects CSRF token; response interceptor redirects to `/auth/login` on 401 (exceto em paths públicos: `/auth/`, `/site`, `/design-system`, `/logo-concepts`)
 - **src/services/** — one service file per API resource, all using axiosClient
 - **src/contexts/** — auth state context
 - **src/routes/** — React Router v7 configuration
 - **src/types/** — TypeScript interfaces mirroring backend DTOs
+- **src/components/Logo/Logo.tsx** — logo oficial Pontes (conceito 20). Props: `color`, `size`, `variant` ("full" | "wordmark" | "mark"). Fonte da marca: Plus Jakarta Sans (fixa, global em `index.html`).
+- **src/pages/Site/** — todas as páginas públicas do site institucional (HomePage, futuras Couples/Professionals/Pricing/About). Rotas `/site/*`.
+- **src/pages/DesignSystem/** — Design System documentado em rota dedicada `/design-system`. Reusa `ComponentShowcase` exportado de `Site/HomePage.tsx` (será extraído depois).
+- **src/pages/Auth/, Dashboard/, Transactions/, etc** — telas internas autenticadas.
 
 ### Key Domain Concepts
 
@@ -287,7 +291,7 @@ dotnet ef database update
 ├── CLAUDE.md                    ← este arquivo (convenções e padrões)
 ├── PROMPT_NOVA_SESSAO.md        ← ponto de entrada de cada sessão de trabalho
 ├── IMPLEMENTATION_STATE.md      ← estado vivo da issue em execução
-├── ISSUES.md                    ← backlog atual (Q3 2026, 4 blocos)
+├── ISSUES.md                    ← backlog atual (Q5 2026, 18 issues #75-#92)
 ├── PROGRESS.md                  ← dashboard de progresso e histórico de sessões
 ├── README.md                    ← README público do projeto
 └── docs/
@@ -302,14 +306,18 @@ dotnet ef database update
     ├── ANALISE_PRODUTO.md       ← análise crítica de produto (maio/2026)
     ├── features/                ← uma pasta por feature
     │   ├── parcelamento/        ← (concluída em Q2 2026)
-    │   │   ├── arquitetura.md
-    │   │   └── ux.md
-    │   └── familia/             ← (próximo grande pivot)
-    │       └── visao.md
+    │   ├── familia/             ← (visão Q5, issue #85)
+    │   │   └── visao.md
+    │   ├── cartao-credito/      ← regras de negócio (issue #84)
+    │   │   └── regras-de-negocio.md
+    │   └── redesign-ux/         ← Q4 visão e concorrentes
+    │       ├── visao.md
+    │       └── concorrentes.md
+    ├── referencias/             ← prints de concorrentes + iterações de logo (gitignored)
     └── history/                 ← documentos arquivados
-        ├── ISSUES_2026Q2.md
-        ├── PROGRESS_2026Q2.md
-        └── IMPLEMENTATION_STATE_2026Q2_parcelamento.md
+        ├── ISSUES_2026Q2.md, PROGRESS_2026Q2.md
+        ├── ISSUES_2026Q3.md, PROGRESS_2026Q3.md, IMPLEMENTATION_STATE_2026Q3.md
+        └── ISSUES_2026Q4.md, PROGRESS_2026Q4.md, IMPLEMENTATION_STATE_2026Q4.md
 ```
 
 **Princípio:** documentação por feature mora em `docs/features/<nome>/`. Quando uma feature complexa for iniciada, criar pelo menos `arquitetura.md` (spec técnica) e `ux.md` (mockups e copy) dentro da pasta da feature.
