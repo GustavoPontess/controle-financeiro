@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Box, Container, TextField, Typography, Alert, CircularProgress } from '@mui/material'
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
+import { tokens } from '../../theme/tokens'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -28,13 +29,13 @@ export default function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: tokens.color.background.page }}>
       <Container maxWidth="sm">
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography fontSize={32} fontWeight={700} color="#111827" mb={1}>
+          <Typography fontSize={32} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} mb={1}>
             Controle Financeiro
           </Typography>
-          <Typography fontSize={14} color="#6b7280">
+          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
             Transparência financeira para casais
           </Typography>
         </Box>
@@ -43,16 +44,16 @@ export default function LoginPage() {
           component="form"
           onSubmit={handleSubmit}
           sx={{
-            backgroundColor: '#ffffff',
+            backgroundColor: tokens.color.background.surface,
             padding: 3,
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
+            borderRadius: tokens.radius.lg,
+            border: `1px solid ${tokens.color.border.default}`,
             display: 'flex',
             flexDirection: 'column',
             gap: 2.5,
           }}
         >
-          <Typography fontSize={18} fontWeight={600} color="#111827">
+          <Typography fontSize={tokens.typography.fontSize.lg} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
             Entrar
           </Typography>
 
@@ -68,12 +69,12 @@ export default function LoginPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -88,12 +89,12 @@ export default function LoginPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -103,9 +104,9 @@ export default function LoginPage() {
           </CustomButton>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography fontSize={13} color="#6b7280">
+            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
               Não tem conta?{' '}
-              <Link to="/auth/register" style={{ color: '#1d4ed8', textDecoration: 'none', fontWeight: 600 }}>
+              <Link to="/auth/register" style={{ color: tokens.color.brand.primary, textDecoration: 'none', fontWeight: tokens.typography.fontWeight.bold }}>
                 Criar conta
               </Link>
             </Typography>

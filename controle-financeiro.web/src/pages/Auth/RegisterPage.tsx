@@ -4,13 +4,14 @@ import { Box, Container, TextField, Typography, Alert, CircularProgress, LinearP
 import CustomButton from '../../components/CustomButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
+import { tokens } from '../../theme/tokens'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
   const requisitos = getSenhaRequisitos(senha)
   const forca = getSenhaForca(requisitos)
   const progresso = (forca / requisitos.length) * 100
-  const cor = forca <= 2 ? '#ef4444' : forca <= 3 ? '#f59e0b' : forca === 4 ? '#3b82f6' : '#22c55e'
+  const cor = forca <= 2 ? tokens.color.status.error.main : forca <= 3 ? tokens.color.status.warning.main : forca === 4 ? tokens.color.status.info.main : tokens.color.status.success.main
 
   return (
     <Box sx={{ mt: -1 }}>
@@ -20,13 +21,13 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
         sx={{
           height: 4,
           borderRadius: 2,
-          backgroundColor: '#e5e7eb',
+          backgroundColor: tokens.color.border.default,
           '& .MuiLinearProgress-bar': { backgroundColor: cor, borderRadius: 2 },
         }}
       />
       <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
         {requisitos.map((r) => (
-          <Typography key={r.label} fontSize={11} color={r.ok ? '#22c55e' : '#9ca3af'} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography key={r.label} fontSize={tokens.typography.fontSize['2xs']} color={r.ok ? tokens.color.status.success.main : tokens.color.text.disabled} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {r.ok ? '✓' : '○'} {r.label}
           </Typography>
         ))}
@@ -75,13 +76,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', backgroundColor: tokens.color.background.page }}>
       <Container maxWidth="sm">
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography fontSize={32} fontWeight={700} color="#111827" mb={1}>
+          <Typography fontSize={32} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} mb={1}>
             Controle Financeiro
           </Typography>
-          <Typography fontSize={14} color="#6b7280">
+          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
             Transparência financeira para casais
           </Typography>
         </Box>
@@ -90,16 +91,16 @@ export default function RegisterPage() {
           component="form"
           onSubmit={handleSubmit}
           sx={{
-            backgroundColor: '#ffffff',
+            backgroundColor: tokens.color.background.surface,
             padding: 3,
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
+            borderRadius: tokens.radius.lg,
+            border: `1px solid ${tokens.color.border.default}`,
             display: 'flex',
             flexDirection: 'column',
             gap: 2.5,
           }}
         >
-          <Typography fontSize={18} fontWeight={600} color="#111827">
+          <Typography fontSize={tokens.typography.fontSize.lg} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
             Criar Conta
           </Typography>
 
@@ -115,12 +116,12 @@ export default function RegisterPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -134,12 +135,12 @@ export default function RegisterPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -154,12 +155,12 @@ export default function RegisterPage() {
             InputLabelProps={{ shrink: true }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -174,12 +175,12 @@ export default function RegisterPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -195,12 +196,12 @@ export default function RegisterPage() {
             size="small"
             sx={{
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                '& fieldset': { borderColor: '#e5e7eb' },
-                '&:hover fieldset': { borderColor: '#d1d5db' },
-                '&.Mui-focused fieldset': { borderColor: '#111827', borderWidth: '1.5px' },
+                backgroundColor: tokens.color.background.secondary,
+                borderRadius: tokens.radius.md,
+                fontSize: tokens.typography.fontSize.sm,
+                '& fieldset': { borderColor: tokens.color.border.default },
+                '&:hover fieldset': { borderColor: tokens.color.border.strong },
+                '&.Mui-focused fieldset': { borderColor: tokens.color.text.primary, borderWidth: '1.5px' },
               },
             }}
           />
@@ -210,9 +211,9 @@ export default function RegisterPage() {
           </CustomButton>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography fontSize={13} color="#6b7280">
+            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
               Já tem conta?{' '}
-              <Link to="/auth/login" style={{ color: '#1d4ed8', textDecoration: 'none', fontWeight: 600 }}>
+              <Link to="/auth/login" style={{ color: tokens.color.brand.primary, textDecoration: 'none', fontWeight: tokens.typography.fontWeight.bold }}>
                 Fazer login
               </Link>
             </Typography>
