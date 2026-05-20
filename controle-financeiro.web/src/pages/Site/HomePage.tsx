@@ -6,124 +6,16 @@
  * personalização do usuário).
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import Logo from "../../components/Logo/Logo"
+import { palettes, fonts, type Palette } from "./theme"
 import {
   ResponsiveContainer, LineChart, Line, AreaChart, Area, BarChart as RBarChart, Bar,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
 
-// =============================================================================
-// PALETAS
-// =============================================================================
-export type Palette = {
-  id: string
-  label: string
-  description: string
-  primary: string
-  primaryDark: string
-  primarySoft: string
-  accent: string
-  accentSoft: string
-  text: string
-  textMuted: string
-  bg: string
-  surface: string
-  border: string
-  heroFg: string
-}
-
-export const palettes: Palette[] = [
-  { id: "A", label: "Cobalto + Âmbar", description: "Azul vibrante + âmbar quente",
-    primary: "#1E40AF", primaryDark: "#1E3A8A", primarySoft: "#EEF2FF",
-    accent: "#F59E0B", accentSoft: "#FEF3C7",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7F9FC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "B", label: "Marinho + Esmeralda", description: "Azul-marinho + verde-esmeralda",
-    primary: "#0F2A47", primaryDark: "#0A1F35", primarySoft: "#E8EEF6",
-    accent: "#10B981", accentSoft: "#D1FAE5",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7F9FC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "C", label: "Petróleo + Coral", description: "Azul-petróleo + laranja-coral",
-    primary: "#0E4F6E", primaryDark: "#083B54", primarySoft: "#E0F2F1",
-    accent: "#FB923C", accentSoft: "#FFEDD5",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7F9FC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "D", label: "Floresta + Mostarda", description: "Verde-floresta + amarelo-mostarda",
-    primary: "#14532D", primaryDark: "#0F3D1F", primarySoft: "#E7F4EC",
-    accent: "#EAB308", accentSoft: "#FEF9C3",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E7E5E4", heroFg: "#FFFFFF" },
-  { id: "E", label: "Grafite + Lima", description: "Quase-preto + verde-lima",
-    primary: "#0A0A0A", primaryDark: "#000000", primarySoft: "#F1F1F1",
-    accent: "#A3E635", accentSoft: "#ECFCCB",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAFA", surface: "#FFFFFF", border: "#E5E5E5", heroFg: "#FFFFFF" },
-  { id: "F", label: "Roxo-Real + Pêssego", description: "Roxo profundo + pêssego",
-    primary: "#4338CA", primaryDark: "#3730A3", primarySoft: "#EEF2FF",
-    accent: "#FDA4AF", accentSoft: "#FFE4E6",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E5E5E5", heroFg: "#FFFFFF" },
-  { id: "G", label: "Vinho + Dourado", description: "Bordô profundo + dourado luxo",
-    primary: "#7F1D1D", primaryDark: "#5F0E0E", primarySoft: "#FEE2E2",
-    accent: "#D4AF37", accentSoft: "#FEF3C7",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E5E5E5", heroFg: "#FFFFFF" },
-  { id: "H", label: "Ciano + Magenta", description: "Ciano elétrico + magenta vibrante",
-    primary: "#0891B2", primaryDark: "#0E7490", primarySoft: "#CFFAFE",
-    accent: "#D946EF", accentSoft: "#FAE8FF",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7FBFC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "I", label: "Lavanda + Pêssego", description: "Lavanda suave + pêssego claro",
-    primary: "#7C3AED", primaryDark: "#6D28D9", primarySoft: "#EDE9FE",
-    accent: "#FFAB9F", accentSoft: "#FFE4E6",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E7E5E4", heroFg: "#FFFFFF" },
-  { id: "J", label: "Verde-menta + Coral", description: "Menta moderno + coral vibrante",
-    primary: "#047857", primaryDark: "#065F46", primarySoft: "#D1FAE5",
-    accent: "#F97316", accentSoft: "#FFEDD5",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7FCF9", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "K", label: "Azul-céu + Coral", description: "Azul claro vivido + coral",
-    primary: "#0284C7", primaryDark: "#0369A1", primarySoft: "#E0F2FE",
-    accent: "#FB7185", accentSoft: "#FFE4E6",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7F9FC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-  { id: "L", label: "Terracota + Sálvia", description: "Terra brasileira + verde sálvia",
-    primary: "#B45309", primaryDark: "#92400E", primarySoft: "#FEF3C7",
-    accent: "#84CC16", accentSoft: "#ECFCCB",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E7E5E4", heroFg: "#FFFFFF" },
-  { id: "M", label: "Marrom-café + Creme", description: "Café terroso + creme aconchego",
-    primary: "#78350F", primaryDark: "#5F2A0A", primarySoft: "#FEF3C7",
-    accent: "#FBBF24", accentSoft: "#FEF9C3",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E7E5E4", heroFg: "#FFFFFF" },
-  { id: "N", label: "Rosa-pink + Verde", description: "Rosa vibrante + verde-folha",
-    primary: "#DB2777", primaryDark: "#BE185D", primarySoft: "#FCE7F3",
-    accent: "#10B981", accentSoft: "#D1FAE5",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#FAFAF9", surface: "#FFFFFF", border: "#E5E5E5", heroFg: "#FFFFFF" },
-  { id: "O", label: "Índigo + Limão", description: "Índigo profundo + limão elétrico",
-    primary: "#312E81", primaryDark: "#1E1B4B", primarySoft: "#E0E7FF",
-    accent: "#D9F99D", accentSoft: "#ECFCCB",
-    text: "#0B1220", textMuted: "#5A6679", bg: "#F7F9FC", surface: "#FFFFFF", border: "#E5EAF2", heroFg: "#FFFFFF" },
-]
-
-// =============================================================================
-// FONTES
-// =============================================================================
-export type FontOption = { id: string; label: string; description: string; family: string; url: string }
-
-export const fonts: FontOption[] = [
-  { id: "inter", label: "Inter", description: "Neutra SaaS",
-    family: "'Inter', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" },
-  { id: "geist", label: "Geist", description: "Vercel/Linear",
-    family: "'Geist', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&display=swap" },
-  { id: "manrope", label: "Manrope", description: "Humanista",
-    family: "'Manrope', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" },
-  { id: "ibm", label: "IBM Plex Sans", description: "Fintech séria",
-    family: "'IBM Plex Sans', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" },
-  { id: "outfit", label: "Outfit", description: "Moderna redonda",
-    family: "'Outfit', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" },
-  { id: "plus-jakarta", label: "Plus Jakarta Sans", description: "Acolhedora",
-    family: "'Plus Jakarta Sans', system-ui, sans-serif",
-    url: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" },
-  { id: "satoshi", label: "Satoshi", description: "Premium",
-    family: "'Satoshi', system-ui, sans-serif",
-    url: "https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" },
-]
+// (palettes, fonts, types extraídos pra ./theme.ts — resolve react-refresh/only-export-components)
 
 // =============================================================================
 // PRIMITIVOS VISUAIS
@@ -144,7 +36,7 @@ function CheckIcon({ color }: { color: string }) {
 }
 
 function GridPattern({ color = "#FFFFFF", opacity = 0.06 }: { color?: string; opacity?: number }) {
-  const id = `grid-${Math.random().toString(36).slice(2)}`
+  const id = `grid-${useId().replace(/[:]/g, "")}`
   return (
     <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
       <defs>
@@ -308,7 +200,8 @@ function TypingWord({ words, color, intervalMs = 2500 }: { words: string[]; colo
 }
 
 /** Comparison slider antes/depois — drag horizontal. */
-function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p }: { leftLabel: string; rightLabel: string; leftContent: React.ReactNode; rightContent: React.ReactNode; p: Palette }) {
+/** Utilitário reutilizável (exportado pra outras páginas). */
+export function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p }: { leftLabel: string; rightLabel: string; leftContent: React.ReactNode; rightContent: React.ReactNode; p: Palette }) {
   const [pos, setPos] = useState(50)
   const ref = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -346,7 +239,8 @@ function ComparisonSlider({ leftLabel, rightLabel, leftContent, rightContent, p 
 }
 
 /** Logos clouds 3D — rotação suave dos logos. */
-function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: string[] }) {
+/** Utilitário reutilizável. */
+export function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: string[] }) {
   return (
     <div style={{ display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap", perspective: "800px" }}>
       {logos.map((l, i) => (
@@ -366,7 +260,8 @@ function LogosCloud3D({ p, font, logos }: { p: Palette; font: string; logos: str
 }
 
 /** Card stack — 3 cards empilhados que se separam no hover do pai. */
-function CardStack({ p, items }: { p: Palette; items: { icon: string; title: string; v: string }[] }) {
+/** Utilitário reutilizável. */
+export function CardStack({ p, items }: { p: Palette; items: { icon: string; title: string; v: string }[] }) {
   return (
     <div style={{ position: "relative", height: 200, width: 280 }} className="bp-card-stack-host">
       {items.map((it, i) => (
@@ -626,7 +521,8 @@ function MobileMockup({ p, font }: { p: Palette; font: string }) {
 }
 
 /** Ilustração abstrata. */
-function FeatureIllustration({ kind, p }: { kind: string; p: Palette }) {
+/** Ilustração abstrata de feature (rateio, familia, etc). */
+export function FeatureIllustration({ kind, p }: { kind: string; p: Palette }) {
   const stroke = p.primary, fill = p.primarySoft
   switch (kind) {
     case "rateio": return (
@@ -693,7 +589,7 @@ function BarChartReal({ p, data, height = 160 }: { p: Palette; data: { label: st
           contentStyle={{ background: p.text, border: "none", borderRadius: 10, fontSize: 12, color: "#FFFFFF", padding: "10px 12px" }}
           labelStyle={{ color: "#FFFFFF", fontWeight: 700, marginBottom: 4 }}
           itemStyle={{ color: "#FFFFFF" }}
-          formatter={(v: number) => [`R$ ${v.toFixed(1)}k`, "Gasto"]}
+          formatter={(v) => [`R$ ${Number(v).toFixed(1)}k`, "Gasto"]}
         />
         <Bar dataKey="v" radius={[6, 6, 0, 0]}>
           {data.map((_, i) => (
@@ -707,7 +603,7 @@ function BarChartReal({ p, data, height = 160 }: { p: Palette; data: { label: st
 
 /** Area chart real via recharts com gradiente. */
 function LineAreaChartReal({ p, data, height = 160 }: { p: Palette; data: { label: string; v: number }[]; height?: number }) {
-  const gradId = `area-${Math.random().toString(36).slice(2)}`
+  const gradId = `area-${useId().replace(/[:]/g, "")}`
   const fmt = (v: number) => v >= 1000 ? `R$ ${(v / 1000).toFixed(1)}k` : `R$ ${v.toFixed(0)}`
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -725,7 +621,7 @@ function LineAreaChartReal({ p, data, height = 160 }: { p: Palette; data: { labe
           contentStyle={{ background: p.text, border: "none", borderRadius: 10, fontSize: 12, color: "#FFFFFF", padding: "10px 12px" }}
           labelStyle={{ color: "#FFFFFF", fontWeight: 700, marginBottom: 4 }}
           itemStyle={{ color: "#FFFFFF" }}
-          formatter={(v: number) => [fmt(v), "Saldo"]}
+          formatter={(v) => [fmt(Number(v)), "Saldo"]}
         />
         <Area type="monotone" dataKey="v" stroke={p.primary} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, fill: p.accent, stroke: "#FFFFFF", strokeWidth: 2 }} />
       </AreaChart>
@@ -798,7 +694,7 @@ function DonutChartReal({ p, data, height = 200 }: { p: Palette; data: { name: s
         <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2} dataKey="value">
           {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
-        <Tooltip contentStyle={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`R$ ${v}`, ""]} />
+        <Tooltip contentStyle={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 12 }} formatter={(v) => [`R$ ${v}`, ""]} />
       </PieChart>
     </ResponsiveContainer>
   )
@@ -808,14 +704,14 @@ function DonutChartReal({ p, data, height = 200 }: { p: Palette; data: { name: s
 // LIVE ACTIVITY FEED — notificações entrando ao vivo
 // =============================================================================
 function LiveActivity({ p, font }: { p: Palette; font: string }) {
-  const items = [
+  const items = useMemo(() => ([
     { icon: "💸", title: "Maria adicionou despesa", sub: "Mercado · R$ 142,30", time: "agora", color: p.primary },
     { icon: "✓", title: "Aprovou rateio", sub: "Conta de luz · 60/40", time: "1min", color: "#10B981" },
     { icon: "💼", title: "Salário recebido", sub: "Itaú · R$ 4.200,00", time: "3min", color: "#10B981" },
     { icon: "🎯", title: "Meta atingida", sub: "Reserva de emergência · 92%", time: "12min", color: p.accent },
     { icon: "⚠", title: "Limite do cartão", sub: "Nubank · 85% usado", time: "1h", color: "#F59E0B" },
     { icon: "📊", title: "Relatório mensal", sub: "Pronto pra revisar", time: "2h", color: p.primary },
-  ]
+  ]), [p.primary, p.accent])
   const [list, setList] = useState(items.slice(0, 4))
 
   // Cicla itens a cada 3.5s
@@ -826,8 +722,7 @@ function LiveActivity({ p, font }: { p: Palette; font: string }) {
       i++
     }, 3500)
     return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [items])
 
   return (
     <section style={{ padding: "120px 48px", background: p.bg, position: "relative", overflow: "hidden" }}>
@@ -1142,6 +1037,7 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 /** Navbar pill flutuante fixed — adapta visual conforme scroll (transparente sobre hero, sólido depois). */
 function NavbarFloating({ p, font }: { p: Palette; font: string }) {
+  const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 400)
@@ -1181,10 +1077,16 @@ function NavbarFloating({ p, font }: { p: Palette; font: string }) {
           ))}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+          <button
+            onClick={() => navigate("/auth/login")}
+            style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
+          >
             Entrar
           </button>
-          <button style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}>
+          <button
+            onClick={() => navigate("/auth/register")}
+            style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
+          >
             Criar conta
           </button>
         </div>
@@ -1194,7 +1096,7 @@ function NavbarFloating({ p, font }: { p: Palette; font: string }) {
 }
 
 /** Bloco de feature zig-zag (texto + mockup alternando lado). */
-function FeatureBlock({ p, font, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
+function FeatureBlock({ p, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", padding: "60px 0", direction: reverse ? "rtl" : "ltr" }}>
       <div style={{ direction: "ltr" }}>
@@ -2293,7 +2195,7 @@ function CSFeedback({ p, font }: { p: Palette; font: string }) {
                 { i: "↗", label: "Duplicar" },
                 { i: "🔗", label: "Compartilhar" },
                 { i: "✕", label: "Excluir", danger: true },
-              ].map((item, idx, arr) => (
+              ].map((item, idx) => (
                 <div key={item.label}>
                   {item.danger && idx > 0 && <div style={{ height: 1, background: p.border, margin: "4px 0" }} />}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", fontSize: 13, color: item.danger ? "#DC2626" : p.text, cursor: "pointer", borderRadius: 6 }}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Paper,
@@ -84,7 +84,7 @@ export default function TransactionsPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [cats, trans, contas] = await Promise.all([
         getCategories(),
@@ -98,13 +98,14 @@ export default function TransactionsPage() {
       console.error("Erro ao carregar dados:", error);
       notify({ open: true, message: "Erro ao carregar transações", severity: "error" });
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
-    loadData();
-    window.addEventListener("transactionCreated", loadData);
-    return () => window.removeEventListener("transactionCreated", loadData);
-  }, []);
+    void loadData();
+    const handler = () => { void loadData(); };
+    window.addEventListener("transactionCreated", handler);
+    return () => window.removeEventListener("transactionCreated", handler);
+  }, [loadData]);
 
   const prevMonth = () =>
     setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1));

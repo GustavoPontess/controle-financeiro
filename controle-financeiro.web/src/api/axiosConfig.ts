@@ -45,7 +45,9 @@ api.interceptors.response.use(
       // /auth/register): nessas páginas o 401 do probe de sessão é esperado e
       // redirecionar quebraria o acesso à tela de cadastro.
       const publicPaths = ['/auth/', '/site', '/logo-concepts', '/design-system']
-      const isPublic = publicPaths.some((p) => window.location.pathname.startsWith(p))
+      const path = window.location.pathname
+      // `/` é público (RootRoute decide). Strict equal pra não bater em /dashboard etc.
+      const isPublic = path === '/' || publicPaths.some((p) => path.startsWith(p))
       if (!isPublic) {
         window.location.href = '/auth/login'
       }
