@@ -9,6 +9,8 @@
 
 export * from "./theme"
 export * from "./_globalStyles"
+export * from "./themeContext"
+export * from "./ThemeProvider"
 export * from "./overlayStyles"
 export * from "./useBodyScrollbar"
 export * from "./ScrollArea"

@@ -22,7 +22,6 @@ import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
-import HomePage from "../pages/Site/HomePage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -30,15 +29,18 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Root público: HomePage se deslogado, redirect /dashboard se logado (#75) */}
+        {/* Root: RootRoute decide ANTES de montar o site (logado → dashboard
+            sem flash; deslogado → SiteLayout + Home via children). */}
         <Route path="/" element={<RootRoute />} />
+
+        {/* Verticais públicas (Casais, Contadores, Recursos, Sobre) entram aqui
+            sob <SiteLayout> — URLs limpas /casais, /contadores, etc. */}
 
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
-        {/* Páginas públicas sem auth */}
-        <Route path="/site" element={<HomePage />} />
+        {/* Páginas públicas com chrome próprio */}
         <Route path="/logo-concepts" element={<LogoConcepts />} />
         <Route path="/design-system" element={<DesignSystemPage />} />
 
