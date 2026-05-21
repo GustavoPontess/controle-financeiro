@@ -86,16 +86,7 @@ export function PontesNavbar({
         minWidth: 920, maxWidth: 1100, width: "100%",
         transition: "all 250ms ease",
       }}>
-        <button
-          type="button"
-          onClick={() => go("/")}
-          className="pontes-clickable"
-          data-pontes-variant="ghost"
-          style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
-          aria-label="Pontes — Home"
-        >
-          <Logo color={wordmarkColor} size={22} />
-        </button>
+        <Logo color={wordmarkColor} size={22} onClick={() => go("/")} />
 
         <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
           {links.map((link) => (

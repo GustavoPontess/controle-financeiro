@@ -909,7 +909,7 @@ function NavbarPreview({ p, font }: { p: Palette; font: string }) {
           backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
           minWidth: 760, maxWidth: 900, width: "100%",
         }}>
-          <span style={{ color: p.heroFg, fontWeight: 800, fontSize: 18, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Pontes</span>
+          <PontesLogo color={p.heroFg} size={18} />
           <div style={{ display: "flex", gap: 22 }}>
             <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent} active>Recursos</PontesNavLink>
             <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent}>Para Casais</PontesNavLink>

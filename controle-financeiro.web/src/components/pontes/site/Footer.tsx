@@ -103,16 +103,7 @@ export function PontesFooter({
           flexWrap: "wrap", gap: 16, position: "relative", zIndex: 1,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <button
-              type="button"
-              onClick={() => go("/")}
-              className="pontes-clickable"
-              data-pontes-variant="ghost"
-              style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-              aria-label="Pontes — Home"
-            >
-              <Logo color="#FFFFFF" size={20} />
-            </button>
+            <Logo color="#FFFFFF" size={20} onClick={() => go("/")} />
             <span style={{ fontSize: 12, opacity: 0.5 }}>{copyright}</span>
           </div>
           <div style={{ display: "flex", gap: 18 }}>
@@ -148,14 +139,7 @@ export function PontesFooter({
         }}>
           {/* Brand column */}
           <div>
-            <button
-              type="button"
-              onClick={() => go("/")}
-              style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", marginBottom: 16, padding: 0 }}
-              aria-label="Pontes — Home"
-            >
-              <Logo color="#FFFFFF" size={24} />
-            </button>
+            <Logo color="#FFFFFF" size={24} onClick={() => go("/")} style={{ marginBottom: 16 }} />
             <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, margin: 0, maxWidth: 280 }}>
               Finanças pra família brasileira. Conecte bancos, divida despesas com seu parceiro e abra acesso pro seu contador.
             </p>

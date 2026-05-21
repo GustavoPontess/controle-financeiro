@@ -69,9 +69,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none' }}>
-            <PontesLogo color="#ffffff" size={32} />
-          </Link>
+          <PontesLogo color="#ffffff" size={32} onClick={() => navigate('/')} />
         </div>
 
         {/* Headline + features */}
@@ -160,9 +158,7 @@ export default function LoginPage() {
           {/* Logo mobile */}
           <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
             <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
-            <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none' }}>
-              <PontesLogo color={p.primary} size={28} />
-            </Link>
+            <PontesLogo color={p.primary} size={28} onClick={() => navigate('/')} />
           </div>
 
           {/* Header form */}
