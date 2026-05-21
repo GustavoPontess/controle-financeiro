@@ -35,7 +35,7 @@ import {
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
   PontesCommandPalette,
   // site
-  PontesFooter,
+  PontesFooter, PontesLogo,
   // util
   applyPontesScrollbar, usePontesBodyScrollbar,
 } from "../../components/pontes"
@@ -804,6 +804,79 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
 function SiteSection({ p, font }: { p: Palette; font: string }) {
   return (
     <div>
+      <Group title="Logo — PontesLogo" p={p}>
+        {/* Variantes */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* Sobre fundo claro */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Sobre fundo claro</div>
+            <div style={{ display: "flex", gap: 40, flexWrap: "wrap", alignItems: "center", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 12, padding: "20px 28px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={32} variant="full" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>full · 32px</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={24} variant="full" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>full · 24px</span>
+              </div>
+              <div style={{ width: 1, height: 48, background: p.border }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={32} variant="wordmark" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>wordmark · 32px</span>
+              </div>
+              <div style={{ width: 1, height: 48, background: p.border }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={32} variant="mark" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 32px</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={48} variant="mark" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 48px</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color={p.primary} size={64} variant="mark" />
+                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 64px</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Sobre fundo escuro */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Sobre fundo escuro (hero / navbar)</div>
+            <div style={{ display: "flex", gap: 40, flexWrap: "wrap", alignItems: "center", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, borderRadius: 12, padding: "20px 28px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color="#ffffff" size={32} variant="full" />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>full · branco</span>
+              </div>
+              <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.2)" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color="#ffffff" size={32} variant="wordmark" />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>wordmark · branco</span>
+              </div>
+              <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.2)" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <PontesLogo color="#ffffff" size={40} variant="mark" />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>mark · branco</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Uso em código */}
+          <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, padding: "14px 18px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Import</div>
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace" }}>
+              {"import { PontesLogo } from '@/components/pontes'"}<br />
+              {"<PontesLogo color={p.primary} size={32} variant=\"full\" />"}
+            </code>
+            <div style={{ fontSize: 11, color: p.textMuted, fontFamily: font, marginTop: 8 }}>
+              Props: <code style={{ fontFamily: "monospace" }}>color</code> (string) ·{" "}
+              <code style={{ fontFamily: "monospace" }}>size</code> (number, altura em px) ·{" "}
+              <code style={{ fontFamily: "monospace" }}>variant</code>: "full" | "wordmark" | "mark"
+            </div>
+          </div>
+        </div>
+      </Group>
+
       <Group title="Navbar (fixed sobre hero — preview estático)" p={p}>
         {/* Navbar é position:fixed. Aqui mostramos num container relativo com hero
             simulado pra dar contexto. Versão ao vivo: / e /casais. */}

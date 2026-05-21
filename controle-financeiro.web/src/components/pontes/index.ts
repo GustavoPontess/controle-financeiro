@@ -5,8 +5,17 @@
  * Telas refatoradas no Q5 importam SOMENTE deste pacote.
  * Componentes legados (CustomButton, MUI direto, tokens.ts antigo) ficam fora
  * e serão removidos no fim do ciclo Q5.
+ *
+ * Estrutura de pastas:
+ *   buttons/  — PontesButton, PontesIconButton, PontesFab, etc.
+ *   form/     — PontesField, PontesInput, PontesSelect, PontesSlider, etc.
+ *   data/     — PontesBadge, PontesAvatar, PontesAlert, PontesTable, etc.
+ *   feedback/ — PontesModal, PontesDrawer, PontesToast, PontesSkeleton, etc.
+ *   nav/      — PontesTabs, PontesBreadcrumb, PontesPagination, etc.
+ *   site/     — PontesNavbar, PontesFooter
  */
 
+// ── Infra / Tokens (raiz) ────────────────────────────────────────────────────
 export * from "./theme"
 export * from "./_globalStyles"
 export * from "./themeContext"
@@ -14,39 +23,53 @@ export * from "./ThemeProvider"
 export * from "./overlayStyles"
 export * from "./useBodyScrollbar"
 export * from "./ScrollArea"
-export * from "./Button"
-export * from "./Field"
-export * from "./Input"
-export * from "./Select"
-export * from "./FormControls"
-export * from "./Otp"
-export * from "./Slider"
-export * from "./DatePicker"
-export * from "./FileDrop"
-export * from "./TagInput"
-export * from "./ColorPicker"
-export * from "./Rating"
-export * from "./Kbd"
-export * from "./Badge"
-export * from "./Avatar"
-export * from "./Alert"
-export * from "./Progress"
-export * from "./StatCard"
-export * from "./Card"
-export * from "./Table"
-export * from "./Toast"
-export * from "./Modal"
-export * from "./Skeleton"
-export * from "./EmptyState"
-export * from "./LoadingDots"
-export * from "./Drawer"
-export * from "./Tooltip"
-export * from "./Popover"
-export * from "./Breadcrumb"
-export * from "./Tabs"
-export * from "./Stepper"
-export * from "./Pagination"
-export * from "./CommandPalette"
-export * from "./Navbar"
-export * from "./Footer"
+
+// ── Botões ───────────────────────────────────────────────────────────────────
+export * from "./buttons/Button"
+
+// ── Formulário & Inputs ──────────────────────────────────────────────────────
+export * from "./form/Field"
+export * from "./form/Input"
+export * from "./form/Select"
+export * from "./form/FormControls"
+export * from "./form/Otp"
+export * from "./form/Slider"
+export * from "./form/DatePicker"
+export * from "./form/FileDrop"
+export * from "./form/TagInput"
+export * from "./form/ColorPicker"
+export * from "./form/Rating"
+export * from "./form/Kbd"
+
+// ── Dados & Display ──────────────────────────────────────────────────────────
+export * from "./data/Badge"
+export * from "./data/Avatar"
+export * from "./data/Alert"
+export * from "./data/Progress"
+export * from "./data/StatCard"
+export * from "./data/Card"
+export * from "./data/Table"
+
+// ── Feedback & Overlays ──────────────────────────────────────────────────────
+export * from "./feedback/Toast"
+export * from "./feedback/Modal"
+export * from "./feedback/Skeleton"
+export * from "./feedback/EmptyState"
+export * from "./feedback/LoadingDots"
+export * from "./feedback/Drawer"
+export * from "./feedback/Tooltip"
+export * from "./feedback/Popover"
+
+// ── Navegação ────────────────────────────────────────────────────────────────
+export * from "./nav/Breadcrumb"
+export * from "./nav/Tabs"
+export * from "./nav/Stepper"
+export * from "./nav/Pagination"
+export * from "./nav/CommandPalette"
+
+// ── Site (componentes full-width do site público) ────────────────────────────
+export * from "./site/Navbar"
+export * from "./site/Footer"
+
+// ── Logo (re-export para que telas não precisem de import direto) ─────────────
 export { default as PontesLogo } from "../Logo/Logo"
