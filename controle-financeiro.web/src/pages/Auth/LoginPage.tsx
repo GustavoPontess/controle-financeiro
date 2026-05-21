@@ -5,21 +5,25 @@ import { Eye, EyeOff } from 'lucide-react'
 import CustomButton from '../../components/CustomButton'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
+import { usePontesTheme } from '../../contexts/PontesThemeContext'
+import { makeInputSx } from '../../theme/inputStyles'
 import { tokens } from '../../theme/tokens'
-import { inputSx } from '../../theme/inputStyles'
 import Logo from '../../components/Logo/Logo'
-
-const BRAND = tokens.color.brand.primary
-const BRAND_DARK = tokens.color.brand.hover
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { palette, font } = usePontesTheme()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  const inputSx = makeInputSx(palette, font.family)
+  const BRAND = palette.primary
+  const BRAND_DARK = palette.primaryDark
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,7 +106,7 @@ export default function LoginPage() {
             Finanças em família,{' '}
             <Box component="span" sx={{ opacity: 0.85 }}>sem briga.</Box>
           </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: font.family }}>
             Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.
           </Typography>
 
@@ -121,7 +125,7 @@ export default function LoginPage() {
                 }}>
                   <Box component="span" sx={{ color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>✓</Box>
                 </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: font.family }}>
                   {item}
                 </Typography>
               </Box>
@@ -138,7 +142,7 @@ export default function LoginPage() {
           p: 3,
           border: '1px solid rgba(255,255,255,0.15)',
         }}>
-          <Typography sx={{ color: '#ffffff', fontSize: '14px', lineHeight: 1.6, mb: 2, fontStyle: 'italic', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+          <Typography sx={{ color: '#ffffff', fontSize: '14px', lineHeight: 1.6, mb: 2, fontStyle: 'italic', fontFamily: font.family }}>
             "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas com o Pontes, tudo ficou explícito."
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -147,11 +151,11 @@ export default function LoginPage() {
               background: 'rgba(255,255,255,0.25)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '14px', fontWeight: 700, color: '#ffffff',
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontFamily: font.family,
             }}>RM</Box>
             <Box>
-              <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>Ricardo Moraes</Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>Casal · São Paulo</Typography>
+              <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 600, fontFamily: font.family }}>Ricardo Moraes</Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>Casal · São Paulo</Typography>
             </Box>
           </Box>
         </Box>
@@ -165,7 +169,7 @@ export default function LoginPage() {
           alignItems: 'center',
           justifyContent: 'center',
           p: { xs: 3, sm: 5 },
-          backgroundColor: '#ffffff',
+          backgroundColor: palette.surface,
           overflowY: 'auto',
         }}
       >
@@ -194,17 +198,17 @@ export default function LoginPage() {
           <Box sx={{ mb: 4 }}>
             <Typography
               sx={{
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+                fontFamily: font.family,
                 fontSize: '28px',
                 fontWeight: 700,
-                color: tokens.color.text.primary,
+                color: palette.text,
                 letterSpacing: '-0.02em',
                 mb: 0.5,
               }}
             >
               Bem-vindo de volta
             </Typography>
-            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: tokens.color.text.secondary, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: palette.textMuted, fontFamily: font.family }}>
               Não tem conta?{' '}
               <Link to="/auth/register" style={{ color: BRAND, textDecoration: 'none', fontWeight: 600 }}>
                 Criar conta grátis
@@ -255,7 +259,7 @@ export default function LoginPage() {
               <Typography
                 component={Link}
                 to="/auth/forgot-password"
-                sx={{ fontSize: tokens.typography.fontSize.xs, color: tokens.color.text.secondary, textDecoration: 'none', '&:hover': { color: BRAND } }}
+                sx={{ fontSize: tokens.typography.fontSize.xs, color: palette.textMuted, textDecoration: 'none', '&:hover': { color: BRAND } }}
               >
                 Esqueci a senha
               </Typography>
@@ -272,13 +276,13 @@ export default function LoginPage() {
               mt: 4, textAlign: 'center',
               fontSize: tokens.typography.fontSize.xs,
               color: tokens.color.text.disabled,
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontFamily: font.family,
             }}
           >
             Ao entrar você concorda com os{' '}
-            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Termos de Uso</Box>
+            <Box component="span" sx={{ color: palette.textMuted }}>Termos de Uso</Box>
             {' '}e{' '}
-            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Política de Privacidade</Box>.
+            <Box component="span" sx={{ color: palette.textMuted }}>Política de Privacidade</Box>.
           </Typography>
         </Box>
       </Box>

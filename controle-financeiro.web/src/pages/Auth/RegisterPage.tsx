@@ -5,13 +5,11 @@ import { Eye, EyeOff } from 'lucide-react'
 import CustomButton from '../../components/CustomButton'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
+import { usePontesTheme } from '../../contexts/PontesThemeContext'
+import { makeInputSx } from '../../theme/inputStyles'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 import { tokens } from '../../theme/tokens'
-import { inputSx } from '../../theme/inputStyles'
 import Logo from '../../components/Logo/Logo'
-
-const BRAND = tokens.color.brand.primary
-const BRAND_DARK = tokens.color.brand.hover
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
@@ -47,7 +45,6 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
               fontSize: tokens.typography.fontSize['2xs'],
               color: r.ok ? tokens.color.status.success.main : tokens.color.text.disabled,
               display: 'flex', alignItems: 'center', gap: 0.5,
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
             }}
           >
             {r.ok ? '✓' : '○'} {r.label}
@@ -61,6 +58,8 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
+  const { palette, font } = usePontesTheme()
+
   const [email, setEmail] = useState('')
   const [nome, setNome] = useState('')
   const [dataNascimento, setDataNascimento] = useState('')
@@ -70,6 +69,10 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  const inputSx = makeInputSx(palette, font.family)
+  const BRAND = palette.primary
+  const BRAND_DARK = palette.primaryDark
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -164,7 +167,7 @@ export default function RegisterPage() {
             Comece grátis.{' '}
             <Box component="span" sx={{ opacity: 0.85 }}>Cresça com sua família.</Box>
           </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: font.family }}>
             Crie sua conta em 2 minutos. Sem cartão, sem fidelidade.
           </Typography>
 
@@ -183,10 +186,10 @@ export default function RegisterPage() {
                 border: '1px solid rgba(255,255,255,0.12)',
               }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{p.plan}</Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{p.desc}</Typography>
+                  <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font.family }}>{p.plan}</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>{p.desc}</Typography>
                 </Box>
-                <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", flexShrink: 0 }}>{p.price}</Typography>
+                <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font.family, flexShrink: 0 }}>{p.price}</Typography>
               </Box>
             ))}
           </Box>
@@ -200,8 +203,8 @@ export default function RegisterPage() {
             { n: '10×', l: 'mais rápido' },
           ].map((s) => (
             <Box key={s.l}>
-              <Typography sx={{ color: '#ffffff', fontSize: '22px', fontWeight: 800, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", letterSpacing: '-0.02em' }}>{s.n}</Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>{s.l}</Typography>
+              <Typography sx={{ color: '#ffffff', fontSize: '22px', fontWeight: 800, fontFamily: font.family, letterSpacing: '-0.02em' }}>{s.n}</Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>{s.l}</Typography>
             </Box>
           ))}
         </Box>
@@ -215,7 +218,7 @@ export default function RegisterPage() {
           alignItems: 'center',
           justifyContent: 'center',
           p: { xs: 3, sm: 5 },
-          backgroundColor: '#ffffff',
+          backgroundColor: palette.surface,
           overflowY: 'auto',
         }}
       >
@@ -244,17 +247,17 @@ export default function RegisterPage() {
           <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+                fontFamily: font.family,
                 fontSize: '28px',
                 fontWeight: 700,
-                color: tokens.color.text.primary,
+                color: palette.text,
                 letterSpacing: '-0.02em',
                 mb: 0.5,
               }}
             >
               Criar conta grátis
             </Typography>
-            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: tokens.color.text.secondary, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: palette.textMuted, fontFamily: font.family }}>
               Já tem conta?{' '}
               <Link to="/auth/login" style={{ color: BRAND, textDecoration: 'none', fontWeight: 600 }}>
                 Fazer login
@@ -354,13 +357,13 @@ export default function RegisterPage() {
               mt: 3, textAlign: 'center',
               fontSize: tokens.typography.fontSize.xs,
               color: tokens.color.text.disabled,
-              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontFamily: font.family,
             }}
           >
             Ao criar sua conta você concorda com os{' '}
-            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Termos de Uso</Box>
+            <Box component="span" sx={{ color: palette.textMuted }}>Termos de Uso</Box>
             {' '}e{' '}
-            <Box component="span" sx={{ color: tokens.color.text.secondary }}>Política de Privacidade</Box>.
+            <Box component="span" sx={{ color: palette.textMuted }}>Política de Privacidade</Box>.
           </Typography>
         </Box>
       </Box>

@@ -1,7 +1,8 @@
 import React from 'react'
 import { Button as MuiButton } from '@mui/material'
 import type { ButtonProps as MuiButtonProps } from '@mui/material/Button'
-import { tokens } from '../theme/tokens'
+import { usePontesTheme } from '../contexts/PontesThemeContext'
+import { adjustColor } from '../components/pontes/theme'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 type ButtonSize = 'small' | 'medium' | 'large'
@@ -12,18 +13,7 @@ interface CustomButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
   children?: React.ReactNode
 }
 
-const variantStyles = {
-  primary: {
-    backgroundColor: tokens.color.brand.primary,
-    color: '#ffffff',
-    boxShadow: '0 1px 2px rgba(13,148,136,0.20)',
-    '&:hover': {
-      backgroundColor: tokens.color.brand.hover,
-      boxShadow: '0 3px 8px rgba(13,148,136,0.30)',
-    },
-    '&:active': { backgroundColor: '#115e59', boxShadow: 'none' },
-    '&:disabled': { backgroundColor: tokens.color.brand.subtle, color: tokens.color.brand.hover, boxShadow: 'none' },
-  },
+const staticVariants = {
   secondary: {
     backgroundColor: '#ffffff',
     color: '#374151',
@@ -49,28 +39,13 @@ const variantStyles = {
     '&:active': { backgroundColor: '#e5e7eb' },
     '&:disabled': { color: '#9ca3af' },
   },
-}
+} as const
 
 const sizeStyles = {
-  small: {
-    fontSize: '13px',
-    padding: '6px 14px',
-    height: '34px',
-    letterSpacing: '0.01em',
-  },
-  medium: {
-    fontSize: '14px',
-    padding: '9px 18px',
-    height: '40px',
-    letterSpacing: '0.01em',
-  },
-  large: {
-    fontSize: '15px',
-    padding: '11px 22px',
-    height: '46px',
-    letterSpacing: '0.01em',
-  },
-}
+  small:  { fontSize: '13px', padding: '6px 14px',  height: '34px', letterSpacing: '0.01em' },
+  medium: { fontSize: '14px', padding: '9px 18px',  height: '40px', letterSpacing: '0.01em' },
+  large:  { fontSize: '15px', padding: '11px 22px', height: '46px', letterSpacing: '0.01em' },
+} as const
 
 export default function CustomButton({
   variant = 'primary',
@@ -78,15 +53,32 @@ export default function CustomButton({
   children,
   ...props
 }: CustomButtonProps) {
+  const { palette, font } = usePontesTheme()
+
+  const primaryVariant = {
+    backgroundColor: palette.primary,
+    color: palette.heroFg,
+    boxShadow: `0 1px 2px ${palette.primary}33`,
+    '&:hover': {
+      backgroundColor: palette.primaryDark,
+      boxShadow: `0 3px 8px ${palette.primary}4d`,
+    },
+    '&:active': { backgroundColor: adjustColor(palette.primaryDark, -0.05), boxShadow: 'none' },
+    '&:disabled': { backgroundColor: palette.primarySoft, color: palette.primaryDark, boxShadow: 'none' },
+  }
+
+  const variantSx = variant === 'primary' ? primaryVariant : staticVariants[variant]
+
   return (
     <MuiButton
       {...props}
       sx={{
-        ...variantStyles[variant],
+        ...variantSx,
         ...sizeStyles[size],
         borderRadius: '8px',
         textTransform: 'none',
         fontWeight: 600,
+        fontFamily: font.family,
         lineHeight: 1,
         transition: 'background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
         ...props.sx,

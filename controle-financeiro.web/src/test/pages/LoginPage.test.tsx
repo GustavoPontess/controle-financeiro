@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import LoginPage from '../../pages/Auth/LoginPage'
+import { PontesThemeProvider } from '../../contexts/PontesThemeContext'
 
 const mockLogin = vi.fn()
 const mockNavigate = vi.fn()
@@ -17,9 +18,11 @@ vi.mock('../../hooks/useAuth', () => ({
 
 function renderLogin() {
   return render(
-    <MemoryRouter>
-      <LoginPage />
-    </MemoryRouter>
+    <PontesThemeProvider>
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    </PontesThemeProvider>
   )
 }
 

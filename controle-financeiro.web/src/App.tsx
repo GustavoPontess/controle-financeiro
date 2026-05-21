@@ -1,6 +1,7 @@
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import AppRoutes from "./routes/AppRoutes"
 import { AuthProvider } from "./contexts/AuthContext"
+import { PontesThemeProvider } from "./contexts/PontesThemeContext"
 import { theme } from "./theme/theme"
 import { PontesThemeProvider } from "./components/pontes"
 

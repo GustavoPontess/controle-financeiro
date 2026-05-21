@@ -1,13 +1,12 @@
 /**
  * BackButton — botão "← Voltar à página X" usado nas telas de auth.
- * Estilizado como pill outline com hover teal.
+ * Usa PontesThemeContext para cor de hover dinâmica.
  */
 import { Box } from '@mui/material'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { tokens } from '../theme/tokens'
-
-const BRAND = tokens.color.brand.primary
+import { usePontesTheme } from '../contexts/PontesThemeContext'
 
 interface BackButtonProps {
   to: string
@@ -15,6 +14,9 @@ interface BackButtonProps {
 }
 
 export default function BackButton({ to, label = 'Voltar à página inicial' }: BackButtonProps) {
+  const { palette, font } = usePontesTheme()
+  const brand = palette.primary
+
   return (
     <Box
       component={Link}
@@ -24,7 +26,7 @@ export default function BackButton({ to, label = 'Voltar à página inicial' }: 
         color: tokens.color.text.secondary,
         textDecoration: 'none',
         fontSize: tokens.typography.fontSize.sm,
-        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+        fontFamily: font.family,
         fontWeight: 500,
         mb: 3,
         px: 1.5, py: 0.75,
@@ -32,7 +34,7 @@ export default function BackButton({ to, label = 'Voltar à página inicial' }: 
         border: `1px solid ${tokens.color.border.default}`,
         backgroundColor: '#fafaf9',
         transition: 'all 0.15s',
-        '&:hover': { color: BRAND, borderColor: BRAND, backgroundColor: `${BRAND}08` },
+        '&:hover': { color: brand, borderColor: brand, backgroundColor: `${brand}08` },
       }}
     >
       <ArrowLeft size={16} />
