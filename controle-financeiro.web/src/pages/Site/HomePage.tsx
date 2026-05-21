@@ -1087,10 +1087,7 @@ function Landing({ p, font }: { p: Palette; font: string }) {
   return (
     <div style={{ fontFamily: font, color: p.text, background: p.surface, position: "relative" }}>
       <GlobalAnims />
-      {/* TOPBAR PROMOCIONAL — topo da Landing (navbar do SiteLayout flutua por cima). */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, background: `linear-gradient(90deg, ${p.primary}, ${p.accent}, ${p.primary})`, color: "#FFFFFF", padding: "10px 24px", textAlign: "center", fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", zIndex: 5 }}>
-        ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
-      </div>
+      {/* Topbar promocional agora é site-wide (vem do SiteLayout). */}
 
       {/* HERO com mesh animado + noise + headline typing */}
       <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "180px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
