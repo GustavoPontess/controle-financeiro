@@ -26,6 +26,7 @@ import SiteLayout from "../pages/Site/SiteLayout"
 import CouplesPage from "../pages/Site/CouplesPage"
 import ContadoresPage from "../pages/Site/ContadoresPage"
 import RecursosPage from "../pages/Site/RecursosPage"
+import SobrePage from "../pages/Site/SobrePage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -43,6 +44,7 @@ export default function AppRoutes() {
           <Route path="/casais" element={<CouplesPage />} />
           <Route path="/contadores" element={<ContadoresPage />} />
           <Route path="/recursos" element={<RecursosPage />} />
+          <Route path="/sobre" element={<SobrePage />} />
         </Route>
 
         {/* Auth Routes */}
