@@ -17,12 +17,12 @@ status: CURRENT
 ## Dashboard
 
 ```
-Site público (6):       1/6  ✅ #75  ⏳ #76 #77 #78 #79 #80
+Site público (6):       2/6  ✅ #75 #77  ⏳ #76 #78 #79 #80
 Telas internas (9):     0/9  ⏳ #81 #82 #83 #84 #85 #86 #87 #88 #89
-Infra e qualidade (3):  0/3  ⏳ #90 #91 #92
-Fundação (1):           1/1  ✅ #101 biblioteca Pontes
+Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
+Fundação (1):           1/1  ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108)
 
-Total Q5 2026:          2/19 (10.5%)
+Total Q5 2026:          3/19 (15.8%)
 ```
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
@@ -37,9 +37,29 @@ Total Q5 2026:          2/19 (10.5%)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #77 Para Casais, #78 Contadores, #79 Recursos, #80 Sobre, ou telas internas #81-#89)
+(nenhuma issue em execução — próxima livre: #78 Contadores, #79 Recursos, #80 Sobre, ou telas internas #81-#89)
 
 ## Resolvidos Q5
+
+- **#77** — Página Para Casais `/casais` (PR #111 mergeado · sessão 34)
+  - CouplesPage refeita 100% biblioteca, content-only sob SiteLayout
+  - Sections: Hero (GridPattern + mesh + foto + toasts), Stats, ComoFunciona, Rateio, Aprovação, Acerto, Privacidade, Testimonial, CtaFamília
+  - Promo "Beta aberto" movido pro SiteLayout (site-wide, aparece em todas as páginas)
+  - URLs limpas: `/casais` (rota `/site` removida)
+  - Teste smoke `CouplesPage.test.tsx` · suite 70/70
+
+- **#106** — Biblioteca Pontes v2 (PR #107 mergeado · sessão 33)
+  - Hover/active via classe `pontes-clickable` + CSS vars seguindo paleta (outline hover não vira primary — evita colisão visual)
+  - Scrollbar overlay accent sempre visível (overlayscrollbars + `usePontesBodyScrollbar`)
+  - `PontesNavLink`, `PontesScrollArea` novos; footer com mesh gradient animado
+  - lucide-react afinado (strokeWidth/size por feedback do usuário)
+
+- **#108 + fundação #90** — HomePage refator + SiteLayout + tema global persistido (PR #109 mergeado · sessão 33)
+  - HomePage 100% biblioteca (−1450 linhas inline mortas: ComponentShowcase, charts)
+  - `SiteLayout` (`pages/Site/SiteLayout.tsx`): shell único navbar+footer+control-bar+scrollbar+promo. Páginas filhas só conteúdo, leem `{p,font}` via `useSiteTheme()`
+  - `PontesThemeProvider` global no `App.tsx` + `usePontesTheme()` — paleta+fonte persistidos em **localStorage** (sobrevivem reload, valem em todas as telas → fundação #90)
+  - Brand preview recolhível (seta esquerda, overlay fixed, push/pull)
+  - Regras inegociáveis escritas em PROMPT_NOVA_SESSAO §5
 
 - **#101** — Biblioteca de componentes Pontes (PR #102 mergeado · sessão 32)
   - 36 componentes em `src/components/pontes/` (Button/Field/Input/Select/Toggle/Checkbox/Radio/Otp/Slider/DatePicker/FileDrop/TagInput/ColorPicker/Rating/Kbd/Badge/Avatar/Alert/Progress/StatCard/Card/Table/Toast/Modal/Dialog/Skeleton/EmptyState/LoadingDots/Drawer/Tooltip/Popover/Breadcrumb/Tabs/Stepper/Pagination/CommandPalette/Navbar/Footer)
@@ -81,6 +101,45 @@ Histórico em `docs/history/PROGRESS_2026Q4.md`.
 ---
 
 ## Histórico de sessões
+
+### Sessão 34 — 2026-05-21
+
+**#77 mergeada (PR #111) — Página Para Casais.**
+
+- CouplesPage refeita do zero 100% biblioteca, content-only sob `SiteLayout` (`const {p,font} = useSiteTheme()`).
+- Sections: Hero (GridPattern + mesh + foto + toasts flutuantes), Stats, ComoFunciona, SecaoRateio, SecaoAprovacao, SecaoAcerto, SecaoPrivacidade, Testimonial, CtaFamilia. Componentes: PontesButton/Card/Badge/Avatar/Progress + lucide.
+- **Promo "✦ Beta aberto" movido pro SiteLayout** → aparece site-wide (todas as páginas, não só Home).
+- **GridPattern adicionado no hero** (paridade com Home).
+- **URLs limpas:** rota `/site` removida; `/casais` direto. `axiosConfig.publicPaths` atualizado.
+- Teste smoke `CouplesPage.test.tsx` · suite 70/70.
+- Sequência de PRs do dia: #107 (biblioteca v2) → #109 (HomePage+SiteLayout+tema) → #111 (CouplesPage).
+- main = `7d5397b`. Branches limpas, sem stash.
+
+**Próxima ação:** verticais do site #78 Contadores, #79 Recursos, #80 Sobre (rápidas com SiteLayout) ou telas internas #81-#89.
+
+### Sessão 33 — 2026-05-21
+
+**#106 (PR #107) + #108/#90-fundação (PR #109) mergeadas.**
+
+Pivô de arquitetura: biblioteca real → SiteLayout shell → tema global persistido (fundação #90 completa).
+
+- **#106 biblioteca v2:**
+  - Hover/active via classe `pontes-clickable` + `data-pontes-variant` + CSS vars (`--pontes-hover-bg`, `--pontes-active-bg`) seguindo paleta. Outline hover vira primarySoft (não primary cheio — evita colidir com botão primary vizinho); active mostra cor forte momentânea.
+  - Scrollbar overlay accent sempre visível (overlayscrollbars + overlayscrollbars-react, `usePontesBodyScrollbar`, autoHide never, track transparente).
+  - `PontesNavLink`, `PontesScrollArea` novos. Footer com mesh gradient animado (blobs). `pontes-no-lift` pra button group.
+  - lucide-react afinado por feedback (strokeWidth/size do +, setas, FAB sombra neutra).
+- **#108 + fundação #90 (HomePage refator + SiteLayout + tema global):**
+  - HomePage agora content-only: −1450 linhas inline mortas (ComponentShowcase, CS*, charts). Usa biblioteca + GridPattern.
+  - **`SiteLayout`** (`pages/Site/SiteLayout.tsx`): shell único com navbar + footer + control-bar dev recolhível + scrollbar overlay + promo. Páginas filhas só renderizam conteúdo. Aceita `children` (RootRoute deslogado) OU `<Outlet/>` (rotas aninhadas).
+  - **`PontesThemeProvider`** global no `App.tsx` + `usePontesTheme()` (em `themeContext.ts` p/ react-refresh). Paleta+fonte persistidos em **localStorage** (`pontes.paletteId`/`pontes.fontId`) — sobrevivem reload e valem em QUALQUER tela (site, auth, internas). Fundação #90 completa.
+  - `useSiteTheme()` adapter retorna `{p, font}` pras páginas do site.
+  - Brand preview recolhível: seta esquerda esconde, tab pequena mostra, comportamento push/pull, overlay fixed. Altura medida via ResizeObserver → offset da navbar/conteúdo.
+  - Estilos via `_globalStyles.ts` / `overlayStyles.ts` injetados; HMR atualiza textContent.
+- **Regras inegociáveis** escritas em PROMPT_NOVA_SESSAO §5 (8 regras): biblioteca nunca inline, componente novo → biblioteca primeiro, cor+fonte sempre do provider, personalização global+persistida, site usa SiteLayout, teste sempre front+back, ícones lucide, CI verde.
+- #90 restante (ajusta conforme refator): Settings picker na tela Configurações + auth/internas consumindo `usePontesTheme()`.
+- suite 70/70.
+
+**Próxima ação:** refazer CouplesPage #77 com biblioteca (vira sessão 34).
 
 ### Sessão 30 — 2026-05-20 → 2026-05-21
 
