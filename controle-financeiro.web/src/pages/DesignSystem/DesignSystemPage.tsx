@@ -18,25 +18,29 @@ import {
   // theme
   palettes, fonts, semantic, type Palette, type FontOption,
   // botões
-  PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink,
+  PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink, PontesNavLink,
   // form
   PontesField, PontesInput, PontesMoneyInput, PontesTextarea,
   PontesSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
   PontesOtpInput, PontesSlider, PontesDatePicker, PontesFileDrop,
-  PontesTagInput, PontesColorPicker, PontesRating, PontesKbdGroup,
+  PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTable,
   // feedback
-  PontesToast, PontesModal, PontesDialog, PontesSkeletonList,
+  PontesToast, PontesModal, PontesDialog, PontesSkeleton, PontesSkeletonList,
   PontesEmptyState, PontesLoadingDots, PontesDrawer,
   PontesTooltip, PontesPopover,
   // navegação
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
   PontesCommandPalette,
+  // site
+  PontesFooter,
+  // util
+  applyPontesScrollbar, usePontesBodyScrollbar,
 } from "../../components/pontes"
 
-type TabId = "botoes" | "form" | "data" | "feedback" | "navegacao" | "tokens"
+type TabId = "botoes" | "form" | "data" | "feedback" | "navegacao" | "site" | "tokens"
 
 const TABS: { value: TabId; label: string }[] = [
   { value: "botoes", label: "Botões" },
@@ -44,6 +48,7 @@ const TABS: { value: TabId; label: string }[] = [
   { value: "data", label: "Cards & Dados" },
   { value: "feedback", label: "Feedback" },
   { value: "navegacao", label: "Navegação" },
+  { value: "site", label: "Site" },
   { value: "tokens", label: "Tokens" },
 ]
 
@@ -90,6 +95,10 @@ export default function DesignSystemPage() {
     }
   }, [fontOpt])
 
+  // Scrollbar overlay (accent) sempre visível + fundo da página no body.
+  usePontesBodyScrollbar(palette.accent)
+  useEffect(() => { applyPontesScrollbar(palette.accent, palette.bg) }, [palette])
+
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: font, color: palette.text }}>
       <ControlBar
@@ -128,6 +137,7 @@ export default function DesignSystemPage() {
             {tab === "data" && <DataSection p={palette} font={font} />}
             {tab === "feedback" && <FeedbackSection p={palette} font={font} />}
             {tab === "navegacao" && <NavSection p={palette} font={font} />}
+            {tab === "site" && <SiteSection p={palette} font={font} />}
             {tab === "tokens" && <TokensSection p={palette} font={font} />}
           </div>
         </div>
@@ -227,6 +237,7 @@ function Group({ title, p, children }: { title: string; p: Palette; children: Re
 
 function ButtonsSection({ p, font }: { p: Palette; font: string }) {
   const [periodTab, setPeriodTab] = useState<"dia" | "semana" | "mes" | "ano">("mes")
+  const [navStep, setNavStep] = useState<"anterior" | "hoje" | "proximo">("hoje")
 
   return (
     <div>
@@ -241,6 +252,14 @@ function ButtonsSection({ p, font }: { p: Palette; font: string }) {
           <PontesButton p={p} font={font} variant="danger-outline">Perigo outline</PontesButton>
           <PontesLink p={p} font={font}>Link</PontesLink>
           <PontesButton p={p} font={font} variant="primary" disabled>Desabilitado</PontesButton>
+        </div>
+      </Group>
+
+      <Group title="Variantes sobre fundo escuro (glass)" p={p}>
+        <div style={{ background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, padding: 24, borderRadius: 14, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <PontesButton p={p} font={font} variant="outline-light">Outline light</PontesButton>
+          <PontesButton p={p} font={font} variant="ghost-light">Ghost light</PontesButton>
+          <PontesButton p={p} font={font} variant="accent">Acento</PontesButton>
         </div>
       </Group>
 
@@ -290,14 +309,31 @@ function ButtonsSection({ p, font }: { p: Palette; font: string }) {
           <PontesButtonGroup
             p={p} font={font}
             variant="joined"
-            value={periodTab}
-            onChange={setPeriodTab}
+            value={navStep}
+            onChange={setNavStep}
             options={[
-              { value: "dia", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ChevronLeft size={14} strokeWidth={2.5} /> Anterior</span> },
-              { value: "semana", label: "Hoje" },
-              { value: "mes", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>Próximo <ChevronRight size={14} strokeWidth={2.5} /></span> },
+              { value: "anterior", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ChevronLeft size={14} strokeWidth={2.5} /> Anterior</span> },
+              { value: "hoje", label: "Hoje" },
+              { value: "proximo", label: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>Próximo <ChevronRight size={14} strokeWidth={2.5} /></span> },
             ]}
           />
+        </div>
+      </Group>
+
+      <Group title="NavLink (underline animado, não desloca texto)" p={p}>
+        <div style={{ display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
+          <PontesNavLink p={p} font={font} active>Recursos</PontesNavLink>
+          <PontesNavLink p={p} font={font}>Para Casais</PontesNavLink>
+          <PontesNavLink p={p} font={font}>Para Contadores</PontesNavLink>
+          <PontesNavLink p={p} font={font}>Sobre</PontesNavLink>
+        </div>
+      </Group>
+
+      <Group title="Link inline" p={p}>
+        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+          <PontesLink p={p} font={font}>Saiba mais</PontesLink>
+          <PontesLink p={p} font={font}>Termos de uso</PontesLink>
+          <PontesLink p={p} font={font}>Esqueci a senha</PontesLink>
         </div>
       </Group>
     </div>
@@ -416,12 +452,18 @@ function FormSection({ p, font }: { p: Palette; font: string }) {
       </Group>
 
       <Group title="Kbd atalhos" p={p}>
-        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
           <PontesKbdGroup p={p} font={font} keys={["⌘", "K"]} label="Busca rápida" />
           <PontesKbdGroup p={p} font={font} keys={["⌘", "N"]} label="Nova transação" />
           <PontesKbdGroup p={p} font={font} keys={["G", "D"]} label="Dashboard" />
           <PontesKbdGroup p={p} font={font} keys={["?"]} label="Atalhos" />
           <PontesKbdGroup p={p} font={font} keys={["Esc"]} label="Fechar" />
+        </div>
+        {/* Kbd single (tecla isolada) */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <PontesKbd p={p}>⌘</PontesKbd>
+          <PontesKbd p={p}>⇧</PontesKbd>
+          <PontesKbd p={p}>Enter</PontesKbd>
         </div>
       </Group>
 
@@ -636,8 +678,14 @@ function FeedbackSection({ p, font }: { p: Palette; font: string }) {
       </Group>
 
       <Group title="Skeleton (loading)" p={p}>
-        <div style={{ maxWidth: 480 }}>
+        <div style={{ maxWidth: 480, marginBottom: 16 }}>
           <PontesSkeletonList p={p} rows={3} />
+        </div>
+        {/* Skeleton blocks individuais */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 480 }}>
+          <PontesSkeleton p={p} width="80%" height={16} />
+          <PontesSkeleton p={p} width="60%" height={12} />
+          <PontesSkeleton p={p} width={120} height={36} radius={10} />
         </div>
       </Group>
 
@@ -745,6 +793,78 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
           totalLabel="Mostrando 21–30 de 240"
         />
       </Group>
+    </div>
+  )
+}
+
+// =============================================================================
+// SITE SECTION — componentes full-width do site público
+// =============================================================================
+
+function SiteSection({ p, font }: { p: Palette; font: string }) {
+  return (
+    <div>
+      <Group title="Navbar (fixed sobre hero — preview estático)" p={p}>
+        {/* Navbar é position:fixed. Aqui mostramos num container relativo com hero
+            simulado pra dar contexto. Versão ao vivo: /site e /site/casais. */}
+        <div style={{ position: "relative", height: 200, borderRadius: 14, overflow: "hidden", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})` }}>
+          <div style={{ position: "absolute", inset: 0, transform: "scale(1)" }}>
+            <NavbarPreview p={p} font={font} />
+          </div>
+          <div style={{ position: "absolute", bottom: 16, left: 24, color: p.heroFg, opacity: 0.8, fontSize: 13 }}>
+            Hero simulado · navbar glass por cima
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: p.textMuted, marginTop: 10 }}>
+          Ao vivo: <PontesLink p={p} font={font} href="/site">/site</PontesLink> e <PontesLink p={p} font={font} href="/site/casais">/site/casais</PontesLink>
+        </div>
+      </Group>
+
+      <Group title="Footer — variant rich (4 colunas + brand + app badges)" p={p}>
+        <div style={{ borderRadius: 14, overflow: "hidden" }}>
+          <PontesFooter
+            p={p} font={font} variant="rich"
+            onNavigate={() => undefined}
+            appBadges={[{ label: "App Store" }, { label: "Google Play" }]}
+          />
+        </div>
+      </Group>
+
+      <Group title="Footer — variant minimal (linha única)" p={p}>
+        <div style={{ borderRadius: 14, overflow: "hidden" }}>
+          <PontesFooter p={p} font={font} variant="minimal" onNavigate={() => undefined} />
+        </div>
+      </Group>
+    </div>
+  )
+}
+
+/** Navbar com posicionamento absolute (override do fixed) pra caber no preview do DS. */
+function NavbarPreview({ p, font }: { p: Palette; font: string }) {
+  return (
+    <div style={{ position: "absolute", top: 16, left: 0, right: 0 }}>
+      {/* Reusa visual do PontesNavbar via wrapper que neutraliza o fixed.
+          Mostramos uma cópia estática dos elementos pra não conflitar com o fixed global. */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "0 24px" }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32,
+          padding: "10px 16px 10px 22px", background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.2)", borderRadius: 999,
+          backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          minWidth: 760, maxWidth: 900, width: "100%",
+        }}>
+          <span style={{ color: p.heroFg, fontWeight: 800, fontSize: 18, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Pontes</span>
+          <div style={{ display: "flex", gap: 22 }}>
+            <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent} active>Recursos</PontesNavLink>
+            <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent}>Para Casais</PontesNavLink>
+            <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent}>Sobre</PontesNavLink>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <PontesButton p={p} font={font} variant="outline-light" size="sm" style={{ borderRadius: 999 }}>Entrar</PontesButton>
+            <PontesButton p={p} font={font} variant="accent" size="sm" style={{ borderRadius: 999 }}>Criar conta</PontesButton>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -6,7 +6,9 @@
  *  - "minimal": apenas brand + links curtos numa única linha
  */
 
+import { useEffect } from "react"
 import Logo from "../Logo/Logo"
+import { ensurePontesGlobalStyles } from "./_globalStyles"
 import type { Palette } from "./theme"
 
 export type PontesFooterLink = { label: string; to: string }
@@ -14,6 +16,12 @@ export type PontesFooterLink = { label: string; to: string }
 export type PontesFooterColumn = {
   title: string
   links: PontesFooterLink[]
+}
+
+export type PontesFooterAppBadge = {
+  label: string
+  href?: string
+  onClick?: () => void
 }
 
 export type PontesFooterProps = {
@@ -28,6 +36,8 @@ export type PontesFooterProps = {
   minimalLinks?: PontesFooterLink[]
   /** Texto de copyright (default 2026). */
   copyright?: string
+  /** Badges de app store (ex: App Store, Google Play). Só aparece em variant=rich. */
+  appBadges?: PontesFooterAppBadge[]
 }
 
 const DEFAULT_COLUMNS: PontesFooterColumn[] = [
@@ -60,12 +70,23 @@ const DEFAULT_MINIMAL_LINKS: PontesFooterLink[] = [
   { label: "Entrar", to: "/auth/login" },
 ]
 
+/** Mesh gradient — blobs blur animados, cores da paleta. Fundo escuro do footer. */
+function FooterMesh({ p }: { p: Palette }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", left: "10%", top: "10%", width: 360, height: 360, background: p.primary, borderRadius: "50%", filter: "blur(90px)", opacity: 0.35, animation: "pontes-mesh-move 16s ease-in-out infinite" }} />
+      <div style={{ position: "absolute", right: "8%", top: "20%", width: 320, height: 320, background: p.accent, borderRadius: "50%", filter: "blur(90px)", opacity: 0.28, animation: "pontes-mesh-move 19s ease-in-out infinite reverse" }} />
+      <div style={{ position: "absolute", left: "45%", bottom: "5%", width: 300, height: 300, background: p.primary, borderRadius: "50%", filter: "blur(90px)", opacity: 0.25, animation: "pontes-mesh-move 22s ease-in-out infinite" }} />
+    </div>
+  )
+}
+
 export function PontesFooter({
-  p: _p, font, variant = "rich", onNavigate, columns = DEFAULT_COLUMNS, minimalLinks = DEFAULT_MINIMAL_LINKS,
+  p, font, variant = "rich", onNavigate, columns = DEFAULT_COLUMNS, minimalLinks = DEFAULT_MINIMAL_LINKS,
   copyright = "© 2026 Pontes — Finanças pra família brasileira",
+  appBadges,
 }: PontesFooterProps) {
-  // _p reservado pra futura paleta dark-aware do footer (#90). Hoje footer é fixo escuro.
-  void _p
+  useEffect(ensurePontesGlobalStyles, [])
   const go = (to: string) => {
     if (onNavigate) onNavigate(to)
     else { window.history.pushState({}, "", to); window.dispatchEvent(new PopStateEvent("popstate")) }
@@ -73,16 +94,20 @@ export function PontesFooter({
 
   if (variant === "minimal") {
     return (
-      <footer style={{ padding: 48, background: "#0B1220", color: "#FFFFFF", fontFamily: font }}>
+      <footer style={{ padding: 48, background: "#0B1220", color: "#FFFFFF", fontFamily: font, position: "relative", overflow: "hidden" }}>
+        <FooterMesh p={p} />
+        <div className="pontes-noise" />
         <div style={{
           maxWidth: 1100, margin: "0 auto",
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexWrap: "wrap", gap: 16,
+          flexWrap: "wrap", gap: 16, position: "relative", zIndex: 1,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <button
               type="button"
               onClick={() => go("/")}
+              className="pontes-clickable"
+              data-pontes-variant="ghost"
               style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
               aria-label="Pontes — Home"
             >
@@ -96,9 +121,11 @@ export function PontesFooter({
                 key={link.to}
                 type="button"
                 onClick={() => go(link.to)}
+                className="pontes-link-hover"
                 style={{
                   background: "transparent", border: "none", color: "#FFFFFF",
                   fontSize: 13, opacity: 0.75, cursor: "pointer", fontFamily: font,
+                  ["--pontes-hover-color" as never]: "#FFFFFF",
                 }}
               >{link.label}</button>
             ))}
@@ -110,8 +137,10 @@ export function PontesFooter({
 
   // RICH variant — 4 colunas + brand
   return (
-    <footer style={{ padding: "72px 48px 32px", background: "#0B1220", color: "#FFFFFF", fontFamily: font }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <footer style={{ padding: "72px 48px 32px", background: "#0B1220", color: "#FFFFFF", fontFamily: font, position: "relative", overflow: "hidden" }}>
+      <FooterMesh p={p} />
+      <div className="pontes-noise" />
+      <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <div style={{
           display: "grid",
           gridTemplateColumns: "1.4fr repeat(4, 1fr)",
@@ -140,6 +169,8 @@ export function PontesFooter({
                   key={s.label}
                   href="#"
                   aria-label={s.label}
+                  className="pontes-clickable"
+                  data-pontes-variant="ghost"
                   style={{
                     width: 32, height: 32, borderRadius: 8,
                     background: "rgba(255,255,255,0.06)",
@@ -147,10 +178,38 @@ export function PontesFooter({
                     color: "#FFFFFF", fontSize: 11, fontWeight: 700,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     textDecoration: "none", fontFamily: font,
+                    ["--pontes-hover-bg" as never]: "rgba(255,255,255,0.14)",
+                    ["--pontes-hover-text" as never]: "#FFFFFF",
+                    ["--pontes-hover-border" as never]: "rgba(255,255,255,0.3)",
                   }}
                 >{s.sym}</a>
               ))}
             </div>
+
+            {/* App store badges opcionais */}
+            {appBadges && appBadges.length > 0 && (
+              <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+                {appBadges.map((b) => (
+                  <a
+                    key={b.label}
+                    href={b.href ?? "#"}
+                    onClick={b.onClick ? (e) => { e.preventDefault(); b.onClick?.() } : undefined}
+                    className="pontes-clickable"
+                    data-pontes-variant="ghost"
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      padding: "8px 14px", borderRadius: 8,
+                      fontSize: 12, fontWeight: 600, color: "#FFFFFF",
+                      textDecoration: "none", fontFamily: font,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      ["--pontes-hover-bg" as never]: "rgba(255,255,255,0.16)",
+                      ["--pontes-hover-text" as never]: "#FFFFFF",
+                      ["--pontes-hover-border" as never]: "rgba(255,255,255,0.3)",
+                    }}
+                  >{b.label}</a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Columns */}
@@ -166,10 +225,12 @@ export function PontesFooter({
                     key={link.to}
                     type="button"
                     onClick={() => go(link.to)}
+                    className="pontes-link-hover"
                     style={{
                       background: "transparent", border: "none", padding: 0,
                       color: "#FFFFFF", opacity: 0.75, fontSize: 13,
                       cursor: "pointer", fontFamily: font, textAlign: "left",
+                      ["--pontes-hover-color" as never]: "#FFFFFF",
                     }}
                   >{link.label}</button>
                 ))}

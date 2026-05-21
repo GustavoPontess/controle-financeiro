@@ -3,7 +3,9 @@
  * Último item é o atual (negrito, sem link).
  */
 
-import type { Palette } from "./theme"
+import { useEffect } from "react"
+import { ensurePontesGlobalStyles } from "./_globalStyles"
+import { adjustColor, type Palette } from "./theme"
 
 export type PontesBreadcrumbItem = {
   label: string
@@ -19,6 +21,8 @@ export type PontesBreadcrumbProps = {
 }
 
 export function PontesBreadcrumb({ p, font, items, separator = "/" }: PontesBreadcrumbProps) {
+  useEffect(ensurePontesGlobalStyles, [])
+  const hoverColor = adjustColor(p.primary, -0.05)
   return (
     <nav
       aria-label="breadcrumb"
@@ -31,12 +35,25 @@ export function PontesBreadcrumb({ p, font, items, separator = "/" }: PontesBrea
             {isLast ? (
               <span style={{ color: p.text, fontWeight: 600 }}>{it.label}</span>
             ) : it.href ? (
-              <a href={it.href} style={{ color: p.textMuted, textDecoration: "none" }}>{it.label}</a>
+              <a
+                href={it.href}
+                className="pontes-link-hover"
+                style={{
+                  color: p.textMuted, textDecoration: "none",
+                  ["--pontes-hover-color" as never]: hoverColor,
+                }}
+              >{it.label}</a>
             ) : (
               <button
                 type="button"
                 onClick={it.onClick}
-                style={{ background: "transparent", border: "none", color: p.textMuted, cursor: "pointer", padding: 0, fontFamily: font, fontSize: 14 }}
+                className="pontes-link-hover"
+                style={{
+                  background: "transparent", border: "none",
+                  color: p.textMuted, cursor: "pointer", padding: 0,
+                  fontFamily: font, fontSize: 14,
+                  ["--pontes-hover-color" as never]: hoverColor,
+                }}
               >{it.label}</button>
             )}
             {!isLast && <span style={{ color: p.textMuted }}>{separator}</span>}
