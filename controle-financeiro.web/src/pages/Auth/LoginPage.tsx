@@ -1,27 +1,21 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, Typography } from '@mui/material'
 import { Eye, EyeOff } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert } from '@/components/pontes'
+import { PontesButton, PontesField, PontesInput, PontesAlert, usePontesTheme } from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
-import { usePontesTheme } from '../../contexts/PontesThemeContext'
-import { tokens } from '../../theme/tokens'
 import Logo from '../../components/Logo/Logo'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { palette, font } = usePontesTheme()
+  const { palette: p, font } = usePontesTheme()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
-  const BRAND = palette.primary
-  const BRAND_DARK = palette.primaryDark
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,16 +32,19 @@ export default function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: font }}>
+      <style>{`@media (max-width: 899px) { .auth-brand-panel { display: none !important; } }`}</style>
+
       {/* ── PAINEL ESQUERDO — brand ───────────────────────────────────── */}
-      <Box
-        sx={{
-          display: { xs: 'none', md: 'flex' },
+      <div
+        className="auth-brand-panel"
+        style={{
+          display: 'flex',
           width: '48%',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          p: '48px',
-          background: `linear-gradient(150deg, ${BRAND} 0%, ${BRAND_DARK} 100%)`,
+          padding: '48px',
+          background: `linear-gradient(150deg, ${p.primary} 0%, ${p.primaryDark} 100%)`,
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -63,7 +60,7 @@ export default function LoginPage() {
         </svg>
 
         {/* blob decorativo */}
-        <Box sx={{
+        <div style={{
           position: 'absolute', top: '-15%', right: '-15%',
           width: '60%', height: '60%', borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
@@ -72,158 +69,136 @@ export default function LoginPage() {
         }} />
 
         {/* Logo */}
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: 'inline-flex',
-              textDecoration: 'none',
-              opacity: 1,
-              transition: 'opacity 0.2s, transform 0.2s',
-              '&:hover': { opacity: 0.8, transform: 'scale(1.03)' },
-            }}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', opacity: 1, transition: 'opacity 0.2s, transform 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1.03)' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)' }}
           >
             <Logo color="#ffffff" size={32} variant="full" />
-          </Box>
-        </Box>
+          </Link>
+        </div>
 
         {/* Headline + features */}
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography
-            sx={{
-              fontFamily: "'Fraunces', Georgia, serif",
-              fontSize: '42px',
-              fontWeight: 700,
-              color: '#ffffff',
-              lineHeight: 1.1,
-              letterSpacing: '-0.02em',
-              mb: 2,
-            }}
-          >
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p style={{
+            fontFamily: "'Fraunces', Georgia, serif",
+            fontSize: '42px',
+            fontWeight: 700,
+            color: '#ffffff',
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            margin: '0 0 8px',
+          }}>
             Finanças em família,{' '}
-            <Box component="span" sx={{ opacity: 0.85 }}>sem briga.</Box>
-          </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: font.family }}>
+            <span style={{ opacity: 0.85 }}>sem briga.</span>
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, margin: '0 0 32px', fontFamily: font }}>
             Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.
-          </Typography>
+          </p>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
               'Rateio explícito — 50/50, % ou valor fixo',
               'Aprovação de despesa em 1 toque',
               'Conexão com Open Finance (em breve)',
             ].map((item) => (
-              <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box sx={{
+              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
                   width: 20, height: 20, borderRadius: '50%',
                   background: 'rgba(255,255,255,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
-                  <Box component="span" sx={{ color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>✓</Box>
-                </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: font.family }}>
+                  <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>✓</span>
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: font }}>
                   {item}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Testimonial */}
-        <Box sx={{
+        <div style={{
           position: 'relative', zIndex: 1,
           background: 'rgba(255,255,255,0.1)',
           backdropFilter: 'blur(8px)',
-          borderRadius: tokens.radius.xl,
-          p: 3,
+          borderRadius: '16px',
+          padding: '24px',
           border: '1px solid rgba(255,255,255,0.15)',
         }}>
-          <Typography sx={{ color: '#ffffff', fontSize: '14px', lineHeight: 1.6, mb: 2, fontStyle: 'italic', fontFamily: font.family }}>
+          <p style={{ color: '#ffffff', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px', fontStyle: 'italic', fontFamily: font }}>
             "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas com o Pontes, tudo ficou explícito."
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
               width: 36, height: 36, borderRadius: '50%',
               background: 'rgba(255,255,255,0.25)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '14px', fontWeight: 700, color: '#ffffff',
-              fontFamily: font.family,
-            }}>RM</Box>
-            <Box>
-              <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 600, fontFamily: font.family }}>Ricardo Moraes</Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>Casal · São Paulo</Typography>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
+              fontFamily: font,
+            }}>RM</div>
+            <div>
+              <p style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600, fontFamily: font, margin: 0 }}>Ricardo Moraes</p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font, margin: 0 }}>Casal · São Paulo</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── PAINEL DIREITO — form ─────────────────────────────────────── */}
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 3, sm: 5 },
-          backgroundColor: palette.surface,
-          overflowY: 'auto',
-        }}
-      >
-        <Box sx={{ width: '100%', maxWidth: '400px' }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 40px',
+        backgroundColor: p.surface,
+        overflowY: 'auto',
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
           {/* Voltar para homepage */}
           <BackButton to="/" />
 
           {/* Logo mobile */}
-          <Box sx={{ display: { md: 'none' }, mb: 4, textAlign: 'center' }}>
-            <Box
-              component={Link}
-              to="/"
-              sx={{
-                display: 'inline-flex',
-                textDecoration: 'none',
-                opacity: 1,
-                transition: 'opacity 0.2s, transform 0.2s',
-                '&:hover': { opacity: 0.75, transform: 'scale(1.03)' },
-              }}
-            >
-              <Logo color={BRAND} size={28} variant="full" />
-            </Box>
-          </Box>
+          <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
+            <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}>
+              <Logo color={p.primary} size={28} variant="full" />
+            </Link>
+          </div>
 
           {/* Header form */}
-          <Box sx={{ mb: 4 }}>
-            <Typography
-              sx={{
-                fontFamily: font.family,
-                fontSize: '28px',
-                fontWeight: 700,
-                color: palette.text,
-                letterSpacing: '-0.02em',
-                mb: 0.5,
-              }}
-            >
+          <div style={{ marginBottom: '32px' }}>
+            <h1 style={{
+              fontFamily: font,
+              fontSize: '28px',
+              fontWeight: 700,
+              color: p.text,
+              letterSpacing: '-0.02em',
+              margin: '0 0 4px',
+            }}>
               Bem-vindo de volta
-            </Typography>
-            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: palette.textMuted, fontFamily: font.family }}>
+            </h1>
+            <p style={{ fontSize: '14px', color: p.textMuted, fontFamily: font, margin: 0 }}>
               Não tem conta?{' '}
-              <Link to="/auth/register" style={{ color: BRAND, textDecoration: 'none', fontWeight: 600 }}>
+              <Link to="/auth/register" style={{ color: p.primary, textDecoration: 'none', fontWeight: 600 }}>
                 Criar conta grátis
               </Link>
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {error && (
-              <PontesAlert font={font.family} tone="error">{error}</PontesAlert>
+              <PontesAlert font={font} tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField p={palette} font={font.family} label="E-mail" htmlFor="login-email" required>
+            <PontesField p={p} font={font} label="E-mail" htmlFor="login-email" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="login-email"
                 type="email"
                 value={email}
@@ -233,10 +208,10 @@ export default function LoginPage() {
               />
             </PontesField>
 
-            <PontesField p={palette} font={font.family} label="Senha" htmlFor="login-senha" required>
+            <PontesField p={p} font={font} label="Senha" htmlFor="login-senha" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="login-senha"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -249,7 +224,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     data-testid="toggle-senha"
                     tabIndex={-1}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: p.textMuted }}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -260,15 +235,15 @@ export default function LoginPage() {
             <div style={{ textAlign: 'right', marginTop: -8 }}>
               <Link
                 to="/auth/forgot-password"
-                style={{ fontSize: 12, color: palette.textMuted, textDecoration: 'none', fontFamily: font.family }}
+                style={{ fontSize: 12, color: p.textMuted, textDecoration: 'none', fontFamily: font }}
               >
                 Esqueci a senha
               </Link>
             </div>
 
             <PontesButton
-              p={palette}
-              font={font.family}
+              p={p}
+              font={font}
               type="submit"
               variant="primary"
               size="lg"
@@ -281,21 +256,19 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <Typography
-            sx={{
-              mt: 4, textAlign: 'center',
-              fontSize: tokens.typography.fontSize.xs,
-              color: tokens.color.text.disabled,
-              fontFamily: font.family,
-            }}
-          >
+          <p style={{
+            marginTop: '32px', textAlign: 'center',
+            fontSize: '12px',
+            color: p.textMuted,
+            fontFamily: font,
+          }}>
             Ao entrar você concorda com os{' '}
-            <Box component="span" sx={{ color: palette.textMuted }}>Termos de Uso</Box>
+            <span style={{ color: p.textMuted }}>Termos de Uso</span>
             {' '}e{' '}
-            <Box component="span" sx={{ color: palette.textMuted }}>Política de Privacidade</Box>.
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+            <span style={{ color: p.textMuted }}>Política de Privacidade</span>.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }

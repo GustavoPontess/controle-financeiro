@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import RegisterPage from '../../pages/Auth/RegisterPage'
-import { PontesThemeProvider } from '../../contexts/PontesThemeContext'
+import { PontesThemeProvider } from '../../components/pontes'
 
 const mockRegister = vi.fn()
 const mockNavigate = vi.fn()

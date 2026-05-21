@@ -1,11 +1,11 @@
 /**
  * BackButton — botão "← Voltar à página X" usado nas telas de auth.
- * Usa PontesThemeContext para cor de hover dinâmica.
+ * Usa usePontesTheme (provider global) para cor de hover dinâmica.
  * Sem dependência de MUI — renderiza Link do React Router com estilos inline.
  */
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { usePontesTheme } from '../contexts/PontesThemeContext'
+import { usePontesTheme } from '@/components/pontes'
 
 interface BackButtonProps {
   to: string
@@ -25,7 +25,7 @@ export default function BackButton({ to, label = 'Voltar à página inicial' }: 
         color: '#777573',
         textDecoration: 'none',
         fontSize: 13,
-        fontFamily: font.family,
+        fontFamily: font,
         fontWeight: 500,
         marginBottom: 24,
         padding: '6px 12px',

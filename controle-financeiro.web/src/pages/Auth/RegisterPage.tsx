@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, Typography } from '@mui/material'
 import { Eye, EyeOff } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress } from '@/components/pontes'
+import {
+  PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress,
+  usePontesTheme, semantic,
+} from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
-import { usePontesTheme } from '../../contexts/PontesThemeContext'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
-import { tokens } from '../../theme/tokens'
 import Logo from '../../components/Logo/Logo'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
-  const { palette, font } = usePontesTheme()
+  const { palette: p, font } = usePontesTheme()
   if (!senha) return null
 
   const requisitos = getSenhaRequisitos(senha)
@@ -19,19 +19,16 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
   const progresso = (forca / requisitos.length) * 100
 
   const cor =
-    forca <= 2
-      ? tokens.color.status.error.main
-      : forca <= 3
-      ? tokens.color.status.warning.main
-      : forca === 4
-      ? tokens.color.status.info.main
-      : tokens.color.status.success.main
+    forca <= 2 ? semantic.danger
+    : forca <= 3 ? semantic.warning
+    : forca === 4 ? semantic.info
+    : semantic.success
 
   return (
     <div style={{ marginTop: -8 }}>
       <PontesProgress
-        p={palette}
-        font={font.family}
+        p={p}
+        font={font}
         value={progresso}
         color={cor}
         height={3}
@@ -43,11 +40,11 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
             key={r.label}
             style={{
               fontSize: 11,
-              color: r.ok ? tokens.color.status.success.main : tokens.color.text.disabled,
+              color: r.ok ? semantic.success : p.textMuted,
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              fontFamily: font.family,
+              fontFamily: font,
             }}
           >
             {r.ok ? '✓' : '○'} {r.label}
@@ -61,7 +58,7 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
-  const { palette, font } = usePontesTheme()
+  const { palette: p, font } = usePontesTheme()
 
   const [email, setEmail] = useState('')
   const [nome, setNome] = useState('')
@@ -72,9 +69,6 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
-  const BRAND = palette.primary
-  const BRAND_DARK = palette.primaryDark
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,16 +98,19 @@ export default function RegisterPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: font }}>
+      <style>{`@media (max-width: 899px) { .auth-brand-panel { display: none !important; } }`}</style>
+
       {/* ── PAINEL ESQUERDO — brand ───────────────────────────────────── */}
-      <Box
-        sx={{
-          display: { xs: 'none', md: 'flex' },
+      <div
+        className="auth-brand-panel"
+        style={{
+          display: 'flex',
           width: '48%',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          p: '48px',
-          background: `linear-gradient(150deg, ${BRAND} 0%, ${BRAND_DARK} 100%)`,
+          padding: '48px',
+          background: `linear-gradient(150deg, ${p.primary} 0%, ${p.primaryDark} 100%)`,
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -128,7 +125,7 @@ export default function RegisterPage() {
           <rect width="100%" height="100%" fill="url(#reg-grid)" />
         </svg>
 
-        <Box sx={{
+        <div style={{
           position: 'absolute', bottom: '-10%', left: '-10%',
           width: '55%', height: '55%', borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
@@ -137,146 +134,124 @@ export default function RegisterPage() {
         }} />
 
         {/* Logo */}
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: 'inline-flex',
-              textDecoration: 'none',
-              opacity: 1,
-              transition: 'opacity 0.2s, transform 0.2s',
-              '&:hover': { opacity: 0.8, transform: 'scale(1.03)' },
-            }}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1.03)' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)' }}
           >
             <Logo color="#ffffff" size={32} variant="full" />
-          </Box>
-        </Box>
+          </Link>
+        </div>
 
         {/* Headline */}
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography
-            sx={{
-              fontFamily: "'Fraunces', Georgia, serif",
-              fontSize: '40px',
-              fontWeight: 700,
-              color: '#ffffff',
-              lineHeight: 1.1,
-              letterSpacing: '-0.02em',
-              mb: 2,
-            }}
-          >
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p style={{
+            fontFamily: "'Fraunces', Georgia, serif",
+            fontSize: '40px',
+            fontWeight: 700,
+            color: '#ffffff',
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            margin: '0 0 8px',
+          }}>
             Comece grátis.{' '}
-            <Box component="span" sx={{ opacity: 0.85 }}>Cresça com sua família.</Box>
-          </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, mb: 4, fontFamily: font.family }}>
+            <span style={{ opacity: 0.85 }}>Cresça com sua família.</span>
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, margin: '0 0 32px', fontFamily: font }}>
             Crie sua conta em 2 minutos. Sem cartão, sem fidelidade.
-          </Typography>
+          </p>
 
           {/* Planos resumidos */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
               { plan: 'Solo', price: 'Grátis', desc: '1 conta + 1 cartão, lançamentos ilimitados' },
               { plan: 'Família', price: 'R$ 15/mês', desc: 'Até 6 membros, rateio e aprovação' },
               { plan: 'Contador', price: 'R$ 39/mês', desc: 'Multi-cliente, relatórios contábeis' },
-            ].map((p) => (
-              <Box key={p.plan} sx={{
-                display: 'flex', alignItems: 'center', gap: 2,
+            ].map((plan) => (
+              <div key={plan.plan} style={{
+                display: 'flex', alignItems: 'center', gap: 16,
                 background: 'rgba(255,255,255,0.08)',
-                borderRadius: tokens.radius.lg,
-                p: '12px 16px',
+                borderRadius: '12px',
+                padding: '12px 16px',
                 border: '1px solid rgba(255,255,255,0.12)',
               }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font.family }}>{p.plan}</Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>{p.desc}</Typography>
-                </Box>
-                <Typography sx={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font.family, flexShrink: 0 }}>{p.price}</Typography>
-              </Box>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font, margin: 0 }}>{plan.plan}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font, margin: 0 }}>{plan.desc}</p>
+                </div>
+                <p style={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, fontFamily: font, flexShrink: 0, margin: 0 }}>{plan.price}</p>
+              </div>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Stats */}
-        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', gap: 3 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 24 }}>
           {[
             { n: '98%', l: 'casais recomendam' },
             { n: '< 2min', l: 'pra criar conta' },
             { n: '10×', l: 'mais rápido' },
           ].map((s) => (
-            <Box key={s.l}>
-              <Typography sx={{ color: '#ffffff', fontSize: '22px', fontWeight: 800, fontFamily: font.family, letterSpacing: '-0.02em' }}>{s.n}</Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font.family }}>{s.l}</Typography>
-            </Box>
+            <div key={s.l}>
+              <p style={{ color: '#ffffff', fontSize: '22px', fontWeight: 800, fontFamily: font, letterSpacing: '-0.02em', margin: 0 }}>{s.n}</p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font, margin: 0 }}>{s.l}</p>
+            </div>
           ))}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* ── PAINEL DIREITO — form ─────────────────────────────────────── */}
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 3, sm: 5 },
-          backgroundColor: palette.surface,
-          overflowY: 'auto',
-        }}
-      >
-        <Box sx={{ width: '100%', maxWidth: '400px', py: 2 }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 40px',
+        backgroundColor: p.surface,
+        overflowY: 'auto',
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px', paddingBlock: '16px' }}>
           {/* Voltar para homepage */}
           <BackButton to="/" />
 
           {/* Logo mobile */}
-          <Box sx={{ display: { md: 'none' }, mb: 4, textAlign: 'center' }}>
-            <Box
-              component={Link}
-              to="/"
-              sx={{
-                display: 'inline-flex',
-                textDecoration: 'none',
-                opacity: 1,
-                transition: 'opacity 0.2s, transform 0.2s',
-                '&:hover': { opacity: 0.75, transform: 'scale(1.03)' },
-              }}
-            >
-              <Logo color={BRAND} size={28} variant="full" />
-            </Box>
-          </Box>
+          <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
+            <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}>
+              <Logo color={p.primary} size={28} variant="full" />
+            </Link>
+          </div>
 
           {/* Header */}
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              sx={{
-                fontFamily: font.family,
-                fontSize: '28px',
-                fontWeight: 700,
-                color: palette.text,
-                letterSpacing: '-0.02em',
-                mb: 0.5,
-              }}
-            >
+          <div style={{ marginBottom: '24px' }}>
+            <h1 style={{
+              fontFamily: font,
+              fontSize: '28px',
+              fontWeight: 700,
+              color: p.text,
+              letterSpacing: '-0.02em',
+              margin: '0 0 4px',
+            }}>
               Criar conta grátis
-            </Typography>
-            <Typography sx={{ fontSize: tokens.typography.fontSize.sm, color: palette.textMuted, fontFamily: font.family }}>
+            </h1>
+            <p style={{ fontSize: '14px', color: p.textMuted, fontFamily: font, margin: 0 }}>
               Já tem conta?{' '}
-              <Link to="/auth/login" style={{ color: BRAND, textDecoration: 'none', fontWeight: 600 }}>
+              <Link to="/auth/login" style={{ color: p.primary, textDecoration: 'none', fontWeight: 600 }}>
                 Fazer login
               </Link>
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {error && (
-              <PontesAlert font={font.family} tone="error">{error}</PontesAlert>
+              <PontesAlert font={font} tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField p={palette} font={font.family} label="Nome completo" htmlFor="reg-nome" required>
+            <PontesField p={p} font={font} label="Nome completo" htmlFor="reg-nome" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="reg-nome"
                 type="text"
                 value={nome}
@@ -286,10 +261,10 @@ export default function RegisterPage() {
               />
             </PontesField>
 
-            <PontesField p={palette} font={font.family} label="E-mail" htmlFor="reg-email" required>
+            <PontesField p={p} font={font} label="E-mail" htmlFor="reg-email" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="reg-email"
                 type="email"
                 value={email}
@@ -299,10 +274,10 @@ export default function RegisterPage() {
               />
             </PontesField>
 
-            <PontesField p={palette} font={font.family} label="Data de nascimento" htmlFor="reg-nascimento">
+            <PontesField p={p} font={font} label="Data de nascimento" htmlFor="reg-nascimento">
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="reg-nascimento"
                 type="date"
                 value={dataNascimento}
@@ -311,10 +286,10 @@ export default function RegisterPage() {
               />
             </PontesField>
 
-            <PontesField p={palette} font={font.family} label="Senha" htmlFor="reg-senha" required>
+            <PontesField p={p} font={font} label="Senha" htmlFor="reg-senha" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="reg-senha"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -327,7 +302,7 @@ export default function RegisterPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     data-testid="toggle-senha"
                     tabIndex={-1}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: p.textMuted }}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -337,10 +312,10 @@ export default function RegisterPage() {
 
             <PasswordStrengthIndicator senha={password} />
 
-            <PontesField p={palette} font={font.family} label="Confirmar senha" htmlFor="reg-confirmar" required>
+            <PontesField p={p} font={font} label="Confirmar senha" htmlFor="reg-confirmar" required>
               <PontesInput
-                p={palette}
-                font={font.family}
+                p={p}
+                font={font}
                 id="reg-confirmar"
                 type={showConfirm ? 'text' : 'password'}
                 value={confirmPassword}
@@ -353,7 +328,7 @@ export default function RegisterPage() {
                     onClick={() => setShowConfirm((v) => !v)}
                     data-testid="toggle-confirmar"
                     tabIndex={-1}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: p.textMuted }}
                   >
                     {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -362,8 +337,8 @@ export default function RegisterPage() {
             </PontesField>
 
             <PontesButton
-              p={palette}
-              font={font.family}
+              p={p}
+              font={font}
               type="submit"
               variant="primary"
               size="lg"
@@ -376,21 +351,19 @@ export default function RegisterPage() {
           </form>
 
           {/* Footer */}
-          <Typography
-            sx={{
-              mt: 3, textAlign: 'center',
-              fontSize: tokens.typography.fontSize.xs,
-              color: tokens.color.text.disabled,
-              fontFamily: font.family,
-            }}
-          >
+          <p style={{
+            marginTop: '24px', textAlign: 'center',
+            fontSize: '12px',
+            color: p.textMuted,
+            fontFamily: font,
+          }}>
             Ao criar sua conta você concorda com os{' '}
-            <Box component="span" sx={{ color: palette.textMuted }}>Termos de Uso</Box>
+            <span style={{ color: p.textMuted }}>Termos de Uso</span>
             {' '}e{' '}
-            <Box component="span" sx={{ color: palette.textMuted }}>Política de Privacidade</Box>.
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+            <span style={{ color: p.textMuted }}>Política de Privacidade</span>.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
