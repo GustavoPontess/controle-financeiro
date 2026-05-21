@@ -8,11 +8,12 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import Logo from "../../components/Logo/Logo"
+import { ArrowRight, Play, Plus, ChevronUp, ChevronDown } from "lucide-react"
+import { PontesNavbar, PontesFooter, PontesButton, PontesLink, PontesButtonGroup, PontesTabs, applyPontesScrollbar, usePontesBodyScrollbar } from "../../components/pontes"
 import { palettes, fonts, type Palette } from "./theme"
 import {
-  ResponsiveContainer, LineChart, Line, AreaChart, Area, BarChart as RBarChart, Bar,
-  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, BarChart as RBarChart, Bar,
+  Cell, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
 
 // (palettes, fonts, types extraídos pra ./theme.ts — resolve react-refresh/only-export-components)
@@ -21,10 +22,7 @@ import {
 // PRIMITIVOS VISUAIS
 // =============================================================================
 
-/** Wordmark agora delega para o componente Logo oficial (conceito 20). */
-function Wordmark({ color, size = 22 }: { color: string; font?: string; size?: number }) {
-  return <Logo color={color} size={size} variant="full" />
-}
+// Wordmark removido — usar <Logo /> direto ou PontesNavbar/PontesFooter da biblioteca.
 
 function CheckIcon({ color }: { color: string }) {
   return (
@@ -498,8 +496,8 @@ function MobileMockup({ p, font }: { p: Palette; font: string }) {
             <div style={{ fontSize: 9, color: p.primary, fontWeight: 700, marginBottom: 4 }}>RATEIO PENDENTE</div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#0B1220" }}>Conta de luz · R$ 240</div>
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button style={{ flex: 1, background: p.primary, color: "#FFFFFF", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 700 }}>Aprovar</button>
-              <button style={{ flex: 1, background: "#FFFFFF", color: p.text, border: "1px solid #E2E8F0", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 600 }}>Negar</button>
+              <PontesButton p={p} font={font} variant="primary" size="xs" fullWidth>Aprovar</PontesButton>
+              <PontesButton p={p} font={font} variant="outline" size="xs" fullWidth>Negar</PontesButton>
             </div>
           </div>
 
@@ -630,75 +628,6 @@ function LineAreaChartReal({ p, data, height = 160 }: { p: Palette; data: { labe
 }
 
 /** Line chart real com 2 séries (atual sólido + comparativo tracejado), sem dots, hover rico. */
-type LinePoint = { label: string | number; v: number; v2?: number }
-
-function CustomLineTooltip({ active, payload, label, p, labelPrefix = "Dia" }: { active?: boolean; payload?: { value: number; name?: string }[]; label?: string | number; p: Palette; labelPrefix?: string }) {
-  if (!active || !payload?.length) return null
-  const cur = payload.find((x) => x.name === "Este mês")?.value ?? payload[0]?.value
-  const prev = payload.find((x) => x.name === "Mês passado")?.value
-  const diff = prev !== undefined ? cur - prev : null
-  const pct = prev && prev !== 0 ? (((cur - prev) / prev) * 100).toFixed(0) : null
-  return (
-    <div style={{ background: p.text, color: "#FFFFFF", borderRadius: 12, padding: 14, minWidth: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.25)", fontFamily: "inherit" }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{labelPrefix} {label}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 13 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.85 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.accent }} />Este mês
-        </span>
-        <span style={{ fontWeight: 700 }}>R$ {cur.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-      </div>
-      {prev !== undefined && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, fontSize: 13 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#94A3B8" }} />Mês passado
-          </span>
-          <span style={{ fontWeight: 700, opacity: 0.75 }}>R$ {prev.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-        </div>
-      )}
-      {diff !== null && pct !== null && (
-        <div style={{ paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, color: diff > 0 ? "#FCA5A5" : "#86EFAC" }}>
-            {diff > 0 ? "↗" : "↘"} {diff > 0 ? "Aumento" : "Queda"} {diff > 0 ? "+" : ""}R$ {Math.abs(diff).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-          </span>
-          <span style={{ color: diff > 0 ? "#FCA5A5" : "#86EFAC", fontWeight: 700 }}>({diff > 0 ? "+" : ""}{pct}%)</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LineChartReal({ p, data, height = 220, labelPrefix = "Dia" }: { p: Palette; data: LinePoint[]; height?: number; labelPrefix?: string }) {
-  const hasV2 = data[0]?.v2 !== undefined
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 14, right: 20, left: 0, bottom: 6 }}>
-        <CartesianGrid strokeDasharray="3 6" stroke={p.border} vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} width={48} tickFormatter={(v: number) => v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`} />
-        <Tooltip content={<CustomLineTooltip p={p} labelPrefix={labelPrefix} />} cursor={{ stroke: p.textMuted, strokeWidth: 1, strokeDasharray: "3 3" }} />
-        {hasV2 && (
-          <Line type="monotone" dataKey="v2" stroke="#94A3B8" strokeWidth={2} strokeDasharray="6 5" dot={false} activeDot={{ r: 4, fill: "#94A3B8", stroke: "#FFFFFF", strokeWidth: 2 }} name="Mês passado" />
-        )}
-        <Line type="monotone" dataKey="v" stroke={p.accent} strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: p.accent, stroke: "#FFFFFF", strokeWidth: 2 }} name="Este mês" />
-      </LineChart>
-    </ResponsiveContainer>
-  )
-}
-
-/** Donut chart real. */
-function DonutChartReal({ p, data, height = 200 }: { p: Palette; data: { name: string; value: number }[]; height?: number }) {
-  const colors = [p.primary, p.accent, "#94A3B8", "#22C55E", "#A78BFA"]
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <PieChart>
-        <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2} dataKey="value">
-          {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
-        </Pie>
-        <Tooltip contentStyle={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 12 }} formatter={(v) => [`R$ ${v}`, ""]} />
-      </PieChart>
-    </ResponsiveContainer>
-  )
-}
 
 // =============================================================================
 // LIVE ACTIVITY FEED — notificações entrando ao vivo
@@ -808,26 +737,18 @@ function InsideTabs({ p, font }: { p: Palette; font: string }) {
           </h2>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 40 }}>
-          {[
-            { id: "transacoes", label: "Transações" },
-            { id: "cartao", label: "Cartão" },
-            { id: "familia", label: "Família" },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id as "transacoes" | "cartao" | "familia")}
-              style={{
-                background: tab === t.id ? p.primary : "transparent",
-                color: tab === t.id ? p.heroFg : p.text,
-                border: `1px solid ${tab === t.id ? p.primary : p.border}`,
-                padding: "10px 22px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Tabs — biblioteca Pontes */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 40 }}>
+          <PontesTabs<"transacoes" | "cartao" | "familia">
+            p={p} font={font}
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "transacoes", label: "Transações" },
+              { value: "cartao", label: "Cartão" },
+              { value: "familia", label: "Família" },
+            ]}
+          />
         </div>
 
         {/* Conteúdo */}
@@ -1012,8 +933,8 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
               </div>
               <div style={{ fontSize: 11, color: p.textMuted, marginBottom: 8 }}>Lançada por {d.by} · rateio {d.split}</div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button style={{ flex: 1, background: p.primary, color: "#FFFFFF", border: "none", borderRadius: 8, padding: "8px", fontSize: 11, fontWeight: 700, fontFamily: font }}>Aprovar</button>
-                <button style={{ flex: 1, background: "transparent", color: p.text, border: `1px solid ${p.border}`, borderRadius: 8, padding: "8px", fontSize: 11, fontWeight: 600, fontFamily: font }}>Negar</button>
+                <PontesButton p={p} font={font} variant="primary" size="sm" fullWidth>Aprovar</PontesButton>
+                <PontesButton p={p} font={font} variant="outline" size="sm" fullWidth>Negar</PontesButton>
               </div>
             </div>
           ))}
@@ -1035,77 +956,19 @@ function TabFamilia({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 // LANDING
 // =============================================================================
-/** Navbar pill flutuante fixed — adapta visual conforme scroll (transparente sobre hero, sólido depois). */
-function NavbarFloating({ p, font }: { p: Palette; font: string }) {
-  const navigate = useNavigate()
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 400)
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
-  // Sobre o hero: visual claro (glass sobre gradient escuro)
-  // Após rolar: visual sólido (fundo branco, texto escuro)
-  const bg = scrolled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)"
-  const border = scrolled ? p.border : "rgba(255,255,255,0.2)"
-  const textColor = scrolled ? p.text : p.heroFg
-  const wordmarkColor = scrolled ? p.primary : p.heroFg
-  const outlineBorder = scrolled ? p.border : "rgba(255,255,255,0.3)"
-
-  return (
-    <nav style={{
-      position: "fixed", top: scrolled ? 70 : 110, left: 0, right: 0, padding: "0 48px",
-      display: "flex", justifyContent: "center", zIndex: 90,
-      transition: "top 250ms ease, background 250ms ease",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 32, padding: "10px 16px 10px 22px",
-        background: bg,
-        border: `1px solid ${border}`, borderRadius: 999,
-        boxShadow: scrolled ? "0 8px 24px -8px rgba(0,0,0,0.12)" : "0 8px 24px -8px rgba(0,0,0,0.18)",
-        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-        minWidth: 920, maxWidth: 1100, width: "100%",
-        transition: "all 250ms ease",
-      }}>
-        <Wordmark color={wordmarkColor} font={font} />
-        <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
-          {["Recursos", "Família", "Contador", "Preços", "Blog"].map((l) => (
-            <a key={l} style={{ color: textColor, fontSize: 14, fontWeight: 500, textDecoration: "none", cursor: "pointer", opacity: scrolled ? 1 : 0.92, transition: "color 250ms" }}>{l}</a>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            onClick={() => navigate("/auth/login")}
-            style={{ background: "transparent", color: textColor, border: `1px solid ${outlineBorder}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={() => navigate("/auth/register")}
-            style={{ background: scrolled ? p.primary : p.accent, color: scrolled ? p.heroFg : "#0B1220", border: "none", padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font, transition: "all 250ms" }}
-          >
-            Criar conta
-          </button>
-        </div>
-      </div>
-    </nav>
-  )
-}
+// NavbarFloating removido (#77) — migrado pra <PontesNavbar> da biblioteca @/components/pontes.
 
 /** Bloco de feature zig-zag (texto + mockup alternando lado). */
-function FeatureBlock({ p, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
+function FeatureBlock({ p, font, reverse, tag, title, text, mockup }: { p: Palette; font: string; reverse: boolean; tag: string; title: string; text: string; mockup: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", padding: "60px 0", direction: reverse ? "rtl" : "ltr" }}>
       <div style={{ direction: "ltr" }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 18 }}>{tag}</div>
         <h3 style={{ fontSize: 40, fontWeight: 600, color: p.text, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 20, fontFamily: "'Fraunces', serif" }}>{title}</h3>
         <p style={{ fontSize: 17, color: p.textMuted, lineHeight: 1.6, margin: 0, marginBottom: 24 }}>{text}</p>
-        <a style={{ color: p.primary, fontSize: 14, fontWeight: 700, textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          Saiba mais <span style={{ fontSize: 16 }}>→</span>
-        </a>
+        <PontesLink p={p} font={font} style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
+          Saiba mais <ArrowRight size={14} strokeWidth={2.5} />
+        </PontesLink>
       </div>
       <div style={{ direction: "ltr", display: "flex", justifyContent: "center" }}>
         {mockup}
@@ -1178,7 +1041,7 @@ function FamiliaMockup({ p, font }: { p: Palette; font: string }) {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: p.textMuted, textTransform: "uppercase" }}>Família Pontes</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: p.text, marginTop: 4, letterSpacing: "-0.02em" }}>R$ 32.220</div>
           </div>
-          <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: font }}>+ Convidar</button>
+          <PontesButton p={p} font={font} variant="primary" size="sm" iconStart={<Plus size={14} strokeWidth={2.5} />}>Convidar</PontesButton>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {members.map((m) => (
@@ -1238,50 +1101,53 @@ function FloatCTA({ p, font }: { p: Palette; font: string }) {
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
+  // Wrapper fixed pra animação show/hide; PontesButton dentro pra hover/active automáticos.
   return (
-    <button
+    <div
       style={{
         position: "fixed", bottom: 24, right: 24, zIndex: 999,
-        background: p.accent, color: "#0B1220", border: "none",
-        padding: "14px 22px", borderRadius: 999, fontSize: 14, fontWeight: 700,
-        cursor: "pointer", fontFamily: font,
-        boxShadow: `0 12px 32px ${p.accent}88`,
         opacity: show ? 1 : 0,
         transform: show ? "translateY(0)" : "translateY(20px)",
         pointerEvents: show ? "auto" : "none",
         transition: "opacity 300ms ease, transform 300ms ease",
-        display: "flex", alignItems: "center", gap: 8,
       }}
     >
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0B1220" }} />
-      Criar conta grátis
-    </button>
+      <PontesButton
+        p={p} font={font}
+        variant="accent" size="md"
+        iconStart={<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0B1220", display: "inline-block" }} />}
+      >
+        Criar conta grátis
+      </PontesButton>
+    </div>
   )
 }
 
 /** Barra de progresso de scroll no topo absoluto. */
 function ScrollProgressBar({ p }: { p: Palette }) {
   const progress = useScrollProgress()
+  // Sempre no topo do viewport — o control bar (em flow) rola junto com a página.
   return (
-    <div style={{ position: "fixed", top: 56, left: 0, right: 0, height: 3, background: "rgba(0,0,0,0.05)", zIndex: 999 }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: "transparent", zIndex: 999 }}>
       <div style={{ height: "100%", width: `${progress * 100}%`, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, transition: "width 80ms linear" }} />
     </div>
   )
 }
 
-function Landing({ p, font }: { p: Palette; font: string }) {
+function Landing({ p, font, topOffset = 0 }: { p: Palette; font: string; topOffset?: number }) {
   const [annual, setAnnual] = useState(true)
+  const navigate = useNavigate()
 
   return (
-    <div style={{ fontFamily: font, color: p.text, background: p.surface }}>
+    <div style={{ fontFamily: font, color: p.text, background: p.surface, position: "relative" }}>
       <GlobalAnims />
-      {/* TOPBAR PROMOCIONAL — só no topo do hero (some quando rola) */}
-      <div style={{ position: "absolute", top: 56, left: 0, right: 0, background: `linear-gradient(90deg, ${p.primary}, ${p.accent}, ${p.primary})`, color: "#FFFFFF", padding: "10px 24px", textAlign: "center", fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", zIndex: 5 }}>
+      {/* TOPBAR PROMOCIONAL — topo da Landing (relativo ao container). */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, background: `linear-gradient(90deg, ${p.primary}, ${p.accent}, ${p.primary})`, color: "#FFFFFF", padding: "10px 24px", textAlign: "center", fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", zIndex: 5 }}>
         ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
       </div>
 
-      {/* NAVBAR pill-shape flutuante — fixed, sempre visível com glass effect */}
-      <NavbarFloating p={p} font={font} />
+      {/* NAVBAR pill — abaixo do brand preview + topbar promo. Scrolled: abaixo só do brand preview. */}
+      <PontesNavbar p={p} font={font} activePath="/site" onNavigate={(to) => navigate(to)} topOffset={topOffset + 50} scrolledTop={topOffset + 16} />
 
       {/* HERO com mesh animado + noise + headline typing */}
       <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "180px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
@@ -1316,12 +1182,21 @@ function Landing({ p, font }: { p: Palette; font: string }) {
             </p>
 
             <div style={{ display: "flex", gap: 12, marginBottom: 40 }}>
-              <button style={{ background: p.accent, color: "#0B1220", border: "none", padding: "16px 28px", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: `0 12px 32px ${p.accent}66` }}>
-                Criar conta grátis →
-              </button>
-              <button style={{ background: "rgba(255,255,255,0.08)", color: p.heroFg, border: "1px solid rgba(255,255,255,0.25)", padding: "16px 28px", borderRadius: 999, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-                ▷ Ver demo 90s
-              </button>
+              <PontesButton
+                p={p} font={font}
+                variant="accent" size="lg"
+                iconEnd={<ArrowRight size={16} strokeWidth={2.5} />}
+                onClick={() => navigate("/auth/register")}
+              >
+                Criar conta grátis
+              </PontesButton>
+              <PontesButton
+                p={p} font={font}
+                variant="outline-light" size="lg"
+                iconStart={<Play size={14} strokeWidth={2.5} />}
+              >
+                Ver demo 90s
+              </PontesButton>
             </div>
 
             <div style={{ display: "flex", gap: 28, fontSize: 13, opacity: 0.85 }}>
@@ -1603,18 +1478,14 @@ function Landing({ p, font }: { p: Palette; font: string }) {
                 <p style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55, margin: 0, marginBottom: 18 }}>
                   Entre na nossa comunidade brasileira no WhatsApp. Famílias trocando dicas, primeiros usuários do beta.
                 </p>
-                <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-                  Entrar
-                </button>
+                <PontesButton p={p} font={font} variant="outline" size="sm">Entrar</PontesButton>
               </div>
               <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 18, padding: 24, fontFamily: font }}>
                 <div style={{ fontSize: 17, fontWeight: 700, color: p.text, marginBottom: 8 }}>Blog</div>
                 <p style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.55, margin: 0, marginBottom: 18 }}>
                   Artigos sobre finanças de casal, dependentes, como conversar com contador sem trauma.
                 </p>
-                <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "8px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-                  Ler agora
-                </button>
+                <PontesButton p={p} font={font} variant="outline" size="sm">Ler agora</PontesButton>
               </div>
             </div>
           </div>
@@ -1670,14 +1541,19 @@ function Landing({ p, font }: { p: Palette; font: string }) {
             <p style={{ fontSize: 17, color: p.textMuted, marginBottom: 24 }}>Começa grátis. Cresce com você.</p>
 
             {/* Toggle mensal/anual */}
-            <div style={{ display: "inline-flex", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 12, padding: 4 }}>
-              <button onClick={() => setAnnual(false)} style={{ background: !annual ? p.primary : "transparent", color: !annual ? p.heroFg : p.textMuted, border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-                Mensal
-              </button>
-              <button onClick={() => setAnnual(true)} style={{ background: annual ? p.primary : "transparent", color: annual ? p.heroFg : p.textMuted, border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font, display: "flex", alignItems: "center", gap: 8 }}>
-                Anual <span style={{ background: p.accent, color: "#0B1220", padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800 }}>-20%</span>
-              </button>
-            </div>
+            <PontesButtonGroup<"mensal" | "anual">
+              p={p} font={font}
+              value={annual ? "anual" : "mensal"}
+              onChange={(v) => setAnnual(v === "anual")}
+              options={[
+                { value: "mensal", label: "Mensal" },
+                { value: "anual", label: (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    Anual <span style={{ background: p.accent, color: "#0B1220", padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800 }}>-20%</span>
+                  </span>
+                ) },
+              ]}
+            />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
@@ -1740,12 +1616,15 @@ function Landing({ p, font }: { p: Palette; font: string }) {
               Veja todas as suas finanças num só lugar. Sem ads, sem fidelidade. Convide parceiro e contador sem custo extra.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "14px 24px", borderRadius: 999, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: font, boxShadow: `0 8px 24px ${p.primary}55` }}>
-                Começar grátis →
-              </button>
-              <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "14px 24px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-                Ver planos
-              </button>
+              <PontesButton
+                p={p} font={font}
+                variant="primary" size="md"
+                iconEnd={<ArrowRight size={16} strokeWidth={2.5} />}
+                onClick={() => navigate("/auth/register")}
+              >
+                Começar grátis
+              </PontesButton>
+              <PontesButton p={p} font={font} variant="outline" size="md">Ver planos</PontesButton>
             </div>
           </div>
           <div style={{ position: "relative", overflow: "hidden", minHeight: 380, background: `linear-gradient(135deg, ${p.primary}, ${p.primaryDark})` }}>
@@ -1760,28 +1639,14 @@ function Landing({ p, font }: { p: Palette; font: string }) {
       </section>
 
       {/* FOOTER com mesh gradient */}
-      <footer style={{ background: "#0B1220", color: "rgba(255,255,255,0.7)", padding: "72px 48px 28px", fontFamily: font, position: "relative", overflow: "hidden" }}>
-        <MeshGradientAnimated c1={p.primary} c2={p.accent} c3={p.primary} />
-        <div className="bp-noise" />
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr", gap: 40, marginBottom: 56, position: "relative", zIndex: 1 }}>
-          <div>
-            <Wordmark color="#FFFFFF" font={font} />
-            <p style={{ fontSize: 14, marginTop: 16, lineHeight: 1.55, maxWidth: 280 }}>Controle financeiro pra famílias brasileiras. Casal, dependentes e contador no mesmo lugar.</p>
-            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-              <a style={{ background: "rgba(255,255,255,0.08)", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#FFFFFF", textDecoration: "none" }}>App Store</a>
-              <a style={{ background: "rgba(255,255,255,0.08)", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#FFFFFF", textDecoration: "none" }}>Google Play</a>
-            </div>
-          </div>
-          <FooterCol title="Produto" items={["Recursos", "Família", "Contador", "Preços", "Roadmap"]} />
-          <FooterCol title="Empresa" items={["Sobre", "Blog", "Carreiras", "Imprensa", "Contato"]} />
-          <FooterCol title="Recursos" items={["Central de Ajuda", "Tutoriais", "Comunidade", "Status", "API"]} />
-          <FooterCol title="Legal" items={["Termos", "Privacidade", "Segurança", "LGPD"]} />
-        </div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, opacity: 0.55, position: "relative", zIndex: 1 }}>
-          <div>© 2026 Pontes · CNPJ XX.XXX.XXX/0001-XX</div>
-          <div>Feito no Brasil 🇧🇷</div>
-        </div>
-      </footer>
+      <PontesFooter
+        p={p} font={font} variant="rich"
+        onNavigate={(to) => navigate(to)}
+        appBadges={[
+          { label: "App Store" },
+          { label: "Google Play" },
+        ]}
+      />
     </div>
   )
 }
@@ -1789,1337 +1654,6 @@ function Landing({ p, font }: { p: Palette; font: string }) {
 // =============================================================================
 // COMPONENT SHOWCASE — design system completo (6 abas)
 // =============================================================================
-type TabId = "botoes" | "form" | "data" | "graficos" | "feedback" | "navegacao" | "tokens"
-
-export function ComponentShowcase({ p, font }: { p: Palette; font: string }) {
-  const [tab, setTab] = useState<TabId>("botoes")
-  return (
-    <section style={{ padding: "120px 48px", background: p.surface, borderTop: `1px solid ${p.border}` }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", color: p.primary, textTransform: "uppercase", marginBottom: 14 }}>Design system ao vivo</div>
-          <h2 style={{ fontSize: 42, fontWeight: 800, color: p.text, margin: 0, letterSpacing: "-0.025em", marginBottom: 12 }}>
-            Componentes do <span style={{ color: p.primary }}>app real</span>
-          </h2>
-          <p style={{ fontSize: 16, color: p.textMuted, margin: 0 }}>
-            Tudo na paleta + fonte selecionada. Botões, inputs, tabela, toast, modal, skeleton, stepper, gráficos.
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 32, flexWrap: "wrap" }}>
-          {[
-            { id: "botoes" as TabId, label: "Botões" },
-            { id: "form" as TabId, label: "Form & Inputs" },
-            { id: "data" as TabId, label: "Cards & Dados" },
-            { id: "feedback" as TabId, label: "Feedback" },
-            { id: "navegacao" as TabId, label: "Navegação" },
-            { id: "graficos" as TabId, label: "Gráficos" },
-            { id: "tokens" as TabId, label: "Tokens" },
-          ].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              style={{ background: tab === t.id ? p.primary : "transparent", color: tab === t.id ? p.heroFg : p.text, border: `1px solid ${tab === t.id ? p.primary : p.border}`, padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ background: p.bg, border: `1px solid ${p.border}`, borderRadius: 22, padding: 36 }}>
-          {tab === "botoes" && <CSButtons p={p} font={font} />}
-          {tab === "form" && <CSForm p={p} font={font} />}
-          {tab === "data" && <CSData p={p} font={font} />}
-          {tab === "feedback" && <CSFeedback p={p} font={font} />}
-          {tab === "navegacao" && <CSNavegacao p={p} font={font} />}
-          {tab === "graficos" && <CSGraficos p={p} font={font} />}
-          {tab === "tokens" && <CSTokens p={p} font={font} />}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function CSGroup({ title, p, children }: { title: string; p: Palette; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 14 }}>{title}</div>
-      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-/** Hex -> HSL com ajuste de lightness e saturação. */
-function adjustColor(hex: string, dl: number, ds = 0): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255
-  const g = parseInt(hex.slice(3, 5), 16) / 255
-  const b = parseInt(hex.slice(5, 7), 16) / 255
-  const max = Math.max(r, g, b), min = Math.min(r, g, b)
-  let h = 0, s = 0
-  const l = (max + min) / 2
-  if (max !== min) {
-    const d = max - min
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
-      case g: h = ((b - r) / d + 2) / 6; break
-      case b: h = ((r - g) / d + 4) / 6; break
-    }
-  }
-  return hslToHex(h, Math.max(0, Math.min(1, s + ds)), Math.max(0, Math.min(1, l + dl)))
-}
-
-/** Preview de um botão num estado específico — cores forçadamente distintas. */
-function StatePreview({ p, font, variant, state }: { p: Palette; font: string; variant: "primary" | "outline" | "ghost"; state: "rest" | "hover" | "focus" | "active" | "disabled" }) {
-  const hoverBg = adjustColor(p.primary, 0.08)
-  const activeBg = adjustColor(p.primary, -0.10)
-
-  let style: React.CSSProperties = {
-    width: "100%", padding: "12px 18px", borderRadius: 10, fontSize: 13,
-    fontWeight: 600, border: "none", cursor: "pointer", fontFamily: font,
-    transition: "all 150ms ease",
-  }
-
-  if (variant === "primary") {
-    if (state === "rest") style = { ...style, background: p.primary, color: p.heroFg }
-    if (state === "hover") style = { ...style, background: hoverBg, color: p.heroFg, boxShadow: `0 8px 20px ${p.primary}55`, transform: "translateY(-1px)" }
-    if (state === "focus") style = { ...style, background: p.primary, color: p.heroFg, boxShadow: `0 0 0 4px ${p.primary}44, 0 0 0 2px #FFFFFF inset` }
-    if (state === "active") style = { ...style, background: activeBg, color: p.heroFg, transform: "translateY(1px) scale(0.97)", boxShadow: `inset 0 2px 6px ${activeBg}` }
-    if (state === "disabled") style = { ...style, background: p.border, color: p.textMuted, cursor: "not-allowed", opacity: 0.7 }
-  }
-  if (variant === "outline") {
-    if (state === "rest") style = { ...style, background: "transparent", color: p.primary, border: `1.5px solid ${p.primary}` }
-    if (state === "hover") style = { ...style, background: p.primarySoft, color: p.primary, border: `1.5px solid ${p.primary}`, transform: "translateY(-1px)" }
-    if (state === "focus") style = { ...style, background: "transparent", color: p.primary, border: `1.5px solid ${p.primary}`, boxShadow: `0 0 0 4px ${p.primary}33` }
-    if (state === "active") style = { ...style, background: p.primary, color: p.heroFg, border: `1.5px solid ${p.primary}`, transform: "scale(0.97)" }
-    if (state === "disabled") style = { ...style, background: "transparent", color: p.textMuted, border: `1.5px solid ${p.border}`, cursor: "not-allowed" }
-  }
-  if (variant === "ghost") {
-    if (state === "rest") style = { ...style, background: "transparent", color: p.text }
-    if (state === "hover") style = { ...style, background: p.bg, color: p.text }
-    if (state === "focus") style = { ...style, background: "transparent", color: p.text, boxShadow: `0 0 0 3px ${p.primary}33` }
-    if (state === "active") style = { ...style, background: p.border, color: p.text, transform: "scale(0.97)" }
-    if (state === "disabled") style = { ...style, background: "transparent", color: p.textMuted, cursor: "not-allowed", opacity: 0.5 }
-  }
-
-  return (
-    <div style={{ textAlign: "center" }}>
-      <button style={style}>Botão</button>
-      <div style={{ fontSize: 10, color: p.textMuted, marginTop: 8, fontWeight: 700, letterSpacing: "0.1em" }}>{state.toUpperCase()}</div>
-    </div>
-  )
-}
-
-function CSButtons({ p, font }: { p: Palette; font: string }) {
-  const baseBtn = { border: "none", cursor: "pointer", fontFamily: font, fontWeight: 600 }
-  return (
-    <div>
-      <CSGroup title="Variantes" p={p}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "12px 22px", borderRadius: 10, fontSize: 14, boxShadow: `0 4px 14px ${p.primary}44` }}>Primário</button>
-          <button style={{ ...baseBtn, background: p.accent, color: "#0B1220", padding: "12px 22px", borderRadius: 10, fontSize: 14, boxShadow: `0 4px 14px ${p.accent}44` }}>Acento</button>
-          <button style={{ ...baseBtn, background: "transparent", color: p.primary, border: `1.5px solid ${p.primary}`, padding: "12px 22px", borderRadius: 10, fontSize: 14 }}>Outline</button>
-          <button style={{ ...baseBtn, background: "transparent", color: p.text, padding: "12px 22px", borderRadius: 10, fontSize: 14 }}>Ghost</button>
-          <button style={{ ...baseBtn, background: p.primarySoft, color: p.primary, padding: "12px 22px", borderRadius: 10, fontSize: 14 }}>Soft</button>
-          <button style={{ ...baseBtn, background: "#DC2626", color: "#FFFFFF", padding: "12px 22px", borderRadius: 10, fontSize: 14 }}>Perigo</button>
-          <button style={{ ...baseBtn, background: "transparent", color: "#DC2626", border: "1.5px solid #DC2626", padding: "12px 22px", borderRadius: 10, fontSize: 14 }}>Perigo outline</button>
-          <a style={{ color: p.primary, fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Link</a>
-          <button disabled style={{ ...baseBtn, background: p.border, color: p.textMuted, padding: "12px 22px", borderRadius: 10, fontSize: 14, cursor: "not-allowed" }}>Desabilitado</button>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tamanhos" p={p}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "4px 10px", borderRadius: 6, fontSize: 11 }}>XS</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "6px 12px", borderRadius: 8, fontSize: 12 }}>Small</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "10px 18px", borderRadius: 10, fontSize: 14 }}>Medium</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "14px 26px", borderRadius: 12, fontSize: 16 }}>Large</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "18px 32px", borderRadius: 14, fontSize: 18 }}>XL</button>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Com ícone" p={p}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 16 }}>+</span> Nova transação
-          </button>
-          <button style={{ ...baseBtn, background: p.accent, color: "#0B1220", padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            ↓ Importar OFX
-          </button>
-          <button style={{ ...baseBtn, background: "transparent", color: p.primary, border: `1.5px solid ${p.primary}`, padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            Salvar e continuar →
-          </button>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Icon-only" p={p}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, width: 32, height: 32, borderRadius: 8, fontSize: 14 }}>+</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, width: 40, height: 40, borderRadius: 10, fontSize: 18 }}>+</button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, width: 48, height: 48, borderRadius: 12, fontSize: 20 }}>+</button>
-          <button style={{ ...baseBtn, background: p.primarySoft, color: p.primary, width: 40, height: 40, borderRadius: 10, fontSize: 16 }}>⚙</button>
-          <button style={{ ...baseBtn, background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 40, height: 40, borderRadius: 10, fontSize: 16 }}>⋯</button>
-          {/* Com badge contador */}
-          <button style={{ ...baseBtn, background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 40, height: 40, borderRadius: 10, fontSize: 16, position: "relative" }}>
-            🔔
-            <span style={{ position: "absolute", top: -4, right: -4, background: "#DC2626", color: "#FFFFFF", borderRadius: 999, fontSize: 10, fontWeight: 700, padding: "2px 6px", border: "2px solid #FFFFFF" }}>3</span>
-          </button>
-          {/* FAB */}
-          <button style={{ ...baseBtn, background: p.accent, color: "#0B1220", width: 56, height: 56, borderRadius: "50%", fontSize: 24, boxShadow: `0 12px 28px ${p.accent}66`, marginLeft: 12 }}>+</button>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Button group" p={p}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Segmented */}
-          <div style={{ display: "inline-flex", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 10, padding: 4 }}>
-            <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>Dia</button>
-            <button style={{ ...baseBtn, background: "transparent", color: p.text, padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>Semana</button>
-            <button style={{ ...baseBtn, background: "transparent", color: p.text, padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>Mês</button>
-            <button style={{ ...baseBtn, background: "transparent", color: p.text, padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>Ano</button>
-          </div>
-          {/* Conjunto colado */}
-          <div style={{ display: "inline-flex", border: `1px solid ${p.border}`, borderRadius: 10, overflow: "hidden" }}>
-            <button style={{ ...baseBtn, background: p.surface, color: p.text, padding: "10px 16px", fontSize: 13, borderRight: `1px solid ${p.border}` }}>← Anterior</button>
-            <button style={{ ...baseBtn, background: p.surface, color: p.text, padding: "10px 16px", fontSize: 13, borderRight: `1px solid ${p.border}` }}>Hoje</button>
-            <button style={{ ...baseBtn, background: p.surface, color: p.text, padding: "10px 16px", fontSize: 13 }}>Próximo →</button>
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Estados interativos · 3 variantes" p={p}>
-        {/* Cor primária */}
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 24, fontFamily: font, marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 14 }}>PRIMÁRIO</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
-            <StatePreview p={p} font={font} variant="primary" state="rest" />
-            <StatePreview p={p} font={font} variant="primary" state="hover" />
-            <StatePreview p={p} font={font} variant="primary" state="focus" />
-            <StatePreview p={p} font={font} variant="primary" state="active" />
-            <StatePreview p={p} font={font} variant="primary" state="disabled" />
-          </div>
-        </div>
-        {/* Outline */}
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 24, fontFamily: font, marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 14 }}>OUTLINE</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
-            <StatePreview p={p} font={font} variant="outline" state="rest" />
-            <StatePreview p={p} font={font} variant="outline" state="hover" />
-            <StatePreview p={p} font={font} variant="outline" state="focus" />
-            <StatePreview p={p} font={font} variant="outline" state="active" />
-            <StatePreview p={p} font={font} variant="outline" state="disabled" />
-          </div>
-        </div>
-        {/* Ghost */}
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 24, fontFamily: font }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 14 }}>GHOST</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
-            <StatePreview p={p} font={font} variant="ghost" state="rest" />
-            <StatePreview p={p} font={font} variant="ghost" state="hover" />
-            <StatePreview p={p} font={font} variant="ghost" state="focus" />
-            <StatePreview p={p} font={font} variant="ghost" state="active" />
-            <StatePreview p={p} font={font} variant="ghost" state="disabled" />
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Estados (loading / sucesso)" p={p}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 14, height: 14, border: `2px solid ${p.heroFg}40`, borderTopColor: p.heroFg, borderRadius: "50%", animation: "bp-spin 0.7s linear infinite", display: "inline-block" }} />
-            Salvando...
-          </button>
-          <button style={{ ...baseBtn, background: "#10B981", color: "#FFFFFF", padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            ✓ Salvo
-          </button>
-          <button style={{ ...baseBtn, background: p.primary, color: p.heroFg, padding: "12px 22px", borderRadius: 10, fontSize: 14, display: "flex", alignItems: "center", gap: 8, position: "relative", overflow: "hidden" }}>
-            <span style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, transparent, ${p.heroFg}22, transparent)`, animation: "bp-shimmer 2s linear infinite", backgroundSize: "200% 100%" }} />
-            <span style={{ position: "relative" }}>Processando pagamento</span>
-          </button>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
-
-// =============================================================================
-// CS FEEDBACK — toast, modal, alert, skeleton, empty, dialog
-// =============================================================================
-function CSFeedback({ p, font }: { p: Palette; font: string }) {
-  const [openModal, setOpenModal] = useState(false)
-  const [openDialog, setOpenDialog] = useState(false)
-  return (
-    <div>
-      <CSGroup title="Toast notifications" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 380 }}>
-          {[
-            { c: "#10B981", icon: "✓", title: "Despesa salva", sub: "R$ 142,30 · Mercado · Nubank", time: "agora" },
-            { c: p.primary, icon: "ℹ", title: "Maria comentou", sub: "Sobre a conta de luz", time: "1 min" },
-            { c: "#F59E0B", icon: "⚠", title: "Limite do cartão", sub: "Atingiu 85% do limite Nubank", time: "5 min" },
-            { c: "#DC2626", icon: "✕", title: "Erro ao sincronizar", sub: "Tentando reconectar...", time: "10 min" },
-          ].map((t) => (
-            <div key={t.title} style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.08)", fontFamily: font }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: t.c, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{t.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>{t.title}</div>
-                <div style={{ fontSize: 11, color: p.textMuted }}>{t.sub}</div>
-              </div>
-              <div style={{ fontSize: 11, color: p.textMuted }}>{t.time}</div>
-              <button style={{ background: "transparent", border: "none", color: p.textMuted, cursor: "pointer", fontSize: 16 }}>×</button>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Modal / Dialog (clique pra abrir)" p={p}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button onClick={() => setOpenModal(true)} style={{ background: p.primary, color: p.heroFg, border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Abrir modal</button>
-          <button onClick={() => setOpenDialog(true)} style={{ background: "#DC2626", color: "#FFFFFF", border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Diálogo de confirmação</button>
-        </div>
-
-        {openModal && (
-          <div onClick={() => setOpenModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(11,18,32,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: "bp-fade-up 200ms ease-out" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: p.surface, borderRadius: 18, padding: 0, maxWidth: 480, width: "90%", boxShadow: "0 30px 80px rgba(0,0,0,0.4)", fontFamily: font, overflow: "hidden" }}>
-              <div style={{ padding: "20px 24px", borderBottom: `1px solid ${p.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: p.text }}>Nova transação</div>
-                <button onClick={() => setOpenModal(false)} style={{ background: "transparent", border: "none", fontSize: 20, color: p.textMuted, cursor: "pointer" }}>×</button>
-              </div>
-              <div style={{ padding: 24 }}>
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Descrição</label>
-                  <input style={{ width: "100%", border: `1px solid ${p.border}`, padding: "10px 12px", borderRadius: 8, fontSize: 14, fontFamily: font, background: p.surface, color: p.text, outline: "none", boxSizing: "border-box" }} placeholder="Ex: Almoço com Maria" />
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Valor</label>
-                  <input style={{ width: "100%", border: `1px solid ${p.border}`, padding: "10px 12px", borderRadius: 8, fontSize: 24, fontWeight: 700, fontFamily: font, background: p.surface, color: p.text, outline: "none", boxSizing: "border-box" }} defaultValue="R$ 0,00" />
-                </div>
-              </div>
-              <div style={{ padding: "16px 24px", background: p.bg, display: "flex", justifyContent: "flex-end", gap: 10, borderTop: `1px solid ${p.border}` }}>
-                <button onClick={() => setOpenModal(false)} style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Cancelar</button>
-                <button onClick={() => setOpenModal(false)} style={{ background: p.primary, color: p.heroFg, border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Salvar transação</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {openDialog && (
-          <div onClick={() => setOpenDialog(false)} style={{ position: "fixed", inset: 0, background: "rgba(11,18,32,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: "bp-fade-up 200ms ease-out" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: p.surface, borderRadius: 18, padding: 28, maxWidth: 400, width: "90%", boxShadow: "0 30px 80px rgba(0,0,0,0.4)", fontFamily: font, textAlign: "center" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#FEE2E2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px" }}>⚠</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: p.text, marginBottom: 8 }}>Excluir transação?</div>
-              <div style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.5, marginBottom: 24 }}>Esta ação não pode ser desfeita. A transação será removida permanentemente.</div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setOpenDialog(false)} style={{ flex: 1, background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "11px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Cancelar</button>
-                <button onClick={() => setOpenDialog(false)} style={{ flex: 1, background: "#DC2626", color: "#FFFFFF", border: "none", padding: "11px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Sim, excluir</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </CSGroup>
-
-      <CSGroup title="Skeleton (loading)" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 20, maxWidth: 480 }}>
-          {[0, 1, 2].map((i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid ${p.border}` : "none" }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(90deg, ${p.bg} 25%, ${p.border} 50%, ${p.bg} 75%)`, backgroundSize: "200% 100%", animation: "bp-shimmer 1.5s infinite linear" }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ width: "60%", height: 12, borderRadius: 4, background: `linear-gradient(90deg, ${p.bg} 25%, ${p.border} 50%, ${p.bg} 75%)`, backgroundSize: "200% 100%", animation: "bp-shimmer 1.5s infinite linear", marginBottom: 6 }} />
-                <div style={{ width: "40%", height: 10, borderRadius: 4, background: `linear-gradient(90deg, ${p.bg} 25%, ${p.border} 50%, ${p.bg} 75%)`, backgroundSize: "200% 100%", animation: "bp-shimmer 1.5s infinite linear" }} />
-              </div>
-              <div style={{ width: 60, height: 14, borderRadius: 4, background: `linear-gradient(90deg, ${p.bg} 25%, ${p.border} 50%, ${p.bg} 75%)`, backgroundSize: "200% 100%", animation: "bp-shimmer 1.5s infinite linear" }} />
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Empty state" p={p}>
-        <div style={{ background: p.surface, border: `1px dashed ${p.border}`, borderRadius: 14, padding: 48, textAlign: "center", maxWidth: 480 }}>
-          <div style={{ width: 72, height: 72, margin: "0 auto 16px", background: p.primarySoft, color: p.primary, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>📭</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: p.text, marginBottom: 6 }}>Nenhuma transação ainda</div>
-          <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 18, lineHeight: 1.5 }}>Adicione manualmente ou conecte uma conta pra importar tudo.</div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>+ Nova transação</button>
-            <button style={{ background: "transparent", color: p.primary, border: `1px solid ${p.primary}`, padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Conectar banco</button>
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Loading dots" p={p}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[0, 1, 2].map((i) => (
-            <span key={i} style={{
-              width: 10, height: 10, borderRadius: "50%", background: p.primary,
-              animation: `bp-glow 1.2s ease-in-out ${i * 0.2}s infinite`,
-            }} />
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Drawer lateral (mockup)" p={p}>
-        <div style={{ background: p.bg, borderRadius: 14, padding: 20, position: "relative", overflow: "hidden", minHeight: 280, border: `1px solid ${p.border}` }}>
-          <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 12 }}>Conteúdo da página atrás do drawer →</div>
-          <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 320, background: p.surface, borderLeft: `1px solid ${p.border}`, boxShadow: "-12px 0 28px rgba(0,0,0,0.08)", padding: 24, fontFamily: font }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: p.text }}>Detalhes da transação</div>
-              <button style={{ background: "transparent", border: "none", color: p.textMuted, fontSize: 18, cursor: "pointer" }}>×</button>
-            </div>
-            <div style={{ background: p.bg, padding: 14, borderRadius: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", marginBottom: 4, textTransform: "uppercase" }}>Valor</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "#DC2626" }}>- R$ 142,30</div>
-            </div>
-            <div style={{ fontSize: 12, color: p.textMuted, marginBottom: 4 }}>Descrição</div>
-            <div style={{ fontSize: 14, color: p.text, fontWeight: 600, marginBottom: 14 }}>Mercado Pão de Açúcar</div>
-            <div style={{ fontSize: 12, color: p.textMuted, marginBottom: 4 }}>Conta</div>
-            <div style={{ fontSize: 14, color: p.text, fontWeight: 600 }}>Nubank · final 4218</div>
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tooltip / Popover" p={p}>
-        <div style={{ display: "flex", gap: 40, alignItems: "center", padding: 40, background: p.surface, borderRadius: 14, border: `1px solid ${p.border}` }}>
-          {/* Tooltip */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Hover sobre mim</button>
-            <div style={{ position: "absolute", top: -42, left: "50%", transform: "translateX(-50%)", background: p.text, color: "#FFFFFF", padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", fontFamily: font }}>
-              Atalho: ⌘N
-              <div style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%) rotate(45deg)", width: 8, height: 8, background: p.text }} />
-            </div>
-          </div>
-
-          {/* Popover */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>⋯ Mais ações</button>
-            <div style={{ position: "absolute", top: 48, left: 0, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, boxShadow: "0 12px 28px rgba(0,0,0,0.15)", padding: 6, minWidth: 200, fontFamily: font, zIndex: 5 }}>
-              {[
-                { i: "✎", label: "Editar" },
-                { i: "↗", label: "Duplicar" },
-                { i: "🔗", label: "Compartilhar" },
-                { i: "✕", label: "Excluir", danger: true },
-              ].map((item, idx) => (
-                <div key={item.label}>
-                  {item.danger && idx > 0 && <div style={{ height: 1, background: p.border, margin: "4px 0" }} />}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", fontSize: 13, color: item.danger ? "#DC2626" : p.text, cursor: "pointer", borderRadius: 6 }}>
-                    <span>{item.i}</span>
-                    <span>{item.label}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
-
-// =============================================================================
-// CS NAVEGACAO — tabs, stepper, breadcrumb, pagination, command palette
-// =============================================================================
-function CSNavegacao({ p, font }: { p: Palette; font: string }) {
-  const [pillTab, setPillTab] = useState("Visão geral")
-  const [underTab, setUnderTab] = useState("Transações")
-  const [page, setPage] = useState(3)
-  return (
-    <div>
-      <CSGroup title="Breadcrumb" p={p}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: font }}>
-          <a style={{ color: p.textMuted, textDecoration: "none" }}>Início</a>
-          <span style={{ color: p.textMuted }}>/</span>
-          <a style={{ color: p.textMuted, textDecoration: "none" }}>Família</a>
-          <span style={{ color: p.textMuted }}>/</span>
-          <a style={{ color: p.textMuted, textDecoration: "none" }}>Membros</a>
-          <span style={{ color: p.textMuted }}>/</span>
-          <span style={{ color: p.text, fontWeight: 600 }}>Maria Silva</span>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tabs — pills" p={p}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {["Visão geral", "Transações", "Categorias", "Relatórios"].map((t) => (
-            <button key={t} onClick={() => setPillTab(t)} style={{ background: pillTab === t ? p.primary : "transparent", color: pillTab === t ? p.heroFg : p.text, border: `1px solid ${pillTab === t ? p.primary : p.border}`, padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>{t}</button>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tabs — underline" p={p}>
-        <div style={{ borderBottom: `1px solid ${p.border}`, display: "flex", gap: 28 }}>
-          {["Transações", "Faturas", "Recorrentes", "Parcelamentos"].map((t) => (
-            <button key={t} onClick={() => setUnderTab(t)} style={{ background: "none", border: "none", padding: "10px 0", fontSize: 14, fontWeight: 600, color: underTab === t ? p.primary : p.textMuted, borderBottom: `2px solid ${underTab === t ? p.primary : "transparent"}`, marginBottom: "-1px", cursor: "pointer", fontFamily: font }}>{t}</button>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Stepper" p={p}>
-        <div style={{ display: "flex", alignItems: "center", gap: 0, maxWidth: 700 }}>
-          {[
-            { n: 1, label: "Dados", done: true },
-            { n: 2, label: "Categoria", done: true },
-            { n: 3, label: "Confirmação", done: false, current: true },
-            { n: 4, label: "Pronto", done: false },
-          ].map((s, i, arr) => (
-            <div key={s.n} style={{ display: "flex", alignItems: "center", flex: i < arr.length - 1 ? 1 : 0 }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 90 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: s.done ? p.primary : s.current ? p.surface : p.bg,
-                  color: s.done ? p.heroFg : s.current ? p.primary : p.textMuted,
-                  border: s.current ? `2px solid ${p.primary}` : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700,
-                  boxShadow: s.current ? `0 0 0 4px ${p.primary}22` : undefined,
-                }}>
-                  {s.done ? "✓" : s.n}
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: s.done || s.current ? p.text : p.textMuted, fontFamily: font }}>{s.label}</div>
-              </div>
-              {i < arr.length - 1 && (
-                <div style={{ flex: 1, height: 2, background: s.done ? p.primary : p.border, marginBottom: 22 }} />
-              )}
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Pagination" p={p}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <button onClick={() => setPage(Math.max(1, page - 1))} style={{ background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 36, height: 36, borderRadius: 8, cursor: "pointer", fontFamily: font }}>‹</button>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} onClick={() => setPage(n)} style={{ background: page === n ? p.primary : "transparent", color: page === n ? p.heroFg : p.text, border: `1px solid ${page === n ? p.primary : p.border}`, width: 36, height: 36, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>{n}</button>
-          ))}
-          <span style={{ color: p.textMuted, padding: "0 8px" }}>…</span>
-          <button style={{ background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 36, height: 36, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font }}>24</button>
-          <button onClick={() => setPage(page + 1)} style={{ background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 36, height: 36, borderRadius: 8, cursor: "pointer", fontFamily: font }}>›</button>
-          <span style={{ color: p.textMuted, fontSize: 13, marginLeft: 14, fontFamily: font }}>Mostrando 21–30 de 240</span>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Command palette (estilo Cmd+K)" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 0, maxWidth: 540, boxShadow: "0 20px 50px rgba(0,0,0,0.18)", overflow: "hidden", fontFamily: font }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${p.border}` }}>
-            <span style={{ color: p.textMuted, fontSize: 16 }}>🔍</span>
-            <input style={{ flex: 1, border: "none", background: "transparent", fontSize: 15, fontFamily: font, color: p.text, outline: "none" }} placeholder="Buscar transação, categoria, ação..." defaultValue="luz" />
-            <span style={{ fontSize: 11, color: p.textMuted, background: p.bg, padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>ESC</span>
-          </div>
-          <div>
-            {[
-              { icon: "⚡", label: "Conta de luz · R$ 240,00", hint: "Transação · 18/05" },
-              { icon: "💡", label: "Categoria: Energia elétrica", hint: "Ir pra categoria" },
-              { icon: "✦", label: "Nova despesa — Conta de luz", hint: "Ação rápida" },
-            ].map((it, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", cursor: "pointer", background: i === 0 ? p.primarySoft : "transparent" }}>
-                <span style={{ fontSize: 18 }}>{it.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, color: p.text, fontWeight: 600 }}>{it.label}</div>
-                  <div style={{ fontSize: 11, color: p.textMuted }}>{it.hint}</div>
-                </div>
-                {i === 0 && <span style={{ fontSize: 11, color: p.textMuted, background: p.surface, padding: "2px 8px", borderRadius: 6, fontWeight: 600, border: `1px solid ${p.border}` }}>⏎</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
-
-/** Select custom totalmente estilizado. */
-function PontesSelect({ p, font, options, value, onChange, placeholder = "Selecione" }: { p: Palette; font: string; options: string[]; value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div style={{ position: "relative" }}>
-      <button onClick={() => setOpen(!open)} type="button"
-        style={{ width: "100%", border: `1px solid ${open ? p.primary : p.border}`, padding: "12px 14px", borderRadius: 10, fontSize: 14, fontFamily: font, background: p.surface, color: value ? p.text : p.textMuted, outline: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: open ? `0 0 0 3px ${p.primary}22` : undefined }}>
-        <span>{value || placeholder}</span>
-        <span style={{ color: p.textMuted, transform: open ? "rotate(180deg)" : "none", transition: "transform 150ms" }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, boxShadow: "0 12px 28px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 50 }}>
-          {options.map((opt) => (
-            <button key={opt} onClick={() => { onChange(opt); setOpen(false) }}
-              style={{ width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 14, color: p.text, background: opt === value ? p.primarySoft : "transparent", border: "none", cursor: "pointer", fontFamily: font, display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              onMouseEnter={(e) => { if (opt !== value) (e.currentTarget as HTMLElement).style.background = p.bg }}
-              onMouseLeave={(e) => { if (opt !== value) (e.currentTarget as HTMLElement).style.background = "transparent" }}>
-              <span>{opt}</span>
-              {opt === value && <span style={{ color: p.primary, fontWeight: 700 }}>✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CSForm({ p, font }: { p: Palette; font: string }) {
-  const inputBase = { width: "100%", border: `1px solid ${p.border}`, padding: "12px 14px", borderRadius: 10, fontSize: 14, fontFamily: font, background: p.surface, color: p.text, outline: "none", boxSizing: "border-box" as const }
-  const [categoria, setCategoria] = useState("Mercado")
-  const [conta, setConta] = useState("Nubank")
-  const [notifOn, setNotifOn] = useState(true)
-  const [darkOn, setDarkOn] = useState(false)
-  const [rememberOn, setRememberOn] = useState(true)
-  const [termsOn, setTermsOn] = useState(false)
-  const [period, setPeriod] = useState<"mensal" | "anual">("mensal")
-
-  return (
-    <div>
-      <CSGroup title="Inputs" p={p}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>E-mail</label>
-            <input style={inputBase} placeholder="voce@email.com" onFocus={(e) => { e.currentTarget.style.borderColor = p.primary; e.currentTarget.style.boxShadow = `0 0 0 3px ${p.primary}22` }} onBlur={(e) => { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.boxShadow = "" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Senha</label>
-            <input type="password" style={inputBase} defaultValue="senha123" onFocus={(e) => { e.currentTarget.style.borderColor = p.primary; e.currentTarget.style.boxShadow = `0 0 0 3px ${p.primary}22` }} onBlur={(e) => { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.boxShadow = "" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Valor</label>
-            <input style={{ ...inputBase, fontSize: 24, fontWeight: 700, color: p.text }} defaultValue="R$ 1.240,00" />
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Buscar</label>
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: p.textMuted }}>🔍</span>
-              <input style={{ ...inputBase, paddingLeft: 38 }} placeholder="Buscar transação..." />
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#DC2626", marginBottom: 6, display: "block" }}>Com erro</label>
-            <input style={{ ...inputBase, borderColor: "#DC2626", background: "#FEF2F2" }} defaultValue="email-invalido" />
-            <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>E-mail inválido</div>
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Categoria</label>
-            <PontesSelect p={p} font={font} options={["Mercado", "Lazer", "Casa", "Transporte", "Assinatura", "Saúde", "Outros"]} value={categoria} onChange={setCategoria} />
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Conta</label>
-            <PontesSelect p={p} font={font} options={["Nubank", "Itaú", "Bradesco", "Banco do Brasil", "Inter", "C6 Bank", "Carteira"]} value={conta} onChange={setConta} />
-          </div>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: p.text, marginBottom: 6, display: "block" }}>Textarea</label>
-            <textarea style={{ ...inputBase, resize: "none", minHeight: 80 }} placeholder="Observação..." />
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Money input gigante" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24, maxWidth: 380 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.12em", marginBottom: 8, textTransform: "uppercase" }}>Valor da transação</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 28, color: p.textMuted, fontWeight: 600 }}>R$</span>
-            <input style={{ fontSize: 48, fontWeight: 800, color: p.text, border: "none", background: "transparent", outline: "none", letterSpacing: "-0.025em", width: "100%", fontFamily: font }} defaultValue="1.240,00" />
-          </div>
-          <div style={{ height: 1, background: p.border, marginTop: 8 }} />
-          <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
-            {["+100", "+500", "+1.000", "+5.000"].map((s) => (
-              <button key={s} style={{ flex: 1, background: p.bg, color: p.text, border: `1px solid ${p.border}`, padding: "6px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: font }}>{s}</button>
-            ))}
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="OTP code input" p={p}>
-        <div style={{ display: "flex", gap: 10 }}>
-          {["8", "3", "5", "", "", ""].map((d, i) => (
-            <div key={i} style={{
-              width: 52, height: 60, border: `2px solid ${i === 3 ? p.primary : p.border}`,
-              borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 26, fontWeight: 800, color: p.text, fontFamily: font, background: p.surface,
-              boxShadow: i === 3 ? `0 0 0 4px ${p.primary}22` : undefined, position: "relative",
-            }}>
-              {d}
-              {i === 3 && <span style={{ position: "absolute", width: 2, height: 28, background: p.primary, animation: "bp-glow 1s infinite" }} />}
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Range slider" p={p}>
-        <div style={{ maxWidth: 480, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, fontSize: 13 }}>
-            <span style={{ color: p.textMuted }}>Limite mensal</span>
-            <span style={{ color: p.text, fontWeight: 700 }}>R$ 4.500</span>
-          </div>
-          <div style={{ position: "relative", height: 24, display: "flex", alignItems: "center" }}>
-            <div style={{ position: "absolute", left: 0, right: 0, height: 6, background: p.bg, borderRadius: 999 }} />
-            <div style={{ position: "absolute", left: 0, width: "55%", height: 6, background: p.primary, borderRadius: 999 }} />
-            <div style={{ position: "absolute", left: "55%", transform: "translateX(-50%)", width: 22, height: 22, background: "#FFFFFF", border: `2px solid ${p.primary}`, borderRadius: "50%", boxShadow: `0 4px 12px ${p.primary}44`, cursor: "grab" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: p.textMuted }}>
-            <span>R$ 0</span>
-            <span>R$ 8.000</span>
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Date picker (mini calendar)" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 18, maxWidth: 320, fontFamily: font }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <button style={{ background: "transparent", border: "none", color: p.text, fontSize: 16, cursor: "pointer", padding: 4 }}>‹</button>
-            <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>Maio 2026</div>
-            <button style={{ background: "transparent", border: "none", color: p.text, fontSize: 16, cursor: "pointer", padding: 4 }}>›</button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-            {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
-              <div key={i} style={{ fontSize: 11, color: p.textMuted, fontWeight: 700, textAlign: "center", padding: 4 }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-            {[null, null, null, null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31].map((d, i) => {
-              const isToday = d === 20
-              const isSelected = d === 13
-              const hasEvent = d === 10 || d === 18 || d === 25
-              return (
-                <button key={i} disabled={!d} style={{
-                  aspectRatio: "1", border: "none", cursor: d ? "pointer" : "default",
-                  background: isToday ? p.primary : isSelected ? p.primarySoft : "transparent",
-                  color: isToday ? p.heroFg : isSelected ? p.primary : d ? p.text : "transparent",
-                  borderRadius: 8, fontSize: 12, fontWeight: isToday || isSelected ? 700 : 500, fontFamily: font,
-                  position: "relative",
-                }}>
-                  {d}
-                  {hasEvent && <span style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: p.accent }} />}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="File upload drop zone" p={p}>
-        <div style={{ background: p.surface, border: `2px dashed ${p.primary}`, borderRadius: 14, padding: 32, textAlign: "center", maxWidth: 480 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: p.primarySoft, color: p.primary, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>↑</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: p.text, marginBottom: 4 }}>Arraste seu arquivo OFX aqui</div>
-          <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 16 }}>ou <a style={{ color: p.primary, fontWeight: 600, cursor: "pointer" }}>clique pra selecionar</a></div>
-          <div style={{ fontSize: 11, color: p.textMuted }}>OFX, CSV, QIF · até 10MB</div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tag input com chips removíveis" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 10, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", maxWidth: 480 }}>
-          {["Família", "Mensal", "Recorrente"].map((tag) => (
-            <span key={tag} style={{ background: p.primarySoft, color: p.primary, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, fontFamily: font }}>
-              {tag}
-              <button style={{ background: "transparent", border: "none", color: p.primary, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
-            </span>
-          ))}
-          <input style={{ flex: 1, minWidth: 100, border: "none", background: "transparent", padding: "6px 8px", fontSize: 13, color: p.text, outline: "none", fontFamily: font }} placeholder="Adicionar tag..." />
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Color picker" p={p}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", maxWidth: 320 }}>
-          {[p.primary, p.accent, "#10B981", "#F59E0B", "#DC2626", "#3B82F6", "#A855F7", "#EC4899", "#14B8A6", "#64748B"].map((c, i) => (
-            <button key={c} style={{
-              width: 36, height: 36, borderRadius: 10, background: c,
-              border: i === 0 ? `3px solid ${p.text}` : `2px solid ${p.surface}`,
-              cursor: "pointer", boxShadow: i === 0 ? `0 0 0 2px ${c}` : `0 0 0 1px ${p.border}`,
-              outline: "none",
-            }} />
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Rating ★" p={p}>
-        <div style={{ display: "flex", gap: 4 }}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4 }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill={n <= 4 ? p.accent : "none"} stroke={p.accent} strokeWidth="2">
-                <path d="M12 2 L15 9 L22 9 L17 14 L19 22 L12 18 L5 22 L7 14 L2 9 L9 9 Z" strokeLinejoin="round" />
-              </svg>
-            </button>
-          ))}
-          <span style={{ marginLeft: 10, fontSize: 14, color: p.text, fontWeight: 600, alignSelf: "center", fontFamily: font }}>4.0 de 5</span>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Kbd shortcuts" p={p}>
-        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-          {[
-            { keys: ["⌘", "K"], label: "Busca rápida" },
-            { keys: ["⌘", "N"], label: "Nova transação" },
-            { keys: ["G", "D"], label: "Dashboard" },
-            { keys: ["?"], label: "Atalhos" },
-            { keys: ["Esc"], label: "Fechar" },
-          ].map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ display: "flex", gap: 3 }}>
-                {s.keys.map((k) => (
-                  <kbd key={k} style={{ display: "inline-block", padding: "3px 8px", background: p.surface, border: `1px solid ${p.border}`, borderBottomWidth: 2, borderRadius: 6, fontSize: 11, fontWeight: 700, color: p.text, fontFamily: "monospace", boxShadow: "0 1px 0 rgba(0,0,0,0.05)" }}>{k}</kbd>
-                ))}
-              </div>
-              <span style={{ fontSize: 12, color: p.textMuted, fontFamily: font }}>{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Toggle / Checkbox / Radio (clicáveis)" p={p}>
-        <div style={{ display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={() => setNotifOn(!notifOn)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            <div style={{ width: 40, height: 22, background: notifOn ? p.primary : p.border, borderRadius: 999, position: "relative", transition: "background 200ms" }}>
-              <div style={{ position: "absolute", top: 2, left: notifOn ? 20 : 2, width: 18, height: 18, background: "#FFFFFF", borderRadius: "50%", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 200ms" }} />
-            </div>
-            <span style={{ fontSize: 14, color: p.text }}>Notificações</span>
-          </button>
-          <button onClick={() => setDarkOn(!darkOn)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            <div style={{ width: 40, height: 22, background: darkOn ? p.primary : p.border, borderRadius: 999, position: "relative", transition: "background 200ms" }}>
-              <div style={{ position: "absolute", top: 2, left: darkOn ? 20 : 2, width: 18, height: 18, background: "#FFFFFF", borderRadius: "50%", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 200ms" }} />
-            </div>
-            <span style={{ fontSize: 14, color: p.text }}>Modo escuro</span>
-          </button>
-          <button onClick={() => setRememberOn(!rememberOn)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            {rememberOn ? (
-              <div style={{ width: 20, height: 20, background: p.primary, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 14, fontWeight: 700 }}>✓</div>
-            ) : (
-              <div style={{ width: 20, height: 20, border: `2px solid ${p.border}`, borderRadius: 5 }} />
-            )}
-            <span style={{ fontSize: 14, color: p.text }}>Lembrar acesso</span>
-          </button>
-          <button onClick={() => setTermsOn(!termsOn)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            {termsOn ? (
-              <div style={{ width: 20, height: 20, background: p.primary, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 14, fontWeight: 700 }}>✓</div>
-            ) : (
-              <div style={{ width: 20, height: 20, border: `2px solid ${p.border}`, borderRadius: 5 }} />
-            )}
-            <span style={{ fontSize: 14, color: termsOn ? p.text : p.textMuted }}>Aceitar termos</span>
-          </button>
-          <button onClick={() => setPeriod("mensal")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            <div style={{ width: 20, height: 20, border: `2px solid ${period === "mensal" ? p.primary : p.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {period === "mensal" && <div style={{ width: 10, height: 10, background: p.primary, borderRadius: "50%" }} />}
-            </div>
-            <span style={{ fontSize: 14, color: period === "mensal" ? p.text : p.textMuted }}>Mensal</span>
-          </button>
-          <button onClick={() => setPeriod("anual")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: font }}>
-            <div style={{ width: 20, height: 20, border: `2px solid ${period === "anual" ? p.primary : p.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {period === "anual" && <div style={{ width: 10, height: 10, background: p.primary, borderRadius: "50%" }} />}
-            </div>
-            <span style={{ fontSize: 14, color: period === "anual" ? p.text : p.textMuted }}>Anual</span>
-          </button>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
-
-function CSData({ p, font }: { p: Palette; font: string }) {
-  return (
-    <div>
-      <CSGroup title="Chips & Badges" p={p}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ background: p.primary, color: p.heroFg, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Família</span>
-          <span style={{ background: p.accent, color: "#0B1220", padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Pro</span>
-          <span style={{ background: p.primarySoft, color: p.primary, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Pendente</span>
-          <span style={{ background: "#D1FAE5", color: "#065F46", padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Pago</span>
-          <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Atrasado</span>
-          <span style={{ background: "#FEF3C7", color: "#92400E", padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Vence hoje</span>
-          <span style={{ border: `1px solid ${p.border}`, color: p.textMuted, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: font }}>Mercado</span>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Avatares · com status dot" p={p}>
-        <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.primary, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>GP</div>
-          {/* online */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <div style={{ width: 40, height: 40, borderRadius: "50%", background: p.accent, color: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>MS</div>
-            <span style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: "50%", background: "#10B981", border: `2px solid ${p.surface}` }} />
-          </div>
-          {/* away */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: `linear-gradient(135deg, ${p.primary}, ${p.accent})`, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700 }}>LP</div>
-            <span style={{ position: "absolute", bottom: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "#F59E0B", border: `2px solid ${p.surface}` }} />
-          </div>
-          {/* busy */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#94A3B8", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700 }}>+3</div>
-            <span style={{ position: "absolute", bottom: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "#DC2626", border: `2px solid ${p.surface}` }} />
-          </div>
-          {/* Stack */}
-          <div style={{ display: "flex" }}>
-            {[p.primary, p.accent, "#94A3B8", "#22C55E"].map((c, i) => (
-              <div key={i} style={{ width: 36, height: 36, borderRadius: "50%", background: c, marginLeft: i > 0 ? -10 : 0, border: `2px solid ${p.surface}` }} />
-            ))}
-          </div>
-          {/* Squared rounded */}
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: p.primary, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>BR</div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Alerts / Banners" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ background: p.primarySoft, border: `1px solid ${p.primary}40`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 18 }}>ℹ</span>
-            <div style={{ flex: 1, fontSize: 13, color: p.text }}><strong>Info:</strong> Sua fatura fecha em 3 dias.</div>
-          </div>
-          <div style={{ background: "#D1FAE5", border: "1px solid #10B98140", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 18 }}>✓</span>
-            <div style={{ flex: 1, fontSize: 13, color: "#065F46" }}><strong>Pago:</strong> Conta de luz paga com sucesso.</div>
-          </div>
-          <div style={{ background: "#FEF3C7", border: "1px solid #F59E0B40", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 18 }}>⚠</span>
-            <div style={{ flex: 1, fontSize: 13, color: "#92400E" }}><strong>Atenção:</strong> Limite do cartão em 85%.</div>
-          </div>
-          <div style={{ background: "#FEE2E2", border: "1px solid #DC262640", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 18 }}>✕</span>
-            <div style={{ flex: 1, fontSize: 13, color: "#991B1B" }}><strong>Erro:</strong> Não foi possível conectar com o banco.</div>
-          </div>
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Progress" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {[
-            { label: "Meta de viagem", v: 45, color: p.primary },
-            { label: "Limite usado", v: 78, color: p.accent },
-            { label: "Reserva de emergência", v: 92, color: "#22C55E" },
-          ].map((b) => (
-            <div key={b.label}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: p.text, fontWeight: 600, fontFamily: font }}>{b.label}</span>
-                <span style={{ fontSize: 13, color: p.textMuted, fontWeight: 600, fontFamily: font }}>{b.v}%</span>
-              </div>
-              <div style={{ height: 8, background: p.bg, borderRadius: 4 }}>
-                <div style={{ width: `${b.v}%`, height: "100%", background: b.color, borderRadius: 4 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Stat cards" p={p}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-          {[
-            { label: "Saldo total", v: "R$ 31.970", trend: "+12.4%", up: true },
-            { label: "Despesas mês", v: "R$ 5.140", trend: "-3.1%", up: false },
-            { label: "Receitas mês", v: "R$ 8.200", trend: "+5.8%", up: true },
-            { label: "Economia", v: "R$ 3.060", trend: "+8.2%", up: true },
-          ].map((s) => (
-            <div key={s.label} style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 16, fontFamily: font }}>
-              <div style={{ fontSize: 11, color: p.textMuted, fontWeight: 600, letterSpacing: "0.08em", marginBottom: 6, textTransform: "uppercase" }}>{s.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: p.text, letterSpacing: "-0.02em", marginBottom: 6 }}>{s.v}</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: s.up ? "#16A34A" : "#DC2626" }}>{s.up ? "↑" : "↓"} {s.trend} vs mês anterior</div>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Tabela com sort + ações" p={p}>
-        <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, overflow: "hidden", fontFamily: font }}>
-          <div style={{ padding: "14px 20px", borderBottom: `1px solid ${p.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>Transações de maio</div>
-              <div style={{ fontSize: 11, color: p.textMuted }}>247 lançamentos · R$ 5.140,00 em despesas</div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ background: "transparent", color: p.text, border: `1px solid ${p.border}`, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: font }}>Filtros</button>
-              <button style={{ background: p.primary, color: p.heroFg, border: "none", padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: font }}>+ Nova</button>
-            </div>
-          </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: p.bg, borderBottom: `1px solid ${p.border}` }}>
-                {["Data ↓", "Descrição", "Categoria", "Conta", "Membro", "Valor", ""].map((h, i) => (
-                  <th key={i} style={{ textAlign: i === 5 ? "right" : "left", padding: "12px 16px", fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { date: "20/05", desc: "Mercado Pão de Açúcar", cat: "Mercado", account: "Nubank", member: "G", v: -142.30 },
-                { date: "20/05", desc: "Salário Gustavo", cat: "Renda", account: "Itaú", member: "G", v: 4200 },
-                { date: "19/05", desc: "Netflix", cat: "Lazer", account: "Nubank", member: "G", v: -55.90 },
-                { date: "19/05", desc: "Conta de Luz · rateada", cat: "Casa", account: "Itaú", member: "G+M", v: -240 },
-                { date: "18/05", desc: "iFood", cat: "Alimentação", account: "Nubank", member: "M", v: -68.50 },
-              ].map((row, i, arr) => (
-                <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${p.border}` : "none" }}>
-                  <td style={{ padding: "12px 16px", color: p.textMuted, fontSize: 12 }}>{row.date}</td>
-                  <td style={{ padding: "12px 16px", color: p.text, fontWeight: 600 }}>{row.desc}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ background: p.primarySoft, color: p.primary, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600 }}>{row.cat}</span>
-                  </td>
-                  <td style={{ padding: "12px 16px", color: p.textMuted, fontSize: 12 }}>{row.account}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ background: p.accentSoft, color: p.text, padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700 }}>{row.member}</span>
-                  </td>
-                  <td style={{ padding: "12px 16px", color: row.v > 0 ? "#16A34A" : "#DC2626", fontWeight: 700, textAlign: "right" }}>{row.v > 0 ? "+ " : "- "}R$ {Math.abs(row.v).toFixed(2).replace(".", ",")}</td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <button style={{ background: "transparent", border: "none", color: p.textMuted, cursor: "pointer", padding: 4, fontSize: 16 }}>⋯</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ padding: "12px 20px", borderTop: `1px solid ${p.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: p.bg, fontSize: 12, color: p.textMuted }}>
-            <span>Mostrando 5 de 247</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button style={{ background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 28, height: 28, borderRadius: 6, cursor: "pointer", fontFamily: font }}>‹</button>
-              <button style={{ background: "transparent", border: `1px solid ${p.border}`, color: p.text, width: 28, height: 28, borderRadius: 6, cursor: "pointer", fontFamily: font }}>›</button>
-            </div>
-          </div>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
-
-function CSGraficos({ p, font }: { p: Palette; font: string }) {
-  // Ritmo de gastos cumulativo — mês atual acelerou no dia 13 (compra grande), mês passado mais suave.
-  // Valores realistas: família média BR gasta ~R$ 5k/mês.
-  const rythmRaw = [
-    { dia: 1, gastoMes: 142, gastoPrev: 89 },
-    { dia: 2, gastoMes: 210, gastoPrev: 156 },
-    { dia: 3, gastoMes: 380, gastoPrev: 245 },
-    { dia: 4, gastoMes: 425, gastoPrev: 318 },
-    { dia: 5, gastoMes: 620, gastoPrev: 412 },
-    { dia: 6, gastoMes: 890, gastoPrev: 510 },
-    { dia: 7, gastoMes: 1140, gastoPrev: 720 },
-    { dia: 8, gastoMes: 1320, gastoPrev: 880 },
-    { dia: 9, gastoMes: 1580, gastoPrev: 1050 },
-    { dia: 10, gastoMes: 1820, gastoPrev: 1240 },
-    { dia: 11, gastoMes: 2150, gastoPrev: 1410 },
-    { dia: 12, gastoMes: 2480, gastoPrev: 1620 },
-    { dia: 13, gastoMes: 3444, gastoPrev: 1840 }, // pico — compra grande
-    { dia: 14, gastoMes: 3580, gastoPrev: 1990 },
-    { dia: 15, gastoMes: 3720, gastoPrev: 2180 },
-    { dia: 16, gastoMes: 3860, gastoPrev: 2320 },
-    { dia: 17, gastoMes: 3980, gastoPrev: 2510 },
-    { dia: 18, gastoMes: 4120, gastoPrev: 2680 },
-    { dia: 19, gastoMes: 4280, gastoPrev: 2820 },
-    { dia: 20, gastoMes: 4456, gastoPrev: 2950 },
-    { dia: 21, gastoMes: null, gastoPrev: 3100 },
-    { dia: 22, gastoMes: null, gastoPrev: 3210 },
-    { dia: 23, gastoMes: null, gastoPrev: 3340 },
-    { dia: 24, gastoMes: null, gastoPrev: 3420 },
-    { dia: 25, gastoMes: null, gastoPrev: 3493 },
-    { dia: 26, gastoMes: null, gastoPrev: 3493 },
-    { dia: 27, gastoMes: null, gastoPrev: 3493 },
-    { dia: 28, gastoMes: null, gastoPrev: 3493 },
-    { dia: 29, gastoMes: null, gastoPrev: 3493 },
-    { dia: 30, gastoMes: null, gastoPrev: 3493 },
-    { dia: 31, gastoMes: null, gastoPrev: 3493 },
-  ]
-  const rythm: LinePoint[] = rythmRaw.map((r) => ({ label: r.dia, v: r.gastoMes ?? undefined, v2: r.gastoPrev } as LinePoint))
-
-  // Categorias do mês atual (R$ 4.456 total).
-  const donutData = [
-    { name: "Moradia", value: 1180 },
-    { name: "Mercado", value: 1840 },
-    { name: "Transporte", value: 520 },
-    { name: "Lazer", value: 690 },
-    { name: "Saúde", value: 226 },
-  ]
-
-  // Receita vs Despesa últimos 6 meses. Salário fixo + extras. Despesas variam.
-  const lineData: LinePoint[] = [
-    { label: "Dez", v: 8000, v2: 6800 }, // Dez gasta mais (Natal)
-    { label: "Jan", v: 8200, v2: 5400 },
-    { label: "Fev", v: 8000, v2: 4600 },
-    { label: "Mar", v: 8500, v2: 5000 }, // bônus março
-    { label: "Abr", v: 8000, v2: 4800 },
-    { label: "Mai", v: 8200, v2: 5140 },
-  ]
-
-  // Evolução do saldo últimos 8 semanas.
-  const saldoData = [
-    { label: "S1", v: 29800 },
-    { label: "S2", v: 30420 },
-    { label: "S3", v: 29950 },
-    { label: "S4", v: 30880 },
-    { label: "S5", v: 31200 },
-    { label: "S6", v: 31040 },
-    { label: "S7", v: 31650 },
-    { label: "S8", v: 31970 },
-  ]
-
-  // Gastos por mês últimos 6.
-  const gastosMes = [
-    { label: "Dez", v: 6.8 },
-    { label: "Jan", v: 5.4 },
-    { label: "Fev", v: 4.6 },
-    { label: "Mar", v: 5.0 },
-    { label: "Abr", v: 4.8 },
-    { label: "Mai", v: 5.4 },
-  ]
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, fontFamily: font }}>
-      {/* Ritmo de gastos — full width */}
-      <div style={{ gridColumn: "1 / -1", background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>Ritmo de gastos</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: p.text, letterSpacing: "-0.02em", display: "flex", alignItems: "baseline", gap: 8 }}>
-              R$ 963,60 <span style={{ fontSize: 14, fontWeight: 500, color: p.textMuted }}>acima</span>
-            </div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#FEE2E2", color: "#991B1B", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, marginTop: 8 }}>
-              ↗ +27.6%
-              <span style={{ color: p.textMuted, fontWeight: 500, marginLeft: 6 }}>vs R$ 3.493,82 mês anterior</span>
-            </div>
-          </div>
-          <a style={{ color: p.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>ver todas ↗</a>
-        </div>
-        <LineChartReal p={p} data={rythm} height={260} labelPrefix="Dia" />
-        <div style={{ display: "flex", gap: 22, marginTop: 14, fontSize: 13, color: p.textMuted }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 14, height: 3, background: p.accent, borderRadius: 2 }} /> Este mês
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 14, height: 0, borderTop: "2.5px dashed #94A3B8" }} /> Mês passado
-          </span>
-        </div>
-      </div>
-      {/* Receita vs Despesa */}
-      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>Receita vs Despesa</div>
-            <div style={{ fontSize: 11, color: p.textMuted, marginTop: 2 }}>Últimos 6 meses</div>
-          </div>
-          <div style={{ display: "flex", gap: 14, fontSize: 11, color: p.textMuted }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 2, background: p.accent }} /> Receita
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 0, borderTop: `2px dashed #94A3B8` }} /> Despesa
-            </span>
-          </div>
-        </div>
-        <LineChartReal p={p} data={lineData} height={200} labelPrefix="" />
-      </div>
-
-      {/* Evolução do saldo */}
-      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: p.text, marginBottom: 2 }}>Evolução do saldo</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: p.text, letterSpacing: "-0.02em", marginBottom: 2 }}>R$ 31.970,00</div>
-        <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginBottom: 14 }}>↑ 7.3% nas últimas 8 semanas</div>
-        <LineAreaChartReal p={p} data={saldoData} height={180} />
-      </div>
-
-      {/* Gastos por mês */}
-      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>Gastos por mês</div>
-            <div style={{ fontSize: 11, color: p.textMuted, marginTop: 2 }}>Em milhares (R$)</div>
-          </div>
-          <div style={{ fontSize: 11, color: p.textMuted }}>Média: <strong style={{ color: p.text }}>R$ 5.333</strong></div>
-        </div>
-        <BarChartReal p={p} data={gastosMes} height={200} />
-      </div>
-
-      {/* Categorias */}
-      <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>Top categorias</div>
-            <div style={{ fontSize: 11, color: p.textMuted, marginTop: 2 }}>Maio 2026</div>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "center" }}>
-          <DonutChartReal p={p} data={donutData} height={180} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {donutData.map((d, i) => {
-              const colors = [p.primary, p.accent, "#94A3B8", "#22C55E", "#A78BFA"]
-              const total = donutData.reduce((s, x) => s + x.value, 0)
-              const pct = ((d.value / total) * 100).toFixed(0)
-              return (
-                <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: colors[i] }} />
-                  <span style={{ flex: 1, color: p.text, fontWeight: 500 }}>{d.name}</span>
-                  <span style={{ color: p.textMuted, fontSize: 11 }}>{pct}%</span>
-                  <span style={{ fontWeight: 700, color: p.text, minWidth: 70, textAlign: "right" }}>R$ {d.value.toLocaleString("pt-BR")}</span>
-                </div>
-              )
-            })}
-            <div style={{ marginTop: 6, paddingTop: 10, borderTop: `1px solid ${p.border}`, display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-              <span style={{ color: p.textMuted, fontWeight: 600 }}>Total</span>
-              <span style={{ fontWeight: 700, color: p.text }}>R$ 4.456</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// CS TOKENS — cor, tipografia, spacing, radii, shadows
-// =============================================================================
-
-/** Gera shades 50-900 a partir de uma cor base via HSL manipulation. */
-function genShades(hex: string): { name: string; v: string }[] {
-  const r = parseInt(hex.slice(1, 3), 16) / 255
-  const g = parseInt(hex.slice(3, 5), 16) / 255
-  const b = parseInt(hex.slice(5, 7), 16) / 255
-  const max = Math.max(r, g, b), min = Math.min(r, g, b)
-  let h = 0, s = 0
-  const l = (max + min) / 2
-  if (max !== min) {
-    const d = max - min
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
-      case g: h = ((b - r) / d + 2) / 6; break
-      case b: h = ((r - g) / d + 4) / 6; break
-    }
-  }
-  const lightnesses = [0.97, 0.92, 0.85, 0.72, 0.58, l, 0.38, 0.28, 0.18, 0.10]
-  const names = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"]
-  return lightnesses.map((targetL, i) => ({ name: names[i], v: hslToHex(h, s, targetL) }))
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  let r: number, g: number, b: number
-  if (s === 0) { r = g = b = l }
-  else {
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1; if (t > 1) t -= 1
-      if (t < 1/6) return p + (q - p) * 6 * t
-      if (t < 1/2) return q
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
-      return p
-    }
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
-    const p2 = 2 * l - q
-    r = hue2rgb(p2, q, h + 1/3)
-    g = hue2rgb(p2, q, h)
-    b = hue2rgb(p2, q, h - 1/3)
-  }
-  const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, "0")
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
-
-function ShadeRow({ label, hex, p }: { label: string; hex: string; p: Palette }) {
-  const shades = genShades(hex)
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: p.text, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-        {label}
-        <span style={{ color: p.textMuted, fontWeight: 500, fontSize: 11, fontFamily: "monospace" }}>{hex}</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4 }}>
-        {shades.map((s) => (
-          <div key={s.name}>
-            <div style={{ background: s.v, height: 48, borderRadius: 6, border: `1px solid ${p.border}` }} />
-            <div style={{ fontSize: 10, color: p.textMuted, marginTop: 4, textAlign: "center", fontWeight: 600 }}>{s.name}</div>
-            <div style={{ fontSize: 9, color: p.textMuted, textAlign: "center", fontFamily: "monospace", opacity: 0.7 }}>{s.v}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function CSTokens({ p, font }: { p: Palette; font: string }) {
-  return (
-    <div style={{ fontFamily: font }}>
-      <CSGroup title="Cores · escala 50-900" p={p}>
-        <ShadeRow label="Primária" hex={p.primary} p={p} />
-        <ShadeRow label="Acento" hex={p.accent} p={p} />
-        <ShadeRow label="Sucesso" hex="#10B981" p={p} />
-        <ShadeRow label="Atenção" hex="#F59E0B" p={p} />
-        <ShadeRow label="Perigo" hex="#DC2626" p={p} />
-        <ShadeRow label="Neutro" hex="#64748B" p={p} />
-      </CSGroup>
-
-      <CSGroup title="Tipografia · escala" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-          {[
-            { name: "display-2xl", size: 72, weight: 800, letterSpacing: "-0.04em" },
-            { name: "display-xl", size: 56, weight: 800, letterSpacing: "-0.035em" },
-            { name: "display-lg", size: 44, weight: 800, letterSpacing: "-0.03em" },
-            { name: "h1", size: 36, weight: 700, letterSpacing: "-0.025em" },
-            { name: "h2", size: 28, weight: 700, letterSpacing: "-0.02em" },
-            { name: "h3", size: 22, weight: 700, letterSpacing: "-0.01em" },
-            { name: "body-lg", size: 18, weight: 400 },
-            { name: "body", size: 15, weight: 400 },
-            { name: "body-sm", size: 13, weight: 400 },
-            { name: "caption", size: 11, weight: 600, letterSpacing: "0.08em", upper: true },
-          ].map((t) => (
-            <div key={t.name} style={{ display: "flex", alignItems: "baseline", gap: 24, paddingBottom: 12, borderBottom: `1px solid ${p.border}` }}>
-              <div style={{ minWidth: 110, fontSize: 11, color: p.textMuted, fontFamily: "monospace", fontWeight: 600 }}>
-                {t.name} · {t.size}/{t.weight}
-              </div>
-              <div style={{ fontSize: t.size, fontWeight: t.weight, color: p.text, letterSpacing: t.letterSpacing, fontFamily: font, lineHeight: 1.1, textTransform: t.upper ? "uppercase" : undefined }}>
-                Finanças em família
-              </div>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Spacing · escala 4-base" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-          {[
-            { name: "0", v: 0 }, { name: "1", v: 4 }, { name: "2", v: 8 }, { name: "3", v: 12 }, { name: "4", v: 16 },
-            { name: "6", v: 24 }, { name: "8", v: 32 }, { name: "10", v: 40 }, { name: "12", v: 48 }, { name: "16", v: 64 }, { name: "20", v: 80 },
-          ].map((s) => (
-            <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ minWidth: 80, fontSize: 11, color: p.textMuted, fontFamily: "monospace", fontWeight: 600 }}>space-{s.name}</div>
-              <div style={{ minWidth: 60, fontSize: 11, color: p.text, fontWeight: 600 }}>{s.v}px</div>
-              <div style={{ height: 12, width: s.v || 1, background: p.primary, borderRadius: 2 }} />
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Border radius" p={p}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-          {[
-            { name: "none", v: 0 }, { name: "sm", v: 4 }, { name: "md", v: 8 }, { name: "lg", v: 12 }, { name: "xl", v: 18 }, { name: "full", v: 999 },
-          ].map((r) => (
-            <div key={r.name} style={{ textAlign: "center" }}>
-              <div style={{ width: 80, height: 80, background: p.primary, borderRadius: r.v, margin: "0 auto 10px" }} />
-              <div style={{ fontSize: 12, fontWeight: 700, color: p.text }}>{r.name}</div>
-              <div style={{ fontSize: 11, color: p.textMuted, fontFamily: "monospace" }}>{r.v === 999 ? "9999px" : r.v + "px"}</div>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Shadows" p={p}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, background: p.bg, padding: 32, borderRadius: 14, border: `1px solid ${p.border}` }}>
-          {[
-            { name: "xs", shadow: "0 1px 2px rgba(0,0,0,0.05)" },
-            { name: "sm", shadow: "0 2px 4px rgba(0,0,0,0.08)" },
-            { name: "md", shadow: "0 8px 16px -4px rgba(0,0,0,0.1)" },
-            { name: "lg", shadow: "0 16px 32px -8px rgba(0,0,0,0.15)" },
-            { name: "xl", shadow: "0 30px 60px -15px rgba(0,0,0,0.25)" },
-          ].map((sh) => (
-            <div key={sh.name} style={{ textAlign: "center" }}>
-              <div style={{ width: 80, height: 80, background: p.surface, borderRadius: 12, margin: "0 auto 14px", boxShadow: sh.shadow }} />
-              <div style={{ fontSize: 12, fontWeight: 700, color: p.text }}>shadow-{sh.name}</div>
-            </div>
-          ))}
-        </div>
-      </CSGroup>
-
-      <CSGroup title="Easing · animation curves" p={p}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: 24 }}>
-          {[
-            { name: "linear", v: "linear" },
-            { name: "ease-out", v: "ease-out" },
-            { name: "ease-in-out", v: "ease-in-out" },
-            { name: "spring", v: "cubic-bezier(0.34, 1.56, 0.64, 1)" },
-          ].map((e, i) => (
-            <div key={e.name} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ minWidth: 120, fontSize: 12, fontWeight: 700, color: p.text }}>{e.name}</div>
-              <div style={{ flex: 1, height: 4, background: p.bg, borderRadius: 2, position: "relative" }}>
-                <div style={{ position: "absolute", top: -6, left: 0, width: 16, height: 16, borderRadius: "50%", background: p.primary, animation: `bp-easing-${i} 2.4s ${e.v} infinite` }} />
-              </div>
-            </div>
-          ))}
-          <style>{`
-            @keyframes bp-easing-0 { 0%, 100% { left: 0 } 50% { left: calc(100% - 16px) } }
-            @keyframes bp-easing-1 { 0%, 100% { left: 0 } 50% { left: calc(100% - 16px) } }
-            @keyframes bp-easing-2 { 0%, 100% { left: 0 } 50% { left: calc(100% - 16px) } }
-            @keyframes bp-easing-3 { 0%, 100% { left: 0 } 50% { left: calc(100% - 16px) } }
-          `}</style>
-        </div>
-      </CSGroup>
-    </div>
-  )
-}
 
 function PriceCard({ p, font, name, price, period, tagline, features, cta, highlight, note }: { p: Palette; font: string; name: string; price: string; period: string; tagline: string; features: string[]; cta: string; highlight: boolean; note?: string }) {
   const fg = highlight ? p.heroFg : p.text
@@ -3146,25 +1680,18 @@ function PriceCard({ p, font, name, price, period, tagline, features, cta, highl
           </li>
         ))}
       </ul>
-      <button style={{ width: "100%", background: highlight ? p.accent : "transparent", color: highlight ? "#0B1220" : p.primary, border: highlight ? "none" : `1.5px solid ${p.primary}`, padding: "14px", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: font }}>
+      <PontesButton
+        p={p} font={font}
+        variant={highlight ? "accent" : "outline"}
+        size="md" fullWidth
+      >
         {cta}
-      </button>
+      </PontesButton>
     </div>
   )
 }
 
-function FooterCol({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div>
-      <div style={{ fontWeight: 700, color: "#FFFFFF", fontSize: 14, marginBottom: 16 }}>{title}</div>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-        {items.map((item) => (
-          <li key={item} style={{ fontSize: 14 }}><a style={{ color: "inherit", textDecoration: "none" }}>{item}</a></li>
-        ))}
-      </ul>
-    </div>
-  )
-}
+// FooterCol removido — substituído por PontesFooter (biblioteca).
 
 // =============================================================================
 // PÁGINA + CONTROLES
@@ -3172,9 +1699,25 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
 export default function HomePage() {
   const [paletteId, setPaletteId] = useState("A")
   const [fontId, setFontId] = useState("inter")
+  const [barOpen, setBarOpen] = useState(true)
+  const [barHeight, setBarHeight] = useState(0)
+  const barRef = useRef<HTMLDivElement>(null)
 
   const palette = palettes.find((x) => x.id === paletteId) ?? palettes[0]
   const font = fonts.find((x) => x.id === fontId) ?? fonts[0]
+
+  // Mede altura do brand preview (ResizeObserver pega wrap dos botões de paleta).
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const measure = () => setBarHeight(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const topOffset = barOpen ? barHeight : 0
 
   useEffect(() => {
     const prev = {
@@ -3203,39 +1746,76 @@ export default function HomePage() {
     }
   }, [font])
 
+  // Scrollbar overlay (accent) sempre visível + fundo da página no body.
+  usePontesBodyScrollbar(palette.accent)
+  useEffect(() => { applyPontesScrollbar(palette.accent, palette.bg) }, [palette])
+
   return (
     <div>
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000, background: "#0B1220", color: "#FFFFFF", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontFamily: "system-ui, sans-serif", fontSize: 13, borderBottom: "2px solid #1E293B", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-        <div style={{ fontWeight: 700, letterSpacing: "0.1em", fontSize: 11 }}>🎨 BRAND PREVIEW</div>
+      {/* Control bar de dev (BRAND PREVIEW) — fixed overlay no topo do viewport.
+          Aparece onde você estiver (reabrir em qualquer scroll). Sai no #90. */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
+        transform: barOpen ? "translateY(0)" : "translateY(-100%)",
+        transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}>
+        <div ref={barRef} style={{ background: "#0B1220", color: "#FFFFFF", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontFamily: "system-ui, sans-serif", fontSize: 13, borderBottom: "2px solid #1E293B", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+          {/* Toggle recolher (seta pra cima) — esquerda */}
+          <button
+            onClick={() => setBarOpen(false)}
+            aria-label="Esconder brand preview"
+            style={{ background: "transparent", color: "#FFFFFF", border: "1px solid #334155", borderRadius: 8, padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center" }}
+          >
+            <ChevronUp size={16} strokeWidth={2.5} />
+          </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ opacity: 0.6 }}>Paleta:</span>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {palettes.map((pp) => (
-              <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label}
-                style={{ background: paletteId === pp.id ? "#FFFFFF" : "transparent", color: paletteId === pp.id ? "#0B1220" : "#FFFFFF", border: `1px solid ${paletteId === pp.id ? "#FFFFFF" : "#334155"}`, padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 12, height: 12, background: pp.primary, borderRadius: 3 }} />
-                <span style={{ width: 12, height: 12, background: pp.accent, borderRadius: 3 }} />
-                <span>{pp.id}</span>
-              </button>
-            ))}
+          <div style={{ fontWeight: 700, letterSpacing: "0.1em", fontSize: 11 }}>🎨 BRAND PREVIEW</div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ opacity: 0.6 }}>Paleta:</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {palettes.map((pp) => (
+                <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label}
+                  style={{ background: paletteId === pp.id ? "#FFFFFF" : "transparent", color: paletteId === pp.id ? "#0B1220" : "#FFFFFF", border: `1px solid ${paletteId === pp.id ? "#FFFFFF" : "#334155"}`, padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 12, height: 12, background: pp.primary, borderRadius: 3 }} />
+                  <span style={{ width: 12, height: 12, background: pp.accent, borderRadius: 3 }} />
+                  <span>{pp.id}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ opacity: 0.6 }}>Fonte:</span>
-          <select value={fontId} onChange={(e) => setFontId(e.target.value)}
-            style={{ background: "#1E293B", color: "#FFFFFF", border: "1px solid #334155", padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui, sans-serif" }}>
-            {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
-          </select>
-        </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ opacity: 0.6 }}>Fonte:</span>
+            <select value={fontId} onChange={(e) => setFontId(e.target.value)}
+              style={{ background: "#1E293B", color: "#FFFFFF", border: "1px solid #334155", padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui, sans-serif" }}>
+              {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
+            </select>
+          </div>
 
-        <div style={{ marginLeft: "auto", opacity: 0.55, fontSize: 11 }}>{palette.label} · {font.label}</div>
+          <div style={{ marginLeft: "auto", opacity: 0.55, fontSize: 11 }}>{palette.label} · {font.label}</div>
+        </div>
       </div>
 
-      {/* Padding-top pra compensar control bar fixo (altura aprox 56px) */}
-      <div style={{ paddingTop: 56 }}>
-        <Landing p={palette} font={font.family} />
+      {/* Pontinha pra reabrir onde você estiver (seta pra baixo) — esquerda fixa */}
+      {!barOpen && (
+        <button
+          onClick={() => setBarOpen(true)}
+          aria-label="Mostrar brand preview"
+          style={{
+            position: "fixed", top: 0, left: 16, zIndex: 1000,
+            background: "#0B1220", color: "#FFFFFF", border: "2px solid #1E293B", borderTop: "none",
+            borderRadius: "0 0 10px 10px", padding: "4px 14px", cursor: "pointer",
+            display: "flex", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          }}
+        >
+          <ChevronDown size={16} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Conteúdo empurrado abaixo da bar fixa quando aberta */}
+      <div style={{ paddingTop: barOpen ? barHeight : 0, transition: "padding-top 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
+        <Landing p={palette} font={font.family} topOffset={topOffset} />
       </div>
       <FloatCTA p={palette} font={font.family} />
       <ScrollProgressBar p={palette} />
