@@ -143,6 +143,18 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
 
       {/* Conteúdo da página (empurrado abaixo da bar fixa quando aberta) */}
       <div style={{ paddingTop: barOpen ? barHeight : 0, transition: "padding-top 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
+        {/* TOPBAR PROMOCIONAL — site-wide (acompanha o nav em todas as páginas) */}
+        <button
+          onClick={() => navigate("/auth/register")}
+          style={{
+            display: "block", width: "100%", border: "none", cursor: "pointer",
+            background: `linear-gradient(90deg, ${palette.primary}, ${palette.accent}, ${palette.primary})`,
+            color: "#FFFFFF", padding: "10px 24px", textAlign: "center",
+            fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", fontFamily: fontOpt.family,
+          }}
+        >
+          ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
+        </button>
         {children ?? <Outlet />}
       </div>
 
