@@ -24,6 +24,7 @@ import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
 import SiteLayout from "../pages/Site/SiteLayout"
 import CouplesPage from "../pages/Site/CouplesPage"
+import ContadoresPage from "../pages/Site/ContadoresPage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -39,6 +40,7 @@ export default function AppRoutes() {
             <SiteLayout> — URLs limpas /casais, /contadores, etc. */}
         <Route element={<SiteLayout />}>
           <Route path="/casais" element={<CouplesPage />} />
+          <Route path="/contadores" element={<ContadoresPage />} />
         </Route>
 
         {/* Auth Routes */}
