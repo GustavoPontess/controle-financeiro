@@ -22,8 +22,6 @@ import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
-import HomePage from "../pages/Site/HomePage"
-import SiteLayout from "../pages/Site/SiteLayout"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -35,10 +33,8 @@ export default function AppRoutes() {
             sem flash; deslogado → SiteLayout + Home via children). */}
         <Route path="/" element={<RootRoute />} />
 
-        {/* Site público — shell compartilhado (navbar + footer + control bar dev) */}
-        <Route element={<SiteLayout />}>
-          <Route path="/site" element={<HomePage />} />
-        </Route>
+        {/* Verticais públicas (Casais, Contadores, Recursos, Sobre) entram aqui
+            sob <SiteLayout> — URLs limpas /casais, /contadores, etc. */}
 
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />

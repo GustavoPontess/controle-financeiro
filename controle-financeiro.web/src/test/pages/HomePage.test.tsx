@@ -14,14 +14,12 @@ vi.mock("overlayscrollbars-react", () => ({
 }))
 
 // Renderiza HomePage dentro do SiteLayout (Outlet context fornece p/font).
-function renderSite(path = "/site") {
+function renderSite() {
   return render(
     <PontesThemeProvider>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={["/"]}>
         <Routes>
-          <Route element={<SiteLayout />}>
-            <Route path="/site" element={<HomePage />} />
-          </Route>
+          <Route path="/" element={<SiteLayout><HomePage /></SiteLayout>} />
         </Routes>
       </MemoryRouter>
     </PontesThemeProvider>

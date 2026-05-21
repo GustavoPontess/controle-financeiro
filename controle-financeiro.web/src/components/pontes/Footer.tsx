@@ -42,31 +42,31 @@ export type PontesFooterProps = {
 
 const DEFAULT_COLUMNS: PontesFooterColumn[] = [
   { title: "Produto", links: [
-    { label: "Recursos", to: "/site/recursos" },
-    { label: "Para Casais", to: "/site/casais" },
-    { label: "Para Contadores", to: "/site/contadores" },
-    { label: "Preços", to: "/site/precos" },
+    { label: "Recursos", to: "/recursos" },
+    { label: "Para Casais", to: "/casais" },
+    { label: "Para Contadores", to: "/contadores" },
+    { label: "Preços", to: "/precos" },
   ] },
   { title: "Empresa", links: [
-    { label: "Sobre", to: "/site/sobre" },
-    { label: "Blog", to: "/site/blog" },
-    { label: "Contato", to: "/site/contato" },
+    { label: "Sobre", to: "/sobre" },
+    { label: "Blog", to: "/blog" },
+    { label: "Contato", to: "/contato" },
   ] },
   { title: "Recursos", links: [
-    { label: "Central de ajuda", to: "/site/ajuda" },
-    { label: "Status", to: "/site/status" },
-    { label: "API", to: "/site/api" },
+    { label: "Central de ajuda", to: "/ajuda" },
+    { label: "Status", to: "/status" },
+    { label: "API", to: "/api" },
   ] },
   { title: "Legal", links: [
-    { label: "Termos", to: "/site/termos" },
-    { label: "Privacidade", to: "/site/privacidade" },
-    { label: "LGPD", to: "/site/lgpd" },
+    { label: "Termos", to: "/termos" },
+    { label: "Privacidade", to: "/privacidade" },
+    { label: "LGPD", to: "/lgpd" },
   ] },
 ]
 
 const DEFAULT_MINIMAL_LINKS: PontesFooterLink[] = [
   { label: "Home", to: "/" },
-  { label: "Para Casais", to: "/site/casais" },
+  { label: "Para Casais", to: "/casais" },
   { label: "Entrar", to: "/auth/login" },
 ]
 
