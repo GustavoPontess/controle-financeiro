@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import {
@@ -134,11 +134,8 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1.03)' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)' }}
-          >
-            <PontesLogo color="#ffffff" size={32} variant="full" />
+          <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none' }}>
+            <PontesLogo color="#ffffff" size={32} />
           </Link>
         </div>
 
@@ -216,8 +213,8 @@ export default function RegisterPage() {
           {/* Logo mobile */}
           <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
             <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
-            <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}>
-              <PontesLogo color={p.primary} size={28} variant="full" />
+            <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none' }}>
+              <PontesLogo color={p.primary} size={28} />
             </Link>
           </div>
 

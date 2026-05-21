@@ -805,75 +805,58 @@ function SiteSection({ p, font }: { p: Palette; font: string }) {
   return (
     <div>
       <Group title="Logo — PontesLogo" p={p}>
-        {/* Variantes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* Sobre fundo claro */}
+
+          {/* Demo interativo — hover e click */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Sobre fundo claro</div>
-            <div style={{ display: "flex", gap: 40, flexWrap: "wrap", alignItems: "center", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 12, padding: "20px 28px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={32} variant="full" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>full · 32px</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={24} variant="full" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>full · 24px</span>
-              </div>
-              <div style={{ width: 1, height: 48, background: p.border }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={32} variant="wordmark" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>wordmark · 32px</span>
-              </div>
-              <div style={{ width: 1, height: 48, background: p.border }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={32} variant="mark" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 32px</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={48} variant="mark" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 48px</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color={p.primary} size={64} variant="mark" />
-                <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>mark · 64px</span>
-              </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+              Interativo — passe o mouse e clique
+            </div>
+            <div style={{ display: "flex", gap: 56, flexWrap: "wrap", alignItems: "flex-end", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 14, padding: "28px 36px" }}>
+              {([20, 28, 36, 48, 64] as const).map((s) => (
+                <div key={s} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <PontesLogo color={p.primary} size={s} />
+                  <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>{s}px</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: p.textMuted, fontFamily: font, marginTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
+              <span>🖱️ <b>hover</b> — scale spring + arco re-traça da esquerda pra direita</span>
+              <span>👆 <b>click</b> — scale press (0.93) + spring de volta</span>
             </div>
           </div>
 
           {/* Sobre fundo escuro */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Sobre fundo escuro (hero / navbar)</div>
-            <div style={{ display: "flex", gap: 40, flexWrap: "wrap", alignItems: "center", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, borderRadius: 12, padding: "20px 28px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color="#ffffff" size={32} variant="full" />
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>full · branco</span>
-              </div>
-              <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.2)" }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color="#ffffff" size={32} variant="wordmark" />
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>wordmark · branco</span>
-              </div>
-              <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.2)" }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <PontesLogo color="#ffffff" size={40} variant="mark" />
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>mark · branco</span>
-              </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+              Sobre fundo escuro (navbar / hero)
+            </div>
+            <div style={{ display: "flex", gap: 48, flexWrap: "wrap", alignItems: "flex-end", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, borderRadius: 14, padding: "28px 36px" }}>
+              {([22, 32, 44] as const).map((s) => (
+                <div key={s} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <PontesLogo color="#ffffff" size={s} />
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontFamily: font }}>{s}px</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Uso em código */}
+          {/* Snippet */}
           <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, padding: "14px 18px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Import</div>
-            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace" }}>
-              {"import { PontesLogo } from '@/components/pontes'"}<br />
-              {"<PontesLogo color={p.primary} size={32} variant=\"full\" />"}
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Import</div>
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block", marginBottom: 6 }}>
+              {"import { PontesLogo } from '@/components/pontes'"}
             </code>
-            <div style={{ fontSize: 11, color: p.textMuted, fontFamily: font, marginTop: 8 }}>
-              Props: <code style={{ fontFamily: "monospace" }}>color</code> (string) ·{" "}
-              <code style={{ fontFamily: "monospace" }}>size</code> (number, altura em px) ·{" "}
-              <code style={{ fontFamily: "monospace" }}>variant</code>: "full" | "wordmark" | "mark"
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block" }}>
+              {"<PontesLogo color={p.primary} size={32} />"}
+            </code>
+            <div style={{ fontSize: 11, color: p.textMuted, fontFamily: font, marginTop: 10, lineHeight: 1.7 }}>
+              <b>color</b> — string (hex, CSS var, currentColor) ·{" "}
+              <b>size</b> — number, altura em px ·{" "}
+              <b>onClick</b> — handler opcional (ativa cursor pointer)
             </div>
           </div>
+
         </div>
       </Group>
 

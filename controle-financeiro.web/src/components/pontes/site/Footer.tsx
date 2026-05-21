@@ -111,7 +111,7 @@ export function PontesFooter({
               style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
               aria-label="Pontes — Home"
             >
-              <Logo color="#FFFFFF" size={20} variant="full" />
+              <Logo color="#FFFFFF" size={20} />
             </button>
             <span style={{ fontSize: 12, opacity: 0.5 }}>{copyright}</span>
           </div>
@@ -154,7 +154,7 @@ export function PontesFooter({
               style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", marginBottom: 16, padding: 0 }}
               aria-label="Pontes — Home"
             >
-              <Logo color="#FFFFFF" size={24} variant="full" />
+              <Logo color="#FFFFFF" size={24} />
             </button>
             <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, margin: 0, maxWidth: 280 }}>
               Finanças pra família brasileira. Conecte bancos, divida despesas com seu parceiro e abra acesso pro seu contador.

@@ -94,7 +94,7 @@ export function PontesNavbar({
           style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
           aria-label="Pontes — Home"
         >
-          <Logo color={wordmarkColor} size={22} variant="full" />
+          <Logo color={wordmarkColor} size={22} />
         </button>
 
         <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
