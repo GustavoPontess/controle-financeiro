@@ -8,9 +8,10 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowRight, Play, Plus, ChevronUp, ChevronDown } from "lucide-react"
-import { PontesNavbar, PontesFooter, PontesButton, PontesLink, PontesButtonGroup, PontesTabs, applyPontesScrollbar, usePontesBodyScrollbar } from "../../components/pontes"
-import { palettes, fonts, type Palette } from "./theme"
+import { ArrowRight, Play, Plus } from "lucide-react"
+import { PontesButton, PontesLink, PontesButtonGroup, PontesTabs } from "../../components/pontes"
+import { type Palette } from "./theme"
+import { useSiteTheme } from "./siteTheme"
 import {
   ResponsiveContainer, AreaChart, Area, BarChart as RBarChart, Bar,
   Cell, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -105,20 +106,6 @@ function GlobalAnims() {
 }
 
 /** Hook: progresso do scroll [0, 1]. */
-function useScrollProgress() {
-  const [p, setP] = useState(0)
-  useEffect(() => {
-    const onScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight
-      setP(max > 0 ? window.scrollY / max : 0)
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-  return p
-}
-
 /** Card com spotlight cursor-follow. */
 function SpotlightCard({ children, style, spotColor = "rgba(255,255,255,0.12)" }: { children: React.ReactNode; style?: React.CSSProperties; spotColor?: string }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -1093,61 +1080,17 @@ function CartaoMockup({ p, font }: { p: Palette; font: string }) {
 }
 
 /** CTA flutuante fixo no canto inferior direito. */
-function FloatCTA({ p, font }: { p: Palette; font: string }) {
-  const [show, setShow] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 600)
-    window.addEventListener("scroll", onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-  // Wrapper fixed pra animação show/hide; PontesButton dentro pra hover/active automáticos.
-  return (
-    <div
-      style={{
-        position: "fixed", bottom: 24, right: 24, zIndex: 999,
-        opacity: show ? 1 : 0,
-        transform: show ? "translateY(0)" : "translateY(20px)",
-        pointerEvents: show ? "auto" : "none",
-        transition: "opacity 300ms ease, transform 300ms ease",
-      }}
-    >
-      <PontesButton
-        p={p} font={font}
-        variant="accent" size="md"
-        iconStart={<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0B1220", display: "inline-block" }} />}
-      >
-        Criar conta grátis
-      </PontesButton>
-    </div>
-  )
-}
-
-/** Barra de progresso de scroll no topo absoluto. */
-function ScrollProgressBar({ p }: { p: Palette }) {
-  const progress = useScrollProgress()
-  // Sempre no topo do viewport — o control bar (em flow) rola junto com a página.
-  return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: "transparent", zIndex: 999 }}>
-      <div style={{ height: "100%", width: `${progress * 100}%`, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, transition: "width 80ms linear" }} />
-    </div>
-  )
-}
-
-function Landing({ p, font, topOffset = 0 }: { p: Palette; font: string; topOffset?: number }) {
+function Landing({ p, font }: { p: Palette; font: string }) {
   const [annual, setAnnual] = useState(true)
   const navigate = useNavigate()
 
   return (
     <div style={{ fontFamily: font, color: p.text, background: p.surface, position: "relative" }}>
       <GlobalAnims />
-      {/* TOPBAR PROMOCIONAL — topo da Landing (relativo ao container). */}
+      {/* TOPBAR PROMOCIONAL — topo da Landing (navbar do SiteLayout flutua por cima). */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, background: `linear-gradient(90deg, ${p.primary}, ${p.accent}, ${p.primary})`, color: "#FFFFFF", padding: "10px 24px", textAlign: "center", fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", zIndex: 5 }}>
         ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
       </div>
-
-      {/* NAVBAR pill — abaixo do brand preview + topbar promo. Scrolled: abaixo só do brand preview. */}
-      <PontesNavbar p={p} font={font} activePath="/site" onNavigate={(to) => navigate(to)} topOffset={topOffset + 50} scrolledTop={topOffset + 16} />
 
       {/* HERO com mesh animado + noise + headline typing */}
       <section style={{ background: `linear-gradient(135deg, ${p.primary} 0%, ${p.primaryDark} 100%)`, padding: "180px 48px 160px", color: p.heroFg, position: "relative", overflow: "hidden" }}>
@@ -1638,15 +1581,7 @@ function Landing({ p, font, topOffset = 0 }: { p: Palette; font: string; topOffs
         </div>
       </section>
 
-      {/* FOOTER com mesh gradient */}
-      <PontesFooter
-        p={p} font={font} variant="rich"
-        onNavigate={(to) => navigate(to)}
-        appBadges={[
-          { label: "App Store" },
-          { label: "Google Play" },
-        ]}
-      />
+      {/* Footer vem do SiteLayout (compartilhado). */}
     </div>
   )
 }
@@ -1697,128 +1632,7 @@ function PriceCard({ p, font, name, price, period, tagline, features, cta, highl
 // PÁGINA + CONTROLES
 // =============================================================================
 export default function HomePage() {
-  const [paletteId, setPaletteId] = useState("A")
-  const [fontId, setFontId] = useState("inter")
-  const [barOpen, setBarOpen] = useState(true)
-  const [barHeight, setBarHeight] = useState(0)
-  const barRef = useRef<HTMLDivElement>(null)
-
-  const palette = palettes.find((x) => x.id === paletteId) ?? palettes[0]
-  const font = fonts.find((x) => x.id === fontId) ?? fonts[0]
-
-  // Mede altura do brand preview (ResizeObserver pega wrap dos botões de paleta).
-  useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    const measure = () => setBarHeight(el.offsetHeight)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  const topOffset = barOpen ? barHeight : 0
-
-  useEffect(() => {
-    const prev = {
-      bodyOverflow: document.body.style.overflow, htmlOverflow: document.documentElement.style.overflow,
-      htmlHeight: document.documentElement.style.height, bodyHeight: document.body.style.height,
-      rootHeight: (document.getElementById("root") as HTMLElement | null)?.style.height,
-    }
-    document.body.style.overflow = "auto"; document.documentElement.style.overflow = "auto"
-    document.documentElement.style.height = "auto"; document.body.style.height = "auto"
-    const root = document.getElementById("root"); if (root) root.style.height = "auto"
-    return () => {
-      document.body.style.overflow = prev.bodyOverflow
-      document.documentElement.style.overflow = prev.htmlOverflow
-      document.documentElement.style.height = prev.htmlHeight
-      document.body.style.height = prev.bodyHeight
-      if (root) root.style.height = prev.rootHeight ?? ""
-    }
-  }, [])
-
-  useEffect(() => {
-    const linkId = `bp-font-${font.id}`
-    if (!document.getElementById(linkId)) {
-      const link = document.createElement("link")
-      link.id = linkId; link.rel = "stylesheet"; link.href = font.url
-      document.head.appendChild(link)
-    }
-  }, [font])
-
-  // Scrollbar overlay (accent) sempre visível + fundo da página no body.
-  usePontesBodyScrollbar(palette.accent)
-  useEffect(() => { applyPontesScrollbar(palette.accent, palette.bg) }, [palette])
-
-  return (
-    <div>
-      {/* Control bar de dev (BRAND PREVIEW) — fixed overlay no topo do viewport.
-          Aparece onde você estiver (reabrir em qualquer scroll). Sai no #90. */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        transform: barOpen ? "translateY(0)" : "translateY(-100%)",
-        transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-      }}>
-        <div ref={barRef} style={{ background: "#0B1220", color: "#FFFFFF", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontFamily: "system-ui, sans-serif", fontSize: 13, borderBottom: "2px solid #1E293B", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-          {/* Toggle recolher (seta pra cima) — esquerda */}
-          <button
-            onClick={() => setBarOpen(false)}
-            aria-label="Esconder brand preview"
-            style={{ background: "transparent", color: "#FFFFFF", border: "1px solid #334155", borderRadius: 8, padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center" }}
-          >
-            <ChevronUp size={16} strokeWidth={2.5} />
-          </button>
-
-          <div style={{ fontWeight: 700, letterSpacing: "0.1em", fontSize: 11 }}>🎨 BRAND PREVIEW</div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ opacity: 0.6 }}>Paleta:</span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {palettes.map((pp) => (
-                <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label}
-                  style={{ background: paletteId === pp.id ? "#FFFFFF" : "transparent", color: paletteId === pp.id ? "#0B1220" : "#FFFFFF", border: `1px solid ${paletteId === pp.id ? "#FFFFFF" : "#334155"}`, padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, background: pp.primary, borderRadius: 3 }} />
-                  <span style={{ width: 12, height: 12, background: pp.accent, borderRadius: 3 }} />
-                  <span>{pp.id}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ opacity: 0.6 }}>Fonte:</span>
-            <select value={fontId} onChange={(e) => setFontId(e.target.value)}
-              style={{ background: "#1E293B", color: "#FFFFFF", border: "1px solid #334155", padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui, sans-serif" }}>
-              {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
-            </select>
-          </div>
-
-          <div style={{ marginLeft: "auto", opacity: 0.55, fontSize: 11 }}>{palette.label} · {font.label}</div>
-        </div>
-      </div>
-
-      {/* Pontinha pra reabrir onde você estiver (seta pra baixo) — esquerda fixa */}
-      {!barOpen && (
-        <button
-          onClick={() => setBarOpen(true)}
-          aria-label="Mostrar brand preview"
-          style={{
-            position: "fixed", top: 0, left: 16, zIndex: 1000,
-            background: "#0B1220", color: "#FFFFFF", border: "2px solid #1E293B", borderTop: "none",
-            borderRadius: "0 0 10px 10px", padding: "4px 14px", cursor: "pointer",
-            display: "flex", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-          }}
-        >
-          <ChevronDown size={16} strokeWidth={2.5} />
-        </button>
-      )}
-
-      {/* Conteúdo empurrado abaixo da bar fixa quando aberta */}
-      <div style={{ paddingTop: barOpen ? barHeight : 0, transition: "padding-top 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
-        <Landing p={palette} font={font.family} topOffset={topOffset} />
-      </div>
-      <FloatCTA p={palette} font={font.family} />
-      <ScrollProgressBar p={palette} />
-    </div>
-  )
+  // Paleta/fonte + navbar/footer/control-bar vêm do SiteLayout (Outlet context).
+  const { p, font } = useSiteTheme()
+  return <Landing p={p} font={font} />
 }
