@@ -9,7 +9,7 @@ status: CURRENT
 
 **Objetivo:** Refator completo tela por tela (front + back + testes) seguindo o fluxo natural do produto. Marca decidida (nome Pontes, logo wordmark+arco, tipografia fixa Plus Jakarta). Foco em deixar tudo que existe **funcionando** + criar o que falta no site público + completar gaps de produto (subcategorias, metas, limites, módulo família avançado).
 
-**Backlog atual:** 18 issues (#75-#92).
+**Backlog atual:** 21 issues (#75-#92 + #101 + #106 + #108).
 **Iniciado em:** 2026-05-21.
 
 ---
@@ -17,29 +17,47 @@ status: CURRENT
 ## Dashboard
 
 ```
-Site público (6):       1/6  ✅ #75  ⏳ #76 #77 #78 #79 #80
+Fundação (3):           3/3  ✅ #101 biblioteca Pontes  ✅ #106 biblioteca v2  ✅ #108 HomePage + SiteLayout + tema global
+Site público (6):       1/6  ✅ #75  ⏳ #76(Caio/rebase) #77(Gus/local) #78 #79 #80
 Telas internas (9):     0/9  ⏳ #81 #82 #83 #84 #85 #86 #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 #91 #92
-Fundação (1):           1/1  ✅ #101 biblioteca Pontes
 
-Total Q5 2026:          2/19 (10.5%)
+Total Q5 2026:          4/21 (19%)
+main:                   9e99570
+suite testes:           66/66 ✅
 ```
 
-**Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
+**Status geral:** fundação sólida. Provider global `usePontesTheme()` + `SiteLayout` no ar. Caio em #76 (needs rebase). Gustavo com #77 em local (pendente commit + PR).
 
 **Marca decidida na sessão de 2026-05-21:**
 - Nome: **Pontes**
 - Logo: conceito 20 (wordmark + arco sublinhado) em `src/components/Logo/Logo.tsx`
 - Tipografia da marca: **Plus Jakarta Sans** (fixa)
-- Paleta e fonte do produto: escolha do usuário via personalização in-app (#90)
+- Paleta e fonte do produto: escolha do usuário via personalização in-app (#90) — **parcialmente entregue**: `PontesThemeProvider` + `usePontesTheme()` + persistência localStorage já no ar desde #108
 
 ---
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #77 Para Casais, #78 Contadores, #79 Recursos, #80 Sobre, ou telas internas #81-#89)
+- **#76** — Login + Register (Caio · PR #105 aberto · CI ✅ · **⚠️ precisa rebase em main + migrar pra usePontesTheme()**)
+- **#77** — Para Casais (Gustavo · branch local `feature/77-site-casais` · não commitada ainda · aguardando validação)
 
 ## Resolvidos Q5
+
+- **#108** — HomePage refator + SiteLayout + PontesThemeProvider global (PR #109 mergeado · sessão 33)
+  - `SiteLayout.tsx` — shell de todas as páginas `/site/*`: control bar dev recolhível, navbar, footer, FloatCTA, progress bar, scrollbar overlay
+  - `PontesThemeProvider` + `usePontesTheme()` — provider global com persistência localStorage; paleta/fonte valem em todas as telas e sobrevivem reload
+  - `HomePage.tsx` − -1450 linhas (código morto extraído), 100% biblioteca Pontes
+  - `siteTheme.ts` — `useSiteTheme()` = alias conveniente pra páginas do site
+  - 66 testes (suite passou de 60 → 66, incluindo `HomePage.test.tsx` sob SiteLayout + provider)
+  - **Padrão novo de consumo:** `const { palette: p, font } = usePontesTheme()` (sem prop drill)
+  - Parcialmente resolve #90 (personalização): persistência localStorage entregue; control bar dev ainda no ar até UI de settings chegar
+
+- **#106** — Biblioteca v2: hover states, scrollbar overlay utility, NavLink variant, footer mesh gradient (PR #107 mergeado · sessão 33)
+  - `usePontesBodyScrollbar()` hook exportado — scrollbar overlay colorida
+  - `PontesNavbar`: variant NavLink pra links internos; hover styles ajustados
+  - `PontesFooter`: mesh gradient opcional no fundo
+  - Atualizado em barrel `index.ts`
 
 - **#101** — Biblioteca de componentes Pontes (PR #102 mergeado · sessão 32)
   - 36 componentes em `src/components/pontes/` (Button/Field/Input/Select/Toggle/Checkbox/Radio/Otp/Slider/DatePicker/FileDrop/TagInput/ColorPicker/Rating/Kbd/Badge/Avatar/Alert/Progress/StatCard/Card/Table/Toast/Modal/Dialog/Skeleton/EmptyState/LoadingDots/Drawer/Tooltip/Popover/Breadcrumb/Tabs/Stepper/Pagination/CommandPalette/Navbar/Footer)
@@ -81,6 +99,21 @@ Histórico em `docs/history/PROGRESS_2026Q4.md`.
 ---
 
 ## Histórico de sessões
+
+### Sessão 33 — 2026-05-21
+
+**#106 e #108 mergeadas — biblioteca v2 + HomePage refator + SiteLayout + tema global.**
+
+- **#106 (PR #107):** biblioteca v2 — hover states, `usePontesBodyScrollbar()` hook, NavLink variant no Navbar, footer mesh gradient.
+- **#108 (PR #109):** maior commit do Q5 até agora.
+  - `PontesThemeProvider` envolvendo a app inteira (em `App.tsx`) — paleta + fonte persistidas em localStorage, valem em TODAS as telas.
+  - `usePontesTheme()` hook global — telas Q5 não precisam mais de state local de paleta nem prop drill.
+  - `SiteLayout` — shell compartilhado das rotas `/site/*`: control bar dev (recolhível), navbar, footer, FloatCTA, progress bar, scrollbar overlay. Páginas filhas renderizam SÓ conteúdo.
+  - `HomePage` refatorada: -1450 linhas de código morto, 100% biblioteca Pontes.
+  - Suite: 60 → 66 testes (+ `HomePage.test.tsx`).
+  - PROMPT_NOVA_SESSAO atualizado com regras inegociáveis (#90 parcial via localStorage).
+- **Branch `feature/77-site-casais`** (CouplesPage): trabalho local não commitado — aguardando validação antes de push/PR.
+- **PR #105 (#76 Login):** aberto pelo Caio a partir de main pré-#106/#108. **Precisa rebase:** `git fetch origin && git rebase origin/main`. Após rebase, Login deve usar `usePontesTheme()` em vez de state local.
 
 ### Sessão 30 — 2026-05-20 → 2026-05-21
 

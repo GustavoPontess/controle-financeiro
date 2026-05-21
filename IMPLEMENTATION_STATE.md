@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-05-21
 status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — #101 mergeada (PR #102), biblioteca pronta'
+issue_atual: '#77 — CouplesPage (WIP local, não commitada ainda)'
 ---
 
 # Implementation State — sessão atual
@@ -17,24 +17,74 @@ issue_atual: 'Nenhuma — #101 mergeada (PR #102), biblioteca pronta'
 
 **Ciclo:** Q5 2026 — Refator completo tela por tela
 **Iniciado em:** 2026-05-21
-**Backlog:** 18 issues (#75-#92)
+**Backlog:** 21 issues (#75-#92 + #101 + #106 + #108)
 **Spec do ciclo:** `ISSUES.md`
 
 ---
 
-## Issue em execução
+## Estado atual — 2026-05-21
 
-**Nenhuma issue em execução.** Sessão 32 mergeou #101 (biblioteca de componentes Pontes — PR #102). Biblioteca disponível em `src/components/pontes/`, importável via `@/components/pontes`. Próxima livre: qualquer issue do refator (#76 ja com Caio).
+**main = `9e99570`** (após pull de hoje)
 
-### Histórico breve sessão 32
-- #101 criada e mergeada na mesma sessão (urgência: bloqueava #76 do Caio e demais refatores)
-- 36 componentes criados + DesignSystemPage reescrita + 14 testes + lucide-react adotado
-- Alert/Toast imunes à paleta (padrão universal)
-- Regras documentadas em PROMPT_NOVA_SESSAO §5 (teste obrigatório front+back, biblioteca obrigatória, cor+fonte universal)
+### Mergeadas desde sessão 32
+
+- **#106** — Biblioteca v2 (hover, scrollbar overlay, NavLink, footer mesh) → PR #107 ✅
+- **#108** — HomePage refator 100% biblioteca + SiteLayout + PontesThemeProvider global → PR #109 ✅
+
+### ⚠️ Issue pendente Gustavo — #77 CouplesPage
+- Branch `feature/77-site-casais` existe local **mas NÃO commitada ainda** (aguardando validação).
+- PR #104 foi fechado sem merge (era da era pré-biblioteca, antigo).
+- **Próxima ação:** validar a CouplesPage, commit, push, novo PR `feature/77-site-casais` a partir de main atual.
+- CouplesPage DEVE usar `SiteLayout` (roteada como filha de `/site/*`) + `usePontesTheme()` (sem state local de paleta).
+
+### ⚠️ Issue pendente Caio — #76 Login + Register (PR #105 aberto, CI verde)
+- PR #105 foi criado a partir de uma main **anterior ao #106/#108**.
+- **Caio precisa fazer rebase:**
+  ```bash
+  git checkout feature/76-login-register-refator
+  git fetch origin && git rebase origin/main
+  ```
+- Após rebase, Login/Register devem consumir `usePontesTheme()` em vez de state local de paleta.
+  - API nova: `const { palette: p, font } = usePontesTheme()` (sem prop `p`/`font` local)
+  - Login NÃO entra no `SiteLayout` (é `/auth/*`, não `/site/*`), mas usa o provider global.
+
+### Arquitetura nova em main (pós-#108)
+
+```
+src/components/pontes/
+├── ThemeProvider.tsx    # PontesThemeProvider — provider global, wrap em <App>
+├── themeContext.ts      # PontesThemeCtx + usePontesTheme() hook
+└── index.ts             # re-exporta PontesThemeProvider, usePontesTheme
+
+src/pages/Site/
+├── SiteLayout.tsx       # shell compartilhado: control bar + navbar + footer + scrollbar
+│                        # Consome usePontesTheme(). Todas rotas /site/* são filhas.
+├── siteTheme.ts         # useSiteTheme() = alias de usePontesTheme() para site
+└── HomePage.tsx         # -1450 linhas, 100% biblioteca, renderiza só conteúdo
+```
+
+**Rota `/site/*`:**
+```tsx
+<Route element={<SiteLayout />}>
+  <Route path="site" element={<HomePage />} />
+  <Route path="site/casais" element={<CouplesPage />} />  // ← próximo (#77)
+  ...
+</Route>
+```
+
+**Padrão de consumo de tema em telas Q5 (NOVO — não mais prop drill):**
+```tsx
+import { usePontesTheme } from "@/components/pontes"
+
+export function MinhaPage() {
+  const { palette: p, font } = usePontesTheme()
+  // p e font disponíveis, persistidos no localStorage, globais
+}
+```
 
 ---
 
-## (sessão anterior preservada)
+## (histórico de sessões preservado)
 
 **Issue:** #101 — Biblioteca de componentes Pontes (`src/components/pontes/`)
 **Iniciada em:** 2026-05-21 (sessão 32)
