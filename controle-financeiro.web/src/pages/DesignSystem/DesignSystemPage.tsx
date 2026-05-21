@@ -806,7 +806,7 @@ function SiteSection({ p, font }: { p: Palette; font: string }) {
     <div>
       <Group title="Navbar (fixed sobre hero — preview estático)" p={p}>
         {/* Navbar é position:fixed. Aqui mostramos num container relativo com hero
-            simulado pra dar contexto. Versão ao vivo: /site e /site/casais. */}
+            simulado pra dar contexto. Versão ao vivo: / e /casais. */}
         <div style={{ position: "relative", height: 200, borderRadius: 14, overflow: "hidden", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})` }}>
           <div style={{ position: "absolute", inset: 0, transform: "scale(1)" }}>
             <NavbarPreview p={p} font={font} />
@@ -816,7 +816,7 @@ function SiteSection({ p, font }: { p: Palette; font: string }) {
           </div>
         </div>
         <div style={{ fontSize: 12, color: p.textMuted, marginTop: 10 }}>
-          Ao vivo: <PontesLink p={p} font={font} href="/site">/site</PontesLink> e <PontesLink p={p} font={font} href="/site/casais">/site/casais</PontesLink>
+          Ao vivo: <PontesLink p={p} font={font} href="/">/</PontesLink> e <PontesLink p={p} font={font} href="/casais">/casais</PontesLink>
         </div>
       </Group>
 
