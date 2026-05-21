@@ -117,4 +117,38 @@ describe('RegisterPage', () => {
 
     await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
   })
+
+  it('exibe botão voltar à página inicial', () => {
+    renderRegister()
+    const backBtn = screen.getByRole('link', { name: /voltar à página inicial/i })
+    expect(backBtn).toBeInTheDocument()
+    expect(backBtn).toHaveAttribute('href', '/')
+  })
+
+  it('toggle de senha alterna visibilidade dos campos', () => {
+    const { container } = renderRegister()
+    expect(container.querySelectorAll('input[type="password"]').length).toBe(2)
+
+    const [toggleSenha] = container.querySelectorAll('.MuiInputAdornment-root button')
+
+    fireEvent.click(toggleSenha)
+    expect(container.querySelectorAll('input[type="password"]').length).toBe(1)
+
+    fireEvent.click(toggleSenha)
+    expect(container.querySelectorAll('input[type="password"]').length).toBe(2)
+  })
+
+  it('botão fica desabilitado durante o loading', async () => {
+    mockRegister.mockImplementation(() => new Promise(() => {})) // never resolves
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)
+
+    await waitFor(() =>
+      expect(container.querySelector('button[type="submit"]')).toBeDisabled()
+    )
+  })
 })

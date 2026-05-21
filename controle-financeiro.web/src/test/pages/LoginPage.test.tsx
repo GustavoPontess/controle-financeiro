@@ -83,4 +83,36 @@ describe('LoginPage', () => {
 
     await waitFor(() => expect(screen.getByText(/erro ao fazer login/i)).toBeInTheDocument())
   })
+
+  it('exibe botão voltar à página inicial', () => {
+    renderLogin()
+    const backBtn = screen.getByRole('link', { name: /voltar à página inicial/i })
+    expect(backBtn).toBeInTheDocument()
+    expect(backBtn).toHaveAttribute('href', '/')
+  })
+
+  it('toggle de senha alterna visibilidade do campo', () => {
+    const { container } = renderLogin()
+    expect(container.querySelector('input[type="password"]')).toBeInTheDocument()
+
+    const toggleBtn = container.querySelector('.MuiInputAdornment-root button')!
+    fireEvent.click(toggleBtn)
+    expect(container.querySelector('input[type="text"]')).toBeInTheDocument()
+
+    fireEvent.click(toggleBtn)
+    expect(container.querySelector('input[type="password"]')).toBeInTheDocument()
+  })
+
+  it('botão fica desabilitado durante o loading', async () => {
+    mockLogin.mockImplementation(() => new Promise(() => {})) // never resolves
+    const { container } = renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: '123' } })
+    fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)
+
+    await waitFor(() =>
+      expect(container.querySelector('button[type="submit"]')).toBeDisabled()
+    )
+  })
 })
