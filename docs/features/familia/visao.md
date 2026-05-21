@@ -3,7 +3,7 @@ feature: familia
 status: VISAO (não implementado)
 owner: Gustavo
 created: 2026-05-15
-last_reviewed: 2026-05-15
+last_reviewed: 2026-05-21
 next_review: 2026-08-15
 ---
 
@@ -423,3 +423,65 @@ Decisão pendente. Afeta entidades, cálculo de saldo e o fluxo de acerto.
 > Estas evoluções **não** entram no ciclo Q4. A FamiliasPage no Q4 recebe
 > apenas o redesign visual leve (#61) — não vale refator visual pesado num
 > screen que será reformado por estas features no Q5.
+
+### 16.6 Educação financeira dos filhos — autonomia controlada
+
+> **Status:** ideia em mapeamento. Implementar **depois** do refator completo de
+> Família (a infra de membros/papéis/permissões/dependentes precisa estar
+> consolidada antes). Registrado aqui pra não perder.
+
+**A ideia.** Usar a estrutura de Família como ferramenta para os pais
+**introduzirem os filhos na vida financeira** — dar autonomia controlada para a
+criança/adolescente lançar os próprios gastos, enxergar suas dívidas e
+compromissos, e aprender controle financeiro na prática, dentro de limites que
+os pais definem.
+
+Não é só "registrar gasto do filho" (isso é o Dependente do §6, atribuição
+passiva feita pelos pais). Aqui o **filho é um participante ativo** com login
+próprio e uma esfera financeira limitada — um "modo júnior" do app.
+
+**Por que importa (produto).** Educação financeira infantil é dor real e mal
+atendida no Brasil. Vira diferencial de marketing forte ("o app que ensina seu
+filho a cuidar do dinheiro") e aumenta a aderência da família inteira — pai e
+mãe usam, filho usa, todo mundo no mesmo ecossistema. Cria retenção de longo
+prazo: a criança que aprendeu no app vira adulto usuário.
+
+**Capacidades a explorar (a detalhar em spec própria depois):**
+
+- **Conta júnior / carteira do filho.** Saldo que o filho enxerga e movimenta —
+  pode ser mesada, "dinheiro de aniversário", ganhos por tarefas. Não precisa
+  ser conta bancária real no MVP — registro controlado dentro do app.
+- **Filho lança os próprios gastos.** Autonomia para registrar o que gastou
+  (lanche, jogo, presente), com categorização simples e linguagem adequada à
+  idade. Aprende o hábito de anotar.
+- **Visão de dívidas/compromissos do filho.** "Você pegou R$50 emprestado do
+  pai", "faltam 3 parcelas do videogame que combinamos". Ensina noção de
+  compromisso e consequência sem ser punitivo (copy do §7.5 vale aqui — sem
+  gatilho, é aprendizado).
+- **Limites e autonomia graduada por idade.** Pais definem o quanto o filho pode
+  lançar/movimentar sozinho, o que precisa de aprovação, e quanto isso afrouxa
+  conforme a criança cresce. Reaproveita o fluxo de aprovação do §16.3.
+- **Metas e poupança guiada.** Filho define meta ("quero um tênis de R$300"), o
+  app mostra progresso, sugere quanto poupar. Conecta com a feature Metas (#86).
+- **Painel dos pais.** Pais veem o que o filho lançou, acompanham a evolução,
+  comentam/aprovam. Visibilidade total dos pais sobre a esfera do filho (oposto
+  da privacidade entre adultos do §8 — aqui é tutela explícita).
+
+**Pontos a decidir (registrar, não resolver agora):**
+
+- **Idade mínima de login e LGPD.** Tratamento de dados de menores tem regra
+  específica (consentimento dos pais, dados sensíveis de criança). Precisa de
+  cuidado jurídico antes de produção.
+- **Dependente → filho ativo.** Como um Dependente (§6, sem login) "ganha" um
+  login júnior quando tem idade? Reaproveitar o fluxo de promoção do §6.4.
+- **Filho ativo → adulto independente.** Quando vira maior de idade, a conta
+  júnior vira conta normal e a tutela dos pais cai. Transição precisa preservar
+  histórico ("acompanho meu dinheiro desde os 10 anos").
+- **Dinheiro real vs simbólico.** MVP provavelmente é registro simbólico
+  (educacional). Integração com mesada real / cartão pré-pago infantil é feature
+  separada e bem mais pesada (parceria bancária, Open Finance).
+- **Modelagem do "empréstimo pai→filho".** Encaixa na entidade `Emprestimo`
+  existente, num rateio da família, ou é um conceito novo do modo júnior?
+
+**Dependências.** Família refatorada (membros, papéis, permissões, aprovação
+§16.3, dependentes §6) + Metas (#86). Só atacar depois dessa base pronta.
