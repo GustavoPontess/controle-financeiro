@@ -9,8 +9,65 @@
  *  - PontesLink  (anchor estilizado como link)
  */
 
-import { type ButtonHTMLAttributes, type ReactNode } from "react"
-import { semantic, type Palette } from "./theme"
+import { type ButtonHTMLAttributes, type ReactNode, type CSSProperties, useEffect } from "react"
+import { adjustColor, semantic, type Palette } from "./theme"
+import { ensurePontesGlobalStyles } from "./_globalStyles"
+
+/**
+ * Cores de hover por variant — respeitam paleta runtime.
+ * adjustColor(c, -0.08) = ~8% mais escuro (escurece primary/accent).
+ * adjustColor(c, +0.08) = ~8% mais claro (suaviza soft).
+ */
+function hoverVarsFor(variant: string, p: Palette): CSSProperties {
+  switch (variant) {
+    case "primary":
+      return { ["--pontes-hover-bg" as never]: adjustColor(p.primary, -0.08), ["--pontes-hover-text" as never]: p.heroFg }
+    case "accent":
+      return { ["--pontes-hover-bg" as never]: adjustColor(p.accent, -0.06), ["--pontes-hover-text" as never]: "#0B1220" }
+    case "soft":
+      return { ["--pontes-hover-bg" as never]: adjustColor(p.primarySoft, -0.04), ["--pontes-hover-text" as never]: p.primary }
+    case "outline":
+      // Hover: bg soft + texto primary (não colide com primary vizinho).
+      // Active: vira primary full momentaneamente (preview do destino).
+      return {
+        ["--pontes-hover-bg" as never]: p.primarySoft, ["--pontes-hover-text" as never]: p.primary, ["--pontes-hover-border" as never]: p.primary,
+        ["--pontes-active-bg" as never]: p.primary, ["--pontes-active-text" as never]: p.heroFg, ["--pontes-active-border" as never]: p.primary,
+      }
+    case "ghost":
+      return {
+        ["--pontes-hover-bg" as never]: p.primarySoft, ["--pontes-hover-text" as never]: p.primary,
+        ["--pontes-active-bg" as never]: p.primary, ["--pontes-active-text" as never]: p.heroFg, ["--pontes-active-border" as never]: "transparent",
+      }
+    case "danger":
+      return { ["--pontes-hover-bg" as never]: adjustColor(semantic.danger, -0.08), ["--pontes-hover-text" as never]: "#FFFFFF" }
+    case "danger-outline":
+      // Mesma lógica: hover soft + active danger full.
+      return {
+        ["--pontes-hover-bg" as never]: semantic.dangerSoft, ["--pontes-hover-text" as never]: semantic.danger, ["--pontes-hover-border" as never]: semantic.danger,
+        ["--pontes-active-bg" as never]: semantic.danger, ["--pontes-active-text" as never]: "#FFFFFF", ["--pontes-active-border" as never]: semantic.danger,
+      }
+    case "outline-light":
+      // Glass branco translúcido — pra uso sobre fundo escuro (hero, gradient, dark hero).
+      return {
+        ["--pontes-hover-bg" as never]: "rgba(255,255,255,0.16)",
+        ["--pontes-hover-text" as never]: "#FFFFFF",
+        ["--pontes-hover-border" as never]: "rgba(255,255,255,0.55)",
+        ["--pontes-active-bg" as never]: "rgba(255,255,255,0.30)",
+        ["--pontes-active-text" as never]: "#FFFFFF",
+        ["--pontes-active-border" as never]: "rgba(255,255,255,0.85)",
+      }
+    case "ghost-light":
+      // Ghost sobre fundo escuro (apenas texto branco, hover ganha bg sutil).
+      return {
+        ["--pontes-hover-bg" as never]: "rgba(255,255,255,0.10)",
+        ["--pontes-hover-text" as never]: "#FFFFFF",
+        ["--pontes-active-bg" as never]: "rgba(255,255,255,0.20)",
+        ["--pontes-active-text" as never]: "#FFFFFF",
+      }
+    default:
+      return { ["--pontes-hover-bg" as never]: adjustColor(p.primary, -0.08) }
+  }
+}
 
 // =============================================================================
 // PontesButton
@@ -19,6 +76,7 @@ import { semantic, type Palette } from "./theme"
 export type PontesButtonVariant =
   | "primary" | "accent" | "outline" | "ghost" | "soft"
   | "danger" | "danger-outline"
+  | "outline-light" | "ghost-light"
 
 export type PontesButtonSize = "xs" | "sm" | "md" | "lg" | "xl"
 
@@ -45,8 +103,9 @@ const SIZE_MAP: Record<PontesButtonSize, { padding: string; radius: number; font
 
 export function PontesButton({
   p, font, variant = "primary", size = "md", loading, success,
-  iconStart, iconEnd, fullWidth, disabled, children, style, type = "button", ...rest
+  iconStart, iconEnd, fullWidth, disabled, children, style, type = "button", className, ...rest
 }: PontesButtonProps) {
+  useEffect(ensurePontesGlobalStyles, [])
   const s = SIZE_MAP[size]
 
   const baseStyle: React.CSSProperties = {
@@ -82,6 +141,10 @@ export function PontesButton({
     v = { background: semantic.danger, color: "#FFFFFF" }
   } else if (variant === "danger-outline") {
     v = { background: "transparent", color: semantic.danger, border: `1.5px solid ${semantic.danger}` }
+  } else if (variant === "outline-light") {
+    v = { background: "rgba(255,255,255,0.08)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.3)" }
+  } else if (variant === "ghost-light") {
+    v = { background: "transparent", color: "#FFFFFF" }
   }
 
   if (disabled && !success) {
@@ -92,7 +155,9 @@ export function PontesButton({
     <button
       type={type}
       disabled={disabled || loading}
-      style={{ ...baseStyle, ...v, ...style }}
+      className={["pontes-clickable", className].filter(Boolean).join(" ")}
+      data-pontes-variant={variant}
+      style={{ ...baseStyle, ...v, ...hoverVarsFor(variant, p), ...style }}
       {...rest}
     >
       {loading && <Spinner color={variant === "outline" || variant === "ghost" ? p.primary : "#FFFFFF"} />}
@@ -135,8 +200,9 @@ export type PontesIconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 export function PontesIconButton({
-  p, font, size = 40, variant = "primary", badge, style, children, type = "button", ...rest
+  p, font, size = 40, variant = "primary", badge, style, children, type = "button", className, ...rest
 }: PontesIconButtonProps) {
+  useEffect(ensurePontesGlobalStyles, [])
   const radius = size === 32 ? 8 : size === 40 ? 10 : 12
   const fontSize = size === 32 ? 14 : size === 40 ? 18 : 20
 
@@ -149,12 +215,14 @@ export function PontesIconButton({
   return (
     <button
       type={type}
+      className={["pontes-clickable", className].filter(Boolean).join(" ")}
+      data-pontes-variant={variant}
       style={{
         width: size, height: size, borderRadius: radius, fontSize,
         border: variant === "outline" ? `1px solid ${p.border}` : "none",
         cursor: "pointer", position: "relative", fontFamily: font,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        ...v, ...style,
+        ...v, ...hoverVarsFor(variant, p), ...style,
       }}
       {...rest}
     >
@@ -183,8 +251,9 @@ export type PontesFabProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type
 }
 
 export function PontesFab({
-  p, font, size = 56, variant = "accent", style, children, type = "button", ...rest
+  p, font, size = 56, variant = "accent", style, children, type = "button", className, ...rest
 }: PontesFabProps) {
+  useEffect(ensurePontesGlobalStyles, [])
   // Sombra neutra (sem glow tintado) — usuário pediu mais sutil.
   const v = variant === "primary"
     ? { background: p.primary, color: p.heroFg, shadow: "0 8px 20px rgba(11,18,32,0.18)" }
@@ -193,6 +262,8 @@ export function PontesFab({
   return (
     <button
       type={type}
+      className={["pontes-clickable", className].filter(Boolean).join(" ")}
+      data-pontes-variant={variant}
       style={{
         width: size, height: size, borderRadius: "50%",
         fontSize: size === 48 ? 20 : size === 56 ? 24 : 28,
@@ -200,7 +271,7 @@ export function PontesFab({
         cursor: "pointer", fontFamily: font, fontWeight: 700,
         boxShadow: v.shadow,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        ...style,
+        ...hoverVarsFor(variant, p), ...style,
       }}
       {...rest}
     >
@@ -225,26 +296,33 @@ export type PontesButtonGroupProps<T extends string = string> = {
 export function PontesButtonGroup<T extends string = string>({
   p, font, options, value, onChange, variant = "pills",
 }: PontesButtonGroupProps<T>) {
+  useEffect(ensurePontesGlobalStyles, [])
   if (variant === "joined") {
     return (
       <div style={{ display: "inline-flex", border: `1px solid ${p.border}`, borderRadius: 10, overflow: "hidden" }}>
-        {options.map((opt, i) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            style={{
-              background: opt.value === value ? p.primary : p.surface,
-              color: opt.value === value ? p.heroFg : p.text,
-              border: "none",
-              borderRight: i < options.length - 1 ? `1px solid ${p.border}` : "none",
-              padding: "10px 16px", fontSize: 13, fontWeight: 600,
-              cursor: "pointer", fontFamily: font,
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {options.map((opt, i) => {
+          const active = opt.value === value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="pontes-clickable pontes-no-lift"
+              data-pontes-variant={active ? "primary" : "ghost"}
+              style={{
+                background: active ? p.primary : p.surface,
+                color: active ? p.heroFg : p.text,
+                border: "none",
+                borderRight: i < options.length - 1 ? `1px solid ${p.border}` : "none",
+                padding: "10px 16px", fontSize: 13, fontWeight: 600,
+                cursor: "pointer", fontFamily: font,
+                ...hoverVarsFor(active ? "primary" : "ghost", p),
+              }}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
     )
   }
@@ -254,22 +332,69 @@ export function PontesButtonGroup<T extends string = string>({
       display: "inline-flex", background: p.bg, border: `1px solid ${p.border}`,
       borderRadius: 10, padding: 4,
     }}>
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          style={{
-            background: opt.value === value ? p.primary : "transparent",
-            color: opt.value === value ? p.heroFg : p.text,
-            border: "none", padding: "8px 16px", borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font,
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
+      {options.map((opt) => {
+        const active = opt.value === value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className="pontes-clickable pontes-no-lift"
+            data-pontes-variant={active ? "primary" : "ghost"}
+            style={{
+              background: active ? p.primary : "transparent",
+              color: active ? p.heroFg : p.text,
+              border: "none", padding: "8px 16px", borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: font,
+              ...hoverVarsFor(active ? "primary" : "ghost", p),
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
     </div>
+  )
+}
+
+// =============================================================================
+// PontesNavLink — link de menu de navegação com underline animado.
+// Texto não se desloca no hover (underline é pseudo-element absolute).
+// =============================================================================
+
+export type PontesNavLinkProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
+  p: Palette
+  font: string
+  /** Cor base do texto (fora hover). Default: p.text. */
+  color?: string
+  /** Cor do hover + underline + estado ativo. Default: p.primary. */
+  hoverColor?: string
+  /** Marca como item ativo (underline sempre visível, peso 700). */
+  active?: boolean
+}
+
+export function PontesNavLink({
+  p, font, color, hoverColor, active, style, className, children, ...rest
+}: PontesNavLinkProps) {
+  useEffect(ensurePontesGlobalStyles, [])
+  const baseColor = color ?? p.text
+  const hover = hoverColor ?? p.primary
+  return (
+    <button
+      type="button"
+      className={["pontes-navlink", className].filter(Boolean).join(" ")}
+      data-pontes-active={active ? "true" : "false"}
+      style={{
+        fontFamily: font,
+        fontSize: 14,
+        ["--pontes-navlink-color" as never]: baseColor,
+        ["--pontes-navlink-hover" as never]: hover,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -282,12 +407,15 @@ export type PontesLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   font?: string
 }
 
-export function PontesLink({ p, font, children, style, ...rest }: PontesLinkProps) {
+export function PontesLink({ p, font, children, style, className, ...rest }: PontesLinkProps) {
+  useEffect(ensurePontesGlobalStyles, [])
   return (
     <a
+      className={["pontes-link-hover", className].filter(Boolean).join(" ")}
       style={{
         color: p.primary, fontSize: 14, fontWeight: 600,
         textDecoration: "underline", cursor: "pointer", fontFamily: font,
+        ["--pontes-hover-color" as never]: adjustColor(p.primary, -0.12),
         ...style,
       }}
       {...rest}
