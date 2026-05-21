@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
+import { type ReactNode } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import {
@@ -19,7 +20,11 @@ import {
   type Palette,
 } from "../../components/pontes"
 
-export default function SiteLayout() {
+/**
+ * Renderiza `children` quando passado direto (ex: RootRoute deslogado),
+ * senão usa `<Outlet/>` (rotas filhas aninhadas).
+ */
+export default function SiteLayout({ children }: { children?: ReactNode }) {
   // Paleta/fonte vêm do provider global (#90) — persiste e vale em todas as telas.
   const { palette, fontOption, paletteId, fontId, setPaletteId, setFontId, palettes, fonts } = usePontesTheme()
   const fontOpt = fontOption
@@ -66,8 +71,6 @@ export default function SiteLayout() {
   }, [])
 
   const topOffset = barOpen ? barHeight : 0
-  const ctx = { p: palette, font: fontOpt.family } as { p: Palette; font: string }
-
   return (
     <div>
       {/* Control bar de dev (BRAND PREVIEW) — fixed overlay, recolhível. Sai no #90. */}
@@ -140,7 +143,7 @@ export default function SiteLayout() {
 
       {/* Conteúdo da página (empurrado abaixo da bar fixa quando aberta) */}
       <div style={{ paddingTop: barOpen ? barHeight : 0, transition: "padding-top 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
-        <Outlet context={ctx} />
+        {children ?? <Outlet />}
       </div>
 
       {/* Footer compartilhado */}

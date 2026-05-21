@@ -31,10 +31,12 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Root: RootRoute decide ANTES de montar o site (logado → dashboard
+            sem flash; deslogado → SiteLayout + Home via children). */}
+        <Route path="/" element={<RootRoute />} />
+
         {/* Site público — shell compartilhado (navbar + footer + control bar dev) */}
         <Route element={<SiteLayout />}>
-          {/* Root: HomePage se deslogado, redirect /dashboard se logado (#75) */}
-          <Route path="/" element={<RootRoute />} />
           <Route path="/site" element={<HomePage />} />
         </Route>
 

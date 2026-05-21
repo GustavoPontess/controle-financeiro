@@ -10,6 +10,7 @@ import { Box, CircularProgress } from "@mui/material"
 import { Navigate } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import HomePage from "../../pages/Site/HomePage"
+import SiteLayout from "../../pages/Site/SiteLayout"
 
 export default function RootRoute() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -22,9 +23,15 @@ export default function RootRoute() {
     )
   }
 
+  // Logado → redirect ANTES de montar o site (sem flash do shell).
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return <HomePage />
+  // Deslogado → site completo (layout + Home) via children.
+  return (
+    <SiteLayout>
+      <HomePage />
+    </SiteLayout>
+  )
 }
