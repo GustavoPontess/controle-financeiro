@@ -36,10 +36,10 @@ export type PontesNavbarProps = {
 }
 
 const DEFAULT_LINKS: PontesNavbarLink[] = [
-  { label: "Recursos", to: "/site/recursos" },
-  { label: "Para Casais", to: "/site/casais" },
-  { label: "Para Contadores", to: "/site/contadores" },
-  { label: "Sobre", to: "/site/sobre" },
+  { label: "Recursos", to: "/recursos" },
+  { label: "Para Casais", to: "/casais" },
+  { label: "Para Contadores", to: "/contadores" },
+  { label: "Sobre", to: "/sobre" },
 ]
 
 export function PontesNavbar({

@@ -95,6 +95,19 @@ Conforme o trabalho da sessão exigir, leia adicionalmente:
 
 Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Q5 tem 18 issues (#75-#92) sem agrupamento em blocos — **modelo pull**: cada dev pega a próxima livre.
 
+### ⛔ REGRAS INEGOCIÁVEIS (todo dev + todo Claude segue, sempre)
+
+1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI direto, zero `<select>` nativo, zero `CustomButton`/`tokens.ts` antigo nas telas Q5.
+2. **Componente reutilizável novo → vai pra biblioteca** (`src/components/pontes/`) antes de usar: arquivo + barrel `index.ts` + demo no `/design-system` + smoke test. Específico de 1 tela só → fica na pasta da tela.
+3. **Cor e fonte SEMPRE do `usePontesTheme()`** (ou `useSiteTheme()` no site). Nunca hex/fonte hardcoded. Feedback = `semantic.*`. Wordmark = Plus Jakarta fixo.
+4. **Personalização é global + persistida.** `PontesThemeProvider` no root, localStorage. Trocar paleta/fonte vale em todas as telas e sobrevive reload.
+5. **Site público usa `SiteLayout`.** Páginas do site = só conteúdo; navbar/footer/control-bar vêm do layout.
+6. **Teste automatizado SEMPRE** — front (vitest) E back (xUnit) cobrindo o que mudou. Sem teste = PR não merga. (Exceção: só copy/CSS/docs.)
+7. **Ícones via lucide-react** (`<Plus size={16} strokeWidth={2.5}/>`), nunca char texto.
+8. **CI verde** (build + lint + testes) antes de mergear. PR com `Closes #N`.
+
+Detalhe de cada uma abaixo nas subseções "Biblioteca Pontes", "Sistema cor + fonte" e "Testes automatizados".
+
 ### Ordem sugerida (não obrigatória)
 
 **Site público (frente — desbloqueia fluxo de entrada):**
@@ -153,8 +166,11 @@ src/components/
 - **Feedback:** `PontesToast`, `PontesModal`, `PontesDialog`, `PontesSkeleton`/`PontesSkeletonRow`/`PontesSkeletonList`, `PontesEmptyState`, `PontesLoadingDots`, `PontesDrawer`, `PontesTooltip`, `PontesPopover`
 - **Navegação:** `PontesBreadcrumb`, `PontesTabs`, `PontesStepper`, `PontesPagination`, `PontesCommandPalette`
 - **Site:** `PontesNavbar`, `PontesFooter`
-- **Tema:** `theme.ts` — 15 paletas, 7 fontes, `spacing`, `radii`, `shadows`, `semantic`, `adjustColor`
+- **Tema global:** `PontesThemeProvider` (root da app) + `usePontesTheme()` — paleta + fonte do usuário, **persistido em localStorage** (#90). `PontesScrollArea` / `usePontesBodyScrollbar` (scrollbar overlay), `applyPontesScrollbar`.
+- **Tema (tokens):** `theme.ts` — 15 paletas, 7 fontes, `spacing`, `radii`, `shadows`, `semantic`, `adjustColor`
+- **Layout site:** `pages/Site/SiteLayout.tsx` — shell compartilhado (navbar + footer + control bar dev + scrollbar) pras páginas públicas; páginas filhas só renderizam conteúdo e leem `{p, font}` via `useSiteTheme()`.
 - **Ícones:** `lucide-react` (já instalado, v1.16) — use `<Plus size={16} strokeWidth={2.5} />`. **NÃO** passar char texto (`"+"`, `"→"`, etc) — quebra alinhamento vertical.
+- **Hover/interação:** classe `pontes-clickable` + `data-pontes-variant` (CSS vars de cor seguem paleta) — componentes da biblioteca já têm. Elemento clicável custom: adiciona a classe.
 
 **Regras OBRIGATÓRIAS de refator (#76, #77, #78, #79, #80, #81, #82, #83, #84, #86, #87, #89):**
 
@@ -172,22 +188,29 @@ src/components/
 8. **Tipografia:** Plus Jakarta no corpo, Fraunces nos h1/h2 grandes (landing/site), Instrument Serif só em acentos italic. Wordmark "Pontes" SEMPRE Plus Jakarta.
 9. **Espaçamento/radii/sombras:** use `spacing`, `radii`, `shadows` de `theme.ts`. Não inventar valores.
 
-**Sistema cor + fonte = TODAS as telas (obrigatório):**
+**Sistema cor + fonte GLOBAL = TODAS as telas (obrigatório):**
 
-10. **TODA tela nova ou refatorada — site público OU interna autenticada — DEVE consumir paleta + fonte vivos.** Sem exceção. Hoje (até #90 entregar context global), cada tela:
-    - Importa `palettes`, `fonts` de `@/components/pontes`
-    - Recebe ou armazena `paletteId` + `fontId` (state local até #90)
-    - Renderiza `<ControlBar>` ou aceita prop `p: Palette` + `font: string` que passa adiante pros componentes
-    - Trocar paleta no `/site` ou `/design-system` aplica em tudo da tela ao vivo, sem reload
-11. **Quando #90 entregar context global** (`PontesProvider` envolvendo `<App>`): refatora todas as telas pra ler do context em vez de prop drill. API da biblioteca muda de `<PontesButton p={p} font={font} />` pra `<PontesButton />` (consome do context).
-12. **Wordmark "Pontes" é sempre Plus Jakarta** (marca fixa, não muda com personalização — só UI/corpo muda).
-13. **Cores semânticas (success/warning/danger/info)** vêm de `semantic` em `theme.ts` — NÃO mudam com paleta (vermelho de erro sempre vermelho).
-14. **`PontesAlert` e `PontesToast` são 100% imunes à paleta.** Mantêm padrão universal de alerta (cores semânticas + fundo neutro fixo). Só `font` muda. Não passar `p` pra eles (assinatura ignora — aceita só pra retrocompat).
+A personalização (#90) **já existe e é global**: `PontesThemeProvider` envolve a app no `App.tsx`, paleta + fonte vêm de `usePontesTheme()`, persistidas em **localStorage** (sobrevivem reload e valem em qualquer tela — site, auth, internas).
+
+10. **TODA tela (site OU interna autenticada) consome a paleta + fonte do `usePontesTheme()`.** Nunca hardcode cor/fonte.
+    - Páginas do **site público**: ficam sob `<SiteLayout>` (rota aninhada em `AppRoutes`) e leem `{p, font}` via `useSiteTheme()`. Não renderizam navbar/footer/control-bar próprios — o layout já dá.
+    - Páginas **internas/auth**: leem `const { palette, font } = usePontesTheme()` direto e passam `p={palette} font={font}` pros componentes Pontes.
+11. **Trocar paleta/fonte aplica em tudo ao vivo + persiste.** Mudou na Home → vale em Casais, Login, Dashboard, etc. Reabriu o navegador → mantém (localStorage).
+12. **Settings picker:** quando refatorar a tela de Configurações, adicionar UI de escolha de paleta + fonte que chama `setPaletteId` / `setFontId` do `usePontesTheme()`. (Hoje só o control bar dev do `/site` e `/design-system` faz isso.)
+13. **Wordmark "Pontes" é sempre Plus Jakarta** (marca fixa, não muda com personalização — só UI/corpo muda).
+14. **Cores semânticas (success/warning/danger/info)** vêm de `semantic` em `theme.ts` — NÃO mudam com paleta (vermelho de erro sempre vermelho).
+15. **`PontesAlert` e `PontesToast` são 100% imunes à paleta.** Padrão universal de alerta. Só `font` muda.
+
+**Página do site nova (#78 Contadores, #79 Recursos, #80 Sobre, etc) — passo a passo:**
+1. Cria `pages/Site/<Pagina>.tsx` que faz `const { p, font } = useSiteTheme()` e renderiza SÓ o conteúdo (hero + sections). **Sem** navbar/footer (vêm do SiteLayout).
+2. Adiciona a rota como filha de `<SiteLayout>` em `AppRoutes`.
+3. Adiciona o link no menu (`DEFAULT_LINKS` do `PontesNavbar`, se aplicável).
+4. Teste smoke em `src/test/pages/<Pagina>.test.tsx` (renderiza sob SiteLayout + PontesThemeProvider — ver `HomePage.test.tsx` como modelo).
 
 **Legado vs Novo — convivência durante Q5:**
 
-12. **Legado** (`src/components/CustomButton.tsx`, `src/theme/tokens.ts`, `pages/*` usando MUI direto): fica no lugar. Telas legadas continuam usando até refator chegar nelas.
-13. **Final do Q5** (todas as telas refatoradas e mergeadas): PR separado deleta o legado. Não antes.
+16. **Legado** (`src/components/CustomButton.tsx`, `src/theme/tokens.ts`, `pages/*` usando MUI direto): fica no lugar. Telas legadas continuam usando até refator chegar nelas.
+17. **Final do Q5** (todas as telas refatoradas e mergeadas): PR separado deleta o legado. Não antes.
 
 **Fluxo recomendado pra atacar tela:**
 
@@ -199,7 +222,7 @@ src/components/
 6. Tudo na mesma branch da issue (incluindo expansão da biblioteca).
 7. PR descreve no body quais componentes da biblioteca foram criados/atualizados.
 
-**Issue #90 (Personalização in-app)** vai trocar a prop `p`/`font` por context global — refatora todos os componentes pra consumir do context. Hoje cada call passa props explicitamente.
+**Personalização (#90) — fundação JÁ FEITA:** `PontesThemeProvider` global + `usePontesTheme()` + persistência localStorage + `SiteLayout`. Falta só (ajusta conforme refator de cada tela): (a) **Settings picker** na tela de Configurações; (b) auth + telas internas consumirem `usePontesTheme()` quando forem refatoradas.
 
 ### Pre-flight em cada nova issue
 

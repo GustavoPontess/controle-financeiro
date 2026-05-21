@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
+import { PontesThemeProvider } from "../../components/pontes"
 import RootRoute from "../../components/Auth/RootRoute"
+
+// overlayscrollbars não roda em jsdom (SiteLayout usa).
+vi.mock("overlayscrollbars", () => ({
+  OverlayScrollbars: () => ({ destroy: () => {} }),
+}))
+vi.mock("overlayscrollbars-react", () => ({
+  OverlayScrollbarsComponent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
 
 // Mock pages renderizados pelo RootRoute pra isolar comportamento
 vi.mock("../../pages/Site/HomePage", () => ({
@@ -22,12 +31,14 @@ vi.mock("../../hooks/useAuth", () => ({
 
 function renderRoot() {
   return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Routes>
-        <Route path="/" element={<RootRoute />} />
-        <Route path="/dashboard" element={<div data-testid="dashboard-redirect">Dashboard route</div>} />
-      </Routes>
-    </MemoryRouter>
+    <PontesThemeProvider>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<RootRoute />} />
+          <Route path="/dashboard" element={<div data-testid="dashboard-redirect">Dashboard route</div>} />
+        </Routes>
+      </MemoryRouter>
+    </PontesThemeProvider>
   )
 }
 

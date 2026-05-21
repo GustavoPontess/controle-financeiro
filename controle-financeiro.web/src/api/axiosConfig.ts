@@ -44,7 +44,13 @@ api.interceptors.response.use(
       // Não redirecionar quando já estamos em uma página de auth (/auth/login,
       // /auth/register): nessas páginas o 401 do probe de sessão é esperado e
       // redirecionar quebraria o acesso à tela de cadastro.
-      const publicPaths = ['/auth/', '/site', '/logo-concepts', '/design-system']
+      // Páginas públicas (sem auth): auth, design-system, e verticais do site
+      // institucional (URLs limpas, sem prefixo /site).
+      const publicPaths = [
+        '/auth/', '/logo-concepts', '/design-system',
+        '/casais', '/contadores', '/recursos', '/sobre', '/precos',
+        '/blog', '/contato', '/ajuda', '/status', '/api', '/termos', '/privacidade', '/lgpd',
+      ]
       const path = window.location.pathname
       // `/` é público (RootRoute decide). Strict equal pra não bater em /dashboard etc.
       const isPublic = path === '/' || publicPaths.some((p) => path.startsWith(p))
