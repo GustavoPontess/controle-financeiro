@@ -3,12 +3,11 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import {
   PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress,
-  usePontesTheme, semantic,
+  PontesLogo, usePontesTheme, semantic,
 } from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
-import Logo from '../../components/Logo/Logo'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   const { palette: p, font } = usePontesTheme()
@@ -139,7 +138,7 @@ export default function RegisterPage() {
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1.03)' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)' }}
           >
-            <Logo color="#ffffff" size={32} variant="full" />
+            <PontesLogo color="#ffffff" size={32} variant="full" />
           </Link>
         </div>
 
@@ -218,7 +217,7 @@ export default function RegisterPage() {
           <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
             <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
             <Link to="/" style={{ display: 'inline-flex', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}>
-              <Logo color={p.primary} size={28} variant="full" />
+              <PontesLogo color={p.primary} size={28} variant="full" />
             </Link>
           </div>
 
