@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, TextField, Typography, Alert, CircularProgress, InputAdornment, IconButton } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { Eye, EyeOff } from 'lucide-react'
-import CustomButton from '../../components/CustomButton'
+import { PontesButton, PontesField, PontesInput, PontesAlert } from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { usePontesTheme } from '../../contexts/PontesThemeContext'
-import { makeInputSx } from '../../theme/inputStyles'
 import { tokens } from '../../theme/tokens'
 import Logo from '../../components/Logo/Logo'
 
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const inputSx = makeInputSx(palette, font.family)
   const BRAND = palette.primary
   const BRAND_DARK = palette.primaryDark
 
@@ -217,58 +215,70 @@ export default function LoginPage() {
           </Box>
 
           {/* Form */}
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {error && (
-              <Alert severity="error" sx={{ borderRadius: tokens.radius.lg, fontSize: tokens.typography.fontSize.sm }}>
-                {error}
-              </Alert>
+              <PontesAlert font={font.family} tone="error">{error}</PontesAlert>
             )}
 
-            <TextField
-              label="E-mail"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              autoComplete="email"
-              sx={inputSx}
-            />
+            <PontesField p={palette} font={font.family} label="E-mail" htmlFor="login-email" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </PontesField>
 
-            <TextField
-              label="Senha"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              autoComplete="current-password"
-              sx={inputSx}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" size="small" tabIndex={-1}>
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <PontesField p={palette} font={font.family} label="Senha" htmlFor="login-senha" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="login-senha"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                iconEnd={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    data-testid="toggle-senha"
+                    tabIndex={-1}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+              />
+            </PontesField>
 
-            <Box sx={{ textAlign: 'right', mt: -1 }}>
-              <Typography
-                component={Link}
+            <div style={{ textAlign: 'right', marginTop: -8 }}>
+              <Link
                 to="/auth/forgot-password"
-                sx={{ fontSize: tokens.typography.fontSize.xs, color: palette.textMuted, textDecoration: 'none', '&:hover': { color: BRAND } }}
+                style={{ fontSize: 12, color: palette.textMuted, textDecoration: 'none', fontFamily: font.family }}
               >
                 Esqueci a senha
-              </Typography>
-            </Box>
+              </Link>
+            </div>
 
-            <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading} style={{ marginTop: 4 }}>
-              {isLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Entrar'}
-            </CustomButton>
-          </Box>
+            <PontesButton
+              p={palette}
+              font={font.family}
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={isLoading}
+              disabled={isLoading}
+            >
+              Entrar
+            </PontesButton>
+          </form>
 
           {/* Footer */}
           <Typography

@@ -98,7 +98,7 @@ describe('LoginPage', () => {
     const { container } = renderLogin()
     expect(container.querySelector('input[type="password"]')).toBeInTheDocument()
 
-    const toggleBtn = container.querySelector('.MuiInputAdornment-root button')!
+    const toggleBtn = container.querySelector('[data-testid="toggle-senha"]')!
     fireEvent.click(toggleBtn)
     expect(container.querySelector('input[type="text"]')).toBeInTheDocument()
 

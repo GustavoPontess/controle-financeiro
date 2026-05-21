@@ -132,7 +132,7 @@ describe('RegisterPage', () => {
     const { container } = renderRegister()
     expect(container.querySelectorAll('input[type="password"]').length).toBe(2)
 
-    const [toggleSenha] = container.querySelectorAll('.MuiInputAdornment-root button')
+    const toggleSenha = container.querySelector('[data-testid="toggle-senha"]')!
 
     fireEvent.click(toggleSenha)
     expect(container.querySelectorAll('input[type="password"]').length).toBe(1)

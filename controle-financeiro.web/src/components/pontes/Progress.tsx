@@ -32,7 +32,13 @@ export function PontesProgress({
           {showValue && <span style={{ fontSize: 13, color: p.textMuted, fontWeight: 600 }}>{Math.round(v)}%</span>}
         </div>
       )}
-      <div style={{ height, background: p.bg, borderRadius: height / 2 }}>
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(v)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        style={{ height, background: p.bg, borderRadius: height / 2 }}
+      >
         <div style={{ width: `${v}%`, height: "100%", background: c, borderRadius: height / 2, transition: "width 250ms ease" }} />
       </div>
     </div>

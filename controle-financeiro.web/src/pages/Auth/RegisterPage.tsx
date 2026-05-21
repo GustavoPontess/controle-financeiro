@@ -1,21 +1,23 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Box, TextField, Typography, Alert, CircularProgress, LinearProgress, InputAdornment, IconButton } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { Eye, EyeOff } from 'lucide-react'
-import CustomButton from '../../components/CustomButton'
+import { PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress } from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { usePontesTheme } from '../../contexts/PontesThemeContext'
-import { makeInputSx } from '../../theme/inputStyles'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 import { tokens } from '../../theme/tokens'
 import Logo from '../../components/Logo/Logo'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
+  const { palette, font } = usePontesTheme()
   if (!senha) return null
+
   const requisitos = getSenhaRequisitos(senha)
   const forca = getSenhaForca(requisitos)
   const progresso = (forca / requisitos.length) * 100
+
   const cor =
     forca <= 2
       ? tokens.color.status.error.main
@@ -26,32 +28,33 @@ function PasswordStrengthIndicator({ senha }: { senha: string }) {
       : tokens.color.status.success.main
 
   return (
-    <Box sx={{ mt: -1 }}>
-      <LinearProgress
-        variant="determinate"
+    <div style={{ marginTop: -8 }}>
+      <PontesProgress
+        p={palette}
+        font={font.family}
         value={progresso}
-        sx={{
-          height: 3,
-          borderRadius: 2,
-          backgroundColor: tokens.color.border.default,
-          '& .MuiLinearProgress-bar': { backgroundColor: cor, borderRadius: 2 },
-        }}
+        color={cor}
+        height={3}
+        showValue={false}
       />
-      <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
         {requisitos.map((r) => (
-          <Typography
+          <span
             key={r.label}
-            sx={{
-              fontSize: tokens.typography.fontSize['2xs'],
+            style={{
+              fontSize: 11,
               color: r.ok ? tokens.color.status.success.main : tokens.color.text.disabled,
-              display: 'flex', alignItems: 'center', gap: 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontFamily: font.family,
             }}
           >
             {r.ok ? '✓' : '○'} {r.label}
-          </Typography>
+          </span>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }
 
@@ -70,7 +73,6 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const inputSx = makeInputSx(palette, font.family)
   const BRAND = palette.primary
   const BRAND_DARK = palette.primaryDark
 
@@ -266,90 +268,112 @@ export default function RegisterPage() {
           </Box>
 
           {/* Form */}
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {error && (
-              <Alert severity="error" sx={{ borderRadius: tokens.radius.lg, fontSize: tokens.typography.fontSize.sm }}>
-                {error}
-              </Alert>
+              <PontesAlert font={font.family} tone="error">{error}</PontesAlert>
             )}
 
-            <TextField
-              label="Nome completo"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              required
-              fullWidth
-              autoComplete="name"
-              sx={inputSx}
-            />
+            <PontesField p={palette} font={font.family} label="Nome completo" htmlFor="reg-nome" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="reg-nome"
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+                autoComplete="name"
+              />
+            </PontesField>
 
-            <TextField
-              label="E-mail"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              autoComplete="email"
-              sx={inputSx}
-            />
+            <PontesField p={palette} font={font.family} label="E-mail" htmlFor="reg-email" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="reg-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </PontesField>
 
-            <TextField
-              label="Data de nascimento"
-              type="date"
-              value={dataNascimento}
-              onChange={(e) => setDataNascimento(e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              sx={inputSx}
-            />
+            <PontesField p={palette} font={font.family} label="Data de nascimento" htmlFor="reg-nascimento">
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="reg-nascimento"
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                autoComplete="bday"
+              />
+            </PontesField>
 
-            <TextField
-              label="Senha"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              autoComplete="new-password"
-              sx={inputSx}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" size="small" tabIndex={-1}>
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <PontesField p={palette} font={font.family} label="Senha" htmlFor="reg-senha" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="reg-senha"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                iconEnd={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    data-testid="toggle-senha"
+                    tabIndex={-1}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+              />
+            </PontesField>
 
             <PasswordStrengthIndicator senha={password} />
 
-            <TextField
-              label="Confirmar senha"
-              type={showConfirm ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              fullWidth
-              autoComplete="new-password"
-              sx={inputSx}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowConfirm((v) => !v)} edge="end" size="small" tabIndex={-1}>
-                      {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <PontesField p={palette} font={font.family} label="Confirmar senha" htmlFor="reg-confirmar" required>
+              <PontesInput
+                p={palette}
+                font={font.family}
+                id="reg-confirmar"
+                type={showConfirm ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                iconEnd={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    data-testid="toggle-confirmar"
+                    tabIndex={-1}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: palette.textMuted }}
+                  >
+                    {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+              />
+            </PontesField>
 
-            <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading} style={{ marginTop: 4 }}>
-              {isLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Criar conta grátis'}
-            </CustomButton>
-          </Box>
+            <PontesButton
+              p={palette}
+              font={font.family}
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={isLoading}
+              disabled={isLoading}
+            >
+              Criar conta grátis
+            </PontesButton>
+          </form>
 
           {/* Footer */}
           <Typography

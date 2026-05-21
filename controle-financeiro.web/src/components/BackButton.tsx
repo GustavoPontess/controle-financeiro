@@ -1,11 +1,10 @@
 /**
  * BackButton — botão "← Voltar à página X" usado nas telas de auth.
  * Usa PontesThemeContext para cor de hover dinâmica.
+ * Sem dependência de MUI — renderiza Link do React Router com estilos inline.
  */
-import { Box } from '@mui/material'
-import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { tokens } from '../theme/tokens'
+import { ArrowLeft } from 'lucide-react'
 import { usePontesTheme } from '../contexts/PontesThemeContext'
 
 interface BackButtonProps {
@@ -15,30 +14,41 @@ interface BackButtonProps {
 
 export default function BackButton({ to, label = 'Voltar à página inicial' }: BackButtonProps) {
   const { palette, font } = usePontesTheme()
-  const brand = palette.primary
 
   return (
-    <Box
-      component={Link}
+    <Link
       to={to}
-      sx={{
-        display: 'inline-flex', alignItems: 'center', gap: 0.75,
-        color: tokens.color.text.secondary,
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        color: '#777573',
         textDecoration: 'none',
-        fontSize: tokens.typography.fontSize.sm,
+        fontSize: 13,
         fontFamily: font.family,
         fontWeight: 500,
-        mb: 3,
-        px: 1.5, py: 0.75,
-        borderRadius: tokens.radius.md,
-        border: `1px solid ${tokens.color.border.default}`,
+        marginBottom: 24,
+        padding: '6px 12px',
+        borderRadius: 8,
+        border: '1px solid #e4e1de',
         backgroundColor: '#fafaf9',
         transition: 'all 0.15s',
-        '&:hover': { color: brand, borderColor: brand, backgroundColor: `${brand}08` },
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget
+        el.style.color = palette.primary
+        el.style.borderColor = palette.primary
+        el.style.backgroundColor = `${palette.primary}08`
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget
+        el.style.color = '#777573'
+        el.style.borderColor = '#e4e1de'
+        el.style.backgroundColor = '#fafaf9'
       }}
     >
       <ArrowLeft size={16} />
       {label}
-    </Box>
+    </Link>
   )
 }
