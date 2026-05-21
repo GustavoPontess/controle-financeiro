@@ -22,6 +22,8 @@ import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
+import SiteLayout from "../pages/Site/SiteLayout"
+import CouplesPage from "../pages/Site/CouplesPage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -33,8 +35,11 @@ export default function AppRoutes() {
             sem flash; deslogado → SiteLayout + Home via children). */}
         <Route path="/" element={<RootRoute />} />
 
-        {/* Verticais públicas (Casais, Contadores, Recursos, Sobre) entram aqui
-            sob <SiteLayout> — URLs limpas /casais, /contadores, etc. */}
+        {/* Verticais públicas (Casais, Contadores, Recursos, Sobre) sob
+            <SiteLayout> — URLs limpas /casais, /contadores, etc. */}
+        <Route element={<SiteLayout />}>
+          <Route path="/casais" element={<CouplesPage />} />
+        </Route>
 
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
