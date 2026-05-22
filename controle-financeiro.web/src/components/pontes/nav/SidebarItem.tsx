@@ -25,8 +25,13 @@ export function PontesSidebarItem({
   const [hover, setHover] = useState(false)
   const RADIUS = 14 // = raio do pill (curva mais acentuada)
 
-  // Ativo: bracket "(" curvo à esquerda (SVG, dobra pra dentro acompanhando o
-  // pill). Hover (inativo): barrinha curta via scaleY.
+  // Ativo: borda esquerda curva acompanhando o contorno do pill. Hover
+  // (inativo): barrinha curta via scaleY.
+  const activeBar: React.CSSProperties = {
+    position: "absolute", inset: 0, borderRadius: RADIUS,
+    border: "4px solid transparent", borderLeftColor: p.primary,
+    pointerEvents: "none",
+  }
   const hoverBar: React.CSSProperties = {
     position: "absolute", left: 0, top: "50%", transformOrigin: "center",
     transform: `translateY(-50%) scaleY(${hover ? 1 : 0})`,
@@ -57,14 +62,7 @@ export function PontesSidebarItem({
         ["--pontes-active-bg" as string]: p.primarySoft,
       }}
     >
-      {!collapsed && active && (
-        <svg
-          style={{ position: "absolute", left: 2, top: 4, bottom: 4, width: 12, height: "auto", overflow: "visible", pointerEvents: "none" }}
-          viewBox="0 0 12 100" preserveAspectRatio="none" fill="none" aria-hidden="true"
-        >
-          <path d="M10 3 Q1 50 10 97" stroke={p.primary} strokeWidth={3} strokeLinecap="round" fill="none" vectorEffect="non-scaling-stroke" />
-        </svg>
-      )}
+      {!collapsed && active && <span style={activeBar} />}
       {!collapsed && !active && <span style={hoverBar} />}
       <span style={{ display: "flex", flexShrink: 0, color: active ? p.primary : p.textMuted }}>{icon}</span>
       {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>}
