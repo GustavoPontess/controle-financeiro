@@ -1,11 +1,14 @@
-﻿/**
- * ColorPicker — paleta horizontal de cores selecionáveis.
+/**
+ * ColorPicker — paleta horizontal de cores. A cor da amostra é dado (inline);
+ * borda/ring via var(--pontes-*). `p` override escopado opcional (#122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./ColorPicker.module.css"
 
 export type PontesColorPickerProps = {
-  p: Palette
+  p?: Palette
   colors: string[]
   value: string
   onChange: (c: string) => void
@@ -13,7 +16,7 @@ export type PontesColorPickerProps = {
 
 export function PontesColorPicker({ p, colors, value, onChange }: PontesColorPickerProps) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className={styles.wrap} style={scopedThemeVars(p) as CSSProperties}>
       {colors.map((c) => {
         const selected = c === value
         return (
@@ -22,13 +25,9 @@ export function PontesColorPicker({ p, colors, value, onChange }: PontesColorPic
             type="button"
             onClick={() => onChange(c)}
             aria-label={`Cor ${c}`}
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: c,
-              border: selected ? `3px solid ${p.text}` : `2px solid ${p.surface}`,
-              cursor: "pointer",
-              boxShadow: selected ? `0 0 0 2px ${c}` : `0 0 0 1px ${p.border}`,
-              outline: "none",
-            }}
+            className={styles.swatch}
+            data-selected={selected ? "true" : undefined}
+            style={{ background: c, boxShadow: selected ? `0 0 0 2px ${c}` : undefined }}
           />
         )
       })}

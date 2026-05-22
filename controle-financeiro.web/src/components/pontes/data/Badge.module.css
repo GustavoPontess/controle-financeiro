@@ -1,0 +1,15 @@
+/* Badge.module.css — etiqueta de status. Cor via var(--pontes-*). */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 999px; font-weight: 600; font-family: var(--pontes-font);
+}
+.badge[data-size="sm"] { padding: 2px 8px; font-size: 11px; }
+.badge[data-size="md"] { padding: 4px 12px; font-size: 12px; }
+.badge[data-tone="primary"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
+.badge[data-tone="accent"] { background: var(--pontes-accent); color: #0B1220; }
+.badge[data-tone="soft"] { background: var(--pontes-primary-soft); color: var(--pontes-primary); }
+.badge[data-tone="success"] { background: var(--pontes-success-soft); color: #065F46; }
+.badge[data-tone="warning"] { background: var(--pontes-warning-soft); color: #92400E; }
+.badge[data-tone="danger"] { background: var(--pontes-danger-soft); color: #991B1B; }
+.badge[data-tone="neutral"] { background: var(--pontes-bg); color: var(--pontes-text-muted); border: 1px solid var(--pontes-border); }
+.badge[data-tone="outline"] { background: transparent; color: var(--pontes-text-muted); border: 1px solid var(--pontes-border); }

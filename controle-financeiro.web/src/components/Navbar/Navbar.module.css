@@ -1,14 +1,23 @@
-.navbar {
-  height: 50px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+/* Navbar.module.css — topbar do shell. Cor via var(--pontes-*). */
+.header {
+  height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 0 24px; background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border);
+  font-family: var(--pontes-font); position: sticky; top: 0; z-index: 1000;
 }
-
-.title {
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
+.left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.titleBox { min-width: 0; }
+.crumb { font-size: 11px; color: var(--pontes-text-muted); font-weight: 500; margin-bottom: 1px; }
+.crumbHome { cursor: pointer; }
+.crumbSep { opacity: .5; }
+.crumbCur { color: var(--pontes-text); }
+.title { font-size: 22px; font-weight: 600; letter-spacing: -.02em; color: var(--pontes-text); margin: 0; line-height: 1.35; font-family: 'Fraunces', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.right { display: flex; align-items: center; gap: 10px; }
+.search {
+  display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px;
+  border: 1px solid var(--pontes-border); border-radius: 10px; cursor: pointer;
+  background: var(--pontes-bg); color: var(--pontes-text-muted); font-family: var(--pontes-font);
+  font-size: 13px; min-width: 200px; transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
+.search:hover { background: var(--pontes-primary-soft); border-color: var(--pontes-primary); color: var(--pontes-primary); }
+.searchText { flex: 1; text-align: left; }
+.kbd { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text-muted); }

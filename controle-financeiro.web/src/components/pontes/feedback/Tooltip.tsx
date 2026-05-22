@@ -1,14 +1,15 @@
-﻿/**
- * Tooltip — texto curto que aparece em hover.
- * Posicionamento simples top (default) ou bottom.
+/**
+ * Tooltip — texto curto em hover. Cor via var(--pontes-*).
+ * `p`/`font` override escopado opcional (#122).
  */
 
-import { useState, type ReactNode } from "react"
-import type { Palette } from "../theme"
+import { useState, type ReactNode, type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Tooltip.module.css"
 
 export type PontesTooltipProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   label: ReactNode
   side?: "top" | "bottom"
   children: ReactNode
@@ -17,12 +18,10 @@ export type PontesTooltipProps = {
 export function PontesTooltip({ p, font, label, side = "top", children }: PontesTooltipProps) {
   const [open, setOpen] = useState(false)
 
-  const arrowSize = 8
-  const offset = 42
-
   return (
     <span
-      style={{ position: "relative", display: "inline-block" }}
+      className={styles.wrap}
+      style={scopedThemeVars(p, font) as CSSProperties}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
@@ -30,23 +29,9 @@ export function PontesTooltip({ p, font, label, side = "top", children }: Pontes
     >
       {children}
       {open && (
-        <span style={{
-          position: "absolute",
-          ...(side === "top"
-            ? { top: -offset, left: "50%", transform: "translateX(-50%)" }
-            : { bottom: -offset, left: "50%", transform: "translateX(-50%)" }),
-          background: p.text, color: "#FFFFFF",
-          padding: "6px 12px", borderRadius: 8,
-          fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
-          fontFamily: font, zIndex: 100,
-        }}>
+        <span className={styles.tip} data-side={side}>
           {label}
-          <span style={{
-            position: "absolute",
-            ...(side === "top" ? { bottom: -arrowSize / 2 } : { top: -arrowSize / 2 }),
-            left: "50%", transform: "translateX(-50%) rotate(45deg)",
-            width: arrowSize, height: arrowSize, background: p.text,
-          }} />
+          <span className={styles.arrow} />
         </span>
       )}
     </span>

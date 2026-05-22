@@ -123,6 +123,19 @@ npm run lint
 
 ## Frontend Patterns & Conventions
 
+### Estilização — CSS Modules + CSS variables (PADRÃO OBRIGATÓRIO Q5+) ⭐
+
+**Decidido na #122. Daqui em diante, toda tela nova ou refatorada segue:**
+
+- **Zero `style={{}}` para cor/fonte/tema.** Estilo vai em `*.module.css` ao lado do `.tsx` (`import styles from "./X.module.css"`, `className={styles.foo}`).
+- **Cor/fonte SEMPRE via `var(--pontes-*)`** (`--pontes-primary`, `--pontes-text`, `--pontes-bg`, `--pontes-font`, semânticas `--pontes-success|warning|danger|info`). Vars injetadas no `:root` pelo `PontesThemeProvider`. Nunca hex/fonte hardcoded de tema.
+- **Telas não passam mais `p`/`font` pros componentes Pontes** — eles leem as vars sozinhos (`<PontesButton variant="primary">`). Props `p`/`font` continuam opcionais só pra override/compat.
+- **`usePontesTheme()`/`useSiteTheme()` só onde precisa de cor REAL (hex):** atributos SVG e `recharts` (`fill`/`stroke`/`Cell`/gradiente) — `var()` não resolve em atributo SVG. Ex.: `DashboardPage`, `HomePage`.
+- **Estado → CSS:** hover/foco via `:hover`/`:focus`, ativo/aberto via `data-*`, não state JS.
+- **Inline só pra valor dinâmico runtime:** `width: %`, cor do banco (`conta.cor`), vars escopadas do `/design-system`.
+
+Detalhe completo + exemplos em `docs/STANDARDS.md` → "Estilização — CSS Modules + CSS variables".
+
 ### Adicionar Novo Recurso Frontend
 
 ```

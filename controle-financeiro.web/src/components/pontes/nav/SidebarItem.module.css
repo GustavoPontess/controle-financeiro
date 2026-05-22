@@ -1,0 +1,32 @@
+/* SidebarItem.module.css — item/section de nav lateral. Cor via var(--pontes-*). */
+.item {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 2px;
+  justify-content: flex-start; border: none; border-radius: 14px; cursor: pointer;
+  background: transparent; color: var(--pontes-text); font-size: 14px; font-weight: 500;
+  font-family: var(--pontes-font); position: relative;
+  transition: gap 200ms ease, background-color .15s ease, color .15s ease;
+}
+.item[data-collapsed="true"] { gap: 0; }
+.item:hover { background: var(--pontes-bg); }
+.item[data-active="true"], .item[data-active="true"]:hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); font-weight: 700; }
+.bar {
+  position: absolute; left: 0; top: 50%; width: 4px; height: 14px; border-radius: 999px;
+  background: var(--pontes-primary); pointer-events: none;
+  transform: translateY(-50%) scaleY(0); opacity: 0; transform-origin: center;
+  transition: transform 240ms cubic-bezier(.34, 1.56, .64, 1), opacity 180ms ease;
+}
+.item:hover .bar, .item[data-active="true"] .bar { transform: translateY(-50%) scaleY(1); opacity: 1; }
+.icon { display: flex; flex-shrink: 0; color: var(--pontes-text-muted); }
+.item[data-active="true"] .icon { color: var(--pontes-primary); }
+.label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; max-width: 180px; transition: opacity 160ms ease, max-width 220ms ease; }
+.item[data-collapsed="true"] .label { opacity: 0; max-width: 0; }
+
+.section { position: relative; height: 30px; }
+.sectionLabel {
+  position: absolute; left: 12px; right: 12px; bottom: 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--pontes-text-muted);
+  white-space: nowrap; overflow: hidden; opacity: 1; transition: opacity 160ms ease; pointer-events: none;
+}
+.section[data-collapsed="true"] .sectionLabel { opacity: 0; }
+.sectionLine { position: absolute; left: 8px; right: 8px; bottom: 10px; height: 1px; background: var(--pontes-border); opacity: 0; transition: opacity 200ms ease; pointer-events: none; }
+.section[data-collapsed="true"] .sectionLine { opacity: 1; }

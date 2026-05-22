@@ -1,0 +1,13 @@
+/* DatePicker.module.css — mini calendário. Cor via var(--pontes-*). */
+.wrap { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 18px; max-width: 320px; font-family: var(--pontes-font); }
+.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.nav { background: transparent; border: none; color: var(--pontes-text); font-size: 16px; cursor: pointer; padding: 4px; }
+.title { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; }
+.dow { font-size: 11px; color: var(--pontes-text-muted); font-weight: 700; text-align: center; padding: 4px; }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.day { aspect-ratio: 1; border: none; cursor: pointer; background: transparent; color: var(--pontes-text); border-radius: 8px; font-size: 12px; font-weight: 500; font-family: var(--pontes-font); position: relative; }
+.day:hover { background: var(--pontes-bg); }
+.day[data-selected="true"] { background: var(--pontes-primary-soft); color: var(--pontes-primary); font-weight: 700; }
+.day[data-today="true"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); font-weight: 700; }
+.dot { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--pontes-accent); }

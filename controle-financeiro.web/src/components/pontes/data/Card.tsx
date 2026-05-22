@@ -1,13 +1,15 @@
-﻿/**
+/**
  * Card — surface básica com border + padding + radius.
- * Usada como container de outros componentes.
+ * Cor via var(--pontes-*) (Card.module.css). Hover é CSS puro (sem estado JS).
+ * `p` é override de tema escopado opcional (transição #122).
  */
 
-import { useState, type ReactNode } from "react"
-import { shadows, type Palette } from "../theme"
+import { type ReactNode, type CSSProperties } from "react"
+import { shadows, scopedThemeVars, type Palette } from "../theme"
+import styles from "./Card.module.css"
 
 export type PontesCardProps = {
-  p: Palette
+  p?: Palette
   children: ReactNode
   padding?: number
   radius?: number
@@ -26,23 +28,19 @@ export function PontesCard({
   const shadowMap = {
     none: "none", sm: shadows.sm, md: shadows.md, lg: shadows.lg, xl: shadows.xl,
   } as const
-  const [hovered, setHovered] = useState(false)
 
   return (
     <div
-      className={className}
-      onMouseEnter={hover ? () => setHovered(true) : undefined}
-      onMouseLeave={hover ? () => setHovered(false) : undefined}
+      className={[styles.card, className].filter(Boolean).join(" ")}
+      data-dashed={dashed ? "true" : undefined}
+      data-hover={hover ? "true" : undefined}
       style={{
-        background: p.surface,
-        border: `1px ${dashed ? "dashed" : "solid"} ${p.border}`,
+        ...scopedThemeVars(p),
         borderRadius: radius,
         padding,
-        boxShadow: hover && hovered ? shadows.lg : shadowMap[shadow],
-        transform: hover && hovered ? "translateY(-2px)" : "translateY(0)",
-        transition: hover ? "transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms ease" : undefined,
+        boxShadow: shadowMap[shadow],
         ...style,
-      }}
+      } as CSSProperties}
     >
       {children}
     </div>

@@ -119,6 +119,41 @@ export const fonts: FontOption[] = [
 export const defaultPalette: Palette = palettes[0]
 export const defaultFont: FontOption = fonts[0]
 
+/**
+ * Override de tema escopado pra um componente/elemento.
+ *
+ * Transição (#122): os componentes Pontes leem cor/fonte de `var(--pontes-*)`.
+ * Enquanto as telas ainda passam `p`/`font` por prop, o componente aplica esses
+ * valores como CSS vars inline (escopo local) — herda do :root se não vier nada.
+ * Comportamento idêntico ao legado; quando as telas pararem de passar, vira no-op.
+ */
+export function scopedThemeVars(p?: Palette, font?: string): Record<string, string> {
+  const out: Record<string, string> = p ? paletteVars(p) : {}
+  if (font) out["--pontes-font"] = font
+  return out
+}
+
+/**
+ * Mapeia uma Palette para o objeto de CSS vars `--pontes-*`.
+ * Usado pelo ThemeProvider (global, no :root) e por wrappers de tema escopado
+ * (ex: showroom /design-system previewa paleta sem mexer no tema global).
+ */
+export function paletteVars(p: Palette): Record<string, string> {
+  return {
+    "--pontes-primary": p.primary,
+    "--pontes-primary-dark": p.primaryDark,
+    "--pontes-primary-soft": p.primarySoft,
+    "--pontes-accent": p.accent,
+    "--pontes-accent-soft": p.accentSoft,
+    "--pontes-text": p.text,
+    "--pontes-text-muted": p.textMuted,
+    "--pontes-bg": p.bg,
+    "--pontes-surface": p.surface,
+    "--pontes-border": p.border,
+    "--pontes-hero-fg": p.heroFg,
+  }
+}
+
 /** Tokens de espaçamento (4-base scale). */
 export const spacing = {
   xs: 4, sm: 8, md: 12, lg: 16, xl: 20, "2xl": 24, "3xl": 32, "4xl": 48, "5xl": 64, "6xl": 96,

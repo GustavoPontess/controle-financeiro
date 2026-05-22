@@ -97,9 +97,9 @@ Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Q5 tem 18 issu
 
 ### ⛔ REGRAS INEGOCIÁVEIS (todo dev + todo Claude segue, sempre)
 
-1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI direto, zero `<select>` nativo, zero `CustomButton`/`tokens.ts` antigo nas telas Q5.
+1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI direto, zero `<select>` nativo, zero `CustomButton`/`tokens.ts` antigo nas telas Q5. **Estilo em `*.module.css` (CSS Modules), nunca `style={{}}` de cor/fonte/tema** — ver regra 3 e `docs/STANDARDS.md`.
 2. **Componente reutilizável novo → vai pra biblioteca** (`src/components/pontes/`) antes de usar: arquivo + barrel `index.ts` + demo no `/design-system` + smoke test. Específico de 1 tela só → fica na pasta da tela.
-3. **Cor e fonte SEMPRE do `usePontesTheme()`** (ou `useSiteTheme()` no site). Nunca hex/fonte hardcoded. Feedback = `semantic.*`. Wordmark = Plus Jakarta fixo.
+3. **Cor e fonte SEMPRE via CSS vars `var(--pontes-*)`** em `*.module.css` (#122). Vars injetadas no `:root` pelo `PontesThemeProvider`. Nunca hex/fonte hardcoded de tema. Telas **não** passam `p`/`font` pros componentes Pontes (eles leem as vars). `usePontesTheme()`/`useSiteTheme()` só onde precisa de cor REAL hex (SVG/recharts — `var()` não vale em atributo SVG). Feedback = `var(--pontes-success|warning|danger|info)`. Wordmark = Plus Jakarta fixo. Detalhe: `docs/STANDARDS.md` → "Estilização".
 4. **Personalização é global + persistida.** `PontesThemeProvider` no root, localStorage. Trocar paleta/fonte vale em todas as telas e sobrevive reload.
 5. **Site público usa `SiteLayout`.** Páginas do site = só conteúdo; navbar/footer/control-bar vêm do layout.
 6. **Teste automatizado SEMPRE** — front (vitest) E back (xUnit) cobrindo o que mudou. Sem teste = PR não merga. (Exceção: só copy/CSS/docs.)

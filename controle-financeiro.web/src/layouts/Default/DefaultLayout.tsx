@@ -12,7 +12,8 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
-import { PontesToast, PontesCommandPalette, usePontesTheme, type PontesCommandItem } from "@/components/pontes"
+import { PontesToast, PontesCommandPalette, type PontesCommandItem } from "@/components/pontes"
+import styles from "./DefaultLayout.module.css"
 
 import Navbar from "../../components/Navbar/Navbar"
 import Sidebar from "../../components/Sidebar/Sidebar"
@@ -43,7 +44,6 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function DefaultLayout() {
-  const { palette: p, font } = usePontesTheme()
   const { accountKey } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -95,27 +95,14 @@ export default function DefaultLayout() {
   }, [cmdQuery, navigate])
 
   return (
-    <div style={{
-      display: "flex", height: "100vh", fontFamily: font,
-      background: `
-        radial-gradient(40% 28% at 3% 3%, ${p.primary}33, transparent 60%),
-        radial-gradient(38% 30% at 17% 97%, ${p.accent}30, transparent 60%),
-        ${p.bg}
-      `,
-      padding: 12, gap: 4, boxSizing: "border-box", overflow: "hidden",
-    }}>
+    <div className={styles.shell}>
       {/* Sidebar transparente — "atrás", no canvas */}
       <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
 
       {/* Conteúdo flutuante — card arredondado por cima do canvas */}
-      <div style={{
-        flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative",
-        background: p.surface, borderRadius: 20, overflow: "hidden",
-        boxShadow: "0 18px 50px -24px rgba(11,18,32,0.16), 0 4px 14px -8px rgba(11,18,32,0.08)",
-        border: `1px solid ${p.border}`,
-      }}>
+      <div className={styles.card}>
         {/* Faixa accent — detalhe de marca no topo do card (discreta) */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, opacity: 0.85, zIndex: 1001 }} />
+        <div className={styles.accentStrip} />
         <Navbar
           toggleDrawer={() => setOpen((o) => !o)}
           sidebarOpen={open}
@@ -124,12 +111,8 @@ export default function DefaultLayout() {
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
         />
 
-        <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
-          <style>{`@keyframes pontes-page-in { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }`}</style>
-          <div
-            key={location.pathname}
-            style={{ maxWidth: 1480, margin: "0 auto", animation: "pontes-page-in 320ms cubic-bezier(0.4,0,0.2,1)" }}
-          >
+        <main className={styles.main}>
+          <div key={location.pathname} className={styles.page}>
             <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
           </div>
         </main>
@@ -139,16 +122,15 @@ export default function DefaultLayout() {
       <InstallPrompt />
 
       <PontesCommandPalette
-        p={p} font={font} open={cmdOpen}
+        open={cmdOpen}
         onClose={() => setCmdOpen(false)}
         query={cmdQuery} onQueryChange={setCmdQuery}
         items={cmdItems}
       />
 
       {notification.open && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9998 }}>
+        <div className={styles.toastWrap}>
           <PontesToast
-            font={font}
             tone={notification.severity}
             title={notification.severity === "success" ? "Sucesso" : "Erro"}
             description={notification.message}

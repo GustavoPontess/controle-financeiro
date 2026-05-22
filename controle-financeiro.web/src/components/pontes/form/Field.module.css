@@ -1,0 +1,7 @@
+/* Field.module.css — wrapper label + control + erro. Cor via var(--pontes-*). */
+.field { display: flex; flex-direction: column; gap: 6px; font-family: var(--pontes-font); }
+.label { font-size: 13px; font-weight: 600; color: var(--pontes-text); }
+.field[data-error="true"] .label { color: var(--pontes-danger); }
+.req { color: var(--pontes-danger); margin-left: 4px; }
+.helper { font-size: 12px; color: var(--pontes-text-muted); margin-top: 2px; }
+.field[data-error="true"] .helper { color: var(--pontes-danger); }

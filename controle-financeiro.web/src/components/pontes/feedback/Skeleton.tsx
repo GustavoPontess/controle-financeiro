@@ -1,14 +1,14 @@
-﻿/**
- * Skeleton — placeholder de loading com shimmer.
- *
- * PontesSkeleton: bloco único.
- * PontesSkeletonRow: linha avatar + 2 textos + valor (item de lista).
+/**
+ * Skeleton — placeholder de loading com shimmer. Cor via var(--pontes-*).
+ * width/height/radius por-instância (inline). `p` override escopado opcional (#122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Skeleton.module.css"
 
 export type PontesSkeletonProps = {
-  p: Palette
+  p?: Palette
   width?: number | string
   height?: number | string
   radius?: number | string
@@ -17,29 +17,21 @@ export type PontesSkeletonProps = {
 
 export function PontesSkeleton({ p, width = "100%", height = 12, radius = 4, style }: PontesSkeletonProps) {
   return (
-    <>
-      <style>{`@keyframes pontes-shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }`}</style>
-      <span
-        aria-hidden
-        style={{
-          display: "inline-block", width, height, borderRadius: radius,
-          background: `linear-gradient(90deg, ${p.bg} 25%, ${p.border} 50%, ${p.bg} 75%)`,
-          backgroundSize: "200% 100%",
-          animation: "pontes-shimmer 1.5s infinite linear",
-          ...style,
-        }}
-      />
-    </>
+    <span
+      aria-hidden
+      className={styles.sk}
+      style={{ width, height, borderRadius: radius, ...scopedThemeVars(p), ...style } as CSSProperties}
+    />
   )
 }
 
-export type PontesSkeletonRowProps = { p: Palette }
+export type PontesSkeletonRowProps = { p?: Palette }
 
 export function PontesSkeletonRow({ p }: PontesSkeletonRowProps) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
+    <div className={styles.row}>
       <PontesSkeleton p={p} width={36} height={36} radius={10} />
-      <div style={{ flex: 1 }}>
+      <div className={styles.rowMid}>
         <PontesSkeleton p={p} width="60%" height={12} style={{ marginBottom: 6 }} />
         <PontesSkeleton p={p} width="40%" height={10} />
       </div>
@@ -48,13 +40,13 @@ export function PontesSkeletonRow({ p }: PontesSkeletonRowProps) {
   )
 }
 
-export type PontesSkeletonListProps = { p: Palette; rows?: number }
+export type PontesSkeletonListProps = { p?: Palette; rows?: number }
 
 export function PontesSkeletonList({ p, rows = 3 }: PontesSkeletonListProps) {
   return (
-    <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 12, padding: 20 }}>
+    <div className={styles.list} style={scopedThemeVars(p) as CSSProperties}>
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} style={{ borderBottom: i < rows - 1 ? `1px solid ${p.border}` : "none" }}>
+        <div key={i} className={styles.listItem}>
           <PontesSkeletonRow p={p} />
         </div>
       ))}

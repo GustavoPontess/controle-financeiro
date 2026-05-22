@@ -1,0 +1,39 @@
+/**
+ * tokens.css — variáveis CSS da biblioteca Pontes (:root).
+ *
+ * Os valores aqui são DEFAULTS (paleta A + fonte Inter). Em runtime, o
+ * PontesThemeProvider sobrescreve as vars de paleta/fonte via setProperty
+ * conforme a escolha do usuário (#90) — troca ao vivo, sem rebuild.
+ *
+ * - Cores de paleta + fonte: dinâmicas (Provider sobrescreve).
+ * - Semânticas (success/warning/danger/info): fixas, não mudam com a paleta.
+ * - Spacing/radii ficam como valores literais nos *.module.css (não mudam runtime).
+ */
+
+:root {
+  /* Paleta (default = "A" Cobalto + Âmbar). Sobrescrita pelo Provider. */
+  --pontes-primary: #1E40AF;
+  --pontes-primary-dark: #1E3A8A;
+  --pontes-primary-soft: #EEF2FF;
+  --pontes-accent: #F59E0B;
+  --pontes-accent-soft: #FEF3C7;
+  --pontes-text: #0B1220;
+  --pontes-text-muted: #5A6679;
+  --pontes-bg: #F7F9FC;
+  --pontes-surface: #FFFFFF;
+  --pontes-border: #E5EAF2;
+  --pontes-hero-fg: #FFFFFF;
+
+  /* Fonte (default = Inter). Sobrescrita pelo Provider. */
+  --pontes-font: 'Inter', system-ui, sans-serif;
+
+  /* Semânticas — fixas (vermelho de erro é sempre vermelho). */
+  --pontes-success: #10B981;
+  --pontes-success-soft: #D1FAE5;
+  --pontes-warning: #F59E0B;
+  --pontes-warning-soft: #FEF3C7;
+  --pontes-danger: #DC2626;
+  --pontes-danger-soft: #FEE2E2;
+  --pontes-info: #0EA5E9;
+  --pontes-info-soft: #E0F2FE;
+}

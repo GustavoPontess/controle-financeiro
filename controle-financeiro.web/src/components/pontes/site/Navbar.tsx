@@ -1,25 +1,20 @@
-﻿/**
- * Navbar — barra de navegação flutuante do site público.
- *
- * Visual:
- *  - Sobre o hero: glass branco translúcido (texto claro).
- *  - Após rolar 400px: sólida (texto escuro).
- * Logo é botão pra "/", links navegam via prop `onNavigate` (default: window.history).
- *
- * Move/atualiza SiteNavbar.
+/**
+ * Navbar — barra flutuante do site público. Glass sobre o hero, sólida ao rolar.
+ * Cor via var(--pontes-*); estados via data-scrolled (CSS). Cores dinâmicas
+ * passadas como strings var() pros subcomponentes. `p`/`font` escopado (#122).
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 import Logo from "../../Logo/Logo"
 import { PontesButton, PontesNavLink } from "../buttons/Button"
-import { ensurePontesGlobalStyles } from "../_globalStyles"
-import { type Palette } from "../theme"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Navbar.module.css"
 
 export type PontesNavbarLink = { label: string; to: string }
 
 export type PontesNavbarProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   /** Marca item ativo no menu (match em `to`). */
   activePath?: string
   links?: PontesNavbarLink[]
@@ -27,11 +22,9 @@ export type PontesNavbarProps = {
   onNavigate?: (to: string) => void
   /** Esconde botões de auth (login/register). */
   hideAuth?: boolean
-  /** Posição do topo quando NÃO scrolled (px). Default 110 (flutua sobre o hero).
-   *  Páginas com banner/control bar acima passam o valor que posiciona a navbar logo abaixo. */
+  /** Posição do topo quando NÃO scrolled (px). Default 110. */
   topOffset?: number
-  /** Posição do topo quando scrolled (px). Default 16. Páginas com control bar fixo
-   *  somam a altura dele aqui pra navbar não ficar por baixo. */
+  /** Posição do topo quando scrolled (px). Default 16. */
   scrolledTop?: number
 }
 
@@ -47,8 +40,6 @@ export function PontesNavbar({
 }: PontesNavbarProps) {
   const [scrolled, setScrolled] = useState(false)
 
-  useEffect(ensurePontesGlobalStyles, [])
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80)
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -61,40 +52,21 @@ export function PontesNavbar({
     else { window.history.pushState({}, "", to); window.dispatchEvent(new PopStateEvent("popstate")) }
   }
 
-  const bg = scrolled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)"
-  const border = scrolled ? p.border : "rgba(255,255,255,0.2)"
-  const textColor = scrolled ? p.text : p.heroFg
-  const wordmarkColor = scrolled ? p.primary : p.heroFg
-
-  const navTop = scrolled ? scrolledTop : topOffset
+  const textColor = scrolled ? "var(--pontes-text)" : "var(--pontes-hero-fg)"
+  const wordmarkColor = scrolled ? "var(--pontes-primary)" : "var(--pontes-hero-fg)"
+  const hoverColor = scrolled ? "var(--pontes-primary)" : "var(--pontes-accent)"
 
   return (
-    <nav style={{
-      position: "fixed", top: navTop, left: 0, right: 0, padding: "0 48px",
-      display: "flex", justifyContent: "center", zIndex: 90,
-      transition: "top 250ms ease, background 250ms ease",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 32, padding: "10px 16px 10px 22px",
-        background: bg,
-        border: `1px solid ${border}`, borderRadius: 999,
-        boxShadow: scrolled
-          ? "0 8px 24px -8px rgba(0,0,0,0.12)"
-          : "0 8px 24px -8px rgba(0,0,0,0.18)",
-        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-        minWidth: 920, maxWidth: 1100, width: "100%",
-        transition: "all 250ms ease",
-      }}>
+    <nav className={styles.nav} style={{ top: scrolled ? scrolledTop : topOffset, ...scopedThemeVars(p, font) } as CSSProperties}>
+      <div className={styles.bar} data-scrolled={scrolled ? "true" : undefined}>
         <Logo color={wordmarkColor} size={22} onClick={() => go("/")} />
 
-        <div style={{ display: "flex", gap: 26, alignItems: "center" }}>
+        <div className={styles.links}>
           {links.map((link) => (
             <PontesNavLink
               key={link.to}
-              p={p} font={font}
               color={textColor}
-              hoverColor={scrolled ? p.primary : p.accent}
+              hoverColor={hoverColor}
               active={activePath === link.to}
               onClick={() => go(link.to)}
               style={{ opacity: scrolled ? 1 : 0.92 }}
@@ -105,15 +77,13 @@ export function PontesNavbar({
         </div>
 
         {!hideAuth ? (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className={styles.auth}>
             <PontesButton
-              p={p} font={font}
               variant={scrolled ? "outline" : "outline-light"} size="sm"
               onClick={() => go("/auth/login")}
               style={{ padding: "8px 16px", borderRadius: 999, fontSize: 13 }}
             >Entrar</PontesButton>
             <PontesButton
-              p={p} font={font}
               variant={scrolled ? "primary" : "accent"} size="sm"
               onClick={() => go("/auth/register")}
               style={{ padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700 }}

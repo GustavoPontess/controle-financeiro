@@ -1,21 +1,20 @@
-﻿/**
- * Modal & Dialog — overlays centrais.
- *
- * PontesModal: caixa de conteúdo livre com header/footer opcionais.
- * PontesDialog: variante de confirmação (ícone + título + msg + botões).
+/**
+ * Modal & Dialog — overlays centrais. Cor via var(--pontes-*).
+ * `p`/`font` override escopado opcional (#122) aplicado na caixa.
  */
 
-import { useEffect, type ReactNode } from "react"
+import { useEffect, type ReactNode, type CSSProperties } from "react"
 import { PontesButton } from "../buttons/Button"
-import { semantic, type Palette } from "../theme"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Modal.module.css"
 
 // =============================================================================
 // PontesModal
 // =============================================================================
 
 export type PontesModalProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   open: boolean
   title?: string
   onClose: () => void
@@ -37,43 +36,20 @@ export function PontesModal({
 
   if (!open) return null
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(11,18,32,0.6)",
-        zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
+    <div onClick={onClose} className={styles.overlay}>
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: p.surface, borderRadius: 18, padding: 0,
-          maxWidth, width: "90%",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.4)",
-          fontFamily: font, overflow: "hidden",
-        }}
+        className={styles.box}
+        style={{ maxWidth, ...scopedThemeVars(p, font) } as CSSProperties}
       >
         {(title || header) && (
-          <div style={{
-            padding: "20px 24px", borderBottom: `1px solid ${p.border}`,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-          }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: p.text }}>{title ?? header}</div>
-            <button
-              type="button" onClick={onClose}
-              style={{ background: "transparent", border: "none", fontSize: 20, color: p.textMuted, cursor: "pointer" }}
-              aria-label="Fechar"
-            >×</button>
+          <div className={styles.header}>
+            <div className={styles.title}>{title ?? header}</div>
+            <button type="button" onClick={onClose} className={styles.close} aria-label="Fechar">×</button>
           </div>
         )}
-        <div style={{ padding: 24 }}>{children}</div>
-        {footer && (
-          <div style={{
-            padding: "16px 24px", background: p.bg,
-            display: "flex", justifyContent: "flex-end", gap: 10,
-            borderTop: `1px solid ${p.border}`,
-          }}>{footer}</div>
-        )}
+        <div className={styles.body}>{children}</div>
+        {footer && <div className={styles.footer}>{footer}</div>}
       </div>
     </div>
   )
@@ -86,8 +62,8 @@ export function PontesModal({
 export type PontesDialogTone = "danger" | "warning" | "info"
 
 export type PontesDialogProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   open: boolean
   title: string
   description?: string
@@ -104,51 +80,17 @@ export function PontesDialog({
   onConfirm, onCancel,
 }: PontesDialogProps) {
   if (!open) return null
-
-  const conf = tone === "danger"
-    ? { bg: semantic.dangerSoft, fg: semantic.danger, icon: "⚠" }
-    : tone === "warning"
-    ? { bg: semantic.warningSoft, fg: semantic.warning, icon: "⚠" }
-    : { bg: p.primarySoft, fg: p.primary, icon: "ℹ" }
+  const icon = tone === "info" ? "ℹ" : "⚠"
 
   return (
-    <div
-      onClick={onCancel}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(11,18,32,0.6)",
-        zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: p.surface, borderRadius: 18, padding: 28,
-          maxWidth: 400, width: "90%",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.4)",
-          fontFamily: font, textAlign: "center",
-        }}
-      >
-        <div style={{
-          width: 56, height: 56, borderRadius: "50%",
-          background: conf.bg, color: conf.fg,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, margin: "0 auto 16px",
-        }}>{conf.icon}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: p.text, marginBottom: 8 }}>{title}</div>
-        {description && (
-          <div style={{ fontSize: 14, color: p.textMuted, lineHeight: 1.5, marginBottom: 24 }}>
-            {description}
-          </div>
-        )}
-        <div style={{ display: "flex", gap: 10 }}>
-          <PontesButton p={p} font={font} variant="outline" fullWidth onClick={onCancel}>
-            {cancelLabel}
-          </PontesButton>
-          <PontesButton
-            p={p} font={font}
-            variant={tone === "danger" ? "danger" : "primary"}
-            fullWidth onClick={onConfirm}
-          >
+    <div onClick={onCancel} className={styles.overlay}>
+      <div onClick={(e) => e.stopPropagation()} className={styles.dialogBox} style={scopedThemeVars(p, font) as CSSProperties}>
+        <div className={styles.dialogIcon} data-tone={tone}>{icon}</div>
+        <div className={styles.dialogTitle}>{title}</div>
+        {description && <div className={styles.dialogDesc}>{description}</div>}
+        <div className={styles.dialogActions}>
+          <PontesButton variant="outline" fullWidth onClick={onCancel}>{cancelLabel}</PontesButton>
+          <PontesButton variant={tone === "danger" ? "danger" : "primary"} fullWidth onClick={onConfirm}>
             {confirmLabel}
           </PontesButton>
         </div>

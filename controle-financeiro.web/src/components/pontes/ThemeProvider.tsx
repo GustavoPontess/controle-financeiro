@@ -10,9 +10,10 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react"
-import { palettes, fonts } from "./theme"
+import { palettes, fonts, paletteVars } from "./theme"
 import { applyPontesScrollbar } from "./_globalStyles"
 import { PontesThemeCtx, type PontesThemeValue } from "./themeContext"
+import "./styles/tokens.css"
 
 const LS_PALETTE = "pontes.paletteId"
 const LS_FONT = "pontes.fontId"
@@ -48,10 +49,21 @@ export function PontesThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [fontOption])
 
-  // Scrollbar (accent) + fundo do body seguem a paleta — global.
+  // Paleta vira CSS vars no :root + scrollbar/fundo seguem a paleta — global.
   useEffect(() => {
+    if (typeof document !== "undefined") {
+      const r = document.documentElement.style
+      for (const [k, v] of Object.entries(paletteVars(palette))) r.setProperty(k, v)
+    }
     applyPontesScrollbar(palette.accent, palette.bg)
   }, [palette])
+
+  // Fonte escolhida vira CSS var no :root.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.style.setProperty("--pontes-font", fontOption.family)
+    }
+  }, [fontOption])
 
   const value: PontesThemeValue = {
     palette, font: fontOption.family, fontOption,

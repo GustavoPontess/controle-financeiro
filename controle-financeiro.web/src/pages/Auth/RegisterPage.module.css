@@ -1,0 +1,53 @@
+/* RegisterPage.module.css — refator #122 (inline -> CSS vars).
+   Painel de marca usa branco fixo (sempre sobre gradiente primário). */
+
+.root { min-height: 100vh; display: flex; font-family: var(--pontes-font); }
+
+.brand {
+  display: flex; width: 48%; flex-direction: column; justify-content: space-between;
+  padding: 48px; position: relative; overflow: hidden;
+  background: linear-gradient(150deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
+}
+@media (max-width: 899px) { .brand { display: none; } }
+
+.grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.blob { position: absolute; bottom: -10%; left: -10%; width: 55%; height: 55%; border-radius: 50%; background: rgba(255, 255, 255, 0.06); filter: blur(40px); pointer-events: none; }
+
+.brandLogo { position: relative; z-index: 1; }
+.brandMid { position: relative; z-index: 1; }
+.headline { font-family: 'Fraunces', Georgia, serif; font-size: 40px; font-weight: 700; color: #fff; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 8px; }
+.headlineDim { opacity: 0.85; }
+.lead { color: rgba(255, 255, 255, 0.8); font-size: 16px; line-height: 1.55; margin: 0 0 32px; }
+
+.plans { display: flex; flex-direction: column; gap: 16px; }
+.planRow { display: flex; align-items: center; gap: 16px; background: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; border: 1px solid rgba(255, 255, 255, 0.12); }
+.planInfo { flex: 1; }
+.planName { color: #fff; font-size: 13px; font-weight: 700; margin: 0; }
+.planDesc { color: rgba(255, 255, 255, 0.7); font-size: 12px; margin: 0; }
+.planPrice { color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; margin: 0; }
+
+.stats { position: relative; z-index: 1; display: flex; gap: 24px; }
+.statN { color: #fff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+.statL { color: rgba(255, 255, 255, 0.7); font-size: 12px; margin: 0; }
+
+.form { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 40px; background: var(--pontes-surface); overflow-y: auto; }
+.formInner { width: 100%; max-width: 400px; padding-block: 16px; }
+.logoMobile { margin-bottom: 32px; text-align: center; }
+@media (min-width: 900px) { .logoMobile { display: none; } }
+
+.head { margin-bottom: 24px; }
+.title { font-size: 28px; font-weight: 700; color: var(--pontes-text); letter-spacing: -0.02em; margin: 0 0 4px; }
+.sub { font-size: 14px; color: var(--pontes-text-muted); margin: 0; }
+.link { color: var(--pontes-primary); text-decoration: none; font-weight: 600; }
+
+.formBody { display: flex; flex-direction: column; gap: 16px; }
+.eyeBtn { background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0; color: var(--pontes-text-muted); }
+
+/* Força de senha */
+.strength { margin-top: -8px; }
+.reqs { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.req { font-size: 11px; color: var(--pontes-text-muted); display: flex; align-items: center; gap: 4px; }
+.req[data-ok="true"] { color: var(--pontes-success); }
+
+.footer { margin-top: 24px; text-align: center; font-size: 12px; color: var(--pontes-text-muted); }
+.footerMuted { color: var(--pontes-text-muted); }
