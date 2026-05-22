@@ -25,11 +25,11 @@ export function PontesSidebarItem({
   const [hover, setHover] = useState(false)
   const RADIUS = 10 // = raio do pill
 
-  // Ativo: borda esquerda CURVA acompanhando o contorno do pill (dobra nos
-  // cantos). Hover (inativo): barrinha curta que aparece via scaleY.
+  // Ativo: contorno completo do pill (todas as bordas, cantos curvos).
+  // Hover (inativo): barrinha curta que aparece via scaleY.
   const activeBar: React.CSSProperties = {
     position: "absolute", inset: 0, borderRadius: RADIUS,
-    border: "4px solid transparent", borderLeftColor: p.primary,
+    border: `2px solid ${p.primary}`,
     pointerEvents: "none",
   }
   const hoverBar: React.CSSProperties = {
