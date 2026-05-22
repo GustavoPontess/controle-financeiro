@@ -93,13 +93,21 @@ export default function DefaultLayout() {
       }))
   }, [cmdQuery, navigate])
 
-  const width = open ? DRAWER_WIDTH : RAIL_WIDTH
-
   return (
-    <div style={{ minHeight: "100vh", background: p.bg, fontFamily: font }}>
+    <div style={{
+      display: "flex", height: "100vh", background: p.bg, fontFamily: font,
+      padding: 12, gap: 4, boxSizing: "border-box", overflow: "hidden",
+    }}>
+      {/* Sidebar transparente — "atrás", no canvas */}
       <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
 
-      <div style={{ marginLeft: width, transition: "margin-left 220ms cubic-bezier(0.4,0,0.2,1)", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      {/* Conteúdo flutuante — card arredondado por cima do canvas */}
+      <div style={{
+        flex: 1, minWidth: 0, display: "flex", flexDirection: "column",
+        background: p.surface, borderRadius: 20, overflow: "hidden",
+        boxShadow: "0 6px 24px rgba(11,18,32,0.07), 0 1px 3px rgba(11,18,32,0.05)",
+        border: `1px solid ${p.border}`,
+      }}>
         <Navbar
           toggleDrawer={() => setOpen((o) => !o)}
           sidebarOpen={open}
@@ -108,8 +116,10 @@ export default function DefaultLayout() {
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
         />
 
-        <main style={{ flex: 1, padding: 24, maxWidth: 1280, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
-          <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
+        <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
+          <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+            <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
+          </div>
         </main>
       </div>
 

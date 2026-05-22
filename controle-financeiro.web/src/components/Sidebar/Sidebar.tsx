@@ -80,13 +80,13 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
 
   return (
     <aside style={{
-      position: "fixed", top: 0, left: 0, bottom: 0, width, zIndex: 1100,
-      background: p.surface, borderRight: `1px solid ${p.border}`,
+      width, flexShrink: 0, height: "100%",
       display: "flex", flexDirection: "column", fontFamily: font,
       transition: "width 220ms cubic-bezier(0.4,0,0.2,1)", overflow: "hidden",
+      background: "transparent",
     }}>
       {/* Logo */}
-      <div style={{ height: 64, display: "flex", alignItems: "center", padding: open ? "0 20px" : 0, justifyContent: open ? "flex-start" : "center", borderBottom: `1px solid ${p.border}`, flexShrink: 0 }}>
+      <div style={{ height: 60, display: "flex", alignItems: "center", padding: open ? "0 16px" : 0, justifyContent: open ? "flex-start" : "center", flexShrink: 0 }}>
         {open ? (
           <PontesLogo color={p.primary} size={26} onClick={() => navigate("/dashboard")} />
         ) : (
@@ -135,7 +135,7 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
 
       {/* Usuário */}
       {currentUser && (
-        <div style={{ padding: 12, borderTop: `1px solid ${p.border}`, flexShrink: 0 }}>
+        <div style={{ padding: "8px 8px 4px", flexShrink: 0 }}>
           <PontesPopover
             p={p} font={font} align="left" minWidth={230}
             trigger={
