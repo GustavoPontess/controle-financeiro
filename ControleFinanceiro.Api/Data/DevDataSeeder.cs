@@ -62,12 +62,13 @@ public static class DevDataSeeder
             OnboardingConcluido = true,
         };
 
-        Conta NovaConta(string nome, TipoConta tipo, Guid dono, bool carteira = false) => new()
+        Conta NovaConta(string nome, TipoConta tipo, Guid dono, bool carteira = false, Guid? bancoId = null) => new()
         {
             Id = Guid.NewGuid(),
             Nome = nome,
             Tipo = tipo,
             IsCarteira = carteira,
+            BancoId = bancoId,
             UsuarioIdProprietario = dono,
         };
 
@@ -145,11 +146,24 @@ public static class DevDataSeeder
         var solo = NovoUsuario("solo@controle.test", "Rafael Solo");
         context.Usuarios.AddRange(dev, conjuge, solo);
 
-        // ── Contas ──
-        var devCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, dev.Id);
-        var devPoupanca = NovaConta("Poupança", TipoConta.ContaPoupanca, dev.Id);
+        // ── Bancos pra vincular (do BancoSeeder; null se faltar/offline) ──
+        var bancos = await context.Bancos.ToListAsync();
+        Banco? BancoPorCodigo(string codigo) => bancos.FirstOrDefault(b => b.CodigoBanco == codigo);
+        // Garante logo no banco vinculado mesmo se foi seedado antes do mapa.
+        Guid? Vincular(string codigo)
+        {
+            var b = BancoPorCodigo(codigo);
+            if (b == null) return null;
+            if (string.IsNullOrEmpty(b.LogoUrl)) b.LogoUrl = BancoSeeder.LogoForCodigo(codigo);
+            if (string.IsNullOrEmpty(b.Cor)) b.Cor = BancoSeeder.CorForCodigo(codigo);
+            return b.Id;
+        }
+
+        // ── Contas (corrente/poupança vinculadas a bancos reais; carteira não) ──
+        var devCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, dev.Id, bancoId: Vincular("260")); // Nubank
+        var devPoupanca = NovaConta("Poupança", TipoConta.ContaPoupanca, dev.Id, bancoId: Vincular("341")); // Itaú
         var devCarteira = NovaConta("Carteira", TipoConta.Dinheiro, dev.Id, carteira: true);
-        var soloCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, solo.Id);
+        var soloCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, solo.Id, bancoId: Vincular("077")); // Inter
         var soloCarteira = NovaConta("Carteira", TipoConta.Dinheiro, solo.Id, carteira: true);
         context.Contas.AddRange(devCorrente, devPoupanca, devCarteira, soloCorrente, soloCarteira);
 

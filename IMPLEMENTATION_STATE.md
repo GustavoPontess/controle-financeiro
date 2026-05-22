@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-21
-status: AGUARDANDO_PROXIMA
-issue_atual: 'Nenhuma — #77 mergeada (PR #111). Site tem /casais; SiteLayout + tema global persistido prontos'
+last_reviewed: 2026-05-22
+status: EM_REVISAO
+issue_atual: '#81 Dashboard refator — PR #123 aberto (aguardando merge). Próxima: #122 (inline → CSS vars, reservada)'
 ---
 
 # Implementation State — sessão atual
@@ -24,7 +24,11 @@ issue_atual: 'Nenhuma — #77 mergeada (PR #111). Site tem /casais; SiteLayout +
 
 ## Issue em execução
 
-**Nenhuma issue em execução.** Sessões 33-34 mergearam #106 (biblioteca v2), #108+#90-fundação (HomePage refator + SiteLayout + tema global persistido) e #77 (Para Casais). main = `7d5397b`.
+**#81 Dashboard refator — em revisão (PR #123).** Branch `feature/81-dashboard-refator`. Dashboard reconstruído com foco em leitura de relance (hero saldo, "Seu mês" Entrou/Saiu/Sobrou, evolução com eixos+grid, donut gastos, contas com logo do banco no pill + cor da marca, transações com data humana). Backend: 6 KPIs por status + evolução, SaldoConta com banco/logo/cor, BancoSeeder (logo+cor por código COMPE), DevDataSeeder vincula contas a bancos reais. Front 104/104, back 133/133, lint+build verdes. **Aguardando merge** (não mergear sem OK do Gustavo).
+
+**Próxima reservada:** #122 — migrar inline styles → CSS variables + classes (lib Pontes inteira + todas as telas já refatoradas; manter padrão nas próximas). Assignada @me.
+
+**Histórico anterior:** Sessões 33-34 mergearam #106 (biblioteca v2), #108+#90-fundação (HomePage refator + SiteLayout + tema global persistido) e #77 (Para Casais). Verticais site #78/#79/#80 e shell #118 também mergeados.
 
 **Pronto pra usar:**
 - Biblioteca `src/components/pontes/` (import via `@/components/pontes`).

@@ -25,6 +25,17 @@ export interface SaldoConta {
   saldo: number
   tipo: number
   tipoDescricao: string
+  isCarteira?: boolean
+  bancoNome?: string
+  logoUrl?: string
+  cor?: string
+}
+
+export interface EvolucaoMes {
+  label: string
+  ano: number
+  mes: number
+  saldo: number
 }
 
 export interface DashboardData {
@@ -32,6 +43,11 @@ export interface DashboardData {
   receitasMes: number
   despesasMes: number
   saldoMes: number
+  recebido: number
+  aReceber: number
+  pago: number
+  aPagar: number
+  evolucaoSaldo: EvolucaoMes[]
   topCategorias: CategoriaGasto[]
   transacoesRecentes: TransacaoRecente[]
   saldoContas: SaldoConta[]

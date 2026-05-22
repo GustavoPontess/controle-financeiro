@@ -6,9 +6,28 @@ public class DashboardDto
     public decimal ReceitasMes { get; set; }
     public decimal DespesasMes { get; set; }
     public decimal SaldoMes { get; set; }
+
+    // 6 KPIs do mês (#81). Receitas = Recebido + AReceber; Despesas = Pago + APagar.
+    // Recebido/Pago = StatusTransacao.Executado | AReceber/APagar = StatusTransacao.Previsao.
+    public decimal Recebido { get; set; }
+    public decimal AReceber { get; set; }
+    public decimal Pago { get; set; }
+    public decimal APagar { get; set; }
+
+    public List<EvolucaoMesDto> EvolucaoSaldo { get; set; } = new();
     public List<CategoriaGastoDto> TopCategorias { get; set; } = new();
     public List<TransacaoRecenteDto> TransacoesRecentes { get; set; } = new();
     public List<SaldoContaDto> SaldoContas { get; set; } = new();
+}
+
+/// <summary>Ponto da série de evolução do saldo (gráfico de área do dashboard).</summary>
+public class EvolucaoMesDto
+{
+    public string Label { get; set; } = string.Empty;
+    public int Ano { get; set; }
+    public int Mes { get; set; }
+    /// <summary>Saldo de caixa acumulado até o fim desse mês.</summary>
+    public decimal Saldo { get; set; }
 }
 
 public class CategoriaGastoDto
@@ -41,4 +60,8 @@ public class SaldoContaDto
     public decimal Saldo { get; set; }
     public int Tipo { get; set; }
     public string TipoDescricao { get; set; } = string.Empty;
+    public bool IsCarteira { get; set; }
+    public string? BancoNome { get; set; }
+    public string? LogoUrl { get; set; }
+    public string? Cor { get; set; }
 }
