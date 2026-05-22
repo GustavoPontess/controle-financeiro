@@ -43,9 +43,12 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(clicked).toBe(1)
   })
 
-  it("PontesSidebarItem colapsado esconde o label", () => {
+  it("PontesSidebarItem colapsado oculta o label (max-width 0)", () => {
     render(<PontesSidebarItem p={p} font={font} icon={<span>i</span>} label="Transações" collapsed />)
-    expect(screen.queryByText("Transações")).not.toBeInTheDocument()
+    // label fica no DOM (pra animar) mas recolhido: max-width 0 + opacity 0
+    const label = screen.getByText("Transações")
+    expect(label.style.maxWidth).toBe("0px")
+    expect(label.style.opacity).toBe("0")
   })
 
   it("PontesIconButton com badge renderiza contador", () => {

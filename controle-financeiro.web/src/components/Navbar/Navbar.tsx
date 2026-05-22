@@ -5,7 +5,7 @@
  * sino de notificações e ação "Nova transação". Cor + fonte do usePontesTheme.
  */
 
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { PanelLeftClose, PanelLeftOpen, Search, Plus } from "lucide-react"
 import { PontesButton, PontesIconButton, usePontesTheme } from "@/components/pontes"
 import NotificationBell from "../Notificacoes/NotificationBell"
@@ -43,7 +43,9 @@ function resolveTitle(path: string): string {
 export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, canCreateTransaction, openCommandPalette }: Props) {
   const { palette: p, font } = usePontesTheme()
   const location = useLocation()
+  const navigate = useNavigate()
   const title = resolveTitle(location.pathname)
+  const isDashboard = location.pathname === "/dashboard"
 
   return (
     <header style={{
@@ -55,7 +57,16 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
         <PontesIconButton p={p} font={font} variant="ghost" size={40} onClick={toggleDrawer} aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
           {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
         </PontesIconButton>
-        <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em", color: p.text, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</h1>
+        <div style={{ minWidth: 0 }}>
+          {!isDashboard && (
+            <div style={{ fontSize: 11, color: p.textMuted, fontWeight: 500, marginBottom: 1 }}>
+              <span onClick={() => navigate("/dashboard")} style={{ cursor: "pointer" }}>Início</span>
+              <span style={{ opacity: 0.5 }}> / </span>
+              <span style={{ color: p.text }}>{title}</span>
+            </div>
+          )}
+          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: p.text, margin: 0, lineHeight: 1.35, fontFamily: "'Fraunces', serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</h1>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -78,7 +89,7 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
         <NotificationBell />
 
         <PontesButton
-          p={p} font={font} variant="primary" size="md"
+          p={p} font={font} variant="accent" size="md"
           onClick={openTransaction}
           disabled={!canCreateTransaction}
           iconStart={<Plus size={16} strokeWidth={2.5} />}

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Outlet, useNavigate } from "react-router-dom"
+import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Settings,
@@ -46,6 +46,7 @@ export default function DefaultLayout() {
   const { palette: p, font } = usePontesTheme()
   const { accountKey } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [open, setOpen] = useState(true)
   const [openTransaction, setOpenTransaction] = useState(false)
@@ -95,7 +96,12 @@ export default function DefaultLayout() {
 
   return (
     <div style={{
-      display: "flex", height: "100vh", background: p.bg, fontFamily: font,
+      display: "flex", height: "100vh", fontFamily: font,
+      background: `
+        radial-gradient(40% 28% at 3% 3%, ${p.primary}33, transparent 60%),
+        radial-gradient(38% 30% at 17% 97%, ${p.accent}30, transparent 60%),
+        ${p.bg}
+      `,
       padding: 12, gap: 4, boxSizing: "border-box", overflow: "hidden",
     }}>
       {/* Sidebar transparente — "atrás", no canvas */}
@@ -103,11 +109,13 @@ export default function DefaultLayout() {
 
       {/* Conteúdo flutuante — card arredondado por cima do canvas */}
       <div style={{
-        flex: 1, minWidth: 0, display: "flex", flexDirection: "column",
+        flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative",
         background: p.surface, borderRadius: 20, overflow: "hidden",
-        boxShadow: "0 6px 24px rgba(11,18,32,0.07), 0 1px 3px rgba(11,18,32,0.05)",
+        boxShadow: "0 18px 50px -24px rgba(11,18,32,0.16), 0 4px 14px -8px rgba(11,18,32,0.08)",
         border: `1px solid ${p.border}`,
       }}>
+        {/* Faixa accent — detalhe de marca no topo do card (discreta) */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, opacity: 0.85, zIndex: 1001 }} />
         <Navbar
           toggleDrawer={() => setOpen((o) => !o)}
           sidebarOpen={open}
@@ -117,7 +125,11 @@ export default function DefaultLayout() {
         />
 
         <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
-          <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          <style>{`@keyframes pontes-page-in { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }`}</style>
+          <div
+            key={location.pathname}
+            style={{ maxWidth: 1180, margin: "0 auto", animation: "pontes-page-in 320ms cubic-bezier(0.4,0,0.2,1)" }}
+          >
             <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
           </div>
         </main>

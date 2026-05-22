@@ -85,13 +85,15 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
       transition: "width 220ms cubic-bezier(0.4,0,0.2,1)",
       background: "transparent",
     }}>
-      {/* Logo */}
-      <div style={{ height: 60, display: "flex", alignItems: "center", padding: open ? "0 16px" : 0, justifyContent: open ? "flex-start" : "center", flexShrink: 0 }}>
-        {open ? (
-          <PontesLogo color={p.primary} size={26} onClick={() => navigate("/dashboard")} />
-        ) : (
-          <PontesLogoMark color={p.primary} size={28} onClick={() => navigate("/dashboard")} />
-        )}
+      {/* Logo — wordmark e mark "P" na MESMA coluna (a dos ícones, ~24px),
+          cross-fade sem nenhum deslocamento perceptível. */}
+      <div style={{ height: 60, position: "relative", flexShrink: 0 }}>
+        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none", transition: "opacity 160ms ease" }}>
+          <PontesLogo color={p.primary} size={30} onClick={() => navigate("/dashboard")} />
+        </div>
+        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 0 : 1, pointerEvents: open ? "none" : "auto", transition: "opacity 160ms ease" }}>
+          <PontesLogoMark color={p.primary} size={32} onClick={() => navigate("/dashboard")} />
+        </div>
       </div>
 
       {/* Nav */}
@@ -121,19 +123,22 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
             p={p} font={font} align="left" minWidth={230} direction="up" fullWidth
             trigger={
               <div className="pontes-clickable" data-pontes-variant="ghost" style={{
-                display: "flex", alignItems: "center", gap: 12, padding: open ? "10px 12px" : "10px 0",
-                borderRadius: 10, cursor: "pointer", justifyContent: open ? "flex-start" : "center",
+                display: "flex", alignItems: "center", gap: open ? 12 : 0, padding: "8px 12px",
+                borderRadius: 10, cursor: "pointer", justifyContent: "flex-start",
+                transition: "gap 200ms ease",
               }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: p.primary, color: p.heroFg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{initials}</span>
-                {open && (
-                  <>
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentUser.nome}</span>
-                      <span style={{ display: "block", fontSize: 11, color: p.textMuted }}>Plano Free</span>
-                    </span>
-                    <ChevronRight size={15} strokeWidth={2} color={p.textMuted} />
-                  </>
-                )}
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: p.primary, color: p.heroFg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0, boxShadow: `0 0 0 2px ${p.surface}, 0 0 0 4px ${p.primarySoft}` }}>{initials}</span>
+                <span style={{
+                  display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+                  opacity: open ? 1 : 0, maxWidth: open ? 200 : 0, overflow: "hidden",
+                  transition: "opacity 160ms ease, max-width 220ms ease",
+                }}>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentUser.nome}</span>
+                    <span style={{ display: "inline-block", marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: p.primary, background: p.primarySoft, padding: "1px 7px", borderRadius: 999, whiteSpace: "nowrap" }}>Plano Free</span>
+                  </span>
+                  <ChevronRight size={15} strokeWidth={2} color={p.textMuted} style={{ flexShrink: 0 }} />
+                </span>
               </div>
             }
             items={userItems}

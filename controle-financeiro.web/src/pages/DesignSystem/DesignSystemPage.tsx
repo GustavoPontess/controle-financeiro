@@ -736,6 +736,7 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
   const [pillTab, setPillTab] = useState<"visao" | "transacoes" | "categorias" | "relatorios">("visao")
   const [underTab, setUnderTab] = useState<"transacoes" | "faturas" | "recorrentes" | "parcelamentos">("transacoes")
   const [page, setPage] = useState(3)
+  const [navActive, setNavActive] = useState("Dashboard")
 
   return (
     <div>
@@ -794,19 +795,27 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
         />
       </Group>
 
-      <Group title="Sidebar — item + section (expandido & rail)" p={p}>
+      <Group title="Sidebar — item + section (clique pra trocar o ativo)" p={p}>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
           <div style={{ width: 240, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: "12px 12px 8px" }}>
             <PontesSidebarSection p={p} label="Principal" />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>◧</span>} label="Dashboard" active />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>≣</span>} label="Transações" />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>▤</span>} label="Cartões" />
+            {([
+              { label: "Dashboard", icon: "◧" },
+              { label: "Transações", icon: "≣" },
+              { label: "Cartões", icon: "▤" },
+            ] as const).map((it) => (
+              <PontesSidebarItem key={it.label} p={p} font={font} icon={<span style={{ fontSize: 16 }}>{it.icon}</span>} label={it.label} active={navActive === it.label} onClick={() => setNavActive(it.label)} />
+            ))}
           </div>
           <div style={{ width: 72, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: "12px 12px 8px" }}>
             <PontesSidebarSection p={p} label="Principal" collapsed />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>◧</span>} label="Dashboard" active collapsed />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>≣</span>} label="Transações" collapsed />
-            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>▤</span>} label="Cartões" collapsed />
+            {([
+              { label: "Dashboard", icon: "◧" },
+              { label: "Transações", icon: "≣" },
+              { label: "Cartões", icon: "▤" },
+            ] as const).map((it) => (
+              <PontesSidebarItem key={it.label} p={p} font={font} icon={<span style={{ fontSize: 16 }}>{it.icon}</span>} label={it.label} active={navActive === it.label} collapsed onClick={() => setNavActive(it.label)} />
+            ))}
           </div>
         </div>
       </Group>

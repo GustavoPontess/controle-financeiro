@@ -23,14 +23,16 @@ export function PontesSidebarItem({
   p, font, icon, label, active = false, collapsed = false, onClick,
 }: PontesSidebarItemProps) {
   const [hover, setHover] = useState(false)
-  const RADIUS = 20 // = raio do pill (curva bem acentuada)
+  const RADIUS = 14 // = raio do pill
 
   // Ativo: borda esquerda curva acompanhando o contorno do pill. Hover
   // (inativo): barrinha curta via scaleY.
+  // Borda completa do pill, recortada (clip-path) pra mostrar só a faixa
+  // esquerda — cobre TODA a parte arredondada (canto sup + lateral + canto inf).
+  // Ativo: barrinha vertical simples. Hover (inativo): barra mais curta.
   const activeBar: React.CSSProperties = {
-    position: "absolute", inset: 0, borderRadius: RADIUS,
-    border: "4px solid transparent", borderLeftColor: p.primary,
-    pointerEvents: "none",
+    position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
+    width: 4, height: 14, borderRadius: 999, background: p.primary, pointerEvents: "none",
   }
   const hoverBar: React.CSSProperties = {
     position: "absolute", left: 0, top: "50%", transformOrigin: "center",
@@ -50,10 +52,10 @@ export function PontesSidebarItem({
       className="pontes-clickable"
       data-pontes-variant={active ? "soft" : "ghost"}
       style={{
-        width: "100%", display: "flex", alignItems: "center", gap: 12,
-        padding: collapsed ? "10px 0" : "10px 12px", marginBottom: 2,
-        justifyContent: collapsed ? "center" : "flex-start",
+        width: "100%", display: "flex", alignItems: "center", gap: collapsed ? 0 : 12,
+        padding: "10px 12px", marginBottom: 2, justifyContent: "flex-start",
         border: "none", borderRadius: RADIUS, cursor: "pointer",
+        transition: "gap 200ms ease",
         background: active ? p.primarySoft : "transparent",
         color: active ? p.primary : p.text,
         fontSize: 14, fontWeight: active ? 700 : 500, fontFamily: font,
@@ -62,10 +64,14 @@ export function PontesSidebarItem({
         ["--pontes-active-bg" as string]: p.primarySoft,
       }}
     >
-      {!collapsed && active && <span style={activeBar} />}
-      {!collapsed && !active && <span style={hoverBar} />}
+      {active && <span style={activeBar} />}
+      {!active && <span style={hoverBar} />}
       <span style={{ display: "flex", flexShrink: 0, color: active ? p.primary : p.textMuted }}>{icon}</span>
-      {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>}
+      <span style={{
+        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 180,
+        transition: "opacity 160ms ease, max-width 220ms ease",
+      }}>{label}</span>
     </button>
   )
 }
@@ -77,10 +83,20 @@ export type PontesSidebarSectionProps = {
 }
 
 export function PontesSidebarSection({ p, label, collapsed = false }: PontesSidebarSectionProps) {
-  if (collapsed) return <div style={{ height: 1, background: p.border, margin: "10px 8px" }} />
+  // Caixa de altura fixa: texto e traço ocupam o MESMO espaço (cross-fade),
+  // então colapsar não causa pulo de layout.
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: p.textMuted, padding: "12px 12px 6px" }}>
-      {label}
+    <div style={{ position: "relative", height: 30 }}>
+      <span style={{
+        position: "absolute", left: 12, right: 12, bottom: 6,
+        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+        color: p.textMuted, whiteSpace: "nowrap", overflow: "hidden",
+        opacity: collapsed ? 0 : 1, transition: "opacity 160ms ease", pointerEvents: "none",
+      }}>{label}</span>
+      <span style={{
+        position: "absolute", left: 8, right: 8, bottom: 10, height: 1, background: p.border,
+        opacity: collapsed ? 1 : 0, transition: "opacity 200ms ease", pointerEvents: "none",
+      }} />
     </div>
   )
 }
