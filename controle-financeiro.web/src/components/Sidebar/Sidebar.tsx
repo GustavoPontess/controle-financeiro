@@ -14,7 +14,7 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users,
   Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
 } from "lucide-react"
-import { PontesPopover, PontesLogo, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
+import { PontesPopover, PontesLogo, PontesLogoMark, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
 import { useAuth } from "../../hooks/useAuth"
 
@@ -90,7 +90,7 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
         {open ? (
           <PontesLogo color={p.primary} size={26} onClick={() => navigate("/dashboard")} />
         ) : (
-          <div onClick={() => navigate("/dashboard")} style={{ width: 36, height: 36, borderRadius: 10, background: p.primary, color: p.heroFg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, cursor: "pointer" }}>P</div>
+          <PontesLogoMark color={p.primary} size={28} onClick={() => navigate("/dashboard")} />
         )}
       </div>
 

@@ -5,7 +5,7 @@ import {
   palettes, fonts,
   PontesButton, PontesIconButton, PontesField, PontesInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
-  PontesProgress, PontesStatCard, PontesCard, PontesTabs,
+  PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -24,6 +24,15 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     render(<PontesButton p={p} font={font} loading onClick={() => clicked++}>Salvando</PontesButton>)
     fireEvent.click(screen.getByText("Salvando"))
     expect(clicked).toBe(0)
+  })
+
+  it("PontesLogoMark renderiza o P e dispara onClick", () => {
+    let clicked = 0
+    render(<PontesLogoMark color={p.primary} size={28} onClick={() => clicked++} />)
+    const mark = screen.getByText("P")
+    expect(mark).toBeInTheDocument()
+    fireEvent.click(mark)
+    expect(clicked).toBe(1)
   })
 
   it("PontesIconButton com badge renderiza contador", () => {

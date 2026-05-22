@@ -35,7 +35,7 @@ import {
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
   PontesCommandPalette,
   // site
-  PontesFooter, PontesLogo,
+  PontesFooter, PontesLogo, PontesLogoMark,
   // util
   applyPontesScrollbar, usePontesBodyScrollbar,
 } from "../../components/pontes"
@@ -841,14 +841,36 @@ function SiteSection({ p, font }: { p: Palette; font: string }) {
             </div>
           </div>
 
+          {/* Marca compacta — PontesLogoMark */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+              Marca compacta — PontesLogoMark (rail colapsada, favicon)
+            </div>
+            <div style={{ display: "flex", gap: 56, flexWrap: "wrap", alignItems: "flex-end", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 14, padding: "28px 36px" }}>
+              {([20, 28, 36, 48] as const).map((s) => (
+                <div key={s} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <PontesLogoMark color={p.primary} size={s} />
+                  <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>{s}px</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, borderRadius: 12, padding: "16px 20px" }}>
+                <PontesLogoMark color="#ffffff" size={32} />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: font }}>dark</span>
+              </div>
+            </div>
+          </div>
+
           {/* Snippet */}
           <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, padding: "14px 18px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Import</div>
             <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block", marginBottom: 6 }}>
-              {"import { PontesLogo } from '@/components/pontes'"}
+              {"import { PontesLogo, PontesLogoMark } from '@/components/pontes'"}
             </code>
             <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block" }}>
               {"<PontesLogo color={p.primary} size={32} />"}
+            </code>
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block" }}>
+              {"<PontesLogoMark color={p.primary} size={28} />"}
             </code>
             <div style={{ fontSize: 11, color: p.textMuted, fontFamily: font, marginTop: 10, lineHeight: 1.7 }}>
               <b>color</b> — string (hex, CSS var, currentColor) ·{" "}

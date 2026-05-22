@@ -73,3 +73,4 @@ export * from "./site/Footer"
 
 // ── Logo (re-export para que telas não precisem de import direto) ─────────────
 export { default as PontesLogo } from "../Logo/Logo"
+export { default as PontesLogoMark } from "../Logo/LogoMark"
