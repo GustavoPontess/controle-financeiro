@@ -11,102 +11,66 @@ namespace ControleFinanceiro.Api.Data;
 /// </summary>
 public static class SubcategoriaSeeder
 {
-    // Mapa: Descricao da categoria padrão -> nomes das subcategorias padrão.
-    // Taxonomia estilo Open Finance PT-BR.
+    // Mapa: Descricao da categoria padrão -> subcategorias padrão.
+    // Enxuto: só consumo (despesa) e ganho (receita). Transferência, pagamento de
+    // fatura, empréstimo e investimento NÃO entram aqui — têm features próprias
+    // (Transferencia, Fatura/EhPagamentoFatura, Emprestimo). Sem genéricos que
+    // repetem o nome da categoria. (Categorias "Doações" e "Outros" sem subcat.)
     private static readonly Dictionary<string, string[]> Defaults = new()
     {
         ["Alimentação"] = new[]
         {
-            "Alimentos e bebidas", "Delivery de alimentos",
-            "Restaurantes, bares e lanchonetes", "Supermercado",
+            "Supermercado", "Restaurantes e bares", "Delivery", "Padaria e café",
         },
         ["Compras"] = new[]
         {
-            "Artigos esportivos", "Artigos infantis", "Cashback", "Compras",
-            "Compras online", "Eletrônicos", "Livraria", "Papelaria",
-            "Pet Shops e veterinários", "Vestiário",
+            "Vestuário", "Eletrônicos", "Artigos esportivos", "Artigos infantis",
+            "Livraria e papelaria", "Pet shop e veterinário", "Compras online",
         },
         ["Saúde e bem-estar"] = new[]
         {
-            "Academia e centros de lazer", "Bem-estar", "Dentista", "Farmácia",
-            "Hospitais, clínicas e laboratórios", "Ótica", "Prática de esportes",
-            "Saúde", "Saúde e bem-estar",
+            "Farmácia", "Consultas e exames", "Plano de saúde", "Dentista",
+            "Ótica", "Academia",
         },
         ["Serviços digitais"] = new[]
         {
-            "Jogos e videogames", "Serviços digitais",
-            "Streaming de música", "Streaming de vídeo",
+            "Streaming de vídeo", "Streaming de música", "Jogos e apps",
+            "Software e assinaturas",
         },
         ["Transporte"] = new[]
         {
-            "Aluguel de bicicletas", "Aluguel de veículos", "Estacionamentos",
-            "Manutenção de veículos", "Multas de trânsito",
-            "Pedágios e pagamentos no veículo", "Postos de gasolina",
-            "Serviços automotivos", "Taxas e impostos sobre veículos",
-            "Táxi e transporte privado urbano", "Transporte", "Transporte público",
+            "Combustível", "Aplicativos de transporte", "Transporte público",
+            "Manutenção do veículo", "Estacionamento", "Pedágio", "Multas",
         },
         ["Moradia"] = new[]
         {
-            "Água", "Aluguel", "Celular", "Eletricidade", "Gás",
-            "Impostos sobre moradia", "Internet", "Moradia",
-            "Serviços de utilidade pública", "Telecomunicação", "TV",
-            "Utensílios para casa",
+            "Aluguel", "Condomínio", "Água", "Energia elétrica", "Gás",
+            "Internet", "Telefone", "TV", "Utensílios e manutenção",
         },
         ["Lazer e entretenimento"] = new[]
         {
-            "Aeroportos e cias. aéreas", "Bilhetes", "Cinema, Teatro e Concertos",
-            "Estádios e arenas", "Hospedagem", "Lazer", "Museus e pontos turísticos",
-            "Passagem de ônibus", "Programas de milhagem", "Viagens",
-        },
-        ["Finanças"] = new[]
-        {
-            "Ajuste de margem", "Atraso no pagamento e custos de cheque especial",
-            "Empréstimo estudantil", "Empréstimos", "Empréstimos e financiamento",
-            "Financiamento", "Financiamento de veículos", "Financiamento imobiliário",
-            "Fundos multimercado", "Investimento automático", "Investimentos",
-            "Juros cobrados", "Juros de rendimentos de dividendos", "Obrigações legais",
-            "Pagamento de cartão de crédito", "Parcelamento de fatura", "Pensão",
-            "Pensão alimentícia", "Renda fixa", "Renda variável", "Saldo bloqueado",
-            "Transferência - Boleto bancário", "Transferência - Câmbio",
-            "Transferência - Cheque", "Transferência - Dinheiro",
-            "Transferência - Mesma instituição", "Transferência - PIX",
-            "Transferência - TED", "Transferência mesma titularidade",
-            "Transferência mesma titularidade - Dinheiro",
-            "Transferência mesma titularidade - PIX",
-            "Transferência mesma titularidade - TED",
-            "Transferência para terceiros - Boleto bancário",
-            "Transferência para terceiros - Débito",
-            "Transferência para terceiros - DOC", "Transferência para terceiros - PIX",
-            "Transferência para terceiros - TED", "Transferências",
-            "Transferências para terceiros", "Transferências- DOC",
-        },
-        ["Renda"] = new[]
-        {
-            "Aposentadoria", "Atividades de empreendedorismo", "Auxílio do governo",
-            "Renda", "Renda não-recorrente", "Salário",
+            "Cinema e teatro", "Viagens", "Hospedagem", "Eventos e shows", "Passeios",
         },
         ["Educação"] = new[]
         {
-            "Creche", "Cursos online", "Educação", "Escola", "Universidade",
+            "Escola", "Universidade", "Cursos", "Creche", "Material escolar",
         },
         ["Impostos e taxas"] = new[]
         {
-            "Imposto de renda", "Imposto sobre investimentos", "Impostos",
-            "Impostos sobre operações financeiras", "Taxas bancárias",
-            "Taxas de cartão de crédito", "Taxas de conta corrente",
-            "Taxas sobre transferências e caixa eletrônico",
+            "Imposto de renda", "IPTU", "IPVA", "IOF", "Tarifas bancárias",
         },
         ["Seguros"] = new[]
         {
-            "Seguro de veículos", "Seguro de vida", "Seguro residencial",
-            "Seguro saúde", "Seguros",
+            "Seguro de vida", "Seguro do carro", "Seguro residencial", "Seguro saúde",
         },
-        ["Apostas e jogos"] = new[]
+        ["Apostas e jogos"] = new[] { "Apostas", "Loteria" },
+
+        ["Renda"] = new[]
         {
-            "Apostas", "Apostas online", "Loteria",
+            "Salário", "13º e férias", "Freelance e PJ", "Aposentadoria",
+            "Auxílio do governo", "Aluguel recebido", "Dividendos e juros",
+            "Cashback", "Reembolso", "Pensão recebida",
         },
-        ["Doações"] = new[] { "Doações" },
-        ["Outros"] = new[] { "Outros", "Serviços" },
     };
 
     public static async Task SeedAsync(AppDbContext context)

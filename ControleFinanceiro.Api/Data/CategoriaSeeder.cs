@@ -22,7 +22,6 @@ public static class CategoriaSeeder
             new() { Id = Guid.NewGuid(), Descricao = "Transporte",             Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Moradia",                Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Lazer e entretenimento", Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Finanças",               Finalidade = Finalidade.Ambas },
             new() { Id = Guid.NewGuid(), Descricao = "Renda",                  Finalidade = Finalidade.Receita },
             new() { Id = Guid.NewGuid(), Descricao = "Educação",               Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Impostos e taxas",       Finalidade = Finalidade.Despesa },
