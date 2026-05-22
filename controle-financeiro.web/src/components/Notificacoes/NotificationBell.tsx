@@ -1,9 +1,7 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  IconButton, Badge, Menu, Box, Typography, Divider, CircularProgress,
-} from "@mui/material"
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined"
+import { Bell } from "lucide-react"
+import { PontesIconButton, PontesLoadingDots, usePontesTheme } from "@/components/pontes"
 import {
   getNotificacoes, getContagemNaoLidas, marcarNotificacaoLida, marcarTodasLidas,
 } from "../../services/notificacaoService"
@@ -21,8 +19,10 @@ const formatarQuando = (iso: string) => {
 }
 
 export default function NotificationBell() {
+  const { palette: p, font } = usePontesTheme()
   const navigate = useNavigate()
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const ref = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
   const [naoLidas, setNaoLidas] = useState(0)
   const [itens, setItens] = useState<Notificacao[]>([])
   const [carregando, setCarregando] = useState(false)
@@ -31,9 +31,7 @@ export default function NotificationBell() {
     try {
       const c = await getContagemNaoLidas()
       setNaoLidas(c.naoLidas)
-    } catch {
-      // silencioso — contador não é crítico
-    }
+    } catch { /* contador não é crítico */ }
   }, [])
 
   useEffect(() => {
@@ -42,8 +40,18 @@ export default function NotificationBell() {
     return () => clearInterval(timer)
   }, [atualizarContagem])
 
-  const abrir = async (e: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(e.currentTarget)
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onDocClick)
+    return () => document.removeEventListener("mousedown", onDocClick)
+  }, [open])
+
+  const abrir = async () => {
+    setOpen((o) => !o)
+    if (open) return
     setCarregando(true)
     try {
       setItens(await getNotificacoes())
@@ -55,14 +63,12 @@ export default function NotificationBell() {
   }
 
   const handleClicar = async (n: Notificacao) => {
-    setAnchorEl(null)
+    setOpen(false)
     if (!n.lida) {
       try {
         await marcarNotificacaoLida(n.id)
         atualizarContagem()
-      } catch {
-        // ignora
-      }
+      } catch { /* ignora */ }
     }
     if (n.linkRelativo) navigate(n.linkRelativo)
   }
@@ -70,67 +76,64 @@ export default function NotificationBell() {
   const handleMarcarTodas = async () => {
     try {
       await marcarTodasLidas()
-      setItens(prev => prev.map(n => ({ ...n, lida: true })))
+      setItens((prev) => prev.map((n) => ({ ...n, lida: true })))
       setNaoLidas(0)
-    } catch {
-      // ignora
-    }
+    } catch { /* ignora */ }
   }
 
   return (
-    <>
-      <IconButton size="small" onClick={abrir} sx={{ color: "#111827" }}>
-        <Badge badgeContent={naoLidas} color="error">
-          <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
-        </Badge>
-      </IconButton>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        PaperProps={{ sx: { width: 340, maxHeight: 420, borderRadius: "12px" } }}
+    <span ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <PontesIconButton
+        p={p} font={font} variant="ghost" size={40}
+        onClick={abrir}
+        badge={naoLidas > 0 ? naoLidas : undefined}
+        aria-label="Notificações"
       >
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 1 }}>
-          <Typography fontSize={14} fontWeight={700}>Notificações</Typography>
-          {naoLidas > 0 && (
-            <Typography fontSize={12} color="#2563eb" sx={{ cursor: "pointer" }}
-              onClick={handleMarcarTodas}>
-              Marcar todas como lidas
-            </Typography>
-          )}
-        </Box>
-        <Divider />
+        <Bell size={18} strokeWidth={2} />
+      </PontesIconButton>
 
-        {carregando ? (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-            <CircularProgress size={22} />
-          </Box>
-        ) : itens.length === 0 ? (
-          <Typography fontSize={13} color="#9ca3af" sx={{ p: 3, textAlign: "center" }}>
-            Nenhuma notificação.
-          </Typography>
-        ) : itens.map(n => (
-          <Box
-            key={n.id}
-            onClick={() => handleClicar(n)}
-            sx={{
-              px: 2, py: 1.25, cursor: "pointer",
-              borderBottom: "1px solid #f1f5f9",
-              bgcolor: n.lida ? "#ffffff" : "#eff6ff",
-              "&:hover": { bgcolor: "#f9fafb" },
-            }}
-          >
-            <Typography fontSize={13} fontWeight={600} color="#111827">{n.titulo}</Typography>
-            <Typography fontSize={12} color="#6b7280">{n.mensagem}</Typography>
-            <Typography fontSize={11} color="#9ca3af" mt={0.25}>
-              {formatarQuando(n.criadoEm)}
-            </Typography>
-          </Box>
-        ))}
-      </Menu>
-    </>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 1100,
+          width: 340, maxHeight: 440, overflowY: "auto",
+          background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14,
+          boxShadow: "0 12px 28px rgba(11,18,32,0.15)", fontFamily: font,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: `1px solid ${p.border}` }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: p.text }}>Notificações</span>
+            {naoLidas > 0 && (
+              <span onClick={handleMarcarTodas} style={{ fontSize: 12, color: p.primary, cursor: "pointer", fontWeight: 600 }}>
+                Marcar todas como lidas
+              </span>
+            )}
+          </div>
+
+          {carregando ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
+              <PontesLoadingDots p={p} />
+            </div>
+          ) : itens.length === 0 ? (
+            <div style={{ fontSize: 13, color: p.textMuted, padding: 28, textAlign: "center" }}>
+              Nenhuma notificação.
+            </div>
+          ) : itens.map((n) => (
+            <div
+              key={n.id}
+              onClick={() => handleClicar(n)}
+              style={{
+                padding: "12px 16px", cursor: "pointer", borderBottom: `1px solid ${p.border}`,
+                background: n.lida ? "transparent" : p.primarySoft,
+              }}
+              onMouseEnter={(e) => { if (n.lida) (e.currentTarget as HTMLElement).style.background = p.bg }}
+              onMouseLeave={(e) => { if (n.lida) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>{n.titulo}</div>
+              <div style={{ fontSize: 12, color: p.textMuted }}>{n.mensagem}</div>
+              <div style={{ fontSize: 11, color: p.textMuted, opacity: 0.8, marginTop: 2 }}>{formatarQuando(n.criadoEm)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
   )
 }

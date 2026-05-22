@@ -5,7 +5,8 @@ import {
   palettes, fonts,
   PontesButton, PontesIconButton, PontesField, PontesInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
-  PontesProgress, PontesStatCard, PontesCard, PontesTabs,
+  PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
+  PontesSidebarItem,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -24,6 +25,30 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     render(<PontesButton p={p} font={font} loading onClick={() => clicked++}>Salvando</PontesButton>)
     fireEvent.click(screen.getByText("Salvando"))
     expect(clicked).toBe(0)
+  })
+
+  it("PontesLogoMark renderiza o P e dispara onClick", () => {
+    let clicked = 0
+    render(<PontesLogoMark color={p.primary} size={28} onClick={() => clicked++} />)
+    const mark = screen.getByText("P")
+    expect(mark).toBeInTheDocument()
+    fireEvent.click(mark)
+    expect(clicked).toBe(1)
+  })
+
+  it("PontesSidebarItem renderiza label e dispara onClick", () => {
+    let clicked = 0
+    render(<PontesSidebarItem p={p} font={font} icon={<span>i</span>} label="Dashboard" active onClick={() => clicked++} />)
+    fireEvent.click(screen.getByText("Dashboard"))
+    expect(clicked).toBe(1)
+  })
+
+  it("PontesSidebarItem colapsado oculta o label (max-width 0)", () => {
+    render(<PontesSidebarItem p={p} font={font} icon={<span>i</span>} label="Transações" collapsed />)
+    // label fica no DOM (pra animar) mas recolhido: max-width 0 + opacity 0
+    const label = screen.getByText("Transações")
+    expect(label.style.maxWidth).toBe("0px")
+    expect(label.style.opacity).toBe("0")
   })
 
   it("PontesIconButton com badge renderiza contador", () => {

@@ -6,7 +6,6 @@
       "runtimeExecutable": "node",
       "runtimeArgs": [
         "controle-financeiro.web/node_modules/vite/bin/vite.js",
-        "--root",
         "controle-financeiro.web",
         "--port",
         "5173"
