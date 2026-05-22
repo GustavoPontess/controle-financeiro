@@ -23,21 +23,21 @@ export function PontesSidebarItem({
   p, font, icon, label, active = false, collapsed = false, onClick,
 }: PontesSidebarItemProps) {
   const [hover, setHover] = useState(false)
+  const RADIUS = 10 // = raio do pill
 
-  // Indicador lateral: bolinha no hover → cresce numa barrinha curva quando ativo.
-  const showDot = !active && hover
-  const visible = active || showDot
-  // Barra lateral curva colada nos cantos do pill. Anima via scaleY:
-  // hover = barra curta, ativo = cheia (vai até a curva do raio).
-  const indicator: React.CSSProperties = {
-    position: "absolute", left: 0, top: 4, bottom: 4,
-    width: 4,
-    borderRadius: 999,
-    background: p.primary,
-    transformOrigin: "center",
-    transform: active ? "scaleY(1)" : showDot ? "scaleY(0.34)" : "scaleY(0)",
-    opacity: visible ? 1 : 0,
-    transition: "transform 260ms cubic-bezier(0.34,1.56,0.64,1), opacity 180ms ease",
+  // Ativo: borda esquerda CURVA acompanhando o contorno do pill (dobra nos
+  // cantos). Hover (inativo): barrinha curta que aparece via scaleY.
+  const activeBar: React.CSSProperties = {
+    position: "absolute", inset: 0, borderRadius: RADIUS,
+    border: "4px solid transparent", borderLeftColor: p.primary,
+    pointerEvents: "none",
+  }
+  const hoverBar: React.CSSProperties = {
+    position: "absolute", left: 0, top: "50%", transformOrigin: "center",
+    transform: `translateY(-50%) scaleY(${hover ? 1 : 0})`,
+    width: 4, height: 14, borderRadius: 999, background: p.primary,
+    opacity: hover ? 1 : 0,
+    transition: "transform 240ms cubic-bezier(0.34,1.56,0.64,1), opacity 180ms ease",
     pointerEvents: "none",
   }
 
@@ -62,7 +62,8 @@ export function PontesSidebarItem({
         ["--pontes-active-bg" as string]: p.primarySoft,
       }}
     >
-      {!collapsed && <span style={indicator} />}
+      {!collapsed && active && <span style={activeBar} />}
+      {!collapsed && !active && <span style={hoverBar} />}
       <span style={{ display: "flex", flexShrink: 0, color: active ? p.primary : p.textMuted }}>{icon}</span>
       {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>}
     </button>
