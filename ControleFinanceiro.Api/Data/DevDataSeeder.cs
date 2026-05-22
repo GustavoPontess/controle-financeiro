@@ -23,16 +23,16 @@ public static class DevDataSeeder
 
     private static readonly (string desc, decimal min, decimal max, string cat)[] Despesas =
     {
-        ("Supermercado", 180m, 520m, "Supermercado"),
+        ("Supermercado", 180m, 520m, "Alimentação"),
         ("Aluguel", 1800m, 1800m, "Moradia"),
         ("Restaurante", 45m, 160m, "Alimentação"),
         ("Uber", 12m, 48m, "Transporte"),
         ("Farmácia", 25m, 130m, "Saúde"),
-        ("Netflix", 39m, 39m, "Serviços"),
+        ("Netflix", 39m, 39m, "Serviços digitais"),
         ("Conta de luz", 90m, 210m, "Moradia"),
-        ("Internet", 99m, 99m, "Comunicação"),
+        ("Internet", 99m, 99m, "Moradia"),
         ("Academia", 89m, 89m, "Lazer"),
-        ("Roupas", 70m, 340m, "Vestuário"),
+        ("Roupas", 70m, 340m, "Compras"),
         ("Curso online", 50m, 200m, "Educação"),
         ("Café", 8m, 25m, "Alimentação"),
     };
@@ -106,9 +106,9 @@ public static class DevDataSeeder
                 var refMes = hoje.AddMonths(-m);
 
                 transacoes.Add(Nova(dono.Id, "Salário", salario, TipoTransacao.Receita,
-                    Cat("Salário"), corrente.Id, new DateTime(refMes.Year, refMes.Month, 5)));
+                    Cat("Renda"), corrente.Id, new DateTime(refMes.Year, refMes.Month, 5)));
                 transacoes.Add(Nova(dono.Id, "Projeto freelance", rng.Next(800, 2200),
-                    TipoTransacao.Receita, Cat("Freelance"), corrente.Id,
+                    TipoTransacao.Receita, Cat("Renda"), corrente.Id,
                     new DateTime(refMes.Year, refMes.Month, 18)));
                 // Saque em dinheiro: abastece a carteira para os gastos pequenos.
                 transacoes.Add(Nova(dono.Id, "Saque em dinheiro", 600m, TipoTransacao.Receita,
@@ -117,7 +117,7 @@ public static class DevDataSeeder
                 if (poupanca != null)
                     transacoes.Add(Nova(dono.Id, "Rendimentos",
                         Math.Round(35m + (decimal)rng.NextDouble() * 30, 2),
-                        TipoTransacao.Receita, Cat("Rendimentos"), poupanca.Id,
+                        TipoTransacao.Receita, Cat("Renda"), poupanca.Id,
                         new DateTime(refMes.Year, refMes.Month, 1)));
 
                 foreach (var d in Despesas)
