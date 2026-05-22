@@ -18,6 +18,7 @@ public class DashboardService
     {
         var contas = await _context.Contas
             .Where(c => c.UsuarioIdProprietario == usuarioId)
+            .Include(c => c.Banco)
             .Include(c => c.Transacoes)
             .ThenInclude(t => t.Categoria)
             .AsNoTracking()
@@ -34,17 +35,29 @@ public class DashboardService
             .Concat(cartoes.SelectMany(c => c.Transacoes))
             .ToList();
 
+        // Considera só transações vivas e não canceladas nos KPIs do mês.
         var transacoesMes = todasTransacoes
             .Where(t => t.Data.Year == ano && t.Data.Month == mes)
+            .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado)
             .ToList();
 
-        var receitasMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Receita)
+        // 6 KPIs (#81): Executado = realizado (Recebido/Pago);
+        // Previsao = futuro (A receber / A pagar). Receitas = Recebido + AReceber.
+        var recebido = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Executado)
+            .Sum(t => t.Valor);
+        var aReceber = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Previsao)
+            .Sum(t => t.Valor);
+        var pago = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Executado)
+            .Sum(t => t.Valor);
+        var aPagar = transacoesMes
+            .Where(t => t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Previsao)
             .Sum(t => t.Valor);
 
-        var despesasMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Despesa)
-            .Sum(t => t.Valor);
+        var receitasMes = recebido + aReceber;
+        var despesasMes = pago + aPagar;
 
         // SaldoMes usa apenas movimentos de caixa — crédito só entra quando a fatura é paga.
         var receitasCaixaMes = transacoesMes
@@ -70,7 +83,11 @@ public class DashboardService
                 Nome = c.Nome,
                 Saldo = receitas - despesas,
                 Tipo = (int)c.Tipo,
-                TipoDescricao = c.Tipo.ToString()
+                TipoDescricao = c.Tipo.ToString(),
+                IsCarteira = c.IsCarteira,
+                BancoNome = c.Banco?.NomeFantasia,
+                LogoUrl = c.Banco?.LogoUrl,
+                Cor = c.Banco?.Cor
             };
         }).ToList();
 
@@ -121,12 +138,39 @@ public class DashboardService
                 Data = t.Data
             }).ToList();
 
+        // Evolução do saldo de caixa: 6 meses terminando no mês selecionado.
+        var caixaExecutado = todasTransacoes
+            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito)
+            .ToList();
+        var meses = new[] { "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez" };
+        var evolucao = new List<EvolucaoMesDto>();
+        for (var i = 5; i >= 0; i--)
+        {
+            var refDate = new DateTime(ano, mes, 1).AddMonths(-i);
+            var fimDoMes = refDate.AddMonths(1);
+            var saldoAteFim = caixaExecutado
+                .Where(t => t.Data < fimDoMes)
+                .Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
+            evolucao.Add(new EvolucaoMesDto
+            {
+                Label = $"{meses[refDate.Month - 1]}/{refDate:yy}",
+                Ano = refDate.Year,
+                Mes = refDate.Month,
+                Saldo = saldoAteFim
+            });
+        }
+
         return new DashboardDto
         {
             SaldoTotal = saldoTotal,
             ReceitasMes = receitasMes,
             DespesasMes = despesasMes,
             SaldoMes = saldoAnteriorAoMes + receitasCaixaMes - despesasCaixaMes,
+            Recebido = recebido,
+            AReceber = aReceber,
+            Pago = pago,
+            APagar = aPagar,
+            EvolucaoSaldo = evolucao,
             TopCategorias = categoriasDtos,
             TransacoesRecentes = recentes,
             SaldoContas = saldoContas

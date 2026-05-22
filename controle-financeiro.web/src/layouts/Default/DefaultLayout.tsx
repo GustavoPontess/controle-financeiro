@@ -128,7 +128,7 @@ export default function DefaultLayout() {
           <style>{`@keyframes pontes-page-in { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }`}</style>
           <div
             key={location.pathname}
-            style={{ maxWidth: 1180, margin: "0 auto", animation: "pontes-page-in 320ms cubic-bezier(0.4,0,0.2,1)" }}
+            style={{ maxWidth: 1480, margin: "0 auto", animation: "pontes-page-in 320ms cubic-bezier(0.4,0,0.2,1)" }}
           >
             <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
           </div>
