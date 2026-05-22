@@ -1,8 +1,8 @@
 ---
-owner: Caio
-last_reviewed: 2026-05-20
+owner: Gustavo
+last_reviewed: 2026-05-21
 status: AGUARDANDO_PROXIMA
-issue_atual: '#76 concluída (PR #105 aberto) — próxima livre: #77 Página Para Casais'
+issue_atual: 'Nenhuma — #77 mergeada (PR #111). Site tem /casais; SiteLayout + tema global persistido prontos'
 ---
 
 # Implementation State — sessão atual
@@ -24,13 +24,21 @@ issue_atual: '#76 concluída (PR #105 aberto) — próxima livre: #77 Página Pa
 
 ## Issue em execução
 
-**Nenhuma issue em execução.** Sessão 32 mergeou #101 (biblioteca de componentes Pontes — PR #102). Biblioteca disponível em `src/components/pontes/`, importável via `@/components/pontes`. Próxima livre: qualquer issue do refator (#76 ja com Caio).
+**Nenhuma issue em execução.** Sessões 33-34 mergearam #106 (biblioteca v2), #108+#90-fundação (HomePage refator + SiteLayout + tema global persistido) e #77 (Para Casais). main = `7d5397b`.
 
-### Histórico breve sessão 32
-- #101 criada e mergeada na mesma sessão (urgência: bloqueava #76 do Caio e demais refatores)
-- 36 componentes criados + DesignSystemPage reescrita + 14 testes + lucide-react adotado
-- Alert/Toast imunes à paleta (padrão universal)
-- Regras documentadas em PROMPT_NOVA_SESSAO §5 (teste obrigatório front+back, biblioteca obrigatória, cor+fonte universal)
+**Pronto pra usar:**
+- Biblioteca `src/components/pontes/` (import via `@/components/pontes`).
+- `PontesThemeProvider` global no `App.tsx` + `usePontesTheme()` — paleta+fonte persistidos em **localStorage** (sobrevivem reload, valem em todas as telas).
+- `SiteLayout` (`pages/Site/SiteLayout.tsx`) — shell único: navbar + footer + control-bar dev + scrollbar overlay + promo "Beta aberto" site-wide. Páginas filhas só renderizam conteúdo e leem `{p, font}` via `useSiteTheme()`.
+- Site com URLs limpas: `/` (HomePage via RootRoute deslogado), `/casais`. Rota `/site` removida.
+
+**Próxima livre:** verticais do site (#78 Contadores, #79 Recursos, #80 Sobre — rápidas com SiteLayout) ou telas internas (#81-#89). #76 com Caio (PR #105, precisa rebase no main novo).
+
+### Histórico breve sessões 32-34
+- **S32 #101 (PR #102):** biblioteca base — 36 componentes, theme.ts (15 paletas/7 fontes), lucide-react, Alert/Toast imunes à paleta.
+- **S33 #106 (PR #107):** biblioteca v2 — hover via `pontes-clickable` + CSS vars, scrollbar overlay (overlayscrollbars), PontesNavLink, ScrollArea, footer mesh animado. Outline hover não vira primary (evita colisão visual).
+- **S33 #108+#90 (PR #109):** HomePage 100% biblioteca (−1450 linhas inline mortas); SiteLayout criado; `PontesThemeProvider` + persistência localStorage (fundação #90); brand preview recolhível (seta esquerda, overlay fixed). Tema global vale em qualquer tela e persiste reload.
+- **S34 #77 (PR #111):** CouplesPage refeita 100% biblioteca, content-only sob SiteLayout. Promo "Beta aberto" movido pro SiteLayout (site-wide). GridPattern no hero. URLs limpas.
 
 ---
 
@@ -75,8 +83,8 @@ issue_atual: '#76 concluída (PR #105 aberto) — próxima livre: #77 Página Pa
 
 **Site público (primeiro — desbloqueia fluxo de entrada):**
 1. ~~#75 — `/` vira root público com fallback Dashboard~~ ✅ MERGEADA (PR #94)
-2. **#76** — Refator Login + Register
-3. **#77** — Página Para Casais
+2. **#76** — Refator Login + Register (Caio, PR #105 — precisa rebase)
+3. ~~#77 — Página Para Casais~~ ✅ MERGEADA (PR #111)
 4. **#78** — Página Para Contadores
 5. **#79** — Página Recursos completa
 6. **#80** — Página Sobre
