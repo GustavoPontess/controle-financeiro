@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { Bell } from "lucide-react"
-import { PontesIconButton, PontesLoadingDots, usePontesTheme } from "@/components/pontes"
+import { PontesIconButton, PontesLoadingDots } from "@/components/pontes"
 import {
   getNotificacoes, getContagemNaoLidas, marcarNotificacaoLida, marcarTodasLidas,
 } from "../../services/notificacaoService"
 import type { Notificacao } from "../../types/Notificacao"
+import styles from "./NotificationBell.module.css"
 
 const POLL_MS = 60_000
 
@@ -19,7 +20,6 @@ const formatarQuando = (iso: string) => {
 }
 
 export default function NotificationBell() {
-  const { palette: p, font } = usePontesTheme()
   const navigate = useNavigate()
   const ref = useRef<HTMLSpanElement>(null)
   const [open, setOpen] = useState(false)
@@ -82,9 +82,9 @@ export default function NotificationBell() {
   }
 
   return (
-    <span ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <span ref={ref} className={styles.wrap}>
       <PontesIconButton
-        p={p} font={font} variant="ghost" size={40}
+        variant="ghost" size={40}
         onClick={abrir}
         badge={naoLidas > 0 ? naoLidas : undefined}
         aria-label="Notificações"
@@ -93,43 +93,28 @@ export default function NotificationBell() {
       </PontesIconButton>
 
       {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 1100,
-          width: 340, maxHeight: 440, overflowY: "auto",
-          background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14,
-          boxShadow: "0 12px 28px rgba(11,18,32,0.15)", fontFamily: font,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: `1px solid ${p.border}` }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: p.text }}>Notificações</span>
+        <div className={styles.panel}>
+          <div className={styles.head}>
+            <span className={styles.headTitle}>Notificações</span>
             {naoLidas > 0 && (
-              <span onClick={handleMarcarTodas} style={{ fontSize: 12, color: p.primary, cursor: "pointer", fontWeight: 600 }}>
-                Marcar todas como lidas
-              </span>
+              <span onClick={handleMarcarTodas} className={styles.markAll}>Marcar todas como lidas</span>
             )}
           </div>
 
           {carregando ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
-              <PontesLoadingDots p={p} />
-            </div>
+            <div className={styles.loading}><PontesLoadingDots /></div>
           ) : itens.length === 0 ? (
-            <div style={{ fontSize: 13, color: p.textMuted, padding: 28, textAlign: "center" }}>
-              Nenhuma notificação.
-            </div>
+            <div className={styles.empty}>Nenhuma notificação.</div>
           ) : itens.map((n) => (
             <div
               key={n.id}
               onClick={() => handleClicar(n)}
-              style={{
-                padding: "12px 16px", cursor: "pointer", borderBottom: `1px solid ${p.border}`,
-                background: n.lida ? "transparent" : p.primarySoft,
-              }}
-              onMouseEnter={(e) => { if (n.lida) (e.currentTarget as HTMLElement).style.background = p.bg }}
-              onMouseLeave={(e) => { if (n.lida) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+              className={styles.item}
+              data-unread={n.lida ? "false" : "true"}
             >
-              <div style={{ fontSize: 13, fontWeight: 700, color: p.text }}>{n.titulo}</div>
-              <div style={{ fontSize: 12, color: p.textMuted }}>{n.mensagem}</div>
-              <div style={{ fontSize: 11, color: p.textMuted, opacity: 0.8, marginTop: 2 }}>{formatarQuando(n.criadoEm)}</div>
+              <div className={styles.itemTitle}>{n.titulo}</div>
+              <div className={styles.itemMsg}>{n.mensagem}</div>
+              <div className={styles.itemWhen}>{formatarQuando(n.criadoEm)}</div>
             </div>
           ))}
         </div>
