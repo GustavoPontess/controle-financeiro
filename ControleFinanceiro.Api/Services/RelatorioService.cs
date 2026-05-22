@@ -145,17 +145,33 @@ public class RelatorioService
             sb.AppendLine(string.Join(",",
                 t.Id,
                 t.Data.ToString("yyyy-MM-dd"),
-                $"\"{t.Descricao.Replace("\"", "\"\"")}\"",
+                SafeCsvText(t.Descricao),
                 t.Valor.ToString("F2", CultureInfo.InvariantCulture),
-                t.Tipo,
-                $"\"{(t.Categoria ?? string.Empty).Replace("\"", "\"\"")}\"",
-                $"\"{(t.Conta ?? string.Empty).Replace("\"", "\"\"")}\"",
-                t.MeioPagamento ?? string.Empty
+                SafeCsvText(t.Tipo),
+                SafeCsvText(t.Categoria),
+                SafeCsvText(t.Conta),
+                SafeCsvText(t.MeioPagamento)
             ));
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
+
+    private static string SafeCsvText(string? value)
+    {
+        var normalized = (value ?? string.Empty)
+            .Replace("\r\n", " ")
+            .Replace("\r", " ")
+            .Replace("\n", " ");
+
+        var firstContentIndex = normalized.TakeWhile(char.IsWhiteSpace).Count();
+        if (firstContentIndex < normalized.Length && IsFormulaPrefix(normalized[firstContentIndex]))
+            normalized = normalized.Insert(firstContentIndex, "'");
+
+        return $"\"{normalized.Replace("\"", "\"\"")}\"";
+    }
+
+    private static bool IsFormulaPrefix(char value) => value is '=' or '+' or '-' or '@';
 
     private static string MeioPagamentoLabel(MeioPagamento? meio) => meio switch
     {
