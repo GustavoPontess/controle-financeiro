@@ -23,7 +23,7 @@ export function PontesSidebarItem({
   p, font, icon, label, active = false, collapsed = false, onClick,
 }: PontesSidebarItemProps) {
   const [hover, setHover] = useState(false)
-  const RADIUS = 10 // = raio do pill
+  const RADIUS = 14 // = raio do pill (curva mais acentuada)
 
   // Ativo: borda esquerda CURVA acompanhando o contorno do pill (dobra nos
   // cantos top-left e bottom-left). Hover (inativo): barrinha curta via scaleY.
@@ -53,7 +53,7 @@ export function PontesSidebarItem({
         width: "100%", display: "flex", alignItems: "center", gap: 12,
         padding: collapsed ? "10px 0" : "10px 12px", marginBottom: 2,
         justifyContent: collapsed ? "center" : "flex-start",
-        border: "none", borderRadius: 10, cursor: "pointer",
+        border: "none", borderRadius: RADIUS, cursor: "pointer",
         background: active ? p.primarySoft : "transparent",
         color: active ? p.primary : p.text,
         fontSize: 14, fontWeight: active ? 700 : 500, fontFamily: font,
