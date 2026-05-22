@@ -146,7 +146,8 @@ public class FaturaService
         decimal valorTotal,
         int numParcelas,
         DateTime dataBase,
-        Guid usuarioId)
+        Guid usuarioId,
+        Guid? subcategoriaId = null)
     {
         if (numParcelas < 2)
             throw new Exception("Parcelamento requer no mínimo 2 parcelas.");
@@ -171,6 +172,7 @@ public class FaturaService
                 Valor = valorDaParcela,
                 Tipo = TipoTransacao.Despesa,
                 CategoriaId = categoriaId,
+                SubcategoriaId = subcategoriaId,
                 CartaoCreditoId = cartaoCreditoId,
                 FaturaId = fatura.Id,
                 UsadoComoCredito = true,

@@ -239,4 +239,63 @@ public class TransacaoServiceTests
         var ex = await Assert.ThrowsAsync<Exception>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
         Assert.Contains("futura", ex.Message);
     }
+
+    [Fact]
+    public async Task CriarTransacaoAsync_ComSubcategoriaValida_Persiste()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var cat = new Categoria { Id = Guid.NewGuid(), Descricao = "Alimentação", Finalidade = Finalidade.Despesa, UsuarioId = usuarioId };
+        var sub = new Subcategoria { Id = Guid.NewGuid(), Nome = "Supermercado", CategoriaId = cat.Id, UsuarioId = usuarioId };
+        ctx.Categorias.Add(cat);
+        ctx.Subcategorias.Add(sub);
+        await ctx.SaveChangesAsync();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            CategoriaId = cat.Id,
+            SubcategoriaId = sub.Id,
+            Descricao = "Compra mercado",
+            Valor = 142.30m,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow,
+        };
+
+        var criada = await svc.CriarTransacaoAsync(transacao, usuarioId);
+
+        Assert.Equal(sub.Id, criada.SubcategoriaId);
+        Assert.Equal(sub.Id, (await ctx.Transacoes.FindAsync(criada.Id))!.SubcategoriaId);
+    }
+
+    [Fact]
+    public async Task CriarTransacaoAsync_SubcategoriaDeOutraCategoria_Lanca()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var cat = new Categoria { Id = Guid.NewGuid(), Descricao = "Alimentação", Finalidade = Finalidade.Despesa, UsuarioId = usuarioId };
+        var outraCat = new Categoria { Id = Guid.NewGuid(), Descricao = "Transporte", Finalidade = Finalidade.Despesa, UsuarioId = usuarioId };
+        var subOutra = new Subcategoria { Id = Guid.NewGuid(), Nome = "Combustível", CategoriaId = outraCat.Id, UsuarioId = usuarioId };
+        ctx.Categorias.AddRange(cat, outraCat);
+        ctx.Subcategorias.Add(subOutra);
+        await ctx.SaveChangesAsync();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            CategoriaId = cat.Id,
+            SubcategoriaId = subOutra.Id, // não pertence a cat
+            Descricao = "Inconsistente",
+            Valor = 50m,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow,
+        };
+
+        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        Assert.Contains("pertence", ex.Message);
+    }
 }
