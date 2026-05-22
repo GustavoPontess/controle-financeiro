@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options){}
 
     public DbSet<Categoria> Categorias => Set<Categoria>();
+    public DbSet<Subcategoria> Subcategorias => Set<Subcategoria>();
     public DbSet<Transacao> Transacoes => Set<Transacao>();
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<Banco> Bancos => Set<Banco>();
@@ -388,5 +389,26 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Notificacao>()
             .HasIndex(n => new { n.UsuarioId, n.Lida });
+
+        // ── Issue #83 Subcategorias ──
+
+        // Subcategoria → Categoria (Cascade: subcategorias somem com a categoria)
+        modelBuilder.Entity<Subcategoria>()
+            .HasOne(s => s.Categoria)
+            .WithMany()
+            .HasForeignKey(s => s.CategoriaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Subcategoria>()
+            .HasIndex(s => new { s.UsuarioId, s.CategoriaId });
+
+        // Transacao → Subcategoria (SetNull: a transação sobrevive se a
+        // subcategoria for removida — só perde a granularidade)
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.Subcategoria)
+            .WithMany()
+            .HasForeignKey(t => t.SubcategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

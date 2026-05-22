@@ -1,8 +1,40 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-22
-status: EM_REVISAO
-issue_atual: '#122 inline → CSS Modules + vars — PR aberto (aguardando merge). #81 Dashboard PR #123 também aberto.'
+status: EM_EXECUCAO
+issue_atual: '#82 Transação Add/Editar + #83 Subcategorias. Branch feature/82-transacao-add-edit. #83 BACKEND pronto+verde. Falta: #83 front, #82 back audit, #82 front (form 3 modos).'
+---
+
+## Issue em execução — #82 + #83 (Transação + Subcategoria)
+
+**Branch:** `feature/82-transacao-add-edit` (a partir do main já com #122 mergeado).
+**#122 mergeado** (PR #124) → main tem lib Pontes em CSS Modules + vars. **#81 Dashboard mergeado** (PR #123).
+
+### Feito nesta sessão
+- [x] **#83 BACKEND** — entidade `Subcategoria` (Nome/Icone/Cor/CategoriaId/UsuarioId), `Transacao.SubcategoriaId?` (SetNull), `SubcategoriaService` (CRUD multi-tenant, exceções padrão), `SubcategoriasController` (`?categoriaId` filtra), DTOs, registrado no Program.cs, migration `AddSubcategoria` (Postgres, limpa), 9 testes xUnit. **150 testes verdes, API sobe limpa (health 200).** Commitado.
+
+- [x] **#83 front** — `CategoriesPage` refatorada (saiu de MUI/tokens/CustomButton) → Pontes + `*.module.css` + var. Sub-lista expansível por categoria: criar/editar/excluir subcategoria (PontesModal + PontesColorPicker), exclusão via PontesDialog. `subcategoryService.ts` + `Subcategory` type. 3 testes de página → **suite front 107 verde**. Commitado.
+
+### Falta (ordem) — #82 inteiro
+- [ ] **#82 back** — auditar `TransacaoService` (3 modos: único/recorrente/parcelado). Aceitar `SubcategoriaId` no criar/editar **em todos os caminhos** (conta, cartão, parcelamento gera N transações). Idempotência, validações cruzadas (cartão→fatura, recorrente→expansão). Adicionar `SubcategoriaId` em `CriarTransacaoDto` + `TransacaoDto` + mapeamento. Testes dos 3 modos.
+- [ ] **#82 front** — form de transação refator: tabs Único|Recorrente|Parcelado, campos por modo, toggle Recebido/Pago, dropdown Subcategoria filtrado pela Categoria (usa `getSubcategories(categoriaId)`), bloco rateio se família. CSS Modules + var. Testes por modo.
+
+### Próxima ação concreta
+`#82 back`: ler `TransacaoService.cs` inteiro + `Controllers/TransacoesController.cs` (ou onde cria transação). Mapear os 3 caminhos (linha ~46 cria via entidade `Transacao`; linha ~95 caminho cartão/parcelamento via `dto`; linha ~165 update). Adicionar `SubcategoriaId` no DTO e propagar em cada caminho. Validar subcategoria pertence à categoria escolhida.
+
+### Estado da branch (commits)
+1. #83 backend (entidade/service/controller/migration/9 testes)
+2. docs estado
+3. #83 front service+type
+4. #83 front CategoriesPage refatorada + 3 testes
+(#82 ainda não começou)
+
+### Notas
+- Dev: Postgres docker `controlefinanceiro-db`, API restart aplica migration via `MigrateAsync`.
+- `CategoriaService` é legado (usa `throw new Exception`); `SubcategoriaService` segue o padrão novo (ArgumentException→400 / KeyNotFoundException→404 / InvalidOperationException→409 / UnauthorizedAccessException→401, mapeado pelo GlobalExceptionHandlerMiddleware).
+---
+
+<!-- bloco antigo #122 abaixo (histórico) -->
 ---
 
 # Implementation State — sessão atual
