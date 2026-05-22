@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-05-22
 status: EM_REVISAO
-issue_atual: '#81 Dashboard refator — PR #123 aberto (aguardando merge). Próxima: #122 (inline → CSS vars, reservada)'
+issue_atual: '#122 inline → CSS Modules + vars — PR aberto (aguardando merge). #81 Dashboard PR #123 também aberto.'
 ---
 
 # Implementation State — sessão atual
@@ -24,9 +24,11 @@ issue_atual: '#81 Dashboard refator — PR #123 aberto (aguardando merge). Próx
 
 ## Issue em execução
 
-**#81 Dashboard refator — em revisão (PR #123).** Branch `feature/81-dashboard-refator`. Dashboard reconstruído com foco em leitura de relance (hero saldo, "Seu mês" Entrou/Saiu/Sobrou, evolução com eixos+grid, donut gastos, contas com logo do banco no pill + cor da marca, transações com data humana). Backend: 6 KPIs por status + evolução, SaldoConta com banco/logo/cor, BancoSeeder (logo+cor por código COMPE), DevDataSeeder vincula contas a bancos reais. Front 104/104, back 133/133, lint+build verdes. **Aguardando merge** (não mergear sem OK do Gustavo).
+**#122 inline → CSS Modules + CSS vars — em revisão (PR aberto).** Branch `feature/122-css-variables`. Migrou TODA a UI já refatorada de `style={{}}` inline para `*.module.css` + `var(--pontes-*)`: biblioteca Pontes inteira, shell (DefaultLayout/Sidebar/Navbar/NotificationBell), Dashboard, Auth (Login/Register), Site (Home/Casais/Contadores/Recursos/Sobre), SiteLayout, DesignSystem (showroom), LogoConcepts. Vars injetadas no `:root` pelo `PontesThemeProvider` (escopadas no `/design-system`). Telas não passam mais `p`/`font` pros componentes Pontes; `usePontesTheme`/`useSiteTheme` sobrevive só onde precisa hex real (SVG/recharts). Helper `scopedThemeVars`/`paletteVars` em `theme.ts`. Props `p`/`font` ficaram opcionais nos types (compat + smoke tests). **17 commits, lint+build+104 testes verdes a cada commit.** Padrão documentado em `docs/STANDARDS.md`, `CLAUDE.md`, `PROMPT_NOVA_SESSAO.md` (regras 1 e 3). **Aguardando merge** (não mergear sem OK do Gustavo).
 
-**Próxima reservada:** #122 — migrar inline styles → CSS variables + classes (lib Pontes inteira + todas as telas já refatoradas; manter padrão nas próximas). Assignada @me.
+**#81 Dashboard refator — também em revisão (PR #123).** Branch `feature/81-dashboard-refator`. (Detalhe no histórico abaixo.)
+
+**Pendência opcional pós-#122:** purgar de vez as props `p`/`font` opcionais dos types dos ~40 componentes + smoke tests (hoje inofensivas). Telas internas #82-#89 seguem legado MUI — migram pro padrão CSS Modules + vars quando forem refatoradas.
 
 **Histórico anterior:** Sessões 33-34 mergearam #106 (biblioteca v2), #108+#90-fundação (HomePage refator + SiteLayout + tema global persistido) e #77 (Para Casais). Verticais site #78/#79/#80 e shell #118 também mergeados.
 
