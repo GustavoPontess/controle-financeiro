@@ -1,30 +1,29 @@
-﻿/**
- * LoadingDots — 3 pontinhos pulsando.
+/**
+ * LoadingDots — 3 pontinhos pulsando. Cor via var(--pontes-primary).
+ * `color`/`size`/`gap` por-instância (inline). `p` override escopado opcional (#122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./LoadingDots.module.css"
 
 export type PontesLoadingDotsProps = {
-  p: Palette
+  p?: Palette
   color?: string
   size?: number
   gap?: number
 }
 
 export function PontesLoadingDots({ p, color, size = 10, gap = 6 }: PontesLoadingDotsProps) {
-  const c = color ?? p.primary
   return (
-    <>
-      <style>{`@keyframes pontes-glow { 0%, 100% { opacity: 0.5 } 50% { opacity: 0.85 } }`}</style>
-      <span style={{ display: "inline-flex", gap }}>
-        {[0, 1, 2].map((i) => (
-          <span key={i} style={{
-            width: size, height: size, borderRadius: "50%", background: c,
-            animation: `pontes-glow 1.2s ease-in-out ${i * 0.2}s infinite`,
-            display: "inline-block",
-          }} />
-        ))}
-      </span>
-    </>
+    <span className={styles.wrap} style={{ gap, ...scopedThemeVars(p) } as CSSProperties}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={styles.dot}
+          style={{ width: size, height: size, background: color || undefined, animationDelay: `${i * 0.2}s` }}
+        />
+      ))}
+    </span>
   )
 }

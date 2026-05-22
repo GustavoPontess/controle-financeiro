@@ -3,11 +3,12 @@
  *
  * Dono de: control bar dev (brand preview), paleta/fonte ao vivo, scrollbar
  * overlay, navbar, footer, FloatCTA, progress bar. As páginas (HomePage,
- * CouplesPage, etc) renderizam SÓ conteúdo e consomem `{ p, font }` via
- * `useSiteTheme()` (Outlet context).
+ * CouplesPage, etc) renderizam SÓ conteúdo e consomem o tema via CSS vars
+ * (`var(--pontes-*)`) aplicadas globalmente pelo PontesThemeProvider.
  *
- * Quando #90 (personalização in-app) entregar context global, o state de
- * paleta/fonte aqui vira o provider real e o control bar dev sai.
+ * Estilo via CSS Modules + var(--pontes-*) (#122). O control bar dev usa cores
+ * escuras fixas de propósito (tema-independente) e sai quando #90 entregar a
+ * personalização in-app definitiva.
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -17,8 +18,8 @@ import { ChevronUp, ChevronDown } from "lucide-react"
 import {
   PontesNavbar, PontesFooter, PontesButton,
   usePontesTheme, usePontesBodyScrollbar,
-  type Palette,
 } from "../../components/pontes"
+import styles from "./SiteLayout.module.css"
 
 /**
  * Renderiza `children` quando passado direto (ex: RootRoute deslogado),
@@ -56,7 +57,7 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
     }
   }, [])
 
-  // Scrollbar overlay (accent) sempre visível. (Fonte + scroll bg → provider.)
+  // Scrollbar overlay (accent) sempre visível. Precisa do hex real da paleta.
   usePontesBodyScrollbar(palette.accent)
 
   // Mede altura do brand preview (ResizeObserver pega wrap dos botões de paleta).
@@ -74,67 +75,47 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
   return (
     <div>
       {/* Control bar de dev (BRAND PREVIEW) — fixed overlay, recolhível. Sai no #90. */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        transform: barOpen ? "translateY(0)" : "translateY(-100%)",
-        transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-      }}>
-        <div ref={barRef} style={{ background: "#0B1220", color: "#FFFFFF", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontFamily: "system-ui, sans-serif", fontSize: 13, borderBottom: "2px solid #1E293B", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-          <button
-            onClick={() => setBarOpen(false)}
-            aria-label="Esconder brand preview"
-            style={{ background: "transparent", color: "#FFFFFF", border: "1px solid #334155", borderRadius: 8, padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center" }}
-          >
+      <div className={styles.barFixed} data-open={barOpen}>
+        <div ref={barRef} className={styles.bar}>
+          <button onClick={() => setBarOpen(false)} aria-label="Esconder brand preview" className={styles.barBtn}>
             <ChevronUp size={16} strokeWidth={2.5} />
           </button>
 
-          <div style={{ fontWeight: 700, letterSpacing: "0.1em", fontSize: 11 }}>🎨 BRAND PREVIEW</div>
+          <div className={styles.barTitle}>🎨 BRAND PREVIEW</div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ opacity: 0.6 }}>Paleta:</span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div className={styles.barGroup}>
+            <span className={styles.barDim}>Paleta:</span>
+            <div className={styles.swatchWrap}>
               {palettes.map((pp) => (
-                <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label}
-                  style={{ background: paletteId === pp.id ? "#FFFFFF" : "transparent", color: paletteId === pp.id ? "#0B1220" : "#FFFFFF", border: `1px solid ${paletteId === pp.id ? "#FFFFFF" : "#334155"}`, padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 12, height: 12, background: pp.primary, borderRadius: 3 }} />
-                  <span style={{ width: 12, height: 12, background: pp.accent, borderRadius: 3 }} />
+                <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label} className={styles.swatch} data-active={paletteId === pp.id}>
+                  <span className={styles.swatchChip} style={{ background: pp.primary }} />
+                  <span className={styles.swatchChip} style={{ background: pp.accent }} />
                   <span>{pp.id}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ opacity: 0.6 }}>Fonte:</span>
-            <select value={fontId} onChange={(e) => setFontId(e.target.value)}
-              style={{ background: "#1E293B", color: "#FFFFFF", border: "1px solid #334155", padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui, sans-serif" }}>
+          <div className={styles.barGroup}>
+            <span className={styles.barDim}>Fonte:</span>
+            <select value={fontId} onChange={(e) => setFontId(e.target.value)} className={styles.fontSelect}>
               {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
             </select>
           </div>
 
-          <div style={{ marginLeft: "auto", opacity: 0.55, fontSize: 11 }}>{palette.label} · {fontOpt.label}</div>
+          <div className={styles.barMeta}>{palette.label} · {fontOpt.label}</div>
         </div>
       </div>
 
       {/* Reabrir onde estiver (seta pra baixo) — esquerda fixa */}
       {!barOpen && (
-        <button
-          onClick={() => setBarOpen(true)}
-          aria-label="Mostrar brand preview"
-          style={{
-            position: "fixed", top: 0, left: 16, zIndex: 1000,
-            background: "#0B1220", color: "#FFFFFF", border: "2px solid #1E293B", borderTop: "none",
-            borderRadius: "0 0 10px 10px", padding: "4px 14px", cursor: "pointer",
-            display: "flex", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-          }}
-        >
+        <button onClick={() => setBarOpen(true)} aria-label="Mostrar brand preview" className={styles.reopen}>
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
       )}
 
       {/* Navbar compartilhada — activePath pela rota atual */}
       <PontesNavbar
-        p={palette} font={fontOpt.family}
         activePath={location.pathname}
         onNavigate={(to) => navigate(to)}
         topOffset={topOffset + 50}
@@ -142,31 +123,23 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
       />
 
       {/* Conteúdo da página (empurrado abaixo da bar fixa quando aberta) */}
-      <div style={{ paddingTop: barOpen ? barHeight : 0, transition: "padding-top 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
+      <div className={styles.content} style={{ paddingTop: barOpen ? barHeight : 0 }}>
         {/* TOPBAR PROMOCIONAL — site-wide (acompanha o nav em todas as páginas) */}
-        <button
-          onClick={() => navigate("/auth/register")}
-          style={{
-            display: "block", width: "100%", border: "none", cursor: "pointer",
-            background: `linear-gradient(90deg, ${palette.primary}, ${palette.accent}, ${palette.primary})`,
-            color: "#FFFFFF", padding: "10px 24px", textAlign: "center",
-            fontSize: 13, fontWeight: 600, letterSpacing: "0.01em", fontFamily: fontOpt.family,
-          }}
-        >
-          ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span style={{ textDecoration: "underline" }}>quero entrar →</span>
+        <button onClick={() => navigate("/auth/register")} className={styles.promo}>
+          ✦ Beta aberto · vagas limitadas pra famílias brasileiras · <span className={styles.promoUnderline}>quero entrar →</span>
         </button>
         {children ?? <Outlet />}
       </div>
 
       {/* Footer compartilhado */}
       <PontesFooter
-        p={palette} font={fontOpt.family} variant="rich"
+        variant="rich"
         onNavigate={(to) => navigate(to)}
         appBadges={[{ label: "App Store" }, { label: "Google Play" }]}
       />
 
-      <FloatCTA p={palette} font={fontOpt.family} />
-      <ScrollProgressBar p={palette} />
+      <FloatCTA />
+      <ScrollProgressBar />
     </div>
   )
 }
@@ -189,7 +162,7 @@ function useScrollProgress() {
   return prog
 }
 
-function FloatCTA({ p, font }: { p: Palette; font: string }) {
+function FloatCTA() {
   const [show, setShow] = useState(false)
   const navigate = useNavigate()
   useEffect(() => {
@@ -199,17 +172,11 @@ function FloatCTA({ p, font }: { p: Palette; font: string }) {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
   return (
-    <div style={{
-      position: "fixed", bottom: 24, right: 24, zIndex: 999,
-      opacity: show ? 1 : 0,
-      transform: show ? "translateY(0)" : "translateY(20px)",
-      pointerEvents: show ? "auto" : "none",
-      transition: "opacity 300ms ease, transform 300ms ease",
-    }}>
+    <div className={styles.floatCta} data-show={show}>
       <PontesButton
-        p={p} font={font} variant="accent" size="md"
+        variant="accent" size="md"
         onClick={() => navigate("/auth/register")}
-        iconStart={<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0B1220", display: "inline-block" }} />}
+        iconStart={<span className={styles.floatDot} />}
       >
         Criar conta grátis
       </PontesButton>
@@ -217,11 +184,11 @@ function FloatCTA({ p, font }: { p: Palette; font: string }) {
   )
 }
 
-function ScrollProgressBar({ p }: { p: Palette }) {
+function ScrollProgressBar() {
   const progress = useScrollProgress()
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: "transparent", zIndex: 999 }}>
-      <div style={{ height: "100%", width: `${progress * 100}%`, background: `linear-gradient(90deg, ${p.primary}, ${p.accent})`, transition: "width 80ms linear" }} />
+    <div className={styles.progressTrack}>
+      <div className={styles.progressFill} style={{ width: `${progress * 100}%` }} />
     </div>
   )
 }

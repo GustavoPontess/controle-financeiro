@@ -1,0 +1,16 @@
+/* StatCard.module.css — KPI card. Cor via var(--pontes-*). */
+.card {
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+  border-radius: 12px; padding: 16px; font-family: var(--pontes-font);
+}
+.label {
+  font-size: 11px; color: var(--pontes-text-muted); font-weight: 600;
+  letter-spacing: .08em; margin-bottom: 6px; text-transform: uppercase;
+}
+.value {
+  font-size: 22px; font-weight: 800; color: var(--pontes-text);
+  letter-spacing: -.02em; margin-bottom: 6px;
+}
+.trend { font-size: 12px; font-weight: 600; }
+.trend[data-up="true"] { color: var(--pontes-success); }
+.trend[data-up="false"] { color: var(--pontes-danger); }

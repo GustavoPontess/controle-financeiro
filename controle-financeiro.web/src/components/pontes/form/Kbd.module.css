@@ -1,0 +1,10 @@
+/* Kbd.module.css — tecla de atalho. Cor via var(--pontes-*). */
+.kbd {
+  display: inline-block; padding: 3px 8px;
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-bottom-width: 2px;
+  border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--pontes-text);
+  font-family: monospace; box-shadow: 0 1px 0 rgba(0, 0, 0, .05);
+}
+.group { display: inline-flex; align-items: center; gap: 6px; }
+.keys { display: inline-flex; gap: 3px; }
+.label { font-size: 12px; color: var(--pontes-text-muted); font-family: var(--pontes-font); }

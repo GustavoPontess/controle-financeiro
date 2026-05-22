@@ -1,10 +1,11 @@
-﻿/**
- * Popover — menu dropdown aberto por clique.
- * Lista de items com ícone opcional e variant danger.
+/**
+ * Popover — menu dropdown por clique. Cor via var(--pontes-*); hover via :hover.
+ * `p`/`font` override escopado opcional (#122).
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { semantic, type Palette } from "../theme"
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Popover.module.css"
 
 export type PontesPopoverItem = {
   key: string
@@ -17,15 +18,15 @@ export type PontesPopoverItem = {
 }
 
 export type PontesPopoverProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   trigger: ReactNode
   items: PontesPopoverItem[]
   minWidth?: number
   align?: "left" | "right"
-  /** Direção de abertura. "up" abre acima do trigger (ex: menu no rodapé). */
+  /** Direção de abertura. "up" abre acima do trigger. */
   direction?: "down" | "up"
-  /** Trigger ocupa 100% da largura do pai (ex: card de usuário no sidebar). */
+  /** Trigger ocupa 100% da largura do pai. */
   fullWidth?: boolean
 }
 
@@ -45,35 +46,18 @@ export function PontesPopover({
   }, [open])
 
   return (
-    <span ref={ref} style={{ position: "relative", display: fullWidth ? "block" : "inline-block", width: fullWidth ? "100%" : undefined }}>
-      <span onClick={() => setOpen(!open)} style={{ cursor: "pointer", display: fullWidth ? "block" : "inline-block", width: fullWidth ? "100%" : undefined }}>
-        {trigger}
-      </span>
+    <span ref={ref} className={styles.wrap} data-fullwidth={fullWidth ? "true" : undefined} style={scopedThemeVars(p, font) as CSSProperties}>
+      <span onClick={() => setOpen(!open)} className={styles.trigger}>{trigger}</span>
       {open && (
-        <div style={{
-          position: "absolute",
-          ...(direction === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-          [align]: 0,
-          background: p.surface, border: `1px solid ${p.border}`,
-          borderRadius: 10, boxShadow: "0 12px 28px rgba(0,0,0,0.15)",
-          padding: 6, minWidth, fontFamily: font, zIndex: 100,
-        }}>
+        <div className={styles.menu} data-dir={direction} data-align={align} style={{ minWidth }}>
           {items.map((it) => (
             <div key={it.key}>
-              {it.divider && <div style={{ height: 1, background: p.border, margin: "4px 0" }} />}
+              {it.divider && <div className={styles.divider} />}
               <button
                 type="button"
                 onClick={() => { it.onClick?.(); setOpen(false) }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = p.bg }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
-                style={{
-                  width: "100%", textAlign: "left",
-                  background: "transparent", border: "none",
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "8px 10px", fontSize: 13,
-                  color: it.danger ? semantic.danger : p.text,
-                  cursor: "pointer", borderRadius: 6, fontFamily: font,
-                }}
+                className={styles.item}
+                data-danger={it.danger ? "true" : undefined}
               >
                 {it.icon && <span>{it.icon}</span>}
                 <span>{it.label}</span>

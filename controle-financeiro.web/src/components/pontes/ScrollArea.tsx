@@ -13,7 +13,7 @@ import { ensurePontesOverlayStyles } from "./overlayStyles"
 import type { Palette } from "./theme"
 
 export type PontesScrollAreaProps = {
-  p: Palette
+  p?: Palette
   children: ReactNode
   style?: CSSProperties
   className?: string
@@ -24,7 +24,7 @@ export function PontesScrollArea({
   p, children, style, className, autoHide = "leave",
 }: PontesScrollAreaProps) {
   useEffect(ensurePontesOverlayStyles, [])
-  const cssVars = { ["--pontes-os-thumb" as never]: p.primary } as CSSProperties
+  const cssVars = { ["--pontes-os-thumb" as never]: p ? p.primary : "var(--pontes-primary)" } as CSSProperties
 
   return (
     <OverlayScrollbarsComponent
