@@ -35,7 +35,7 @@ import {
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
   PontesCommandPalette,
   // site
-  PontesFooter,
+  PontesFooter, PontesLogo,
   // util
   applyPontesScrollbar, usePontesBodyScrollbar,
 } from "../../components/pontes"
@@ -804,6 +804,62 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
 function SiteSection({ p, font }: { p: Palette; font: string }) {
   return (
     <div>
+      <Group title="Logo — PontesLogo" p={p}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* Demo interativo — hover e click */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+              Interativo — passe o mouse e clique
+            </div>
+            <div style={{ display: "flex", gap: 56, flexWrap: "wrap", alignItems: "flex-end", background: p.bg, border: `1px solid ${p.border}`, borderRadius: 14, padding: "28px 36px" }}>
+              {([20, 28, 36, 48, 64] as const).map((s) => (
+                <div key={s} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <PontesLogo color={p.primary} size={s} />
+                  <span style={{ fontSize: 11, color: p.textMuted, fontFamily: font }}>{s}px</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: p.textMuted, fontFamily: font, marginTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
+              <span>🖱️ <b>hover</b> — scale spring + arco re-traça da esquerda pra direita</span>
+              <span>👆 <b>click</b> — scale press (0.93) + spring de volta</span>
+            </div>
+          </div>
+
+          {/* Sobre fundo escuro */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+              Sobre fundo escuro (navbar / hero)
+            </div>
+            <div style={{ display: "flex", gap: 48, flexWrap: "wrap", alignItems: "flex-end", background: `linear-gradient(135deg, ${p.primaryDark}, ${p.primary})`, borderRadius: 14, padding: "28px 36px" }}>
+              {([22, 32, 44] as const).map((s) => (
+                <div key={s} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <PontesLogo color="#ffffff" size={s} />
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontFamily: font }}>{s}px</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Snippet */}
+          <div style={{ background: p.surface, border: `1px solid ${p.border}`, borderRadius: 10, padding: "14px 18px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: p.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Import</div>
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block", marginBottom: 6 }}>
+              {"import { PontesLogo } from '@/components/pontes'"}
+            </code>
+            <code style={{ fontSize: 12, color: p.text, fontFamily: "monospace", display: "block" }}>
+              {"<PontesLogo color={p.primary} size={32} />"}
+            </code>
+            <div style={{ fontSize: 11, color: p.textMuted, fontFamily: font, marginTop: 10, lineHeight: 1.7 }}>
+              <b>color</b> — string (hex, CSS var, currentColor) ·{" "}
+              <b>size</b> — number, altura em px ·{" "}
+              <b>onClick</b> — handler opcional (ativa cursor pointer)
+            </div>
+          </div>
+
+        </div>
+      </Group>
+
       <Group title="Navbar (fixed sobre hero — preview estático)" p={p}>
         {/* Navbar é position:fixed. Aqui mostramos num container relativo com hero
             simulado pra dar contexto. Versão ao vivo: / e /casais. */}
@@ -853,7 +909,7 @@ function NavbarPreview({ p, font }: { p: Palette; font: string }) {
           backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
           minWidth: 760, maxWidth: 900, width: "100%",
         }}>
-          <span style={{ color: p.heroFg, fontWeight: 800, fontSize: 18, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Pontes</span>
+          <PontesLogo color={p.heroFg} size={18} />
           <div style={{ display: "flex", gap: 22 }}>
             <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent} active>Recursos</PontesNavLink>
             <PontesNavLink p={p} font={font} color={p.heroFg} hoverColor={p.accent}>Para Casais</PontesNavLink>

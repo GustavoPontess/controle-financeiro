@@ -5,6 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  cacheDir: 'node_modules/.vite-dev',
   plugins: [
     react(),
     VitePWA({
@@ -28,6 +29,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    hmr: {
+      clientPort: 5173,
     },
   },
 })
