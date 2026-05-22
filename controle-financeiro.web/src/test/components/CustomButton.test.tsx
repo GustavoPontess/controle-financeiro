@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import CustomButton from '../../components/CustomButton'
-import { PontesThemeProvider } from '../../contexts/PontesThemeContext'
+import { PontesThemeProvider } from '../../components/pontes'
 
 function renderBtn(ui: React.ReactNode) {
   return render(<PontesThemeProvider>{ui}</PontesThemeProvider>)

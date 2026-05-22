@@ -1,8 +1,8 @@
 import React from 'react'
 import { Button as MuiButton } from '@mui/material'
 import type { ButtonProps as MuiButtonProps } from '@mui/material/Button'
-import { usePontesTheme } from '../contexts/PontesThemeContext'
-import { adjustColor } from '../components/pontes/theme'
+import { usePontesTheme } from './pontes'
+import { adjustColor } from './pontes/theme'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 type ButtonSize = 'small' | 'medium' | 'large'
@@ -78,7 +78,7 @@ export default function CustomButton({
         borderRadius: '8px',
         textTransform: 'none',
         fontWeight: 600,
-        fontFamily: font.family,
+        fontFamily: font,
         lineHeight: 1,
         transition: 'background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
         ...props.sx,
