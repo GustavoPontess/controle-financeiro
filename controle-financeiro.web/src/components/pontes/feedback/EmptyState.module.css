@@ -1,0 +1,6 @@
+/* EmptyState.module.css — caixa centralizada. Cor via var(--pontes-*). */
+.wrap { background: var(--pontes-surface); border: 1px dashed var(--pontes-border); border-radius: 14px; padding: 48px; text-align: center; font-family: var(--pontes-font); }
+.icon { width: 72px; height: 72px; margin: 0 auto 16px; background: var(--pontes-primary-soft); color: var(--pontes-primary); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+.title { font-size: 16px; font-weight: 700; color: var(--pontes-text); margin-bottom: 6px; }
+.desc { font-size: 13px; color: var(--pontes-text-muted); margin-bottom: 18px; line-height: 1.5; }
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
