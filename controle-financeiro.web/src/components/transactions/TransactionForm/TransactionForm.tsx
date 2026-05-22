@@ -1,19 +1,20 @@
 import { useState } from "react"
-import { TrendingDown, TrendingUp } from "lucide-react"
+import { TrendingDown, TrendingUp, ChevronDown } from "lucide-react"
 import {
   PontesButton, PontesButtonGroup, PontesField, PontesInput,
-  PontesMoneyInput, PontesSelect, PontesTextarea,
+  PontesMoneyInput, PontesSelect,
 } from "@/components/pontes"
 import type { Category } from "../../../types/Category"
 import type { Subcategory } from "../../../types/Subcategory"
 import type { Conta } from "../../../types/Conta"
 import type { CartaoCredito } from "../../../types/CartaoCredito"
+import CategoryPicker from "../CategoryPicker/CategoryPicker"
 import styles from "./TransactionForm.module.css"
 
-const MEIOS_PAGAMENTO = [
+// Meios de pagamento de CONTA (crédito é definido ao escolher um cartão).
+const MEIOS_CONTA = [
   { value: "4", label: "Pix" },
   { value: "2", label: "Débito" },
-  { value: "3", label: "Crédito" },
   { value: "1", label: "Dinheiro" },
   { value: "5", label: "TED / DOC" },
   { value: "6", label: "Boleto" },
@@ -60,19 +61,25 @@ export default function TransactionForm({ categories, subcategories, contas, car
     parcelas: 1,
   })
   const [loading, setLoading] = useState(false)
+  const [showMore, setShowMore] = useState(false)
 
-  const isCredito = form.meioPagamento === 3
-
-  const filteredCategories = categories.filter((c) => {
-    if (form.tipo === 1) return c.finalidade === 1 || c.finalidade === 3
-    if (form.tipo === 2) return c.finalidade === 2 || c.finalidade === 3
-    return true
-  })
-  const filteredSubcategories = subcategories.filter((s) => s.categoriaId === form.categoriaId)
+  const isCredito = !!form.cartaoCreditoId
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
 
   const set = (field: keyof TransactionFormData, value: string | number) =>
     setForm((f) => ({ ...f, [field]: value }))
+
+  // Seletor unificado conta/cartão.
+  const pagamentoValue = form.contaId ? `conta:${form.contaId}` : form.cartaoCreditoId ? `cartao:${form.cartaoCreditoId}` : ""
+  const pagamentoOptions = [
+    ...contas.map((c) => ({ value: `conta:${c.id}`, label: c.bancoNome ? `${c.nome} — ${c.bancoNome}` : c.nome })),
+    ...cartoesDisponiveis.map((c) => ({ value: `cartao:${c.id}`, label: `Cartão · ${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}` })),
+  ]
+  const onPagamentoChange = (v: string) => {
+    const [kind, id] = v.split(":")
+    if (kind === "cartao") setForm((f) => ({ ...f, cartaoCreditoId: id, contaId: "", meioPagamento: 3 }))
+    else setForm((f) => ({ ...f, contaId: id, cartaoCreditoId: "", meioPagamento: f.meioPagamento === 3 ? 4 : f.meioPagamento, parcelas: 1 }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,87 +106,70 @@ export default function TransactionForm({ categories, subcategories, contas, car
         />
       </div>
 
-      <div className={styles.grid2}>
-        <PontesField label="Valor" required>
-          <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} />
-        </PontesField>
-        <PontesField label="Data" required>
-          <PontesInput type="date" value={form.data} onChange={(e) => set("data", e.target.value)} required />
-        </PontesField>
-      </div>
+      {/* Valor — herói (label + input grande próprios do componente) */}
+      <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
 
-      <PontesField label="Meio de pagamento">
-        <PontesSelect
-          value={String(form.meioPagamento)}
-          onChange={(v) => setForm((f) => ({ ...f, meioPagamento: Number(v), contaId: "", cartaoCreditoId: "" }))}
-          options={MEIOS_PAGAMENTO}
-        />
-      </PontesField>
-
-      {!isCredito && (
-        <PontesField label="Conta" required>
-          <PontesSelect
-            value={form.contaId}
-            onChange={(v) => set("contaId", v)}
-            placeholder="Selecione a conta"
-            options={contas.map((c) => ({ value: c.id, label: c.bancoNome ? `${c.nome} — ${c.bancoNome}` : c.nome }))}
-          />
-        </PontesField>
-      )}
-
-      {isCredito && (
-        <PontesField label="Cartão de crédito" required>
-          <PontesSelect
-            value={form.cartaoCreditoId}
-            onChange={(v) => set("cartaoCreditoId", v)}
-            placeholder={cartoesDisponiveis.length === 0 ? "Nenhum cartão disponível" : "Selecione o cartão"}
-            options={cartoesDisponiveis.map((c) => ({
-              value: c.id,
-              label: `${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}${c.bandeiraDescricao ? ` (${c.bandeiraDescricao})` : ""}`,
-            }))}
-          />
-        </PontesField>
-      )}
-
-      {isCredito && (
-        <PontesField label="Parcelas">
-          <PontesSelect
-            value={String(form.parcelas)}
-            onChange={(v) => set("parcelas", Number(v))}
-            options={PARCELAS_OPTS}
-          />
-        </PontesField>
-      )}
-
-      <PontesField label="Categoria" required>
-        <PontesSelect
-          value={form.categoriaId}
-          onChange={(v) => setForm((f) => ({ ...f, categoriaId: v, subcategoriaId: "" }))}
-          placeholder="Selecione a categoria"
-          options={filteredCategories.map((c) => ({ value: c.id, label: c.descricao }))}
-        />
-      </PontesField>
-
-      {form.categoriaId && filteredSubcategories.length > 0 && (
-        <PontesField label="Subcategoria">
-          <PontesSelect
-            value={form.subcategoriaId}
-            onChange={(v) => set("subcategoriaId", v)}
-            placeholder="Opcional"
-            options={filteredSubcategories.map((s) => ({ value: s.id, label: s.nome }))}
-          />
-        </PontesField>
-      )}
-
+      {/* Descrição */}
       <PontesField label="Descrição" required>
-        <PontesTextarea
+        <PontesInput
           value={form.descricao}
           onChange={(e) => set("descricao", e.target.value)}
-          placeholder="Ex: Supermercado, Salário..."
-          rows={2}
+          placeholder="Ex: Compra no mercado"
           maxLength={400}
         />
       </PontesField>
+
+      {/* Data + Categoria */}
+      <div className={styles.grid2}>
+        <PontesField label="Data" required>
+          <PontesInput type="date" value={form.data} onChange={(e) => set("data", e.target.value)} required />
+        </PontesField>
+        <PontesField label="Categoria" required>
+          <CategoryPicker
+            categories={categories}
+            subcategories={subcategories}
+            tipo={form.tipo}
+            categoriaId={form.categoriaId}
+            subcategoriaId={form.subcategoriaId}
+            onChange={(catId, subId) => setForm((f) => ({ ...f, categoriaId: catId, subcategoriaId: subId }))}
+          />
+        </PontesField>
+      </div>
+
+      {/* Conta ou cartão (unificado) */}
+      <PontesField label="Conta ou cartão" required>
+        <PontesSelect
+          value={pagamentoValue}
+          onChange={onPagamentoChange}
+          placeholder="De onde saiu / entrou"
+          options={pagamentoOptions}
+        />
+      </PontesField>
+
+      {/* Parcelas — só quando cartão */}
+      {isCredito && (
+        <PontesField label="Parcelas">
+          <PontesSelect value={String(form.parcelas)} onChange={(v) => set("parcelas", Number(v))} options={PARCELAS_OPTS} />
+        </PontesField>
+      )}
+
+      {/* Mais opções (por ora: meio de pagamento da conta) */}
+      {!isCredito && (
+        <>
+          <button type="button" className={styles.more} onClick={() => setShowMore((s) => !s)}>
+            <span className={styles.moreChev} data-open={showMore}><ChevronDown size={15} /></span>
+            {showMore ? "Menos opções" : "Mais opções"}
+          </button>
+          {showMore && (
+            <div className={styles.advanced}>
+              <PontesField label="Meio de pagamento">
+                <PontesSelect value={String(form.meioPagamento)} onChange={(v) => set("meioPagamento", Number(v))} options={MEIOS_CONTA} />
+              </PontesField>
+              {/* Futuro: marcar pago/previsto, rateio família */}
+            </div>
+          )}
+        </>
+      )}
 
       <div className={styles.actions}>
         <PontesButton type="button" variant="outline" onClick={onCancel}>Cancelar</PontesButton>
