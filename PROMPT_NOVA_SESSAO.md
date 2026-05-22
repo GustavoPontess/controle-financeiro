@@ -207,10 +207,48 @@ A personalização (#90) **já existe e é global**: `PontesThemeProvider` envol
 3. Adiciona o link no menu (`DEFAULT_LINKS` do `PontesNavbar`, se aplicável).
 4. Teste smoke em `src/test/pages/<Pagina>.test.tsx` (renderiza sob SiteLayout + PontesThemeProvider — ver `HomePage.test.tsx` como modelo).
 
+**⚠️ REGRA ARQUITETURAL CRÍTICA — src/components/ é ZONA LEGADA ⚠️**
+
+> Esta regra é inegociável e deve ser seguida em TODA sessão, por qualquer dev, sem exceção.
+
+**`src/components/` (raiz, fora de `pontes/`) = CEMITÉRIO DE LEGADO.**
+
+- Tudo que está em `src/components/` fora de `pontes/` é código **antigo** que **SERÁ DELETADO** ao fim do Q5.
+- **NUNCA criar componente novo em `src/components/` (raiz).** Qualquer componente novo vai para `src/components/pontes/`.
+- A única exceção são os arquivos de roteamento/infra que não são componentes UI:
+  - `src/components/Logo/Logo.tsx` — logo da marca (re-exportado como `PontesLogo` pelo barrel)
+  - `src/components/Auth/RootRoute.tsx` — lógica de rota, não é UI
+  - `src/components/Auth/ProtectedRoute.tsx` — lógica de rota, não é UI
+
+**Mapa de onde cada coisa vive:**
+
+```
+src/components/
+├── pontes/          ← ✅ AQUI vai TUDO que é componente novo ou reutilizável
+│   ├── Button.tsx, Input.tsx, Modal.tsx, ...
+│   └── index.ts     ← barrel: importar SEMPRE por @/components/pontes
+├── Logo/Logo.tsx    ← ✅ exceção: re-exportado como PontesLogo no barrel
+├── Auth/            ← ✅ exceção: lógica de rota (não é UI)
+├── BackButton.tsx   ← ❌ LEGADO — será deletado
+├── CustomButton.tsx ← ❌ LEGADO — será deletado
+└── ...              ← ❌ LEGADO — tudo será deletado
+```
+
+**O que fazer quando precisar de componente que não existe na biblioteca:**
+1. Cria em `src/components/pontes/NovoComponente.tsx`
+2. Re-exporta em `src/components/pontes/index.ts`
+3. Adiciona demo em `DesignSystemPage.tsx`
+4. Adiciona smoke test em `src/test/components/pontes.test.tsx`
+5. Só então usa na tela
+
+**NUNCA** criar o componente direto na tela ou em `src/components/` raiz, mesmo que "temporário".
+
+---
+
 **Legado vs Novo — convivência durante Q5:**
 
-16. **Legado** (`src/components/CustomButton.tsx`, `src/theme/tokens.ts`, `pages/*` usando MUI direto): fica no lugar. Telas legadas continuam usando até refator chegar nelas.
-17. **Final do Q5** (todas as telas refatoradas e mergeadas): PR separado deleta o legado. Não antes.
+16. **Legado** (`src/components/CustomButton.tsx`, `src/components/BackButton.tsx`, `src/theme/tokens.ts`, `pages/*` usando MUI direto): fica no lugar enquanto a tela correspondente ainda não foi refatorada. Telas legadas continuam usando até refator chegar nelas.
+17. **Final do Q5** (todas as telas refatoradas e mergeadas): PR separado (`chore: remove componentes legados`) deleta tudo de `src/components/` exceto `pontes/`, `Logo/` e `Auth/`. Não antes.
 
 **Fluxo recomendado pra atacar tela:**
 
