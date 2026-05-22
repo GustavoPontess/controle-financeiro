@@ -23,10 +23,14 @@ export type PontesPopoverProps = {
   items: PontesPopoverItem[]
   minWidth?: number
   align?: "left" | "right"
+  /** Direção de abertura. "up" abre acima do trigger (ex: menu no rodapé). */
+  direction?: "down" | "up"
+  /** Trigger ocupa 100% da largura do pai (ex: card de usuário no sidebar). */
+  fullWidth?: boolean
 }
 
 export function PontesPopover({
-  p, font, trigger, items, minWidth = 200, align = "left",
+  p, font, trigger, items, minWidth = 200, align = "left", direction = "down", fullWidth = false,
 }: PontesPopoverProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
@@ -41,13 +45,14 @@ export function PontesPopover({
   }, [open])
 
   return (
-    <span ref={ref} style={{ position: "relative", display: "inline-block" }}>
-      <span onClick={() => setOpen(!open)} style={{ cursor: "pointer", display: "inline-block" }}>
+    <span ref={ref} style={{ position: "relative", display: fullWidth ? "block" : "inline-block", width: fullWidth ? "100%" : undefined }}>
+      <span onClick={() => setOpen(!open)} style={{ cursor: "pointer", display: fullWidth ? "block" : "inline-block", width: fullWidth ? "100%" : undefined }}>
         {trigger}
       </span>
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 8px)",
+          position: "absolute",
+          ...(direction === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
           [align]: 0,
           background: p.surface, border: `1px solid ${p.border}`,
           borderRadius: 10, boxShadow: "0 12px 28px rgba(0,0,0,0.15)",

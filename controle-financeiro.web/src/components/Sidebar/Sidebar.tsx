@@ -1,404 +1,152 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import Menu from "@mui/material/Menu";
-import MuiMenuItem from "@mui/material/MenuItem";
-import MenuList from "@mui/material/MenuList";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Paper from "@mui/material/Paper";
-import Popper from "@mui/material/Popper";
-import Fade from "@mui/material/Fade";
-import LogoutIcon from "@mui/icons-material/Logout";
-import PersonIcon from "@mui/icons-material/Person";
-import SettingsIcon from "@mui/icons-material/Settings";
-import HelpIcon from "@mui/icons-material/Help";
-import PaletteIcon from "@mui/icons-material/Palette";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import CheckIcon from "@mui/icons-material/Check";
-import AddIcon from "@mui/icons-material/Add";
-import Divider from "@mui/material/Divider";
+/**
+ * Sidebar — navegação lateral do shell interno (#118). 100% biblioteca Pontes.
+ *
+ * Expandida (240px) mostra logo + labels; colapsada vira rail de ícones (72px)
+ * com tooltip no hover. Estado ativo destacado pela rota atual. Menu de usuário
+ * via PontesPopover (perfil, personalização, troca de conta, sair). Cor + fonte
+ * do usePontesTheme.
+ */
 
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
-import SwapHorizOutlinedIcon from "@mui/icons-material/SwapHorizOutlined";
-import RepeatOutlinedIcon from "@mui/icons-material/RepeatOutlined";
-import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
-import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
-import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
-import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import { useState } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import {
+  LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
+  CalendarClock, Handshake, Upload, Landmark, Tags, Users,
+  Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
+} from "lucide-react"
+import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
+import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
+import { useAuth } from "../../hooks/useAuth"
 
-import MenuItem from "./MenuItem";
-import AddAccountDialog from "../AddAccountDialog/AddAccountDialog";
-import { useAuth } from "../../hooks/useAuth";
-import styles from "./Sidebar.module.css";
+type SidebarProps = { open: boolean; drawerWidth: number; railWidth: number }
 
-type SidebarProps = {
-  open: boolean;
-  drawerWidth: number;
-};
+type NavItem = { to: string; label: string; icon: React.ReactNode }
 
-function Avatar({ initials, size = 30 }: { initials: string; size?: number }) {
-  return (
-    <Box
-      sx={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        bgcolor: "#111827",
-        color: "white",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: size * 0.38,
-        fontWeight: 700,
-        flexShrink: 0,
-      }}
-    >
-      {initials}
-    </Box>
-  );
-}
+const NAV: { section: string; items: NavItem[] }[] = [
+  {
+    section: "Principal",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={19} strokeWidth={2} /> },
+      { to: "/transactions", label: "Transações", icon: <Receipt size={19} strokeWidth={2} /> },
+      { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={19} strokeWidth={2} /> },
+      { to: "/reports", label: "Relatórios", icon: <BarChart3 size={19} strokeWidth={2} /> },
+      { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={19} strokeWidth={2} /> },
+      { to: "/assinaturas", label: "Assinaturas", icon: <Repeat size={19} strokeWidth={2} /> },
+      { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={19} strokeWidth={2} /> },
+      { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
+      { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
+    ],
+  },
+  {
+    section: "Gerenciamento",
+    items: [
+      { to: "/accounts", label: "Contas", icon: <Landmark size={19} strokeWidth={2} /> },
+      { to: "/categories", label: "Categorias", icon: <Tags size={19} strokeWidth={2} /> },
+      { to: "/familias", label: "Famílias", icon: <Users size={19} strokeWidth={2} /> },
+    ],
+  },
+]
 
 function getInitials(nome: string) {
-  return nome.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return nome.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
 }
 
-export default function Sidebar({ open, drawerWidth }: SidebarProps) {
-  const navigate = useNavigate();
-  const { currentUser, savedAccounts, logout, switchAccount } = useAuth();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [accountAnchorEl, setAccountAnchorEl] = useState<null | HTMLElement>(null);
-  const [addAccountOpen, setAddAccountOpen] = useState(false);
+export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) {
+  const { palette: p, font } = usePontesTheme()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { currentUser, savedAccounts, logout, switchAccount } = useAuth()
+  const [addAccountOpen, setAddAccountOpen] = useState(false)
 
-  const isOverTrigger = useRef(false);
-  const isOverSubmenu = useRef(false);
-  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const width = open ? drawerWidth : railWidth
+  const initials = currentUser?.nome ? getInitials(currentUser.nome) : "?"
+  const otherAccounts = savedAccounts.filter((a) => a.id !== currentUser?.id)
 
-  const handleLogout = () => {
-    closeAll();
-    logout();
-    navigate("/auth/login");
-  };
-
-  const closeAll = () => {
-    setAnchorEl(null);
-    setAccountAnchorEl(null);
-  };
-
-  const scheduleCloseSubmenu = () => {
-    clearTimeout(hoverTimeout.current);
-    hoverTimeout.current = setTimeout(() => {
-      if (!isOverTrigger.current && !isOverSubmenu.current) {
-        setAccountAnchorEl(null);
-      }
-    }, 300);
-  };
-
-  const handleTriggerMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
-    isOverTrigger.current = true;
-    clearTimeout(hoverTimeout.current);
-    setAccountAnchorEl(e.currentTarget);
-  };
-
-  const handleTriggerMouseLeave = () => {
-    isOverTrigger.current = false;
-    scheduleCloseSubmenu();
-  };
-
-  const handleSubmenuMouseEnter = () => {
-    isOverSubmenu.current = true;
-    clearTimeout(hoverTimeout.current);
-  };
-
-  const handleSubmenuMouseLeave = () => {
-    isOverSubmenu.current = false;
-    scheduleCloseSubmenu();
-  };
-
-  const handleSwitchAccount = async (accountId: string) => {
-    closeAll();
-    await switchAccount(accountId);
-  };
-
-  const otherAccounts = savedAccounts.filter(a => a.id !== currentUser?.id);
-  const initials = currentUser?.nome ? getInitials(currentUser.nome) : "?";
+  const userItems: PontesPopoverItem[] = [
+    { key: "personalizacao", icon: <Palette size={16} strokeWidth={2} />, label: "Personalização", onClick: () => navigate("/settings") },
+    { key: "perfil", icon: <User size={16} strokeWidth={2} />, label: "Perfil", onClick: () => navigate("/settings") },
+    { key: "config", icon: <Settings size={16} strokeWidth={2} />, label: "Configurações", onClick: () => navigate("/settings") },
+    { key: "ajuda", icon: <HelpCircle size={16} strokeWidth={2} />, label: "Ajuda", onClick: () => navigate("/settings") },
+    ...otherAccounts.map((a): PontesPopoverItem => ({
+      key: `acc-${a.id}`,
+      icon: <span style={{ width: 18, height: 18, borderRadius: "50%", background: p.primary, color: p.heroFg, fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{getInitials(a.nome)}</span>,
+      label: a.nome,
+      divider: true,
+      onClick: () => void switchAccount(a.id),
+    })),
+    { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", divider: otherAccounts.length === 0, onClick: () => setAddAccountOpen(true) },
+    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", danger: true, divider: true, onClick: () => { logout(); navigate("/auth/login") } },
+  ]
 
   return (
-    <Drawer
-      variant="persistent"
-      anchor="left"
-      open={open}
-      sx={{
-        "& .MuiDrawer-paper": {
-          width: drawerWidth,
-          boxSizing: "border-box",
-          background: "#f5f6fa",
-          borderRight: 0,
-        },
-      }}
-    >
-      <div className={styles.sidebar}>
-        <div className={styles.header}>
-          <div className={styles.logo}>
-            <AccountBalanceIcon sx={{ fontSize: 14 }} />
-          </div>
-          <div>
-            <div className={styles.title}>FinanceControl</div>
-            <div className={styles.subtitle}>Gestão Financeira</div>
-          </div>
+    <aside style={{
+      width, flexShrink: 0, height: "100%",
+      display: "flex", flexDirection: "column", fontFamily: font,
+      transition: "width 220ms cubic-bezier(0.4,0,0.2,1)",
+      background: "transparent",
+    }}>
+      {/* Logo — wordmark e mark "P" na MESMA coluna (a dos ícones, ~24px),
+          cross-fade sem nenhum deslocamento perceptível. */}
+      <div style={{ height: 60, position: "relative", flexShrink: 0 }}>
+        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none", transition: "opacity 160ms ease" }}>
+          <PontesLogo color={p.primary} size={30} onClick={() => navigate("/dashboard")} />
         </div>
-
-        <div className={styles.nav}>
-          <div className={styles.sectionTitle}>Principal</div>
-          <List>
-            <MenuItem
-              to="/dashboard"
-              label="Dashboard"
-              icon={<DashboardOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/transactions"
-              label="Transações"
-              icon={<ReceiptLongOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/credit-cards"
-              label="Cartões de Crédito"
-              icon={<CreditCardOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/reports"
-              label="Relatórios"
-              icon={<BarChartOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/transferencias"
-              label="Transferências"
-              icon={<SwapHorizOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/assinaturas"
-              label="Assinaturas"
-              icon={<RepeatOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/parcelamentos"
-              label="Parcelamentos"
-              icon={<CheckIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/emprestimos"
-              label="Empréstimos"
-              icon={<HandshakeOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/importacao"
-              label="Importar Extrato"
-              icon={<UploadFileOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-          </List>
-
-          <div className={styles.sectionTitle}>Gerenciamento</div>
-          <List>
-            <MenuItem
-              to="/accounts"
-              label="Contas"
-              icon={<AccountBalanceOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/categories"
-              label="Categorias"
-              icon={<CategoryOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-            <MenuItem
-              to="/familias"
-              label="Famílias"
-              icon={<GroupsOutlinedIcon sx={{ fontSize: 18 }} />}
-            />
-          </List>
+        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 0 : 1, pointerEvents: open ? "none" : "auto", transition: "opacity 160ms ease" }}>
+          <PontesLogoMark color={p.primary} size={32} onClick={() => navigate("/dashboard")} />
         </div>
-
-        {currentUser && (
-          <div className={styles.userSection}>
-            {/* Sidebar trigger */}
-            <div
-              className={styles.userInfo}
-              onClick={(e) => setAnchorEl(e.currentTarget)}
-            >
-              <div className={styles.avatar}>{initials}</div>
-              <div style={{ minWidth: 0 }}>
-                <div className={styles.userName}>{currentUser.nome}</div>
-                <div className={styles.userEmail}>Plano Free</div>
-              </div>
-            </div>
-
-            {/* Main menu */}
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={closeAll}
-              anchorOrigin={{ vertical: "top", horizontal: "center" }}
-              transformOrigin={{ vertical: "bottom", horizontal: "center" }}
-              PaperProps={{
-                sx: {
-                  minWidth: "240px",
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                  mb: 1,
-                },
-              }}
-            >
-              {/* User card — hover opens accounts Popper */}
-              <MuiMenuItem
-                onMouseEnter={handleTriggerMouseEnter}
-                onMouseLeave={handleTriggerMouseLeave}
-                sx={{ py: 1, px: 1.5, borderRadius: "8px", mx: 0.5, mt: 0.5 }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
-                  <Avatar initials={initials} size={34} />
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
-                      {currentUser.nome}
-                    </Typography>
-                    <Typography fontSize={11} color="#6b7280" noWrap>
-                      Plano Free
-                    </Typography>
-                  </Box>
-                  <ChevronRightIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
-                </Box>
-              </MuiMenuItem>
-
-              <Divider sx={{ my: 0.5 }} />
-
-              {/* Upgrade de plano */}
-              <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <TrendingUpIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Upgrade de plano
-              </MuiMenuItem>
-
-              <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <PaletteIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Personalização
-              </MuiMenuItem>
-              <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <PersonIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Perfil
-              </MuiMenuItem>
-              <MuiMenuItem
-                onClick={() => { closeAll(); navigate("/settings"); }}
-                sx={{ fontSize: 13, py: 0.8, px: 1.5 }}
-              >
-                <SettingsIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Configurações
-              </MuiMenuItem>
-              <MuiMenuItem onClick={closeAll} sx={{ fontSize: 13, py: 0.8, px: 1.5 }}>
-                <HelpIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                Ajuda
-              </MuiMenuItem>
-              <Divider sx={{ my: 0.5 }} />
-              <MuiMenuItem
-                onClick={handleLogout}
-                sx={{ color: "#ef4444", fontSize: 13, py: 0.8, px: 1.5, mb: 0.5 }}
-              >
-                <LogoutIcon sx={{ fontSize: 16, mr: 1.5 }} />
-                Sair
-              </MuiMenuItem>
-            </Menu>
-
-            {/* Accounts cascade — Popper (no backdrop, no flicker) */}
-            <Popper
-              open={Boolean(accountAnchorEl)}
-              anchorEl={accountAnchorEl}
-              placement="right-start"
-              transition
-              style={{ zIndex: 1302 }}
-            >
-              {({ TransitionProps }) => (
-                <Fade {...TransitionProps} timeout={120}>
-                  <Paper
-                    onMouseEnter={handleSubmenuMouseEnter}
-                    onMouseLeave={handleSubmenuMouseLeave}
-                    elevation={3}
-                    sx={{
-                      minWidth: "220px",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                      ml: 0.5,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Email identifier */}
-                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #f3f4f6" }}>
-                      <Typography fontSize={12} color="#6b7280" noWrap>
-                        {currentUser.email}
-                      </Typography>
-                    </Box>
-
-                    <MenuList dense sx={{ py: 0.5 }}>
-                      {/* Current account */}
-                      <MuiMenuItem sx={{ py: 1, px: 1.5, cursor: "default", "&:hover": { bgcolor: "transparent" } }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
-                          <Avatar initials={initials} size={28} />
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography fontSize={13} fontWeight={600} color="#111827" noWrap>
-                              {currentUser.nome}
-                            </Typography>
-                          </Box>
-                          <CheckIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
-                        </Box>
-                      </MuiMenuItem>
-
-                      {/* Other connected accounts */}
-                      {otherAccounts.map(account => (
-                        <MuiMenuItem
-                          key={account.id}
-                          onClick={() => handleSwitchAccount(account.id)}
-                          sx={{ py: 1, px: 1.5 }}
-                        >
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
-                            <Avatar initials={getInitials(account.nome)} size={28} />
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography fontSize={13} fontWeight={500} color="#111827" noWrap>
-                                {account.nome}
-                              </Typography>
-                              <Typography fontSize={11} color="#9ca3af" noWrap>
-                                {account.email}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </MuiMenuItem>
-                      ))}
-
-                      <Divider sx={{ my: 0.5 }} />
-
-                      {/* Add account */}
-                      <MuiMenuItem
-                        onClick={() => { closeAll(); setAddAccountOpen(true); }}
-                        sx={{ fontSize: 13, color: "text.primary", py: 0.8, px: 1.5 }}
-                      >
-                        <AddIcon sx={{ fontSize: 16, mr: 1.5, color: "text.secondary" }} />
-                        Adicionar conta
-                      </MuiMenuItem>
-                    </MenuList>
-                  </Paper>
-                </Fade>
-              )}
-            </Popper>
-          </div>
-        )}
       </div>
 
-      <AddAccountDialog
-        open={addAccountOpen}
-        onClose={() => setAddAccountOpen(false)}
-      />
-    </Drawer>
-  );
+      {/* Nav */}
+      <nav style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "12px 12px 0" }}>
+        {NAV.map((group) => (
+          <div key={group.section} style={{ marginBottom: 8 }}>
+            <PontesSidebarSection p={p} label={group.section} collapsed={!open} />
+            {group.items.map((item) => (
+              <PontesSidebarItem
+                key={item.to}
+                p={p} font={font}
+                icon={item.icon}
+                label={item.label}
+                active={location.pathname === item.to || location.pathname.startsWith(item.to + "/")}
+                collapsed={!open}
+                onClick={() => navigate(item.to)}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      {/* Usuário */}
+      {currentUser && (
+        <div style={{ padding: "4px 12px 12px", flexShrink: 0 }}>
+          <PontesPopover
+            p={p} font={font} align="left" minWidth={230} direction="up" fullWidth
+            trigger={
+              <div className="pontes-clickable" data-pontes-variant="ghost" style={{
+                display: "flex", alignItems: "center", gap: open ? 12 : 0, padding: "8px 12px",
+                borderRadius: 10, cursor: "pointer", justifyContent: "flex-start",
+                transition: "gap 200ms ease",
+              }}>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: p.primary, color: p.heroFg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0, boxShadow: `0 0 0 2px ${p.surface}, 0 0 0 4px ${p.primarySoft}` }}>{initials}</span>
+                <span style={{
+                  display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+                  opacity: open ? 1 : 0, maxWidth: open ? 200 : 0, overflow: "hidden",
+                  transition: "opacity 160ms ease, max-width 220ms ease",
+                }}>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentUser.nome}</span>
+                    <span style={{ display: "inline-block", marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: p.primary, background: p.primarySoft, padding: "1px 7px", borderRadius: 999, whiteSpace: "nowrap" }}>Plano Free</span>
+                  </span>
+                  <ChevronRight size={15} strokeWidth={2} color={p.textMuted} style={{ flexShrink: 0 }} />
+                </span>
+              </div>
+            }
+            items={userItems}
+          />
+        </div>
+      )}
+
+      <AddAccountDialog open={addAccountOpen} onClose={() => setAddAccountOpen(false)} />
+    </aside>
+  )
 }
