@@ -6,7 +6,7 @@
  * de grupo (vira divisor quando colapsado). Cor + fonte por prop.
  */
 
-import { type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import type { Palette } from "../theme"
 
 export type PontesSidebarItemProps = {
@@ -22,9 +22,27 @@ export type PontesSidebarItemProps = {
 export function PontesSidebarItem({
   p, font, icon, label, active = false, collapsed = false, onClick,
 }: PontesSidebarItemProps) {
+  const [hover, setHover] = useState(false)
+
+  // Indicador lateral: bolinha no hover → cresce numa barrinha curva quando ativo.
+  const showDot = !active && hover
+  const visible = active || showDot
+  const indicator: React.CSSProperties = {
+    position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
+    width: showDot ? 7 : 4,
+    height: active ? 22 : showDot ? 7 : 0,
+    borderRadius: 999,
+    background: p.primary,
+    opacity: visible ? 1 : 0,
+    transition: "height 260ms cubic-bezier(0.34,1.56,0.64,1), width 200ms ease, opacity 180ms ease",
+    pointerEvents: "none",
+  }
+
   return (
     <button
       onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       title={collapsed ? label : undefined}
       className="pontes-clickable"
       data-pontes-variant={active ? "soft" : "ghost"}
@@ -41,9 +59,7 @@ export function PontesSidebarItem({
         ["--pontes-active-bg" as string]: p.primarySoft,
       }}
     >
-      {active && !collapsed && (
-        <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2, background: p.primary }} />
-      )}
+      {!collapsed && <span style={indicator} />}
       <span style={{ display: "flex", flexShrink: 0, color: active ? p.primary : p.textMuted }}>{icon}</span>
       {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>}
     </button>
