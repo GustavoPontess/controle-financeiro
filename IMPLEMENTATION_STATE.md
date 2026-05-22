@@ -1,8 +1,32 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-22
-status: EM_REVISAO
-issue_atual: '#122 inline → CSS Modules + vars — PR aberto (aguardando merge). #81 Dashboard PR #123 também aberto.'
+status: EM_EXECUCAO
+issue_atual: '#82 Transação Add/Editar + #83 Subcategorias. Branch feature/82-transacao-add-edit. #83 BACKEND pronto+verde. Falta: #83 front, #82 back audit, #82 front (form 3 modos).'
+---
+
+## Issue em execução — #82 + #83 (Transação + Subcategoria)
+
+**Branch:** `feature/82-transacao-add-edit` (a partir do main já com #122 mergeado).
+**#122 mergeado** (PR #124) → main tem lib Pontes em CSS Modules + vars. **#81 Dashboard mergeado** (PR #123).
+
+### Feito nesta sessão
+- [x] **#83 BACKEND** — entidade `Subcategoria` (Nome/Icone/Cor/CategoriaId/UsuarioId), `Transacao.SubcategoriaId?` (SetNull), `SubcategoriaService` (CRUD multi-tenant, exceções padrão), `SubcategoriasController` (`?categoriaId` filtra), DTOs, registrado no Program.cs, migration `AddSubcategoria` (Postgres, limpa), 9 testes xUnit. **150 testes verdes, API sobe limpa (health 200).** Commitado.
+
+### Falta (ordem)
+- [ ] **#83 front** — página Categorias (`pages/Categories/`) ganha sub-lista expansível: criar/editar/excluir subcategoria. Service `subcategoriaService.ts` + types. Padrão CSS Modules + var (regra #122). Teste front.
+- [ ] **#82 back** — auditar `TransacaoService` (3 modos: único/recorrente/parcelado), aceitar `SubcategoriaId` no criar/editar, idempotência, validações cruzadas (cartão→fatura, recorrente→expansão). Testes dos 3 modos.
+- [ ] **#82 front** — `EditTransactionDialog`/form refator: tabs Único|Recorrente|Parcelado, campos por modo, toggle Recebido/Pago, dropdown Subcategoria filtrado pela Categoria, bloco rateio se família. CSS Modules + var. Testes de integração por modo.
+
+### Próxima ação concreta
+`#83 front`: ler `pages/Categories/` atual + criar `services/subcategoriaService.ts` espelhando `categoriaService.ts`; adicionar sub-lista na página de Categorias usando componentes Pontes (`@/components/pontes`) + `*.module.css`.
+
+### Notas
+- Dev: Postgres docker `controlefinanceiro-db`, API restart aplica migration via `MigrateAsync`.
+- `CategoriaService` é legado (usa `throw new Exception`); `SubcategoriaService` segue o padrão novo (ArgumentException→400 / KeyNotFoundException→404 / InvalidOperationException→409 / UnauthorizedAccessException→401, mapeado pelo GlobalExceptionHandlerMiddleware).
+---
+
+<!-- bloco antigo #122 abaixo (histórico) -->
 ---
 
 # Implementation State — sessão atual
