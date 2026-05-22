@@ -1,19 +1,22 @@
-﻿/**
- * Avatar — círculo com inicial ou foto, status dot opcional.
- * Avatar stack para grupos.
+/**
+ * Avatar — círculo com inicial ou foto, status dot opcional. Avatar stack.
+ * Cor via var(--pontes-*). `bg`/`fg`/`size` são overrides por-instância (inline).
+ * `p` é override de tema escopado opcional (transição #122).
  */
 
-import { semantic, type Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { semantic, scopedThemeVars, type Palette } from "../theme"
+import styles from "./Avatar.module.css"
 
 export type AvatarStatus = "online" | "away" | "busy" | "offline"
 
 export type PontesAvatarProps = {
-  p: Palette
+  p?: Palette
   size?: number
   name?: string
   photoUrl?: string
   status?: AvatarStatus
-  /** Sobrescreve background quando não há foto. Default: p.primary. */
+  /** Sobrescreve background quando não há foto. Default: var(--pontes-primary). */
   bg?: string
   /** Cor do texto quando renderiza iniciais. */
   fg?: string
@@ -39,28 +42,23 @@ export function PontesAvatar({
 }: PontesAvatarProps) {
   const radius = rounded === "full" ? "50%" : 10
   const dotSize = Math.max(10, Math.floor(size / 4))
-  const showText = !photoUrl
 
   return (
-    <span style={{ position: "relative", display: "inline-block", width: size, height: size }}>
-      <span style={{
-        width: size, height: size, borderRadius: radius,
-        background: bg ?? p.primary, color: fg ?? "#FFFFFF",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: Math.max(11, Math.floor(size * 0.35)), fontWeight: 700,
-        overflow: "hidden",
-      }}>
-        {showText ? initials(name) : (
-          <img src={photoUrl} alt={name ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        )}
+    <span className={styles.wrap} style={{ width: size, height: size, ...scopedThemeVars(p) } as CSSProperties}>
+      <span
+        className={styles.circle}
+        style={{
+          width: size, height: size, borderRadius: radius,
+          fontSize: Math.max(11, Math.floor(size * 0.35)),
+          background: bg || undefined, color: fg || undefined,
+        }}
+      >
+        {photoUrl
+          ? <img src={photoUrl} alt={name ?? ""} className={styles.img} />
+          : initials(name)}
       </span>
       {status && (
-        <span style={{
-          position: "absolute", bottom: 0, right: 0,
-          width: dotSize, height: dotSize, borderRadius: "50%",
-          background: statusColor(status),
-          border: `2px solid ${p.surface}`,
-        }} />
+        <span className={styles.dot} style={{ width: dotSize, height: dotSize, background: statusColor(status) }} />
       )}
     </span>
   )
@@ -71,7 +69,7 @@ export function PontesAvatar({
 // =============================================================================
 
 export type PontesAvatarStackProps = {
-  p: Palette
+  p?: Palette
   avatars: { name?: string; photoUrl?: string; bg?: string }[]
   size?: number
   max?: number
@@ -82,24 +80,15 @@ export function PontesAvatarStack({ p, avatars, size = 36, max = 4 }: PontesAvat
   const extra = avatars.length - shown.length
 
   return (
-    <span style={{ display: "inline-flex" }}>
+    <span className={styles.stack} style={scopedThemeVars(p) as CSSProperties}>
       {shown.map((a, i) => (
-        <span key={i} style={{ marginLeft: i > 0 ? -10 : 0 }}>
-          <span style={{
-            display: "inline-block",
-            border: `2px solid ${p.surface}`, borderRadius: "50%",
-          }}>
-            <PontesAvatar p={p} size={size} name={a.name} photoUrl={a.photoUrl} bg={a.bg} />
-          </span>
+        <span key={i} className={styles.ring} style={{ marginLeft: i > 0 ? -10 : 0 }}>
+          <PontesAvatar p={p} size={size} name={a.name} photoUrl={a.photoUrl} bg={a.bg} />
         </span>
       ))}
       {extra > 0 && (
-        <span style={{ marginLeft: -10 }}>
-          <span style={{
-            display: "inline-block", border: `2px solid ${p.surface}`, borderRadius: "50%",
-          }}>
-            <PontesAvatar p={p} size={size} name={`+${extra}`} bg="#94A3B8" />
-          </span>
+        <span className={styles.ring} style={{ marginLeft: -10 }}>
+          <PontesAvatar p={p} size={size} name={`+${extra}`} bg="#94A3B8" />
         </span>
       )}
     </span>
