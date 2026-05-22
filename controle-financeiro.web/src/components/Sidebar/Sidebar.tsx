@@ -82,7 +82,7 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
     <aside style={{
       width, flexShrink: 0, height: "100%",
       display: "flex", flexDirection: "column", fontFamily: font,
-      transition: "width 220ms cubic-bezier(0.4,0,0.2,1)", overflow: "hidden",
+      transition: "width 220ms cubic-bezier(0.4,0,0.2,1)",
       background: "transparent",
     }}>
       {/* Logo */}
@@ -137,7 +137,7 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
       {currentUser && (
         <div style={{ padding: "8px 8px 4px", flexShrink: 0 }}>
           <PontesPopover
-            p={p} font={font} align="left" minWidth={230}
+            p={p} font={font} align="left" minWidth={230} direction="up"
             trigger={
               <div className="pontes-clickable" data-pontes-variant="ghost" style={{
                 display: "flex", alignItems: "center", gap: 10, padding: open ? "8px 10px" : 8,
