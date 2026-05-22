@@ -344,6 +344,7 @@ using (var scope = app.Services.CreateScope())
 
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
+    await SubcategoriaSeeder.SeedAsync(context);
 
     // Dados de exemplo para o atlas Playwright / revisão visual do redesign.
     // Só em Development e idempotente (não roda se o usuário dev já existir).
