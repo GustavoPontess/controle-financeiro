@@ -1,110 +1,139 @@
-import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
+/**
+ * DefaultLayout — shell do app logado (#118). 100% biblioteca Pontes.
+ *
+ * Orquestra Sidebar (rail colapsável) + Navbar + command palette (Ctrl+K) +
+ * toasts (PontesToast) + dialogs. Cor + fonte do usePontesTheme.
+ */
 
-import Navbar from "../../components/Navbar/Navbar";
-import Sidebar from "../../components/Sidebar/Sidebar";
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { Outlet, useNavigate } from "react-router-dom"
+import {
+  LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
+  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Settings,
+} from "lucide-react"
+import { useAuth } from "../../hooks/useAuth"
+import { PontesToast, PontesCommandPalette, usePontesTheme, type PontesCommandItem } from "@/components/pontes"
 
-import NewTransactionDialog from "../../components/transactions/NewTransactionDialog/NewTransactionDialog";
-import InstallPrompt from "../../components/Pwa/InstallPrompt";
+import Navbar from "../../components/Navbar/Navbar"
+import Sidebar from "../../components/Sidebar/Sidebar"
+import NewTransactionDialog from "../../components/transactions/NewTransactionDialog/NewTransactionDialog"
+import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
+import { getCategories } from "../../services/categoryService"
 
-import { getCategories } from "../../services/categoryService";
+const DRAWER_WIDTH = 248
+const RAIL_WIDTH = 72
 
-import styles from "./DefaultLayout.module.css";
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
 
-const drawerWidth = 240;
-
-type Notification = {
-  open: boolean;
-  message: string;
-  severity: "success" | "error";
-};
+const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
+  { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} strokeWidth={2} /> },
+  { to: "/transactions", label: "Transações", icon: <Receipt size={18} strokeWidth={2} /> },
+  { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={18} strokeWidth={2} /> },
+  { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
+  { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
+  { to: "/assinaturas", label: "Assinaturas", icon: <Repeat size={18} strokeWidth={2} /> },
+  { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
+  { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },
+  { to: "/importacao", label: "Importar Extrato", icon: <Upload size={18} strokeWidth={2} /> },
+  { to: "/accounts", label: "Contas", icon: <Landmark size={18} strokeWidth={2} /> },
+  { to: "/categories", label: "Categorias", icon: <Tags size={18} strokeWidth={2} /> },
+  { to: "/familias", label: "Famílias", icon: <Users size={18} strokeWidth={2} /> },
+  { to: "/settings", label: "Configurações", icon: <Settings size={18} strokeWidth={2} /> },
+]
 
 export default function DefaultLayout() {
-  const { accountKey } = useAuth();
-  const [open, setOpen] = useState(true);
-  const [openTransaction, setOpenTransaction] = useState(false);
+  const { palette: p, font } = usePontesTheme()
+  const { accountKey } = useAuth()
+  const navigate = useNavigate()
 
-  const [canCreateTransaction, setCanCreateTransaction] = useState(false);
+  const [open, setOpen] = useState(true)
+  const [openTransaction, setOpenTransaction] = useState(false)
+  const [canCreateTransaction, setCanCreateTransaction] = useState(false)
+  const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
 
-  const [notification, setNotification] = useState<Notification>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  // Command palette (Ctrl/Cmd+K)
+  const [cmdOpen, setCmdOpen] = useState(false)
+  const [cmdQuery, setCmdQuery] = useState("")
 
-  const toggleDrawer = () => {
-    setOpen(!open);
-  };
+  const checkRequirements = useCallback(async () => {
+    const categories = await getCategories()
+    setCanCreateTransaction(categories.length > 0)
+  }, [])
 
-  const checkRequirements = async () => {
-    const categories = await getCategories();
-    setCanCreateTransaction(categories.length > 0);
-  };
+  useEffect(() => { void checkRequirements() }, [accountKey, checkRequirements])
 
+  // Atalho global de busca
   useEffect(() => {
-    const loadRequirements = async () => {
-      const categories = await getCategories();
-      setCanCreateTransaction(categories.length > 0);
-    };
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setCmdQuery("")
+        setCmdOpen((o) => !o)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
-    loadRequirements();
-  }, [accountKey]);
+  // Auto-hide do toast
+  useEffect(() => {
+    if (!notification.open) return
+    const t = setTimeout(() => setNotification((n) => ({ ...n, open: false })), 4000)
+    return () => clearTimeout(t)
+  }, [notification.open])
+
+  const cmdItems: PontesCommandItem[] = useMemo(() => {
+    const q = cmdQuery.trim().toLowerCase()
+    return COMMANDS
+      .filter((c) => !q || c.label.toLowerCase().includes(q))
+      .map((c) => ({
+        key: c.to, icon: c.icon, label: c.label, hint: "Ir",
+        onSelect: () => { setCmdOpen(false); navigate(c.to) },
+      }))
+  }, [cmdQuery, navigate])
+
+  const width = open ? DRAWER_WIDTH : RAIL_WIDTH
+
   return (
-    <div className={styles.layout}>
-      <Sidebar open={open} drawerWidth={drawerWidth} />
+    <div style={{ minHeight: "100vh", background: p.bg, fontFamily: font }}>
+      <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
 
-      <div
-        className={styles.container}
-        style={{ marginLeft: open ? drawerWidth : 0 }}
-      >
+      <div style={{ marginLeft: width, transition: "margin-left 220ms cubic-bezier(0.4,0,0.2,1)", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         <Navbar
-          toggleDrawer={toggleDrawer}
+          toggleDrawer={() => setOpen((o) => !o)}
           sidebarOpen={open}
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
+          openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
         />
 
-        <main className={styles.content}>
-          <Outlet
-            key={accountKey}
-            context={{
-              notify: setNotification,
-              refreshTransactionRequirements: checkRequirements,
-            }}
-          />
+        <main style={{ flex: 1, padding: 24, maxWidth: 1280, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+          <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
         </main>
       </div>
 
-      <NewTransactionDialog
-        open={openTransaction}
-        onClose={() => setOpenTransaction(false)}
-        notify={setNotification}
-      />
-
+      <NewTransactionDialog open={openTransaction} onClose={() => setOpenTransaction(false)} notify={setNotification} />
       <InstallPrompt />
 
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={4000}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        onClose={(_event, reason) => {
-          if (reason === "clickaway") return;
-          setNotification((prev) => ({ ...prev, open: false }));
-        }}
-      >
-        <Alert
-          severity={notification.severity}
-          variant="filled"
-          onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
-          sx={{ width: "100%" }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
+      <PontesCommandPalette
+        p={p} font={font} open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        query={cmdQuery} onQueryChange={setCmdQuery}
+        items={cmdItems}
+      />
+
+      {notification.open && (
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9998 }}>
+          <PontesToast
+            font={font}
+            tone={notification.severity}
+            title={notification.severity === "success" ? "Sucesso" : "Erro"}
+            description={notification.message}
+            onClose={() => setNotification((n) => ({ ...n, open: false }))}
+          />
+        </div>
+      )}
     </div>
-  );
+  )
 }
