@@ -25,15 +25,15 @@ export function PontesSidebarItem({
   const [hover, setHover] = useState(false)
   const RADIUS = 14 // = raio do pill (curva mais acentuada)
 
-  // Ativo: borda esquerda CURVA acompanhando o contorno do pill (dobra nos
-  // cantos top-left e bottom-left). Hover (inativo): barrinha curta via scaleY.
+  // Ativo: borda DIREITA CURVA acompanhando o contorno do pill (dobra nos
+  // cantos top-right e bottom-right). Hover (inativo): barrinha curta via scaleY.
   const activeBar: React.CSSProperties = {
     position: "absolute", inset: 0, borderRadius: RADIUS,
-    border: "4px solid transparent", borderLeftColor: p.primary,
+    border: "4px solid transparent", borderRightColor: p.primary,
     pointerEvents: "none",
   }
   const hoverBar: React.CSSProperties = {
-    position: "absolute", left: 0, top: "50%", transformOrigin: "center",
+    position: "absolute", right: 0, top: "50%", transformOrigin: "center",
     transform: `translateY(-50%) scaleY(${hover ? 1 : 0})`,
     width: 4, height: 14, borderRadius: 999, background: p.primary,
     opacity: hover ? 1 : 0,
