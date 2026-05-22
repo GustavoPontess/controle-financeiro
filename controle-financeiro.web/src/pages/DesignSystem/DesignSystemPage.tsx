@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import {
   // theme
-  palettes, fonts, semantic, type Palette, type FontOption,
+  palettes, fonts, semantic, paletteVars, type Palette, type FontOption,
   // botões
   PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink, PontesNavLink,
   // form
@@ -100,7 +100,9 @@ export default function DesignSystemPage() {
   useEffect(() => { applyPontesScrollbar(palette.accent, palette.bg) }, [palette])
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: font, color: palette.text }}>
+    // Vars escopadas: o showroom previewa a paleta/fonte LOCAL sem mexer no
+    // tema global. Componentes migrados leem var(--pontes-*) deste wrapper.
+    <div style={{ ...paletteVars(palette), ["--pontes-font" as string]: font, minHeight: "100vh", background: palette.bg, fontFamily: font, color: palette.text } as React.CSSProperties}>
       <ControlBar
         palette={palette} fontOpt={fontOpt}
         paletteId={paletteId} setPaletteId={setPaletteId}

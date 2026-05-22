@@ -10,27 +10,10 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react"
-import { palettes, fonts, type Palette } from "./theme"
+import { palettes, fonts, paletteVars } from "./theme"
 import { applyPontesScrollbar } from "./_globalStyles"
 import { PontesThemeCtx, type PontesThemeValue } from "./themeContext"
 import "./styles/tokens.css"
-
-/** Escreve as cores da paleta como CSS vars no :root (troca ao vivo, sem re-render). */
-function applyPaletteVars(p: Palette): void {
-  if (typeof document === "undefined") return
-  const r = document.documentElement.style
-  r.setProperty("--pontes-primary", p.primary)
-  r.setProperty("--pontes-primary-dark", p.primaryDark)
-  r.setProperty("--pontes-primary-soft", p.primarySoft)
-  r.setProperty("--pontes-accent", p.accent)
-  r.setProperty("--pontes-accent-soft", p.accentSoft)
-  r.setProperty("--pontes-text", p.text)
-  r.setProperty("--pontes-text-muted", p.textMuted)
-  r.setProperty("--pontes-bg", p.bg)
-  r.setProperty("--pontes-surface", p.surface)
-  r.setProperty("--pontes-border", p.border)
-  r.setProperty("--pontes-hero-fg", p.heroFg)
-}
 
 const LS_PALETTE = "pontes.paletteId"
 const LS_FONT = "pontes.fontId"
@@ -68,7 +51,10 @@ export function PontesThemeProvider({ children }: { children: ReactNode }) {
 
   // Paleta vira CSS vars no :root + scrollbar/fundo seguem a paleta — global.
   useEffect(() => {
-    applyPaletteVars(palette)
+    if (typeof document !== "undefined") {
+      const r = document.documentElement.style
+      for (const [k, v] of Object.entries(paletteVars(palette))) r.setProperty(k, v)
+    }
     applyPontesScrollbar(palette.accent, palette.bg)
   }, [palette])
 
