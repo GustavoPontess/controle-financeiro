@@ -23,7 +23,7 @@ export function PontesSidebarItem({
   p, font, icon, label, active = false, collapsed = false, onClick,
 }: PontesSidebarItemProps) {
   const [hover, setHover] = useState(false)
-  const RADIUS = 14 // = raio do pill (curva mais acentuada)
+  const RADIUS = 20 // = raio do pill (curva bem acentuada)
 
   // Ativo: borda esquerda curva acompanhando o contorno do pill. Hover
   // (inativo): barrinha curta via scaleY.
