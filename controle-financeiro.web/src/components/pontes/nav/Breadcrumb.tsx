@@ -1,11 +1,11 @@
-﻿/**
- * Breadcrumb — trilha de navegação.
- * Último item é o atual (negrito, sem link).
+/**
+ * Breadcrumb — trilha de navegação. Cor via var(--pontes-*); hover via :hover.
+ * `p`/`font` override escopado opcional (#122).
  */
 
-import { useEffect } from "react"
-import { ensurePontesGlobalStyles } from "../_globalStyles"
-import { adjustColor, type Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Breadcrumb.module.css"
 
 export type PontesBreadcrumbItem = {
   label: string
@@ -14,49 +14,27 @@ export type PontesBreadcrumbItem = {
 }
 
 export type PontesBreadcrumbProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   items: PontesBreadcrumbItem[]
   separator?: React.ReactNode
 }
 
 export function PontesBreadcrumb({ p, font, items, separator = "/" }: PontesBreadcrumbProps) {
-  useEffect(ensurePontesGlobalStyles, [])
-  const hoverColor = adjustColor(p.primary, -0.05)
   return (
-    <nav
-      aria-label="breadcrumb"
-      style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: font, flexWrap: "wrap" }}
-    >
+    <nav aria-label="breadcrumb" className={styles.nav} style={scopedThemeVars(p, font) as CSSProperties}>
       {items.map((it, i) => {
         const isLast = i === items.length - 1
         return (
-          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span key={i} className={styles.item}>
             {isLast ? (
-              <span style={{ color: p.text, fontWeight: 600 }}>{it.label}</span>
+              <span className={styles.current}>{it.label}</span>
             ) : it.href ? (
-              <a
-                href={it.href}
-                className="pontes-link-hover"
-                style={{
-                  color: p.textMuted, textDecoration: "none",
-                  ["--pontes-hover-color" as never]: hoverColor,
-                }}
-              >{it.label}</a>
+              <a href={it.href} className={styles.link}>{it.label}</a>
             ) : (
-              <button
-                type="button"
-                onClick={it.onClick}
-                className="pontes-link-hover"
-                style={{
-                  background: "transparent", border: "none",
-                  color: p.textMuted, cursor: "pointer", padding: 0,
-                  fontFamily: font, fontSize: 14,
-                  ["--pontes-hover-color" as never]: hoverColor,
-                }}
-              >{it.label}</button>
+              <button type="button" onClick={it.onClick} className={styles.link}>{it.label}</button>
             )}
-            {!isLast && <span style={{ color: p.textMuted }}>{separator}</span>}
+            {!isLast && <span className={styles.sep}>{separator}</span>}
           </span>
         )
       })}
