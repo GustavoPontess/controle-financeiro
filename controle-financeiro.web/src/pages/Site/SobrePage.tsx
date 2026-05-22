@@ -155,8 +155,9 @@ function Valores({ p }: { p: Palette }) {
 
 function Time({ p }: { p: Palette }) {
   const team = [
-    { nome: "Gustavo Pontes", papel: "Cofundador · Produto & Engenharia", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&auto=format&fit=crop&q=80" },
+    { nome: "Gustavo Pontes", papel: "Fundador · Produto & Engenharia", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&auto=format&fit=crop&q=80" },
     { nome: "Caio Amaral", papel: "Cofundador · Engenharia & Design", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&auto=format&fit=crop&q=80" },
+    { nome: "João Vitor Costa", papel: "Cofundador · Engenharia", photo: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&auto=format&fit=crop&q=80" },
   ]
   return (
     <section style={{ padding: "120px 48px", background: p.surface }}>
@@ -165,7 +166,7 @@ function Time({ p }: { p: Palette }) {
           <Label p={p}>Quem faz</Label>
           <H2 p={p}>Um time <em style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontWeight: 400, color: p.primary }}>enxuto e obcecado.</em></H2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 32, maxWidth: 640, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, maxWidth: 760, margin: "0 auto" }}>
           {team.map((m) => (
             <div key={m.nome} style={{ textAlign: "center" }}>
               <div style={{ width: 132, height: 132, margin: "0 auto 18px", borderRadius: "50%", overflow: "hidden", border: `3px solid ${p.primarySoft}` }}>
