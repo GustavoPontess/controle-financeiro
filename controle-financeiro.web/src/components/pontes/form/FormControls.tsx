@@ -1,16 +1,18 @@
-﻿/**
- * FormControls — toggle, checkbox, radio.
- * Visual coerente entre os três (mesma cor primary, mesmo padding).
+/**
+ * FormControls — toggle, checkbox, radio. Cor via var(--pontes-*).
+ * Estado checked via data-attr (CSS). `p`/`font` override escopado opcional (#122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./FormControls.module.css"
 
 // =============================================================================
 // PontesToggle (switch)
 // =============================================================================
 
 export type PontesToggleProps = {
-  p: Palette
+  p?: Palette
   font?: string
   checked: boolean
   onChange: (v: boolean) => void
@@ -24,30 +26,12 @@ export function PontesToggle({ p, font, checked, onChange, label, disabled }: Po
       type="button"
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 10,
-        background: "none", border: "none",
-        cursor: disabled ? "not-allowed" : "pointer",
-        padding: 0, fontFamily: font,
-        opacity: disabled ? 0.6 : 1,
-      }}
+      className={styles.control}
+      data-checked={checked ? "true" : "false"}
+      style={scopedThemeVars(p, font) as CSSProperties}
     >
-      <span style={{
-        width: 40, height: 22,
-        background: checked ? p.primary : p.border,
-        borderRadius: 999, position: "relative",
-        transition: "background 200ms",
-      }}>
-        <span style={{
-          position: "absolute", top: 2,
-          left: checked ? 20 : 2,
-          width: 18, height: 18,
-          background: "#FFFFFF", borderRadius: "50%",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-          transition: "left 200ms",
-        }} />
-      </span>
-      {label && <span style={{ fontSize: 14, color: p.text }}>{label}</span>}
+      <span className={styles.track}><span className={styles.knob} /></span>
+      {label && <span className={styles.label}>{label}</span>}
     </button>
   )
 }
@@ -57,7 +41,7 @@ export function PontesToggle({ p, font, checked, onChange, label, disabled }: Po
 // =============================================================================
 
 export type PontesCheckboxProps = {
-  p: Palette
+  p?: Palette
   font?: string
   checked: boolean
   onChange: (v: boolean) => void
@@ -71,23 +55,12 @@ export function PontesCheckbox({ p, font, checked, onChange, label, disabled }: 
       type="button"
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 10,
-        background: "none", border: "none",
-        cursor: disabled ? "not-allowed" : "pointer",
-        padding: 0, fontFamily: font, opacity: disabled ? 0.6 : 1,
-      }}
+      className={styles.control}
+      data-checked={checked ? "true" : "false"}
+      style={scopedThemeVars(p, font) as CSSProperties}
     >
-      {checked ? (
-        <span style={{
-          width: 20, height: 20, background: p.primary, borderRadius: 5,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#FFFFFF", fontSize: 14, fontWeight: 700,
-        }}>✓</span>
-      ) : (
-        <span style={{ width: 20, height: 20, border: `2px solid ${p.border}`, borderRadius: 5, display: "block" }} />
-      )}
-      {label && <span style={{ fontSize: 14, color: checked ? p.text : p.textMuted }}>{label}</span>}
+      <span className={styles.checkbox} data-checked={checked ? "true" : "false"}>{checked ? "✓" : null}</span>
+      {label && <span className={styles.labelMuted}>{label}</span>}
     </button>
   )
 }
@@ -97,7 +70,7 @@ export function PontesCheckbox({ p, font, checked, onChange, label, disabled }: 
 // =============================================================================
 
 export type PontesRadioProps<T extends string = string> = {
-  p: Palette
+  p?: Palette
   font?: string
   value: T
   current: T
@@ -115,28 +88,18 @@ export function PontesRadio<T extends string = string>({
       type="button"
       disabled={disabled}
       onClick={() => onChange(value)}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 10,
-        background: "none", border: "none",
-        cursor: disabled ? "not-allowed" : "pointer",
-        padding: 0, fontFamily: font, opacity: disabled ? 0.6 : 1,
-      }}
+      className={styles.control}
+      data-checked={active ? "true" : "false"}
+      style={scopedThemeVars(p, font) as CSSProperties}
     >
-      <span style={{
-        width: 20, height: 20,
-        border: `2px solid ${active ? p.primary : p.border}`,
-        borderRadius: "50%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        {active && <span style={{ width: 10, height: 10, background: p.primary, borderRadius: "50%" }} />}
-      </span>
-      {label && <span style={{ fontSize: 14, color: active ? p.text : p.textMuted }}>{label}</span>}
+      <span className={styles.radio}>{active && <span className={styles.radioDot} />}</span>
+      {label && <span className={styles.labelMuted}>{label}</span>}
     </button>
   )
 }
 
 export type PontesRadioGroupProps<T extends string = string> = {
-  p: Palette
+  p?: Palette
   font?: string
   options: { value: T; label: string }[]
   value: T
@@ -148,7 +111,7 @@ export function PontesRadioGroup<T extends string = string>({
   p, font, options, value, onChange, direction = "row",
 }: PontesRadioGroupProps<T>) {
   return (
-    <div style={{ display: "flex", flexDirection: direction, gap: direction === "row" ? 18 : 10 }}>
+    <div className={styles.group} data-dir={direction} style={scopedThemeVars(p, font) as CSSProperties}>
       {options.map((opt) => (
         <PontesRadio
           key={opt.value}
