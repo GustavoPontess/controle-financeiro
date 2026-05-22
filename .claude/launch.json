@@ -3,8 +3,14 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "controle-financeiro.web", "run", "dev"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "controle-financeiro.web/node_modules/vite/bin/vite.js",
+        "--root",
+        "controle-financeiro.web",
+        "--port",
+        "5173"
+      ],
       "port": 5173
     }
   ]
