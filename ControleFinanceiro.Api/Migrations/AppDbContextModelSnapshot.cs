@@ -951,6 +951,40 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Relacionamentos");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Subcategoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoriaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Icone")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("UsuarioId", "CategoriaId");
+
+                    b.ToTable("Subcategorias");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1027,6 +1061,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("StatusTransacao")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("SubcategoriaId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
 
@@ -1057,6 +1094,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ParcelaTransacaoId");
 
                     b.HasIndex("ParcelamentoId");
+
+                    b.HasIndex("SubcategoriaId");
 
                     b.ToTable("Transacoes");
                 });
@@ -1449,6 +1488,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Usuario1");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Subcategoria", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", "CartaoCredito")
@@ -1495,6 +1545,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("ParcelamentoId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Subcategoria", "Subcategoria")
+                        .WithMany()
+                        .HasForeignKey("SubcategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CartaoCredito");
 
                     b.Navigation("Categoria");
@@ -1512,6 +1567,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("ParcelaTransacao");
 
                     b.Navigation("Parcelamento");
+
+                    b.Navigation("Subcategoria");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transferencia", b =>

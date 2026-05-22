@@ -21,6 +21,10 @@ public class Transacao
     public Guid? CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
+    /// <summary>Issue #83 — subcategoria opcional (granularidade abaixo da Categoria).</summary>
+    public Guid? SubcategoriaId { get; set; }
+    public Subcategoria? Subcategoria { get; set; }
+
     public Guid? ContaId { get; set; }
     public Conta? Conta { get; set; }
 

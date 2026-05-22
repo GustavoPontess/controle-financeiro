@@ -12,29 +12,23 @@ public static class CategoriaSeeder
         if (await context.Categorias.AnyAsync(c => c.UsuarioId == null))
             return;
 
+        // Taxonomia padrão (estilo Open Finance PT-BR). Subcategorias no SubcategoriaSeeder.
         var defaults = new List<Categoria>
         {
-            // Despesas
-            new() { Id = Guid.NewGuid(), Descricao = "Alimentação & Restaurantes", Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Moradia & Aluguel",           Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Transporte",                  Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Saúde & Farmácia",            Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Educação",                    Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Lazer & Entretenimento",      Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Vestuário",                   Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Comunicação & Internet",      Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Supermercado",                Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Serviços & Assinaturas",      Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Investimentos",               Finalidade = Finalidade.Despesa },
-            new() { Id = Guid.NewGuid(), Descricao = "Outros",                      Finalidade = Finalidade.Despesa },
-
-            // Receitas
-            new() { Id = Guid.NewGuid(), Descricao = "Salário",                     Finalidade = Finalidade.Receita },
-            new() { Id = Guid.NewGuid(), Descricao = "Freelance & Consultoria",     Finalidade = Finalidade.Receita },
-            new() { Id = Guid.NewGuid(), Descricao = "Rendimentos & Dividendos",    Finalidade = Finalidade.Receita },
-            new() { Id = Guid.NewGuid(), Descricao = "Aluguel Recebido",            Finalidade = Finalidade.Receita },
-            new() { Id = Guid.NewGuid(), Descricao = "Reembolso",                   Finalidade = Finalidade.Receita },
-            new() { Id = Guid.NewGuid(), Descricao = "Outros (Receita)",            Finalidade = Finalidade.Receita },
+            new() { Id = Guid.NewGuid(), Descricao = "Alimentação",            Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Compras",                Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Saúde e bem-estar",      Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Serviços digitais",      Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Transporte",             Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Moradia",                Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Lazer e entretenimento", Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Renda",                  Finalidade = Finalidade.Receita },
+            new() { Id = Guid.NewGuid(), Descricao = "Educação",               Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Impostos e taxas",       Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Seguros",                Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Apostas e jogos",        Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Doações",                Finalidade = Finalidade.Despesa },
+            new() { Id = Guid.NewGuid(), Descricao = "Outros",                 Finalidade = Finalidade.Ambas },
         };
 
         context.Categorias.AddRange(defaults);
