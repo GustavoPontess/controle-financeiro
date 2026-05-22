@@ -66,6 +66,7 @@ export * from "./nav/Tabs"
 export * from "./nav/Stepper"
 export * from "./nav/Pagination"
 export * from "./nav/CommandPalette"
+export * from "./nav/SidebarItem"
 
 // ── Site (componentes full-width do site público) ────────────────────────────
 export * from "./site/Navbar"
@@ -73,3 +74,4 @@ export * from "./site/Footer"
 
 // ── Logo (re-export para que telas não precisem de import direto) ─────────────
 export { default as PontesLogo } from "../Logo/Logo"
+export { default as PontesLogoMark } from "../Logo/LogoMark"
