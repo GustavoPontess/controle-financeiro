@@ -74,6 +74,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<TransacaoService>();
 builder.Services.AddScoped<CategoriaService>();
+builder.Services.AddScoped<SubcategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<AuthService>();
