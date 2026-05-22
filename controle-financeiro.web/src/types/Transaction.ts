@@ -4,6 +4,7 @@ export interface Transaction {
   valor: number
   tipo: number
   categoriaId: string | null
+  subcategoriaId?: string | null
   contaId?: string
   contaNome?: string
   cartaoCreditoId?: string
