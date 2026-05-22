@@ -29,12 +29,12 @@ export function PontesSidebarItem({
   const visible = active || showDot
   const indicator: React.CSSProperties = {
     position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
-    width: showDot ? 7 : 4,
-    height: active ? 22 : showDot ? 7 : 0,
+    width: 4,
+    height: active ? 22 : showDot ? 11 : 0,
     borderRadius: 999,
     background: p.primary,
     opacity: visible ? 1 : 0,
-    transition: "height 260ms cubic-bezier(0.34,1.56,0.64,1), width 200ms ease, opacity 180ms ease",
+    transition: "height 240ms cubic-bezier(0.34,1.56,0.64,1), opacity 180ms ease",
     pointerEvents: "none",
   }
 
