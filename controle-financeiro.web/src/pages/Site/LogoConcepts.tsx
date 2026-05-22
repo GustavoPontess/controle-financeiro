@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from "react"
+import styles from "./LogoConcepts.module.css"
 
 const fontUrls = [
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap",
@@ -155,33 +156,29 @@ const concepts: Concept[] = [
   { id: "20", title: "Wordmark sublinhado em arco", description: "Pontes sem ícone, com arco sutil passando sob a palavra. Compacto.", render: c20 },
 ]
 
-function ConceptCard({
-  concept, color, bg, textColor, borderColor,
-}: { concept: Concept; color: string; bg: string; textColor: string; borderColor: string }) {
+function ConceptCard({ concept, color, dark }: { concept: Concept; color: string; dark: boolean }) {
   return (
-    <div style={{ background: bg, border: `1px solid ${borderColor}`, borderRadius: 18, padding: 32, display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "#94A3B8", fontFamily: "monospace" }}>CONCEITO {concept.id}</span>
+    <div className={styles.card} data-dark={dark}>
+      <div className={styles.cardTop}>
+        <span className={styles.cardId}>CONCEITO {concept.id}</span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 16px", minHeight: 140 }}>
-        {concept.render(color)}
-      </div>
+      <div className={styles.cardStage}>{concept.render(color)}</div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 20, paddingTop: 14, borderTop: `1px solid ${borderColor}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ transform: "scale(0.4)", transformOrigin: "left center", height: 28 }}>{concept.render(color)}</div>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: "monospace" }}>~24px</span>
+      <div className={styles.cardSizes}>
+        <div className={styles.sizeRow}>
+          <div className={styles.size24}>{concept.render(color)}</div>
+          <span className={styles.sizeLabel}>~24px</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ transform: "scale(0.6)", transformOrigin: "left center", height: 40 }}>{concept.render(color)}</div>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: "monospace" }}>~36px</span>
+        <div className={styles.sizeRow}>
+          <div className={styles.size36}>{concept.render(color)}</div>
+          <span className={styles.sizeLabel}>~36px</span>
         </div>
       </div>
 
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: textColor, marginBottom: 4 }}>{concept.title}</div>
-        <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>{concept.description}</div>
+        <div className={styles.cardTitle}>{concept.title}</div>
+        <div className={styles.cardDesc}>{concept.description}</div>
       </div>
     </div>
   )
@@ -210,10 +207,6 @@ export default function LogoConcepts() {
   }, [])
 
   const isDark = bg === "dark"
-  const pageBg = isDark ? "#0B1220" : "#F7F9FC"
-  const cardBg = isDark ? "#0F172A" : "#FFFFFF"
-  const textColor = isDark ? "#FFFFFF" : "#0B1220"
-  const borderColor = isDark ? "#1E293B" : "#E5EAF2"
 
   const colorOptions = [
     { name: "Preto", v: "#0B1220" },
@@ -227,38 +220,36 @@ export default function LogoConcepts() {
   ]
 
   return (
-    <div style={{ minHeight: "100vh", background: pageBg, fontFamily: "'Inter', system-ui, sans-serif", paddingBottom: 80 }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 100, background: "#0B1220", color: "#FFFFFF", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontSize: 13, borderBottom: "2px solid #1E293B" }}>
-        <div style={{ fontWeight: 700, letterSpacing: "0.1em", fontSize: 11 }}>🎨 LOGO CONCEPTS · RODADA 2</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ opacity: 0.6 }}>Cor:</span>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <div className={styles.page} data-dark={isDark}>
+      <div className={styles.bar}>
+        <div className={styles.barTitle}>🎨 LOGO CONCEPTS · RODADA 2</div>
+        <div className={styles.barGroup}>
+          <span className={styles.barDim}>Cor:</span>
+          <div className={styles.swatches}>
             {colorOptions.map((c) => (
               <button key={c.v} onClick={() => setColor(c.v)} title={c.name}
-                style={{ width: 28, height: 28, borderRadius: 6, background: c.v, border: color === c.v ? "2px solid #FFFFFF" : "2px solid #334155", cursor: "pointer" }} />
+                className={styles.swatch} data-active={color === c.v} style={{ background: c.v }} />
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ opacity: 0.6 }}>Fundo:</span>
-          <button onClick={() => setBg("light")} style={{ background: bg === "light" ? "#FFFFFF" : "transparent", color: bg === "light" ? "#0B1220" : "#FFFFFF", border: "1px solid #334155", padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Claro</button>
-          <button onClick={() => setBg("dark")} style={{ background: bg === "dark" ? "#FFFFFF" : "transparent", color: bg === "dark" ? "#0B1220" : "#FFFFFF", border: "1px solid #334155", padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Escuro</button>
+        <div className={styles.barGroup}>
+          <span className={styles.barDim}>Fundo:</span>
+          <button onClick={() => setBg("light")} className={styles.bgBtn} data-active={bg === "light"}>Claro</button>
+          <button onClick={() => setBg("dark")} className={styles.bgBtn} data-active={bg === "dark"}>Escuro</button>
         </div>
-        <div style={{ marginLeft: "auto", opacity: 0.55, fontSize: 11 }}>{color} · {bg}</div>
+        <div className={styles.barMeta}>{color} · {bg}</div>
       </div>
 
-      <div style={{ textAlign: "center", padding: "48px 24px 32px", maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 36, fontWeight: 800, color: textColor, margin: 0, letterSpacing: "-0.025em", marginBottom: 10 }}>
-          Pontes — rodada 2 (12 conceitos)
-        </h1>
-        <p style={{ fontSize: 15, color: isDark ? "#94A3B8" : "#64748B", margin: 0, lineHeight: 1.55 }}>
+      <div className={styles.head}>
+        <h1 className={styles.title}>Pontes — rodada 2 (12 conceitos)</h1>
+        <p className={styles.subtitle}>
           Direções diferentes — wordmarks tipográficos, símbolos abstratos puros, ligaduras, monogramas. Troca cor/fundo no topo. Diz o número que bater.
         </p>
       </div>
 
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 20 }}>
+      <div className={styles.grid}>
         {concepts.map((c) => (
-          <ConceptCard key={c.id} concept={c} color={color} bg={cardBg} textColor={textColor} borderColor={borderColor} />
+          <ConceptCard key={c.id} concept={c} color={color} dark={isDark} />
         ))}
       </div>
     </div>
