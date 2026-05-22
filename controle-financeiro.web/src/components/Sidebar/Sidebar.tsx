@@ -1,10 +1,6 @@
 /**
  * Sidebar — navegação lateral do shell interno (#118). 100% biblioteca Pontes.
- *
- * Expandida (240px) mostra logo + labels; colapsada vira rail de ícones (72px)
- * com tooltip no hover. Estado ativo destacado pela rota atual. Menu de usuário
- * via PontesPopover (perfil, personalização, troca de conta, sair). Cor + fonte
- * do usePontesTheme.
+ * Cor via var(--pontes-*) (Sidebar.module.css). Estados via data-open (CSS).
  */
 
 import { useState } from "react"
@@ -14,9 +10,10 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users,
   Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
 } from "lucide-react"
-import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
+import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
 import { useAuth } from "../../hooks/useAuth"
+import styles from "./Sidebar.module.css"
 
 type SidebarProps = { open: boolean; drawerWidth: number; railWidth: number }
 
@@ -52,7 +49,6 @@ function getInitials(nome: string) {
 }
 
 export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) {
-  const { palette: p, font } = usePontesTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const { currentUser, savedAccounts, logout, switchAccount } = useAuth()
@@ -69,7 +65,7 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
     { key: "ajuda", icon: <HelpCircle size={16} strokeWidth={2} />, label: "Ajuda", onClick: () => navigate("/settings") },
     ...otherAccounts.map((a): PontesPopoverItem => ({
       key: `acc-${a.id}`,
-      icon: <span style={{ width: 18, height: 18, borderRadius: "50%", background: p.primary, color: p.heroFg, fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{getInitials(a.nome)}</span>,
+      icon: <span className={styles.miniAvatar}>{getInitials(a.nome)}</span>,
       label: a.nome,
       divider: true,
       onClick: () => void switchAccount(a.id),
@@ -79,32 +75,25 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
   ]
 
   return (
-    <aside style={{
-      width, flexShrink: 0, height: "100%",
-      display: "flex", flexDirection: "column", fontFamily: font,
-      transition: "width 220ms cubic-bezier(0.4,0,0.2,1)",
-      background: "transparent",
-    }}>
-      {/* Logo — wordmark e mark "P" na MESMA coluna (a dos ícones, ~24px),
-          cross-fade sem nenhum deslocamento perceptível. */}
-      <div style={{ height: 60, position: "relative", flexShrink: 0 }}>
-        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none", transition: "opacity 160ms ease" }}>
-          <PontesLogo color={p.primary} size={30} onClick={() => navigate("/dashboard")} />
+    <aside className={styles.aside} data-open={open ? "true" : "false"} style={{ width }}>
+      {/* Logo — wordmark e mark "P" na MESMA coluna, cross-fade. */}
+      <div className={styles.logoWrap}>
+        <div className={styles.logoFull}>
+          <PontesLogo color="var(--pontes-primary)" size={30} onClick={() => navigate("/dashboard")} />
         </div>
-        <div style={{ position: "absolute", left: 24, top: 0, bottom: 0, display: "flex", alignItems: "center", opacity: open ? 0 : 1, pointerEvents: open ? "none" : "auto", transition: "opacity 160ms ease" }}>
-          <PontesLogoMark color={p.primary} size={32} onClick={() => navigate("/dashboard")} />
+        <div className={styles.logoMark}>
+          <PontesLogoMark color="var(--pontes-primary)" size={32} onClick={() => navigate("/dashboard")} />
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "12px 12px 0" }}>
+      <nav className={styles.nav}>
         {NAV.map((group) => (
-          <div key={group.section} style={{ marginBottom: 8 }}>
-            <PontesSidebarSection p={p} label={group.section} collapsed={!open} />
+          <div key={group.section} className={styles.group}>
+            <PontesSidebarSection label={group.section} collapsed={!open} />
             {group.items.map((item) => (
               <PontesSidebarItem
                 key={item.to}
-                p={p} font={font}
                 icon={item.icon}
                 label={item.label}
                 active={location.pathname === item.to || location.pathname.startsWith(item.to + "/")}
@@ -118,26 +107,18 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
 
       {/* Usuário */}
       {currentUser && (
-        <div style={{ padding: "4px 12px 12px", flexShrink: 0 }}>
+        <div className={styles.userWrap}>
           <PontesPopover
-            p={p} font={font} align="left" minWidth={230} direction="up" fullWidth
+            align="left" minWidth={230} direction="up" fullWidth
             trigger={
-              <div className="pontes-clickable" data-pontes-variant="ghost" style={{
-                display: "flex", alignItems: "center", gap: open ? 12 : 0, padding: "8px 12px",
-                borderRadius: 10, cursor: "pointer", justifyContent: "flex-start",
-                transition: "gap 200ms ease",
-              }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: p.primary, color: p.heroFg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0, boxShadow: `0 0 0 2px ${p.surface}, 0 0 0 4px ${p.primarySoft}` }}>{initials}</span>
-                <span style={{
-                  display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
-                  opacity: open ? 1 : 0, maxWidth: open ? 200 : 0, overflow: "hidden",
-                  transition: "opacity 160ms ease, max-width 220ms ease",
-                }}>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentUser.nome}</span>
-                    <span style={{ display: "inline-block", marginTop: 3, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: p.primary, background: p.primarySoft, padding: "1px 7px", borderRadius: 999, whiteSpace: "nowrap" }}>Plano Free</span>
+              <div className={styles.userTrigger}>
+                <span className={styles.avatar}>{initials}</span>
+                <span className={styles.userInfo}>
+                  <span className={styles.userText}>
+                    <span className={styles.userName}>{currentUser.nome}</span>
+                    <span className={styles.userPlan}>Plano Free</span>
                   </span>
-                  <ChevronRight size={15} strokeWidth={2} color={p.textMuted} style={{ flexShrink: 0 }} />
+                  <ChevronRight size={15} strokeWidth={2} color="var(--pontes-text-muted)" style={{ flexShrink: 0 }} />
                 </span>
               </div>
             }

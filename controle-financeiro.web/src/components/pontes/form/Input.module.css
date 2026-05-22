@@ -1,0 +1,39 @@
+/* Input.module.css — campos de texto. Cor via var(--pontes-*). Foco via :focus. */
+.input {
+  width: 100%; border: 1px solid var(--pontes-border); border-radius: 10px;
+  padding: 12px 14px; font-size: 14px; font-family: var(--pontes-font);
+  background: var(--pontes-surface); color: var(--pontes-text);
+  outline: none; box-sizing: border-box;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.input:focus { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-primary) 13%, transparent); }
+.input[data-invalid="true"] { border-color: var(--pontes-danger); background: var(--pontes-danger-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-danger) 13%, transparent); }
+.input[data-has-start="true"] { padding-left: 38px; }
+.input[data-has-end="true"] { padding-right: 38px; }
+.input[data-fullwidth="false"] { width: auto; }
+
+.wrap { position: relative; width: 100%; }
+.wrap[data-fullwidth="false"] { width: auto; }
+.iconStart { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--pontes-text-muted); pointer-events: none; }
+.iconEnd { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--pontes-text-muted); }
+
+/* MoneyInput */
+.money { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 24px; max-width: 380px; font-family: var(--pontes-font); }
+.moneyLabel { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); letter-spacing: .12em; margin-bottom: 8px; text-transform: uppercase; }
+.moneyRow { display: flex; align-items: baseline; gap: 6px; }
+.moneyCur { font-size: 28px; color: var(--pontes-text-muted); font-weight: 600; }
+.moneyInput { font-size: 48px; font-weight: 800; color: var(--pontes-text); border: none; background: transparent; outline: none; letter-spacing: -.025em; width: 100%; font-family: var(--pontes-font); }
+.moneyDivider { height: 1px; background: var(--pontes-border); margin-top: 8px; }
+.moneySugg { display: flex; gap: 6px; margin-top: 14px; }
+.moneyChip { flex: 1; background: var(--pontes-bg); color: var(--pontes-text); border: 1px solid var(--pontes-border); padding: 6px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--pontes-font); transition: background-color .15s ease, color .15s ease; }
+.moneyChip:hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); }
+
+/* Textarea */
+.textarea {
+  width: 100%; border: 1px solid var(--pontes-border); border-radius: 10px; padding: 12px 14px;
+  font-size: 14px; font-family: var(--pontes-font); background: var(--pontes-surface); color: var(--pontes-text);
+  outline: none; resize: none; min-height: 80px; box-sizing: border-box;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.textarea:focus { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-primary) 13%, transparent); }
+.textarea[data-invalid="true"] { border-color: var(--pontes-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-danger) 13%, transparent); }

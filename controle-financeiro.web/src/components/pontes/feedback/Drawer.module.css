@@ -1,0 +1,16 @@
+/* Drawer.module.css — painel lateral. Cor via var(--pontes-*). */
+.overlay { position: fixed; inset: 0; background: rgba(11, 18, 32, .55); z-index: 9998; opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+.overlay[data-open="true"] { opacity: 1; pointer-events: auto; }
+.panel {
+  position: fixed; top: 0; bottom: 0; z-index: 9999; background: var(--pontes-surface);
+  transition: transform 280ms cubic-bezier(.2, .8, .2, 1);
+  font-family: var(--pontes-font); display: flex; flex-direction: column;
+}
+.panel[data-side="right"] { right: 0; border-left: 1px solid var(--pontes-border); box-shadow: -12px 0 28px rgba(0, 0, 0, .12); transform: translateX(100%); }
+.panel[data-side="left"] { left: 0; border-right: 1px solid var(--pontes-border); box-shadow: 12px 0 28px rgba(0, 0, 0, .12); transform: translateX(-100%); }
+.panel[data-open="true"] { transform: translateX(0); }
+.header { padding: 18px 24px; border-bottom: 1px solid var(--pontes-border); display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 16px; font-weight: 700; color: var(--pontes-text); }
+.close { background: transparent; border: none; color: var(--pontes-text-muted); font-size: 18px; cursor: pointer; }
+.body { flex: 1; overflow-y: auto; padding: 24px; }
+.footer { padding: 16px 24px; border-top: 1px solid var(--pontes-border); background: var(--pontes-bg); }

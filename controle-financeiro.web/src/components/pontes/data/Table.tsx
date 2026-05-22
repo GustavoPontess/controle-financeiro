@@ -1,10 +1,11 @@
-﻿/**
- * Table — tabela com header (cards/labels), rows e ações.
- * Renderiza customizável via prop `columns` + `rows`.
+/**
+ * Table — tabela com header, rows e ações. Cor via var(--pontes-*).
+ * Alinhamento/width por coluna ficam inline (por-instância). `p`/`font` escopado.
  */
 
-import { type ReactNode } from "react"
-import type { Palette } from "../theme"
+import { type ReactNode, type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Table.module.css"
 
 export type PontesTableColumn<R> = {
   key: string
@@ -17,8 +18,8 @@ export type PontesTableColumn<R> = {
 }
 
 export type PontesTableProps<R> = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   title?: string
   subtitle?: string
   toolbar?: ReactNode
@@ -34,51 +35,36 @@ export function PontesTable<R>({
   p, font, title, subtitle, toolbar, columns, rows, footer, rowKey, emptyMessage,
 }: PontesTableProps<R>) {
   return (
-    <div style={{
-      background: p.surface, border: `1px solid ${p.border}`,
-      borderRadius: 14, overflow: "hidden", fontFamily: font,
-    }}>
+    <div className={styles.wrap} style={scopedThemeVars(p, font) as CSSProperties}>
       {(title || subtitle || toolbar) && (
-        <div style={{
-          padding: "14px 20px", borderBottom: `1px solid ${p.border}`,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-        }}>
+        <div className={styles.head}>
           <div>
-            {title && <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>{title}</div>}
-            {subtitle && <div style={{ fontSize: 11, color: p.textMuted }}>{subtitle}</div>}
+            {title && <div className={styles.title}>{title}</div>}
+            {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
           </div>
-          {toolbar && <div style={{ display: "flex", gap: 8 }}>{toolbar}</div>}
+          {toolbar && <div className={styles.toolbar}>{toolbar}</div>}
         </div>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <table className={styles.table}>
         <thead>
-          <tr style={{ background: p.bg, borderBottom: `1px solid ${p.border}` }}>
+          <tr className={styles.theadRow}>
             {columns.map((c) => (
-              <th key={c.key} style={{
-                textAlign: c.align ?? "left", padding: "12px 16px",
-                fontSize: 11, fontWeight: 700, color: p.textMuted,
-                letterSpacing: "0.08em", textTransform: "uppercase",
-                width: c.width,
-              }}>{c.header}</th>
+              <th key={c.key} className={styles.th} style={{ textAlign: c.align ?? "left", width: c.width }}>
+                {c.header}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ padding: 32, textAlign: "center", color: p.textMuted, fontSize: 13 }}>
-                {emptyMessage ?? "Sem dados"}
-              </td>
+              <td colSpan={columns.length} className={styles.empty}>{emptyMessage ?? "Sem dados"}</td>
             </tr>
           ) : rows.map((row, i) => (
-            <tr key={rowKey?.(row, i) ?? i}
-              style={{ borderBottom: i < rows.length - 1 ? `1px solid ${p.border}` : "none" }}>
+            <tr key={rowKey?.(row, i) ?? i} className={styles.row}>
               {columns.map((c) => (
-                <td key={c.key} style={{
-                  padding: "12px 16px", color: p.text,
-                  textAlign: c.align ?? "left",
-                }}>
+                <td key={c.key} className={styles.td} style={{ textAlign: c.align ?? "left" }}>
                   {c.render(row, i)}
                 </td>
               ))}
@@ -87,14 +73,7 @@ export function PontesTable<R>({
         </tbody>
       </table>
 
-      {footer && (
-        <div style={{
-          padding: "12px 20px", borderTop: `1px solid ${p.border}`,
-          background: p.bg, fontSize: 12, color: p.textMuted,
-        }}>
-          {footer}
-        </div>
-      )}
+      {footer && <div className={styles.footer}>{footer}</div>}
     </div>
   )
 }

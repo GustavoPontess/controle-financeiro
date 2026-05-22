@@ -1,12 +1,15 @@
-﻿/**
- * StatCard — KPI card com label + valor + tendência.
+/**
+ * StatCard — KPI card com label + valor + tendência. Cor via var(--pontes-*).
+ * `p`/`font` são override de tema escopado opcional (transição #122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./StatCard.module.css"
 
 export type PontesStatCardProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   label: string
   value: string
   trend?: string
@@ -19,23 +22,11 @@ export function PontesStatCard({
   p, font, label, value, trend, trendUp, hint = "vs mês anterior",
 }: PontesStatCardProps) {
   return (
-    <div style={{
-      background: p.surface, border: `1px solid ${p.border}`,
-      borderRadius: 12, padding: 16, fontFamily: font,
-    }}>
-      <div style={{
-        fontSize: 11, color: p.textMuted, fontWeight: 600,
-        letterSpacing: "0.08em", marginBottom: 6, textTransform: "uppercase",
-      }}>{label}</div>
-      <div style={{
-        fontSize: 22, fontWeight: 800, color: p.text,
-        letterSpacing: "-0.02em", marginBottom: 6,
-      }}>{value}</div>
+    <div className={styles.card} style={scopedThemeVars(p, font) as CSSProperties}>
+      <div className={styles.label}>{label}</div>
+      <div className={styles.value}>{value}</div>
       {trend && (
-        <div style={{
-          fontSize: 12, fontWeight: 600,
-          color: trendUp ? "#16A34A" : "#DC2626",
-        }}>
+        <div className={styles.trend} data-up={trendUp ? "true" : "false"}>
           {trendUp ? "↑" : "↓"} {trend} {hint}
         </div>
       )}

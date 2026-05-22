@@ -1,14 +1,14 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, usePontesTheme } from '@/components/pontes'
+import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo } from '@/components/pontes'
 import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
+import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { palette: p, font } = usePontesTheme()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,25 +31,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: font }}>
-      <style>{`@media (max-width: 899px) { .auth-brand-panel { display: none !important; } }`}</style>
-
+    <div className={styles.root}>
       {/* ── PAINEL ESQUERDO — brand ───────────────────────────────────── */}
-      <div
-        className="auth-brand-panel"
-        style={{
-          display: 'flex',
-          width: '48%',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '48px',
-          background: `linear-gradient(150deg, ${p.primary} 0%, ${p.primaryDark} 100%)`,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
+      <div className={styles.brand}>
         {/* grade decorativa */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+        <svg className={styles.grid}>
           <defs>
             <pattern id="auth-grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
@@ -59,138 +45,80 @@ export default function LoginPage() {
         </svg>
 
         {/* blob decorativo */}
-        <div style={{
-          position: 'absolute', top: '-15%', right: '-15%',
-          width: '60%', height: '60%', borderRadius: '50%',
-          background: 'rgba(255,255,255,0.06)',
-          filter: 'blur(40px)',
-          pointerEvents: 'none',
-        }} />
+        <div className={styles.blob} />
 
         {/* Logo */}
-        <div style={{ position: 'relative', zIndex: 1 }}>
+        <div className={styles.brandLogo}>
           <PontesLogo color="#ffffff" size={32} onClick={() => navigate('/')} />
         </div>
 
         {/* Headline + features */}
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{
-            fontFamily: "'Fraunces', Georgia, serif",
-            fontSize: '42px',
-            fontWeight: 700,
-            color: '#ffffff',
-            lineHeight: 1.1,
-            letterSpacing: '-0.02em',
-            margin: '0 0 8px',
-          }}>
+        <div className={styles.brandMid}>
+          <p className={styles.headline}>
             Finanças em família,{' '}
-            <span style={{ opacity: 0.85 }}>sem briga.</span>
+            <span className={styles.headlineDim}>sem briga.</span>
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px', lineHeight: 1.55, margin: '0 0 32px', fontFamily: font }}>
+          <p className={styles.lead}>
             Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className={styles.features}>
             {[
               'Rateio explícito — 50/50, % ou valor fixo',
               'Aprovação de despesa em 1 toque',
               'Conexão com Open Finance (em breve)',
             ].map((item) => (
-              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>✓</span>
-                </div>
-                <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: font }}>
-                  {item}
-                </span>
+              <div key={item} className={styles.featureRow}>
+                <div className={styles.featureCheck}>✓</div>
+                <span className={styles.featureText}>{item}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Testimonial */}
-        <div style={{
-          position: 'relative', zIndex: 1,
-          background: 'rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: '16px',
-          padding: '24px',
-          border: '1px solid rgba(255,255,255,0.15)',
-        }}>
-          <p style={{ color: '#ffffff', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px', fontStyle: 'italic', fontFamily: font }}>
+        <div className={styles.quote}>
+          <p className={styles.quoteText}>
             "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas com o Pontes, tudo ficou explícito."
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '14px', fontWeight: 700, color: '#ffffff',
-              fontFamily: font,
-            }}>RM</div>
+          <div className={styles.quoteWho}>
+            <div className={styles.quoteAvatar}>RM</div>
             <div>
-              <p style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600, fontFamily: font, margin: 0 }}>Ricardo Moraes</p>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: font, margin: 0 }}>Casal · São Paulo</p>
+              <p className={styles.quoteName}>Ricardo Moraes</p>
+              <p className={styles.quoteRole}>Casal · São Paulo</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── PAINEL DIREITO — form ─────────────────────────────────────── */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px 40px',
-        backgroundColor: p.surface,
-        overflowY: 'auto',
-      }}>
-        <div style={{ width: '100%', maxWidth: '400px' }}>
+      <div className={styles.form}>
+        <div className={styles.formInner}>
           {/* Voltar para homepage */}
           <BackButton to="/" />
 
           {/* Logo mobile */}
-          <div className="auth-logo-mobile" style={{ marginBottom: '32px', textAlign: 'center' }}>
-            <style>{`@media (min-width: 900px) { .auth-logo-mobile { display: none !important; } }`}</style>
-            <PontesLogo color={p.primary} size={28} onClick={() => navigate('/')} />
+          <div className={styles.logoMobile}>
+            <PontesLogo color="var(--pontes-primary)" size={28} onClick={() => navigate('/')} />
           </div>
 
           {/* Header form */}
-          <div style={{ marginBottom: '32px' }}>
-            <h1 style={{
-              fontFamily: font,
-              fontSize: '28px',
-              fontWeight: 700,
-              color: p.text,
-              letterSpacing: '-0.02em',
-              margin: '0 0 4px',
-            }}>
-              Bem-vindo de volta
-            </h1>
-            <p style={{ fontSize: '14px', color: p.textMuted, fontFamily: font, margin: 0 }}>
+          <div className={styles.head}>
+            <h1 className={styles.title}>Bem-vindo de volta</h1>
+            <p className={styles.sub}>
               Não tem conta?{' '}
-              <Link to="/auth/register" style={{ color: p.primary, textDecoration: 'none', fontWeight: 600 }}>
-                Criar conta grátis
-              </Link>
+              <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link>
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={handleSubmit} className={styles.formBody}>
             {error && (
-              <PontesAlert font={font} tone="error">{error}</PontesAlert>
+              <PontesAlert tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField p={p} font={font} label="E-mail" htmlFor="login-email" required>
+            <PontesField label="E-mail" htmlFor="login-email" required>
               <PontesInput
-                p={p}
-                font={font}
                 id="login-email"
                 type="email"
                 value={email}
@@ -200,10 +128,8 @@ export default function LoginPage() {
               />
             </PontesField>
 
-            <PontesField p={p} font={font} label="Senha" htmlFor="login-senha" required>
+            <PontesField label="Senha" htmlFor="login-senha" required>
               <PontesInput
-                p={p}
-                font={font}
                 id="login-senha"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -216,7 +142,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     data-testid="toggle-senha"
                     tabIndex={-1}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0, color: p.textMuted }}
+                    className={styles.eyeBtn}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -224,18 +150,11 @@ export default function LoginPage() {
               />
             </PontesField>
 
-            <div style={{ textAlign: 'right', marginTop: -8 }}>
-              <Link
-                to="/auth/forgot-password"
-                style={{ fontSize: 12, color: p.textMuted, textDecoration: 'none', fontFamily: font }}
-              >
-                Esqueci a senha
-              </Link>
+            <div className={styles.forgotRow}>
+              <Link to="/auth/forgot-password" className={styles.forgotLink}>Esqueci a senha</Link>
             </div>
 
             <PontesButton
-              p={p}
-              font={font}
               type="submit"
               variant="primary"
               size="lg"
@@ -248,16 +167,11 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <p style={{
-            marginTop: '32px', textAlign: 'center',
-            fontSize: '12px',
-            color: p.textMuted,
-            fontFamily: font,
-          }}>
+          <p className={styles.footer}>
             Ao entrar você concorda com os{' '}
-            <span style={{ color: p.textMuted }}>Termos de Uso</span>
+            <span className={styles.footerMuted}>Termos de Uso</span>
             {' '}e{' '}
-            <span style={{ color: p.textMuted }}>Política de Privacidade</span>.
+            <span className={styles.footerMuted}>Política de Privacidade</span>.
           </p>
         </div>
       </div>

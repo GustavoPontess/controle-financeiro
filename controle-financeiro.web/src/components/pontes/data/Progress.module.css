@@ -1,0 +1,7 @@
+/* Progress.module.css — barra de progresso. Cor via var(--pontes-*). */
+.wrap { font-family: var(--pontes-font); }
+.head { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.label { font-size: 13px; color: var(--pontes-text); font-weight: 600; }
+.value { font-size: 13px; color: var(--pontes-text-muted); font-weight: 600; }
+.track { background: var(--pontes-bg); overflow: hidden; }
+.bar { height: 100%; background: var(--pontes-primary); transition: width 250ms ease; }

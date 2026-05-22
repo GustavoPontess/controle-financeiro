@@ -1,13 +1,15 @@
-﻿/**
- * Slider — range slider single thumb.
+/**
+ * Slider — range slider single thumb. Cor via var(--pontes-*).
+ * Posições (percent) ficam inline. `p`/`font` override escopado opcional (#122).
  */
 
-import { type ChangeEvent } from "react"
-import type { Palette } from "../theme"
+import { type ChangeEvent, type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Slider.module.css"
 
 export type PontesSliderProps = {
-  p: Palette
-  font: string
+  p?: Palette
+  font?: string
   label?: string
   min?: number
   max?: number
@@ -24,39 +26,25 @@ export function PontesSlider({
   const display = formatValue ? formatValue(value) : String(value)
 
   return (
-    <div style={{
-      background: p.surface, border: `1px solid ${p.border}`,
-      borderRadius: 12, padding: 20, maxWidth: 480, fontFamily: font,
-    }}>
+    <div className={styles.wrap} style={scopedThemeVars(p, font) as CSSProperties}>
       {label && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, fontSize: 13 }}>
-          <span style={{ color: p.textMuted }}>{label}</span>
-          <span style={{ color: p.text, fontWeight: 700 }}>{display}</span>
+        <div className={styles.head}>
+          <span className={styles.headLabel}>{label}</span>
+          <span className={styles.headValue}>{display}</span>
         </div>
       )}
-      <div style={{ position: "relative", height: 24, display: "flex", alignItems: "center" }}>
-        <div style={{ position: "absolute", left: 0, right: 0, height: 6, background: p.bg, borderRadius: 999 }} />
-        <div style={{
-          position: "absolute", left: 0, width: `${percent}%`, height: 6,
-          background: p.primary, borderRadius: 999,
-        }} />
+      <div className={styles.rail}>
+        <div className={styles.track} />
+        <div className={styles.fill} style={{ width: `${percent}%` }} />
         <input
           type="range"
           min={min} max={max} step={step} value={value}
           onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(Number(e.target.value))}
-          style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            opacity: 0, cursor: "grab", margin: 0,
-          }}
+          className={styles.input}
         />
-        <div style={{
-          position: "absolute", left: `${percent}%`, transform: "translateX(-50%)",
-          width: 22, height: 22, background: "#FFFFFF",
-          border: `2px solid ${p.primary}`, borderRadius: "50%",
-          boxShadow: `0 4px 12px ${p.primary}44`, pointerEvents: "none",
-        }} />
+        <div className={styles.thumb} style={{ left: `${percent}%` }} />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: p.textMuted }}>
+      <div className={styles.ends}>
         <span>{formatValue ? formatValue(min) : min}</span>
         <span>{formatValue ? formatValue(max) : max}</span>
       </div>

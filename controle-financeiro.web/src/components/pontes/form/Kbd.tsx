@@ -1,28 +1,25 @@
-﻿/**
- * Kbd — tecla de atalho estilo teclado.
- * PontesKbd: single key. PontesKbdGroup: sequência ⌘+K.
+/**
+ * Kbd — tecla de atalho estilo teclado. Cor via var(--pontes-*).
+ * `p`/`font` override escopado opcional (#122).
  */
 
-import type { Palette } from "../theme"
+import { type CSSProperties } from "react"
+import { scopedThemeVars, type Palette } from "../theme"
+import styles from "./Kbd.module.css"
 
 export type PontesKbdProps = {
-  p: Palette
+  p?: Palette
   children: React.ReactNode
 }
 
 export function PontesKbd({ p, children }: PontesKbdProps) {
   return (
-    <kbd style={{
-      display: "inline-block", padding: "3px 8px",
-      background: p.surface, border: `1px solid ${p.border}`, borderBottomWidth: 2,
-      borderRadius: 6, fontSize: 11, fontWeight: 700, color: p.text,
-      fontFamily: "monospace", boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
-    }}>{children}</kbd>
+    <kbd className={styles.kbd} style={scopedThemeVars(p) as CSSProperties}>{children}</kbd>
   )
 }
 
 export type PontesKbdGroupProps = {
-  p: Palette
+  p?: Palette
   font?: string
   keys: string[]
   label?: string
@@ -30,11 +27,11 @@ export type PontesKbdGroupProps = {
 
 export function PontesKbdGroup({ p, font, keys, label }: PontesKbdGroupProps) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <span style={{ display: "inline-flex", gap: 3 }}>
+    <span className={styles.group} style={scopedThemeVars(p, font) as CSSProperties}>
+      <span className={styles.keys}>
         {keys.map((k) => <PontesKbd key={k} p={p}>{k}</PontesKbd>)}
       </span>
-      {label && <span style={{ fontSize: 12, color: p.textMuted, fontFamily: font }}>{label}</span>}
+      {label && <span className={styles.label}>{label}</span>}
     </span>
   )
 }

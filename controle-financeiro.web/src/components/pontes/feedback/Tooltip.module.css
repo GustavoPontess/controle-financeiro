@@ -1,0 +1,12 @@
+/* Tooltip.module.css — texto curto em hover. Cor via var(--pontes-*). */
+.wrap { position: relative; display: inline-block; }
+.tip {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  background: var(--pontes-text); color: #fff; padding: 6px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 500; white-space: nowrap; font-family: var(--pontes-font); z-index: 100;
+}
+.tip[data-side="top"] { top: -42px; }
+.tip[data-side="bottom"] { bottom: -42px; }
+.arrow { position: absolute; left: 50%; transform: translateX(-50%) rotate(45deg); width: 8px; height: 8px; background: var(--pontes-text); }
+.tip[data-side="top"] .arrow { bottom: -4px; }
+.tip[data-side="bottom"] .arrow { top: -4px; }

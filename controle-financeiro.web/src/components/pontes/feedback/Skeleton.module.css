@@ -1,0 +1,13 @@
+/* Skeleton.module.css — placeholder shimmer. Cor via var(--pontes-*). */
+.sk {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--pontes-bg) 25%, var(--pontes-border) 50%, var(--pontes-bg) 75%);
+  background-size: 200% 100%;
+  animation: pontes-shimmer 1.5s infinite linear;
+}
+@keyframes pontes-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.rowMid { flex: 1; }
+.list { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; padding: 20px; }
+.listItem { border-bottom: 1px solid var(--pontes-border); }
+.listItem:last-child { border-bottom: none; }
