@@ -13,13 +13,21 @@ issue_atual: '#82 Transação Add/Editar + #83 Subcategorias. Branch feature/82-
 ### Feito nesta sessão
 - [x] **#83 BACKEND** — entidade `Subcategoria` (Nome/Icone/Cor/CategoriaId/UsuarioId), `Transacao.SubcategoriaId?` (SetNull), `SubcategoriaService` (CRUD multi-tenant, exceções padrão), `SubcategoriasController` (`?categoriaId` filtra), DTOs, registrado no Program.cs, migration `AddSubcategoria` (Postgres, limpa), 9 testes xUnit. **150 testes verdes, API sobe limpa (health 200).** Commitado.
 
-### Falta (ordem)
-- [ ] **#83 front** — página Categorias (`pages/Categories/`) ganha sub-lista expansível: criar/editar/excluir subcategoria. Service `subcategoriaService.ts` + types. Padrão CSS Modules + var (regra #122). Teste front.
-- [ ] **#82 back** — auditar `TransacaoService` (3 modos: único/recorrente/parcelado), aceitar `SubcategoriaId` no criar/editar, idempotência, validações cruzadas (cartão→fatura, recorrente→expansão). Testes dos 3 modos.
-- [ ] **#82 front** — `EditTransactionDialog`/form refator: tabs Único|Recorrente|Parcelado, campos por modo, toggle Recebido/Pago, dropdown Subcategoria filtrado pela Categoria, bloco rateio se família. CSS Modules + var. Testes de integração por modo.
+- [x] **#83 front** — `CategoriesPage` refatorada (saiu de MUI/tokens/CustomButton) → Pontes + `*.module.css` + var. Sub-lista expansível por categoria: criar/editar/excluir subcategoria (PontesModal + PontesColorPicker), exclusão via PontesDialog. `subcategoryService.ts` + `Subcategory` type. 3 testes de página → **suite front 107 verde**. Commitado.
+
+### Falta (ordem) — #82 inteiro
+- [ ] **#82 back** — auditar `TransacaoService` (3 modos: único/recorrente/parcelado). Aceitar `SubcategoriaId` no criar/editar **em todos os caminhos** (conta, cartão, parcelamento gera N transações). Idempotência, validações cruzadas (cartão→fatura, recorrente→expansão). Adicionar `SubcategoriaId` em `CriarTransacaoDto` + `TransacaoDto` + mapeamento. Testes dos 3 modos.
+- [ ] **#82 front** — form de transação refator: tabs Único|Recorrente|Parcelado, campos por modo, toggle Recebido/Pago, dropdown Subcategoria filtrado pela Categoria (usa `getSubcategories(categoriaId)`), bloco rateio se família. CSS Modules + var. Testes por modo.
 
 ### Próxima ação concreta
-`#83 front`: ler `pages/Categories/` atual + criar `services/subcategoriaService.ts` espelhando `categoriaService.ts`; adicionar sub-lista na página de Categorias usando componentes Pontes (`@/components/pontes`) + `*.module.css`.
+`#82 back`: ler `TransacaoService.cs` inteiro + `Controllers/TransacoesController.cs` (ou onde cria transação). Mapear os 3 caminhos (linha ~46 cria via entidade `Transacao`; linha ~95 caminho cartão/parcelamento via `dto`; linha ~165 update). Adicionar `SubcategoriaId` no DTO e propagar em cada caminho. Validar subcategoria pertence à categoria escolhida.
+
+### Estado da branch (commits)
+1. #83 backend (entidade/service/controller/migration/9 testes)
+2. docs estado
+3. #83 front service+type
+4. #83 front CategoriesPage refatorada + 3 testes
+(#82 ainda não começou)
 
 ### Notas
 - Dev: Postgres docker `controlefinanceiro-db`, API restart aplica migration via `MigrateAsync`.
