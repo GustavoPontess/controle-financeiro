@@ -14,7 +14,7 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users,
   Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
 } from "lucide-react"
-import { PontesPopover, PontesLogo, PontesLogoMark, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
+import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, usePontesTheme, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
 import { useAuth } from "../../hooks/useAuth"
 
@@ -98,49 +98,30 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
       <nav style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "12px 12px 0" }}>
         {NAV.map((group) => (
           <div key={group.section} style={{ marginBottom: 8 }}>
-            {open && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: p.textMuted, padding: "12px 12px 6px" }}>{group.section}</div>
-            )}
-            {!open && <div style={{ height: 1, background: p.border, margin: "10px 8px" }} />}
-            {group.items.map((item) => {
-              const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/")
-              return (
-                <button
-                  key={item.to}
-                  onClick={() => navigate(item.to)}
-                  title={!open ? item.label : undefined}
-                  className="pontes-clickable"
-                  data-pontes-variant={active ? "soft" : "ghost"}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 12,
-                    padding: open ? "10px 12px" : "10px 0", marginBottom: 2,
-                    justifyContent: open ? "flex-start" : "center",
-                    border: "none", borderRadius: 10, cursor: "pointer",
-                    background: active ? p.primarySoft : "transparent",
-                    color: active ? p.primary : p.text,
-                    fontSize: 14, fontWeight: active ? 700 : 500, fontFamily: font,
-                    position: "relative",
-                    ...(active ? { ["--pontes-hover-bg" as string]: p.primarySoft } : {}),
-                  }}
-                >
-                  {active && open && <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2, background: p.primary }} />}
-                  <span style={{ display: "flex", flexShrink: 0, color: active ? p.primary : p.textMuted }}>{item.icon}</span>
-                  {open && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>}
-                </button>
-              )
-            })}
+            <PontesSidebarSection p={p} label={group.section} collapsed={!open} />
+            {group.items.map((item) => (
+              <PontesSidebarItem
+                key={item.to}
+                p={p} font={font}
+                icon={item.icon}
+                label={item.label}
+                active={location.pathname === item.to || location.pathname.startsWith(item.to + "/")}
+                collapsed={!open}
+                onClick={() => navigate(item.to)}
+              />
+            ))}
           </div>
         ))}
       </nav>
 
       {/* Usuário */}
       {currentUser && (
-        <div style={{ padding: "8px 8px 4px", flexShrink: 0 }}>
+        <div style={{ padding: "4px 12px 12px", flexShrink: 0 }}>
           <PontesPopover
-            p={p} font={font} align="left" minWidth={230} direction="up"
+            p={p} font={font} align="left" minWidth={230} direction="up" fullWidth
             trigger={
               <div className="pontes-clickable" data-pontes-variant="ghost" style={{
-                display: "flex", alignItems: "center", gap: 10, padding: open ? "8px 10px" : 8,
+                display: "flex", alignItems: "center", gap: 12, padding: open ? "10px 12px" : "10px 0",
                 borderRadius: 10, cursor: "pointer", justifyContent: open ? "flex-start" : "center",
               }}>
                 <span style={{ width: 34, height: 34, borderRadius: "50%", background: p.primary, color: p.heroFg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{initials}</span>

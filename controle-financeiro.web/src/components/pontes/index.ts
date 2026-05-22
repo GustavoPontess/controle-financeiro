@@ -66,6 +66,7 @@ export * from "./nav/Tabs"
 export * from "./nav/Stepper"
 export * from "./nav/Pagination"
 export * from "./nav/CommandPalette"
+export * from "./nav/SidebarItem"
 
 // ── Site (componentes full-width do site público) ────────────────────────────
 export * from "./site/Navbar"

@@ -6,6 +6,7 @@ import {
   PontesButton, PontesIconButton, PontesField, PontesInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
+  PontesSidebarItem,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -33,6 +34,18 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(mark).toBeInTheDocument()
     fireEvent.click(mark)
     expect(clicked).toBe(1)
+  })
+
+  it("PontesSidebarItem renderiza label e dispara onClick", () => {
+    let clicked = 0
+    render(<PontesSidebarItem p={p} font={font} icon={<span>i</span>} label="Dashboard" active onClick={() => clicked++} />)
+    fireEvent.click(screen.getByText("Dashboard"))
+    expect(clicked).toBe(1)
+  })
+
+  it("PontesSidebarItem colapsado esconde o label", () => {
+    render(<PontesSidebarItem p={p} font={font} icon={<span>i</span>} label="Transações" collapsed />)
+    expect(screen.queryByText("Transações")).not.toBeInTheDocument()
   })
 
   it("PontesIconButton com badge renderiza contador", () => {

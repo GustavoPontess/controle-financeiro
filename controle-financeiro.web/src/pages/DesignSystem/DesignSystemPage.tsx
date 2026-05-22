@@ -33,7 +33,7 @@ import {
   PontesTooltip, PontesPopover,
   // navegação
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
-  PontesCommandPalette,
+  PontesCommandPalette, PontesSidebarItem, PontesSidebarSection,
   // site
   PontesFooter, PontesLogo, PontesLogoMark,
   // util
@@ -792,6 +792,23 @@ function NavSection({ p, font }: { p: Palette; font: string }) {
           onChange={setPage}
           totalLabel="Mostrando 21–30 de 240"
         />
+      </Group>
+
+      <Group title="Sidebar — item + section (expandido & rail)" p={p}>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <div style={{ width: 240, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: "12px 12px 8px" }}>
+            <PontesSidebarSection p={p} label="Principal" />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>◧</span>} label="Dashboard" active />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>≣</span>} label="Transações" />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>▤</span>} label="Cartões" />
+          </div>
+          <div style={{ width: 72, background: p.surface, border: `1px solid ${p.border}`, borderRadius: 14, padding: "12px 12px 8px" }}>
+            <PontesSidebarSection p={p} label="Principal" collapsed />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>◧</span>} label="Dashboard" active collapsed />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>≣</span>} label="Transações" collapsed />
+            <PontesSidebarItem p={p} font={font} icon={<span style={{ fontSize: 16 }}>▤</span>} label="Cartões" collapsed />
+          </div>
+        </div>
       </Group>
     </div>
   )
