@@ -42,7 +42,9 @@ describe("SobrePage (#80)", () => {
   it("mostra o time com os cofundadores", () => {
     renderSobre()
     expect(screen.getByText("Gustavo Pontes")).toBeInTheDocument()
+    expect(screen.getByText("Fundador · Produto & Engenharia")).toBeInTheDocument()
     expect(screen.getByText("Caio Amaral")).toBeInTheDocument()
+    expect(screen.getByText("João Vitor Costa")).toBeInTheDocument()
   })
 
   it("CTA de contato com criar conta", () => {
