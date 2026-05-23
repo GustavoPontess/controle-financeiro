@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import {
   palettes, fonts,
-  PontesButton, PontesIconButton, PontesField, PontesInput, PontesSelect,
+  PontesButton, PontesIconButton, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
   PontesSidebarItem,
@@ -65,6 +65,21 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("E-mail")).toBeInTheDocument()
     expect(screen.getByText("*")).toBeInTheDocument()
     expect(screen.getByText("Inválido")).toBeInTheDocument()
+  })
+
+  it("PontesMoneyInput só aceita números e formata como moeda BR", () => {
+    function Wrapper() {
+      const [v, setV] = useState("")
+      return <PontesMoneyInput p={p} font={font} value={v} onChange={setV} suggestions={[]} />
+    }
+    render(<Wrapper />)
+    const input = screen.getByPlaceholderText("0,00") as HTMLInputElement
+    // letras e símbolos são descartados, dígitos viram centavos
+    fireEvent.change(input, { target: { value: "abc12345xyz" } })
+    expect(input.value).toBe("123,45")
+    // limpar volta a vazio
+    fireEvent.change(input, { target: { value: "" } })
+    expect(input.value).toBe("")
   })
 
   it("PontesSelect abre, lista options e seleciona", () => {

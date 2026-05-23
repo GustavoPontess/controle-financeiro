@@ -62,6 +62,16 @@ export type PontesMoneyInputProps = {
   currency?: string
 }
 
+/** Mantém só dígitos e formata como moeda BR (centavos → "1.234,56"). */
+function maskValor(raw: string): string {
+  const digits = raw.replace(/\D/g, "")
+  if (!digits) return ""
+  return (Number(digits) / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function PontesMoneyInput({
   p, font, label = "Valor", value, onChange, suggestions = ["+100", "+500", "+1.000", "+5.000"], currency = "R$",
 }: PontesMoneyInputProps) {
@@ -70,7 +80,13 @@ export function PontesMoneyInput({
       <div className={styles.moneyLabel}>{label}</div>
       <div className={styles.moneyRow}>
         <span className={styles.moneyCur}>{currency}</span>
-        <input className={styles.moneyInput} value={value} onChange={(e) => onChange(e.target.value)} />
+        <input
+          className={styles.moneyInput}
+          value={value}
+          onChange={(e) => onChange(maskValor(e.target.value))}
+          inputMode="decimal"
+          placeholder="0,00"
+        />
       </div>
       <div className={styles.moneyDivider} />
       {suggestions.length > 0 && (
