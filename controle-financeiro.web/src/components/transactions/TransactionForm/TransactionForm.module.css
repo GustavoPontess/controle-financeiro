@@ -2,6 +2,7 @@
 .form { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-.valorErro { margin-top: 6px; font-size: 12px; color: var(--pontes-danger); font-family: var(--pontes-font); }
+.valorWrap { position: relative; }
+.valorErro { position: absolute; top: 100%; left: 0; margin-top: 3px; font-size: 11px; line-height: 1.2; color: var(--pontes-danger); font-family: var(--pontes-font); pointer-events: none; }
 
 .actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }

@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import {
   PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo,
 } from '@/components/pontes'
-import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 import styles from './RegisterPage.module.css'
@@ -48,23 +47,29 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  const clearErr = (k: keyof typeof errors) => setErrors((p) => ({ ...p, [k]: undefined }))
+
+  const validate = (): boolean => {
+    const e: typeof errors = {}
+    if (!nome.trim()) e.nome = 'Informe seu nome'
+    if (!email.trim()) e.email = 'Informe o e-mail'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'E-mail inválido'
+    if (!dataNascimento) e.dataNascimento = 'Informe a data de nascimento'
+    if (!password) e.password = 'Informe a senha'
+    else if (getSenhaRequisitos(password).some((r) => !r.ok)) e.password = 'Senha não atende aos requisitos'
+    if (!confirmPassword) e.confirmPassword = 'Confirme a senha'
+    else if (password !== confirmPassword) e.confirmPassword = 'As senhas não conferem'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (password !== confirmPassword) {
-      setError('As senhas não conferem')
-      return
-    }
-
-    const requisitos = getSenhaRequisitos(password)
-    const pendentes = requisitos.filter((r) => !r.ok).map((r) => r.label)
-    if (pendentes.length > 0) {
-      setError('Senha não atende aos requisitos: ' + pendentes.join('; '))
-      return
-    }
+    if (!validate()) return
 
     setIsLoading(true)
     try {
@@ -145,7 +150,9 @@ export default function RegisterPage() {
       <div className={styles.form}>
         <div className={styles.formInner}>
           {/* Voltar para homepage */}
-          <BackButton to="/" />
+          <Link to="/" className={styles.backLink}>
+            <ArrowLeft size={16} /> Voltar à página inicial
+          </Link>
 
           {/* Logo mobile */}
           <div className={styles.logoMobile}>
@@ -162,50 +169,51 @@ export default function RegisterPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className={styles.formBody}>
+          <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
             {error && (
               <PontesAlert tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField label="Nome completo" htmlFor="reg-nome" required>
+            <PontesField label="Nome completo" htmlFor="reg-nome" required error={errors.nome}>
               <PontesInput
                 id="reg-nome"
                 type="text"
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                required
+                onChange={(e) => { setNome(e.target.value); clearErr('nome') }}
+                invalid={!!errors.nome}
                 autoComplete="name"
               />
             </PontesField>
 
-            <PontesField label="E-mail" htmlFor="reg-email" required>
+            <PontesField label="E-mail" htmlFor="reg-email" required error={errors.email}>
               <PontesInput
                 id="reg-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => { setEmail(e.target.value); clearErr('email') }}
+                invalid={!!errors.email}
                 autoComplete="email"
               />
             </PontesField>
 
-            <PontesField label="Data de nascimento" htmlFor="reg-nascimento">
+            <PontesField label="Data de nascimento" htmlFor="reg-nascimento" required error={errors.dataNascimento}>
               <PontesInput
                 id="reg-nascimento"
                 type="date"
                 value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
+                onChange={(e) => { setDataNascimento(e.target.value); clearErr('dataNascimento') }}
+                invalid={!!errors.dataNascimento}
                 autoComplete="bday"
               />
             </PontesField>
 
-            <PontesField label="Senha" htmlFor="reg-senha" required>
+            <PontesField label="Senha" htmlFor="reg-senha" required error={errors.password}>
               <PontesInput
                 id="reg-senha"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                onChange={(e) => { setPassword(e.target.value); clearErr('password') }}
+                invalid={!!errors.password}
                 autoComplete="new-password"
                 iconEnd={
                   <button
@@ -223,13 +231,13 @@ export default function RegisterPage() {
 
             <PasswordStrengthIndicator senha={password} />
 
-            <PontesField label="Confirmar senha" htmlFor="reg-confirmar" required>
+            <PontesField label="Confirmar senha" htmlFor="reg-confirmar" required error={errors.confirmPassword}>
               <PontesInput
                 id="reg-confirmar"
                 type={showConfirm ? 'text' : 'password'}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                onChange={(e) => { setConfirmPassword(e.target.value); clearErr('confirmPassword') }}
+                invalid={!!errors.confirmPassword}
                 autoComplete="new-password"
                 iconEnd={
                   <button
