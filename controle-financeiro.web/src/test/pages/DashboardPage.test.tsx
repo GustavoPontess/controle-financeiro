@@ -51,7 +51,8 @@ describe("DashboardPage (#81)", () => {
 
   it("mostra os 3 números humanos do mês", async () => {
     renderDash()
-    await screen.findByText("Olá, Gabriel")
+    // espera os dados carregarem (getDashboard async) — não só a saudação
+    await screen.findByText("Entrou")
     for (const stat of ["Entrou", "Saiu", "Sobrou"]) {
       expect(screen.getByText(stat)).toBeInTheDocument()
     }
@@ -59,14 +60,13 @@ describe("DashboardPage (#81)", () => {
 
   it("mostra pendências quando há a receber / a pagar", async () => {
     renderDash()
-    await screen.findByText("Olá, Gabriel")
-    expect(screen.getByText((t) => t.includes("Ainda vai entrar"))).toBeInTheDocument()
+    expect(await screen.findByText((t) => t.includes("Ainda vai entrar"))).toBeInTheDocument()
     expect(screen.getByText((t) => t.includes("Ainda vai sair"))).toBeInTheDocument()
   })
 
   it("renderiza saldo total e seções", async () => {
     renderDash()
-    await screen.findByText("Olá, Gabriel")
+    await screen.findByText("Saldo total")
     expect(screen.getByText("Saldo total")).toBeInTheDocument()
     expect(screen.getByText("Seu mês")).toBeInTheDocument()
     expect(screen.getByText("Saldo nos últimos meses")).toBeInTheDocument()
