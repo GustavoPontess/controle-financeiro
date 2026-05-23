@@ -76,12 +76,20 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     const onSubmit = setup()
     fireEvent.click(screen.getByText("Transferência"))
 
+    // valor
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "10000" } })
+
     // origem
     fireEvent.click(screen.getByText("De qual conta"))
     fireEvent.click(screen.getByText("Nubank"))
     // destino
     fireEvent.click(screen.getByText("Para qual conta"))
     fireEvent.click(screen.getByText("Itaú"))
+
+    // descrição (obrigatória)
+    fireEvent.change(screen.getByPlaceholderText("Ex: Reserva de emergência"), {
+      target: { value: "Mover grana" },
+    })
 
     fireEvent.click(screen.getByText("Transferir"))
 
@@ -90,6 +98,15 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(data.natureza).toBe("transferencia")
     expect(data.contaOrigemId).toBe("a1")
     expect(data.contaDestinoId).toBe("a2")
+  })
+
+  it("submit vazio mostra erros e não chama onSubmit", () => {
+    const onSubmit = setup()
+    fireEvent.click(screen.getByText("Adicionar"))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Informe um valor")).toBeInTheDocument()
+    expect(screen.getByText("Categoria obrigatória")).toBeInTheDocument()
+    expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
   })
 
   it("modo edit: sem transferência/recorrente/parcelas, botão Salvar, valores iniciais", () => {

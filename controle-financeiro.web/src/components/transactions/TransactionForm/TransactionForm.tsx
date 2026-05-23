@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { TrendingDown, TrendingUp, ArrowLeftRight } from "lucide-react"
 import {
   PontesButton, PontesToggle, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
@@ -93,6 +93,10 @@ export default function TransactionForm({
     ...initial,
   })
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Limpa erros assim que o usuário mexe em qualquer campo.
+  useEffect(() => { setErrors((e) => (Object.keys(e).length ? {} : e)) }, [form])
 
   const isTransferencia = form.natureza === "transferencia"
   const isCredito = !isTransferencia && form.meioPagamento === 3
@@ -148,8 +152,29 @@ export default function TransactionForm({
   const setRecorrente = (on: boolean) =>
     setForm((f) => ({ ...f, modo: on ? "recorrente" : "unico", parcelas: on ? 1 : f.parcelas }))
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const validate = (): boolean => {
+    const e: Record<string, string> = {}
+    const valorNum = Number(form.valor.replace(/\./g, "").replace(",", "."))
+    if (!valorNum || valorNum <= 0) e.valor = "Informe um valor"
+
+    if (isTransferencia) {
+      if (!form.contaOrigemId) e.contaOrigem = "Selecione a conta de origem"
+      if (!form.contaDestinoId) e.contaDestino = "Selecione a conta de destino"
+      else if (form.contaOrigemId === form.contaDestinoId) e.contaDestino = "Origem e destino devem ser diferentes"
+    } else {
+      if (!form.categoriaId) e.categoria = "Categoria obrigatória"
+      if (isCredito && !form.cartaoCreditoId) e.cartao = "Cartão obrigatório"
+      if (!isCredito && !form.contaId) e.conta = "Conta obrigatória"
+    }
+    if (!form.descricao.trim()) e.descricao = "Informe a descrição"
+
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSubmit = async (ev: React.FormEvent) => {
+    ev.preventDefault()
+    if (!validate()) return
     setLoading(true)
     try {
       await onSubmit(form)
@@ -172,25 +197,30 @@ export default function TransactionForm({
       />
 
       {/* Valor — destaque (label próprio do componente) */}
-      <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
+      <div>
+        <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
+        {errors.valor && <div className={styles.valorErro}>{errors.valor}</div>}
+      </div>
 
       {/* ── TRANSFERÊNCIA ────────────────────────────────────────────── */}
       {isTransferencia ? (
         <>
           <div className={styles.grid2}>
-            <PontesField label="Conta de origem" required>
+            <PontesField label="Conta de origem" required error={errors.contaOrigem}>
               <PontesSelect
                 value={form.contaOrigemId}
                 onChange={(v) => set("contaOrigemId", v)}
                 placeholder="De qual conta"
+                invalid={!!errors.contaOrigem}
                 options={contaOptions.filter((o) => o.value !== form.contaDestinoId)}
               />
             </PontesField>
-            <PontesField label="Conta de destino" required>
+            <PontesField label="Conta de destino" required error={errors.contaDestino}>
               <PontesSelect
                 value={form.contaDestinoId}
                 onChange={(v) => set("contaDestinoId", v)}
                 placeholder="Para qual conta"
+                invalid={!!errors.contaDestino}
                 options={contaOptions.filter((o) => o.value !== form.contaOrigemId)}
               />
             </PontesField>
@@ -218,11 +248,12 @@ export default function TransactionForm({
 
           {/* Conta (não-crédito) */}
           {!isCredito && (
-            <PontesField label="Conta" required>
+            <PontesField label="Conta" required error={errors.conta}>
               <PontesSelect
                 value={form.contaId}
                 onChange={(v) => set("contaId", v)}
                 placeholder="Selecione a conta"
+                invalid={!!errors.conta}
                 options={contaOptions}
               />
             </PontesField>
@@ -231,11 +262,12 @@ export default function TransactionForm({
           {/* Cartão (crédito) — parcelas só em lançamento único de criação */}
           {isCredito && (
             (isRecorrente || isEdit) ? (
-              <PontesField label="Cartão de crédito" required>
+              <PontesField label="Cartão de crédito" required error={errors.cartao}>
                 <PontesSelect
                   value={form.cartaoCreditoId}
                   onChange={(v) => set("cartaoCreditoId", v)}
                   placeholder={cartoesDisponiveis.length === 0 ? "Nenhum cartão" : "Selecione o cartão"}
+                  invalid={!!errors.cartao}
                   options={cartoesDisponiveis.map((c) => ({ value: c.id, label: `${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}` }))}
                 />
               </PontesField>
@@ -278,7 +310,7 @@ export default function TransactionForm({
           )}
 
           {/* Categoria (picker agrupado cat > subcategoria — lib) */}
-          <PontesField label="Categoria" required>
+          <PontesField label="Categoria" required error={errors.categoria}>
             <PontesGroupedSelect
               groups={categoriaGroups}
               groupValue={form.categoriaId}
@@ -292,11 +324,12 @@ export default function TransactionForm({
       )}
 
       {/* Descrição (todas as naturezas) */}
-      <PontesField label="Descrição" required>
+      <PontesField label="Descrição" required error={errors.descricao}>
         <PontesInput
           value={form.descricao}
           onChange={(e) => set("descricao", e.target.value)}
           placeholder={isTransferencia ? "Ex: Reserva de emergência" : "Ex: Compra no mercado"}
+          invalid={!!errors.descricao}
           maxLength={400}
         />
       </PontesField>

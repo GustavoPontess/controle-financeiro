@@ -2,4 +2,6 @@
 .form { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
+.valorErro { margin-top: 6px; font-size: 12px; color: var(--pontes-danger); font-family: var(--pontes-font); }
+
 .actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
