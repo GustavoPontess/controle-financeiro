@@ -368,34 +368,28 @@ export default function CreditCardsPage() {
                 <div className={styles.cardSheen1} />
                 <div className={styles.cardSheen2} />
 
-                <div className={styles.cardTop}>
+                <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
+                </div>
+
+                <div className={styles.cardFace}>
                   <div className={styles.cardNameWrap}>
                     <span className={styles.cardName}>{c.nome}</span>
                     {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
                   </div>
-                  <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
-                    <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
-                    <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
+                  <div className={styles.faceBottom}>
+                    <div className={styles.faceBottomCol}>
+                      <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
+                      <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+                    </div>
+                    <div className={styles.cardChip} />
                   </div>
-                </div>
-
-                <div className={styles.cardMid}>
-                  <div className={styles.cardChip} />
-                  <div className={styles.cardTags}>
-                    {c.temCredito && <span className={styles.tag}>Crédito</span>}
-                    {c.temDebito && <span className={styles.tag}>Débito</span>}
-                    {c.ehPrePago && <span className={styles.tag}>Pré-pago</span>}
-                  </div>
-                </div>
-
-                <div className={styles.cardNumberRow}>
-                  <span className={styles.cardNumber}>•••• •••• •••• {c.ultimosDigitos ?? "••••"}</span>
-                  <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
                 </div>
 
                 {c.temCredito && c.limite ? (
-                  <div className={styles.cardInfo}>
-                    <div className={styles.cardInfoTop}>
+                  <div className={styles.cardPanel}>
+                    <div className={styles.panelTop}>
                       <div className={styles.cardDispWrap}>
                         <span className={styles.cardInfoLabel}>Disponível</span>
                         <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
@@ -413,14 +407,14 @@ export default function CreditCardsPage() {
                       <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Ocultar" : "Faturas"}</span>
                     </div>
                   </div>
-                ) : (
-                  <div className={styles.cardInfo}>
+                ) : (c.contaNome || c.temDebito || c.ehPrePago) ? (
+                  <div className={styles.cardPanel}>
                     <div className={styles.cardMetaRow}>
                       <span>{c.contaNome ? "Conta que paga" : " "}</span>
                       {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )
           })}
