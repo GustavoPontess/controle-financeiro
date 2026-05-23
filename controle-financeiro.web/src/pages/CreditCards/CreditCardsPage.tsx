@@ -282,11 +282,14 @@ export default function CreditCardsPage() {
   // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
 
-  // Pré-carrega o detalhe (lançamentos + pagamentos) de TODAS as faturas do
-  // cartão aberto → navegar entre meses fica instantâneo (sem piscar).
+  // Carrega o detalhe só do mês selecionado + vizinhos (janela de 3). Navegar
+  // um passo fica instantâneo (vizinho já em cache) sem buscar TODAS as faturas.
   useEffect(() => {
     if (!faturasCartaoId || faturasSorted.length === 0) return
-    faturasSorted.forEach((f) => {
+    const sel = Math.max(0, Math.min(faturaIdx, faturasSorted.length - 1))
+    const janela = [sel - 1, sel, sel + 1].filter((i) => i >= 0 && i < faturasSorted.length)
+    janela.forEach((i) => {
+      const f = faturasSorted[i]
       if (faturaDetalhes[f.id]) return
       getFaturaDetalhe(faturasCartaoId, f.id)
         .then((d) => setFaturaDetalhes((prev) => (prev[f.id] ? prev : { ...prev, [f.id]: d })))
@@ -294,7 +297,7 @@ export default function CreditCardsPage() {
     })
     // faturasSorted é derivado de faturas (já nas deps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faturasCartaoId, faturas, faturaDetalhes])
+  }, [faturasCartaoId, faturaIdx, faturas, faturaDetalhes])
 
   // Faturas previstas das assinaturas (recorrentes mensais no cartão) — próximos meses.
   const addMonthsISO = (iso: string, n: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + n); return d.toISOString() }
