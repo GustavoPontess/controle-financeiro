@@ -127,6 +127,46 @@ public class RelatorioServiceTests
     }
 
     [Fact]
+    public async Task GetRelatorioPeriodo_ExcluiTransferenciaPagamentoESaldoInicial()
+    {
+        await using var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "CC", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.ContaCorrente };
+        var cat = new Categoria { Id = Guid.NewGuid(), Descricao = "Mercado", Finalidade = Finalidade.Despesa, UsuarioId = usuarioId };
+        ctx.Contas.Add(conta);
+        ctx.Categorias.Add(cat);
+
+        Transacao Tx(string desc, decimal valor, TipoTransacao tipo, Action<Transacao>? cfg = null)
+        {
+            var t = new Transacao
+            {
+                Id = Guid.NewGuid(), ContaId = conta.Id, Descricao = desc, Valor = valor,
+                Tipo = tipo, Data = DataBase, CriadoPor = usuarioId,
+            };
+            cfg?.Invoke(t);
+            return t;
+        }
+
+        ctx.Transacoes.AddRange(
+            Tx("Compra mercado", 100m, TipoTransacao.Despesa, t => t.CategoriaId = cat.Id), // real
+            Tx("Salário", 200m, TipoTransacao.Receita, t => t.CategoriaId = cat.Id),        // real
+            Tx("Transf saída", 500m, TipoTransacao.Despesa, t => t.EhTransferencia = true), // fora
+            Tx("Saldo Inicial", 9000m, TipoTransacao.Receita, t => t.EhSaldoInicial = true), // fora
+            Tx("Pagamento fatura", 300m, TipoTransacao.Despesa, t => t.EhPagamentoFatura = true), // fora
+            Tx("Cancelada", 50m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.Ativo = false; }), // fora
+            Tx("Prevista", 70m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.StatusTransacao = StatusTransacao.Previsao; }) // fora
+        );
+        await ctx.SaveChangesAsync();
+
+        var rel = await new RelatorioService(ctx)
+            .GetRelatorioPeriodoAsync(usuarioId, DataBase.AddDays(-1), DataBase.AddDays(1));
+
+        Assert.Equal(100m, rel.TotalDespesas);   // só a despesa real
+        Assert.Equal(200m, rel.TotalReceitas);   // saldo inicial fora
+        Assert.Equal(2, rel.TotalTransacoes);    // transferência/pagamento/saldo/cancelada/prevista fora
+    }
+
+    [Fact]
     public async Task ExportarCsvAsync_NormalizaQuebrasDeLinhaSemCriarNovasLinhas()
     {
         await using var ctx = CreateContext();

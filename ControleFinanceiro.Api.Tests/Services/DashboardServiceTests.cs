@@ -60,6 +60,59 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task GetResumoAsync_KpisExcluemFlagsMasSaldoAsInclui()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
+        ctx.Contas.Add(conta);
+        var d = new DateTime(2026, 5, 15);
+
+        Transacao Flag(TipoTransacao tipo, decimal valor, Action<Transacao> cfg)
+        {
+            var t = Tx(conta.Id, tipo, valor, d);
+            cfg(t);
+            return t;
+        }
+
+        ctx.Transacoes.AddRange(
+            Tx(conta.Id, TipoTransacao.Receita, 1000, d),                         // receita real
+            Tx(conta.Id, TipoTransacao.Despesa, 100, d),                          // despesa real
+            Flag(TipoTransacao.Receita, 5000, t => t.EhSaldoInicial = true),      // saldo inicial
+            Flag(TipoTransacao.Despesa, 200, t => t.EhTransferencia = true),      // transferência saída
+            Flag(TipoTransacao.Despesa, 300, t => t.EhPagamentoFatura = true)     // pagamento fatura
+        );
+        await ctx.SaveChangesAsync();
+
+        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+
+        // KPIs de P&L: só o que é receita/despesa real
+        Assert.Equal(1000m, r.Recebido);
+        Assert.Equal(100m, r.Pago);
+        // Saldo conta TODO movimento real: 1000 - 100 + 5000 - 200 - 300 = 5400
+        Assert.Equal(5400m, r.SaldoTotal);
+    }
+
+    [Fact]
+    public async Task GetResumoAsync_SaldoIgnoraCanceladas()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
+        ctx.Contas.Add(conta);
+        var d = new DateTime(2026, 5, 15);
+        ctx.Transacoes.AddRange(
+            Tx(conta.Id, TipoTransacao.Receita, 1000, d),
+            Tx(conta.Id, TipoTransacao.Despesa, 400, d, ativo: false) // soft-deletada não conta no saldo
+        );
+        await ctx.SaveChangesAsync();
+
+        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+
+        Assert.Equal(1000m, r.SaldoTotal);
+    }
+
+    [Fact]
     public async Task GetResumoAsync_EvolucaoSaldoTem6Meses()
     {
         var ctx = CreateContext();

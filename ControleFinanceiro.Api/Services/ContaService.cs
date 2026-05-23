@@ -59,7 +59,8 @@ namespace ControleFinanceiro.Api.Services
                     ContaId = conta.Id,
                     CategoriaId = null,
                     CriadoPor = usuarioId,
-                    Data = DateTime.UtcNow
+                    Data = DateTime.UtcNow,
+                    EhSaldoInicial = true
                 });
             }
 

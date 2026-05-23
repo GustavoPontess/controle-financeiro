@@ -83,6 +83,14 @@ public class Transacao
     public Guid? FaturaPagaId { get; set; }
     public Fatura? FaturaPaga { get; set; }
 
+    /// <summary>true se esta Transacao é uma das pernas de uma Transferência entre contas.
+    /// Move saldo entre contas, mas NÃO é receita/despesa real — excluída de relatórios de P&amp;L.</summary>
+    public bool EhTransferencia { get; set; }
+
+    /// <summary>true se esta Transacao é o saldo de abertura de uma conta. Compõe o saldo,
+    /// mas NÃO é receita real — excluída de relatórios de P&amp;L.</summary>
+    public bool EhSaldoInicial { get; set; }
+
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;
 
