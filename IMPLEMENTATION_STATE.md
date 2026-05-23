@@ -1,46 +1,44 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-22
-status: EM_EXECUCAO
-issue_atual: '#82 Transação Add/Editar — form (popup) em construção. Branch feature/82-transacao-form. #83 Subcategorias MERGEADO (PR #127). Falta: EditTransactionDialog, rateio família, testes form, PR.'
+last_reviewed: 2026-05-23
+status: PRONTO_PRA_PROXIMA
+issue_atual: 'Nenhuma em execução. #82 Transação Add/Editar CONCLUÍDO e mergeado na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
 ---
 
-## Issue em execução — #82 (form de Transação)
+## Última issue concluída — #82 (Transação Adicionar/Editar) ✅ MERGEADO
 
-**Branch:** `feature/82-transacao-form` (a partir do main com #122 + #83 já mergeados).
-**Mergeado no main:** #122 (PR #124 — CSS Modules/vars), #81 Dashboard (PR #123), **#83 Subcategorias (PR #127)**.
+**Branch:** `feature/82-transacao-form` → mergeada na `main` (squash) e deletada.
+**Mergeado antes no main:** #122 (PR #124), #81 (PR #123), **#83 Subcategorias (PR #127)**.
 **Dev no ar:** Postgres docker `controlefinanceiro-db` + API 5293 + front 5173. Login dev `dev@controle.test` / `Dev@123456`. Seeder cria cartão **Nubank (limite 5k)** pra testar crédito.
 
 ### Decisões de produto travadas (#83/#82)
-- **Taxonomia enxuta:** 14 categorias / 68 subcategorias (só consumo=Despesa e ganho=Renda). Transferência, pgto de fatura, empréstimo, investimento NÃO são categoria — têm entidades próprias (`Transferencia`, `Fatura`/`EhPagamentoFatura`, `Emprestimo`). `TipoTransacao` segue Receita/Despesa (sem 3º tipo). Seeders `CategoriaSeeder`+`SubcategoriaSeeder`.
-- **3 conceitos:** Único · Parcelado (compra dividida em N faturas, no crédito) · Recorrente (assinatura, repete; entidade `Recorrente`).
+- **Taxonomia enxuta:** 14 categorias / 68 subcategorias (só consumo=Despesa e ganho=Renda). Transferência, pgto de fatura, empréstimo, investimento NÃO são categoria — têm entidades próprias (`Transferencia`, `Fatura`/`EhPagamentoFatura`, `Emprestimo`). `TipoTransacao` segue Receita/Despesa (sem 3º tipo).
+- **Popup unificado por natureza:** Despesa · Receita · Transferência (cards). Meio de pagamento define conta vs cartão. Parcelado ⊻ Assinatura mutuamente exclusivos (cartão). Empréstimo fica na página própria (decisão: fora do popup).
 
-### Feito no #82 (commits na branch, todos verdes — 107 front / 154 back)
-- [x] Backend: `SubcategoriaId` em `CriarTransacaoDto`/`TransacaoDto` + propagado em criar à-vista, update e parcelamento (`TransacaoService`/`FaturaService`); validação (subcat existe, é do user, pertence à categoria). +2 testes.
-- [x] Popup `NewTransactionDialog` → `PontesModal`; `TransactionForm` refeito em Pontes + CSS Modules.
-- [x] `CategoryPicker` novo (local): dropdown agrupado categoria>subcategoria, contido no popup (em fluxo, altura 240 + scroll interno).
-- [x] Form: Tipo (2 botões grandes Despesa/Receita) → Valor (PontesMoneyInput, full width) → Data+Meio → Conta **ou** cartão → switch "Repetir automaticamente (assinatura)" → Categoria → Descrição.
-- [x] Modo **Recorrente** via switch: Frequência/Dia/Início/Repetir-até; salva em `/recorrentes` (conta ou cartão). Parcelas só em único+crédito.
-- [x] Fixes lib: `PontesModal` não corta dropdown (overflow visible→hidden + flex/maxHeight 90vh + body scroll); `PontesMoneyInput` full width.
+### Entregue no #82 (mergeado)
+- [x] Backend `SubcategoriaId` em DTOs + criar/update/parcelamento + validação. Testes.
+- [x] Popup `NewTransactionDialog` + `EditTransactionDialog` em `PontesModal`; **EditTransactionDialog reusa `TransactionForm`** (`mode="edit"`), saiu do MUI.
+- [x] `TransactionForm` único pra criar/editar: 3 naturezas, crédito+parcelas, assinatura, transferência (origem→destino via `createTransferencia`).
+- [x] Lib nova: `PontesChoiceCards`, `PontesGroupedSelect` (substitui CategoryPicker local). Fixes: `PontesModal` (ícone X lucide, título Fraunces via `--pontes-font-heading`), `PontesSelect` (chevron/check lucide, alinhado ao GroupedSelect), `PontesMoneyInput` (máscara só números, default sem chips).
+- [x] **Validação por campo + estado inválido padronizado no DS** (borda danger + ring, sem fundo) em Input/Select/GroupedSelect/MoneyInput/Textarea via prop `invalid`. Toast acima do modal.
+- [x] `PontesMoneyInput` aceita só números (máscara moeda BR).
 - [x] `DevDataSeeder` cadastra cartão de crédito do dev.
+- [x] 125 testes front verde · lint · build. Regras documentadas (validação de form, boy-scout anti-inline) + hook `.claude/hooks/form-rule.cjs`.
 
-### Falta (#82)
-- [ ] **`EditTransactionDialog`** — ainda MUI/legado, sem subcategoria → refatorar pra Pontes + CategoryPicker (espelhar o NewTransactionDialog).
-- [ ] **Rateio família** + toggle **marcar pago/previsto** (avançado).
-- [ ] **Subcategoria em Recorrente** — entidade `Recorrente` não tem o campo (back). Adicionar se quiser sub em assinatura.
-- [ ] **Testes do form** (vitest: render por modo, submit único/recorrente).
-- [ ] PR `Closes #82`.
+### Spin-offs criados (NÃO eram escopo do #82)
+- **#128** 🔴 contábil: relatórios contam transferência/pagamento-de-fatura/saldo-inicial como receita/despesa; `RelatorioService` não filtra `Ativo`/`StatusTransacao`; transferência hard-delete. (severidade alta)
+- **#129** validação por campo nos forms restantes (Login/Register/Categorias).
+- **#130** editar transação bloqueia data futura no crédito (inconsistente com criar).
+- **#131** mover `components/transactions/` → `pages/Transactions/` (sair da zona legada).
 
 ### Próxima ação concreta
-Refatorar `components/transactions/EditTransactionDialog/EditTransactionDialog.tsx` (hoje MUI próprio) pra `PontesModal` + reusar `TransactionForm`/`CategoryPicker`, carregando subcategorias e enviando `subcategoriaId` no update.
+Pegar a próxima issue livre (recomendado: **#128** pela severidade — corrige números de relatório; ou seguir ordem do `ISSUES.md`). Criar branch `feature/<n>-<slug>` a partir de `main` atualizado.
 
 ### Anotado pra futuro (jurídico, não-código)
-- #125 — proteção de marca + IP (INPI, registro de software, direito autoral, inventário).
-- #126 — mapear conformidade LGPD (pré-lançamento).
+- #125 — proteção de marca + IP (INPI). #126 — mapear LGPD (pré-lançamento).
 
 ### Notas técnicas
-- Dev: API restart aplica migration via `MigrateAsync`; reset de seed = `DROP DATABASE` + restart (recria + reseeders). Reset → token do dev morre → refazer login.
-- `PontesSelect` (lib) e `CategoryPicker` (local): painéis com altura limitada + scroll, contidos no modal.
+- Dev: API restart aplica migration via `MigrateAsync`; reset de seed = `DROP DATABASE` + restart. Reset → token do dev morre → refazer login.
 - `CategoriaService` legado usa `throw new Exception`; serviços novos seguem ArgumentException/KeyNotFoundException/etc (mapeados pelo GlobalExceptionHandlerMiddleware).
 ---
 

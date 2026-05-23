@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-21
+last_reviewed: 2026-05-23
 next_review: 2026-08-21
 status: CURRENT
 ---
@@ -18,12 +18,14 @@ status: CURRENT
 
 ```
 Site público (6):       2/6  ✅ #75 #77  ⏳ #76 #78 #79 #80
-Telas internas (9):     0/9  ⏳ #81 #82 #83 #84 #85 #86 #87 #88 #89
+Telas internas (9):     3/9  ✅ #81 #82 #83  ⏳ #84 #85 #86 #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
-Fundação (1):           1/1  ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108)
+Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          3/19 (15.8%)
+Total Q5 2026:          5/18 telas+site (#75-#92)
 ```
+
+> Spin-offs abertos no #82 (não eram escopo): **#128** contábil (relatórios contam transferência/pagamento/saldo-inicial como receita/despesa — severidade alta), **#129** validação por campo nos forms restantes, **#130** editar bloqueia data futura no crédito, **#131** mover `components/transactions` → `pages/Transactions`.
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
 
@@ -37,9 +39,18 @@ Total Q5 2026:          3/19 (15.8%)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #78 Contadores, #79 Recursos, #80 Sobre, ou telas internas #81-#89)
+(nenhuma issue em execução — próxima livre: #128 contábil ⚠️ alta, #84 Cartão, #85 Família, ou site #78/#79/#80)
 
 ## Resolvidos Q5
+
+- **#82** — Transação Adicionar/Editar (mergeado · sessão 2026-05-23)
+  - `TransactionForm` único pra criar e editar (`mode="edit"`); `NewTransactionDialog` + `EditTransactionDialog` em `PontesModal`; Edit saiu do MUI
+  - Popup unificado por natureza: Despesa · Receita · Transferência; crédito+parcelas; assinatura (recorrente); transferência via `createTransferencia`
+  - Lib nova: `PontesChoiceCards`, `PontesGroupedSelect` (substituiu CategoryPicker local); fixes `PontesModal`/`PontesSelect`/`PontesMoneyInput`
+  - Validação por campo + **estado inválido padronizado no DS** (borda danger + ring, sem fundo) via prop `invalid`; toast acima do modal; `PontesMoneyInput` só números (máscara BR)
+  - Backend `SubcategoriaId` em criar/editar/parcelamento + validação
+  - 125 testes front · regras documentadas (validação de form, boy-scout anti-inline) + hook `.claude/hooks/form-rule.cjs`
+  - Spin-offs: #128 #129 #130 #131
 
 - **#77** — Página Para Casais `/casais` (PR #111 mergeado · sessão 34)
   - CouplesPage refeita 100% biblioteca, content-only sob SiteLayout
