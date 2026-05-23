@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import {
   PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo,
 } from '@/components/pontes'
-import BackButton from '../../components/BackButton'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 import styles from './RegisterPage.module.css'
@@ -151,7 +150,9 @@ export default function RegisterPage() {
       <div className={styles.form}>
         <div className={styles.formInner}>
           {/* Voltar para homepage */}
-          <BackButton to="/" />
+          <Link to="/" className={styles.backLink}>
+            <ArrowLeft size={16} /> Voltar à página inicial
+          </Link>
 
           {/* Logo mobile */}
           <div className={styles.logoMobile}>
