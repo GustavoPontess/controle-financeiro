@@ -41,19 +41,24 @@ public class DashboardService
             .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado)
             .ToList();
 
+        // P&L: receita/despesa REAL exclui o que só move saldo (transferência, pagamento de
+        // fatura, saldo inicial). Saldo/caixa abaixo continuam contando esses.
+        static bool EhPnl(Domain.Entities.Transacao t) =>
+            !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial;
+
         // 6 KPIs (#81): Executado = realizado (Recebido/Pago);
         // Previsao = futuro (A receber / A pagar). Receitas = Recebido + AReceber.
         var recebido = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Executado)
+            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Executado)
             .Sum(t => t.Valor);
         var aReceber = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Previsao)
+            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Previsao)
             .Sum(t => t.Valor);
         var pago = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Executado)
+            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Executado)
             .Sum(t => t.Valor);
         var aPagar = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Previsao)
+            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Previsao)
             .Sum(t => t.Valor);
 
         var receitasMes = recebido + aReceber;
@@ -70,13 +75,19 @@ public class DashboardService
 
         var inicioDoPeriodo = new DateTime(ano, mes, 1);
         var saldoAnteriorAoMes = todasTransacoes
-            .Where(t => t.Data < inicioDoPeriodo && !t.UsadoComoCredito)
+            .Where(t => t.Data < inicioDoPeriodo && !t.UsadoComoCredito
+                        && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
             .Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
+
+        // Saldo conta = movimento real (Ativo + Executado). Inclui transferência/saldo
+        // inicial/pagamento (movem dinheiro); exclui canceladas (soft delete) e previsões.
+        static bool EhSaldo(Domain.Entities.Transacao t) =>
+            t.Ativo && t.StatusTransacao == StatusTransacao.Executado;
 
         var saldoContas = contas.Select(c =>
         {
-            var receitas = c.Transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
-            var despesas = c.Transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
+            var receitas = c.Transacoes.Where(t => EhSaldo(t) && t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
+            var despesas = c.Transacoes.Where(t => EhSaldo(t) && t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
             return new SaldoContaDto
             {
                 Id = c.Id,

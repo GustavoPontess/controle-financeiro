@@ -55,8 +55,10 @@ namespace ControleFinanceiro.Api.Controllers
             TipoDescricao = DescricaoTipo(c.Tipo),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
-            SaldoAtual = c.Transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor)
-                       - c.Transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
+            // Saldo = movimento real (Ativo + Executado): exclui canceladas (soft delete) e
+            // previsões; inclui transferência/saldo inicial/pagamento (movem dinheiro).
+            SaldoAtual = c.Transacoes.Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor)
+                       - c.Transacoes.Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
             IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome ?? string.Empty

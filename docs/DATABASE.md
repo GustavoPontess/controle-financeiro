@@ -130,12 +130,16 @@ Movimentações financeiras. Core entity.
 | `MeioPagamento` | INT | NULL | 0=Dinheiro, 1=Débito, 2=Crédito, 3=TED, 4=PIX |
 | `UsadoComoCredito` | BOOL | DEFAULT 0 | Se receita foi creditada |
 | `StatusTransacao` | INT | DEFAULT 1 | 0=Previsao, 1=Executado (ETAPA 2) |
-| `EhPagamentoFatura` | BOOL | DEFAULT 0 | Se é pgto antecipado de parcela (ETAPA 2) |
+| `EhPagamentoFatura` | BOOL | DEFAULT 0 | Pagamento de fatura (usa `FaturaPagaId`, não `FaturaId`) — fora do P&L |
+| `EhTransferencia` | BOOL | DEFAULT 0 | Perna de transferência entre contas — fora do P&L (#128) |
+| `EhSaldoInicial` | BOOL | DEFAULT 0 | Saldo de abertura de conta — fora do P&L (#128) |
 | `Ativo` | BOOL | DEFAULT 1 | Soft delete flag (ETAPA 2) |
 | `CanceladoEm` | DateTime | NULL | Data do soft delete |
 | `MotivoCancelamento` | TEXT | NULL | Razão do soft delete |
 | `Data` | DateTime | NOT NULL | Quando a transação ocorreu |
 | `CriadoEm` | DateTime | NOT NULL | Timestamp de criação |
+
+> **Saldo ≠ Relatório de P&L (#128):** o **saldo** da conta conta TODO movimento real (`Ativo` + `StatusTransacao=Executado`), incluindo transferência, pagamento de fatura e saldo inicial (movem dinheiro). Já os **relatórios de receita/despesa** (RelatorioService, KPIs do Dashboard) **excluem** `EhTransferencia`, `EhPagamentoFatura` e `EhSaldoInicial` — não são receita/despesa real (evita inflar totais e dupla contagem). Migration `AddFlagsContabeisTransacao` faz backfill dos dados existentes.
 
 **Parcelamento (NEW — ETAPA 2):**
 - Parcelamentos criados em tabela separada `Parcelamentos`
