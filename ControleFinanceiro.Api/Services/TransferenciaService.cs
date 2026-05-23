@@ -47,7 +47,8 @@ public class TransferenciaService
             ContaId = dto.ContaOrigemId,
             CriadoPor = usuarioId,
             Data = dto.Data,
-            CategoriaId = null
+            CategoriaId = null,
+            EhTransferencia = true
         };
 
         var transacaoEntrada = new Transacao
@@ -59,7 +60,8 @@ public class TransferenciaService
             ContaId = dto.ContaDestinoId,
             CriadoPor = usuarioId,
             Data = dto.Data,
-            CategoriaId = null
+            CategoriaId = null,
+            EhTransferencia = true
         };
 
         var transferencia = new Transferencia
@@ -121,7 +123,14 @@ public class TransferenciaService
             .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)
             .ToListAsync();
 
-        _context.Transacoes.RemoveRange(transacoes);
+        // Soft delete das pernas (preserva auditoria) — não remove fisicamente.
+        foreach (var t in transacoes)
+        {
+            t.Ativo = false;
+            t.StatusTransacao = StatusTransacao.Cancelado;
+            t.CanceladoEm = DateTime.UtcNow;
+            t.MotivoCancelamento = "Transferência excluída";
+        }
         _context.Transferencias.Remove(transferencia);
         await _context.SaveChangesAsync();
     }

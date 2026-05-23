@@ -1026,6 +1026,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("EhSaldoInicial")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EhTransferencia")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("FamiliaId")
                         .HasColumnType("uuid");
 
