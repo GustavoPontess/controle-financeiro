@@ -131,6 +131,11 @@
 .payValor { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--pontes-success); white-space: nowrap; }
 .txRow[data-pagamento="true"] { background: color-mix(in srgb, var(--pontes-success) 7%, transparent); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .txRow[data-pagamento="true"] .txDesc { display: inline-flex; align-items: center; gap: 5px; color: var(--pontes-success); }
+/* Nota final: total pago acumulado */
+.paidNote { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--pontes-border); }
+.paidNoteLabel { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.paidNoteValue { font-size: 14px; font-weight: 800; color: var(--pontes-success); }
+.paidNoteRest { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
 
 /* Modais */
 .modalCol { display: flex; flex-direction: column; gap: 16px; }

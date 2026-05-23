@@ -304,6 +304,7 @@ export default function CreditCardsPage() {
     ].sort((a, b) => a.ts - b.ts)
 
     return (
+      <>
       <div className={styles.txList}>
         {linhas.map((l) => l.kind === "compra" ? (
           <div key={l.id} className={styles.txRow}>
@@ -330,6 +331,16 @@ export default function CreditCardsPage() {
           </div>
         ))}
       </div>
+      {f.valorPago > 0 && (
+        <div className={styles.paidNote}>
+          <span className={styles.paidNoteLabel}>Total pago</span>
+          <span className={styles.paidNoteValue}>
+            {formatMoney(f.valorPago)}
+            {f.valorRestante > 0 && <span className={styles.paidNoteRest}> · falta {formatMoney(f.valorRestante)}</span>}
+          </span>
+        </div>
+      )}
+      </>
     )
   }
 
