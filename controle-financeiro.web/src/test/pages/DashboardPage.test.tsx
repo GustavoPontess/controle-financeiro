@@ -78,7 +78,10 @@ describe("DashboardPage (#81)", () => {
   it("olho esconde os valores", async () => {
     renderDash()
     await screen.findByText("Olá, Gabriel")
-    expect(screen.getAllByText((t) => t.includes("5.000")).length).toBeGreaterThan(0)
+    // espera o valor aparecer (HeroBalance anima) e ignora separador de milhar (locale/ICU)
+    await waitFor(() =>
+      expect(screen.getAllByText((t) => t.replace(/\D/g, "").includes("5000")).length).toBeGreaterThan(0)
+    )
     fireEvent.click(screen.getByLabelText("Esconder valores"))
     await waitFor(() => {
       expect(screen.getAllByText((t) => t.includes("••••")).length).toBeGreaterThan(0)
