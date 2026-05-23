@@ -264,6 +264,7 @@ Regras:
 4. **Erro limpa assim que o usuário mexe no campo** (ex.: `useEffect(() => setErrors({}), [form])` ou limpar a chave no `onChange`).
 5. **Mensagem de erro ≠ placeholder** (ex.: placeholder "Selecione a categoria" → erro "Categoria obrigatória"). Evita ambiguidade e facilita teste.
 6. **Toast fica acima do modal** (`z-index` do wrapper de toast > overlay do modal) — senão o usuário não vê.
+7. **Estado inválido é padrão único do DS** em TODO controle de form (`PontesInput`, `PontesSelect`, `PontesGroupedSelect`, `PontesMoneyInput`, `PontesTextarea`): passa a prop `invalid` → **borda `var(--pontes-danger)` + ring `color-mix(danger 13%)`, sem preencher fundo**. Não inventar variação por componente; todo campo destaca igual. Demo: `/design-system` → "Estado inválido".
 
 Padrão de implementação:
 

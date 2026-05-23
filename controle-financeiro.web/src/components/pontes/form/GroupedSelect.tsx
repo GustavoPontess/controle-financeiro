@@ -36,11 +36,12 @@ export type PontesGroupedSelectProps<T extends string = string> = {
   placeholder?: string
   /** Texto quando não há grupos. */
   emptyLabel?: string
+  invalid?: boolean
 }
 
 export function PontesGroupedSelect<T extends string = string>({
   p, font, groups, groupValue, itemValue, onChange,
-  placeholder = "Selecione", emptyLabel = "Nenhuma opção",
+  placeholder = "Selecione", emptyLabel = "Nenhuma opção", invalid,
 }: PontesGroupedSelectProps<T>) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -64,6 +65,7 @@ export function PontesGroupedSelect<T extends string = string>({
         type="button"
         className={styles.trigger}
         data-empty={!groupValue ? "true" : undefined}
+        data-invalid={invalid ? "true" : undefined}
         onClick={() => setOpen((o) => !o)}
       >
         <span className={styles.triggerText}>{label || placeholder}</span>

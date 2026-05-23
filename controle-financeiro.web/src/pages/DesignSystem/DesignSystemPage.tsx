@@ -402,6 +402,28 @@ function FormSection({ p }: { p: Palette }) {
         />
       </Group>
 
+      <Group title="Estado inválido (padrão: borda vermelha + ring, sem fundo)">
+        <div style={{ display: "grid", gap: 12 }}>
+          <PontesField label="Input" required error="Campo obrigatório">
+            <PontesInput placeholder="Texto" invalid />
+          </PontesField>
+          <PontesField label="Select" required error="Selecione uma opção">
+            <PontesSelect value="" onChange={() => { /* demo */ }} options={["A", "B"]} placeholder="Selecione" invalid />
+          </PontesField>
+          <PontesField label="Grouped select" required error="Selecione a categoria">
+            <PontesGroupedSelect
+              groups={[{ value: "ali", label: "Alimentação", items: [{ value: "merc", label: "Mercado" }] }]}
+              groupValue="" itemValue="" onChange={() => { /* demo */ }}
+              placeholder="Selecione a categoria" invalid
+            />
+          </PontesField>
+          <PontesField label="Textarea" required error="Campo obrigatório">
+            <PontesTextarea placeholder="Observação" invalid />
+          </PontesField>
+          <PontesMoneyInput value="" onChange={() => { /* demo */ }} invalid />
+        </div>
+      </Group>
+
       <Group title="OTP code">
         <PontesOtpInput value={otp} onChange={setOtp} />
       </Group>

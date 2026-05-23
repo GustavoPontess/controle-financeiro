@@ -10,7 +10,7 @@
 }
 .trigger[data-placeholder="true"] { color: var(--pontes-text-muted); }
 .trigger[data-open="true"] { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-primary) 13%, transparent); }
-.trigger[data-invalid="true"] { border-color: var(--pontes-danger); }
+.trigger[data-invalid="true"] { border-color: var(--pontes-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-danger) 13%, transparent); }
 .trigger:disabled { cursor: not-allowed; opacity: .6; }
 .caret { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform .16s ease; }
 .trigger[data-open="true"] .caret { transform: rotate(180deg); }

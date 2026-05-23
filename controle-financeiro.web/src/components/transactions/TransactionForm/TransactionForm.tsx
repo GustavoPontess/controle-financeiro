@@ -198,7 +198,7 @@ export default function TransactionForm({
 
       {/* Valor — destaque (label próprio do componente) */}
       <div>
-        <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
+        <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} invalid={!!errors.valor} />
         {errors.valor && <div className={styles.valorErro}>{errors.valor}</div>}
       </div>
 
@@ -319,6 +319,7 @@ export default function TransactionForm({
               onChange={(catId, subId) => setForm((f) => ({ ...f, categoriaId: catId, subcategoriaId: subId }))}
               placeholder="Selecione a categoria"
               emptyLabel="Nenhuma categoria"
+              invalid={!!errors.categoria}
             />
           </PontesField>
         </>
