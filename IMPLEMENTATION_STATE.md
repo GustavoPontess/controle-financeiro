@@ -1,8 +1,35 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-05-23
-status: PRONTO_PRA_PROXIMA
-issue_atual: 'Nenhuma em execução. #82 (Transação), #128 (contabilidade/P&L) e #129 (validação forms) CONCLUÍDOS e mergeados na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
+status: EM_EXECUCAO
+issue_atual: '#138 — redesign visual/UX da tela de Cartões. Branch feature/138-cartao-redesign (NÃO mergeada, sem PR ainda). Mergeados hoje na main: #82, #128, #129, #84 (PR #137).'
+---
+
+## Issue em execução — #138 (redesign visual/UX da tela de Cartões)
+
+**Branch:** `feature/138-cartao-redesign` (a partir do main pós-#84). NÃO mergeada, PR ainda não aberto.
+**Objetivo:** repensar do zero a tela de Cartões — bonito, simples, foco usabilidade. Usuário não gostou do visual pós-#84 (que foi só migração MUI→Pontes).
+
+### Feito na branch (commits, todos verdes — 132 testes front)
+- [x] `e7a77e6` Redesign v1: resumo slim (cartões/limite/disponível/usado) no lugar dos 3 stat cards; cards clicáveis (card inteiro abre faturas), foco em "disponível" + barra limite, editar/excluir discretos; **fatura atual em DESTAQUE** (valor grande, status, vence, Pagar 1-toque) + **histórico** como lista compacta (não mais tabela); detalhe = lista de lançamentos com ✓ no que o pagamento cobriu.
+- [x] `efe9b3d` Modelo corrigido (pós-pesquisa real BR): **Banco emissor** vira campo próprio (era derivado da conta — bug: cartão Itaú virava banco da conta pagadora); **Conta que paga = opcional** (escolhe no pagamento). Para de sobrescrever bancoId pela conta. Seeder: cartão dev com ContaId (conta pagadora) + BancoId (emissor).
+- [x] `1c7d985` `PontesSelect` com **busca** (auto quando >8 opções) — banco tinha 471 itens.
+- [x] `e379286` `PontesSelect` menu via **portal** (document.body, fixed, altura limitada à tela, abre pra cima se faltar) — não vaza mais do popup/modal. Fecha ao rolar.
+
+### Falta (#138)
+- [ ] **Feedback visual do usuário** — ele ainda está revisando o redesign no preview (incômodo original era "não gostei, não sei dizer pq"). Iterar conforme apontar (cards/grid/resumo/fatura). Pode pedir 2-3 direções visuais.
+- [ ] Ajustar teste `CreditCardsPage.test.tsx` se mudar muito o layout (hoje passa).
+- [ ] PR `Closes #138` + CI verde + merge (com OK do usuário).
+
+### Próxima ação concreta
+Retomar coletando o feedback visual do usuário sobre o redesign (preview em `/credit-cards`, logado dev). Iterar o `CreditCardsPage.tsx` + `.module.css`. Sem mexer na lógica/serviços (reusados do #84).
+
+### Dev no ar
+Postgres docker `controlefinanceiro-db` + API 5293 (reseedado: dev cartão Nubank com emissor+conta) + front 5173. Login `dev@controle.test` / `Dev@123456`. Preview MCP serverId `3a822177-8d00-4120-b131-6c3d57c2115d`. Lembrete ativo: **TCC do usuário até 23:59 hoje** — lembrar nas conversas.
+
+### Spin-offs ainda abertos
+#130 (editar bloqueia data futura no crédito), #131 (mover components/transactions → pages/Transactions). Futuro estético: logo bandeira/banco no card (liga a #88).
+
 ---
 
 ## Última issue concluída — #129 (validação por campo nos forms) ✅ MERGEADO
