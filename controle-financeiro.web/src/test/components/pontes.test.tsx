@@ -7,6 +7,7 @@ import {
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
   PontesSidebarItem, PontesChoiceCards, PontesGroupedSelect,
+  PontesModal, PontesDialog,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -120,6 +121,36 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     fireEvent.click(screen.getByText("Selecione")) // abre painel
     fireEvent.click(screen.getByText("Mercado")) // escolhe item
     expect(screen.getByText("Alimentação · Mercado")).toBeInTheDocument()
+  })
+
+  it("PontesModal mostra título, ícone X (svg) e fecha", () => {
+    let closed = 0
+    render(
+      <PontesModal p={p} font={font} open title="Nova transação" onClose={() => closed++}>
+        <div>conteúdo</div>
+      </PontesModal>
+    )
+    expect(screen.getByText("Nova transação")).toBeInTheDocument()
+    const closeBtn = screen.getByLabelText("Fechar")
+    expect(closeBtn.querySelector("svg")).toBeTruthy() // lucide, não char "×"
+    expect(closeBtn.textContent).toBe("")
+    fireEvent.click(closeBtn)
+    expect(closed).toBe(1)
+  })
+
+  it("PontesDialog renderiza ícone svg e confirma", () => {
+    let confirmed = 0
+    render(
+      <PontesDialog
+        p={p} font={font} open tone="danger"
+        title="Excluir?" description="Sem volta"
+        onConfirm={() => confirmed++} onCancel={() => { /* noop */ }}
+      />
+    )
+    expect(screen.getByText("Excluir?")).toBeInTheDocument()
+    expect(document.querySelector("svg")).toBeTruthy()
+    fireEvent.click(screen.getByText("Confirmar"))
+    expect(confirmed).toBe(1)
   })
 
   it("PontesSelect abre, lista options e seleciona", () => {
