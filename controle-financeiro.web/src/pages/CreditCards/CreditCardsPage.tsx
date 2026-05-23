@@ -19,6 +19,13 @@ import styles from "./CreditCardsPage.module.css"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
+// Máscara de moeda pro input de limite: dígitos → número (centavos) e volta.
+const parseMoney = (masked: string): number | undefined => {
+  const digits = masked.replace(/\D/g, "")
+  return digits ? Number(digits) / 100 : undefined
+}
+const fmtMoneyInput = (n?: number): string =>
+  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 // Datas de ciclo vêm como UTC (meia-noite) — formata em UTC pra não cair pro dia anterior.
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
 const formatDateShort = (s: string) => new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" })
@@ -204,10 +211,13 @@ export default function CreditCardsPage() {
     if (!form.nome.trim()) e.nome = "Informe o nome do cartão"
     if (form.ultimosDigitos && form.ultimosDigitos.length !== 4) e.ultimosDigitos = "Use os 4 últimos dígitos"
     if (temCredito) {
-      if (form.limite != null && form.limite <= 0) e.limite = "Limite deve ser maior que zero"
-      if (form.diaFechamento != null && (!Number.isInteger(form.diaFechamento) || form.diaFechamento < 1 || form.diaFechamento > 31))
+      if (form.limite == null) e.limite = "Informe o limite"
+      else if (form.limite <= 0) e.limite = "Limite deve ser maior que zero"
+      if (form.diaFechamento == null) e.diaFechamento = "Informe o dia"
+      else if (!Number.isInteger(form.diaFechamento) || form.diaFechamento < 1 || form.diaFechamento > 31)
         e.diaFechamento = "Dia entre 1 e 31"
-      if (form.diaVencimento != null && (!Number.isInteger(form.diaVencimento) || form.diaVencimento < 1 || form.diaVencimento > 31))
+      if (form.diaVencimento == null) e.diaVencimento = "Informe o dia"
+      else if (!Number.isInteger(form.diaVencimento) || form.diaVencimento < 1 || form.diaVencimento > 31)
         e.diaVencimento = "Dia entre 1 e 31"
     }
     setFormErrors(e)
@@ -548,16 +558,22 @@ export default function CreditCardsPage() {
             </PontesField>
           )}
           {temCredito && (
-            <PontesField label="Limite de crédito" error={formErrors.limite}>
-              <PontesInput type="number" value={form.limite != null ? String(form.limite) : ""} onChange={(e) => { setF("limite", e.target.value ? Number(e.target.value) : undefined); clearErr("limite") }} invalid={!!formErrors.limite} min={0} step="0.01" inputMode="decimal" />
+            <PontesField label="Limite de crédito" required error={formErrors.limite}>
+              <PontesInput
+                iconStart="R$"
+                value={fmtMoneyInput(form.limite)}
+                onChange={(e) => { setF("limite", parseMoney(e.target.value)); clearErr("limite") }}
+                invalid={!!formErrors.limite}
+                inputMode="decimal" placeholder="0,00"
+              />
             </PontesField>
           )}
           {temCredito && (
             <div className={styles.grid2}>
-              <PontesField label="Dia fechamento" error={formErrors.diaFechamento}>
+              <PontesField label="Dia fechamento" required error={formErrors.diaFechamento}>
                 <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => { setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaFechamento") }} invalid={!!formErrors.diaFechamento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
-              <PontesField label="Dia vencimento" error={formErrors.diaVencimento}>
+              <PontesField label="Dia vencimento" required error={formErrors.diaVencimento}>
                 <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => { setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaVencimento") }} invalid={!!formErrors.diaVencimento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
             </div>
