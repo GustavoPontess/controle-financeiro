@@ -294,22 +294,25 @@ export default function CreditCardsPage() {
   // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
 
-  // Carrega o detalhe só do mês selecionado + vizinhos (janela de 3). Navegar
-  // um passo fica instantâneo (vizinho já em cache) sem buscar TODAS as faturas.
-  useEffect(() => {
-    if (!faturasCartaoId || faturasSorted.length === 0) return
+  // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
+  // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
+  const idsParaCarregar = (() => {
+    if (!faturasCartaoId || faturasSorted.length === 0) return [] as string[]
     const sel = Math.max(0, Math.min(faturaIdx, faturasSorted.length - 1))
-    const janela = [sel - 1, sel, sel + 1].filter((i) => i >= 0 && i < faturasSorted.length)
-    janela.forEach((i) => {
-      const f = faturasSorted[i]
-      if (faturaDetalhes[f.id]) return
-      getFaturaDetalhe(faturasCartaoId, f.id)
-        .then((d) => setFaturaDetalhes((prev) => (prev[f.id] ? prev : { ...prev, [f.id]: d })))
+    return [sel - 1, sel, sel + 1]
+      .filter((i) => i >= 0 && i < faturasSorted.length)
+      .map((i) => faturasSorted[i].id)
+      .filter((id) => !faturaDetalhes[id])
+  })()
+  const idsKey = idsParaCarregar.join(",")
+  useEffect(() => {
+    if (!faturasCartaoId || !idsKey) return
+    idsKey.split(",").forEach((id) => {
+      getFaturaDetalhe(faturasCartaoId, id)
+        .then((d) => setFaturaDetalhes((prev) => (prev[id] ? prev : { ...prev, [id]: d })))
         .catch(() => { /* ignore */ })
     })
-    // faturasSorted é derivado de faturas (já nas deps)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faturasCartaoId, faturaIdx, faturas, faturaDetalhes])
+  }, [faturasCartaoId, idsKey])
 
   // Faturas previstas das assinaturas (recorrentes mensais no cartão) — próximos meses.
   const addMonthsISO = (iso: string, n: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + n); return d.toISOString() }

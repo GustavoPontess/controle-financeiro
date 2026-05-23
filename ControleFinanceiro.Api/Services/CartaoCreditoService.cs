@@ -131,16 +131,28 @@ public class CartaoCreditoService(AppDbContext context)
         var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
         if (cartao is null) return false;
 
-        var transacoes = await _context.Transacoes
-            .Where(t => t.CartaoCreditoId == id)
-            .ToListAsync();
-        _context.Transacoes.RemoveRange(transacoes);
-
         var faturas = await _context.Faturas
             .Where(f => f.CartaoCreditoId == id)
             .ToListAsync();
-        _context.Faturas.RemoveRange(faturas);
+        var faturaIds = faturas.Select(f => f.Id).ToList();
 
+        // Pagamentos de fatura debitaram uma conta (dinheiro que de fato saiu).
+        // Mantemos esses lançamentos no extrato da conta, apenas desvinculando da
+        // fatura — senão o FK Restrict (FaturaPaga) impede excluir o cartão.
+        if (faturaIds.Count > 0)
+        {
+            var pagamentos = await _context.Transacoes
+                .Where(t => t.FaturaPagaId != null && faturaIds.Contains(t.FaturaPagaId.Value))
+                .ToListAsync();
+            foreach (var p in pagamentos) p.FaturaPagaId = null;
+        }
+
+        // Compras feitas no cartão saem junto com o cartão (não fazem sentido sem ele).
+        var compras = await _context.Transacoes
+            .Where(t => t.CartaoCreditoId == id)
+            .ToListAsync();
+        _context.Transacoes.RemoveRange(compras);
+        _context.Faturas.RemoveRange(faturas);
         _context.CartoesCredito.Remove(cartao);
         await _context.SaveChangesAsync();
         return true;
