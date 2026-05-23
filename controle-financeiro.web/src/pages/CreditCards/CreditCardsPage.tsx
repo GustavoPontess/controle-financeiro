@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, Banknote, Check, Wifi,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
@@ -28,7 +28,11 @@ const fmtMoneyInput = (n?: number): string =>
   n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 // Datas de ciclo vêm como UTC (meia-noite) — formata em UTC pra não cair pro dia anterior.
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
-const formatDateShort = (s: string) => new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" })
+// Mês de referência da fatura (ex.: "Junho 2026") — usa o fechamento.
+const mesLabel = (s: string) => {
+  const m = new Date(s).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
 
 const BANDEIRAS = [
   { value: "1", label: "Visa" }, { value: "2", label: "Mastercard" }, { value: "3", label: "Elo" },
@@ -106,6 +110,7 @@ export default function CreditCardsPage() {
   const [loadingFaturas, setLoadingFaturas] = useState(false)
   const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
   const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
+  const [faturaIdx, setFaturaIdx] = useState(0) // 0 = fatura mais recente (atual)
 
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
@@ -148,6 +153,7 @@ export default function CreditCardsPage() {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
     setFaturasCartaoId(cartaoId)
     setExpandedFaturaId(null)
+    setFaturaIdx(0)
     setLoadingFaturas(true)
     try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
@@ -267,10 +273,8 @@ export default function CreditCardsPage() {
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
-  // Fatura atual = mais recente; resto = histórico.
+  // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
-  const faturaAtual = faturasSorted[0]
-  const faturasHistorico = faturasSorted.slice(1)
 
   const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
     const ids = new Set<string>()
@@ -283,26 +287,49 @@ export default function CreditCardsPage() {
 
   const renderDetalhe = (f: Fatura) => {
     const detalhe = faturaDetalhes[f.id]
-    const paid = paidIdsOf(f, detalhe)
     if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
-    if (detalhe.transacoes.length === 0) return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
+    const paid = paidIdsOf(f, detalhe)
+    const pagamentos = detalhe.pagamentos ?? []
+    if (detalhe.transacoes.length === 0 && pagamentos.length === 0)
+      return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
     return (
-      <div className={styles.txList}>
-        {detalhe.transacoes.map((t) => (
-          <div key={t.id} className={styles.txRow}>
-            <div className={styles.txMain}>
-              <span className={styles.txDesc}>{t.descricao}</span>
-              <span className={styles.txMeta}>
-                {new Date(t.data).toLocaleDateString("pt-BR")} · {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                {t.categoriaDescricao ? ` · ${t.categoriaDescricao}` : ""}
-              </span>
-            </div>
-            <span className={styles.txValor} data-paid={paid.has(t.id) ? "true" : "false"}>
-              {paid.has(t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(t.valor)}
-            </span>
+      <>
+        {detalhe.transacoes.length > 0 && (
+          <div className={styles.txList}>
+            {detalhe.transacoes.map((t) => (
+              <div key={t.id} className={styles.txRow}>
+                <div className={styles.txMain}>
+                  <span className={styles.txDesc}>{t.descricao}</span>
+                  <span className={styles.txMeta}>
+                    {new Date(t.data).toLocaleDateString("pt-BR")} · {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {t.categoriaDescricao ? ` · ${t.categoriaDescricao}` : ""}
+                  </span>
+                </div>
+                <span className={styles.txValor} data-paid={paid.has(t.id) ? "true" : "false"}>
+                  {paid.has(t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(t.valor)}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+        {pagamentos.length > 0 && (
+          <div className={styles.payBlock}>
+            <div className={styles.payHead}>
+              <span className={styles.payTitle}>Pagamentos</span>
+              <span className={styles.payTotal}>{formatMoney(f.valorPago)} pago</span>
+            </div>
+            {pagamentos.map((p) => (
+              <div key={p.id} className={styles.txRow}>
+                <div className={styles.txMain}>
+                  <span className={styles.txDesc}><Check size={13} strokeWidth={2.5} /> Pagamento · {p.meioPagamentoDescricao}</span>
+                  <span className={styles.txMeta}>{formatDate(p.data)}</span>
+                </div>
+                <span className={styles.payValor}>− {formatMoney(p.valor)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
     )
   }
 
@@ -437,87 +464,73 @@ export default function CreditCardsPage() {
               <ReceiptText size={17} />
             </span>
             <div className={styles.faturaHeadText}>
-              <div className={styles.faturaTitle}>Faturas — {cartaoAtivo.nome}</div>
-              <div className={styles.faturaSub}>Fatura atual e histórico</div>
+              <div className={styles.faturaTitle}>Fatura — {cartaoAtivo.nome}</div>
+              <div className={styles.faturaSub}>Navegue pelos meses</div>
             </div>
           </div>
 
           {loadingFaturas ? (
             <div className={styles.faturaEmpty}>Carregando…</div>
-          ) : faturas.length === 0 ? (
+          ) : faturasSorted.length === 0 ? (
             <div className={styles.faturaEmpty}>Nenhuma fatura ainda. Registre uma compra no crédito pra criar a primeira.</div>
-          ) : (
-            <div className={styles.faturaBody}>
-              {/* Fatura atual em destaque */}
-              {faturaAtual && (() => {
-                const st = STATUS[statusKey(faturaAtual)]
-                const open = faturaAtual.valorRestante > 0
-                const exp = expandedFaturaId === faturaAtual.id
-                return (
-                  <div className={styles.atual} data-open={open ? "true" : undefined}>
-                    <div className={styles.atualTop}>
-                      <div>
-                        <div className={styles.atualLabel}>FATURA ATUAL · {formatDate(faturaAtual.dataInicio)} – {formatDate(faturaAtual.dataFechamento)}</div>
-                        <div className={styles.atualValor}>{formatMoney(open ? faturaAtual.valorRestante : faturaAtual.valorTotal)}</div>
-                        <div className={styles.atualMeta}>
-                          <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
-                          <span className={styles.muted} data-venc={faturaAtual.vencida ? "true" : undefined}>
-                            {faturaAtual.vencida ? "Vencida em " : "Vence "}{formatDate(faturaAtual.dataVencimento)}
-                          </span>
-                          {faturaAtual.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(faturaAtual.valorPago)} de {formatMoney(faturaAtual.valorTotal)}</span>}
-                        </div>
-                      </div>
-                      {open && (
-                        <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
-                          onClick={() => openPagar(faturaAtual.id, faturasCartaoId, faturaAtual.valorRestante, cartaoAtivo.contaId)}>
-                          Pagar
-                        </PontesButton>
-                      )}
-                    </div>
-                    {faturaAtual.valorPago > 0 && open && (
-                      <div className={styles.paidBar} title={`Pago ${formatMoney(faturaAtual.valorPago)} de ${formatMoney(faturaAtual.valorTotal)}`}>
-                        <div className={styles.paidFill} style={{ width: `${Math.min(100, (faturaAtual.valorPago / faturaAtual.valorTotal) * 100)}%` }} />
-                      </div>
-                    )}
-                    <button type="button" className={styles.expandBtn} onClick={() => toggleFatura(faturaAtual.id, faturasCartaoId)}>
-                      <ChevronDown size={14} className={exp ? styles.chevOpen : undefined} /> {exp ? "Ocultar lançamentos" : "Ver lançamentos"}
-                    </button>
-                    {exp && renderDetalhe(faturaAtual)}
+          ) : (() => {
+            const idx = Math.min(faturaIdx, faturasSorted.length - 1)
+            const f = faturasSorted[idx]
+            const st = STATUS[statusKey(f)]
+            const open = f.valorRestante > 0
+            const exp = expandedFaturaId === f.id
+            const ehAtual = idx === 0
+            return (
+              <div className={styles.faturaBody}>
+                {/* Navegação por mês: ‹ anterior | mês | próximo › */}
+                <div className={styles.monthNav}>
+                  <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
+                    disabled={idx >= faturasSorted.length - 1} onClick={() => setFaturaIdx(idx + 1)}>
+                    <ChevronLeft size={18} />
+                  </button>
+                  <div className={styles.monthLabel}>
+                    <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ""}</span>
+                    <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
                   </div>
-                )
-              })()}
-
-              {/* Histórico */}
-              {faturasHistorico.length > 0 && (
-                <div className={styles.histWrap}>
-                  <div className={styles.histTitle}>Histórico</div>
-                  {faturasHistorico.map((f) => {
-                    const st = STATUS[statusKey(f)]
-                    const exp = expandedFaturaId === f.id
-                    return (
-                      <div key={f.id} className={styles.histItem}>
-                        <button type="button" className={styles.histRow} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
-                          <ChevronDown size={15} className={exp ? styles.chevOpen : styles.chevClosed} />
-                          <span className={styles.histPeriodo}>{formatDateShort(f.dataInicio)} – {formatDateShort(f.dataFechamento)}</span>
-                          <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
-                          <span className={styles.histTotal}>{formatMoney(f.valorTotal)}</span>
-                          <span className={styles.histRest} data-rest={f.valorRestante > 0 ? "open" : "done"}>
-                            {f.valorRestante > 0 ? `Falta ${formatMoney(f.valorRestante)}` : "Paga"}
-                          </span>
-                          {f.valorRestante > 0 && (
-                            <span className={styles.histPagar} onClick={(e) => { e.stopPropagation(); openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId) }}>
-                              <Banknote size={15} />
-                            </span>
-                          )}
-                        </button>
-                        {exp && renderDetalhe(f)}
-                      </div>
-                    )
-                  })}
+                  <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
+                    disabled={idx <= 0} onClick={() => setFaturaIdx(idx - 1)}>
+                    <ChevronRight size={18} />
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Fatura do mês selecionado */}
+                <div className={styles.atual} data-open={open ? "true" : undefined}>
+                  <div className={styles.atualTop}>
+                    <div>
+                      <div className={styles.atualValor}>{formatMoney(open ? f.valorRestante : f.valorTotal)}</div>
+                      <div className={styles.atualMeta}>
+                        <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
+                        <span className={styles.muted} data-venc={f.vencida ? "true" : undefined}>
+                          {f.vencida ? "Vencida em " : "Vence "}{formatDate(f.dataVencimento)}
+                        </span>
+                        {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
+                      </div>
+                    </div>
+                    {open && (
+                      <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
+                        onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
+                        Pagar
+                      </PontesButton>
+                    )}
+                  </div>
+                  {f.valorPago > 0 && open && (
+                    <div className={styles.paidBar} title={`Pago ${formatMoney(f.valorPago)} de ${formatMoney(f.valorTotal)}`}>
+                      <div className={styles.paidFill} style={{ width: `${Math.min(100, (f.valorPago / f.valorTotal) * 100)}%` }} />
+                    </div>
+                  )}
+                  <button type="button" className={styles.expandBtn} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
+                    <ChevronDown size={14} className={exp ? styles.chevOpen : undefined} /> {exp ? "Ocultar lançamentos" : "Ver lançamentos"}
+                  </button>
+                  {exp && renderDetalhe(f)}
+                </div>
+              </div>
+            )
+          })()}
         </PontesCard>
       )}
 

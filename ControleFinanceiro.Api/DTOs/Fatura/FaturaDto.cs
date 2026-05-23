@@ -26,6 +26,18 @@ public class FaturaDto
 public class FaturaDetalheDto : FaturaDto
 {
     public List<FaturaTransacaoDto> Transacoes { get; set; } = new();
+
+    /// <summary>Pagamentos registrados nesta fatura (transações com FaturaPagaId).</summary>
+    public List<FaturaPagamentoDto> Pagamentos { get; set; } = new();
+}
+
+public class FaturaPagamentoDto
+{
+    public Guid Id { get; set; }
+    public decimal Valor { get; set; }
+    public DateTime Data { get; set; }
+    public int MeioPagamento { get; set; }
+    public string MeioPagamentoDescricao { get; set; } = string.Empty;
 }
 
 public class FaturaTransacaoDto

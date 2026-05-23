@@ -80,8 +80,8 @@ describe("CreditCardsPage (#84)", () => {
   it("abre faturas (clica no card) e destaca a fatura atual", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    expect(await screen.findByText(/Faturas — Nubank/)).toBeInTheDocument()
-    expect(screen.getByText(/FATURA ATUAL/)).toBeInTheDocument()
+    expect(await screen.findByText(/Fatura — Nubank/)).toBeInTheDocument()
+    expect(screen.getByText(/· atual/)).toBeInTheDocument()
     expect(screen.getByText("Aberta")).toBeInTheDocument()
   })
 
@@ -89,15 +89,17 @@ describe("CreditCardsPage (#84)", () => {
     getFaturasByCartao.mockReset().mockResolvedValue([fAbertaParcial, fFechadaPaga, fFechadaComSaldo])
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText(/Faturas — Nubank/)
-    // Fatura atual aberta com pagamento parcial → continua "Aberta" (não "Paga")
+    await screen.findByText(/Fatura — Nubank/)
+    // Mês atual: aberta com pagamento parcial → "Aberta" (NÃO "Paga")
     expect(screen.getByText("Aberta")).toBeInTheDocument()
     expect(screen.getByText(/Pago R\$\s?50,00 de R\$\s?130,00/)).toBeInTheDocument()
-    // Histórico: fechada+quitada = Paga; fechada com saldo = Fechada
-    expect(screen.getAllByText("Paga").length).toBeGreaterThan(0)
-    expect(screen.getByText("Fechada")).toBeInTheDocument()
-    // Nenhuma fatura aberta deve aparecer como "Paga" no badge de status
-    expect(screen.queryByText("Aberta")).toBeInTheDocument()
+    expect(screen.queryByText("Paga")).not.toBeInTheDocument()
+    // Mês anterior: fatura fechada e quitada → "Paga"
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Paga")).toBeInTheDocument()
+    // Mês anterior: fatura fechada com saldo → "Fechada"
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Fechada")).toBeInTheDocument()
   })
 
   it("valida form: submit sem nome bloqueia e mostra erro", async () => {
@@ -121,7 +123,7 @@ describe("CreditCardsPage (#84)", () => {
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText(/Faturas — Nubank/)
+    await screen.findByText(/Fatura — Nubank/)
     fireEvent.click(screen.getByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))

@@ -304,6 +304,31 @@ public class FaturaService
                 CategoriaDescricao = t.Categoria?.Descricao,
             }).ToList();
 
+        // Pagamentos: transações de pagamento desta fatura (FaturaPagaId, não FaturaId).
+        // Materializa antes do switch (árvore de expressão EF não aceita switch).
+        var pags = await _context.Transacoes
+            .Where(t => t.FaturaPagaId == faturaId && t.Ativo)
+            .OrderBy(t => t.Data)
+            .Select(t => new { t.Id, t.Valor, t.Data, t.MeioPagamento })
+            .ToListAsync();
+        dto.Pagamentos = pags.Select(t => new FaturaPagamentoDto
+        {
+            Id = t.Id,
+            Valor = t.Valor,
+            Data = t.Data,
+            MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : 0,
+            MeioPagamentoDescricao = t.MeioPagamento switch
+            {
+                Domain.Enums.MeioPagamento.Dinheiro => "Dinheiro",
+                Domain.Enums.MeioPagamento.Debito   => "Débito",
+                Domain.Enums.MeioPagamento.Credito  => "Crédito",
+                Domain.Enums.MeioPagamento.Pix      => "Pix",
+                Domain.Enums.MeioPagamento.Ted      => "TED/DOC",
+                Domain.Enums.MeioPagamento.Boleto   => "Boleto",
+                _ => "—",
+            },
+        }).ToList();
+
         return dto;
     }
 
