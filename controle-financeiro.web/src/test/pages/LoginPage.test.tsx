@@ -82,9 +82,28 @@ describe('LoginPage', () => {
     mockLogin.mockRejectedValueOnce('falha inesperada')
     renderLogin()
 
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
     fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
 
     await waitFor(() => expect(screen.getByText(/erro ao fazer login/i)).toBeInTheDocument())
+  })
+
+  it('submit vazio bloqueia e mostra erro por campo (sem chamar login)', () => {
+    renderLogin()
+    fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
+    expect(mockLogin).not.toHaveBeenCalled()
+    expect(screen.getByText('Informe o e-mail')).toBeInTheDocument()
+    expect(screen.getByText('Informe a senha')).toBeInTheDocument()
+  })
+
+  it('e-mail inválido mostra erro e bloqueia', () => {
+    renderLogin()
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'invalido' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
+    fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
+    expect(mockLogin).not.toHaveBeenCalled()
+    expect(screen.getByText('E-mail inválido')).toBeInTheDocument()
   })
 
   it('exibe botão voltar à página inicial', () => {

@@ -14,11 +14,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  const validate = (): boolean => {
+    const e: { email?: string; password?: string } = {}
+    if (!email.trim()) e.email = 'Informe o e-mail'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'E-mail inválido'
+    if (!password) e.password = 'Informe a senha'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!validate()) return
     setIsLoading(true)
     try {
       await login(email, password)
@@ -112,29 +123,29 @@ export default function LoginPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className={styles.formBody}>
+          <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
             {error && (
               <PontesAlert tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField label="E-mail" htmlFor="login-email" required>
+            <PontesField label="E-mail" htmlFor="login-email" required error={errors.email}>
               <PontesInput
                 id="login-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
+                invalid={!!errors.email}
                 autoComplete="email"
               />
             </PontesField>
 
-            <PontesField label="Senha" htmlFor="login-senha" required>
+            <PontesField label="Senha" htmlFor="login-senha" required error={errors.password}>
               <PontesInput
                 id="login-senha"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })) }}
+                invalid={!!errors.password}
                 autoComplete="current-password"
                 iconEnd={
                   <button
