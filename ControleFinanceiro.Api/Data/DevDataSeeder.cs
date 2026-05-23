@@ -167,6 +167,23 @@ public static class DevDataSeeder
         var soloCarteira = NovaConta("Carteira", TipoConta.Dinheiro, solo.Id, carteira: true);
         context.Contas.AddRange(devCorrente, devPoupanca, devCarteira, soloCorrente, soloCarteira);
 
+        // ── Cartão de crédito do dev (pra testar crédito + parcelamento) ──
+        var devCartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Nubank",
+            UltimosDigitos = "4218",
+            Bandeira = BandeiraCartao.Mastercard,
+            TemCredito = true,
+            LimiteTotal = 5000m,
+            DiaFechamento = 20,
+            DiaVencimento = 28,
+            BancoId = Vincular("260"),
+            CriadoPor = dev.Id,
+            Ativo = true,
+        };
+        context.CartoesCredito.Add(devCartao);
+
         // ── Família do dev (casal) ──
         var familia = new Familia
         {

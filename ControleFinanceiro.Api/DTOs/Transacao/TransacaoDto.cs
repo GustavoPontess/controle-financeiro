@@ -7,6 +7,7 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public decimal Valor { get; set; }
         public int Tipo { get; set; }
         public Guid? CategoriaId { get; set; }
+        public Guid? SubcategoriaId { get; set; }
         public Guid? ContaId { get; set; }
         public string? ContaNome { get; set; }
         public Guid? CartaoCreditoId { get; set; }

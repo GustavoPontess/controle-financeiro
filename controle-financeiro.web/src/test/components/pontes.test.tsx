@@ -3,10 +3,11 @@ import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import {
   palettes, fonts,
-  PontesButton, PontesIconButton, PontesField, PontesInput, PontesSelect,
+  PontesButton, PontesIconButton, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
-  PontesSidebarItem,
+  PontesSidebarItem, PontesChoiceCards, PontesGroupedSelect,
+  PontesModal, PontesDialog,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -65,6 +66,91 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("E-mail")).toBeInTheDocument()
     expect(screen.getByText("*")).toBeInTheDocument()
     expect(screen.getByText("Inválido")).toBeInTheDocument()
+  })
+
+  it("PontesMoneyInput só aceita números e formata como moeda BR", () => {
+    function Wrapper() {
+      const [v, setV] = useState("")
+      return <PontesMoneyInput p={p} font={font} value={v} onChange={setV} suggestions={[]} />
+    }
+    render(<Wrapper />)
+    const input = screen.getByPlaceholderText("0,00") as HTMLInputElement
+    // letras e símbolos são descartados, dígitos viram centavos
+    fireEvent.change(input, { target: { value: "abc12345xyz" } })
+    expect(input.value).toBe("123,45")
+    // limpar volta a vazio
+    fireEvent.change(input, { target: { value: "" } })
+    expect(input.value).toBe("")
+  })
+
+  it("PontesChoiceCards marca ativo e dispara onChange", () => {
+    function Wrapper() {
+      const [v, setV] = useState("1")
+      return (
+        <PontesChoiceCards
+          p={p} font={font} value={v} onChange={setV}
+          options={[
+            { value: "1", label: "Despesa", tone: "danger" },
+            { value: "2", label: "Receita", tone: "success" },
+          ]}
+        />
+      )
+    }
+    render(<Wrapper />)
+    const despesa = screen.getByText("Despesa").closest("button")!
+    expect(despesa).toHaveAttribute("data-active", "true")
+    fireEvent.click(screen.getByText("Receita"))
+    expect(screen.getByText("Receita").closest("button")).toHaveAttribute("data-active", "true")
+    expect(despesa).not.toHaveAttribute("data-active")
+  })
+
+  it("PontesGroupedSelect abre, escolhe grupo e item", () => {
+    function Wrapper() {
+      const [g, setG] = useState<string>("")
+      const [i, setI] = useState<string>("")
+      return (
+        <PontesGroupedSelect
+          p={p} font={font}
+          groups={[{ value: "cat1", label: "Alimentação", items: [{ value: "sub1", label: "Mercado" }] }]}
+          groupValue={g} itemValue={i}
+          onChange={(gv, iv) => { setG(gv); setI(iv) }}
+        />
+      )
+    }
+    render(<Wrapper />)
+    fireEvent.click(screen.getByText("Selecione")) // abre painel
+    fireEvent.click(screen.getByText("Mercado")) // escolhe item
+    expect(screen.getByText("Alimentação · Mercado")).toBeInTheDocument()
+  })
+
+  it("PontesModal mostra título, ícone X (svg) e fecha", () => {
+    let closed = 0
+    render(
+      <PontesModal p={p} font={font} open title="Nova transação" onClose={() => closed++}>
+        <div>conteúdo</div>
+      </PontesModal>
+    )
+    expect(screen.getByText("Nova transação")).toBeInTheDocument()
+    const closeBtn = screen.getByLabelText("Fechar")
+    expect(closeBtn.querySelector("svg")).toBeTruthy() // lucide, não char "×"
+    expect(closeBtn.textContent).toBe("")
+    fireEvent.click(closeBtn)
+    expect(closed).toBe(1)
+  })
+
+  it("PontesDialog renderiza ícone svg e confirma", () => {
+    let confirmed = 0
+    render(
+      <PontesDialog
+        p={p} font={font} open tone="danger"
+        title="Excluir?" description="Sem volta"
+        onConfirm={() => confirmed++} onCancel={() => { /* noop */ }}
+      />
+    )
+    expect(screen.getByText("Excluir?")).toBeInTheDocument()
+    expect(document.querySelector("svg")).toBeTruthy()
+    fireEvent.click(screen.getByText("Confirmar"))
+    expect(confirmed).toBe(1)
   })
 
   it("PontesSelect abre, lista options e seleciona", () => {

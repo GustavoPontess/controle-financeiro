@@ -10,20 +10,20 @@
 }
 .trigger[data-placeholder="true"] { color: var(--pontes-text-muted); }
 .trigger[data-open="true"] { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-primary) 13%, transparent); }
-.trigger[data-invalid="true"] { border-color: var(--pontes-danger); }
+.trigger[data-invalid="true"] { border-color: var(--pontes-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-danger) 13%, transparent); }
 .trigger:disabled { cursor: not-allowed; opacity: .6; }
-.caret { color: var(--pontes-text-muted); transition: transform .15s; }
+.caret { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform .16s ease; }
 .trigger[data-open="true"] .caret { transform: rotate(180deg); }
 .menu {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-  background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .12); overflow-y: auto; z-index: 50; max-height: 280px;
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px;
+  box-shadow: var(--pontes-shadow-md); overflow-y: auto; z-index: 50; max-height: 280px; padding: 6px;
 }
 .option {
-  width: 100%; text-align: left; padding: 10px 14px; font-size: 14px; color: var(--pontes-text);
+  width: 100%; text-align: left; padding: 9px 10px; font-size: 14px; color: var(--pontes-text);
   background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font);
-  display: flex; justify-content: space-between; align-items: center;
+  border-radius: 8px; display: flex; justify-content: space-between; align-items: center;
 }
 .option:hover { background: var(--pontes-bg); }
-.option[data-selected="true"] { background: var(--pontes-primary-soft); }
-.check { color: var(--pontes-primary); font-weight: 700; }
+.option[data-selected="true"] { background: var(--pontes-primary-soft); color: var(--pontes-primary); }
+.check { color: var(--pontes-primary); display: inline-flex; flex-shrink: 0; }

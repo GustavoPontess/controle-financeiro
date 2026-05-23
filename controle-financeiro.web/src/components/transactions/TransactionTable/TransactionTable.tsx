@@ -36,6 +36,7 @@ export interface TransactionRow {
   tipo: number
   data: string
   categoriaId?: string
+  subcategoriaId?: string
   categoriaDescricao?: string
   contaId?: string
   cartaoCreditoId?: string
@@ -313,6 +314,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
       valor: row.valor,
       tipo: row.tipo,
       categoriaId: row.categoriaId,
+      subcategoriaId: row.subcategoriaId,
       contaId: row.contaId,
       cartaoCreditoId: row.cartaoCreditoId,
       meioPagamento: row.meioPagamento,

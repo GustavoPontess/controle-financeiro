@@ -66,6 +66,7 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = dto.Valor,
                 Tipo = (TipoTransacao)dto.Tipo,
                 CategoriaId = dto.CategoriaId == Guid.Empty ? null : dto.CategoriaId,
+                SubcategoriaId = dto.SubcategoriaId,
                 ContaId = dto.ContaId,
                 CartaoCreditoId = dto.CartaoCreditoId,
                 UsadoComoCredito = dto.UsadoComoCredito,
@@ -84,6 +85,7 @@ namespace ControleFinanceiro.Api.Controllers
             Valor = t.Valor,
             Tipo = (int)t.Tipo,
             CategoriaId = t.CategoriaId,
+            SubcategoriaId = t.SubcategoriaId,
             ContaId = t.ContaId,
             ContaNome = t.Conta?.Nome,
             CartaoCreditoId = t.CartaoCreditoId,
@@ -135,6 +137,7 @@ namespace ControleFinanceiro.Api.Controllers
                 Valor = dto.Valor,
                 Tipo = (TipoTransacao)dto.Tipo,
                 CategoriaId = dto.CategoriaId,
+                SubcategoriaId = dto.SubcategoriaId,
                 MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
                 Data = dto.Data.ToUniversalTime()
             };
