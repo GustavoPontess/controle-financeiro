@@ -379,9 +379,11 @@ export default function CreditCardsPage() {
                       <span className={styles.cardName}>{c.nome}</span>
                       {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
                     </div>
+                  </div>
+                  <div className={styles.chipRow}>
+                    <div className={styles.cardChip} />
                     <Wifi size={18} className={styles.contactless} />
                   </div>
-                  <div className={styles.cardChip} />
                   <div className={styles.faceBottom}>
                     <div className={styles.faceBottomCol}>
                       <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
