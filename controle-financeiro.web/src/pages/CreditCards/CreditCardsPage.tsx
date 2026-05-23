@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, Wallet, ChevronRight, ChevronDown, Banknote,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, Banknote, Check,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
@@ -21,6 +21,7 @@ const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 // Datas de ciclo vêm como UTC (meia-noite) — formata em UTC pra não cair pro dia anterior.
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
+const formatDateShort = (s: string) => new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" })
 
 const BANDEIRAS = [
   { value: "1", label: "Visa" }, { value: "2", label: "Mastercard" }, { value: "3", label: "Elo" },
@@ -64,6 +65,7 @@ const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "succes
   2: { label: "Fechada", tone: "warning" },
   3: { label: "Paga", tone: "success" },
 }
+const statusKey = (f: Fatura) => (f.estadoPagamento === 2 ? 3 : f.estadoCiclo === 1 ? 2 : 1)
 
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
 const emptyForm: FormState = {
@@ -80,21 +82,18 @@ export default function CreditCardsPage() {
   const [contas, setContas] = useState<Conta[]>([])
   const [bancos, setBancos] = useState<Banco[]>([])
 
-  // Modal cartão
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [formErrors, setFormErrors] = useState<{ nome?: string; conta?: string }>({})
   const [loading, setLoading] = useState(false)
 
-  // Faturas
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [loadingFaturas, setLoadingFaturas] = useState(false)
   const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
   const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
 
-  // Pagamento
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
   const [pagarForm, setPagarForm] = useState({
@@ -103,7 +102,6 @@ export default function CreditCardsPage() {
   const [pagarErrors, setPagarErrors] = useState<{ conta?: string; valor?: string }>({})
   const [pagarLoading, setPagarLoading] = useState(false)
 
-  // Exclusão
   const [delId, setDelId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
@@ -119,21 +117,26 @@ export default function CreditCardsPage() {
 
   useEffect(() => { void loadData() }, [loadData])
 
-  // Recarrega quando uma transação é criada pelo popup global (gastos/limite/fatura).
+  const refreshFaturas = useCallback(async (cartaoId: string) => {
+    setFaturas(await getFaturasByCartao(cartaoId))
+  }, [])
+
+  // Recarrega quando uma transação é criada pelo popup global.
   useEffect(() => {
     const onCreated = () => {
       void loadData()
-      if (faturasCartaoId) getFaturasByCartao(faturasCartaoId).then(setFaturas).catch(() => { /* ignore */ })
+      if (faturasCartaoId) refreshFaturas(faturasCartaoId).catch(() => { /* ignore */ })
     }
     window.addEventListener("transactionCreated", onCreated)
     return () => window.removeEventListener("transactionCreated", onCreated)
-  }, [loadData, faturasCartaoId])
+  }, [loadData, faturasCartaoId, refreshFaturas])
 
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
     setFaturasCartaoId(cartaoId)
+    setExpandedFaturaId(null)
     setLoadingFaturas(true)
-    try { setFaturas(await getFaturasByCartao(cartaoId)) }
+    try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
   }
 
@@ -177,7 +180,7 @@ export default function CreditCardsPage() {
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
       setPagarFaturaId(null)
       await loadData()
-      if (faturasCartaoId) setFaturas(await getFaturasByCartao(faturasCartaoId))
+      if (faturasCartaoId) await refreshFaturas(faturasCartaoId)
     } catch {
       notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
     } finally { setPagarLoading(false) }
@@ -234,11 +237,50 @@ export default function CreditCardsPage() {
 
   const totalLimite = cartoes.filter((c) => c.temCredito && c.limite).reduce((s, c) => s + (c.limite ?? 0), 0)
   const totalGastos = cartoes.filter((c) => c.temCredito).reduce((s, c) => s + c.gastosNoCicloAtual, 0)
+  const totalDisp = Math.max(0, totalLimite - totalGastos)
   const isPrePago = form.modo === "prepago"
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
-
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Fatura atual = mais recente; resto = histórico.
+  const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
+  const faturaAtual = faturasSorted[0]
+  const faturasHistorico = faturasSorted.slice(1)
+
+  const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
+    const ids = new Set<string>()
+    if (!detalhe?.transacoes?.length) return ids
+    const sorted = [...detalhe.transacoes].sort((a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime())
+    let cum = 0
+    for (const t of sorted) { cum += t.valor; if (f.valorPago >= cum) ids.add(t.id) }
+    return ids
+  }
+
+  const renderDetalhe = (f: Fatura) => {
+    const detalhe = faturaDetalhes[f.id]
+    const paid = paidIdsOf(f, detalhe)
+    if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
+    if (detalhe.transacoes.length === 0) return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
+    return (
+      <div className={styles.txList}>
+        {detalhe.transacoes.map((t) => (
+          <div key={t.id} className={styles.txRow}>
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}>{t.descricao}</span>
+              <span className={styles.txMeta}>
+                {new Date(t.data).toLocaleDateString("pt-BR")} · {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {t.categoriaDescricao ? ` · ${t.categoriaDescricao}` : ""}
+              </span>
+            </div>
+            <span className={styles.txValor} data-paid={paid.has(t.id) ? "true" : "false"}>
+              {paid.has(t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(t.valor)}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className={styles.root}>
@@ -246,32 +288,39 @@ export default function CreditCardsPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Cartões</h1>
-          <div className={styles.subtitle}>Gerencie seus cartões e acompanhe faturas</div>
+          <div className={styles.subtitle}>Seus cartões e faturas, num lugar só</div>
         </div>
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Cartão
         </PontesButton>
       </div>
 
-      {/* Stats */}
-      <div className={styles.statsGrid}>
-        {[
-          { label: "Total de Cartões", value: String(cartoes.length), sub: cartoes.length === 1 ? "cartão cadastrado" : "cartões cadastrados", icon: <CreditCard size={18} /> },
-          { label: "Limite Total", value: formatMoney(totalLimite), sub: "cartões com crédito", icon: <Wallet size={18} /> },
-          { label: "Gastos no Ciclo", value: formatMoney(totalGastos), sub: "ciclo atual", icon: <ReceiptText size={18} /> },
-        ].map((s) => (
-          <PontesCard key={s.label} padding={20} radius={14}>
-            <div className={styles.statHead}>
-              <span className={styles.statLabel}>{s.label}</span>
-              <span className={styles.statIcon}>{s.icon}</span>
-            </div>
-            <div className={styles.statValue}>{s.value}</div>
-            <div className={styles.statSub}>{s.sub}</div>
-          </PontesCard>
-        ))}
-      </div>
+      {/* Resumo slim */}
+      {cartoes.length > 0 && (
+        <div className={styles.summary}>
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Cartões</span>
+            <span className={styles.sumValue}>{cartoes.length}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Limite total</span>
+            <span className={styles.sumValue}>{formatMoney(totalLimite)}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Disponível</span>
+            <span className={styles.sumValue} data-pos="true">{formatMoney(totalDisp)}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Usado no ciclo</span>
+            <span className={styles.sumValue}>{formatMoney(totalGastos)}</span>
+          </div>
+        </div>
+      )}
 
-      {/* Cards grid */}
+      {/* Grid de cartões */}
       {cartoes.length === 0 ? (
         <PontesEmptyState
           icon={<CreditCard size={28} />}
@@ -284,9 +333,15 @@ export default function CreditCardsPage() {
           {cartoes.map((c) => {
             const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
             const sel = faturasCartaoId === c.id
+            const clickable = c.temCredito
             return (
-              <div key={c.id} className={styles.card} data-selected={sel ? "true" : undefined}>
-                {/* Visual do cartão */}
+              <div
+                key={c.id}
+                className={styles.card}
+                data-selected={sel ? "true" : undefined}
+                data-clickable={clickable ? "true" : undefined}
+                onClick={clickable ? () => openFaturas(c.id) : undefined}
+              >
                 <div className={styles.cardVisual} style={{ background: grad(c.bandeira) }}>
                   <div className={styles.cardCircle1} />
                   <div className={styles.cardCircle2} />
@@ -296,63 +351,50 @@ export default function CreditCardsPage() {
                   </div>
                   <div className={styles.cardVisualFoot}>
                     <span className={styles.cardDigits}>
-                      {c.ultimosDigitos ? `•••• •••• •••• ${c.ultimosDigitos}` : "•••• •••• •••• ••••"}
+                      {c.ultimosDigitos ? `•••• ${c.ultimosDigitos}` : "•••• ••••"}
                     </span>
                     <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
                   </div>
                 </div>
 
-                {/* Info + ações */}
                 <div className={styles.cardBody}>
-                  <div className={styles.actionsRow}>
+                  <div className={styles.cardTopRow}>
                     <div className={styles.chips}>
                       {c.temCredito && <PontesBadge tone="soft" size="sm">Crédito</PontesBadge>}
                       {c.temDebito && <PontesBadge tone="success" size="sm">Débito</PontesBadge>}
                       {c.ehPrePago && <PontesBadge tone="neutral" size="sm">Pré-Pago</PontesBadge>}
                     </div>
-                    <div className={styles.icons}>
-                      {c.temCredito && (
-                        <PontesIconButton size={32} variant="ghost" aria-label="Ver faturas" onClick={() => openFaturas(c.id)}>
-                          <ReceiptText size={15} />
-                        </PontesIconButton>
-                      )}
+                    <div className={styles.icons} onClick={(e) => e.stopPropagation()}>
                       <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}>
-                        <Pencil size={15} />
+                        <Pencil size={14} />
                       </PontesIconButton>
                       <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}>
-                        <Trash2 size={15} />
+                        <Trash2 size={14} />
                       </PontesIconButton>
                     </div>
                   </div>
 
-                  {c.contaNome && (
-                    <div className={styles.contaRow}>
-                      <span className={styles.muted}>Conta vinculada</span>
-                      <span className={styles.strong}>{c.contaNome}</span>
-                    </div>
-                  )}
-
-                  {(c.diaFechamento || c.diaVencimento) && (
-                    <div className={styles.chips}>
-                      {c.diaFechamento && <PontesBadge tone="neutral" size="sm">{`Fecha dia ${c.diaFechamento}`}</PontesBadge>}
-                      {c.diaVencimento && <PontesBadge tone="warning" size="sm">{`Vence dia ${c.diaVencimento}`}</PontesBadge>}
-                    </div>
-                  )}
-
-                  {c.temCredito && c.limite && (
-                    <div>
+                  {c.temCredito && c.limite ? (
+                    <div className={styles.limitBlock}>
                       <div className={styles.limitHead}>
-                        <span className={styles.muted}>Utilizado</span>
-                        <span className={styles.limitVal} data-over={pct > 80 ? "true" : undefined}>
-                          {formatMoney(c.gastosNoCicloAtual)} <span className={styles.muted}>/ {formatMoney(c.limite)}</span>
-                        </span>
+                        <span className={styles.limitDisp}>{formatMoney(c.limiteDisponivel ?? 0)}<span className={styles.muted}> disponível</span></span>
+                        <span className={styles.muted} data-over={pct > 80 ? "true" : undefined}>{Math.round(pct)}%</span>
                       </div>
                       <PontesProgress value={pct} showValue={false} height={6} color={pct > 80 ? "var(--pontes-danger)" : "var(--pontes-primary)"} />
                       <div className={styles.limitFoot}>
-                        <span className={styles.muted}>Disponível</span>
-                        <span className={styles.dispVal}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
+                        <span className={styles.muted}>{formatMoney(c.gastosNoCicloAtual)} de {formatMoney(c.limite)}</span>
+                        {(c.diaFechamento || c.diaVencimento) && (
+                          <span className={styles.muted}>{c.diaFechamento ? `fecha ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence ${c.diaVencimento}` : ""}</span>
+                        )}
                       </div>
+                      {clickable && (
+                        <div className={styles.verFaturas} data-open={sel ? "true" : undefined}>
+                          <ReceiptText size={14} /> {sel ? "Ocultar faturas" : "Ver faturas"}
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    c.contaNome && <div className={styles.contaRow}><span className={styles.muted}>Conta</span><span className={styles.strong}>{c.contaNome}</span></div>
                   )}
                 </div>
               </div>
@@ -361,117 +403,88 @@ export default function CreditCardsPage() {
         </div>
       )}
 
-      {/* Painel de Faturas */}
+      {/* Painel de faturas */}
       {faturasCartaoId && cartaoAtivo && (
-        <PontesCard padding={0} radius={14}>
+        <PontesCard padding={0} radius={16}>
           <div className={styles.faturaHead}>
             <span className={styles.faturaHeadIcon} style={{ background: grad(cartaoAtivo.bandeira) }}>
               <ReceiptText size={17} />
             </span>
-            <div>
+            <div className={styles.faturaHeadText}>
               <div className={styles.faturaTitle}>Faturas — {cartaoAtivo.nome}</div>
-              <div className={styles.faturaSub}>Histórico de faturas</div>
+              <div className={styles.faturaSub}>Fatura atual e histórico</div>
             </div>
           </div>
 
           {loadingFaturas ? (
             <div className={styles.faturaEmpty}>Carregando…</div>
           ) : faturas.length === 0 ? (
-            <div className={styles.faturaEmpty}>
-              Nenhuma fatura encontrada. Registre uma transação de crédito para criar a primeira fatura.
-            </div>
+            <div className={styles.faturaEmpty}>Nenhuma fatura ainda. Registre uma compra no crédito pra criar a primeira.</div>
           ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thIcon} />
-                    <th className={styles.th}>Período</th>
-                    <th className={styles.th}>Vencimento</th>
-                    <th className={styles.th}>Status</th>
-                    <th className={styles.thRight}>Total</th>
-                    <th className={styles.thRight}>Pago</th>
-                    <th className={styles.thRight}>Restante</th>
-                    <th className={styles.thCenter}>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {faturas.map((f) => {
-                    const statusKey = f.estadoPagamento === 2 ? 3 : f.estadoCiclo === 1 ? 2 : 1
-                    const st = STATUS[statusKey]
-                    const isExpanded = expandedFaturaId === f.id
-                    const detalhe = faturaDetalhes[f.id]
-                    const paidIds = (() => {
-                      const ids = new Set<string>()
-                      if (!detalhe?.transacoes?.length) return ids
-                      const sorted = [...detalhe.transacoes].sort((a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime())
-                      let cum = 0
-                      for (const t of sorted) { cum += t.valor; if (f.valorPago >= cum) ids.add(t.id) }
-                      return ids
-                    })()
+            <div className={styles.faturaBody}>
+              {/* Fatura atual em destaque */}
+              {faturaAtual && (() => {
+                const st = STATUS[statusKey(faturaAtual)]
+                const open = faturaAtual.valorRestante > 0
+                const exp = expandedFaturaId === faturaAtual.id
+                return (
+                  <div className={styles.atual} data-open={open ? "true" : undefined}>
+                    <div className={styles.atualTop}>
+                      <div>
+                        <div className={styles.atualLabel}>FATURA ATUAL · {formatDate(faturaAtual.dataInicio)} – {formatDate(faturaAtual.dataFechamento)}</div>
+                        <div className={styles.atualValor}>{formatMoney(open ? faturaAtual.valorRestante : faturaAtual.valorTotal)}</div>
+                        <div className={styles.atualMeta}>
+                          <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
+                          <span className={styles.muted} data-venc={faturaAtual.vencida ? "true" : undefined}>
+                            {faturaAtual.vencida ? "Vencida em " : "Vence "}{formatDate(faturaAtual.dataVencimento)}
+                          </span>
+                          {faturaAtual.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(faturaAtual.valorPago)} de {formatMoney(faturaAtual.valorTotal)}</span>}
+                        </div>
+                      </div>
+                      {open && (
+                        <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
+                          onClick={() => openPagar(faturaAtual.id, faturasCartaoId, faturaAtual.valorRestante, cartaoAtivo.contaId)}>
+                          Pagar
+                        </PontesButton>
+                      )}
+                    </div>
+                    <button type="button" className={styles.expandBtn} onClick={() => toggleFatura(faturaAtual.id, faturasCartaoId)}>
+                      <ChevronDown size={14} className={exp ? styles.chevOpen : undefined} /> {exp ? "Ocultar lançamentos" : "Ver lançamentos"}
+                    </button>
+                    {exp && renderDetalhe(faturaAtual)}
+                  </div>
+                )
+              })()}
+
+              {/* Histórico */}
+              {faturasHistorico.length > 0 && (
+                <div className={styles.histWrap}>
+                  <div className={styles.histTitle}>Histórico</div>
+                  {faturasHistorico.map((f) => {
+                    const st = STATUS[statusKey(f)]
+                    const exp = expandedFaturaId === f.id
                     return (
-                      <React.Fragment key={f.id}>
-                        <tr className={styles.faturaRow} data-expanded={isExpanded ? "true" : undefined} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
-                          <td className={styles.tdIcon}>
-                            <span className={styles.chev}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
-                          </td>
-                          <td className={styles.td}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</td>
-                          <td className={styles.td}>
-                            <span data-vencida={f.vencida ? "true" : undefined} className={styles.venc}>{formatDate(f.dataVencimento)}</span>
-                            {f.vencida && <span className={styles.vencidaTag}>Vencida</span>}
-                          </td>
-                          <td className={styles.td}><PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge></td>
-                          <td className={styles.tdRight} data-strong="true">{formatMoney(f.valorTotal)}</td>
-                          <td className={styles.tdRight} data-pos="true">{formatMoney(f.valorPago)}</td>
-                          <td className={styles.tdRight} data-rest={f.valorRestante > 0 ? "open" : "done"}>{formatMoney(f.valorRestante)}</td>
-                          <td className={styles.tdCenter} onClick={(e) => e.stopPropagation()}>
-                            {f.valorRestante > 0 && (
-                              <PontesIconButton size={32} variant="ghost" aria-label="Pagar fatura"
-                                onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
-                                <Banknote size={16} />
-                              </PontesIconButton>
-                            )}
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr>
-                            <td colSpan={8} className={styles.detailCell}>
-                              {!detalhe ? (
-                                <div className={styles.detailLoading}>Carregando…</div>
-                              ) : detalhe.transacoes.length === 0 ? (
-                                <div className={styles.detailEmpty}>Nenhuma transação nesta fatura.</div>
-                              ) : (
-                                <table className={styles.detailTable}>
-                                  <thead>
-                                    <tr>
-                                      <th className={styles.th}>Data</th>
-                                      <th className={styles.th}>Horário</th>
-                                      <th className={styles.th}>Descrição</th>
-                                      <th className={styles.th}>Categoria</th>
-                                      <th className={styles.thRight}>Valor</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {detalhe.transacoes.map((t) => (
-                                      <tr key={t.id}>
-                                        <td className={styles.td}>{new Date(t.data).toLocaleDateString("pt-BR")}</td>
-                                        <td className={styles.tdMono}>{new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
-                                        <td className={styles.td}>{t.descricao}</td>
-                                        <td className={styles.tdMuted}>{t.categoriaDescricao ?? "—"}</td>
-                                        <td className={styles.tdRight} data-paid={paidIds.has(t.id) ? "true" : "false"}>{formatMoney(t.valor)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
+                      <div key={f.id} className={styles.histItem}>
+                        <button type="button" className={styles.histRow} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
+                          <ChevronDown size={15} className={exp ? styles.chevOpen : styles.chevClosed} />
+                          <span className={styles.histPeriodo}>{formatDateShort(f.dataInicio)} – {formatDateShort(f.dataFechamento)}</span>
+                          <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
+                          <span className={styles.histTotal}>{formatMoney(f.valorTotal)}</span>
+                          <span className={styles.histRest} data-rest={f.valorRestante > 0 ? "open" : "done"}>
+                            {f.valorRestante > 0 ? `Falta ${formatMoney(f.valorRestante)}` : "Paga"}
+                          </span>
+                          {f.valorRestante > 0 && (
+                            <span className={styles.histPagar} onClick={(e) => { e.stopPropagation(); openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId) }}>
+                              <Banknote size={15} />
+                            </span>
+                          )}
+                        </button>
+                        {exp && renderDetalhe(f)}
+                      </div>
                     )
                   })}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
           )}
         </PontesCard>
@@ -506,7 +519,6 @@ export default function CreditCardsPage() {
               <PontesInput value={form.ultimosDigitos ?? ""} onChange={(e) => setF("ultimosDigitos", e.target.value || undefined)} maxLength={4} placeholder="0000" />
             </PontesField>
           </div>
-
           {!isPrePago && (
             <PontesField label={temCredito ? "Conta que paga a fatura" : "Conta vinculada"} required error={formErrors.conta}>
               <PontesSelect
@@ -523,7 +535,6 @@ export default function CreditCardsPage() {
               <PontesSelect value={form.bancoId ?? ""} onChange={(v) => setF("bancoId", v || undefined)} placeholder="Sem vínculo" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
             </PontesField>
           )}
-
           {temCredito && (
             <PontesField label="Limite de crédito">
               <PontesInput type="number" value={form.limite != null ? String(form.limite) : ""} onChange={(e) => setF("limite", e.target.value ? Number(e.target.value) : undefined)} min={0} step="0.01" />
@@ -576,7 +587,6 @@ export default function CreditCardsPage() {
         </div>
       </PontesModal>
 
-      {/* Confirmação de exclusão */}
       <PontesDialog
         open={delId !== null}
         title="Remover cartão?"

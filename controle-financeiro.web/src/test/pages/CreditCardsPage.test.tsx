@@ -56,27 +56,26 @@ describe("CreditCardsPage (#84)", () => {
     pagarFatura.mockReset().mockResolvedValue(undefined)
   })
 
-  it("lista cartão + stats e limite", async () => {
+  it("lista cartão + resumo e limite", async () => {
     renderPage()
     expect(await screen.findByText("Nubank")).toBeInTheDocument()
-    expect(screen.getByText("Total de Cartões")).toBeInTheDocument()
-    expect(screen.getByText(/R\$\s?4\.850,00/)).toBeInTheDocument() // disponível
+    expect(screen.getByText("Limite total")).toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s?4\.850,00/).length).toBeGreaterThan(0) // disponível
   })
 
-  it("abre faturas e mostra a fatura aberta", async () => {
+  it("abre faturas (clica no card) e destaca a fatura atual", async () => {
     renderPage()
-    await screen.findByText("Nubank")
-    fireEvent.click(screen.getByLabelText("Ver faturas"))
+    fireEvent.click(await screen.findByText("Nubank"))
     expect(await screen.findByText(/Faturas — Nubank/)).toBeInTheDocument()
+    expect(screen.getByText(/FATURA ATUAL/)).toBeInTheDocument()
     expect(screen.getByText("Aberta")).toBeInTheDocument()
   })
 
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
-    await screen.findByText("Nubank")
-    fireEvent.click(screen.getByLabelText("Ver faturas"))
+    fireEvent.click(await screen.findByText("Nubank"))
     await screen.findByText(/Faturas — Nubank/)
-    fireEvent.click(screen.getByLabelText("Pagar fatura"))
+    fireEvent.click(screen.getByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))
     await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(1))
