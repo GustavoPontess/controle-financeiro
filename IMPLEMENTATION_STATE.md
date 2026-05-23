@@ -2,8 +2,19 @@
 owner: Gustavo
 last_reviewed: 2026-05-23
 status: PRONTO_PRA_PROXIMA
-issue_atual: 'Nenhuma em execução. #82 (Transação) e #128 (contabilidade/P&L) CONCLUÍDOS e mergeados na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
+issue_atual: 'Nenhuma em execução. #82 (Transação), #128 (contabilidade/P&L) e #129 (validação forms) CONCLUÍDOS e mergeados na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
 ---
+
+## Última issue concluída — #129 (validação por campo nos forms) ✅ MERGEADO
+
+PR #135 (`66d11ad`). Login/Register/Categorias validam por campo com o estado do
+DS (borda vermelha + erro inline), `form noValidate` (mata o balão nativo).
+Register: todos os campos obrigatórios (inclui data de nascimento). Erro **não
+empurra o layout** (PontesField `.helper` absolute, zero reflow — vale em todo
+form). Auth padronizado: BackButton legado removido → `<Link>` + CSS var;
+Fraunces → `var(--pontes-font-heading)`; `#fff` → `var(--pontes-hero-fg)`.
+129 testes front.
+
 
 ## Última issue concluída — #128 (contabilidade: saldo × P&L) ✅ MERGEADO
 
