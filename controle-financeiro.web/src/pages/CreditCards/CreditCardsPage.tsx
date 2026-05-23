@@ -85,7 +85,7 @@ export default function CreditCardsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
-  const [formErrors, setFormErrors] = useState<{ nome?: string; conta?: string }>({})
+  const [formErrors, setFormErrors] = useState<{ nome?: string }>({})
   const [loading, setLoading] = useState(false)
 
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
@@ -197,9 +197,8 @@ export default function CreditCardsPage() {
   }
 
   const handleSalvar = async () => {
-    const e: { nome?: string; conta?: string } = {}
+    const e: { nome?: string } = {}
     if (!form.nome.trim()) e.nome = "Informe o nome do cartão"
-    if (form.modo !== "prepago" && !form.contaId) e.conta = "Selecione a conta vinculada"
     setFormErrors(e)
     if (Object.keys(e).length) return
     setLoading(true)
@@ -519,20 +518,17 @@ export default function CreditCardsPage() {
               <PontesInput value={form.ultimosDigitos ?? ""} onChange={(e) => setF("ultimosDigitos", e.target.value || undefined)} maxLength={4} placeholder="0000" />
             </PontesField>
           </div>
+          <PontesField label="Banco emissor">
+            <PontesSelect value={form.bancoId ?? ""} onChange={(v) => setF("bancoId", v || undefined)} placeholder="Quem emitiu o cartão (opcional)" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
+          </PontesField>
           {!isPrePago && (
-            <PontesField label={temCredito ? "Conta que paga a fatura" : "Conta vinculada"} required error={formErrors.conta}>
+            <PontesField label="Conta que paga a fatura">
               <PontesSelect
                 value={form.contaId ?? ""}
-                onChange={(v) => { const conta = contas.find((c) => c.id === v); setForm((f) => ({ ...f, contaId: v || undefined, bancoId: conta?.bancoId })); setFormErrors((p) => ({ ...p, conta: undefined })) }}
-                placeholder="Selecione a conta"
-                invalid={!!formErrors.conta}
+                onChange={(v) => setF("contaId", v || undefined)}
+                placeholder="Opcional — escolhe ao pagar"
                 options={contas.map((c) => ({ value: c.id, label: c.nome }))}
               />
-            </PontesField>
-          )}
-          {isPrePago && (
-            <PontesField label="Banco emissor">
-              <PontesSelect value={form.bancoId ?? ""} onChange={(v) => setF("bancoId", v || undefined)} placeholder="Sem vínculo" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
             </PontesField>
           )}
           {temCredito && (

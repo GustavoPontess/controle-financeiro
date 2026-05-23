@@ -178,7 +178,8 @@ public static class DevDataSeeder
             LimiteTotal = 5000m,
             DiaFechamento = 20,
             DiaVencimento = 28,
-            BancoId = Vincular("260"),
+            BancoId = Vincular("260"),       // emissor: Nubank
+            ContaId = devCorrente.Id,        // conta que paga a fatura (padrão; opcional no modelo)
             CriadoPor = dev.Id,
             Ativo = true,
         };
