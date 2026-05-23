@@ -42,7 +42,7 @@
 .cardNameWrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cardName { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cardEmissor { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chipRow { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.chipRow { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; }
 .contactless { transform: rotate(90deg); opacity: 0.78; flex-shrink: 0; }
 .cardChip { position: relative; width: 46px; height: 34px; border-radius: 6px; background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 45%, #d97706 100%); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 -6px 8px -6px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25); flex-shrink: 0; overflow: hidden; }
 .cardChip::before { content: ""; position: absolute; inset: 6px 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.22); }
