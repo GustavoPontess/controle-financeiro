@@ -80,7 +80,7 @@ const emptyForm: FormState = {
   limite: undefined, diaFechamento: undefined, diaVencimento: undefined, contaId: undefined, bancoId: undefined,
 }
 
-type CartaoErrors = { nome?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
+type CartaoErrors = { nome?: string; bancoId?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -209,6 +209,7 @@ export default function CreditCardsPage() {
   const handleSalvar = async () => {
     const e: CartaoErrors = {}
     if (!form.nome.trim()) e.nome = "Informe o nome do cartão"
+    if (!form.bancoId) e.bancoId = "Selecione o banco emissor"
     if (form.ultimosDigitos && form.ultimosDigitos.length !== 4) e.ultimosDigitos = "Use os 4 últimos dígitos"
     if (temCredito) {
       if (form.limite == null) e.limite = "Informe o limite"
@@ -544,8 +545,8 @@ export default function CreditCardsPage() {
               />
             </PontesField>
           </div>
-          <PontesField label="Banco emissor">
-            <PontesSelect value={form.bancoId ?? ""} onChange={(v) => setF("bancoId", v || undefined)} placeholder="Quem emitiu o cartão (opcional)" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
+          <PontesField label="Banco emissor" required error={formErrors.bancoId}>
+            <PontesSelect value={form.bancoId ?? ""} onChange={(v) => { setF("bancoId", v || undefined); clearErr("bancoId") }} invalid={!!formErrors.bancoId} placeholder="Quem emitiu o cartão" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
           </PontesField>
           {!isPrePago && (
             <PontesField label="Conta que paga a fatura">
