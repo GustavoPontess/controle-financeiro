@@ -101,7 +101,8 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           contaId: isCredito ? undefined : data.contaId || undefined,
           cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
           frequencia: data.frequencia,
-          dia: data.dia,
+          // Backend gera por DataInicio + intervalo; "dia" é só metadado → deriva da data início.
+          dia: new Date(data.data).getDate(),
           dataInicio: data.data,
           dataFim: data.dataFim || undefined,
         })

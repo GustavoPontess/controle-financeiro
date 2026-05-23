@@ -51,7 +51,6 @@ export interface TransactionFormData {
   parcelas: number
   // recorrente
   frequencia: number
-  dia: number
   dataFim: string
 }
 
@@ -81,7 +80,6 @@ export default function TransactionForm({ categories, subcategories, contas, car
     descricao: "",
     parcelas: 1,
     frequencia: 2,
-    dia: new Date().getDate(),
     dataFim: "",
   })
   const [loading, setLoading] = useState(false)
@@ -256,19 +254,14 @@ export default function TransactionForm({ categories, subcategories, contas, car
           />
 
           {isRecorrente && (
-            <>
-              <div className={styles.grid2}>
-                <PontesField label="Frequência" required>
-                  <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
-                </PontesField>
-                <PontesField label="Dia" required>
-                  <PontesInput type="number" value={String(form.dia)} onChange={(e) => set("dia", Number(e.target.value))} min={1} max={31} />
-                </PontesField>
-              </div>
-              <PontesField label="Repetir até (opcional)">
-                <PontesInput type="date" value={form.dataFim} onChange={(e) => set("dataFim", e.target.value)} />
+            <div className={styles.grid2}>
+              <PontesField label="Frequência" required>
+                <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
               </PontesField>
-            </>
+              <PontesField label="Repetir até (opcional)">
+                <PontesInput type="date" value={form.dataFim} min={form.data} onChange={(e) => set("dataFim", e.target.value)} />
+              </PontesField>
+            </div>
           )}
 
           {/* Categoria (picker agrupado cat > subcategoria — lib) */}
