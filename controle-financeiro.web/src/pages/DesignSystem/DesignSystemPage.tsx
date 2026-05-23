@@ -14,15 +14,17 @@ import { useEffect, useState } from "react"
 import {
   Plus, Download, ArrowRight, ChevronLeft, ChevronRight,
   Settings, MoreHorizontal, Bell, Search, Pencil, Copy, Share2, Trash2,
+  TrendingDown, TrendingUp,
 } from "lucide-react"
 import {
   // theme
   palettes, fonts, semantic, paletteVars, type Palette, type FontOption,
   // botões
   PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink, PontesNavLink,
+  PontesChoiceCards,
   // form
   PontesField, PontesInput, PontesMoneyInput, PontesTextarea,
-  PontesSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
+  PontesSelect, PontesGroupedSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
   PontesOtpInput, PontesSlider, PontesDatePicker, PontesFileDrop,
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
@@ -310,6 +312,9 @@ function ButtonsSection() {
 function FormSection({ p }: { p: Palette }) {
   const [text, setText] = useState("voce@email.com")
   const [money, setMoney] = useState("1.240,00")
+  const [tipoTx, setTipoTx] = useState("1")
+  const [grpCat, setGrpCat] = useState("ali")
+  const [grpSub, setGrpSub] = useState("merc")
   const [categoria, setCategoria] = useState("mercado")
   const [conta, setConta] = useState("nubank")
   const [notif, setNotif] = useState(true)
@@ -370,6 +375,31 @@ function FormSection({ p }: { p: Palette }) {
 
       <Group title="Money input">
         <PontesMoneyInput value={money} onChange={setMoney} />
+      </Group>
+
+      <Group title="Choice cards">
+        <PontesChoiceCards
+          value={tipoTx}
+          onChange={setTipoTx}
+          options={[
+            { value: "1", label: "Despesa", icon: <TrendingDown size={17} strokeWidth={2.5} />, tone: "danger" },
+            { value: "2", label: "Receita", icon: <TrendingUp size={17} strokeWidth={2.5} />, tone: "success" },
+          ]}
+        />
+      </Group>
+
+      <Group title="Grouped select (categoria → subcategoria)">
+        <PontesGroupedSelect
+          groups={[
+            { value: "ali", label: "Alimentação", items: [{ value: "merc", label: "Mercado" }, { value: "rest", label: "Restaurante" }] },
+            { value: "tra", label: "Transporte", items: [{ value: "uber", label: "App / Táxi" }, { value: "comb", label: "Combustível" }] },
+            { value: "mor", label: "Moradia", items: [{ value: "alug", label: "Aluguel" }, { value: "luz", label: "Energia" }] },
+          ]}
+          groupValue={grpCat}
+          itemValue={grpSub}
+          onChange={(g, i) => { setGrpCat(g); setGrpSub(i) }}
+          placeholder="Selecione a categoria"
+        />
       </Group>
 
       <Group title="OTP code">

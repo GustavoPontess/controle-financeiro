@@ -6,7 +6,7 @@ import {
   PontesButton, PontesIconButton, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
-  PontesSidebarItem,
+  PontesSidebarItem, PontesChoiceCards, PontesGroupedSelect,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -80,6 +80,46 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     // limpar volta a vazio
     fireEvent.change(input, { target: { value: "" } })
     expect(input.value).toBe("")
+  })
+
+  it("PontesChoiceCards marca ativo e dispara onChange", () => {
+    function Wrapper() {
+      const [v, setV] = useState("1")
+      return (
+        <PontesChoiceCards
+          p={p} font={font} value={v} onChange={setV}
+          options={[
+            { value: "1", label: "Despesa", tone: "danger" },
+            { value: "2", label: "Receita", tone: "success" },
+          ]}
+        />
+      )
+    }
+    render(<Wrapper />)
+    const despesa = screen.getByText("Despesa").closest("button")!
+    expect(despesa).toHaveAttribute("data-active", "true")
+    fireEvent.click(screen.getByText("Receita"))
+    expect(screen.getByText("Receita").closest("button")).toHaveAttribute("data-active", "true")
+    expect(despesa).not.toHaveAttribute("data-active")
+  })
+
+  it("PontesGroupedSelect abre, escolhe grupo e item", () => {
+    function Wrapper() {
+      const [g, setG] = useState<string>("")
+      const [i, setI] = useState<string>("")
+      return (
+        <PontesGroupedSelect
+          p={p} font={font}
+          groups={[{ value: "cat1", label: "Alimentação", items: [{ value: "sub1", label: "Mercado" }] }]}
+          groupValue={g} itemValue={i}
+          onChange={(gv, iv) => { setG(gv); setI(iv) }}
+        />
+      )
+    }
+    render(<Wrapper />)
+    fireEvent.click(screen.getByText("Selecione")) // abre painel
+    fireEvent.click(screen.getByText("Mercado")) // escolhe item
+    expect(screen.getByText("Alimentação · Mercado")).toBeInTheDocument()
   })
 
   it("PontesSelect abre, lista options e seleciona", () => {

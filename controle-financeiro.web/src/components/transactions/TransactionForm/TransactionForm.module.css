@@ -2,11 +2,4 @@
 .form { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-/* Tipo — 2 botões grandes (despesa/receita) */
-.tipoGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tipoBtn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: 1px solid var(--pontes-border); border-radius: 12px; background: var(--pontes-surface); font-family: var(--pontes-font); font-size: 14px; font-weight: 600; color: var(--pontes-text-muted); cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
-.tipoBtn:hover { border-color: var(--pontes-text-muted); }
-.tipoBtn[data-active="true"][data-kind="despesa"] { background: var(--pontes-danger-soft); color: var(--pontes-danger); border-color: var(--pontes-danger); }
-.tipoBtn[data-active="true"][data-kind="receita"] { background: var(--pontes-success-soft); color: var(--pontes-success); border-color: var(--pontes-success); }
-
 .actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }

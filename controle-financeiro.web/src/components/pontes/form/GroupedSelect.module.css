@@ -1,0 +1,19 @@
+/* GroupedSelect.module.css — dropdown agrupado grupo > item. Painel in-flow. */
+.wrap { position: relative; }
+.trigger { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); font-family: var(--pontes-font); font-size: 14px; color: var(--pontes-text); cursor: pointer; text-align: left; }
+.trigger:hover { border-color: var(--pontes-primary); }
+.trigger[data-empty="true"] { color: var(--pontes-text-muted); }
+.triggerText { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform 160ms ease; }
+.chev[data-open="true"] { transform: rotate(180deg); }
+
+.panel { margin-top: 6px; width: 100%; max-height: 240px; overflow-y: auto; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; box-shadow: var(--pontes-shadow-md); padding: 6px; }
+.groupRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; font-weight: 700; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
+.groupRow:hover { background: var(--pontes-bg); }
+.groupRow[data-active="true"] { color: var(--pontes-primary); }
+.itemRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px 7px 30px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
+.itemRow:hover { background: var(--pontes-bg); }
+.itemRow[data-active="true"] { color: var(--pontes-primary); background: var(--pontes-primary-soft); }
+.label { flex: 1; min-width: 0; }
+.check { color: var(--pontes-primary); display: inline-flex; flex-shrink: 0; }
+.empty { padding: 14px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }

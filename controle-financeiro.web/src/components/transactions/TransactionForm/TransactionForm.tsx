@@ -1,13 +1,13 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import {
   PontesButton, PontesToggle, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
+  PontesChoiceCards, PontesGroupedSelect,
 } from "@/components/pontes"
 import type { Category } from "../../../types/Category"
 import type { Subcategory } from "../../../types/Subcategory"
 import type { Conta } from "../../../types/Conta"
 import type { CartaoCredito } from "../../../types/CartaoCredito"
-import CategoryPicker from "../CategoryPicker/CategoryPicker"
 import styles from "./TransactionForm.module.css"
 
 const MEIOS_PAGAMENTO = [
@@ -82,6 +82,22 @@ export default function TransactionForm({ categories, subcategories, contas, car
   const isRecorrente = form.modo === "recorrente"
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
 
+  // Categorias filtradas por finalidade (tipo) → grupos pro PontesGroupedSelect.
+  const categoriaGroups = useMemo(() => {
+    const subsByCat: Record<string, Subcategory[]> = {}
+    for (const s of subcategories) (subsByCat[s.categoriaId] ??= []).push(s)
+    return categories
+      .filter((c) =>
+        form.tipo === 1 ? c.finalidade === 1 || c.finalidade === 3
+        : form.tipo === 2 ? c.finalidade === 2 || c.finalidade === 3
+        : true)
+      .map((c) => ({
+        value: c.id,
+        label: c.descricao,
+        items: (subsByCat[c.id] ?? []).map((s) => ({ value: s.id, label: s.nome })),
+      }))
+  }, [categories, subcategories, form.tipo])
+
   const set = (field: keyof TransactionFormData, value: string | number) =>
     setForm((f) => ({ ...f, [field]: value }))
 
@@ -99,15 +115,15 @@ export default function TransactionForm({ categories, subcategories, contas, car
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      {/* Tipo — 2 botões grandes */}
-      <div className={styles.tipoGrid}>
-        <button type="button" className={styles.tipoBtn} data-active={form.tipo === 1} data-kind="despesa" onClick={() => setTipo(1)}>
-          <TrendingDown size={17} strokeWidth={2.5} /> Despesa
-        </button>
-        <button type="button" className={styles.tipoBtn} data-active={form.tipo === 2} data-kind="receita" onClick={() => setTipo(2)}>
-          <TrendingUp size={17} strokeWidth={2.5} /> Receita
-        </button>
-      </div>
+      {/* Tipo — 2 cards grandes (lib) */}
+      <PontesChoiceCards
+        value={String(form.tipo)}
+        onChange={(v) => setTipo(Number(v))}
+        options={[
+          { value: "1", label: "Despesa", icon: <TrendingDown size={17} strokeWidth={2.5} />, tone: "danger" },
+          { value: "2", label: "Receita", icon: <TrendingUp size={17} strokeWidth={2.5} />, tone: "success" },
+        ]}
+      />
 
       {/* Valor — destaque (label próprio do componente) */}
       <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
@@ -189,15 +205,15 @@ export default function TransactionForm({ categories, subcategories, contas, car
         </>
       )}
 
-      {/* Categoria (picker agrupado cat > subcategoria) */}
+      {/* Categoria (picker agrupado cat > subcategoria — lib) */}
       <PontesField label="Categoria" required>
-        <CategoryPicker
-          categories={categories}
-          subcategories={subcategories}
-          tipo={form.tipo}
-          categoriaId={form.categoriaId}
-          subcategoriaId={form.subcategoriaId}
+        <PontesGroupedSelect
+          groups={categoriaGroups}
+          groupValue={form.categoriaId}
+          itemValue={form.subcategoriaId}
           onChange={(catId, subId) => setForm((f) => ({ ...f, categoriaId: catId, subcategoriaId: subId }))}
+          placeholder="Selecione a categoria"
+          emptyLabel="Nenhuma categoria"
         />
       </PontesField>
 
