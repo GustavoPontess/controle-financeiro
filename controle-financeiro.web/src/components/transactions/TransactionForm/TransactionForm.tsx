@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import {
-  PontesButton, PontesButtonGroup, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
+  PontesButton, PontesToggle, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
 } from "@/components/pontes"
 import type { Category } from "../../../types/Category"
 import type { Subcategory } from "../../../types/Subcategory"
@@ -109,19 +109,6 @@ export default function TransactionForm({ categories, subcategories, contas, car
         </button>
       </div>
 
-      {/* Modo — único ou recorrente (assinatura) */}
-      <div className={styles.tipoWrap}>
-        <span className={styles.tipoLabel}>Lançamento</span>
-        <PontesButtonGroup
-          value={form.modo}
-          onChange={(v) => set("modo", v as TransactionModo)}
-          options={[
-            { value: "unico", label: "Único" },
-            { value: "recorrente", label: "Recorrente (assinatura)" },
-          ]}
-        />
-      </div>
-
       {/* Valor — destaque (label próprio do componente) */}
       <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
 
@@ -179,7 +166,13 @@ export default function TransactionForm({ categories, subcategories, contas, car
         )
       )}
 
-      {/* Recorrente — frequência + dia + fim */}
+      {/* Recorrente — switch + campos */}
+      <PontesToggle
+        checked={isRecorrente}
+        onChange={(c) => setForm((f) => ({ ...f, modo: c ? "recorrente" : "unico" }))}
+        label="Repetir automaticamente (assinatura)"
+      />
+
       {isRecorrente && (
         <>
           <div className={styles.grid2}>
