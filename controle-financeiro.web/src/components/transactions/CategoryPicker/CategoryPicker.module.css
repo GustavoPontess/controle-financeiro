@@ -7,7 +7,7 @@
 .chev { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform 160ms ease; }
 .chev[data-open="true"] { transform: rotate(180deg); }
 
-.panel { position: absolute; z-index: 1200; top: calc(100% + 6px); left: 0; right: 0; max-height: 300px; overflow-y: auto; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; box-shadow: 0 12px 28px rgba(11, 18, 32, 0.15); padding: 6px; }
+.panel { margin-top: 6px; width: 100%; max-height: 240px; overflow-y: auto; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; box-shadow: 0 8px 20px rgba(11, 18, 32, 0.1); padding: 6px; }
 .catRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; font-weight: 700; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
 .catRow:hover { background: var(--pontes-bg); }
 .catRow[data-active="true"] { color: var(--pontes-primary); }
