@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import {
-  PontesButton, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
+  PontesButton, PontesButtonGroup, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
 } from "@/components/pontes"
 import type { Category } from "../../../types/Category"
 import type { Subcategory } from "../../../types/Subcategory"
@@ -24,7 +24,16 @@ const PARCELAS_OPTS = [
   ...[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24].map((n) => ({ value: String(n), label: `${n}x` })),
 ]
 
+const FREQ_OPTS = [
+  { value: "2", label: "Mensal" },
+  { value: "1", label: "Semanal" },
+  { value: "3", label: "Anual" },
+]
+
+export type TransactionModo = "unico" | "recorrente"
+
 export interface TransactionFormData {
+  modo: TransactionModo
   tipo: number
   meioPagamento: number
   categoriaId: string
@@ -35,6 +44,10 @@ export interface TransactionFormData {
   data: string
   descricao: string
   parcelas: number
+  // recorrente
+  frequencia: number
+  dia: number
+  dataFim: string
 }
 
 type Props = {
@@ -48,6 +61,7 @@ type Props = {
 
 export default function TransactionForm({ categories, subcategories, contas, cartoes, onSubmit, onCancel }: Props) {
   const [form, setForm] = useState<TransactionFormData>({
+    modo: "unico",
     tipo: 1,
     meioPagamento: 4,
     categoriaId: "",
@@ -58,10 +72,14 @@ export default function TransactionForm({ categories, subcategories, contas, car
     data: new Date().toISOString().split("T")[0],
     descricao: "",
     parcelas: 1,
+    frequencia: 2,
+    dia: new Date().getDate(),
+    dataFim: "",
   })
   const [loading, setLoading] = useState(false)
 
   const isCredito = form.meioPagamento === 3
+  const isRecorrente = form.modo === "recorrente"
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
 
   const set = (field: keyof TransactionFormData, value: string | number) =>
@@ -91,12 +109,25 @@ export default function TransactionForm({ categories, subcategories, contas, car
         </button>
       </div>
 
+      {/* Modo — único ou recorrente (assinatura) */}
+      <div className={styles.tipoWrap}>
+        <span className={styles.tipoLabel}>Lançamento</span>
+        <PontesButtonGroup
+          value={form.modo}
+          onChange={(v) => set("modo", v as TransactionModo)}
+          options={[
+            { value: "unico", label: "Único" },
+            { value: "recorrente", label: "Recorrente (assinatura)" },
+          ]}
+        />
+      </div>
+
       {/* Valor — destaque (label próprio do componente) */}
       <PontesMoneyInput value={form.valor} onChange={(v) => set("valor", v)} suggestions={[]} />
 
       {/* Data + Meio de pagamento */}
       <div className={styles.grid2}>
-        <PontesField label="Data" required>
+        <PontesField label={isRecorrente ? "Início" : "Data"} required>
           <PontesInput type="date" value={form.data} onChange={(e) => set("data", e.target.value)} required />
         </PontesField>
         <PontesField label="Meio de pagamento">
@@ -120,9 +151,9 @@ export default function TransactionForm({ categories, subcategories, contas, car
         </PontesField>
       )}
 
-      {/* Cartão + parcelas (crédito) */}
+      {/* Cartão (crédito) — parcelas só em lançamento único */}
       {isCredito && (
-        <div className={styles.grid2}>
+        isRecorrente ? (
           <PontesField label="Cartão de crédito" required>
             <PontesSelect
               value={form.cartaoCreditoId}
@@ -131,10 +162,38 @@ export default function TransactionForm({ categories, subcategories, contas, car
               options={cartoesDisponiveis.map((c) => ({ value: c.id, label: `${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}` }))}
             />
           </PontesField>
-          <PontesField label="Parcelas">
-            <PontesSelect value={String(form.parcelas)} onChange={(v) => set("parcelas", Number(v))} options={PARCELAS_OPTS} />
+        ) : (
+          <div className={styles.grid2}>
+            <PontesField label="Cartão de crédito" required>
+              <PontesSelect
+                value={form.cartaoCreditoId}
+                onChange={(v) => set("cartaoCreditoId", v)}
+                placeholder={cartoesDisponiveis.length === 0 ? "Nenhum cartão" : "Selecione o cartão"}
+                options={cartoesDisponiveis.map((c) => ({ value: c.id, label: `${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}` }))}
+              />
+            </PontesField>
+            <PontesField label="Parcelas">
+              <PontesSelect value={String(form.parcelas)} onChange={(v) => set("parcelas", Number(v))} options={PARCELAS_OPTS} />
+            </PontesField>
+          </div>
+        )
+      )}
+
+      {/* Recorrente — frequência + dia + fim */}
+      {isRecorrente && (
+        <>
+          <div className={styles.grid2}>
+            <PontesField label="Frequência" required>
+              <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
+            </PontesField>
+            <PontesField label="Dia" required>
+              <PontesInput type="number" value={String(form.dia)} onChange={(e) => set("dia", Number(e.target.value))} min={1} max={31} />
+            </PontesField>
+          </div>
+          <PontesField label="Repetir até (opcional)">
+            <PontesInput type="date" value={form.dataFim} onChange={(e) => set("dataFim", e.target.value)} />
           </PontesField>
-        </div>
+        </>
       )}
 
       {/* Categoria (picker agrupado cat > subcategoria) */}
@@ -161,7 +220,7 @@ export default function TransactionForm({ categories, subcategories, contas, car
 
       <div className={styles.actions}>
         <PontesButton type="button" variant="outline" onClick={onCancel}>Cancelar</PontesButton>
-        <PontesButton type="submit" variant="primary" loading={loading} disabled={loading}>Adicionar</PontesButton>
+        <PontesButton type="submit" variant="primary" loading={loading} disabled={loading}>{isRecorrente ? "Criar recorrente" : "Adicionar"}</PontesButton>
       </div>
     </form>
   )

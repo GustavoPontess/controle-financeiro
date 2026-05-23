@@ -5,6 +5,7 @@ import type { TransactionFormData } from "../TransactionForm/TransactionForm"
 import { getCategories } from "../../../services/categoryService"
 import { getSubcategories } from "../../../services/subcategoryService"
 import { createTransaction } from "../../../services/transactionService"
+import { createRecorrente } from "../../../services/recorrenteService"
 import { getContas } from "../../../services/contaService"
 import { getCartoes } from "../../../services/cartaoCreditoService"
 import type { Category } from "../../../types/Category"
@@ -62,24 +63,40 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
       return
     }
     try {
-      await createTransaction({
-        descricao: data.descricao,
-        valor,
-        tipo: data.tipo,
-        categoriaId: data.categoriaId || null,
-        subcategoriaId: data.subcategoriaId || null,
-        contaId: isCredito ? undefined : data.contaId || undefined,
-        cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
-        usadoComoCredito: isCredito,
-        meioPagamento: data.meioPagamento,
-        parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
-        data: data.data,
-      })
-      notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
+      if (data.modo === "recorrente") {
+        await createRecorrente({
+          descricao: data.descricao,
+          valor,
+          tipo: data.tipo,
+          categoriaId: data.categoriaId || undefined,
+          contaId: isCredito ? undefined : data.contaId || undefined,
+          cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
+          frequencia: data.frequencia,
+          dia: data.dia,
+          dataInicio: data.data,
+          dataFim: data.dataFim || undefined,
+        })
+        notify({ open: true, message: "Recorrente criada com sucesso", severity: "success" })
+      } else {
+        await createTransaction({
+          descricao: data.descricao,
+          valor,
+          tipo: data.tipo,
+          categoriaId: data.categoriaId || null,
+          subcategoriaId: data.subcategoriaId || null,
+          contaId: isCredito ? undefined : data.contaId || undefined,
+          cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
+          usadoComoCredito: isCredito,
+          meioPagamento: data.meioPagamento,
+          parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
+          data: data.data,
+        })
+        notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
+      }
       window.dispatchEvent(new Event("transactionCreated"))
       onClose()
     } catch {
-      notify({ open: true, message: "Erro ao criar transação", severity: "error" })
+      notify({ open: true, message: "Erro ao salvar", severity: "error" })
     }
   }
 
