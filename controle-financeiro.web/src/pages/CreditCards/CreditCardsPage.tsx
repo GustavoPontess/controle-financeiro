@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
@@ -175,6 +175,18 @@ export default function CreditCardsPage() {
     try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
   }
+
+  // Com um único cartão de crédito, já abre direto no modo foco (uma vez).
+  const didAutoOpenRef = useRef(false)
+  useEffect(() => {
+    if (didAutoOpenRef.current || faturasCartaoId) return
+    const credito = cartoes.filter((c) => c.temCredito)
+    if (cartoes.length === 1 && credito.length === 1) {
+      didAutoOpenRef.current = true
+      void openFaturas(credito[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartoes])
 
   const openPagar = (faturaId: string, cartaoId: string, valorRestante: number, contaId?: string) => {
     setPagarFaturaId(faturaId)
