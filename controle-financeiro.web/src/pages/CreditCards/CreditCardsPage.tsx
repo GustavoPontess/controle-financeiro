@@ -274,18 +274,19 @@ export default function CreditCardsPage() {
   // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
 
-  // Carrega o detalhe (lançamentos + pagamentos) da fatura do mês selecionado.
+  // Pré-carrega o detalhe (lançamentos + pagamentos) de TODAS as faturas do
+  // cartão aberto → navegar entre meses fica instantâneo (sem piscar).
   useEffect(() => {
     if (!faturasCartaoId || faturasSorted.length === 0) return
-    const f = faturasSorted[Math.min(faturaIdx, faturasSorted.length - 1)]
-    if (f && !faturaDetalhes[f.id]) {
+    faturasSorted.forEach((f) => {
+      if (faturaDetalhes[f.id]) return
       getFaturaDetalhe(faturasCartaoId, f.id)
-        .then((d) => setFaturaDetalhes((prev) => ({ ...prev, [f.id]: d })))
+        .then((d) => setFaturaDetalhes((prev) => (prev[f.id] ? prev : { ...prev, [f.id]: d })))
         .catch(() => { /* ignore */ })
-    }
+    })
     // faturasSorted é derivado de faturas (já nas deps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faturasCartaoId, faturaIdx, faturas, faturaDetalhes])
+  }, [faturasCartaoId, faturas, faturaDetalhes])
 
   const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
     const ids = new Set<string>()
