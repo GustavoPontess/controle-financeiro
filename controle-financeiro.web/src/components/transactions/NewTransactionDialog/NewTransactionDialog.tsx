@@ -6,6 +6,7 @@ import { getCategories } from "../../../services/categoryService"
 import { getSubcategories } from "../../../services/subcategoryService"
 import { createTransaction } from "../../../services/transactionService"
 import { createRecorrente } from "../../../services/recorrenteService"
+import { createTransferencia } from "../../../services/transferenciaService"
 import { getContas } from "../../../services/contaService"
 import { getCartoes } from "../../../services/cartaoCreditoService"
 import type { Category } from "../../../types/Category"
@@ -49,6 +50,34 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
       notify({ open: true, message: "Informe um valor válido", severity: "error" })
       return
     }
+
+    // ── Transferência ──────────────────────────────────────────────
+    if (data.natureza === "transferencia") {
+      if (!data.contaOrigemId || !data.contaDestinoId) {
+        notify({ open: true, message: "Selecione as contas de origem e destino", severity: "error" })
+        return
+      }
+      if (data.contaOrigemId === data.contaDestinoId) {
+        notify({ open: true, message: "Origem e destino devem ser diferentes", severity: "error" })
+        return
+      }
+      try {
+        await createTransferencia({
+          contaOrigemId: data.contaOrigemId,
+          contaDestinoId: data.contaDestinoId,
+          valor,
+          data: data.data,
+          descricao: data.descricao,
+        })
+        notify({ open: true, message: "Transferência criada com sucesso", severity: "success" })
+        window.dispatchEvent(new Event("transactionCreated"))
+        onClose()
+      } catch {
+        notify({ open: true, message: "Erro ao salvar", severity: "error" })
+      }
+      return
+    }
+
     if (!data.categoriaId) {
       notify({ open: true, message: "Selecione a categoria", severity: "error" })
       return

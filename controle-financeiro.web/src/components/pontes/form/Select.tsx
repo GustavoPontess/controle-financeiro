@@ -61,7 +61,7 @@ export function PontesSelect<T extends string = string>({
         data-invalid={invalid ? "true" : undefined}
         data-placeholder={value ? undefined : "true"}
       >
-        <span>{selected?.label ?? value ?? placeholder}</span>
+        <span>{selected?.label ?? (value || placeholder)}</span>
         <span className={styles.caret}>▾</span>
       </button>
       {open && (
