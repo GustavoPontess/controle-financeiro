@@ -44,6 +44,20 @@ const fatura = {
 } as unknown as Fatura
 const detalhe = { transacoes: [] } as unknown as FaturaDetalhe
 
+// Fixtures pros 3 estados de status (statusKey): aberta parcial, fechada quitada, fechada com saldo.
+const fAbertaParcial = {
+  id: "fo", dataInicio: "2026-05-20", dataFechamento: "2026-06-20", dataVencimento: "2026-06-28",
+  estadoCiclo: 0, estadoPagamento: 1, valorTotal: 130, valorPago: 50, valorRestante: 80, vencida: false,
+} as unknown as Fatura
+const fFechadaPaga = {
+  id: "fp", dataInicio: "2026-04-20", dataFechamento: "2026-05-20", dataVencimento: "2026-05-28",
+  estadoCiclo: 1, estadoPagamento: 2, valorTotal: 300, valorPago: 300, valorRestante: 0, vencida: false,
+} as unknown as Fatura
+const fFechadaComSaldo = {
+  id: "fd", dataInicio: "2026-03-20", dataFechamento: "2026-04-20", dataVencimento: "2026-04-28",
+  estadoCiclo: 1, estadoPagamento: 0, valorTotal: 200, valorPago: 0, valorRestante: 200, vencida: false,
+} as unknown as Fatura
+
 function renderPage() {
   return render(<PontesThemeProvider><CreditCardsPage /></PontesThemeProvider>)
 }
@@ -69,6 +83,21 @@ describe("CreditCardsPage (#84)", () => {
     expect(await screen.findByText(/Faturas — Nubank/)).toBeInTheDocument()
     expect(screen.getByText(/FATURA ATUAL/)).toBeInTheDocument()
     expect(screen.getByText("Aberta")).toBeInTheDocument()
+  })
+
+  it("status: aberta parcial NÃO vira Paga; fechada quitada = Paga; fechada com saldo = Fechada", async () => {
+    getFaturasByCartao.mockReset().mockResolvedValue([fAbertaParcial, fFechadaPaga, fFechadaComSaldo])
+    renderPage()
+    fireEvent.click(await screen.findByText("Nubank"))
+    await screen.findByText(/Faturas — Nubank/)
+    // Fatura atual aberta com pagamento parcial → continua "Aberta" (não "Paga")
+    expect(screen.getByText("Aberta")).toBeInTheDocument()
+    expect(screen.getByText(/Pago R\$\s?50,00 de R\$\s?130,00/)).toBeInTheDocument()
+    // Histórico: fechada+quitada = Paga; fechada com saldo = Fechada
+    expect(screen.getAllByText("Paga").length).toBeGreaterThan(0)
+    expect(screen.getByText("Fechada")).toBeInTheDocument()
+    // Nenhuma fatura aberta deve aparecer como "Paga" no badge de status
+    expect(screen.queryByText("Aberta")).toBeInTheDocument()
   })
 
   it("valida form: submit sem nome bloqueia e mostra erro", async () => {

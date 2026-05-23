@@ -72,7 +72,10 @@ const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "succes
   2: { label: "Fechada", tone: "warning" },
   3: { label: "Paga", tone: "success" },
 }
-const statusKey = (f: Fatura) => (f.estadoPagamento === 2 ? 3 : f.estadoCiclo === 1 ? 2 : 1)
+// "Paga" só quando a fatura FECHOU e não há saldo restante. Enquanto aberta,
+// permanece "Aberta" mesmo com pagamento parcial/antecipado — novas compras
+// ainda podem entrar no ciclo. Fechada com saldo restante → "Fechada" (a pagar).
+const statusKey = (f: Fatura) => (f.estadoCiclo === 1 ? (f.valorRestante <= 0 ? 3 : 2) : 1)
 
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
 const emptyForm: FormState = {
