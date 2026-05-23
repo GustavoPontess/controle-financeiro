@@ -1,0 +1,83 @@
+/* CreditCardsPage.module.css — #84. Pontes + var(--pontes-*). */
+.root { display: flex; flex-direction: column; gap: 24px; font-family: var(--pontes-font); }
+
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
+
+/* Stats */
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.statHead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.statLabel { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.statIcon { width: 32px; height: 32px; border-radius: 10px; background: var(--pontes-primary-soft); color: var(--pontes-primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.statValue { font-size: 22px; font-weight: 800; color: var(--pontes-text); line-height: 1.2; }
+.statSub { font-size: 11px; color: var(--pontes-text-muted); margin-top: 4px; }
+
+/* Cards grid */
+.cardsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.card { border: 1.5px solid var(--pontes-border); border-radius: 16px; overflow: hidden; background: var(--pontes-surface); box-shadow: var(--pontes-shadow-sm); transition: border-color .15s ease, box-shadow .15s ease; }
+.card[data-selected="true"] { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-primary) 13%, transparent); }
+
+.cardVisual { position: relative; overflow: hidden; padding: 20px 24px 16px; min-height: 110px; color: var(--pontes-hero-fg); }
+.cardCircle1 { position: absolute; right: -24px; top: -24px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); }
+.cardCircle2 { position: absolute; right: 20px; bottom: -32px; width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.06); }
+.cardVisualHead { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.cardName { font-size: 16px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
+.cardChip { width: 28px; height: 22px; border-radius: 4px; background: linear-gradient(135deg, #fde68a, #f59e0b); flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
+.cardVisualFoot { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-end; }
+.cardDigits { font-size: 14px; letter-spacing: 0.15em; opacity: 0.9; font-family: ui-monospace, monospace; }
+.cardBandeira { font-size: 12px; font-weight: 500; opacity: 0.75; }
+
+.cardBody { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+.actionsRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.icons { display: flex; gap: 2px; }
+.contaRow { display: flex; justify-content: space-between; align-items: center; }
+.muted { font-size: 12px; color: var(--pontes-text-muted); font-weight: 400; }
+.strong { font-size: 12px; font-weight: 600; color: var(--pontes-text); }
+.limitHead { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.limitVal { font-size: 12px; font-weight: 700; color: var(--pontes-text); }
+.limitVal[data-over="true"] { color: var(--pontes-danger); }
+.limitFoot { display: flex; justify-content: space-between; margin-top: 6px; }
+.dispVal { font-size: 11px; font-weight: 500; color: var(--pontes-success); }
+
+/* Painel de faturas */
+.faturaHead { display: flex; align-items: center; gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--pontes-border); }
+.faturaHeadIcon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: var(--pontes-hero-fg); flex-shrink: 0; }
+.faturaTitle { font-size: 15px; font-weight: 700; color: var(--pontes-text); }
+.faturaSub { font-size: 12px; color: var(--pontes-text-muted); }
+.faturaEmpty { padding: 40px 24px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
+
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.th, .thRight, .thCenter, .thIcon { font-size: 11px; font-weight: 600; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--pontes-bg); border-bottom: 1px solid var(--pontes-border); padding: 12px 14px; text-align: left; white-space: nowrap; }
+.thRight { text-align: right; }
+.thCenter { text-align: center; width: 80px; }
+.thIcon { width: 32px; padding-left: 14px; padding-right: 0; }
+.td, .tdRight, .tdCenter, .tdIcon, .tdMono, .tdMuted { font-size: 13px; color: var(--pontes-text); padding: 14px; border-bottom: 1px solid var(--pontes-border); }
+.tdRight { text-align: right; }
+.tdRight[data-strong="true"] { font-weight: 600; }
+.tdRight[data-pos="true"] { color: var(--pontes-success); font-weight: 500; }
+.tdRight[data-rest="open"] { color: var(--pontes-danger); font-weight: 700; }
+.tdRight[data-rest="done"] { color: var(--pontes-success); font-weight: 700; }
+.tdRight[data-paid="true"] { color: var(--pontes-success); font-weight: 600; }
+.tdRight[data-paid="false"] { color: var(--pontes-danger); font-weight: 600; }
+.tdCenter { text-align: center; }
+.tdIcon { padding-right: 0; }
+.tdMono { font-family: ui-monospace, monospace; font-size: 12px; color: var(--pontes-text-muted); padding: 14px; border-bottom: 1px solid var(--pontes-border); }
+.tdMuted { color: var(--pontes-text-muted); }
+.faturaRow { cursor: pointer; transition: background .12s ease; }
+.faturaRow:hover { background: var(--pontes-bg); }
+.faturaRow[data-expanded="true"] { background: var(--pontes-bg); }
+.chev { color: var(--pontes-text-muted); display: inline-flex; }
+.venc[data-vencida="true"] { color: var(--pontes-danger); font-weight: 600; }
+.vencidaTag { display: block; font-size: 10px; color: var(--pontes-danger); font-weight: 600; }
+
+.detailCell { padding: 0; background: var(--pontes-bg); border-bottom: 1px solid var(--pontes-border); }
+.detailTable { width: 100%; border-collapse: collapse; }
+.detailTable .th, .detailTable .thRight { background: var(--pontes-bg); }
+.detailLoading, .detailEmpty { padding: 16px 24px; font-size: 12px; color: var(--pontes-text-muted); }
+
+/* Modais */
+.modalCol { display: flex; flex-direction: column; gap: 16px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
