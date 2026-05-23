@@ -31,8 +31,9 @@
 .cardSheen1 { position: absolute; right: -40px; top: -50px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 70%); z-index: 0; }
 .cardSheen2 { position: absolute; left: -30px; top: 30px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 70%); z-index: 0; }
 
-.cardActions { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; }
-.cardActions button { color: rgba(255, 255, 255, 0.9); }
+.cardActions { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: rgba(0, 0, 0, 0.22); backdrop-filter: blur(4px); opacity: 0; transform: translateY(-4px); transition: opacity .16s ease, transform .16s ease; }
+.card:hover .cardActions, .card:focus-within .cardActions { opacity: 1; transform: none; }
+.cardActions button { color: rgba(255, 255, 255, 0.92); }
 .cardActions button:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* Face do cartão */
