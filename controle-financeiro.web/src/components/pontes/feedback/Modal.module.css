@@ -3,7 +3,8 @@
 .box { background: var(--pontes-surface); border-radius: 18px; width: 90%; box-shadow: 0 30px 80px rgba(0, 0, 0, .4); font-family: var(--pontes-font); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
 .header { padding: 20px 24px; border-bottom: 1px solid var(--pontes-border); display: flex; justify-content: space-between; align-items: center; }
 .title { font-size: 18px; font-weight: 700; color: var(--pontes-text); }
-.close { background: transparent; border: none; font-size: 20px; color: var(--pontes-text-muted); cursor: pointer; }
+.close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: -6px -6px -6px 0; background: transparent; border: none; border-radius: 8px; color: var(--pontes-text-muted); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.close:hover { background: var(--pontes-bg); color: var(--pontes-text); }
 .body { padding: 24px; overflow-y: auto; }
 .footer { padding: 16px 24px; background: var(--pontes-bg); display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--pontes-border); border-radius: 0 0 18px 18px; }
 
