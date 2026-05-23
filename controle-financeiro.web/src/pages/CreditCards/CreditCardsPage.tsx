@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, Banknote, Check,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, Banknote, Check, Wifi,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
@@ -383,7 +383,10 @@ export default function CreditCardsPage() {
                       <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
                       <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
                     </div>
-                    <div className={styles.cardChip} />
+                    <div className={styles.cardChipWrap}>
+                      <Wifi size={16} className={styles.contactless} />
+                      <div className={styles.cardChip} />
+                    </div>
                   </div>
                 </div>
 
