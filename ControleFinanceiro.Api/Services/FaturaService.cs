@@ -231,7 +231,10 @@ public class FaturaService
             Valor = dto.Valor,
             Tipo = TipoTransacao.Despesa,
             ContaId = dto.ContaId,
-            FaturaId = fatura.Id,
+            // Pagamento usa FaturaPagaId (não FaturaId) → fora do total da fatura e dos
+            // relatórios de P&L (a despesa real foi a compra, não o pagamento).
+            EhPagamentoFatura = true,
+            FaturaPagaId = fatura.Id,
             MeioPagamento = (MeioPagamento)dto.MeioPagamento,
             Data = dto.DataPagamento.ToUniversalTime(),
             CriadoPor = usuarioId,
