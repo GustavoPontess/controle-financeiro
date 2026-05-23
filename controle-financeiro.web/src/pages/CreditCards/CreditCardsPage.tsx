@@ -73,6 +73,8 @@ const emptyForm: FormState = {
   limite: undefined, diaFechamento: undefined, diaVencimento: undefined, contaId: undefined, bancoId: undefined,
 }
 
+type CartaoErrors = { nome?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
+
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
@@ -85,8 +87,9 @@ export default function CreditCardsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
-  const [formErrors, setFormErrors] = useState<{ nome?: string }>({})
+  const [formErrors, setFormErrors] = useState<CartaoErrors>({})
   const [loading, setLoading] = useState(false)
+  const clearErr = (k: keyof CartaoErrors) => setFormErrors((p) => ({ ...p, [k]: undefined }))
 
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
@@ -197,8 +200,16 @@ export default function CreditCardsPage() {
   }
 
   const handleSalvar = async () => {
-    const e: { nome?: string } = {}
+    const e: CartaoErrors = {}
     if (!form.nome.trim()) e.nome = "Informe o nome do cartão"
+    if (form.ultimosDigitos && form.ultimosDigitos.length !== 4) e.ultimosDigitos = "Use os 4 últimos dígitos"
+    if (temCredito) {
+      if (form.limite != null && form.limite <= 0) e.limite = "Limite deve ser maior que zero"
+      if (form.diaFechamento != null && (!Number.isInteger(form.diaFechamento) || form.diaFechamento < 1 || form.diaFechamento > 31))
+        e.diaFechamento = "Dia entre 1 e 31"
+      if (form.diaVencimento != null && (!Number.isInteger(form.diaVencimento) || form.diaVencimento < 1 || form.diaVencimento > 31))
+        e.diaVencimento = "Dia entre 1 e 31"
+    }
     setFormErrors(e)
     if (Object.keys(e).length) return
     setLoading(true)
@@ -514,8 +525,13 @@ export default function CreditCardsPage() {
             <PontesField label="Bandeira">
               <PontesSelect value={String(form.bandeira)} onChange={(v) => setF("bandeira", Number(v))} options={BANDEIRAS} />
             </PontesField>
-            <PontesField label="Últimos 4 dígitos">
-              <PontesInput value={form.ultimosDigitos ?? ""} onChange={(e) => setF("ultimosDigitos", e.target.value || undefined)} maxLength={4} placeholder="0000" />
+            <PontesField label="Últimos 4 dígitos" error={formErrors.ultimosDigitos}>
+              <PontesInput
+                value={form.ultimosDigitos ?? ""}
+                onChange={(e) => { const d = e.target.value.replace(/\D/g, "").slice(0, 4); setF("ultimosDigitos", d || undefined); clearErr("ultimosDigitos") }}
+                invalid={!!formErrors.ultimosDigitos}
+                inputMode="numeric" maxLength={4} placeholder="0000"
+              />
             </PontesField>
           </div>
           <PontesField label="Banco emissor">
@@ -532,17 +548,17 @@ export default function CreditCardsPage() {
             </PontesField>
           )}
           {temCredito && (
-            <PontesField label="Limite de crédito">
-              <PontesInput type="number" value={form.limite != null ? String(form.limite) : ""} onChange={(e) => setF("limite", e.target.value ? Number(e.target.value) : undefined)} min={0} step="0.01" />
+            <PontesField label="Limite de crédito" error={formErrors.limite}>
+              <PontesInput type="number" value={form.limite != null ? String(form.limite) : ""} onChange={(e) => { setF("limite", e.target.value ? Number(e.target.value) : undefined); clearErr("limite") }} invalid={!!formErrors.limite} min={0} step="0.01" inputMode="decimal" />
             </PontesField>
           )}
           {temCredito && (
             <div className={styles.grid2}>
-              <PontesField label="Dia fechamento">
-                <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined)} min={1} max={31} />
+              <PontesField label="Dia fechamento" error={formErrors.diaFechamento}>
+                <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => { setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaFechamento") }} invalid={!!formErrors.diaFechamento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
-              <PontesField label="Dia vencimento">
-                <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined)} min={1} max={31} />
+              <PontesField label="Dia vencimento" error={formErrors.diaVencimento}>
+                <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => { setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaVencimento") }} invalid={!!formErrors.diaVencimento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
             </div>
           )}

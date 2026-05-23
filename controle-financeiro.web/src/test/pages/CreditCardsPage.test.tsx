@@ -71,6 +71,24 @@ describe("CreditCardsPage (#84)", () => {
     expect(screen.getByText("Aberta")).toBeInTheDocument()
   })
 
+  it("valida form: submit sem nome bloqueia e mostra erro", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Novo Cartão"))
+    await screen.findByText("Novo cartão")
+    fireEvent.click(screen.getByText("Cadastrar"))
+    expect(await screen.findByText("Informe o nome do cartão")).toBeInTheDocument()
+    expect(createCartao).not.toHaveBeenCalled()
+  })
+
+  it("últimos dígitos aceita só números", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Novo Cartão"))
+    await screen.findByText("Novo cartão")
+    const input = screen.getByPlaceholderText("0000") as HTMLInputElement
+    fireEvent.change(input, { target: { value: "ab12cd34xy" } })
+    expect(input.value).toBe("1234")
+  })
+
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
