@@ -35,6 +35,7 @@ export interface FaturaPagamento {
   id: string
   valor: number
   data: string
+  criadoEm: string
   meioPagamento: number
   meioPagamentoDescricao: string
 }

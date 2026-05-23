@@ -297,9 +297,10 @@ export default function CreditCardsPage() {
     type Linha =
       | { kind: "compra"; id: string; ts: number; t: FaturaDetalhe["transacoes"][number] }
       | { kind: "pagamento"; id: string; ts: number; p: FaturaPagamento }
+    // Ordena por data + hora (criadoEm carrega o horário do lançamento).
     const linhas: Linha[] = [
-      ...detalhe.transacoes.map((t) => ({ kind: "compra" as const, id: t.id, ts: new Date(t.data).getTime(), t })),
-      ...pagamentos.map((p) => ({ kind: "pagamento" as const, id: p.id, ts: new Date(p.data).getTime(), p })),
+      ...detalhe.transacoes.map((t) => ({ kind: "compra" as const, id: t.id, ts: new Date(t.criadoEm).getTime(), t })),
+      ...pagamentos.map((p) => ({ kind: "pagamento" as const, id: p.id, ts: new Date(p.criadoEm).getTime(), p })),
     ].sort((a, b) => a.ts - b.ts)
 
     return (
@@ -321,7 +322,9 @@ export default function CreditCardsPage() {
           <div key={l.id} className={styles.txRow} data-pagamento="true">
             <div className={styles.txMain}>
               <span className={styles.txDesc}><Check size={13} strokeWidth={2.5} /> Pagamento · {l.p.meioPagamentoDescricao}</span>
-              <span className={styles.txMeta}>{formatDate(l.p.data)}</span>
+              <span className={styles.txMeta}>
+                {new Date(l.p.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
             </div>
             <span className={styles.payValor}>− {formatMoney(l.p.valor)}</span>
           </div>

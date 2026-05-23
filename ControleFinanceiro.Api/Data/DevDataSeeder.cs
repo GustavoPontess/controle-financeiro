@@ -362,6 +362,12 @@ public static class DevDataSeeder
             NovaRecorrente(solo.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, soloCorrente.Id, null),
         };
 
+        // Hora realista por transação (data + horário comercial) para permitir
+        // ordenação cronológica por data E hora nas listas (ex.: lançamentos da fatura).
+        var rngHora = new Random(2026);
+        foreach (var t in transacoes)
+            t.CriadoEm = t.Data.AddHours(rngHora.Next(8, 22)).AddMinutes(rngHora.Next(0, 60));
+
         context.Faturas.AddRange(faturas);
         context.Recorrentes.AddRange(recorrentes);
         context.Transacoes.AddRange(transacoes);

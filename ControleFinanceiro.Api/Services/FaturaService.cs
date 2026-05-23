@@ -309,13 +309,14 @@ public class FaturaService
         var pags = await _context.Transacoes
             .Where(t => t.FaturaPagaId == faturaId && t.Ativo)
             .OrderBy(t => t.Data)
-            .Select(t => new { t.Id, t.Valor, t.Data, t.MeioPagamento })
+            .Select(t => new { t.Id, t.Valor, t.Data, t.CriadoEm, t.MeioPagamento })
             .ToListAsync();
         dto.Pagamentos = pags.Select(t => new FaturaPagamentoDto
         {
             Id = t.Id,
             Valor = t.Valor,
             Data = t.Data,
+            CriadoEm = t.CriadoEm,
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : 0,
             MeioPagamentoDescricao = t.MeioPagamento switch
             {

@@ -36,6 +36,7 @@ public class FaturaPagamentoDto
     public Guid Id { get; set; }
     public decimal Valor { get; set; }
     public DateTime Data { get; set; }
+    public DateTime CriadoEm { get; set; }
     public int MeioPagamento { get; set; }
     public string MeioPagamentoDescricao { get; set; } = string.Empty;
 }
