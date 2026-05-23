@@ -371,11 +371,7 @@ export default function CreditCardsPage() {
                 <div className={styles.cardTop}>
                   <div className={styles.cardNameWrap}>
                     <span className={styles.cardName}>{c.nome}</span>
-                    <div className={styles.cardTags}>
-                      {c.temCredito && <span className={styles.tag}>Crédito</span>}
-                      {c.temDebito && <span className={styles.tag}>Débito</span>}
-                      {c.ehPrePago && <span className={styles.tag}>Pré-pago</span>}
-                    </div>
+                    {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
                   </div>
                   <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
                     <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
@@ -383,39 +379,48 @@ export default function CreditCardsPage() {
                   </div>
                 </div>
 
-                <div className={styles.cardChip} />
-                <div className={styles.cardSpacer} />
-
-                <div className={styles.cardNumber}>•••• •••• •••• {c.ultimosDigitos ?? "••••"}</div>
-
-                <div className={styles.cardFoot}>
-                  <div className={styles.cardFootCol}>
-                    <span className={styles.cardFootLabel}>{c.bancoNome ? "Emissor" : "Bandeira"}</span>
-                    <span className={styles.cardFootValue}>{c.bancoNome ?? c.bandeiraDescricao}</span>
+                <div className={styles.cardMid}>
+                  <div className={styles.cardChip} />
+                  <div className={styles.cardTags}>
+                    {c.temCredito && <span className={styles.tag}>Crédito</span>}
+                    {c.temDebito && <span className={styles.tag}>Débito</span>}
+                    {c.ehPrePago && <span className={styles.tag}>Pré-pago</span>}
                   </div>
+                </div>
+
+                <div className={styles.cardNumberRow}>
+                  <span className={styles.cardNumber}>•••• •••• •••• {c.ultimosDigitos ?? "••••"}</span>
                   <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
                 </div>
 
                 {c.temCredito && c.limite ? (
                   <div className={styles.cardInfo}>
                     <div className={styles.cardInfoTop}>
-                      <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)} <span className={styles.cardDispLabel}>disponível</span></span>
-                      <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
+                      <div className={styles.cardDispWrap}>
+                        <span className={styles.cardInfoLabel}>Disponível</span>
+                        <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
+                      </div>
+                      <div className={styles.cardInfoRight}>
+                        <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
+                        <span className={styles.cardOfLimit}>de {formatMoney(c.limite)}</span>
+                      </div>
                     </div>
                     <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
                     <div className={styles.cardMetaRow}>
-                      <span>{formatMoney(c.gastosNoCicloAtual)} de {formatMoney(c.limite)}</span>
-                      {(c.diaFechamento || c.diaVencimento) && (
-                        <span>{c.diaFechamento ? `fecha ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence ${c.diaVencimento}` : ""}</span>
-                      )}
+                      <span>{(c.diaFechamento || c.diaVencimento)
+                        ? `${c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}`
+                        : `${formatMoney(c.gastosNoCicloAtual)} usado`}</span>
+                      <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Ocultar" : "Faturas"}</span>
                     </div>
-                    <div className={styles.verFaturas}><ReceiptText size={13} /> {sel ? "Ocultar faturas" : "Ver faturas"}</div>
                   </div>
-                ) : c.contaNome ? (
+                ) : (
                   <div className={styles.cardInfo}>
-                    <div className={styles.cardMetaRow}><span>Conta que paga</span><span className={styles.cardFootValue}>{c.contaNome}</span></div>
+                    <div className={styles.cardMetaRow}>
+                      <span>{c.contaNome ? "Conta que paga" : " "}</span>
+                      {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
+                    </div>
                   </div>
-                ) : null}
+                )}
               </div>
             )
           })}
