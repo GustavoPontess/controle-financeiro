@@ -51,7 +51,7 @@
 .cardChip::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1px; transform: translateX(-50%); background: rgba(0, 0, 0, 0.22); box-shadow: -7px 0 0 rgba(0, 0, 0, 0.12), 7px 0 0 rgba(0, 0, 0, 0.12); }
 
 /* Painel financeiro — faixa escura translúcida no pé do cartão */
-.cardPanel { position: relative; z-index: 1; padding: 14px 22px 16px; background: rgba(0, 0, 0, 0.24); border-top: 1px solid rgba(255, 255, 255, 0.16); display: flex; flex-direction: column; gap: 8px; backdrop-filter: blur(6px) saturate(1.1); -webkit-backdrop-filter: blur(6px) saturate(1.1); }
+.cardPanel { position: relative; z-index: 1; padding: 14px 22px 16px; background: rgba(0, 0, 0, 0.24); border-top: 1px solid rgba(255, 255, 255, 0.16); border-radius: 0 0 16px 16px; display: flex; flex-direction: column; gap: 8px; backdrop-filter: blur(6px) saturate(1.1); -webkit-backdrop-filter: blur(6px) saturate(1.1); }
 .panelTop { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
 .cardDispWrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cardInfoLabel { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.72; }
