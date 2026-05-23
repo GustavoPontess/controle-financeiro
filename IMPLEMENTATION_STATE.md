@@ -2,8 +2,18 @@
 owner: Gustavo
 last_reviewed: 2026-05-23
 status: PRONTO_PRA_PROXIMA
-issue_atual: 'Nenhuma em execução. #82 Transação Add/Editar CONCLUÍDO e mergeado na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
+issue_atual: 'Nenhuma em execução. #82 (Transação) e #128 (contabilidade/P&L) CONCLUÍDOS e mergeados na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
 ---
+
+## Última issue concluída — #128 (contabilidade: saldo × P&L) ✅ MERGEADO
+
+PR #133 (`ad2c053`). Saldo separado de relatório de P&L. `Transacao` ganhou flags
+`EhTransferencia`/`EhSaldoInicial` (`EhPagamentoFatura` já existia); relatórios e KPIs
+do dashboard **excluem** as 3 (não são receita/despesa real → some o double-count do
+pagamento de fatura, transferência não infla totais, saldo inicial não vira receita).
+Saldo (Dashboard/ContasController) passou a filtrar `Ativo`+`Executado`. Transferência
+agora soft-delete. Migration `AddFlagsContabeisTransacao` + backfill. 159 testes back.
+
 
 ## Última issue concluída — #82 (Transação Adicionar/Editar) ✅ MERGEADO
 
@@ -32,7 +42,7 @@ issue_atual: 'Nenhuma em execução. #82 Transação Add/Editar CONCLUÍDO e mer
 - **#131** mover `components/transactions/` → `pages/Transactions/` (sair da zona legada).
 
 ### Próxima ação concreta
-Pegar a próxima issue livre (recomendado: **#128** pela severidade — corrige números de relatório; ou seguir ordem do `ISSUES.md`). Criar branch `feature/<n>-<slug>` a partir de `main` atualizado.
+Pegar a próxima issue livre. Recomendados: **#84** (Cartão de Crédito — auditar, alta) ou **#85** (Família — rateio, diferencial do produto, alta). Rápidos: **#129** (validação por campo nos forms Login/Register/Categorias) ou site **#78/#79/#80**. Criar branch `feature/<n>-<slug>` a partir de `main` atualizado.
 
 ### Anotado pra futuro (jurídico, não-código)
 - #125 — proteção de marca + IP (INPI). #126 — mapear LGPD (pré-lançamento).
