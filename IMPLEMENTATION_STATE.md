@@ -2,36 +2,46 @@
 owner: Gustavo
 last_reviewed: 2026-05-22
 status: EM_EXECUCAO
-issue_atual: '#82 Transação Add/Editar + #83 Subcategorias. Branch feature/82-transacao-add-edit. #83 BACKEND pronto+verde. Falta: #83 front, #82 back audit, #82 front (form 3 modos).'
+issue_atual: '#82 Transação Add/Editar — form (popup) em construção. Branch feature/82-transacao-form. #83 Subcategorias MERGEADO (PR #127). Falta: EditTransactionDialog, rateio família, testes form, PR.'
 ---
 
-## Issue em execução — #82 + #83 (Transação + Subcategoria)
+## Issue em execução — #82 (form de Transação)
 
-**Branch:** `feature/82-transacao-add-edit` (a partir do main já com #122 mergeado).
-**#122 mergeado** (PR #124) → main tem lib Pontes em CSS Modules + vars. **#81 Dashboard mergeado** (PR #123).
+**Branch:** `feature/82-transacao-form` (a partir do main com #122 + #83 já mergeados).
+**Mergeado no main:** #122 (PR #124 — CSS Modules/vars), #81 Dashboard (PR #123), **#83 Subcategorias (PR #127)**.
+**Dev no ar:** Postgres docker `controlefinanceiro-db` + API 5293 + front 5173. Login dev `dev@controle.test` / `Dev@123456`. Seeder cria cartão **Nubank (limite 5k)** pra testar crédito.
 
-### Feito nesta sessão
-- [x] **#83 BACKEND** — entidade `Subcategoria` (Nome/Icone/Cor/CategoriaId/UsuarioId), `Transacao.SubcategoriaId?` (SetNull), `SubcategoriaService` (CRUD multi-tenant, exceções padrão), `SubcategoriasController` (`?categoriaId` filtra), DTOs, registrado no Program.cs, migration `AddSubcategoria` (Postgres, limpa), 9 testes xUnit. **150 testes verdes, API sobe limpa (health 200).** Commitado.
+### Decisões de produto travadas (#83/#82)
+- **Taxonomia enxuta:** 14 categorias / 68 subcategorias (só consumo=Despesa e ganho=Renda). Transferência, pgto de fatura, empréstimo, investimento NÃO são categoria — têm entidades próprias (`Transferencia`, `Fatura`/`EhPagamentoFatura`, `Emprestimo`). `TipoTransacao` segue Receita/Despesa (sem 3º tipo). Seeders `CategoriaSeeder`+`SubcategoriaSeeder`.
+- **3 conceitos:** Único · Parcelado (compra dividida em N faturas, no crédito) · Recorrente (assinatura, repete; entidade `Recorrente`).
 
-- [x] **#83 front** — `CategoriesPage` refatorada (saiu de MUI/tokens/CustomButton) → Pontes + `*.module.css` + var. Sub-lista expansível por categoria: criar/editar/excluir subcategoria (PontesModal + PontesColorPicker), exclusão via PontesDialog. `subcategoryService.ts` + `Subcategory` type. 3 testes de página → **suite front 107 verde**. Commitado.
+### Feito no #82 (commits na branch, todos verdes — 107 front / 154 back)
+- [x] Backend: `SubcategoriaId` em `CriarTransacaoDto`/`TransacaoDto` + propagado em criar à-vista, update e parcelamento (`TransacaoService`/`FaturaService`); validação (subcat existe, é do user, pertence à categoria). +2 testes.
+- [x] Popup `NewTransactionDialog` → `PontesModal`; `TransactionForm` refeito em Pontes + CSS Modules.
+- [x] `CategoryPicker` novo (local): dropdown agrupado categoria>subcategoria, contido no popup (em fluxo, altura 240 + scroll interno).
+- [x] Form: Tipo (2 botões grandes Despesa/Receita) → Valor (PontesMoneyInput, full width) → Data+Meio → Conta **ou** cartão → switch "Repetir automaticamente (assinatura)" → Categoria → Descrição.
+- [x] Modo **Recorrente** via switch: Frequência/Dia/Início/Repetir-até; salva em `/recorrentes` (conta ou cartão). Parcelas só em único+crédito.
+- [x] Fixes lib: `PontesModal` não corta dropdown (overflow visible→hidden + flex/maxHeight 90vh + body scroll); `PontesMoneyInput` full width.
+- [x] `DevDataSeeder` cadastra cartão de crédito do dev.
 
-### Falta (ordem) — #82 inteiro
-- [ ] **#82 back** — auditar `TransacaoService` (3 modos: único/recorrente/parcelado). Aceitar `SubcategoriaId` no criar/editar **em todos os caminhos** (conta, cartão, parcelamento gera N transações). Idempotência, validações cruzadas (cartão→fatura, recorrente→expansão). Adicionar `SubcategoriaId` em `CriarTransacaoDto` + `TransacaoDto` + mapeamento. Testes dos 3 modos.
-- [ ] **#82 front** — form de transação refator: tabs Único|Recorrente|Parcelado, campos por modo, toggle Recebido/Pago, dropdown Subcategoria filtrado pela Categoria (usa `getSubcategories(categoriaId)`), bloco rateio se família. CSS Modules + var. Testes por modo.
+### Falta (#82)
+- [ ] **`EditTransactionDialog`** — ainda MUI/legado, sem subcategoria → refatorar pra Pontes + CategoryPicker (espelhar o NewTransactionDialog).
+- [ ] **Rateio família** + toggle **marcar pago/previsto** (avançado).
+- [ ] **Subcategoria em Recorrente** — entidade `Recorrente` não tem o campo (back). Adicionar se quiser sub em assinatura.
+- [ ] **Testes do form** (vitest: render por modo, submit único/recorrente).
+- [ ] PR `Closes #82`.
 
 ### Próxima ação concreta
-`#82 back`: ler `TransacaoService.cs` inteiro + `Controllers/TransacoesController.cs` (ou onde cria transação). Mapear os 3 caminhos (linha ~46 cria via entidade `Transacao`; linha ~95 caminho cartão/parcelamento via `dto`; linha ~165 update). Adicionar `SubcategoriaId` no DTO e propagar em cada caminho. Validar subcategoria pertence à categoria escolhida.
+Refatorar `components/transactions/EditTransactionDialog/EditTransactionDialog.tsx` (hoje MUI próprio) pra `PontesModal` + reusar `TransactionForm`/`CategoryPicker`, carregando subcategorias e enviando `subcategoriaId` no update.
 
-### Estado da branch (commits)
-1. #83 backend (entidade/service/controller/migration/9 testes)
-2. docs estado
-3. #83 front service+type
-4. #83 front CategoriesPage refatorada + 3 testes
-(#82 ainda não começou)
+### Anotado pra futuro (jurídico, não-código)
+- #125 — proteção de marca + IP (INPI, registro de software, direito autoral, inventário).
+- #126 — mapear conformidade LGPD (pré-lançamento).
 
-### Notas
-- Dev: Postgres docker `controlefinanceiro-db`, API restart aplica migration via `MigrateAsync`.
-- `CategoriaService` é legado (usa `throw new Exception`); `SubcategoriaService` segue o padrão novo (ArgumentException→400 / KeyNotFoundException→404 / InvalidOperationException→409 / UnauthorizedAccessException→401, mapeado pelo GlobalExceptionHandlerMiddleware).
+### Notas técnicas
+- Dev: API restart aplica migration via `MigrateAsync`; reset de seed = `DROP DATABASE` + restart (recria + reseeders). Reset → token do dev morre → refazer login.
+- `PontesSelect` (lib) e `CategoryPicker` (local): painéis com altura limitada + scroll, contidos no modal.
+- `CategoriaService` legado usa `throw new Exception`; serviços novos seguem ArgumentException/KeyNotFoundException/etc (mapeados pelo GlobalExceptionHandlerMiddleware).
 ---
 
 <!-- bloco antigo #122 abaixo (histórico) -->
