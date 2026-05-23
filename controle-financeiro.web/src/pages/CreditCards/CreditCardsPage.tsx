@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect, PontesProgress, PontesEmptyState,
+  PontesField, PontesInput, PontesSelect, PontesEmptyState,
 } from "@/components/pontes"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
@@ -353,71 +353,69 @@ export default function CreditCardsPage() {
         <div className={styles.cardsGrid}>
           {cartoes.map((c) => {
             const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
+            const over = pct > 80
             const sel = faturasCartaoId === c.id
             const clickable = c.temCredito
             return (
               <div
                 key={c.id}
                 className={styles.card}
+                style={{ background: grad(c.bandeira) }}
                 data-selected={sel ? "true" : undefined}
                 data-clickable={clickable ? "true" : undefined}
                 onClick={clickable ? () => openFaturas(c.id) : undefined}
               >
-                <div className={styles.cardVisual} style={{ background: grad(c.bandeira) }}>
-                  <div className={styles.cardCircle1} />
-                  <div className={styles.cardCircle2} />
-                  <div className={styles.cardVisualHead}>
+                <div className={styles.cardSheen1} />
+                <div className={styles.cardSheen2} />
+
+                <div className={styles.cardTop}>
+                  <div className={styles.cardNameWrap}>
                     <span className={styles.cardName}>{c.nome}</span>
-                    <span className={styles.cardChip} />
+                    <div className={styles.cardTags}>
+                      {c.temCredito && <span className={styles.tag}>Crédito</span>}
+                      {c.temDebito && <span className={styles.tag}>Débito</span>}
+                      {c.ehPrePago && <span className={styles.tag}>Pré-pago</span>}
+                    </div>
                   </div>
-                  <div className={styles.cardVisualFoot}>
-                    <span className={styles.cardDigits}>
-                      {c.ultimosDigitos ? `•••• ${c.ultimosDigitos}` : "•••• ••••"}
-                    </span>
-                    <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+                  <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+                    <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
+                    <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
                   </div>
                 </div>
 
-                <div className={styles.cardBody}>
-                  <div className={styles.cardTopRow}>
-                    <div className={styles.chips}>
-                      {c.temCredito && <PontesBadge tone="soft" size="sm">Crédito</PontesBadge>}
-                      {c.temDebito && <PontesBadge tone="success" size="sm">Débito</PontesBadge>}
-                      {c.ehPrePago && <PontesBadge tone="neutral" size="sm">Pré-Pago</PontesBadge>}
-                    </div>
-                    <div className={styles.icons} onClick={(e) => e.stopPropagation()}>
-                      <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}>
-                        <Pencil size={14} />
-                      </PontesIconButton>
-                      <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}>
-                        <Trash2 size={14} />
-                      </PontesIconButton>
-                    </div>
-                  </div>
+                <div className={styles.cardChip} />
+                <div className={styles.cardSpacer} />
 
-                  {c.temCredito && c.limite ? (
-                    <div className={styles.limitBlock}>
-                      <div className={styles.limitHead}>
-                        <span className={styles.limitDisp}>{formatMoney(c.limiteDisponivel ?? 0)}<span className={styles.muted}> disponível</span></span>
-                        <span className={styles.muted} data-over={pct > 80 ? "true" : undefined}>{Math.round(pct)}%</span>
-                      </div>
-                      <PontesProgress value={pct} showValue={false} height={6} color={pct > 80 ? "var(--pontes-danger)" : "var(--pontes-primary)"} />
-                      <div className={styles.limitFoot}>
-                        <span className={styles.muted}>{formatMoney(c.gastosNoCicloAtual)} de {formatMoney(c.limite)}</span>
-                        {(c.diaFechamento || c.diaVencimento) && (
-                          <span className={styles.muted}>{c.diaFechamento ? `fecha ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence ${c.diaVencimento}` : ""}</span>
-                        )}
-                      </div>
-                      {clickable && (
-                        <div className={styles.verFaturas} data-open={sel ? "true" : undefined}>
-                          <ReceiptText size={14} /> {sel ? "Ocultar faturas" : "Ver faturas"}
-                        </div>
+                <div className={styles.cardNumber}>•••• •••• •••• {c.ultimosDigitos ?? "••••"}</div>
+
+                <div className={styles.cardFoot}>
+                  <div className={styles.cardFootCol}>
+                    <span className={styles.cardFootLabel}>{c.bancoNome ? "Emissor" : "Bandeira"}</span>
+                    <span className={styles.cardFootValue}>{c.bancoNome ?? c.bandeiraDescricao}</span>
+                  </div>
+                  <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+                </div>
+
+                {c.temCredito && c.limite ? (
+                  <div className={styles.cardInfo}>
+                    <div className={styles.cardInfoTop}>
+                      <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)} <span className={styles.cardDispLabel}>disponível</span></span>
+                      <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
+                    </div>
+                    <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
+                    <div className={styles.cardMetaRow}>
+                      <span>{formatMoney(c.gastosNoCicloAtual)} de {formatMoney(c.limite)}</span>
+                      {(c.diaFechamento || c.diaVencimento) && (
+                        <span>{c.diaFechamento ? `fecha ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence ${c.diaVencimento}` : ""}</span>
                       )}
                     </div>
-                  ) : (
-                    c.contaNome && <div className={styles.contaRow}><span className={styles.muted}>Conta</span><span className={styles.strong}>{c.contaNome}</span></div>
-                  )}
-                </div>
+                    <div className={styles.verFaturas}><ReceiptText size={13} /> {sel ? "Ocultar faturas" : "Ver faturas"}</div>
+                  </div>
+                ) : c.contaNome ? (
+                  <div className={styles.cardInfo}>
+                    <div className={styles.cardMetaRow}><span>Conta que paga</span><span className={styles.cardFootValue}>{c.contaNome}</span></div>
+                  </div>
+                ) : null}
               </div>
             )
           })}
@@ -469,6 +467,11 @@ export default function CreditCardsPage() {
                         </PontesButton>
                       )}
                     </div>
+                    {faturaAtual.valorPago > 0 && open && (
+                      <div className={styles.paidBar} title={`Pago ${formatMoney(faturaAtual.valorPago)} de ${formatMoney(faturaAtual.valorTotal)}`}>
+                        <div className={styles.paidFill} style={{ width: `${Math.min(100, (faturaAtual.valorPago / faturaAtual.valorTotal) * 100)}%` }} />
+                      </div>
+                    )}
                     <button type="button" className={styles.expandBtn} onClick={() => toggleFatura(faturaAtual.id, faturasCartaoId)}>
                       <ChevronDown size={14} className={exp ? styles.chevOpen : undefined} /> {exp ? "Ocultar lançamentos" : "Ver lançamentos"}
                     </button>
