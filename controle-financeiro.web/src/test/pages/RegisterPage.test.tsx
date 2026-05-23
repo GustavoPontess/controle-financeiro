@@ -102,6 +102,7 @@ describe('RegisterPage', () => {
 
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
     fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
@@ -114,11 +115,24 @@ describe('RegisterPage', () => {
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
+  })
+
+  it('submit vazio bloqueia e mostra erros por campo (sem chamar register)', () => {
+    renderRegister()
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+    expect(mockRegister).not.toHaveBeenCalled()
+    expect(screen.getByText('Informe seu nome')).toBeInTheDocument()
+    expect(screen.getByText('Informe o e-mail')).toBeInTheDocument()
+    expect(screen.getByText('Informe a data de nascimento')).toBeInTheDocument()
+    expect(screen.getByText('Informe a senha')).toBeInTheDocument()
   })
 
   it('exibe botão voltar à página inicial', () => {
@@ -146,6 +160,9 @@ describe('RegisterPage', () => {
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
     fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)

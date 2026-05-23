@@ -39,12 +39,14 @@ export default function CategoriesPage() {
   // Modal categoria
   const [catModalOpen, setCatModalOpen] = useState(false)
   const [catDesc, setCatDesc] = useState("")
+  const [catDescErr, setCatDescErr] = useState("")
   const [catFinalidade, setCatFinalidade] = useState("1")
   const [savingCat, setSavingCat] = useState(false)
 
   // Modal subcategoria
   const [subModal, setSubModal] = useState<SubModalState>({ open: false, categoriaId: "", editing: null })
   const [subNome, setSubNome] = useState("")
+  const [subNomeErr, setSubNomeErr] = useState("")
   const [subCor, setSubCor] = useState(SUB_COLORS[0])
   const [savingSub, setSavingSub] = useState(false)
 
@@ -75,10 +77,10 @@ export default function CategoriesPage() {
 
   // ── Categoria ──
   const abrirNovaCategoria = () => {
-    setCatDesc(""); setCatFinalidade("1"); setCatModalOpen(true)
+    setCatDesc(""); setCatDescErr(""); setCatFinalidade("1"); setCatModalOpen(true)
   }
   const salvarCategoria = async () => {
-    if (!catDesc.trim()) { notify({ open: true, message: "Informe a descrição", severity: "error" }); return }
+    if (!catDesc.trim()) { setCatDescErr("Informe a descrição"); return }
     setSavingCat(true)
     try {
       await createCategory({ descricao: catDesc.trim(), finalidade: Number(catFinalidade) })
@@ -95,14 +97,14 @@ export default function CategoriesPage() {
 
   // ── Subcategoria ──
   const abrirNovaSub = (categoriaId: string) => {
-    setSubModal({ open: true, categoriaId, editing: null }); setSubNome(""); setSubCor(SUB_COLORS[0])
+    setSubModal({ open: true, categoriaId, editing: null }); setSubNome(""); setSubNomeErr(""); setSubCor(SUB_COLORS[0])
   }
   const abrirEditarSub = (sub: Subcategory) => {
     setSubModal({ open: true, categoriaId: sub.categoriaId, editing: sub })
-    setSubNome(sub.nome); setSubCor(sub.cor || SUB_COLORS[0])
+    setSubNome(sub.nome); setSubNomeErr(""); setSubCor(sub.cor || SUB_COLORS[0])
   }
   const salvarSub = async () => {
-    if (!subNome.trim()) { notify({ open: true, message: "Informe o nome", severity: "error" }); return }
+    if (!subNome.trim()) { setSubNomeErr("Informe o nome"); return }
     setSavingSub(true)
     try {
       if (subModal.editing) {
@@ -250,8 +252,8 @@ export default function CategoriesPage() {
         </>}
       >
         <div className={styles.formCol}>
-          <PontesField label="Descrição" required>
-            <PontesInput value={catDesc} onChange={(e) => setCatDesc(e.target.value)} placeholder="Ex: Educação" />
+          <PontesField label="Descrição" required error={catDescErr}>
+            <PontesInput value={catDesc} onChange={(e) => { setCatDesc(e.target.value); setCatDescErr("") }} invalid={!!catDescErr} placeholder="Ex: Educação" />
           </PontesField>
           <PontesField label="Finalidade">
             <PontesSelect
@@ -278,8 +280,8 @@ export default function CategoriesPage() {
         </>}
       >
         <div className={styles.formCol}>
-          <PontesField label="Nome" required>
-            <PontesInput value={subNome} onChange={(e) => setSubNome(e.target.value)} placeholder="Ex: Hortifruti" />
+          <PontesField label="Nome" required error={subNomeErr}>
+            <PontesInput value={subNome} onChange={(e) => { setSubNome(e.target.value); setSubNomeErr("") }} invalid={!!subNomeErr} placeholder="Ex: Hortifruti" />
           </PontesField>
           <PontesField label="Cor">
             <PontesColorPicker value={subCor} onChange={setSubCor} colors={SUB_COLORS} />

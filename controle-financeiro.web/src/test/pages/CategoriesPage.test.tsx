@@ -72,4 +72,14 @@ describe("CategoriesPage (#83)", () => {
     fireEvent.click(screen.getByText("Nova Categoria"))
     await waitFor(() => expect(screen.getByText("Nova categoria")).toBeInTheDocument())
   })
+
+  it("criar categoria vazia mostra erro inline e não chama o service", async () => {
+    renderPage()
+    await screen.findByText("Mercado")
+    fireEvent.click(screen.getByText("Nova Categoria"))
+    await screen.findByText("Nova categoria")
+    fireEvent.click(screen.getByRole("button", { name: "Criar" }))
+    expect(createCategory).not.toHaveBeenCalled()
+    expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
+  })
 })
