@@ -15,10 +15,10 @@
 .caret { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform .16s ease; }
 .trigger[data-open="true"] .caret { transform: rotate(180deg); }
 .menu {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
   background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px;
-  box-shadow: var(--pontes-shadow-md); z-index: 50; max-height: 300px; padding: 6px;
+  box-shadow: var(--pontes-shadow-lg); z-index: 10010; padding: 6px;
   display: flex; flex-direction: column; overflow: hidden;
+  font-family: var(--pontes-font);
 }
 .searchRow { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin-bottom: 4px; border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-bg); flex-shrink: 0; }
 .searchIcon { color: var(--pontes-text-muted); flex-shrink: 0; }
