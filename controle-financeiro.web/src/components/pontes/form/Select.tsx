@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from "react"
+import { ChevronDown, Check } from "lucide-react"
 import { scopedThemeVars, type Palette } from "../theme"
 import styles from "./Select.module.css"
 
@@ -62,7 +63,7 @@ export function PontesSelect<T extends string = string>({
         data-placeholder={value ? undefined : "true"}
       >
         <span>{selected?.label ?? (value || placeholder)}</span>
-        <span className={styles.caret}>▾</span>
+        <span className={styles.caret}><ChevronDown size={16} /></span>
       </button>
       {open && (
         <div className={styles.menu}>
@@ -75,7 +76,7 @@ export function PontesSelect<T extends string = string>({
               data-selected={opt.value === value ? "true" : undefined}
             >
               <span>{opt.label ?? opt.value}</span>
-              {opt.value === value && <span className={styles.check}>✓</span>}
+              {opt.value === value && <span className={styles.check}><Check size={14} strokeWidth={2.5} /></span>}
             </button>
           ))}
         </div>
