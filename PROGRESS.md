@@ -25,7 +25,7 @@ Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108
 Total Q5 2026:          5/18 telas+site (#75-#92)
 ```
 
-> Spin-offs abertos no #82: ✅ **#128** contábil (RESOLVIDO — saldo × P&L), ⏳ **#129** validação nos forms restantes, ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
+> Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
 
@@ -39,9 +39,15 @@ Total Q5 2026:          5/18 telas+site (#75-#92)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #84 Cartão ⚠️ alta, #85 Família ⚠️ alta, #129 validação forms, ou site #78/#79/#80)
+(nenhuma issue em execução — próxima livre: #84 Cartão ⚠️ alta, #85 Família ⚠️ alta, #130 fix data futura, ou site #78/#79/#80)
 
 ## Resolvidos Q5
+
+- **#129** — Validação por campo nos forms (mergeado · PR #135 · sessão 2026-05-23)
+  - Login/Register/Categorias: erro vermelho inline via DS (`PontesField error` + `invalid`), `form noValidate` (sem balão nativo)
+  - Register: todos os campos obrigatórios (incl. data de nascimento)
+  - PontesField: erro **absolute** → não empurra layout (zero reflow, vale em todo form)
+  - Auth padronizado: BackButton legado removido → `<Link>` + CSS var; Fraunces → `var(--pontes-font-heading)`; `#fff` → `var(--pontes-hero-fg)`
 
 - **#128** — Contabilidade: saldo × P&L (mergeado · PR #133 · sessão 2026-05-23)
   - `Transacao` ganhou flags `EhTransferencia`/`EhSaldoInicial` (`EhPagamentoFatura` já existia)
