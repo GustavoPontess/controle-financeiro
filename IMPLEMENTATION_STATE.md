@@ -2,33 +2,38 @@
 owner: Gustavo
 last_reviewed: 2026-05-23
 status: EM_EXECUCAO
-issue_atual: '#138 — redesign visual/UX da tela de Cartões. Branch feature/138-cartao-redesign (NÃO mergeada, sem PR ainda). Mergeados hoje na main: #82, #128, #129, #84 (PR #137).'
+issue_atual: '#138 — redesign visual/UX da tela de Cartões. Branch feature/138-cartao-redesign (NÃO mergeada, SEM PR, ~46 commits à frente da main). PARADO em ponto verde a pedido (TCC). Ainda tem coisa pra mexer. Mergeados antes na main: #82, #128, #129, #84 (PR #137).'
 ---
 
 ## Issue em execução — #138 (redesign visual/UX da tela de Cartões)
 
-**Branch:** `feature/138-cartao-redesign` (a partir do main pós-#84). NÃO mergeada, PR ainda não aberto.
-**Objetivo:** repensar do zero a tela de Cartões — bonito, simples, foco usabilidade. Usuário não gostou do visual pós-#84 (que foi só migração MUI→Pontes).
+**Branch:** `feature/138-cartao-redesign`. NÃO mergeada, SEM PR. Parado em ponto verde a pedido (usuário foi fazer o TCC). **Ainda há trabalho.**
+**Objetivo:** repensar a tela de Cartões — bonita, simples, foco usabilidade.
 
-### Feito na branch (commits, todos verdes — 132 testes front)
-- [x] `e7a77e6` Redesign v1: resumo slim (cartões/limite/disponível/usado) no lugar dos 3 stat cards; cards clicáveis (card inteiro abre faturas), foco em "disponível" + barra limite, editar/excluir discretos; **fatura atual em DESTAQUE** (valor grande, status, vence, Pagar 1-toque) + **histórico** como lista compacta (não mais tabela); detalhe = lista de lançamentos com ✓ no que o pagamento cobriu.
-- [x] `efe9b3d` Modelo corrigido (pós-pesquisa real BR): **Banco emissor** vira campo próprio (era derivado da conta — bug: cartão Itaú virava banco da conta pagadora); **Conta que paga = opcional** (escolhe no pagamento). Para de sobrescrever bancoId pela conta. Seeder: cartão dev com ContaId (conta pagadora) + BancoId (emissor).
-- [x] `1c7d985` `PontesSelect` com **busca** (auto quando >8 opções) — banco tinha 471 itens.
-- [x] `e379286` `PontesSelect` menu via **portal** (document.body, fixed, altura limitada à tela, abre pra cima se faltar) — não vaza mais do popup/modal. Fecha ao rolar.
+### Feito na branch (tudo verde: lint + build + 6 testes CreditCardsPage; back compila)
+**Form de cartão:** validação por campo (nome/banco emissor obrigatórios; últimos 4 díg só número; limite com máscara R$ obrigatório quando crédito; dia fechamento/vencimento inteiro 1–31). Banco emissor required; conta que paga opcional.
+**`PontesSelect`:** busca (auto >8) + portal + corrigido scroll (rolava/fechava bugado: `min-height:0` no `.options` + scroll interno não fecha). Demo no `/design-system`.
+**Cartão (visual):** cartão físico de verdade — **face (gradiente da bandeira) arredondada SEPARADA** do **bloco de info neutro** (disponível/limite/barra) abaixo. Chip + contactless à direita, número em relevo, gloss. Largura travada, centralizado no foco, sem borda azul ao selecionar.
+**Modo foco:** clicar no cartão isola ele (esconde os outros) com a fatura abaixo; botão "Todos os cartões" volta; resumo continua visível; **1 cartão só → abre direto no foco**.
+**Fatura (UX):** navegação **por mês** (setas ‹ ›) no lugar do histórico; lançamentos **já abertos**; carga por **janela de 3** (mês + vizinhos, escala). **"Paga" só quando fechada + quitada** (parcial mantém Aberta). **Pagamentos no detalhe** (`FaturaDetalheDto.Pagamentos` via `FaturaPagaId`) intercalados com as compras em **linha do tempo cronológica por data+hora** (linha verde) + **nota "Total pago"**. **Faturas futuras PREVISTAS** das assinaturas (recorrentes mensais no cartão), 2 meses à frente, badge "Prevista", sem pagar.
+**Excluir cartão (bug corrigido):** `DeletarAsync` desvincula pagamentos da fatura (mantém no extrato da conta) em vez de travar no FK Restrict — antes cartão com fatura paga dava erro.
+**Seeder:** `MeioPagamento` em todas as transações; compras no crédito → faturas reais (passadas pagas + atual aberta) com pagamento; `CriadoEm` com hora realista (ordena data+hora); Recorrentes/Assinaturas (salário, Netflix/Spotify no cartão, academia em conta).
+**Outros:** favicon → marca Pontes (`public/icon.svg`); contas salvas deduplicam por e-mail (menu não repete usuário).
 
-### Falta (#138)
-- [ ] **Feedback visual do usuário** — ele ainda está revisando o redesign no preview (incômodo original era "não gostei, não sei dizer pq"). Iterar conforme apontar (cards/grid/resumo/fatura). Pode pedir 2-3 direções visuais.
-- [ ] Ajustar teste `CreditCardsPage.test.tsx` se mudar muito o layout (hoje passa).
-- [ ] PR `Closes #138` + CI verde + merge (com OK do usuário).
-
-### Próxima ação concreta
-Retomar coletando o feedback visual do usuário sobre o redesign (preview em `/credit-cards`, logado dev). Iterar o `CreditCardsPage.tsx` + `.module.css`. Sem mexer na lógica/serviços (reusados do #84).
+### Falta (#138) — retomar aqui
+- [ ] Continuar polimento visual/UX conforme o usuário apontar ("tem coisa pra mexer").
+- [ ] Faturas previstas só projetam a partir da fatura real mais recente (sem fatura real → sem previstas). Ok por ora; futuro = projeção no backend.
+- [ ] Avaliar soft-delete vs hard-delete das compras ao excluir cartão (hoje hard-delete na cascade).
+- [ ] Com OK do usuário no visual: PR `Closes #138` + CI + merge.
 
 ### Dev no ar
-Postgres docker `controlefinanceiro-db` + API 5293 (reseedado: dev cartão Nubank com emissor+conta) + front 5173. Login `dev@controle.test` / `Dev@123456`. Preview MCP serverId `3a822177-8d00-4120-b131-6c3d57c2115d`. Lembrete ativo: **TCC do usuário até 23:59 hoje** — lembrar nas conversas.
+Postgres docker `controlefinanceiro-db` + API 5293 (reseedado) + front 5173 (preview MCP serverId `3a822177-8d00-4120-b131-6c3d57c2115d`). Login `dev@controle.test` / `Dev@123456`. **Avisos de hooks no console do preview = artefato de HMR das edições ao vivo; somem em reload completo.**
+
+### Tooling adicionado (chore `996b3ea`)
+Plugins oficiais vendorados em `.claude/` (sem `/plugin` no ambiente): skill `frontend-design`, `commit-commands`, agents `pr-review-toolkit`.
 
 ### Spin-offs ainda abertos
-#130 (editar bloqueia data futura no crédito), #131 (mover components/transactions → pages/Transactions). Futuro estético: logo bandeira/banco no card (liga a #88).
+#130 (editar bloqueia data futura no crédito), #131 (mover components/transactions → pages/Transactions). Futuro: logo bandeira/banco no card (#88); projeção de faturas futuras no backend.
 
 ---
 
