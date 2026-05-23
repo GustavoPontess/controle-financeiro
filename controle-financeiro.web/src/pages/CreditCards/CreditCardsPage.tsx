@@ -139,15 +139,26 @@ export default function CreditCardsPage() {
     setFaturas(await getFaturasByCartao(cartaoId))
   }, [])
 
+  // Recarrega o detalhe (lançamentos + pagamentos) de uma fatura no cache.
+  const refreshDetalhe = useCallback(async (cartaoId: string, faturaId: string) => {
+    try {
+      const d = await getFaturaDetalhe(cartaoId, faturaId)
+      setFaturaDetalhes((prev) => ({ ...prev, [faturaId]: d }))
+    } catch { /* ignore */ }
+  }, [])
+
   // Recarrega quando uma transação é criada pelo popup global.
   useEffect(() => {
     const onCreated = () => {
       void loadData()
-      if (faturasCartaoId) refreshFaturas(faturasCartaoId).catch(() => { /* ignore */ })
+      if (faturasCartaoId) {
+        refreshFaturas(faturasCartaoId).catch(() => { /* ignore */ })
+        if (expandedFaturaId) refreshDetalhe(faturasCartaoId, expandedFaturaId).catch(() => { /* ignore */ })
+      }
     }
     window.addEventListener("transactionCreated", onCreated)
     return () => window.removeEventListener("transactionCreated", onCreated)
-  }, [loadData, faturasCartaoId, refreshFaturas])
+  }, [loadData, faturasCartaoId, refreshFaturas, refreshDetalhe, expandedFaturaId])
 
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
@@ -200,6 +211,8 @@ export default function CreditCardsPage() {
       setPagarFaturaId(null)
       await loadData()
       if (faturasCartaoId) await refreshFaturas(faturasCartaoId)
+      // Invalida o detalhe da fatura paga pra timeline mostrar o pagamento.
+      await refreshDetalhe(pagarCartaoId, pagarFaturaId)
     } catch {
       notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
     } finally { setPagarLoading(false) }
