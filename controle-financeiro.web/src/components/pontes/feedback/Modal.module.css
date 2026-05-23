@@ -2,7 +2,7 @@
 .overlay { position: fixed; inset: 0; background: rgba(11, 18, 32, .6); z-index: 9999; display: flex; align-items: center; justify-content: center; }
 .box { background: var(--pontes-surface); border-radius: 18px; width: 90%; box-shadow: 0 30px 80px rgba(0, 0, 0, .4); font-family: var(--pontes-font); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
 .header { padding: 20px 24px; border-bottom: 1px solid var(--pontes-border); display: flex; justify-content: space-between; align-items: center; }
-.title { font-size: 18px; font-weight: 700; color: var(--pontes-text); }
+.title { font-family: var(--pontes-font-heading); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); }
 .close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: -6px -6px -6px 0; background: transparent; border: none; border-radius: 8px; color: var(--pontes-text-muted); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
 .close:hover { background: var(--pontes-bg); color: var(--pontes-text); }
 .body { padding: 24px; overflow-y: auto; }
@@ -14,6 +14,6 @@
 .dialogIcon[data-tone="danger"] { background: var(--pontes-danger-soft); color: var(--pontes-danger); }
 .dialogIcon[data-tone="warning"] { background: var(--pontes-warning-soft); color: var(--pontes-warning); }
 .dialogIcon[data-tone="info"] { background: var(--pontes-primary-soft); color: var(--pontes-primary); }
-.dialogTitle { font-size: 18px; font-weight: 700; color: var(--pontes-text); margin-bottom: 8px; }
+.dialogTitle { font-family: var(--pontes-font-heading); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin-bottom: 8px; }
 .dialogDesc { font-size: 14px; color: var(--pontes-text-muted); line-height: 1.5; margin-bottom: 24px; }
 .dialogActions { display: flex; gap: 10px; }
