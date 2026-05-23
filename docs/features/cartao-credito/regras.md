@@ -1,11 +1,13 @@
 ---
 owner: Caio
-last_reviewed: 2026-05-19
+last_reviewed: 2026-05-23
 next_review: 2026-08-19
 status: CURRENT
 ---
 
 # Regras de Negócio — Cartão de Crédito
+
+> **Front (Q5 #84):** `CreditCardsPage` refatorada pra biblioteca Pontes (saiu do MUI/CustomButton/tokens.ts) — cards, stats, painel de faturas (lista + detalhe expansível), modais de cartão e pagamento, tudo em `@/components/pontes` + CSS Modules. Validação por campo (padrão DS) nos modais. Auditado ponta-a-ponta: ciclo, fatura Aberta→Fechada→Paga, pagamento (parcial/total), limite usado + restauração após pagamento, transações da fatura. Fixes: datas de ciclo formatadas em UTC (não caem pro dia anterior); a tela recarrega ao criar transação pelo popup global (evento `transactionCreated`).
 
 Documento de referência para o domínio `CartaoCredito` e `Fatura`. Cobre tipos de cartão, ciclo de faturamento, cálculo de limite, atribuição de transações e estados de fatura.
 
