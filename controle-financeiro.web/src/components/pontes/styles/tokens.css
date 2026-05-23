@@ -24,8 +24,10 @@
   --pontes-border: #E5EAF2;
   --pontes-hero-fg: #FFFFFF;
 
-  /* Fonte (default = Inter). Sobrescrita pelo Provider. */
+  /* Fonte de corpo/UI (default = Inter). Sobrescrita pelo Provider (#90). */
   --pontes-font: 'Inter', system-ui, sans-serif;
+  /* Fonte de título — fixa da marca (institucional). Não muda com a paleta/fonte. */
+  --pontes-font-heading: 'Fraunces', serif;
 
   /* Semânticas — fixas (vermelho de erro é sempre vermelho). */
   --pontes-success: #10B981;
@@ -36,4 +38,12 @@
   --pontes-danger-soft: #FEE2E2;
   --pontes-info: #0EA5E9;
   --pontes-info-soft: #E0F2FE;
+
+  /* Sombras — fixas (espelham `shadows` de theme.ts). Use var() em vez de rgba cru. */
+  --pontes-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --pontes-shadow-sm: 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+  --pontes-shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
+  --pontes-shadow-lg: 0 18px 40px -10px rgba(0, 0, 0, 0.18);
+  --pontes-shadow-xl: 0 24px 60px -20px rgba(0, 0, 0, 0.22);
+  --pontes-shadow-2xl: 0 30px 80px rgba(0, 0, 0, 0.3);
 }

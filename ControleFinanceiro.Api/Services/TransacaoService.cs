@@ -58,6 +58,16 @@ namespace ControleFinanceiro.Api.Services
                     throw new Exception("Categoria inválida para receita.");
             }
 
+            if (transacao.SubcategoriaId.HasValue)
+            {
+                var sub = await _context.Subcategorias
+                    .FirstOrDefaultAsync(s => s.Id == transacao.SubcategoriaId && (s.UsuarioId == null || s.UsuarioId == usuarioId));
+                if (sub == null)
+                    throw new Exception("Subcategoria não encontrada.");
+                if (transacao.CategoriaId.HasValue && sub.CategoriaId != transacao.CategoriaId)
+                    throw new Exception("Subcategoria não pertence à categoria selecionada.");
+            }
+
             if (transacao.Valor <= 0)
                 throw new Exception("O valor da transação deve ser positivo.");
 
@@ -98,7 +108,8 @@ namespace ControleFinanceiro.Api.Services
                 dto.Valor,
                 dto.Parcelas!.Value,
                 dto.Data,
-                usuarioId);
+                usuarioId,
+                dto.SubcategoriaId);
         }
 
         public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
@@ -164,6 +175,7 @@ namespace ControleFinanceiro.Api.Services
             transacao.Valor = dados.Valor;
             transacao.Tipo = dados.Tipo;
             transacao.CategoriaId = dados.CategoriaId;
+            transacao.SubcategoriaId = dados.SubcategoriaId;
             transacao.MeioPagamento = dados.MeioPagamento;
             transacao.Data = dados.Data;
 

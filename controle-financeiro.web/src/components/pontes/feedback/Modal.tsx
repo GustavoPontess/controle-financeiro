@@ -4,6 +4,7 @@
  */
 
 import { useEffect, type ReactNode, type CSSProperties } from "react"
+import { X, Info, AlertTriangle } from "lucide-react"
 import { PontesButton } from "../buttons/Button"
 import { scopedThemeVars, type Palette } from "../theme"
 import styles from "./Modal.module.css"
@@ -45,7 +46,9 @@ export function PontesModal({
         {(title || header) && (
           <div className={styles.header}>
             <div className={styles.title}>{title ?? header}</div>
-            <button type="button" onClick={onClose} className={styles.close} aria-label="Fechar">×</button>
+            <button type="button" onClick={onClose} className={styles.close} aria-label="Fechar">
+              <X size={18} strokeWidth={2.5} />
+            </button>
           </div>
         )}
         <div className={styles.body}>{children}</div>
@@ -80,12 +83,12 @@ export function PontesDialog({
   onConfirm, onCancel,
 }: PontesDialogProps) {
   if (!open) return null
-  const icon = tone === "info" ? "ℹ" : "⚠"
+  const Icon = tone === "info" ? Info : AlertTriangle
 
   return (
     <div onClick={onCancel} className={styles.overlay}>
       <div onClick={(e) => e.stopPropagation()} className={styles.dialogBox} style={scopedThemeVars(p, font) as CSSProperties}>
-        <div className={styles.dialogIcon} data-tone={tone}>{icon}</div>
+        <div className={styles.dialogIcon} data-tone={tone}><Icon size={26} strokeWidth={2.5} /></div>
         <div className={styles.dialogTitle}>{title}</div>
         {description && <div className={styles.dialogDesc}>{description}</div>}
         <div className={styles.dialogActions}>
