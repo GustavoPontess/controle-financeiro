@@ -1,7 +1,8 @@
 /* Field.module.css — wrapper label + control + erro. Cor via var(--pontes-*). */
-.field { display: flex; flex-direction: column; gap: 6px; font-family: var(--pontes-font); }
+.field { display: flex; flex-direction: column; gap: 6px; font-family: var(--pontes-font); position: relative; }
 .label { font-size: 13px; font-weight: 600; color: var(--pontes-text); }
 .field[data-error="true"] .label { color: var(--pontes-danger); }
 .req { color: var(--pontes-danger); margin-left: 4px; }
-.helper { font-size: 12px; color: var(--pontes-text-muted); margin-top: 2px; }
+/* Mensagem flutua no gap (absolute) → não empurra o layout (sem reflow ao errar). */
+.helper { position: absolute; top: 100%; left: 0; right: 0; margin-top: 3px; font-size: 11px; line-height: 1.2; color: var(--pontes-text-muted); pointer-events: none; }
 .field[data-error="true"] .helper { color: var(--pontes-danger); }
