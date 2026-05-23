@@ -374,18 +374,18 @@ export default function CreditCardsPage() {
                 </div>
 
                 <div className={styles.cardFace}>
-                  <div className={styles.cardNameWrap}>
-                    <span className={styles.cardName}>{c.nome}</span>
-                    {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+                  <div className={styles.faceTop}>
+                    <div className={styles.cardNameWrap}>
+                      <span className={styles.cardName}>{c.nome}</span>
+                      {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+                    </div>
+                    <Wifi size={18} className={styles.contactless} />
                   </div>
+                  <div className={styles.cardChip} />
                   <div className={styles.faceBottom}>
                     <div className={styles.faceBottomCol}>
                       <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
                       <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
-                    </div>
-                    <div className={styles.cardChipWrap}>
-                      <Wifi size={16} className={styles.contactless} />
-                      <div className={styles.cardChip} />
                     </div>
                   </div>
                 </div>
