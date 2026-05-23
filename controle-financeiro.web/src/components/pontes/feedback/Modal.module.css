@@ -1,11 +1,11 @@
 /* Modal.module.css — overlays centrais. Cor via var(--pontes-*). */
 .overlay { position: fixed; inset: 0; background: rgba(11, 18, 32, .6); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-.box { background: var(--pontes-surface); border-radius: 18px; width: 90%; box-shadow: 0 30px 80px rgba(0, 0, 0, .4); font-family: var(--pontes-font); overflow: hidden; }
+.box { background: var(--pontes-surface); border-radius: 18px; width: 90%; box-shadow: 0 30px 80px rgba(0, 0, 0, .4); font-family: var(--pontes-font); overflow: visible; }
 .header { padding: 20px 24px; border-bottom: 1px solid var(--pontes-border); display: flex; justify-content: space-between; align-items: center; }
 .title { font-size: 18px; font-weight: 700; color: var(--pontes-text); }
 .close { background: transparent; border: none; font-size: 20px; color: var(--pontes-text-muted); cursor: pointer; }
 .body { padding: 24px; }
-.footer { padding: 16px 24px; background: var(--pontes-bg); display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--pontes-border); }
+.footer { padding: 16px 24px; background: var(--pontes-bg); display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--pontes-border); border-radius: 0 0 18px 18px; }
 
 /* Dialog */
 .dialogBox { background: var(--pontes-surface); border-radius: 18px; padding: 28px; max-width: 400px; width: 90%; box-shadow: 0 30px 80px rgba(0, 0, 0, .4); font-family: var(--pontes-font); text-align: center; }
