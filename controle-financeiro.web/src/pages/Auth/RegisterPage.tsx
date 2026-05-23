@@ -48,7 +48,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
-  const [errors, setErrors] = useState<{ nome?: string; email?: string; password?: string; confirmPassword?: string }>({})
+  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
 
   const clearErr = (k: keyof typeof errors) => setErrors((p) => ({ ...p, [k]: undefined }))
@@ -58,6 +58,7 @@ export default function RegisterPage() {
     if (!nome.trim()) e.nome = 'Informe seu nome'
     if (!email.trim()) e.email = 'Informe o e-mail'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'E-mail inválido'
+    if (!dataNascimento) e.dataNascimento = 'Informe a data de nascimento'
     if (!password) e.password = 'Informe a senha'
     else if (getSenhaRequisitos(password).some((r) => !r.ok)) e.password = 'Senha não atende aos requisitos'
     if (!confirmPassword) e.confirmPassword = 'Confirme a senha'
@@ -194,12 +195,13 @@ export default function RegisterPage() {
               />
             </PontesField>
 
-            <PontesField label="Data de nascimento" htmlFor="reg-nascimento">
+            <PontesField label="Data de nascimento" htmlFor="reg-nascimento" required error={errors.dataNascimento}>
               <PontesInput
                 id="reg-nascimento"
                 type="date"
                 value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
+                onChange={(e) => { setDataNascimento(e.target.value); clearErr('dataNascimento') }}
+                invalid={!!errors.dataNascimento}
                 autoComplete="bday"
               />
             </PontesField>
