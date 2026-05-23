@@ -67,15 +67,21 @@ export function PontesSelect<T extends string = string>({
       const t = e.target as Node
       if (!triggerRef.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false)
     }
-    const onScroll = () => setOpen(false)
+    // Fecha ao rolar a PÁGINA, mas não quando o scroll vem de dentro do menu
+    // (lista de opções rolável) — senão o dropdown fecha ao tentar rolar.
+    const onScroll = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
+    const onResize = () => setOpen(false)
     document.addEventListener("mousedown", onDocClick)
     window.addEventListener("scroll", onScroll, true)
-    window.addEventListener("resize", onScroll)
+    window.addEventListener("resize", onResize)
     const tm = setTimeout(() => inputRef.current?.focus(), 0)
     return () => {
       document.removeEventListener("mousedown", onDocClick)
       window.removeEventListener("scroll", onScroll, true)
-      window.removeEventListener("resize", onScroll)
+      window.removeEventListener("resize", onResize)
       clearTimeout(tm)
     }
   }, [open])
