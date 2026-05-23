@@ -6,8 +6,10 @@ export interface Recorrente {
   tipoDescricao: string
   categoriaId?: string
   categoriaNome?: string
-  contaId: string
-  contaNome: string
+  contaId?: string
+  contaNome?: string
+  cartaoCreditoId?: string
+  cartaoCreditoNome?: string
   frequencia: number
   frequenciaDescricao: string
   dia: number

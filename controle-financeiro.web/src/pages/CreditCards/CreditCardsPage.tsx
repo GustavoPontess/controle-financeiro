@@ -11,6 +11,8 @@ import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../serv
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
+import { getRecorrentes } from "../../services/recorrenteService"
+import type { Recorrente } from "../../types/Recorrente"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
@@ -89,6 +91,10 @@ const emptyForm: FormState = {
 
 type CartaoErrors = { nome?: string; bancoId?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
 
+// Fatura real OU prevista (projetada das assinaturas, com lançamentos locais).
+type ProjLancamento = { id: string; descricao: string; valor: number; data: string }
+type FaturaView = Fatura & { prevista?: boolean; projLancamentos?: ProjLancamento[] }
+
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
@@ -97,6 +103,7 @@ export default function CreditCardsPage() {
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [bancos, setBancos] = useState<Banco[]>([])
+  const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -123,10 +130,11 @@ export default function CreditCardsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [cs, conts, bs] = await Promise.all([getCartoes(), getContas(), getBancos()])
+      const [cs, conts, bs, recs] = await Promise.all([getCartoes(), getContas(), getBancos(), getRecorrentes().catch(() => [])])
       setCartoes(cs)
       setContas(conts.filter((c) => !c.isCarteira))
       setBancos(bs)
+      setRecorrentes(recs)
     } catch {
       notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
     }
@@ -288,6 +296,35 @@ export default function CreditCardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faturasCartaoId, faturas, faturaDetalhes])
 
+  // Faturas previstas das assinaturas (recorrentes mensais no cartão) — próximos meses.
+  const addMonthsISO = (iso: string, n: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + n); return d.toISOString() }
+  const assinaturasCartao = recorrentes.filter((r) => r.ativo && r.cartaoCreditoId === faturasCartaoId && r.frequencia === 2)
+  const baseFatura = faturasSorted[0]
+  const previstas: FaturaView[] = []
+  if (cartaoAtivo && baseFatura && assinaturasCartao.length > 0) {
+    const total = assinaturasCartao.reduce((s, r) => s + r.valor, 0)
+    for (let n = 1; n <= 2; n++) {
+      const dataFechamento = addMonthsISO(baseFatura.dataFechamento, n)
+      const fech = new Date(dataFechamento)
+      previstas.push({
+        ...baseFatura,
+        id: `prev-${baseFatura.id}-${n}`,
+        dataInicio: addMonthsISO(baseFatura.dataInicio, n),
+        dataFechamento,
+        dataVencimento: addMonthsISO(baseFatura.dataVencimento, n),
+        valorTotal: total, valorPago: 0, valorRestante: total,
+        estadoCiclo: 0, estadoPagamento: 0, vencida: false,
+        prevista: true,
+        projLancamentos: assinaturasCartao.map((r) => ({
+          id: `prevl-${r.id}-${n}`,
+          descricao: r.descricao,
+          valor: r.valor,
+          data: new Date(Date.UTC(fech.getFullYear(), fech.getMonth(), Math.min(r.dia, 28))).toISOString(),
+        })),
+      })
+    }
+  }
+
   const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
     const ids = new Set<string>()
     if (!detalhe?.transacoes?.length) return ids
@@ -297,7 +334,25 @@ export default function CreditCardsPage() {
     return ids
   }
 
-  const renderDetalhe = (f: Fatura) => {
+  const renderDetalhe = (f: FaturaView) => {
+    // Fatura prevista: lançamentos vêm das assinaturas projetadas (sem ir ao backend).
+    if (f.prevista) {
+      const proj = f.projLancamentos ?? []
+      if (proj.length === 0) return <div className={styles.detailMuted}>Sem assinaturas previstas.</div>
+      return (
+        <div className={styles.txList}>
+          {proj.map((l) => (
+            <div key={l.id} className={styles.txRow}>
+              <div className={styles.txMain}>
+                <span className={styles.txDesc}>{l.descricao}</span>
+                <span className={styles.txMeta}>{new Date(l.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · assinatura</span>
+              </div>
+              <span className={styles.txValor}>{formatMoney(l.valor)}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
     const detalhe = faturaDetalhes[f.id]
     if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
     const paid = paidIdsOf(f, detalhe)
@@ -500,8 +555,11 @@ export default function CreditCardsPage() {
           ) : faturasSorted.length === 0 ? (
             <div className={styles.faturaEmpty}>Nenhuma fatura ainda. Registre uma compra no crédito pra criar a primeira.</div>
           ) : (() => {
-            const idx = Math.min(faturaIdx, faturasSorted.length - 1)
-            const f = faturasSorted[idx]
+            const clampLo = -previstas.length
+            const clampHi = faturasSorted.length - 1
+            const idx = Math.max(clampLo, Math.min(faturaIdx, clampHi))
+            const ehPrevista = idx < 0
+            const f: FaturaView = ehPrevista ? previstas[-idx - 1] : faturasSorted[idx]
             const st = STATUS[statusKey(f)]
             const open = f.valorRestante > 0
             const ehAtual = idx === 0
@@ -510,15 +568,15 @@ export default function CreditCardsPage() {
                 {/* Navegação por mês: ‹ anterior | mês | próximo › */}
                 <div className={styles.monthNav}>
                   <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
-                    disabled={idx >= faturasSorted.length - 1} onClick={() => setFaturaIdx(idx + 1)}>
+                    disabled={idx >= clampHi} onClick={() => setFaturaIdx(idx + 1)}>
                     <ChevronLeft size={18} />
                   </button>
                   <div className={styles.monthLabel}>
-                    <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ""}</span>
+                    <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
                     <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
                   </div>
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
-                    disabled={idx <= 0} onClick={() => setFaturaIdx(idx - 1)}>
+                    disabled={idx <= clampLo} onClick={() => setFaturaIdx(idx - 1)}>
                     <ChevronRight size={18} />
                   </button>
                 </div>
@@ -529,21 +587,23 @@ export default function CreditCardsPage() {
                     <div>
                       <div className={styles.atualValor}>{formatMoney(open ? f.valorRestante : f.valorTotal)}</div>
                       <div className={styles.atualMeta}>
-                        <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>
+                        {ehPrevista
+                          ? <PontesBadge tone="neutral" size="sm">Prevista</PontesBadge>
+                          : <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>}
                         <span className={styles.muted} data-venc={f.vencida ? "true" : undefined}>
                           {f.vencida ? "Vencida em " : "Vence "}{formatDate(f.dataVencimento)}
                         </span>
                         {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
                       </div>
                     </div>
-                    {open && (
+                    {open && !ehPrevista && (
                       <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
                         onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
                         Pagar
                       </PontesButton>
                     )}
                   </div>
-                  {f.valorPago > 0 && open && (
+                  {!ehPrevista && f.valorPago > 0 && open && (
                     <div className={styles.paidBar} title={`Pago ${formatMoney(f.valorPago)} de ${formatMoney(f.valorTotal)}`}>
                       <div className={styles.paidFill} style={{ width: `${Math.min(100, (f.valorPago / f.valorTotal) * 100)}%` }} />
                     </div>
