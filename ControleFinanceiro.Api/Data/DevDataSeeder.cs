@@ -2,6 +2,7 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Api.Data;
@@ -73,7 +74,8 @@ public static class DevDataSeeder
         };
 
         Transacao Nova(Guid criadoPor, string desc, decimal valor, TipoTransacao tipo,
-            Guid? catId, Guid contaId, DateTime data, Guid? familiaId = null) => new()
+            Guid? catId, Guid contaId, DateTime data, Guid? familiaId = null,
+            MeioPagamento? meio = null) => new()
         {
             Id = Guid.NewGuid(),
             Descricao = desc,
@@ -83,6 +85,7 @@ public static class DevDataSeeder
             ContaId = contaId,
             CriadoPor = criadoPor,
             FamiliaId = familiaId,
+            MeioPagamento = meio,
             Data = data,
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
@@ -106,13 +109,15 @@ public static class DevDataSeeder
                 var refMes = hoje.AddMonths(-m);
 
                 transacoes.Add(Nova(dono.Id, "Salário", salario, TipoTransacao.Receita,
-                    Cat("Renda"), corrente.Id, new DateTime(refMes.Year, refMes.Month, 5)));
+                    Cat("Renda"), corrente.Id, new DateTime(refMes.Year, refMes.Month, 5),
+                    meio: MeioPagamento.Ted));
                 transacoes.Add(Nova(dono.Id, "Projeto freelance", rng.Next(800, 2200),
                     TipoTransacao.Receita, Cat("Renda"), corrente.Id,
-                    new DateTime(refMes.Year, refMes.Month, 18)));
+                    new DateTime(refMes.Year, refMes.Month, 18), meio: MeioPagamento.Pix));
                 // Saque em dinheiro: abastece a carteira para os gastos pequenos.
                 transacoes.Add(Nova(dono.Id, "Saque em dinheiro", 600m, TipoTransacao.Receita,
-                    Cat("Outros"), carteira.Id, new DateTime(refMes.Year, refMes.Month, 3)));
+                    Cat("Outros"), carteira.Id, new DateTime(refMes.Year, refMes.Month, 3),
+                    meio: MeioPagamento.Dinheiro));
                 // Rendimento mensal da poupança (quando há poupança).
                 if (poupanca != null)
                     transacoes.Add(Nova(dono.Id, "Rendimentos",
@@ -127,15 +132,19 @@ public static class DevDataSeeder
                         : Math.Round(d.min + (decimal)rng.NextDouble() * (d.max - d.min), 2);
                     var dia = rng.Next(1, 28);
                     // Gastos pequenos do dia a dia saem da carteira; o resto da conta corrente.
-                    var contaId = d.desc is "Café" or "Uber" or "Restaurante"
-                        ? carteira.Id
-                        : corrente.Id;
+                    var naCarteira = d.desc is "Café" or "Uber" or "Restaurante";
+                    var contaId = naCarteira ? carteira.Id : corrente.Id;
+                    // Meio de pagamento: carteira → dinheiro; contas fixas → boleto; resto → pix/débito.
+                    var meio = naCarteira ? MeioPagamento.Dinheiro
+                        : d.desc is "Aluguel" or "Conta de luz" or "Internet" or "Netflix" or "Academia"
+                            ? MeioPagamento.Boleto
+                            : (rng.Next(2) == 0 ? MeioPagamento.Pix : MeioPagamento.Debito);
                     // Algumas despesas de casa entram como compartilhadas com a família.
                     Guid? fam = familia != null && d.desc is "Aluguel" or "Conta de luz" or "Supermercado"
                         ? familia.Id
                         : null;
                     transacoes.Add(Nova(dono.Id, d.desc, valor, TipoTransacao.Despesa,
-                        Cat(d.cat), contaId, new DateTime(refMes.Year, refMes.Month, dia), fam));
+                        Cat(d.cat), contaId, new DateTime(refMes.Year, refMes.Month, dia), fam, meio));
                 }
             }
         }
@@ -212,10 +221,112 @@ public static class DevDataSeeder
                 RendaMensal = 5200m,
             });
 
+        // Compras no crédito do dev → gera faturas reais (atual aberta + passadas pagas).
+        var faturas = new List<Fatura>();
+        void SeedCartaoFaturas(Usuario dono, CartaoCredito cartao, Conta contaPaga)
+        {
+            var rng = new Random(99); // seed fixo → atlas determinístico
+            var compras = new (string desc, decimal min, decimal max, string cat)[]
+            {
+                ("Mercado Livre", 60m, 380m, "Compras"),
+                ("iFood", 28m, 110m, "Alimentação"),
+                ("Posto Ipiranga", 90m, 250m, "Transporte"),
+                ("Amazon", 45m, 320m, "Compras"),
+                ("Spotify", 21m, 21m, "Serviços digitais"),
+                ("Farmácia", 20m, 90m, "Saúde"),
+            };
+
+            var porFechamento = new Dictionary<DateTime, Fatura>();
+            Fatura FaturaDe(DateTime data)
+            {
+                var (inicio, fechamento) = FaturaService.CalcularPeriodo(data.Date, cartao.DiaFechamento);
+                if (!porFechamento.TryGetValue(fechamento, out var f))
+                {
+                    f = new Fatura
+                    {
+                        Id = Guid.NewGuid(),
+                        CartaoCreditoId = cartao.Id,
+                        DataInicio = inicio,
+                        DataFechamento = fechamento,
+                        DataVencimento = FaturaService.CalcularVencimento(fechamento, cartao.DiaVencimento),
+                        EstadoCiclo = EstadoCicloFatura.Aberta,
+                        EstadoPagamento = EstadoPagamentoFatura.NaoPago,
+                        ValorPago = 0,
+                        CriadoPor = dono.Id,
+                    };
+                    porFechamento[fechamento] = f;
+                }
+                return f;
+            }
+
+            for (int m = 0; m < 3; m++)
+            {
+                var refMes = hoje.AddMonths(-m);
+                int qtd = rng.Next(3, 6);
+                for (int i = 0; i < qtd; i++)
+                {
+                    var d = compras[rng.Next(compras.Length)];
+                    var valor = d.min == d.max
+                        ? d.min
+                        : Math.Round(d.min + (decimal)rng.NextDouble() * (d.max - d.min), 2);
+                    var data = new DateTime(refMes.Year, refMes.Month, rng.Next(1, 28));
+                    var fatura = FaturaDe(data);
+                    transacoes.Add(new Transacao
+                    {
+                        Id = Guid.NewGuid(),
+                        Descricao = d.desc,
+                        Valor = valor,
+                        Tipo = TipoTransacao.Despesa,
+                        CategoriaId = Cat(d.cat),
+                        CartaoCreditoId = cartao.Id,
+                        FaturaId = fatura.Id,
+                        UsadoComoCredito = true,
+                        MeioPagamento = MeioPagamento.Credito,
+                        Data = data,
+                        CriadoPor = dono.Id,
+                        StatusTransacao = StatusTransacao.Executado,
+                        Ativo = true,
+                    });
+                }
+            }
+
+            // Fatura passada (já fechou) → paga; gera a transação de pagamento (debita a conta).
+            foreach (var f in porFechamento.Values)
+            {
+                var total = transacoes.Where(t => t.FaturaId == f.Id).Sum(t => t.Valor);
+                if (f.DataFechamento.Date <= hoje)
+                {
+                    f.EstadoCiclo = EstadoCicloFatura.Fechada;
+                    f.EstadoPagamento = EstadoPagamentoFatura.Pago;
+                    f.ValorPago = total;
+                    f.DataFechamentoEfetiva = f.DataFechamento;
+                    f.DataPagamentoTotal = f.DataVencimento;
+                    transacoes.Add(new Transacao
+                    {
+                        Id = Guid.NewGuid(),
+                        Descricao = $"Pagamento fatura {cartao.Nome} ({f.DataFechamento:MM/yyyy})",
+                        Valor = total,
+                        Tipo = TipoTransacao.Despesa,
+                        ContaId = contaPaga.Id,
+                        EhPagamentoFatura = true,
+                        FaturaPagaId = f.Id,
+                        MeioPagamento = MeioPagamento.Pix,
+                        Data = f.DataVencimento,
+                        CriadoPor = dono.Id,
+                        StatusTransacao = StatusTransacao.Executado,
+                        Ativo = true,
+                    });
+                }
+                faturas.Add(f);
+            }
+        }
+
         // ── Movimentação ──
         SeedFinancas(dev, devCorrente, devCarteira, devPoupanca, familia, salario: 7500m, rngSeed: 42);
         SeedFinancas(solo, soloCorrente, soloCarteira, poupanca: null, familia: null, salario: 4200m, rngSeed: 7);
+        SeedCartaoFaturas(dev, devCartao, devCorrente);
 
+        context.Faturas.AddRange(faturas);
         context.Transacoes.AddRange(transacoes);
         await context.SaveChangesAsync();
     }
