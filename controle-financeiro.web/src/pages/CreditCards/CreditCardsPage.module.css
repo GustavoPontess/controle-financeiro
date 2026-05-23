@@ -14,7 +14,7 @@
 .sumDiv { width: 1px; align-self: stretch; background: var(--pontes-border); }
 
 /* Grid de cartões — cada tile É o cartão físico (gradiente da bandeira) */
-.cardsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 22px; }
+.cardsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 340px)); justify-content: start; gap: 22px; }
 .card {
   position: relative; isolation: isolate; overflow: hidden;
   border-radius: 18px; padding: 22px 24px; color: #fff;
