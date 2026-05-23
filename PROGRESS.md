@@ -25,7 +25,7 @@ Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108
 Total Q5 2026:          5/18 telas+site (#75-#92)
 ```
 
-> Spin-offs abertos no #82 (não eram escopo): **#128** contábil (relatórios contam transferência/pagamento/saldo-inicial como receita/despesa — severidade alta), **#129** validação por campo nos forms restantes, **#130** editar bloqueia data futura no crédito, **#131** mover `components/transactions` → `pages/Transactions`.
+> Spin-offs abertos no #82: ✅ **#128** contábil (RESOLVIDO — saldo × P&L), ⏳ **#129** validação nos forms restantes, ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
 
 **Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
 
@@ -39,9 +39,15 @@ Total Q5 2026:          5/18 telas+site (#75-#92)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #128 contábil ⚠️ alta, #84 Cartão, #85 Família, ou site #78/#79/#80)
+(nenhuma issue em execução — próxima livre: #84 Cartão ⚠️ alta, #85 Família ⚠️ alta, #129 validação forms, ou site #78/#79/#80)
 
 ## Resolvidos Q5
+
+- **#128** — Contabilidade: saldo × P&L (mergeado · PR #133 · sessão 2026-05-23)
+  - `Transacao` ganhou flags `EhTransferencia`/`EhSaldoInicial` (`EhPagamentoFatura` já existia)
+  - Relatórios (RelatorioService) e KPIs do Dashboard **excluem** as 3 → some o double-count do pagamento de fatura, transferência não infla receita/despesa, saldo inicial não vira receita
+  - Saldo (Dashboard/ContasController) filtra `Ativo`+`Executado`; transferência vira soft-delete
+  - Migration `AddFlagsContabeisTransacao` + backfill dos dados existentes · 159 testes back
 
 - **#82** — Transação Adicionar/Editar (mergeado · sessão 2026-05-23)
   - `TransactionForm` único pra criar e editar (`mode="edit"`); `NewTransactionDialog` + `EditTransactionDialog` em `PontesModal`; Edit saiu do MUI
