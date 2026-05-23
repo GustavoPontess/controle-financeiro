@@ -80,7 +80,7 @@ describe("CreditCardsPage (#84)", () => {
   it("abre faturas (clica no card) e destaca a fatura atual", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    expect(await screen.findByText(/Fatura — Nubank/)).toBeInTheDocument()
+    expect(await screen.findByText("Todos os cartões")).toBeInTheDocument()
     expect(screen.getByText(/· atual/)).toBeInTheDocument()
     expect(screen.getByText("Aberta")).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe("CreditCardsPage (#84)", () => {
     getFaturasByCartao.mockReset().mockResolvedValue([fAbertaParcial, fFechadaPaga, fFechadaComSaldo])
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText(/Fatura — Nubank/)
+    await screen.findByText("Todos os cartões")
     // Mês atual: aberta com pagamento parcial → "Aberta" (NÃO "Paga")
     expect(screen.getByText("Aberta")).toBeInTheDocument()
     expect(screen.getByText(/Pago R\$\s?50,00 de R\$\s?130,00/)).toBeInTheDocument()
@@ -123,7 +123,7 @@ describe("CreditCardsPage (#84)", () => {
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText(/Fatura — Nubank/)
+    await screen.findByText("Todos os cartões")
     fireEvent.click(screen.getByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))

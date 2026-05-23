@@ -357,6 +357,79 @@ export default function CreditCardsPage() {
     )
   }
 
+  const renderCartao = (c: CartaoCredito) => {
+    const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
+    const over = pct > 80
+    const sel = faturasCartaoId === c.id
+    const clickable = c.temCredito
+    return (
+      <div
+        key={c.id}
+        className={styles.card}
+        style={{ background: grad(c.bandeira) }}
+        data-selected={sel ? "true" : undefined}
+        data-clickable={clickable ? "true" : undefined}
+        onClick={clickable ? () => openFaturas(c.id) : undefined}
+      >
+        <div className={styles.cardSheen1} />
+        <div className={styles.cardSheen2} />
+
+        <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+          <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
+          <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
+        </div>
+
+        <div className={styles.cardFace}>
+          <div className={styles.faceTop}>
+            <div className={styles.cardNameWrap}>
+              <span className={styles.cardName}>{c.nome}</span>
+              {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+            </div>
+          </div>
+          <div className={styles.chipRow}>
+            <div className={styles.cardChip} />
+            <Wifi size={18} className={styles.contactless} />
+          </div>
+          <div className={styles.faceBottom}>
+            <div className={styles.faceBottomCol}>
+              <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
+              <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+            </div>
+          </div>
+        </div>
+
+        {c.temCredito && c.limite ? (
+          <div className={styles.cardPanel}>
+            <div className={styles.panelTop}>
+              <div className={styles.cardDispWrap}>
+                <span className={styles.cardInfoLabel}>Disponível</span>
+                <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
+              </div>
+              <div className={styles.cardInfoRight}>
+                <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
+                <span className={styles.cardOfLimit}>de {formatMoney(c.limite)}</span>
+              </div>
+            </div>
+            <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
+            <div className={styles.cardMetaRow}>
+              <span>{(c.diaFechamento || c.diaVencimento)
+                ? `${c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}`
+                : `${formatMoney(c.gastosNoCicloAtual)} usado`}</span>
+              <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Em foco" : "Faturas"}</span>
+            </div>
+          </div>
+        ) : (c.contaNome || c.temDebito || c.ehPrePago) ? (
+          <div className={styles.cardPanel}>
+            <div className={styles.cardMetaRow}>
+              <span>{c.contaNome ? "Conta que paga" : " "}</span>
+              {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <div className={styles.root}>
       {/* Header */}
@@ -370,8 +443,8 @@ export default function CreditCardsPage() {
         </PontesButton>
       </div>
 
-      {/* Resumo slim */}
-      {cartoes.length > 0 && (
+      {/* Resumo slim — só na visão de todos os cartões */}
+      {cartoes.length > 0 && !faturasCartaoId && (
         <div className={styles.summary}>
           <div className={styles.sumItem}>
             <span className={styles.sumLabel}>Cartões</span>
@@ -403,96 +476,23 @@ export default function CreditCardsPage() {
           description="Adicione seus cartões de crédito, débito ou pré-pagos."
           actions={<PontesButton iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>Novo Cartão</PontesButton>}
         />
+      ) : faturasCartaoId && cartaoAtivo ? (
+        // Modo foco: só o cartão selecionado, com a fatura logo abaixo.
+        <>
+          <button type="button" className={styles.backCards} onClick={() => setFaturasCartaoId(null)}>
+            <ChevronLeft size={16} /> Todos os cartões
+          </button>
+          <div className={styles.focusCard}>{renderCartao(cartaoAtivo)}</div>
+        </>
       ) : (
         <div className={styles.cardsGrid}>
-          {cartoes.map((c) => {
-            const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
-            const over = pct > 80
-            const sel = faturasCartaoId === c.id
-            const clickable = c.temCredito
-            return (
-              <div
-                key={c.id}
-                className={styles.card}
-                style={{ background: grad(c.bandeira) }}
-                data-selected={sel ? "true" : undefined}
-                data-clickable={clickable ? "true" : undefined}
-                onClick={clickable ? () => openFaturas(c.id) : undefined}
-              >
-                <div className={styles.cardSheen1} />
-                <div className={styles.cardSheen2} />
-
-                <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
-                  <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
-                  <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
-                </div>
-
-                <div className={styles.cardFace}>
-                  <div className={styles.faceTop}>
-                    <div className={styles.cardNameWrap}>
-                      <span className={styles.cardName}>{c.nome}</span>
-                      {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
-                    </div>
-                  </div>
-                  <div className={styles.chipRow}>
-                    <div className={styles.cardChip} />
-                    <Wifi size={18} className={styles.contactless} />
-                  </div>
-                  <div className={styles.faceBottom}>
-                    <div className={styles.faceBottomCol}>
-                      <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
-                      <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {c.temCredito && c.limite ? (
-                  <div className={styles.cardPanel}>
-                    <div className={styles.panelTop}>
-                      <div className={styles.cardDispWrap}>
-                        <span className={styles.cardInfoLabel}>Disponível</span>
-                        <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
-                      </div>
-                      <div className={styles.cardInfoRight}>
-                        <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
-                        <span className={styles.cardOfLimit}>de {formatMoney(c.limite)}</span>
-                      </div>
-                    </div>
-                    <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
-                    <div className={styles.cardMetaRow}>
-                      <span>{(c.diaFechamento || c.diaVencimento)
-                        ? `${c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}`
-                        : `${formatMoney(c.gastosNoCicloAtual)} usado`}</span>
-                      <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Ocultar" : "Faturas"}</span>
-                    </div>
-                  </div>
-                ) : (c.contaNome || c.temDebito || c.ehPrePago) ? (
-                  <div className={styles.cardPanel}>
-                    <div className={styles.cardMetaRow}>
-                      <span>{c.contaNome ? "Conta que paga" : " "}</span>
-                      {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )
-          })}
+          {cartoes.map(renderCartao)}
         </div>
       )}
 
       {/* Painel de faturas */}
       {faturasCartaoId && cartaoAtivo && (
         <PontesCard padding={0} radius={16}>
-          <div className={styles.faturaHead}>
-            <span className={styles.faturaHeadIcon} style={{ background: grad(cartaoAtivo.bandeira) }}>
-              <ReceiptText size={17} />
-            </span>
-            <div className={styles.faturaHeadText}>
-              <div className={styles.faturaTitle}>Fatura — {cartaoAtivo.nome}</div>
-              <div className={styles.faturaSub}>Navegue pelos meses</div>
-            </div>
-          </div>
-
           {loadingFaturas ? (
             <div className={styles.faturaEmpty}>Carregando…</div>
           ) : faturasSorted.length === 0 ? (
