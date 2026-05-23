@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronDown, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
@@ -108,7 +108,6 @@ export default function CreditCardsPage() {
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [loadingFaturas, setLoadingFaturas] = useState(false)
-  const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
   const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
   const [faturaIdx, setFaturaIdx] = useState(0) // 0 = fatura mais recente (atual)
 
@@ -153,34 +152,20 @@ export default function CreditCardsPage() {
       void loadData()
       if (faturasCartaoId) {
         refreshFaturas(faturasCartaoId).catch(() => { /* ignore */ })
-        if (expandedFaturaId) refreshDetalhe(faturasCartaoId, expandedFaturaId).catch(() => { /* ignore */ })
+        setFaturaDetalhes({}) // invalida cache → auto-load refaz o detalhe do mês atual
       }
     }
     window.addEventListener("transactionCreated", onCreated)
     return () => window.removeEventListener("transactionCreated", onCreated)
-  }, [loadData, faturasCartaoId, refreshFaturas, refreshDetalhe, expandedFaturaId])
+  }, [loadData, faturasCartaoId, refreshFaturas])
 
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
     setFaturasCartaoId(cartaoId)
-    setExpandedFaturaId(null)
     setFaturaIdx(0)
     setLoadingFaturas(true)
     try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
-  }
-
-  const toggleFatura = async (faturaId: string, cartaoId: string) => {
-    if (expandedFaturaId === faturaId) { setExpandedFaturaId(null); return }
-    setExpandedFaturaId(faturaId)
-    if (!faturaDetalhes[faturaId]) {
-      try {
-        const detalhe = await getFaturaDetalhe(cartaoId, faturaId)
-        setFaturaDetalhes((prev) => ({ ...prev, [faturaId]: detalhe }))
-      } catch {
-        notify({ open: true, message: "Erro ao carregar transações da fatura", severity: "error" })
-      }
-    }
   }
 
   const openPagar = (faturaId: string, cartaoId: string, valorRestante: number, contaId?: string) => {
@@ -289,6 +274,19 @@ export default function CreditCardsPage() {
   // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
 
+  // Carrega o detalhe (lançamentos + pagamentos) da fatura do mês selecionado.
+  useEffect(() => {
+    if (!faturasCartaoId || faturasSorted.length === 0) return
+    const f = faturasSorted[Math.min(faturaIdx, faturasSorted.length - 1)]
+    if (f && !faturaDetalhes[f.id]) {
+      getFaturaDetalhe(faturasCartaoId, f.id)
+        .then((d) => setFaturaDetalhes((prev) => ({ ...prev, [f.id]: d })))
+        .catch(() => { /* ignore */ })
+    }
+    // faturasSorted é derivado de faturas (já nas deps)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturasCartaoId, faturaIdx, faturas, faturaDetalhes])
+
   const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
     const ids = new Set<string>()
     if (!detalhe?.transacoes?.length) return ids
@@ -365,41 +363,44 @@ export default function CreditCardsPage() {
     return (
       <div
         key={c.id}
-        className={styles.card}
-        style={{ background: grad(c.bandeira) }}
+        className={styles.cardTile}
         data-selected={sel ? "true" : undefined}
         data-clickable={clickable ? "true" : undefined}
         onClick={clickable ? () => openFaturas(c.id) : undefined}
       >
-        <div className={styles.cardSheen1} />
-        <div className={styles.cardSheen2} />
+        {/* Cartão físico (gradiente da bandeira, arredondado em tudo) */}
+        <div className={styles.card} style={{ background: grad(c.bandeira) }}>
+          <div className={styles.cardSheen1} />
+          <div className={styles.cardSheen2} />
 
-        <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
-          <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
-          <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
-        </div>
+          <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+            <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
+            <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
+          </div>
 
-        <div className={styles.cardFace}>
-          <div className={styles.faceTop}>
-            <div className={styles.cardNameWrap}>
-              <span className={styles.cardName}>{c.nome}</span>
-              {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+          <div className={styles.cardFace}>
+            <div className={styles.faceTop}>
+              <div className={styles.cardNameWrap}>
+                <span className={styles.cardName}>{c.nome}</span>
+                {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+              </div>
+            </div>
+            <div className={styles.chipRow}>
+              <div className={styles.cardChip} />
+              <Wifi size={18} className={styles.contactless} />
+            </div>
+            <div className={styles.faceBottom}>
+              <div className={styles.faceBottomCol}>
+                <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
+                <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+              </div>
             </div>
           </div>
-          <div className={styles.chipRow}>
-            <div className={styles.cardChip} />
-            <Wifi size={18} className={styles.contactless} />
-          </div>
-          <div className={styles.faceBottom}>
-            <div className={styles.faceBottomCol}>
-              <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
-              <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
-            </div>
-          </div>
         </div>
 
+        {/* Bloco de info — separado do cartão (fundo neutro) */}
         {c.temCredito && c.limite ? (
-          <div className={styles.cardPanel}>
+          <div className={styles.cardMeta}>
             <div className={styles.panelTop}>
               <div className={styles.cardDispWrap}>
                 <span className={styles.cardInfoLabel}>Disponível</span>
@@ -419,7 +420,7 @@ export default function CreditCardsPage() {
             </div>
           </div>
         ) : (c.contaNome || c.temDebito || c.ehPrePago) ? (
-          <div className={styles.cardPanel}>
+          <div className={styles.cardMeta}>
             <div className={styles.cardMetaRow}>
               <span>{c.contaNome ? "Conta que paga" : " "}</span>
               {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
@@ -443,8 +444,8 @@ export default function CreditCardsPage() {
         </PontesButton>
       </div>
 
-      {/* Resumo slim — só na visão de todos os cartões */}
-      {cartoes.length > 0 && !faturasCartaoId && (
+      {/* Resumo slim */}
+      {cartoes.length > 0 && (
         <div className={styles.summary}>
           <div className={styles.sumItem}>
             <span className={styles.sumLabel}>Cartões</span>
@@ -502,7 +503,6 @@ export default function CreditCardsPage() {
             const f = faturasSorted[idx]
             const st = STATUS[statusKey(f)]
             const open = f.valorRestante > 0
-            const exp = expandedFaturaId === f.id
             const ehAtual = idx === 0
             return (
               <div className={styles.faturaBody}>
@@ -547,10 +547,7 @@ export default function CreditCardsPage() {
                       <div className={styles.paidFill} style={{ width: `${Math.min(100, (f.valorPago / f.valorTotal) * 100)}%` }} />
                     </div>
                   )}
-                  <button type="button" className={styles.expandBtn} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
-                    <ChevronDown size={14} className={exp ? styles.chevOpen : undefined} /> {exp ? "Ocultar lançamentos" : "Ver lançamentos"}
-                  </button>
-                  {exp && renderDetalhe(f)}
+                  {renderDetalhe(f)}
                 </div>
               </div>
             )

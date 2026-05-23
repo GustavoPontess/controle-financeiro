@@ -19,17 +19,22 @@
 /* Modo foco: voltar + cartão único no topo */
 .backCards { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 4px 0; transition: color .15s ease; }
 .backCards:hover { color: var(--pontes-primary); }
-.focusCard { width: 100%; max-width: 360px; }
+.focusCard { width: 100%; max-width: 380px; margin: 0 auto; }
+
+/* Tile = cartão (face vermelha) + bloco de info, empilhados */
+.cardTile { display: flex; flex-direction: column; gap: 10px; transition: transform .18s ease; }
+.cardTile[data-clickable="true"] { cursor: pointer; }
+.cardTile[data-clickable="true"]:hover { transform: translateY(-4px); }
+
 .card {
   position: relative; isolation: isolate; overflow: hidden;
   border-radius: 16px; color: #fff;
   display: flex; flex-direction: column;
   box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: box-shadow .18s ease;
 }
-.card[data-clickable="true"] { cursor: pointer; }
-.card[data-clickable="true"]:hover { transform: translateY(-4px); box-shadow: 0 22px 44px -14px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
-.card[data-selected="true"]::after { content: ""; position: absolute; inset: 0; border-radius: 16px; box-shadow: 0 0 0 3px var(--pontes-primary); pointer-events: none; z-index: 4; }
+.cardTile[data-clickable="true"]:hover .card { box-shadow: 0 22px 44px -14px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+.cardTile[data-selected="true"] .card { box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.55), 0 0 0 3px var(--pontes-primary); }
 /* Gloss diagonal — reflexo de luz, dá relevo de cartão físico */
 .card::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(118deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 34%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.12) 100%); }
 
@@ -37,12 +42,12 @@
 .cardSheen2 { position: absolute; left: -30px; top: 30px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 70%); z-index: 0; }
 
 .cardActions { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: rgba(0, 0, 0, 0.22); backdrop-filter: blur(4px); opacity: 0; transform: translateY(-4px); transition: opacity .16s ease, transform .16s ease; }
-.card:hover .cardActions, .card:focus-within .cardActions { opacity: 1; transform: none; }
+.cardTile:hover .cardActions, .cardTile:focus-within .cardActions { opacity: 1; transform: none; }
 .cardActions button { color: rgba(255, 255, 255, 0.92); }
 .cardActions button:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* Face do cartão — frente realista */
-.cardFace { position: relative; z-index: 1; flex: 1 1 auto; padding: 20px 22px 18px; display: flex; flex-direction: column; }
+.cardFace { position: relative; z-index: 1; flex: 1 1 auto; min-height: 168px; padding: 20px 22px 18px; display: flex; flex-direction: column; }
 .faceTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-right: 50px; }
 .cardNameWrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cardName { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -57,22 +62,22 @@
 .cardNumber { font-family: ui-monospace, "SF Mono", monospace; font-size: 19px; font-weight: 600; letter-spacing: 0.16em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 -1px 0 rgba(255, 255, 255, 0.14); }
 .cardBandeira { font-size: 13px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.95; }
 
-/* Status financeiro — na própria cor do cartão, só uma linha fina separa */
-.cardPanel { position: relative; z-index: 1; padding: 13px 22px 16px; border-top: 1px solid rgba(255, 255, 255, 0.22); display: flex; flex-direction: column; gap: 8px; }
+/* Bloco de info — separado do cartão, fundo neutro (não vermelho) */
+.cardMeta { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 13px 16px; display: flex; flex-direction: column; gap: 8px; }
 .panelTop { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
 .cardDispWrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.cardInfoLabel { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.72; }
-.cardDisp { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.cardInfoLabel { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); }
+.cardDisp { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--pontes-text); }
 .cardInfoRight { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }
-.cardPct { font-size: 14px; font-weight: 800; }
-.cardPct[data-over="true"] { color: #fecaca; }
-.cardOfLimit { font-size: 11px; opacity: 0.8; white-space: nowrap; }
-.cardFootValue { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar { height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
-.barFill { height: 100%; border-radius: 99px; background: #fff; transition: width .3s ease; }
-.barFill[data-over="true"] { background: #fecaca; }
-.cardMetaRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; opacity: 0.85; }
-.verFaturas { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; opacity: 0.95; flex-shrink: 0; }
+.cardPct { font-size: 14px; font-weight: 800; color: var(--pontes-text); }
+.cardPct[data-over="true"] { color: var(--pontes-danger); }
+.cardOfLimit { font-size: 11px; color: var(--pontes-text-muted); white-space: nowrap; }
+.cardFootValue { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 5px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
+.barFill { height: 100%; border-radius: 99px; background: var(--pontes-primary); transition: width .3s ease; }
+.barFill[data-over="true"] { background: var(--pontes-danger); }
+.cardMetaRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: var(--pontes-text-muted); }
+.verFaturas { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--pontes-primary); flex-shrink: 0; }
 
 .muted { font-size: 12px; color: var(--pontes-text-muted); }
 
