@@ -109,6 +109,44 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
   })
 
+  it("despesa sem conta mostra 'Conta obrigatória' + borda vermelha", () => {
+    setup()
+    fireEvent.click(screen.getByText("Adicionar"))
+    expect(screen.getByText("Conta obrigatória")).toBeInTheDocument()
+    // PontesSelect da conta marca data-invalid
+    const invalids = document.querySelectorAll('[data-invalid="true"]')
+    expect(invalids.length).toBeGreaterThan(0)
+  })
+
+  it("crédito sem cartão mostra 'Cartão obrigatório'", () => {
+    setup()
+    // troca meio de pagamento para Crédito
+    fireEvent.click(screen.getByText("Pix"))
+    fireEvent.click(screen.getByText("Crédito"))
+    fireEvent.click(screen.getByText("Adicionar"))
+    expect(screen.getByText("Cartão obrigatório")).toBeInTheDocument()
+    // sem cartão, não some conta nem mostra "Conta obrigatória"
+    expect(screen.queryByText("Conta obrigatória")).not.toBeInTheDocument()
+  })
+
+  it("transferência vazia mostra erros de origem e destino", () => {
+    setup()
+    fireEvent.click(screen.getByText("Transferência"))
+    fireEvent.click(screen.getByText("Transferir"))
+    expect(screen.getByText("Selecione a conta de origem")).toBeInTheDocument()
+    expect(screen.getByText("Selecione a conta de destino")).toBeInTheDocument()
+    // não pede categoria em transferência
+    expect(screen.queryByText("Categoria obrigatória")).not.toBeInTheDocument()
+  })
+
+  it("erro limpa ao editar o campo", () => {
+    setup()
+    fireEvent.click(screen.getByText("Adicionar"))
+    expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText("Ex: Compra no mercado"), { target: { value: "Mercado" } })
+    expect(screen.queryByText("Informe a descrição")).not.toBeInTheDocument()
+  })
+
   it("modo edit: sem transferência/recorrente/parcelas, botão Salvar, valores iniciais", () => {
     setupEdit()
     expect(screen.queryByText("Transferência")).not.toBeInTheDocument()

@@ -273,11 +273,12 @@ export default function TransactionForm({
               </PontesField>
             ) : (
               <div className={styles.grid2}>
-                <PontesField label="Cartão de crédito" required>
+                <PontesField label="Cartão de crédito" required error={errors.cartao}>
                   <PontesSelect
                     value={form.cartaoCreditoId}
                     onChange={(v) => set("cartaoCreditoId", v)}
                     placeholder={cartoesDisponiveis.length === 0 ? "Nenhum cartão" : "Selecione o cartão"}
+                    invalid={!!errors.cartao}
                     options={cartoesDisponiveis.map((c) => ({ value: c.id, label: `${c.nome}${c.ultimosDigitos ? ` ****${c.ultimosDigitos}` : ""}` }))}
                   />
                 </PontesField>
