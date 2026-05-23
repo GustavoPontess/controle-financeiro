@@ -221,6 +221,7 @@ await _context.SaveChangesAsync();
 4. **`useTheme(...)` (`p`/`font`) só sobrevive onde precisa de cor REAL (hex):** atributos de apresentação SVG e gráficos `recharts` (`fill`, `stroke`, `stop-color`, `Cell`, gradientes). `var(--pontes-*)` **não resolve** em atributo SVG — aí passa o hex da paleta. Ver `DashboardPage.tsx` e `HomePage.tsx`.
 5. **Inline `style={{}}` permitido SÓ para valor genuinamente dinâmico/runtime:** largura de barra de progresso (`width: %`), cor vinda do banco de dados (`conta.cor`), injeção das vars escopadas no root do `/design-system`, swatches que mostram a própria paleta. Nunca para cor de tema fixa.
 6. **Keyframes/animações globais** que são referenciadas por string em `animation:` ficam num `<style>` global (CSS Modules renomeia keyframes e quebra a referência) — ver `HomePage.tsx`.
+7. **Boy-scout (obrigatório):** achou `style={{}}` de tema/estático — legado ou recém-introduzido — **arruma na hora** pra CSS Module + `var(--pontes-*)`. Não deixa passar "porque não é meu", não vira dívida técnica. Só não toca no que é exceção legítima da regra 5 (valor dinâmico de runtime).
 
 ```tsx
 // ✓ Correto — Q5+
@@ -247,6 +248,51 @@ export default function MinhaTela() {
 ```
 
 > **Nota:** os exemplos de componente MUI (`<TextField>`, `<Box sx>`) mais abaixo nesta página são **legado** e serão removidos. Não seguir em código novo.
+
+### Validação de formulários (PADRÃO OBRIGATÓRIO) ⭐
+
+**Todo formulário valida por campo e mostra o erro visualmente. Sempre. Usa o mecanismo do Design System — não inventar outro.**
+
+Mecanismo do DS (já existe, não criar nada novo):
+- `PontesField error="mensagem"` → mensagem vermelha embaixo do campo.
+- `PontesInput` / `PontesSelect` / `PontesGroupedSelect` `invalid` → borda vermelha.
+
+Regras:
+1. **Valida antes de submeter e bloqueia o submit se inválido.** `onSubmit`/serviço só é chamado com dados válidos.
+2. **Cada campo obrigatório vazio → `error` no `PontesField` + `invalid` no controle.** Nunca deixar submit falhar em silêncio.
+3. **Erro de campo é inline (vermelho), nunca toast.** Toast (`PontesToast`) só para sucesso e erro de servidor/save — nunca para "campo faltando".
+4. **Erro limpa assim que o usuário mexe no campo** (ex.: `useEffect(() => setErrors({}), [form])` ou limpar a chave no `onChange`).
+5. **Mensagem de erro ≠ placeholder** (ex.: placeholder "Selecione a categoria" → erro "Categoria obrigatória"). Evita ambiguidade e facilita teste.
+6. **Toast fica acima do modal** (`z-index` do wrapper de toast > overlay do modal) — senão o usuário não vê.
+7. **Estado inválido é padrão único do DS** em TODO controle de form (`PontesInput`, `PontesSelect`, `PontesGroupedSelect`, `PontesMoneyInput`, `PontesTextarea`): passa a prop `invalid` → **borda `var(--pontes-danger)` + ring `color-mix(danger 13%)`, sem preencher fundo**. Não inventar variação por componente; todo campo destaca igual. Demo: `/design-system` → "Estado inválido".
+
+Padrão de implementação:
+
+```typescript
+const [errors, setErrors] = useState<Record<string, string>>({})
+useEffect(() => { setErrors((e) => (Object.keys(e).length ? {} : e)) }, [form]) // limpa ao editar
+
+const validate = (): boolean => {
+  const e: Record<string, string> = {}
+  if (!form.nome.trim()) e.nome = "Nome obrigatório"
+  // ...demais campos
+  setErrors(e)
+  return Object.keys(e).length === 0
+}
+
+const handleSubmit = (ev: React.FormEvent) => {
+  ev.preventDefault()
+  if (!validate()) return        // bloqueia
+  // ...chama serviço
+}
+
+// JSX
+<PontesField label="Nome" required error={errors.nome}>
+  <PontesInput value={form.nome} onChange={...} invalid={!!errors.nome} />
+</PontesField>
+```
+
+**Teste obrigatório (vitest):** todo form valida em teste — (a) submit vazio mostra os erros e **não** chama `onSubmit`; (b) cada campo obrigatório coberto; (c) erro some ao preencher. Referência: `src/test/components/TransactionForm.test.tsx`.
 
 ### Naming Conventions
 

@@ -97,7 +97,7 @@ Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Q5 tem 18 issu
 
 ### ⛔ REGRAS INEGOCIÁVEIS (todo dev + todo Claude segue, sempre)
 
-1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI direto, zero `<select>` nativo, zero `CustomButton`/`tokens.ts` antigo nas telas Q5. **Estilo em `*.module.css` (CSS Modules), nunca `style={{}}` de cor/fonte/tema** — ver regra 3 e `docs/STANDARDS.md`.
+1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI direto, zero `<select>` nativo, zero `CustomButton`/`tokens.ts` antigo nas telas Q5. **Estilo em `*.module.css` (CSS Modules), nunca `style={{}}` de cor/fonte/tema** — ver regra 3 e `docs/STANDARDS.md`. **Boy-scout: achou `style={{}}` de tema/estático (legado ou novo), arruma na hora pra CSS Module — não deixa virar dívida técnica.** Única exceção a inline: valor dinâmico de runtime que CSS não alcança (`width: %`, cor vinda de dado tipo `conta.cor`, vars escopadas) — e mesmo assim só o valor dinâmico, nunca tema.
 2. **Componente reutilizável novo → vai pra biblioteca** (`src/components/pontes/`) antes de usar: arquivo + barrel `index.ts` + demo no `/design-system` + smoke test. Específico de 1 tela só → fica na pasta da tela.
 3. **Cor e fonte SEMPRE via CSS vars `var(--pontes-*)`** em `*.module.css` (#122). Vars injetadas no `:root` pelo `PontesThemeProvider`. Nunca hex/fonte hardcoded de tema. Telas **não** passam `p`/`font` pros componentes Pontes (eles leem as vars). `usePontesTheme()`/`useSiteTheme()` só onde precisa de cor REAL hex (SVG/recharts — `var()` não vale em atributo SVG). Feedback = `var(--pontes-success|warning|danger|info)`. Wordmark = Plus Jakarta fixo. Detalhe: `docs/STANDARDS.md` → "Estilização".
 4. **Personalização é global + persistida.** `PontesThemeProvider` no root, localStorage. Trocar paleta/fonte vale em todas as telas e sobrevive reload.
@@ -105,6 +105,7 @@ Tudo gira em torno de uma **Issue do backlog** (ver `ISSUES.md`). Q5 tem 18 issu
 6. **Teste automatizado SEMPRE** — front (vitest) E back (xUnit) cobrindo o que mudou. Sem teste = PR não merga. (Exceção: só copy/CSS/docs.)
 7. **Ícones via lucide-react** (`<Plus size={16} strokeWidth={2.5}/>`), nunca char texto.
 8. **CI verde** (build + lint + testes) antes de mergear. PR com `Closes #N`.
+9. **Form valida por campo, sempre.** Todo formulário valida antes de submeter e mostra erro **visual por campo** (`PontesField error` + `invalid` no controle), nunca toast pra campo faltando. Bloqueia submit se inválido; erro limpa ao editar; mensagem ≠ placeholder; toast acima do modal. Teste obrigatório (submit vazio bloqueia + mostra erros). Detalhe: `docs/STANDARDS.md` → "Validação de formulários".
 
 Detalhe de cada uma abaixo nas subseções "Biblioteca Pontes", "Sistema cor + fonte" e "Testes automatizados".
 

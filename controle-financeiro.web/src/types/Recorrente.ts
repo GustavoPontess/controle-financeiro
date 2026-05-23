@@ -22,7 +22,8 @@ export interface CriarRecorrente {
   valor: number
   tipo: number
   categoriaId?: string
-  contaId: string
+  contaId?: string
+  cartaoCreditoId?: string
   frequencia: number
   dia: number
   dataInicio: string

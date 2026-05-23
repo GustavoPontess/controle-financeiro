@@ -1,11 +1,15 @@
 {
   "permissions": {
-    "allow": [
-      "Write(*)",
-      "Edit(*)",
-      "Bash(dotnet *)",
-      "Bash(npm run *)",
-      "Bash(npx tsc *)"
+    "allow": ["Write(*)", "Edit(*)", "Bash(dotnet *)", "Bash(npm run *)", "Bash(npx tsc *)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/form-rule.cjs" }
+        ]
+      }
     ]
   }
 }

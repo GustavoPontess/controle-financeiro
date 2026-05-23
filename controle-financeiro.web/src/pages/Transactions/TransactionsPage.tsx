@@ -260,6 +260,7 @@ export default function TransactionsPage() {
             tipo: t.tipo,
             data: t.data,
             categoriaId: t.categoriaId ?? undefined,
+            subcategoriaId: t.subcategoriaId ?? undefined,
             categoriaDescricao: categories.find(c => c.id === t.categoriaId)?.descricao,
             contaId: t.contaId,
             cartaoCreditoId: t.cartaoCreditoId,
