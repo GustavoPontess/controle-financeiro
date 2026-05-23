@@ -326,7 +326,44 @@ public static class DevDataSeeder
         SeedFinancas(solo, soloCorrente, soloCarteira, poupanca: null, familia: null, salario: 4200m, rngSeed: 7);
         SeedCartaoFaturas(dev, devCartao, devCorrente);
 
+        // ── Recorrentes / Assinaturas (repetição automática mensal) ──
+        DateTime ProximaGeracao(int dia)
+        {
+            var d = new DateTime(hoje.Year, hoje.Month, Math.Min(dia, DateTime.DaysInMonth(hoje.Year, hoje.Month)));
+            return d <= hoje ? d.AddMonths(1) : d;
+        }
+        Recorrente NovaRecorrente(Guid dono, string desc, decimal valor, TipoTransacao tipo,
+            string cat, int dia, Guid? contaId, Guid? cartaoId) => new()
+        {
+            Id = Guid.NewGuid(),
+            Descricao = desc,
+            Valor = valor,
+            Tipo = tipo,
+            CategoriaId = Cat(cat),
+            ContaId = contaId,
+            CartaoCreditoId = cartaoId,
+            Frequencia = FrequenciaRecorrencia.Mensal,
+            Dia = dia,
+            DataInicio = hoje.AddMonths(-3),
+            DataProximaGeracao = ProximaGeracao(dia),
+            Ativo = true,
+            CriadoPor = dono,
+        };
+
+        var recorrentes = new List<Recorrente>
+        {
+            // Dev: renda automática + assinaturas (digitais no cartão; academia em débito).
+            NovaRecorrente(dev.Id, "Salário", 7500m, TipoTransacao.Receita, "Renda", 5, devCorrente.Id, null),
+            NovaRecorrente(dev.Id, "Netflix", 39.90m, TipoTransacao.Despesa, "Serviços digitais", 15, null, devCartao.Id),
+            NovaRecorrente(dev.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, null, devCartao.Id),
+            NovaRecorrente(dev.Id, "Academia", 89.90m, TipoTransacao.Despesa, "Lazer", 5, devCorrente.Id, null),
+            // Solo: renda + uma assinatura em débito.
+            NovaRecorrente(solo.Id, "Salário", 4200m, TipoTransacao.Receita, "Renda", 5, soloCorrente.Id, null),
+            NovaRecorrente(solo.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, soloCorrente.Id, null),
+        };
+
         context.Faturas.AddRange(faturas);
+        context.Recorrentes.AddRange(recorrentes);
         context.Transacoes.AddRange(transacoes);
         await context.SaveChangesAsync();
     }
