@@ -31,6 +31,21 @@ function setup(onSubmit = vi.fn().mockResolvedValue(undefined)) {
   return onSubmit
 }
 
+function setupEdit(onSubmit = vi.fn().mockResolvedValue(undefined)) {
+  render(
+    <TransactionForm
+      mode="edit"
+      initial={{ natureza: "receita", tipo: 2, valor: "100,00", descricao: "Antigo", categoriaId: "c2", contaId: "a1" }}
+      categories={categories}
+      subcategories={subcategories}
+      contas={contas}
+      cartoes={cartoes}
+      onSubmit={onSubmit}
+    />
+  )
+  return onSubmit
+}
+
 describe("TransactionForm — natureza + regras (#82)", () => {
   it("default Despesa mostra categoria e meio de pagamento", () => {
     setup()
@@ -75,5 +90,24 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(data.natureza).toBe("transferencia")
     expect(data.contaOrigemId).toBe("a1")
     expect(data.contaDestinoId).toBe("a2")
+  })
+
+  it("modo edit: sem transferência/recorrente/parcelas, botão Salvar, valores iniciais", () => {
+    setupEdit()
+    expect(screen.queryByText("Transferência")).not.toBeInTheDocument()
+    expect(screen.queryByText("Repetir automaticamente (assinatura)")).not.toBeInTheDocument()
+    expect(screen.getByText("Salvar")).toBeInTheDocument()
+    // valor inicial preenchido
+    expect((screen.getByPlaceholderText("0,00") as HTMLInputElement).value).toBe("100,00")
+  })
+
+  it("modo edit: submete dados editados", () => {
+    const onSubmit = setupEdit()
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "25000" } }) // 250,00
+    fireEvent.click(screen.getByText("Salvar"))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const data = onSubmit.mock.calls[0][0] as TransactionFormData
+    expect(data.valor).toBe("250,00")
+    expect(data.natureza).toBe("receita")
   })
 })

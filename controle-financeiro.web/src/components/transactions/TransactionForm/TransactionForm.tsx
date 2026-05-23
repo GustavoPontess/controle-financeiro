@@ -54,6 +54,8 @@ export interface TransactionFormData {
   dataFim: string
 }
 
+export type TransactionFormMode = "create" | "edit"
+
 type Props = {
   categories: Category[]
   subcategories: Subcategory[]
@@ -61,9 +63,16 @@ type Props = {
   cartoes: CartaoCredito[]
   onSubmit: (data: TransactionFormData) => Promise<void>
   onCancel?: () => void
+  /** Modo do form. "edit" trava natureza em despesa/receita e esconde parcelas/recorrente. */
+  mode?: TransactionFormMode
+  /** Valores iniciais (edição). Mesclados sobre os defaults. */
+  initial?: Partial<TransactionFormData>
 }
 
-export default function TransactionForm({ categories, subcategories, contas, cartoes, onSubmit, onCancel }: Props) {
+export default function TransactionForm({
+  categories, subcategories, contas, cartoes, onSubmit, onCancel, mode = "create", initial,
+}: Props) {
+  const isEdit = mode === "edit"
   const [form, setForm] = useState<TransactionFormData>({
     natureza: "despesa",
     modo: "unico",
@@ -81,6 +90,7 @@ export default function TransactionForm({ categories, subcategories, contas, car
     parcelas: 1,
     frequencia: 2,
     dataFim: "",
+    ...initial,
   })
   const [loading, setLoading] = useState(false)
 
@@ -150,14 +160,14 @@ export default function TransactionForm({ categories, subcategories, contas, car
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      {/* Natureza — 3 cards grandes (lib) */}
+      {/* Natureza — cards grandes (lib). Edição não troca pra transferência. */}
       <PontesChoiceCards
         value={form.natureza}
         onChange={(v) => setNatureza(v as TransactionNatureza)}
         options={[
           { value: "despesa", label: "Despesa", icon: <TrendingDown size={17} strokeWidth={2.5} />, tone: "danger" },
           { value: "receita", label: "Receita", icon: <TrendingUp size={17} strokeWidth={2.5} />, tone: "success" },
-          { value: "transferencia", label: "Transferência", icon: <ArrowLeftRight size={17} strokeWidth={2.5} />, tone: "primary" },
+          ...(isEdit ? [] : [{ value: "transferencia", label: "Transferência", icon: <ArrowLeftRight size={17} strokeWidth={2.5} />, tone: "primary" as const }]),
         ]}
       />
 
@@ -218,9 +228,9 @@ export default function TransactionForm({ categories, subcategories, contas, car
             </PontesField>
           )}
 
-          {/* Cartão (crédito) — parcelas só em lançamento único */}
+          {/* Cartão (crédito) — parcelas só em lançamento único de criação */}
           {isCredito && (
-            isRecorrente ? (
+            (isRecorrente || isEdit) ? (
               <PontesField label="Cartão de crédito" required>
                 <PontesSelect
                   value={form.cartaoCreditoId}
@@ -246,22 +256,25 @@ export default function TransactionForm({ categories, subcategories, contas, car
             )
           )}
 
-          {/* Recorrente — switch + campos */}
-          <PontesToggle
-            checked={isRecorrente}
-            onChange={setRecorrente}
-            label="Repetir automaticamente (assinatura)"
-          />
-
-          {isRecorrente && (
-            <div className={styles.grid2}>
-              <PontesField label="Frequência" required>
-                <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
-              </PontesField>
-              <PontesField label="Repetir até (opcional)">
-                <PontesInput type="date" value={form.dataFim} min={form.data} onChange={(e) => set("dataFim", e.target.value)} />
-              </PontesField>
-            </div>
+          {/* Recorrente — switch + campos (só na criação) */}
+          {!isEdit && (
+            <>
+              <PontesToggle
+                checked={isRecorrente}
+                onChange={setRecorrente}
+                label="Repetir automaticamente (assinatura)"
+              />
+              {isRecorrente && (
+                <div className={styles.grid2}>
+                  <PontesField label="Frequência" required>
+                    <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
+                  </PontesField>
+                  <PontesField label="Repetir até (opcional)">
+                    <PontesInput type="date" value={form.dataFim} min={form.data} onChange={(e) => set("dataFim", e.target.value)} />
+                  </PontesField>
+                </div>
+              )}
+            </>
           )}
 
           {/* Categoria (picker agrupado cat > subcategoria — lib) */}
@@ -291,7 +304,7 @@ export default function TransactionForm({ categories, subcategories, contas, car
       <div className={styles.actions}>
         <PontesButton type="button" variant="outline" onClick={onCancel}>Cancelar</PontesButton>
         <PontesButton type="submit" variant="primary" loading={loading} disabled={loading}>
-          {isTransferencia ? "Transferir" : isRecorrente ? "Criar recorrente" : "Adicionar"}
+          {isEdit ? "Salvar" : isTransferencia ? "Transferir" : isRecorrente ? "Criar recorrente" : "Adicionar"}
         </PontesButton>
       </div>
     </form>
