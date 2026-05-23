@@ -127,13 +127,10 @@
 .txValor[data-paid="false"] { color: var(--pontes-text); }
 .detailMuted { padding: 12px 4px; font-size: 12px; color: var(--pontes-text-muted); }
 
-/* Pagamentos registrados na fatura */
-.payBlock { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--pontes-border); }
-.payHead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-.payTitle { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.payTotal { font-size: 12px; font-weight: 700; color: var(--pontes-success); }
+/* Pagamento na linha do tempo (intercalado com as compras) */
 .payValor { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--pontes-success); white-space: nowrap; }
-.payBlock .txDesc { display: inline-flex; align-items: center; gap: 5px; color: var(--pontes-success); }
+.txRow[data-pagamento="true"] { background: color-mix(in srgb, var(--pontes-success) 7%, transparent); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.txRow[data-pagamento="true"] .txDesc { display: inline-flex; align-items: center; gap: 5px; color: var(--pontes-success); }
 
 /* Modais */
 .modalCol { display: flex; flex-direction: column; gap: 16px; }

@@ -14,7 +14,7 @@ import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../service
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Fatura, FaturaDetalhe, PagarFaturaPayload } from "../../types/Fatura"
+import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
 import styles from "./CreditCardsPage.module.css"
 
 const formatMoney = (v: number) =>
@@ -292,44 +292,41 @@ export default function CreditCardsPage() {
     const pagamentos = detalhe.pagamentos ?? []
     if (detalhe.transacoes.length === 0 && pagamentos.length === 0)
       return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
+
+    // Linha do tempo única: compras + pagamentos ordenados por data (cronológico).
+    type Linha =
+      | { kind: "compra"; id: string; ts: number; t: FaturaDetalhe["transacoes"][number] }
+      | { kind: "pagamento"; id: string; ts: number; p: FaturaPagamento }
+    const linhas: Linha[] = [
+      ...detalhe.transacoes.map((t) => ({ kind: "compra" as const, id: t.id, ts: new Date(t.data).getTime(), t })),
+      ...pagamentos.map((p) => ({ kind: "pagamento" as const, id: p.id, ts: new Date(p.data).getTime(), p })),
+    ].sort((a, b) => a.ts - b.ts)
+
     return (
-      <>
-        {detalhe.transacoes.length > 0 && (
-          <div className={styles.txList}>
-            {detalhe.transacoes.map((t) => (
-              <div key={t.id} className={styles.txRow}>
-                <div className={styles.txMain}>
-                  <span className={styles.txDesc}>{t.descricao}</span>
-                  <span className={styles.txMeta}>
-                    {new Date(t.data).toLocaleDateString("pt-BR")} · {new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    {t.categoriaDescricao ? ` · ${t.categoriaDescricao}` : ""}
-                  </span>
-                </div>
-                <span className={styles.txValor} data-paid={paid.has(t.id) ? "true" : "false"}>
-                  {paid.has(t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(t.valor)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        {pagamentos.length > 0 && (
-          <div className={styles.payBlock}>
-            <div className={styles.payHead}>
-              <span className={styles.payTitle}>Pagamentos</span>
-              <span className={styles.payTotal}>{formatMoney(f.valorPago)} pago</span>
+      <div className={styles.txList}>
+        {linhas.map((l) => l.kind === "compra" ? (
+          <div key={l.id} className={styles.txRow}>
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}>{l.t.descricao}</span>
+              <span className={styles.txMeta}>
+                {new Date(l.t.data).toLocaleDateString("pt-BR")} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {l.t.categoriaDescricao ? ` · ${l.t.categoriaDescricao}` : ""}
+              </span>
             </div>
-            {pagamentos.map((p) => (
-              <div key={p.id} className={styles.txRow}>
-                <div className={styles.txMain}>
-                  <span className={styles.txDesc}><Check size={13} strokeWidth={2.5} /> Pagamento · {p.meioPagamentoDescricao}</span>
-                  <span className={styles.txMeta}>{formatDate(p.data)}</span>
-                </div>
-                <span className={styles.payValor}>− {formatMoney(p.valor)}</span>
-              </div>
-            ))}
+            <span className={styles.txValor} data-paid={paid.has(l.t.id) ? "true" : "false"}>
+              {paid.has(l.t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(l.t.valor)}
+            </span>
           </div>
-        )}
-      </>
+        ) : (
+          <div key={l.id} className={styles.txRow} data-pagamento="true">
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}><Check size={13} strokeWidth={2.5} /> Pagamento · {l.p.meioPagamentoDescricao}</span>
+              <span className={styles.txMeta}>{formatDate(l.p.data)}</span>
+            </div>
+            <span className={styles.payValor}>− {formatMoney(l.p.valor)}</span>
+          </div>
+        ))}
+      </div>
     )
   }
 
