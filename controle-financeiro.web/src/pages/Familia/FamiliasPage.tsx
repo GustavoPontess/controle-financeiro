@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
-import {
-  Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, IconButton, CircularProgress, MenuItem,
-} from "@mui/material"
 import { useOutletContext } from "react-router-dom"
-import GroupAddIcon from "@mui/icons-material/GroupAdd"
-import PersonAddIcon from "@mui/icons-material/PersonAdd"
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined"
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined"
-import Diversity3Icon from "@mui/icons-material/Diversity3"
-import CustomButton from "../../components/CustomButton"
-import EmptyState from "../../components/EmptyState/EmptyState"
-import { tokens } from "../../theme/tokens"
+import { Users, UserPlus, Trash2, Pencil, Wallet, ArrowRight, Heart } from "lucide-react"
+import {
+  PontesButton, PontesIconButton, PontesBadge, PontesCard,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect,
+  PontesEmptyState, PontesLoadingDots,
+} from "@/components/pontes"
 import {
   getFamilias, getFamilia, criarFamilia, dissolverFamilia, convidarMembro,
   revogarConvite, removerMembro, getConvitesPendentes, aceitarConvite, recusarConvite,
@@ -25,6 +18,7 @@ import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
   Dependente, TipoDependente, MembroFamilia, ModoRateio, AcertoContas,
 } from "../../types/Familia"
+import styles from "./FamiliasPage.module.css"
 
 const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
   { value: 1, label: "Criança" },
@@ -35,13 +29,6 @@ const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
 const tipoDependenteLabel = (t: TipoDependente) =>
   TIPOS_DEPENDENTE.find(x => x.value === t)?.label ?? "Outro"
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
-type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
-
-const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
-
 const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
   { value: 1, label: "Igualitário" },
   { value: 2, label: "Proporcional à renda" },
@@ -49,6 +36,20 @@ const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
 ]
 const modoRateioLabel = (m: ModoRateio) =>
   MODOS_RATEIO.find(x => x.value === m)?.label ?? "Igualitário"
+
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
+
+type ConfirmState = {
+  title: string
+  description: string
+  onConfirm: () => Promise<void>
+  tone?: "danger" | "warning" | "info"
+} | null
+
+const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
+const formatMoney = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 export default function FamiliasPage() {
   const { notify } = useOutletContext<OutletContextType>()
@@ -58,6 +59,8 @@ export default function FamiliasPage() {
 
   const [criarOpen, setCriarOpen] = useState(false)
   const [nomeFamilia, setNomeFamilia] = useState("")
+  const [nomeFamiliaErr, setNomeFamiliaErr] = useState("")
+  const [savingFamilia, setSavingFamilia] = useState(false)
 
   const [detalhe, setDetalhe] = useState<FamiliaDetalhe | null>(null)
   const [detalheLoading, setDetalheLoading] = useState(false)
@@ -66,18 +69,25 @@ export default function FamiliasPage() {
 
   const [convidarOpen, setConvidarOpen] = useState(false)
   const [conviteEmail, setConviteEmail] = useState("")
+  const [conviteEmailErr, setConviteEmailErr] = useState("")
   const [convitePapel, setConvitePapel] = useState("")
+  const [convitePapelErr, setConvitePapelErr] = useState("")
+  const [savingConvite, setSavingConvite] = useState(false)
 
   const [dependentes, setDependentes] = useState<Dependente[]>([])
   const [depOpen, setDepOpen] = useState(false)
   const [depEditando, setDepEditando] = useState<Dependente | null>(null)
   const [depNome, setDepNome] = useState("")
+  const [depNomeErr, setDepNomeErr] = useState("")
   const [depApelido, setDepApelido] = useState("")
   const [depNascimento, setDepNascimento] = useState("")
-  const [depTipo, setDepTipo] = useState<TipoDependente>(4)
+  const [depTipo, setDepTipo] = useState<string>("4")
+  const [savingDep, setSavingDep] = useState(false)
 
   const [rendaMembro, setRendaMembro] = useState<MembroFamilia | null>(null)
   const [rendaValor, setRendaValor] = useState("")
+  const [rendaErr, setRendaErr] = useState("")
+  const [savingRenda, setSavingRenda] = useState(false)
 
   const [acertos, setAcertos] = useState<AcertoContas[]>([])
   const [acertoOpen, setAcertoOpen] = useState(false)
@@ -85,14 +95,19 @@ export default function FamiliasPage() {
   const [acertoPara, setAcertoPara] = useState("")
   const [acertoValor, setAcertoValor] = useState("")
   const [acertoObs, setAcertoObs] = useState("")
+  const [savingAcerto, setSavingAcerto] = useState(false)
+
+  const [modoRateio, setModoRateio] = useState<string>("1")
+
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmState>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
       const [fs, cs] = await Promise.all([getFamilias(), getConvitesPendentes()])
       setFamilias(fs)
       setConvitesPendentes(cs)
-    } catch (error) {
-      console.error("Erro ao carregar famílias:", error)
+    } catch {
       notify({ open: true, message: "Erro ao carregar famílias", severity: "error" })
     } finally {
       setLoading(false)
@@ -119,6 +134,7 @@ export default function FamiliasPage() {
       setBalanco(bal)
       setDependentes(deps)
       setAcertos(acs)
+      setModoRateio(String(d.modoRateioPadrao))
     } catch {
       notify({ open: true, message: "Erro ao carregar a família", severity: "error" })
     } finally {
@@ -127,7 +143,8 @@ export default function FamiliasPage() {
   }
 
   const handleCriar = async () => {
-    if (!nomeFamilia.trim()) return
+    if (!nomeFamilia.trim()) { setNomeFamiliaErr("Informe o nome"); return }
+    setSavingFamilia(true)
     try {
       await criarFamilia(nomeFamilia.trim())
       notify({ open: true, message: "Família criada", severity: "success" })
@@ -136,11 +153,17 @@ export default function FamiliasPage() {
       await loadData()
     } catch {
       notify({ open: true, message: "Erro ao criar família", severity: "error" })
+    } finally {
+      setSavingFamilia(false)
     }
   }
 
   const handleConvidar = async () => {
-    if (!detalhe || !conviteEmail.trim() || !convitePapel.trim()) return
+    let valid = true
+    if (!conviteEmail.trim()) { setConviteEmailErr("Informe o e-mail"); valid = false }
+    if (!convitePapel.trim()) { setConvitePapelErr("Informe o papel"); valid = false }
+    if (!valid || !detalhe) return
+    setSavingConvite(true)
     try {
       await convidarMembro(detalhe.id, conviteEmail.trim(), convitePapel.trim())
       notify({ open: true, message: "Convite enviado", severity: "success" })
@@ -155,6 +178,8 @@ export default function FamiliasPage() {
           ?? "Erro ao enviar convite",
         severity: "error",
       })
+    } finally {
+      setSavingConvite(false)
     }
   }
 
@@ -188,41 +213,42 @@ export default function FamiliasPage() {
     }
   }
 
-  const handleRemoverMembro = async (membroId: string, ehProprio: boolean) => {
+  const handleRemoverMembro = (membroId: string, ehProprio: boolean) => {
     if (!detalhe) return
-    const msg = ehProprio ? "Sair desta família?" : "Remover este membro?"
-    if (!confirm(msg)) return
-    try {
-      await removerMembro(detalhe.id, membroId)
-      notify({ open: true, message: ehProprio ? "Você saiu da família" : "Membro removido", severity: "success" })
-      if (ehProprio) { setDetalhe(null); await loadData() }
-      else await abrirDetalhe(detalhe.id)
-    } catch (error) {
-      notify({
-        open: true,
-        message: (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-          ?? "Erro ao remover membro",
-        severity: "error",
-      })
-    }
+    setConfirmDialog({
+      title: ehProprio ? "Sair desta família?" : "Remover membro?",
+      description: ehProprio
+        ? "Você perderá acesso às finanças compartilhadas desta família."
+        : "O membro perderá acesso às finanças desta família.",
+      tone: "danger",
+      onConfirm: async () => {
+        await removerMembro(detalhe.id, membroId)
+        notify({ open: true, message: ehProprio ? "Você saiu da família" : "Membro removido", severity: "success" })
+        if (ehProprio) { setDetalhe(null); await loadData() }
+        else await abrirDetalhe(detalhe.id)
+      },
+    })
   }
 
   const abrirDepDialog = (dep: Dependente | null) => {
     setDepEditando(dep)
     setDepNome(dep?.nome ?? "")
+    setDepNomeErr("")
     setDepApelido(dep?.apelido ?? "")
     setDepNascimento(dep?.dataNascimento ? dep.dataNascimento.slice(0, 10) : "")
-    setDepTipo(dep?.tipo ?? 4)
+    setDepTipo(String(dep?.tipo ?? 4))
     setDepOpen(true)
   }
 
   const handleSalvarDependente = async () => {
-    if (!detalhe || !depNome.trim()) return
+    if (!depNome.trim()) { setDepNomeErr("Informe o nome"); return }
+    if (!detalhe) return
+    setSavingDep(true)
     const input = {
       nome: depNome.trim(),
       apelido: depApelido.trim() || null,
       dataNascimento: depNascimento || null,
-      tipo: depTipo,
+      tipo: Number(depTipo) as TipoDependente,
     }
     try {
       if (depEditando) await atualizarDependente(detalhe.id, depEditando.id, input)
@@ -232,33 +258,40 @@ export default function FamiliasPage() {
       setDependentes(await getDependentes(detalhe.id))
     } catch {
       notify({ open: true, message: "Erro ao salvar dependente", severity: "error" })
+    } finally {
+      setSavingDep(false)
     }
   }
 
-  const handleInativarDependente = async (depId: string) => {
-    if (!detalhe || !confirm("Inativar este dependente? O histórico é preservado.")) return
-    try {
-      await inativarDependente(detalhe.id, depId)
-      setDependentes(await getDependentes(detalhe.id))
-    } catch {
-      notify({ open: true, message: "Erro ao inativar dependente", severity: "error" })
-    }
-  }
-
-  const handleDefinirModo = async (modo: ModoRateio) => {
+  const handleInativarDependente = (depId: string) => {
     if (!detalhe) return
+    setConfirmDialog({
+      title: "Inativar dependente?",
+      description: "O histórico de transações é preservado.",
+      tone: "warning",
+      onConfirm: async () => {
+        await inativarDependente(detalhe.id, depId)
+        setDependentes(await getDependentes(detalhe.id))
+      },
+    })
+  }
+
+  const handleDefinirModo = async (modo: string) => {
+    if (!detalhe) return
+    setModoRateio(modo)
     try {
-      await definirModoRateio(detalhe.id, modo)
+      await definirModoRateio(detalhe.id, Number(modo) as ModoRateio)
       notify({ open: true, message: "Modo de rateio atualizado", severity: "success" })
-      await abrirDetalhe(detalhe.id)
     } catch {
       notify({ open: true, message: "Erro ao atualizar modo de rateio", severity: "error" })
+      setModoRateio(String(detalhe.modoRateioPadrao))
     }
   }
 
   const abrirRendaDialog = (m: MembroFamilia) => {
     setRendaMembro(m)
     setRendaValor(m.rendaMensal != null ? String(m.rendaMensal) : "")
+    setRendaErr("")
   }
 
   const handleSalvarRenda = async () => {
@@ -266,9 +299,10 @@ export default function FamiliasPage() {
     const trimmed = rendaValor.trim()
     const renda = trimmed === "" ? null : Number(trimmed)
     if (renda != null && (Number.isNaN(renda) || renda < 0)) {
-      notify({ open: true, message: "Renda inválida", severity: "error" })
+      setRendaErr("Renda inválida")
       return
     }
+    setSavingRenda(true)
     try {
       await definirRendaMembro(detalhe.id, rendaMembro.id, renda)
       notify({ open: true, message: "Renda atualizada", severity: "success" })
@@ -276,6 +310,8 @@ export default function FamiliasPage() {
       await abrirDetalhe(detalhe.id)
     } catch {
       notify({ open: true, message: "Erro ao atualizar renda", severity: "error" })
+    } finally {
+      setSavingRenda(false)
     }
   }
 
@@ -302,6 +338,7 @@ export default function FamiliasPage() {
       notify({ open: true, message: "Valor do acerto inválido", severity: "error" })
       return
     }
+    setSavingAcerto(true)
     try {
       await registrarAcerto(detalhe.id, {
         deUsuarioId: acertoDe,
@@ -314,498 +351,504 @@ export default function FamiliasPage() {
       await abrirDetalhe(detalhe.id)
     } catch {
       notify({ open: true, message: "Erro ao registrar acerto", severity: "error" })
+    } finally {
+      setSavingAcerto(false)
     }
   }
 
-  const handleCancelarAcerto = async (acertoId: string) => {
-    if (!detalhe || !confirm("Cancelar este acerto? O histórico é preservado.")) return
+  const handleCancelarAcerto = (acertoId: string) => {
+    if (!detalhe) return
+    setConfirmDialog({
+      title: "Cancelar acerto?",
+      description: "O histórico é preservado. O acerto ficará marcado como cancelado.",
+      tone: "warning",
+      onConfirm: async () => {
+        await cancelarAcerto(detalhe.id, acertoId)
+        await abrirDetalhe(detalhe.id)
+      },
+    })
+  }
+
+  const handleDissolver = () => {
+    if (!detalhe) return
+    setConfirmDialog({
+      title: "Dissolver a família?",
+      description: `"${detalhe.nome}" será desfeita. Esta ação não pode ser desfeita.`,
+      tone: "danger",
+      onConfirm: async () => {
+        await dissolverFamilia(detalhe.id)
+        notify({ open: true, message: "Família dissolvida", severity: "success" })
+        setDetalhe(null)
+        await loadData()
+      },
+    })
+  }
+
+  const runConfirm = async () => {
+    if (!confirmDialog) return
+    setConfirmLoading(true)
     try {
-      await cancelarAcerto(detalhe.id, acertoId)
-      await abrirDetalhe(detalhe.id)
+      await confirmDialog.onConfirm()
     } catch {
-      notify({ open: true, message: "Erro ao cancelar acerto", severity: "error" })
+      notify({ open: true, message: "Erro ao executar ação", severity: "error" })
+    } finally {
+      setConfirmLoading(false)
+      setConfirmDialog(null)
     }
   }
 
-  const handleDissolver = async () => {
-    if (!detalhe || !confirm("Dissolver a família? Esta ação não pode ser desfeita.")) return
-    try {
-      await dissolverFamilia(detalhe.id)
-      notify({ open: true, message: "Família dissolvida", severity: "success" })
-      setDetalhe(null)
-      await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao dissolver família", severity: "error" })
-    }
-  }
+  // ── Render ──
 
   if (loading) {
-    return <Box sx={{ display: "flex", justifyContent: "center", p: 8 }}><CircularProgress /></Box>
+    return (
+      <div className={styles.centered}>
+        <PontesLoadingDots />
+      </div>
+    )
   }
 
+  const membroOptions = (detalhe?.membros ?? []).map(m => ({ value: m.usuarioId, label: m.nomeUsuario }))
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box>
-          <Typography fontSize={tokens.typography.fontSize["2xl"]} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} sx={{ letterSpacing: -0.5 }}>
-            Famílias
-          </Typography>
-          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>
-            Organize as finanças com quem você divide a vida.
-          </Typography>
-        </Box>
-        <CustomButton size="small" startIcon={<GroupAddIcon />} onClick={() => setCriarOpen(true)}>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Famílias</h1>
+          <div className={styles.subtitle}>Organize as finanças com quem você divide a vida.</div>
+        </div>
+        <PontesButton size="sm" iconStart={<Users size={16} strokeWidth={2.5} />} onClick={() => setCriarOpen(true)}>
           Nova Família
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
       {/* Convites pendentes */}
       {convitesPendentes.length > 0 && (
-        <Paper elevation={0} sx={{ p: 2.5, bgcolor: tokens.color.brand.subtle }}>
-          <Typography
-            fontSize={tokens.typography.fontSize.base}
-            fontWeight={tokens.typography.fontWeight.bold}
-            color={tokens.color.text.primary}
-            mb={1.5}
-          >
-            Convites pendentes
-          </Typography>
-          {convitesPendentes.map((c, i) => (
-            <Box key={c.id} sx={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              py: 1.25, borderTop: i === 0 ? "none" : `1px solid ${tokens.color.border.subtle}`,
-            }}>
-              <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.primary}>
-                <strong>{c.nomeFamilia}</strong> — convidou você como {c.papel}
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <CustomButton size="small" onClick={() => handleAceitar(c.token)}>Aceitar</CustomButton>
-                <CustomButton size="small" variant="secondary" onClick={() => handleRecusar(c.token)}>Recusar</CustomButton>
-              </Box>
-            </Box>
-          ))}
-        </Paper>
+        <PontesCard padding={20} radius={14}>
+          <div className={styles.sectionTitle}>Convites pendentes</div>
+          <div className={styles.inviteList}>
+            {convitesPendentes.map(c => (
+              <div key={c.id} className={styles.inviteRow}>
+                <span className={styles.inviteText}>
+                  <strong>{c.nomeFamilia}</strong> — convidou você como {c.papel}
+                </span>
+                <div className={styles.rowActions}>
+                  <PontesButton size="sm" onClick={() => handleAceitar(c.token)}>Aceitar</PontesButton>
+                  <PontesButton size="sm" variant="outline" onClick={() => handleRecusar(c.token)}>Recusar</PontesButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        </PontesCard>
       )}
 
       {/* Lista de famílias */}
       {familias.length === 0 ? (
-        <EmptyState
+        <PontesEmptyState
+          icon={<Heart size={32} strokeWidth={1.5} />}
           title="Nenhuma família ainda"
-          description="Crie uma família para compartilhar despesas."
+          description="Crie uma família para compartilhar despesas com quem você convive."
         />
       ) : (
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 2 }}>
+        <div className={styles.famGrid}>
           {familias.map(f => (
-            <Paper
-              key={f.id}
-              elevation={0}
-              onClick={() => abrirDetalhe(f.id)}
-              sx={{
-                p: 2.5,
-                cursor: "pointer",
-                transition: "box-shadow .15s ease, transform .15s ease",
-                "&:hover": { boxShadow: tokens.shadow.md, transform: "translateY(-2px)" },
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: tokens.radius.lg,
-                    background: `linear-gradient(135deg, ${tokens.color.brand.primary}, ${tokens.color.brand.hover})`,
-                    color: "#ffffff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Diversity3Icon sx={{ fontSize: 24 }} />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography fontSize={tokens.typography.fontSize.base} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary} noWrap>
-                    {f.nome}
-                  </Typography>
-                  <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
+            <div key={f.id} className={styles.famCardWrap} onClick={() => abrirDetalhe(f.id)}>
+            <PontesCard padding={20} radius={14} hover>
+              <div className={styles.famCardInner}>
+                <div className={styles.famAvatar}>
+                  <Users size={22} strokeWidth={1.5} />
+                </div>
+                <div className={styles.famInfo}>
+                  <span className={styles.famNome}>{f.nome}</span>
+                  <span className={styles.famSub}>
                     {f.totalMembros} {f.totalMembros === 1 ? "membro" : "membros"}
-                  </Typography>
-                </Box>
-              </Box>
+                  </span>
+                </div>
+              </div>
               {f.ehAdmin && (
-                <Chip
-                  label="Administrador"
-                  size="small"
-                  sx={{
-                    fontSize: tokens.typography.fontSize["2xs"],
-                    height: 22,
-                    borderRadius: tokens.radius.sm,
-                    fontWeight: tokens.typography.fontWeight.medium,
-                    bgcolor: tokens.color.brand.subtle,
-                    color: tokens.color.brand.hover,
-                  }}
-                />
+                <div className={styles.famBadge}>
+                  <PontesBadge tone="primary" size="sm">Administrador</PontesBadge>
+                </div>
               )}
-            </Paper>
+            </PontesCard>
+            </div>
           ))}
-        </Box>
+        </div>
       )}
 
-      {/* Dialog criar família */}
-      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Nova Família</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus fullWidth label="Nome da família" margin="dense"
-            value={nomeFamilia} onChange={e => setNomeFamilia(e.target.value)}
+      {/* Modal nova família */}
+      <PontesModal
+        open={criarOpen}
+        title="Nova Família"
+        onClose={() => setCriarOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setCriarOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleCriar} loading={savingFamilia} disabled={savingFamilia}>Criar</PontesButton>
+        </>}
+      >
+        <PontesField label="Nome da família" required error={nomeFamiliaErr}>
+          <PontesInput
+            autoFocus
+            value={nomeFamilia}
+            onChange={e => { setNomeFamilia(e.target.value); setNomeFamiliaErr("") }}
+            invalid={!!nomeFamiliaErr}
+            placeholder="Ex: Família Silva"
           />
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setCriarOpen(false)}>Cancelar</CustomButton>
-          <CustomButton size="small" onClick={handleCriar}>Criar</CustomButton>
-        </DialogActions>
-      </Dialog>
+        </PontesField>
+      </PontesModal>
 
-      {/* Dialog detalhe da família */}
-      <Dialog open={detalhe !== null} onClose={() => setDetalhe(null)} fullWidth maxWidth="sm">
+      {/* Modal detalhe da família */}
+      <PontesModal
+        open={detalhe !== null}
+        title={detalhe?.nome ?? ""}
+        maxWidth={560}
+        onClose={() => setDetalhe(null)}
+        footer={<>
+          <div className={styles.detalheFLeft}>
+            {detalhe?.ehAdmin && (
+              <PontesButton variant="danger-outline" size="sm" iconStart={<Trash2 size={14} />} onClick={handleDissolver}>
+                Dissolver
+              </PontesButton>
+            )}
+          </div>
+          <PontesButton variant="outline" onClick={() => setDetalhe(null)}>Fechar</PontesButton>
+        </>}
+      >
         {detalheLoading || !detalhe ? (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}><CircularProgress /></Box>
+          <div className={styles.centered}><PontesLoadingDots /></div>
         ) : (
-          <>
-            <DialogTitle>{detalhe.nome}</DialogTitle>
-            <DialogContent>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                <Typography fontSize={14} fontWeight={600}>Membros</Typography>
-                {detalhe.ehAdmin && (
-                  <CustomButton size="small" startIcon={<PersonAddIcon />} onClick={() => setConvidarOpen(true)}>
-                    Convidar
-                  </CustomButton>
-                )}
-              </Box>
+          <div className={styles.detalheBody}>
+
+            {/* Membros */}
+            <div className={styles.secRow}>
+              <span className={styles.secTitle}>Membros</span>
+              {detalhe.ehAdmin && (
+                <PontesButton size="xs" variant="soft" iconStart={<UserPlus size={13} />} onClick={() => setConvidarOpen(true)}>
+                  Convidar
+                </PontesButton>
+              )}
+            </div>
+            <div className={styles.itemList}>
               {detalhe.membros.map(m => (
-                <Box key={m.id} sx={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 1, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                }}>
-                  <Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.medium} color={tokens.color.text.primary}>
-                        {m.nomeUsuario}
-                      </Typography>
-                      <Chip
-                        label={m.papel}
-                        size="small"
-                        sx={{
-                          height: 20,
-                          fontSize: tokens.typography.fontSize["2xs"],
-                          borderRadius: tokens.radius.sm,
-                          bgcolor: tokens.color.brand.subtle,
-                          color: tokens.color.brand.hover,
-                        }}
-                      />
-                    </Box>
-                    <Typography fontSize={12} color={tokens.color.text.disabled}>
+                <div key={m.id} className={styles.itemRow}>
+                  <div className={styles.itemInfo}>
+                    <div className={styles.itemPrimary}>
+                      <span className={styles.itemName}>{m.nomeUsuario}</span>
+                      <PontesBadge tone="soft" size="sm">{m.papel}</PontesBadge>
+                    </div>
+                    <div className={styles.itemSub}>
                       {m.emailUsuario} · desde {formatDate(m.entrouEm)}
                       {m.rendaMensal != null && ` · renda ${formatMoney(m.rendaMensal)}`}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <IconButton size="small" onClick={() => abrirRendaDialog(m)} title="Definir renda">
-                      <PaymentsOutlinedIcon fontSize="small" />
-                    </IconButton>
+                    </div>
+                  </div>
+                  <div className={styles.rowActions}>
+                    <PontesIconButton size={32} variant="ghost" aria-label="Definir renda" onClick={() => abrirRendaDialog(m)}>
+                      <Wallet size={14} strokeWidth={2} />
+                    </PontesIconButton>
                     {m.usuarioId !== detalhe.criadoPorUsuarioId && (
-                      <IconButton size="small" onClick={() => handleRemoverMembro(m.id, true)}>
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Remover membro" onClick={() => handleRemoverMembro(m.id, true)}>
+                        <Trash2 size={14} strokeWidth={2} />
+                      </PontesIconButton>
                     )}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               ))}
+            </div>
 
-              {detalhe.convitesPendentes.length > 0 && (
-                <>
-                  <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>Convites pendentes</Typography>
+            {/* Convites pendentes na família */}
+            {detalhe.convitesPendentes.length > 0 && (
+              <>
+                <div className={styles.secRow}>
+                  <span className={styles.secTitle}>Convites pendentes</span>
+                </div>
+                <div className={styles.itemList}>
                   {detalhe.convitesPendentes.map(c => (
-                    <Box key={c.id} sx={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      py: 1, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                    }}>
-                      <Typography fontSize={13} color={tokens.color.text.secondary}>{c.emailConvidado} — {c.papel}</Typography>
+                    <div key={c.id} className={styles.itemRow}>
+                      <span className={styles.itemSub}>{c.emailConvidado} — {c.papel}</span>
                       {detalhe.ehAdmin && (
-                        <IconButton size="small" onClick={() => handleRevogarConvite(c.id)}>
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
+                        <PontesIconButton size={32} variant="ghost" aria-label="Revogar convite" onClick={() => handleRevogarConvite(c.id)}>
+                          <Trash2 size={14} strokeWidth={2} />
+                        </PontesIconButton>
                       )}
-                    </Box>
+                    </div>
                   ))}
-                </>
-              )}
+                </div>
+              </>
+            )}
 
-              {/* Modo de rateio */}
-              <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>Modo de rateio</Typography>
-              {detalhe.ehAdmin ? (
-                <TextField
-                  select fullWidth size="small" margin="dense"
-                  value={detalhe.modoRateioPadrao}
-                  onChange={e => handleDefinirModo(Number(e.target.value) as ModoRateio)}
-                >
-                  {MODOS_RATEIO.map(m => (
-                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                  ))}
-                </TextField>
-              ) : (
-                <Typography fontSize={13} color={tokens.color.text.secondary}>
-                  {modoRateioLabel(detalhe.modoRateioPadrao)}
-                </Typography>
-              )}
+            {/* Modo de rateio */}
+            <div className={styles.secRow}>
+              <span className={styles.secTitle}>Modo de rateio</span>
+            </div>
+            {detalhe.ehAdmin ? (
+              <PontesSelect
+                value={modoRateio}
+                onChange={handleDefinirModo}
+                options={MODOS_RATEIO.map(m => ({ value: String(m.value), label: m.label }))}
+              />
+            ) : (
+              <span className={styles.itemSub}>{modoRateioLabel(detalhe.modoRateioPadrao)}</span>
+            )}
 
-              {/* Balanço do mês */}
-              {balanco && (
-                <>
-                  <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>
+            {/* Balanço do mês */}
+            {balanco && (
+              <>
+                <div className={styles.secRow}>
+                  <span className={styles.secTitle}>
                     Balanço do mês — {formatMoney(balanco.total)} em despesas
-                  </Typography>
+                  </span>
+                </div>
+                <div className={styles.itemList}>
                   {balanco.saldos.map(s => (
-                    <Box key={s.usuarioId} sx={{
-                      display: "flex", justifyContent: "space-between",
-                      py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                    }}>
-                      <Typography fontSize={13}>
-                        {s.nome} — pagou {formatMoney(s.pagou)}
-                        <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
-                          {" "}· cota {formatMoney(s.cota)}</Typography>
-                      </Typography>
-                      <Typography fontSize={13} fontWeight={600}
-                        color={s.saldo >= 0 ? tokens.color.status.success.main : tokens.color.status.error.main}>
+                    <div key={s.usuarioId} className={styles.itemRow}>
+                      <span className={styles.itemSub}>
+                        {s.nome} — pagou {formatMoney(s.pagou)} · cota {formatMoney(s.cota)}
+                      </span>
+                      <span className={s.saldo >= 0 ? styles.saldoPos : styles.saldoNeg}>
                         {s.saldo >= 0
                           ? `recebe ${formatMoney(s.saldo)}`
                           : `deve ${formatMoney(-s.saldo)}`}
-                      </Typography>
-                    </Box>
+                      </span>
+                    </div>
                   ))}
-                </>
-              )}
+                </div>
+              </>
+            )}
 
-              {/* Dependentes */}
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2, mb: 1 }}>
-                <Typography fontSize={14} fontWeight={600}>Dependentes</Typography>
-                <CustomButton size="small" startIcon={<PersonAddIcon />} onClick={() => abrirDepDialog(null)}>
-                  Adicionar
-                </CustomButton>
-              </Box>
-              {dependentes.length === 0 ? (
-                <Typography fontSize={13} color={tokens.color.text.disabled}>
-                  Nenhum dependente cadastrado.
-                </Typography>
-              ) : dependentes.map(dep => (
-                <Box key={dep.id} sx={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.primary}>
-                      {dep.nome}
-                      {dep.apelido && (
-                        <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
-                          {" "}({dep.apelido})
-                        </Typography>
-                      )}
-                    </Typography>
-                    <Chip
-                      label={tipoDependenteLabel(dep.tipo)}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: tokens.typography.fontSize["2xs"],
-                        borderRadius: tokens.radius.sm,
-                        bgcolor: tokens.color.background.tertiary,
-                        color: tokens.color.text.secondary,
-                      }}
-                    />
-                  </Box>
-                  <Box>
-                    <IconButton size="small" onClick={() => abrirDepDialog(dep)}>
-                      <EditOutlinedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleInativarDependente(dep.id)}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))}
+            {/* Dependentes */}
+            <div className={styles.secRow}>
+              <span className={styles.secTitle}>Dependentes</span>
+              <PontesButton size="xs" variant="soft" iconStart={<UserPlus size={13} />} onClick={() => abrirDepDialog(null)}>
+                Adicionar
+              </PontesButton>
+            </div>
+            {dependentes.length === 0 ? (
+              <span className={styles.emptyHint}>Nenhum dependente cadastrado.</span>
+            ) : (
+              <div className={styles.itemList}>
+                {dependentes.map(dep => (
+                  <div key={dep.id} className={styles.itemRow}>
+                    <div className={styles.itemInfo}>
+                      <div className={styles.itemPrimary}>
+                        <span className={styles.itemName}>
+                          {dep.nome}
+                          {dep.apelido && <span className={styles.itemMuted}> ({dep.apelido})</span>}
+                        </span>
+                        <PontesBadge tone="neutral" size="sm">{tipoDependenteLabel(dep.tipo)}</PontesBadge>
+                      </div>
+                    </div>
+                    <div className={styles.rowActions}>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => abrirDepDialog(dep)}>
+                        <Pencil size={13} strokeWidth={2} />
+                      </PontesIconButton>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Inativar" onClick={() => handleInativarDependente(dep.id)}>
+                        <Trash2 size={13} strokeWidth={2} />
+                      </PontesIconButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              {/* Despesas compartilhadas do mês */}
-              <Typography fontSize={14} fontWeight={600} mt={2} mb={1}>
-                Despesas compartilhadas
-              </Typography>
-              {despesas.length === 0 ? (
-                <Typography fontSize={13} color={tokens.color.text.disabled}>
-                  Nenhuma despesa compartilhada neste mês.
-                </Typography>
-              ) : despesas.map(d => (
-                <Box key={d.id} sx={{
-                  display: "flex", justifyContent: "space-between",
-                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                }}>
-                  <Typography fontSize={13}>
-                    {d.descricao} <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
-                      · {d.pagadorNome} · {formatDate(d.data)}</Typography>
-                  </Typography>
-                  <Typography fontSize={13} fontWeight={600}>{formatMoney(d.valor)}</Typography>
-                </Box>
-              ))}
+            {/* Despesas compartilhadas */}
+            <div className={styles.secRow}>
+              <span className={styles.secTitle}>Despesas compartilhadas</span>
+            </div>
+            {despesas.length === 0 ? (
+              <span className={styles.emptyHint}>Nenhuma despesa compartilhada neste mês.</span>
+            ) : (
+              <div className={styles.itemList}>
+                {despesas.map(d => (
+                  <div key={d.id} className={styles.itemRow}>
+                    <span className={styles.itemSub}>
+                      {d.descricao} · {d.pagadorNome} · {formatDate(d.data)}
+                    </span>
+                    <span className={styles.itemValue}>{formatMoney(d.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              {/* Acerto de contas */}
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2, mb: 1 }}>
-                <Typography fontSize={14} fontWeight={600}>Acerto de contas</Typography>
-                <CustomButton size="small" startIcon={<PaymentsOutlinedIcon />} onClick={abrirAcertoDialog}>
-                  Registrar acerto
-                </CustomButton>
-              </Box>
-              {acertos.length === 0 ? (
-                <Typography fontSize={13} color={tokens.color.text.disabled}>
-                  Nenhum acerto registrado neste mês.
-                </Typography>
-              ) : acertos.map(a => (
-                <Box key={a.id} sx={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  py: 0.75, borderBottom: `1px solid ${tokens.color.border.subtle}`,
-                }}>
-                  <Typography fontSize={13}>
-                    {a.deNome} → {a.paraNome}
-                    <Typography component="span" fontSize={12} color={tokens.color.text.disabled}>
-                      {a.observacao ? ` · ${a.observacao}` : ""} · {formatDate(a.criadoEm)}</Typography>
-                  </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography fontSize={13} fontWeight={600}>{formatMoney(a.valor)}</Typography>
-                    <IconButton size="small" onClick={() => handleCancelarAcerto(a.id)}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))}
-            </DialogContent>
-            <DialogActions sx={{ justifyContent: "space-between" }}>
-              <Box>
-                {detalhe.ehAdmin && (
-                  <CustomButton variant="secondary" size="small" startIcon={<DeleteOutlineIcon />}
-                    onClick={handleDissolver}>
-                    Dissolver
-                  </CustomButton>
-                )}
-              </Box>
-              <CustomButton variant="secondary" size="small" onClick={() => setDetalhe(null)}>Fechar</CustomButton>
-            </DialogActions>
-          </>
+            {/* Acerto de contas */}
+            <div className={styles.secRow}>
+              <span className={styles.secTitle}>Acerto de contas</span>
+              <PontesButton size="xs" variant="soft" iconStart={<Wallet size={13} />} onClick={abrirAcertoDialog}>
+                Registrar acerto
+              </PontesButton>
+            </div>
+            {acertos.length === 0 ? (
+              <span className={styles.emptyHint}>Nenhum acerto registrado neste mês.</span>
+            ) : (
+              <div className={styles.itemList}>
+                {acertos.map(a => (
+                  <div key={a.id} className={styles.itemRow}>
+                    <span className={styles.itemSub}>
+                      {a.deNome} <ArrowRight size={12} className={styles.arrowIcon} /> {a.paraNome}
+                      {a.observacao && ` · ${a.observacao}`}
+                      {" · "}{formatDate(a.criadoEm)}
+                    </span>
+                    <div className={styles.rowActions}>
+                      <span className={styles.itemValue}>{formatMoney(a.valor)}</span>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Cancelar acerto" onClick={() => handleCancelarAcerto(a.id)}>
+                        <Trash2 size={13} strokeWidth={2} />
+                      </PontesIconButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
-      </Dialog>
+      </PontesModal>
 
-      {/* Dialog convidar membro */}
-      <Dialog open={convidarOpen} onClose={() => setConvidarOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Convidar membro</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus fullWidth label="E-mail do convidado" margin="dense" type="email"
-            value={conviteEmail} onChange={e => setConviteEmail(e.target.value)}
-          />
-          <TextField
-            fullWidth label="Papel (ex: Esposa, Filho, Sócio)" margin="dense"
-            value={convitePapel} onChange={e => setConvitePapel(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setConvidarOpen(false)}>Cancelar</CustomButton>
-          <CustomButton size="small" onClick={handleConvidar}>Enviar convite</CustomButton>
-        </DialogActions>
-      </Dialog>
+      {/* Modal convidar membro */}
+      <PontesModal
+        open={convidarOpen}
+        title="Convidar membro"
+        onClose={() => setConvidarOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setConvidarOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleConvidar} loading={savingConvite} disabled={savingConvite}>Enviar convite</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="E-mail do convidado" required error={conviteEmailErr}>
+            <PontesInput
+              autoFocus
+              type="email"
+              value={conviteEmail}
+              onChange={e => { setConviteEmail(e.target.value); setConviteEmailErr("") }}
+              invalid={!!conviteEmailErr}
+              placeholder="joao@email.com"
+            />
+          </PontesField>
+          <PontesField label="Papel" required error={convitePapelErr}>
+            <PontesInput
+              value={convitePapel}
+              onChange={e => { setConvitePapel(e.target.value); setConvitePapelErr("") }}
+              invalid={!!convitePapelErr}
+              placeholder="Ex: Esposa, Filho, Sócio"
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
 
-      {/* Dialog criar/editar dependente */}
-      <Dialog open={depOpen} onClose={() => setDepOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>{depEditando ? "Editar dependente" : "Novo dependente"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus fullWidth label="Nome" margin="dense"
-            value={depNome} onChange={e => setDepNome(e.target.value)}
-          />
-          <TextField
-            fullWidth label="Apelido (opcional)" margin="dense"
-            value={depApelido} onChange={e => setDepApelido(e.target.value)}
-          />
-          <TextField
-            fullWidth label="Data de nascimento (opcional)" margin="dense" type="date"
-            InputLabelProps={{ shrink: true }}
-            value={depNascimento} onChange={e => setDepNascimento(e.target.value)}
-          />
-          <TextField
-            select fullWidth label="Tipo" margin="dense"
-            value={depTipo} onChange={e => setDepTipo(Number(e.target.value) as TipoDependente)}
-          >
-            {TIPOS_DEPENDENTE.map(t => (
-              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
-            ))}
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setDepOpen(false)}>Cancelar</CustomButton>
-          <CustomButton size="small" onClick={handleSalvarDependente}>Salvar</CustomButton>
-        </DialogActions>
-      </Dialog>
+      {/* Modal criar/editar dependente */}
+      <PontesModal
+        open={depOpen}
+        title={depEditando ? "Editar dependente" : "Novo dependente"}
+        onClose={() => setDepOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setDepOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvarDependente} loading={savingDep} disabled={savingDep}>Salvar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="Nome" required error={depNomeErr}>
+            <PontesInput
+              autoFocus
+              value={depNome}
+              onChange={e => { setDepNome(e.target.value); setDepNomeErr("") }}
+              invalid={!!depNomeErr}
+              placeholder="Ex: Lúcia"
+            />
+          </PontesField>
+          <PontesField label="Apelido (opcional)">
+            <PontesInput
+              value={depApelido}
+              onChange={e => setDepApelido(e.target.value)}
+              placeholder="Ex: Lu"
+            />
+          </PontesField>
+          <PontesField label="Data de nascimento (opcional)">
+            <PontesInput
+              type="date"
+              value={depNascimento}
+              onChange={e => setDepNascimento(e.target.value)}
+            />
+          </PontesField>
+          <PontesField label="Tipo">
+            <PontesSelect
+              value={depTipo}
+              onChange={setDepTipo}
+              options={TIPOS_DEPENDENTE.map(t => ({ value: String(t.value), label: t.label }))}
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
 
-      {/* Dialog definir renda */}
-      <Dialog open={rendaMembro !== null} onClose={() => setRendaMembro(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Renda mensal — {rendaMembro?.nomeUsuario}</DialogTitle>
-        <DialogContent>
-          <Typography fontSize={13} color={tokens.color.text.secondary} mb={1}>
-            Usada no rateio proporcional. Deixe vazio para não informar.
-          </Typography>
-          <TextField
-            autoFocus fullWidth label="Renda mensal (R$)" margin="dense" type="number"
-            value={rendaValor} onChange={e => setRendaValor(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setRendaMembro(null)}>Cancelar</CustomButton>
-          <CustomButton size="small" onClick={handleSalvarRenda}>Salvar</CustomButton>
-        </DialogActions>
-      </Dialog>
+      {/* Modal definir renda */}
+      <PontesModal
+        open={rendaMembro !== null}
+        title={`Renda mensal — ${rendaMembro?.nomeUsuario ?? ""}`}
+        onClose={() => setRendaMembro(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setRendaMembro(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvarRenda} loading={savingRenda} disabled={savingRenda}>Salvar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <span className={styles.itemSub}>Usada no rateio proporcional. Deixe vazio para não informar.</span>
+          <PontesField label="Renda mensal (R$)" error={rendaErr}>
+            <PontesInput
+              autoFocus
+              type="number"
+              value={rendaValor}
+              onChange={e => { setRendaValor(e.target.value); setRendaErr("") }}
+              invalid={!!rendaErr}
+              placeholder="0"
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
 
-      {/* Dialog registrar acerto */}
-      <Dialog open={acertoOpen} onClose={() => setAcertoOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Registrar acerto</DialogTitle>
-        <DialogContent>
-          <Typography fontSize={13} color={tokens.color.text.secondary} mb={1}>
+      {/* Modal registrar acerto */}
+      <PontesModal
+        open={acertoOpen}
+        title="Registrar acerto"
+        onClose={() => setAcertoOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setAcertoOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleRegistrarAcerto} loading={savingAcerto} disabled={savingAcerto}>Registrar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <span className={styles.itemSub}>
             Registra que um membro pagou a outro o saldo pendente. Não mexe nas contas reais.
-          </Typography>
-          <TextField
-            select fullWidth label="Quem pagou" margin="dense"
-            value={acertoDe} onChange={e => setAcertoDe(e.target.value)}
-          >
-            {(detalhe?.membros ?? []).map(m => (
-              <MenuItem key={m.usuarioId} value={m.usuarioId}>{m.nomeUsuario}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select fullWidth label="Quem recebeu" margin="dense"
-            value={acertoPara} onChange={e => setAcertoPara(e.target.value)}
-          >
-            {(detalhe?.membros ?? []).map(m => (
-              <MenuItem key={m.usuarioId} value={m.usuarioId}>{m.nomeUsuario}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            fullWidth label="Valor (R$)" margin="dense" type="number"
-            value={acertoValor} onChange={e => setAcertoValor(e.target.value)}
-          />
-          <TextField
-            fullWidth label="Observação / comprovante (opcional)" margin="dense"
-            value={acertoObs} onChange={e => setAcertoObs(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setAcertoOpen(false)}>Cancelar</CustomButton>
-          <CustomButton size="small" onClick={handleRegistrarAcerto}>Registrar</CustomButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          </span>
+          <PontesField label="Quem pagou">
+            <PontesSelect value={acertoDe} onChange={setAcertoDe} options={membroOptions} placeholder="Selecione" />
+          </PontesField>
+          <PontesField label="Quem recebeu">
+            <PontesSelect value={acertoPara} onChange={setAcertoPara} options={membroOptions} placeholder="Selecione" />
+          </PontesField>
+          <PontesField label="Valor (R$)">
+            <PontesInput
+              type="number"
+              value={acertoValor}
+              onChange={e => setAcertoValor(e.target.value)}
+              placeholder="0,00"
+            />
+          </PontesField>
+          <PontesField label="Observação / comprovante (opcional)">
+            <PontesInput
+              value={acertoObs}
+              onChange={e => setAcertoObs(e.target.value)}
+              placeholder="Pix, TED, dinheiro..."
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      {/* Confirmação genérica */}
+      <PontesDialog
+        open={confirmDialog !== null}
+        title={confirmDialog?.title ?? ""}
+        description={confirmDialog?.description}
+        tone={confirmDialog?.tone ?? "danger"}
+        confirmLabel={confirmLoading ? "Aguarde..." : "Confirmar"}
+        onConfirm={runConfirm}
+        onCancel={() => !confirmLoading && setConfirmDialog(null)}
+      />
+    </div>
   )
 }

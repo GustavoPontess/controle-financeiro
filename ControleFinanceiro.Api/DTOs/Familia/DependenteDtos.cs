@@ -4,8 +4,8 @@ using ControleFinanceiro.Api.Domain.Enums;
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record CriarDependenteDto(
-    [property: Required][property: MaxLength(120)] string Nome,
-    [property: MaxLength(60)] string? Apelido,
+    [Required][MaxLength(120)] string Nome,
+    [MaxLength(60)] string? Apelido,
     DateTime? DataNascimento,
     TipoDependente Tipo);
 
