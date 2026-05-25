@@ -41,7 +41,7 @@ status: CURRENT
 - ~~**#83** — Categorias + Subcategorias (criar entidade Subcategoria no back)~~ ✅ MERGEADA
 - ~~**#84** — Cartão de Crédito — auditar e consertar tudo~~ ✅ MERGEADA (PR #137)
 - ~~**#85** — Família — rateio explícito + aprovação despesa + acerto §16.5~~ ✅ MERGEADA (PR #140)
-- **#86** — Metas conjuntas e individuais (back + front zero)
+- ~~**#86** — Metas conjuntas e individuais (back + front zero)~~ ✅ MERGEADA (PR #142)
 - **#87** — Limites por categoria com alertas (back + front zero)
 - **#88** — Bancos com logo real — popular `LogoUrl` + componente `BankBadge`
 - **#89** — Recorrentes refator — lista, pausar, editar próxima ocorrência
