@@ -38,9 +38,9 @@ status: CURRENT
 
 - **#81** — Dashboard refator com 6 KPIs + gráficos
 - **#82** — Transação Adicionar/Editar — único + recorrente + parcelado completos
-- **#83** — Categorias + Subcategorias (criar entidade Subcategoria no back)
-- **#84** — Cartão de Crédito — auditar e consertar tudo
-- **#85** — Família — rateio explícito + aprovação despesa + acerto §16.5
+- ~~**#83** — Categorias + Subcategorias (criar entidade Subcategoria no back)~~ ✅ MERGEADA
+- ~~**#84** — Cartão de Crédito — auditar e consertar tudo~~ ✅ MERGEADA (PR #137)
+- ~~**#85** — Família — rateio explícito + aprovação despesa + acerto §16.5~~ ✅ MERGEADA (PR #140)
 - **#86** — Metas conjuntas e individuais (back + front zero)
 - **#87** — Limites por categoria com alertas (back + front zero)
 - **#88** — Bancos com logo real — popular `LogoUrl` + componente `BankBadge`
