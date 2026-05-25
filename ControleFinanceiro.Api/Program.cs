@@ -87,6 +87,7 @@ builder.Services.AddScoped<EmprestimoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();
+builder.Services.AddScoped<MetaService>();
 
 // Issue #22 — Família + Membros
 builder.Services.AddScoped<FamiliaService>();

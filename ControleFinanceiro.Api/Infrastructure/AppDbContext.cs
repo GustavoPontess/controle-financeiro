@@ -44,6 +44,9 @@ public class AppDbContext : DbContext
     // ── Issue #24 Dependentes ──
     public DbSet<Dependente> Dependentes => Set<Dependente>();
 
+    // ── Issue #86 Metas ──
+    public DbSet<Meta> Metas => Set<Meta>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recorrente>().ToTable("Assinaturas");
@@ -372,6 +375,37 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<AcertoContas>()
             .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
+        // ── Issue #86 Metas ──
+
+        // Meta → Usuario (Cascade: metas somem com o usuário)
+        modelBuilder.Entity<Meta>()
+            .HasOne(m => m.Usuario)
+            .WithMany()
+            .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Meta → Familia (SetNull: meta vira individual se a família for dissolvida)
+        modelBuilder.Entity<Meta>()
+            .HasOne(m => m.Familia)
+            .WithMany()
+            .HasForeignKey(m => m.FamiliaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Meta → Categoria (SetNull: meta sobrevive sem categoria)
+        modelBuilder.Entity<Meta>()
+            .HasOne(m => m.Categoria)
+            .WithMany()
+            .HasForeignKey(m => m.CategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Meta>()
+            .HasIndex(m => m.UsuarioId);
+
+        modelBuilder.Entity<Meta>()
+            .HasIndex(m => m.FamiliaId);
+
         // ── Issue #27 Importação de extrato ──
 
         // Índice para deduplicar reimportações de OFX pelo FITID.
