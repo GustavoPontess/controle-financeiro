@@ -17,12 +17,12 @@ status: CURRENT
 ## Dashboard
 
 ```
-Site público (6):       2/6  ✅ #75 #77  ⏳ #76 #78 #79 #80
-Telas internas (9):     5/9  ✅ #81 #82 #83 #84 #85  ⏳ #86 #87 #88 #89
+Site público (6):       6/6  ✅ #75 #76 #77 #78 #79 #80
+Telas internas (9):     6/9  ✅ #81 #82 #83 #84 #85 #86  ⏳ #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          7/18 telas+site (#75-#92)
+Total Q5 2026:          12/18 telas+site (#75-#92)
 ```
 
 > Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
