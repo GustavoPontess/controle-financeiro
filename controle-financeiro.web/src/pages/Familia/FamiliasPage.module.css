@@ -1,0 +1,60 @@
+/* FamiliasPage.module.css — #85. Refator legado MUI -> Pontes + CSS vars. */
+
+.root { display: flex; flex-direction: column; gap: 24px; font-family: var(--pontes-font); color: var(--pontes-text); }
+.centered { display: flex; justify-content: center; align-items: center; padding: 48px; }
+
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.title { font-size: 22px; font-weight: 700; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
+
+/* Pending invites */
+.sectionTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); margin-bottom: 12px; }
+.inviteList { display: flex; flex-direction: column; gap: 0; }
+.inviteRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--pontes-border); }
+.inviteRow:first-child { border-top: none; }
+.inviteText { font-size: 13px; color: var(--pontes-text); }
+
+/* Grid of familia cards */
+.famGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.famCardWrap { cursor: pointer; }
+.famCardInner { display: flex; align-items: center; gap: 14px; }
+.famAvatar {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--pontes-primary), var(--pontes-accent));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.famInfo { display: flex; flex-direction: column; min-width: 0; }
+.famNome { font-size: 14px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.famSub { font-size: 12px; color: var(--pontes-text-muted); margin-top: 1px; }
+.famBadge { margin-top: 12px; }
+
+/* Detalhe modal body */
+.detalheBody { display: flex; flex-direction: column; gap: 4px; }
+.detalheFLeft { flex: 1; }
+
+/* Section header inside modal */
+.secRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 0 6px; border-top: 1px solid var(--pontes-border); }
+.secRow:first-child { border-top: none; padding-top: 0; }
+.secTitle { font-size: 13px; font-weight: 700; color: var(--pontes-text); }
+
+/* Generic item list */
+.itemList { display: flex; flex-direction: column; }
+.itemRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--pontes-border); }
+.itemRow:last-child { border-bottom: none; }
+.itemInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.itemPrimary { display: flex; align-items: center; gap: 8px; }
+.itemName { font-size: 13px; font-weight: 600; color: var(--pontes-text); }
+.itemMuted { font-size: 12px; color: var(--pontes-text-muted); }
+.itemSub { font-size: 12px; color: var(--pontes-text-muted); flex: 1; min-width: 0; }
+.itemValue { font-size: 13px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; flex-shrink: 0; }
+
+.saldoPos { font-size: 12px; font-weight: 700; color: var(--pontes-success); white-space: nowrap; flex-shrink: 0; }
+.saldoNeg { font-size: 12px; font-weight: 700; color: var(--pontes-danger); white-space: nowrap; flex-shrink: 0; }
+
+.rowActions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.emptyHint { font-size: 12px; color: var(--pontes-text-muted); padding: 6px 0 10px; }
+
+.arrowIcon { vertical-align: middle; color: var(--pontes-text-muted); }
+
+/* Form col inside modals */
+.formCol { display: flex; flex-direction: column; gap: 16px; }
