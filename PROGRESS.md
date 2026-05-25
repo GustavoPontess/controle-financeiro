@@ -18,11 +18,11 @@ status: CURRENT
 
 ```
 Site público (6):       2/6  ✅ #75 #77  ⏳ #76 #78 #79 #80
-Telas internas (9):     3/9  ✅ #81 #82 #83  ⏳ #84 #85 #86 #87 #88 #89
+Telas internas (9):     5/9  ✅ #81 #82 #83 #84 #85  ⏳ #86 #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          5/18 telas+site (#75-#92)
+Total Q5 2026:          7/18 telas+site (#75-#92)
 ```
 
 > Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
@@ -39,9 +39,19 @@ Total Q5 2026:          5/18 telas+site (#75-#92)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #84 Cartão ⚠️ alta, #85 Família ⚠️ alta, #130 fix data futura, ou site #78/#79/#80)
+(nenhuma issue em execução — próxima livre: #86 Metas, #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80)
 
 ## Resolvidos Q5
+
+- **#85** — Família — rateio explícito + aprovação despesa + acerto (mergeado · PR #140 · sessão 2026-05-25)
+  - Backend 100% completo (Issues #22–#27): Família, Convite, Despesa Compartilhada, Dependentes, Rateio, Acerto de Contas
+  - FamiliasPage refatorada MUI → Pontes + CSS Modules (zero MUI, zero inline style)
+  - 50 testes front cobrindo: render, convites pendentes, Nova Família, detalhe (membros/renda/dependentes/balanço/acertos), permissões admin, modais, PontesDialog
+  - Fix bug: `CriarDependenteDto` usava `[property: Attr]` em record → ASP.NET Core 8 joga `InvalidOperationException` → middleware converte em 409. Corrigido: atributos direto no param do ctor
+
+- **#84** — Cartão de Crédito — auditoria e refator completo (mergeado · PR #137 · sessão 2026-05-25)
+  - CreditCardsPage refatorada MUI → Pontes + CSS Modules
+  - Faturas, pagamento de fatura, stats + limite; 3 testes integração
 
 - **#129** — Validação por campo nos forms (mergeado · PR #135 · sessão 2026-05-23)
   - Login/Register/Categorias: erro vermelho inline via DS (`PontesField error` + `invalid`), `form noValidate` (sem balão nativo)
