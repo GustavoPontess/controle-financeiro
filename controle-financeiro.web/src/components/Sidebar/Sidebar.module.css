@@ -5,7 +5,7 @@
 .aside[data-open="false"] .logoFull { opacity: 0; pointer-events: none; }
 .logoMark { position: absolute; left: 24px; top: 0; bottom: 0; display: flex; align-items: center; opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
 .aside[data-open="false"] .logoMark { opacity: 1; pointer-events: auto; }
-.nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 0; }
+.nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 8px 0; }
 .group { margin-bottom: 8px; }
 .userWrap { padding: 4px 12px 12px; flex-shrink: 0; transition: padding 220ms ease; }
 .aside[data-open="false"] .userWrap { padding-left: 0; padding-right: 0; }
