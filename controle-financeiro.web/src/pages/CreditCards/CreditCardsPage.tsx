@@ -640,7 +640,7 @@ export default function CreditCardsPage() {
                     <ChevronLeft size={18} />
                   </button>
                   {idx < atualIdx && (
-                    <PontesButton size="sm" variant="ghost" iconStart={<ChevronLeft size={14} strokeWidth={2.5} />}
+                    <PontesButton size="md" variant="ghost" iconStart={<ChevronLeft size={16} strokeWidth={2.5} />}
                       onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
                   )}
                   <div className={styles.monthLabel}>
@@ -648,7 +648,7 @@ export default function CreditCardsPage() {
                     <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
                   </div>
                   {idx > atualIdx && (
-                    <PontesButton size="sm" variant="ghost" iconEnd={<ChevronRight size={14} strokeWidth={2.5} />}
+                    <PontesButton size="md" variant="ghost" iconEnd={<ChevronRight size={16} strokeWidth={2.5} />}
                       onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
                   )}
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
