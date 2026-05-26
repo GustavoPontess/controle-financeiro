@@ -633,21 +633,24 @@ export default function CreditCardsPage() {
             const ehAtual = idx === atualIdx
             return (
               <div className={styles.faturaBody}>
-                {/* Navegação por mês: ‹ anterior | mês | próximo › */}
+                {/* Navegação por mês: ‹ anterior | (Hoje?) | mês | (Hoje?) | próximo › */}
                 <div className={styles.monthNav}>
                   <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
                     disabled={idx >= clampHi} onClick={() => setFaturaIdx(idx + 1)}>
                     <ChevronLeft size={18} />
                   </button>
+                  {idx < atualIdx && (
+                    <PontesButton size="sm" variant="ghost" iconStart={<ChevronLeft size={14} strokeWidth={2.5} />}
+                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                  )}
                   <div className={styles.monthLabel}>
                     <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
                     <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
-                    {!ehAtual && (
-                      <button type="button" className={styles.btnToday} onClick={() => setFaturaIdx(atualIdx)}>
-                        ← voltar pra hoje
-                      </button>
-                    )}
                   </div>
+                  {idx > atualIdx && (
+                    <PontesButton size="sm" variant="ghost" iconEnd={<ChevronRight size={14} strokeWidth={2.5} />}
+                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                  )}
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
                     disabled={idx <= clampLo} onClick={() => setFaturaIdx(idx - 1)}>
                     <ChevronRight size={18} />
