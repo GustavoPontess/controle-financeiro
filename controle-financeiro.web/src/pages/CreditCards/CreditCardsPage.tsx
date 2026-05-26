@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
@@ -167,10 +167,13 @@ export default function CreditCardsPage() {
     return () => window.removeEventListener("transactionCreated", onCreated)
   }, [loadData, faturasCartaoId, refreshFaturas])
 
+  // Ao abrir o cartão, o effect ajusta faturaIdx pra fatura atual (período contém hoje).
+  const justOpenedRef = useRef(false)
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
     setFaturasCartaoId(cartaoId)
     setFaturaIdx(0)
+    justOpenedRef.current = true
     setLoadingFaturas(true)
     try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
@@ -293,6 +296,27 @@ export default function CreditCardsPage() {
 
   // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
+
+  // "Agora" capturado uma vez no mount — puro (sem Date.now no render).
+  const [now] = useState(() => Date.now())
+  // Índice da fatura ATUAL = a que contém hoje. Faturas futuras podem existir
+  // como reais (geradas pelo job de recorrentes), então não dá pra assumir que
+  // faturasSorted[0] é a atual.
+  const atualIdx = useMemo(() => {
+    const i = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now && now <= new Date(f.dataFechamento).getTime())
+    if (i >= 0) return i
+    const j = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now)
+    return j >= 0 ? j : 0
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturas, now])
+
+  // Quando acabou de abrir o cartão, posiciona na fatura atual (não na [0]).
+  useEffect(() => {
+    if (!justOpenedRef.current || faturasSorted.length === 0) return
+    justOpenedRef.current = false
+    setFaturaIdx(atualIdx)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturas])
 
   // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
   // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
@@ -580,7 +604,7 @@ export default function CreditCardsPage() {
             const f: FaturaView = ehPrevista ? previstas[-idx - 1] : faturasSorted[idx]
             const st = STATUS[statusKey(f)]
             const open = f.valorRestante > 0
-            const ehAtual = idx === 0
+            const ehAtual = idx === atualIdx
             return (
               <div className={styles.faturaBody}>
                 {/* Navegação por mês: ‹ anterior | mês | próximo › */}
