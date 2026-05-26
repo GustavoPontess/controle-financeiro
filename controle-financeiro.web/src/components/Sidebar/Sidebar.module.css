@@ -10,8 +10,7 @@
 .userWrap { padding: 4px 12px 12px; flex-shrink: 0; }
 .userTrigger { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; cursor: pointer; justify-content: flex-start; transition: gap 200ms ease, padding 200ms ease, background-color .15s ease; }
 .userTrigger:hover { background: var(--pontes-bg); }
-.aside[data-open="false"] .userTrigger { gap: 0; justify-content: center; padding: 8px 0; }
-.aside[data-open="false"] .avatar { box-shadow: none; }
+.aside[data-open="false"] .userTrigger { gap: 0; justify-content: center; padding: 6px 0; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; box-shadow: 0 0 0 2px var(--pontes-surface), 0 0 0 4px var(--pontes-primary-soft); }
 .userInfo { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; opacity: 1; max-width: 200px; overflow: hidden; transition: opacity 160ms ease, max-width 220ms ease; }
 .aside[data-open="false"] .userInfo { opacity: 0; max-width: 0; }
