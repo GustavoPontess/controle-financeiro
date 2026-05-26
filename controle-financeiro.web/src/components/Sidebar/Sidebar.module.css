@@ -8,7 +8,7 @@
 .nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 8px 0; }
 .group { margin-bottom: 8px; }
 .userWrap { padding: 4px 12px 12px; flex-shrink: 0; transition: padding 220ms ease; }
-.aside[data-open="false"] .userWrap { padding-left: 0; padding-right: 0; }
+.aside[data-open="false"] .userWrap { padding-left: 8px; padding-right: 8px; }
 .userTrigger { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; cursor: pointer; justify-content: flex-start; transition: gap 200ms ease, padding 200ms ease, background-color .15s ease; }
 .userTrigger:hover { background: var(--pontes-bg); }
 .aside[data-open="false"] .userTrigger { gap: 0; justify-content: center; padding: 6px 0; }
