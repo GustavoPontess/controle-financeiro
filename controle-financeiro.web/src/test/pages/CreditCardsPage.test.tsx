@@ -88,10 +88,8 @@ describe("CreditCardsPage (#84)", () => {
   it("status: aberta parcial NÃO vira Paga; fechada quitada = Paga; fechada com saldo = Fechada", async () => {
     getFaturasByCartao.mockReset().mockResolvedValue([fAbertaParcial, fFechadaPaga, fFechadaComSaldo])
     renderPage()
-    fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText("Todos os cartões")
-    // Mês atual: aberta com pagamento parcial → "Aberta" (NÃO "Paga")
-    expect(screen.getByText("Aberta")).toBeInTheDocument()
+    // Cartão único → auto-foco; aguarda fatura carregar (badge Aberta da atual).
+    expect(await screen.findByText("Aberta")).toBeInTheDocument()
     expect(screen.getByText(/Pago R\$\s?50,00 de R\$\s?130,00/)).toBeInTheDocument()
     expect(screen.queryByText("Paga")).not.toBeInTheDocument()
     // Mês anterior: fatura fechada e quitada → "Paga"
@@ -122,9 +120,8 @@ describe("CreditCardsPage (#84)", () => {
 
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
-    fireEvent.click(await screen.findByText("Nubank"))
-    await screen.findByText("Todos os cartões")
-    fireEvent.click(screen.getByText("Pagar"))
+    // Cartão único → auto-foco; aguarda Pagar aparecer (fatura carregada).
+    fireEvent.click(await screen.findByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))
     await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(1))
