@@ -51,6 +51,7 @@ public class ExpandirRecorrentesJob
                     ContaId = r.ContaId,
                     CartaoCreditoId = r.CartaoCreditoId,
                     FaturaId = faturaId,
+                    UsadoComoCredito = r.CartaoCreditoId.HasValue, // sem isso DetalheAsync exclui o lançamento da fatura
                     StatusTransacao = StatusTransacao.Previsao,
                     Ativo = true,
                     CriadoPor = r.CriadoPor,
