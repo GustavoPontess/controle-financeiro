@@ -20,7 +20,7 @@ public class ExpandirRecorrentesJob
     public async Task ExecuteAsync()
     {
         var hoje = DateTime.UtcNow.Date;
-        var dataProximaJanela = hoje.AddMonths(3);
+        var dataProximaJanela = hoje.AddMonths(12); // 12 meses de previsão à frente
 
         var recorrentes = await _context.Recorrentes
             .Where(r => r.Ativo && (r.DataFim == null || r.DataFim.Value.Date >= hoje))

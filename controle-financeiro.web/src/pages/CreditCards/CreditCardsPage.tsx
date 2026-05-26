@@ -338,14 +338,20 @@ export default function CreditCardsPage() {
     })
   }, [faturasCartaoId, idsKey])
 
-  // Faturas previstas das assinaturas (recorrentes mensais no cartão) — próximos meses.
+  // Faturas previstas das assinaturas (recorrentes mensais no cartão) — até 12 meses
+  // a partir de hoje (sem ultrapassar, sem duplicar com faturas reais já criadas).
   const addMonthsISO = (iso: string, n: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + n); return d.toISOString() }
   const assinaturasCartao = recorrentes.filter((r) => r.ativo && r.cartaoCreditoId === faturasCartaoId && r.frequencia === 2)
   const baseFatura = faturasSorted[0]
   const previstas: FaturaView[] = []
   if (cartaoAtivo && baseFatura && assinaturasCartao.length > 0) {
     const total = assinaturasCartao.reduce((s, r) => s + r.valor, 0)
-    for (let n = 1; n <= 2; n++) {
+    // Horizonte = 12 meses a partir de hoje; quantos meses entre base (mais futura
+    // real) e horizonte → quantas previstas projetar (0 se base já cobre 12 meses).
+    const horizonte = new Date(now); horizonte.setMonth(horizonte.getMonth() + 12)
+    const baseDate = new Date(baseFatura.dataFechamento)
+    const monthsToProject = Math.max(0, (horizonte.getFullYear() - baseDate.getFullYear()) * 12 + (horizonte.getMonth() - baseDate.getMonth()))
+    for (let n = 1; n <= monthsToProject; n++) {
       const dataFechamento = addMonthsISO(baseFatura.dataFechamento, n)
       const fech = new Date(dataFechamento)
       previstas.push({
