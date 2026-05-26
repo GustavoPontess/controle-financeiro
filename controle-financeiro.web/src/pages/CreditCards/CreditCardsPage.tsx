@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect, PontesEmptyState,
+  PontesField, PontesInput, PontesSelect, PontesEmptyState, PontesSkeletonList,
 } from "@/components/pontes"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
@@ -318,6 +318,21 @@ export default function CreditCardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faturas])
 
+  // Atalhos teclado ← → pra navegar entre meses quando o painel está aberto.
+  // Ignora quando foco está num campo de texto/select (não atrapalha digitação).
+  useEffect(() => {
+    if (!faturasCartaoId) return
+    const onKey = (ev: KeyboardEvent) => {
+      const tgt = ev.target as HTMLElement | null
+      if (tgt && /input|textarea|select/i.test(tgt.tagName)) return
+      if (tgt && tgt.isContentEditable) return
+      if (ev.key === "ArrowLeft") { ev.preventDefault(); setFaturaIdx((i) => i + 1) }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); setFaturaIdx((i) => i - 1) }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [faturasCartaoId])
+
   // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
   // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
   const idsParaCarregar = (() => {
@@ -598,9 +613,15 @@ export default function CreditCardsPage() {
       {faturasCartaoId && cartaoAtivo && (
         <PontesCard padding={0} radius={16}>
           {loadingFaturas ? (
-            <div className={styles.faturaEmpty}>Carregando…</div>
+            <div className={styles.faturaSkeleton}><PontesSkeletonList rows={4} /></div>
           ) : faturasSorted.length === 0 ? (
-            <div className={styles.faturaEmpty}>Nenhuma fatura ainda. Registre uma compra no crédito pra criar a primeira.</div>
+            <div className={styles.faturaEmpty}>
+              <PontesEmptyState
+                icon={<ReceiptText size={26} />}
+                title="Nenhuma fatura ainda"
+                description="Registre uma compra no crédito pra criar a primeira fatura."
+              />
+            </div>
           ) : (() => {
             const clampLo = -previstas.length
             const clampHi = faturasSorted.length - 1
@@ -621,6 +642,11 @@ export default function CreditCardsPage() {
                   <div className={styles.monthLabel}>
                     <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
                     <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
+                    {!ehAtual && (
+                      <button type="button" className={styles.btnToday} onClick={() => setFaturaIdx(atualIdx)}>
+                        ← voltar pra hoje
+                      </button>
+                    )}
                   </div>
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
                     disabled={idx <= clampLo} onClick={() => setFaturaIdx(idx - 1)}>
@@ -637,8 +663,9 @@ export default function CreditCardsPage() {
                         {ehPrevista
                           ? <PontesBadge tone="neutral" size="sm">Prevista</PontesBadge>
                           : <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>}
-                        <span className={styles.muted} data-venc={f.vencida ? "true" : undefined}>
-                          {f.vencida ? "Vencida em " : "Vence "}{formatDate(f.dataVencimento)}
+                        {!ehPrevista && f.vencida && <PontesBadge tone="danger" size="sm">Vencida</PontesBadge>}
+                        <span className={styles.muted}>
+                          {f.vencida ? "Venceu " : "Vence "}{formatDate(f.dataVencimento)}
                         </span>
                         {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
                       </div>
@@ -755,7 +782,18 @@ export default function CreditCardsPage() {
             />
           </PontesField>
           <PontesField label="Valor" required error={pagarErrors.valor}>
-            <PontesInput type="number" value={pagarForm.valor} onChange={(e) => { setPagarForm((f) => ({ ...f, valor: e.target.value })); setPagarErrors((p) => ({ ...p, valor: undefined })) }} invalid={!!pagarErrors.valor} min={0.01} step="0.01" />
+            <PontesInput
+              iconStart="R$"
+              value={fmtMoneyInput(pagarForm.valor ? Number(pagarForm.valor) : undefined)}
+              onChange={(e) => {
+                const v = parseMoney(e.target.value)
+                setPagarForm((f) => ({ ...f, valor: v != null ? String(v) : "" }))
+                setPagarErrors((p) => ({ ...p, valor: undefined }))
+              }}
+              invalid={!!pagarErrors.valor}
+              inputMode="decimal"
+              placeholder="0,00"
+            />
           </PontesField>
           <div className={styles.grid2}>
             <PontesField label="Data do pagamento" required>
