@@ -812,7 +812,7 @@ export default function CreditCardsPage() {
       <PontesDialog
         open={delId !== null}
         title="Remover cartão?"
-        description="Todas as transações e faturas vinculadas também serão excluídas."
+        description="O cartão sai da lista e as compras vinculadas somem do extrato, mas os pagamentos de fatura ficam preservados no histórico da conta."
         confirmLabel="Remover"
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}
