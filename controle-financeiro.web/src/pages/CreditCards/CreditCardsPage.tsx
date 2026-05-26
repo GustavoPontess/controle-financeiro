@@ -346,9 +346,8 @@ export default function CreditCardsPage() {
   const previstas: FaturaView[] = []
   if (cartaoAtivo && baseFatura && assinaturasCartao.length > 0) {
     const total = assinaturasCartao.reduce((s, r) => s + r.valor, 0)
-    // Horizonte = 12 meses a partir de hoje; quantos meses entre base (mais futura
-    // real) e horizonte → quantas previstas projetar (0 se base já cobre 12 meses).
-    const horizonte = new Date(now); horizonte.setMonth(horizonte.getMonth() + 12)
+    // Horizonte = fim do ano corrente (Dezembro). Projeta os meses faltantes até lá.
+    const horizonte = new Date(new Date(now).getFullYear(), 11, 1) // Dez/01 (mês 11)
     const baseDate = new Date(baseFatura.dataFechamento)
     const monthsToProject = Math.max(0, (horizonte.getFullYear() - baseDate.getFullYear()) * 12 + (horizonte.getMonth() - baseDate.getMonth()))
     for (let n = 1; n <= monthsToProject; n++) {
