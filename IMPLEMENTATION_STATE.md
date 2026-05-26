@@ -1,39 +1,42 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-23
+last_reviewed: 2026-05-26
 status: EM_EXECUCAO
-issue_atual: '#138 — redesign visual/UX da tela de Cartões. Branch feature/138-cartao-redesign (NÃO mergeada, SEM PR, ~46 commits à frente da main). PARADO em ponto verde a pedido (TCC). Ainda tem coisa pra mexer. Mergeados antes na main: #82, #128, #129, #84 (PR #137).'
+issue_atual: '#138 — redesign visual/UX da tela de Cartões. Branch feature/138-cartao-redesign (~51 commits à frente da main). PR #139 aberto (Refs #138, NÃO mergeado, CI verde). Iteração visual em andamento; aguarda OK do usuário pra merge. Mergeados antes na main: #82, #128, #129, #84 (PR #137).'
 ---
 
 ## Issue em execução — #138 (redesign visual/UX da tela de Cartões)
 
-**Branch:** `feature/138-cartao-redesign`. NÃO mergeada, SEM PR. Parado em ponto verde a pedido (usuário foi fazer o TCC). **Ainda há trabalho.**
+**Branch:** `feature/138-cartao-redesign` (~51 commits). **PR #139** aberto, CI verde, NÃO mergeado (corpo diz WIP, usa `Refs #138` pra não fechar a issue).
 **Objetivo:** repensar a tela de Cartões — bonita, simples, foco usabilidade.
 
 ### Feito na branch (tudo verde: lint + build + 6 testes CreditCardsPage; back compila)
-**Form de cartão:** validação por campo (nome/banco emissor obrigatórios; últimos 4 díg só número; limite com máscara R$ obrigatório quando crédito; dia fechamento/vencimento inteiro 1–31). Banco emissor required; conta que paga opcional.
-**`PontesSelect`:** busca (auto >8) + portal + corrigido scroll (rolava/fechava bugado: `min-height:0` no `.options` + scroll interno não fecha). Demo no `/design-system`.
-**Cartão (visual):** cartão físico de verdade — **face (gradiente da bandeira) arredondada SEPARADA** do **bloco de info neutro** (disponível/limite/barra) abaixo. Chip + contactless à direita, número em relevo, gloss. Largura travada, centralizado no foco, sem borda azul ao selecionar.
+**Form de cartão:** validação por campo (nome/banco emissor obrigatórios; últimos 4 díg só número; limite com máscara R$ obrigatório quando crédito; dia fechamento/vencimento inteiro 1–31).
+**`PontesSelect`:** busca (auto >8) + portal + scroll interno não fecha (`min-height:0` no `.options`). Demo no `/design-system`.
+**Cartão (visual):** tile = **face do cartão** (gradiente arredondado, chip + contactless, número em relevo, gloss) **SEPARADA** de um **bloco de info neutro** (`var(--pontes-surface)`) com disponível/limite/barra. Largura travada, centralizado no foco, sem borda azul ao selecionar.
 **Modo foco:** clicar no cartão isola ele (esconde os outros) com a fatura abaixo; botão "Todos os cartões" volta; resumo continua visível; **1 cartão só → abre direto no foco**.
-**Fatura (UX):** navegação **por mês** (setas ‹ ›) no lugar do histórico; lançamentos **já abertos**; carga por **janela de 3** (mês + vizinhos, escala). **"Paga" só quando fechada + quitada** (parcial mantém Aberta). **Pagamentos no detalhe** (`FaturaDetalheDto.Pagamentos` via `FaturaPagaId`) intercalados com as compras em **linha do tempo cronológica por data+hora** (linha verde) + **nota "Total pago"**. **Faturas futuras PREVISTAS** das assinaturas (recorrentes mensais no cartão), 2 meses à frente, badge "Prevista", sem pagar.
-**Excluir cartão (bug corrigido):** `DeletarAsync` desvincula pagamentos da fatura (mantém no extrato da conta) em vez de travar no FK Restrict — antes cartão com fatura paga dava erro.
-**Seeder:** `MeioPagamento` em todas as transações; compras no crédito → faturas reais (passadas pagas + atual aberta) com pagamento; `CriadoEm` com hora realista (ordena data+hora); Recorrentes/Assinaturas (salário, Netflix/Spotify no cartão, academia em conta).
-**Outros:** favicon → marca Pontes (`public/icon.svg`); contas salvas deduplicam por e-mail (menu não repete usuário).
+**Fatura (UX):** navegação **por mês** (setas ‹ ›); lançamentos **já abertos**; carga por **janela de 3**. **Atual identificada pela data** (não pela posição [0] — porque o job cria faturas reais futuras com previsões). **"Paga" só quando fechada + quitada** (parcial mantém Aberta). **Pagamentos no detalhe** (`FaturaDetalheDto.Pagamentos`) intercalados com compras em linha do tempo cronológica por data+hora; nota "Total pago". **Previstas das assinaturas até Dezembro do ano corrente** (frontend + backend job alinhados).
+**Excluir cartão:** `DeletarAsync` desvincula pagamentos da fatura (`FaturaPagaId = null`, ficam no extrato da conta) em vez de travar no FK Restrict; compras saem com o cartão (cascade).
+**Seeder:** `MeioPagamento` em todas as transações; compras no crédito → faturas reais (passadas pagas + atual aberta) com pagamento; `CriadoEm` com hora realista; Recorrentes/Assinaturas (salário, Netflix/Spotify no cartão, academia em conta).
+**Sidebar (rail colapsado):** avatar 28px (era 34) + sem anel externo; `.userTrigger` e nav items mesma largura (padding lateral 8); hover azul claro (color-mix 70% de `--pontes-primary-soft`).
+**Outros:** favicon → marca Pontes; contas salvas deduplicam por e-mail; job `ExpandirRecorrentes` marca `UsadoComoCredito = true` quando cartão (senão o detalhe da fatura escondia as previsões).
+
+### Decisões de design registradas em `docs/features/cartao-credito/regras.md` (seção 9)
 
 ### Falta (#138) — retomar aqui
-- [ ] Continuar polimento visual/UX conforme o usuário apontar ("tem coisa pra mexer").
-- [ ] Faturas previstas só projetam a partir da fatura real mais recente (sem fatura real → sem previstas). Ok por ora; futuro = projeção no backend.
-- [ ] Avaliar soft-delete vs hard-delete das compras ao excluir cartão (hoje hard-delete na cascade).
-- [ ] Com OK do usuário no visual: PR `Closes #138` + CI + merge.
+- [ ] Continuar polimento visual conforme o usuário apontar (PR ainda aberto, sem merge).
+- [ ] **Pendência de produto**: soft-delete vs hard-delete das compras ao excluir cartão (hoje hard-delete na cascade).
+- [ ] Disparar Hangfire ou esperar próximo schedule pra DB ter previsões reais até Dez (hoje só vai até Ago).
+- [ ] Com OK do usuário: tirar WIP do título, trocar Refs por Closes, merge.
 
 ### Dev no ar
-Postgres docker `controlefinanceiro-db` + API 5293 (reseedado) + front 5173 (preview MCP serverId `3a822177-8d00-4120-b131-6c3d57c2115d`). Login `dev@controle.test` / `Dev@123456`. **Avisos de hooks no console do preview = artefato de HMR das edições ao vivo; somem em reload completo.**
+Postgres docker `controlefinanceiro-db` + API 5293 + front 5173. Login `dev@controle.test` / `Dev@123456`. Preview MCP serverId muda a cada sessão.
 
 ### Tooling adicionado (chore `996b3ea`)
 Plugins oficiais vendorados em `.claude/` (sem `/plugin` no ambiente): skill `frontend-design`, `commit-commands`, agents `pr-review-toolkit`.
 
 ### Spin-offs ainda abertos
-#130 (editar bloqueia data futura no crédito), #131 (mover components/transactions → pages/Transactions). Futuro: logo bandeira/banco no card (#88); projeção de faturas futuras no backend.
+#130 (editar bloqueia data futura no crédito), #131 (mover components/transactions → pages/Transactions), #88 (logo bandeira/banco no card).
 
 ---
 
