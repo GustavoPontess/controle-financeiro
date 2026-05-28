@@ -555,9 +555,7 @@ export default function CreditCardsPage() {
           <div className={styles.cardFace}>
             <div className={styles.faceTop}>
               <div className={styles.cardNameWrap}>
-                {c.bancoLogoUrl && (
-                  <img src={c.bancoLogoUrl} alt="" className={styles.bancoLogo} aria-hidden="true" />
-                )}
+                <span className={styles.cardName}>{c.nome}</span>
                 {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
               </div>
             </div>
