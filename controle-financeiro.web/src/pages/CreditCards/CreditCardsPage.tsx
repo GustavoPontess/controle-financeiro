@@ -73,15 +73,22 @@ const BANDEIRA_GRAD: Record<number, string> = {
 }
 const grad = (b: number) => BANDEIRA_GRAD[b] ?? BANDEIRA_GRAD[6]
 
-const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" }> = {
+const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" | "neutral" }> = {
   1: { label: "Aberta", tone: "soft" },
   2: { label: "Fechada", tone: "warning" },
   3: { label: "Paga", tone: "success" },
+  4: { label: "Futura", tone: "neutral" },
 }
 // "Paga" só quando a fatura FECHOU e não há saldo restante. Enquanto aberta,
 // permanece "Aberta" mesmo com pagamento parcial/antecipado — novas compras
 // ainda podem entrar no ciclo. Fechada com saldo restante → "Fechada" (a pagar).
-const statusKey = (f: Fatura) => (f.estadoCiclo === 1 ? (f.valorRestante <= 0 ? 3 : 2) : 1)
+// "Futura": ciclo ainda nem começou (dataInicio > hoje). Bancos reais (Nubank,
+// Itaú, Bradesco) NÃO permitem pagar fatura futura inteira — só antecipar
+// parcelas individuais (não implementado). Bloqueio do botão Pagar.
+const statusKey = (f: Fatura, now: number) => {
+  if (f.estadoCiclo === 1) return f.valorRestante <= 0 ? 3 : 2
+  return new Date(f.dataInicio).getTime() > now ? 4 : 1
+}
 
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
 const emptyForm: FormState = {
@@ -628,9 +635,12 @@ export default function CreditCardsPage() {
             const idx = Math.max(clampLo, Math.min(faturaIdx, clampHi))
             const ehPrevista = idx < 0
             const f: FaturaView = ehPrevista ? previstas[-idx - 1] : faturasSorted[idx]
-            const st = STATUS[statusKey(f)]
+            const st = STATUS[statusKey(f, now)]
             const open = f.valorRestante > 0
             const ehAtual = idx === atualIdx
+            // Ciclo ainda não começou (dataInicio > hoje) — fatura "Futura".
+            // Bancos reais não permitem pagar fatura futura inteira; bloqueia botão.
+            const ehFutura = !ehPrevista && new Date(f.dataInicio).getTime() > now
             return (
               <div className={styles.faturaBody}>
                 {/* Navegação por mês: ‹ anterior | (Hoje?) | mês | (Hoje?) | próximo › */}
@@ -673,7 +683,7 @@ export default function CreditCardsPage() {
                         {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
                       </div>
                     </div>
-                    {open && !ehPrevista && (
+                    {open && !ehPrevista && !ehFutura && (
                       <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
                         onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
                         Pagar
