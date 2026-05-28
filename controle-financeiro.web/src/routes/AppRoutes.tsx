@@ -21,6 +21,7 @@ import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import MetasPage from "../pages/Metas/MetasPage"
+import LimitesPage from "../pages/Limites/LimitesPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
 import SiteLayout from "../pages/Site/SiteLayout"
@@ -87,6 +88,7 @@ export default function AppRoutes() {
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/metas" element={<MetasPage />} />
+          <Route path="/limites" element={<LimitesPage />} />
           <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
