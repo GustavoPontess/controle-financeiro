@@ -109,7 +109,7 @@ export default function BancosPage() {
         <PontesButton
           variant="primary"
           size="sm"
-          icon={<Plus size={15} />}
+          iconStart={<Plus size={15} />}
           onClick={() => { setEditingConta(null); setOpenDialog(true) }}
         >
           Adicionar Conta
@@ -132,7 +132,7 @@ export default function BancosPage() {
             <PontesButton
               variant="primary"
               size="sm"
-              icon={<Plus size={15} />}
+              iconStart={<Plus size={15} />}
               onClick={() => { setEditingConta(null); setOpenDialog(true) }}
             >
               Adicionar Conta
@@ -186,15 +186,15 @@ export default function BancosPage() {
                       {firstConta && !firstConta.isCarteira && (
                         <>
                           <PontesIconButton
-                            size="sm"
+                            size={32}
                             title="Editar"
                             onClick={() => { setEditingConta(firstConta); setOpenDialog(true) }}
                           >
                             <Pencil size={14} />
                           </PontesIconButton>
                           <PontesIconButton
-                            size="sm"
-                            tone="danger"
+                            size={32}
+                            style={{ color: "var(--pontes-danger, #ef4444)" }}
                             title="Excluir"
                             onClick={() => setDeleteTarget(firstConta)}
                           >
@@ -228,15 +228,15 @@ export default function BancosPage() {
                       {!conta.isCarteira && (
                         <>
                           <PontesIconButton
-                            size="sm"
+                            size={32}
                             title="Editar"
                             onClick={() => { setEditingConta(conta); setOpenDialog(true) }}
                           >
                             <Pencil size={14} />
                           </PontesIconButton>
                           <PontesIconButton
-                            size="sm"
-                            tone="danger"
+                            size={32}
+                            style={{ color: "var(--pontes-danger, #ef4444)" }}
                             title="Excluir"
                             onClick={() => setDeleteTarget(conta)}
                           >

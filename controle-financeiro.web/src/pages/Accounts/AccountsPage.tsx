@@ -108,7 +108,7 @@ export default function AccountsPage() {
         <PontesButton
           variant="primary"
           size="sm"
-          icon={<Plus size={15} />}
+          iconStart={<Plus size={15} />}
           onClick={() => { setEditingConta(null); setOpenDialog(true) }}
         >
           Nova Conta
@@ -151,7 +151,7 @@ export default function AccountsPage() {
             <PontesButton
               variant="primary"
               size="sm"
-              icon={<Plus size={15} />}
+              iconStart={<Plus size={15} />}
               onClick={() => { setEditingConta(null); setOpenDialog(true) }}
             >
               Nova Conta
@@ -203,16 +203,16 @@ export default function AccountsPage() {
                 {/* Actions */}
                 <div className={styles.cardFoot}>
                   <PontesIconButton
-                    size="sm"
+                    size={32}
                     title="Editar"
                     onClick={() => { setEditingConta(conta); setOpenDialog(true) }}
                   >
                     <Pencil size={14} />
                   </PontesIconButton>
                   <PontesIconButton
-                    size="sm"
-                    tone="danger"
+                    size={32}
                     title="Excluir"
+                    style={{ color: "var(--pontes-danger, #ef4444)" }}
                     onClick={() => setDeleteTarget(conta)}
                   >
                     <Trash2 size={14} />
