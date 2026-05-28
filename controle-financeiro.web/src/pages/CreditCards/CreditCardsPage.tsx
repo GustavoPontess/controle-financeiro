@@ -1,26 +1,40 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, Wallet, ChevronRight, ChevronDown, Banknote,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect, PontesProgress, PontesEmptyState,
+  PontesField, PontesInput, PontesSelect, PontesEmptyState, PontesSkeletonList,
 } from "@/components/pontes"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
+import { getRecorrentes } from "../../services/recorrenteService"
+import type { Recorrente } from "../../types/Recorrente"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Fatura, FaturaDetalhe, PagarFaturaPayload } from "../../types/Fatura"
+import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
 import styles from "./CreditCardsPage.module.css"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
+// Máscara de moeda pro input de limite: dígitos → número (centavos) e volta.
+const parseMoney = (masked: string): number | undefined => {
+  const digits = masked.replace(/\D/g, "")
+  return digits ? Number(digits) / 100 : undefined
+}
+const fmtMoneyInput = (n?: number): string =>
+  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 // Datas de ciclo vêm como UTC (meia-noite) — formata em UTC pra não cair pro dia anterior.
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
+// Mês de referência da fatura (ex.: "Junho 2026") — usa o fechamento.
+const mesLabel = (s: string) => {
+  const m = new Date(s).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
 
 const BANDEIRAS = [
   { value: "1", label: "Visa" }, { value: "2", label: "Mastercard" }, { value: "3", label: "Elo" },
@@ -59,10 +73,70 @@ const BANDEIRA_GRAD: Record<number, string> = {
 }
 const grad = (b: number) => BANDEIRA_GRAD[b] ?? BANDEIRA_GRAD[6]
 
-const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" }> = {
+// Escurece um hex (mistura com preto) — pra gerar gradient bonito a partir
+// da cor da marca do banco (Nubank #820AD1 → #4a0577 + #820AD1).
+function darken(hex: string, amount = 0.45): string {
+  const h = hex.replace("#", "")
+  const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h
+  const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16)
+  const k = 1 - amount
+  const rr = Math.round(r * k), gg = Math.round(g * k), bb = Math.round(b * k)
+  return `#${rr.toString(16).padStart(2, "0")}${gg.toString(16).padStart(2, "0")}${bb.toString(16).padStart(2, "0")}`
+}
+function cardGradient(bancoCor: string | undefined, bandeira: number): string {
+  if (bancoCor && /^#?[0-9a-f]{3,8}$/i.test(bancoCor)) {
+    const hex = bancoCor.startsWith("#") ? bancoCor : `#${bancoCor}`
+    return `linear-gradient(135deg, ${darken(hex, 0.45)}, ${hex})`
+  }
+  return grad(bandeira)
+}
+
+// Próxima ocorrência (dia do mês) a partir de hoje. Se o dia já passou no mês
+// atual, pula pro próximo mês. Retorna dias inteiros até essa data.
+function diasAteProxDia(dia: number | undefined, now: number): number | null {
+  if (!dia) return null
+  const today = new Date(now); today.setHours(0, 0, 0, 0)
+  const y = today.getFullYear(), m = today.getMonth()
+  const ultimoDoMes = new Date(y, m + 1, 0).getDate()
+  let alvo = new Date(y, m, Math.min(dia, ultimoDoMes))
+  if (alvo < today) {
+    const proxUltimo = new Date(y, m + 2, 0).getDate()
+    alvo = new Date(y, m + 1, Math.min(dia, proxUltimo))
+  }
+  return Math.round((alvo.getTime() - today.getTime()) / 86_400_000)
+}
+
+// Marca visual da bandeira no canto inferior direito do card físico.
+// Mastercard usa 2 círculos icônicos. Demais usam wordmark estilizado.
+function BandeiraMark({ bandeira, label }: { bandeira: number; label: string }) {
+  if (bandeira === 2) {
+    return (
+      <svg width="46" height="30" viewBox="0 0 46 30" aria-label="Mastercard" role="img">
+        <circle cx="17" cy="15" r="13" fill="#eb001b" opacity="0.92" />
+        <circle cx="29" cy="15" r="13" fill="#f79e1b" opacity="0.92" />
+        <path d="M23 5.5a13 13 0 0 0 0 19 13 13 0 0 0 0-19z" fill="#ff5f00" opacity="0.95" />
+      </svg>
+    )
+  }
+  // Wordmark estilizado em branco semi-transparente.
+  return <span className={styles.bandeiraWordmark}>{label}</span>
+}
+
+const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" | "neutral" }> = {
   1: { label: "Aberta", tone: "soft" },
   2: { label: "Fechada", tone: "warning" },
   3: { label: "Paga", tone: "success" },
+  4: { label: "Futura", tone: "neutral" },
+}
+// "Paga" só quando a fatura FECHOU e não há saldo restante. Enquanto aberta,
+// permanece "Aberta" mesmo com pagamento parcial/antecipado — novas compras
+// ainda podem entrar no ciclo. Fechada com saldo restante → "Fechada" (a pagar).
+// "Futura": ciclo ainda nem começou (dataInicio > hoje). Bancos reais (Nubank,
+// Itaú, Bradesco) NÃO permitem pagar fatura futura inteira — só antecipar
+// parcelas individuais (não implementado). Bloqueio do botão Pagar.
+const statusKey = (f: Fatura, now: number) => {
+  if (f.estadoCiclo === 1) return f.valorRestante <= 0 ? 3 : 2
+  return new Date(f.dataInicio).getTime() > now ? 4 : 1
 }
 
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
@@ -70,6 +144,12 @@ const emptyForm: FormState = {
   nome: "", ultimosDigitos: undefined, bandeira: 6, modo: "credito_debito",
   limite: undefined, diaFechamento: undefined, diaVencimento: undefined, contaId: undefined, bancoId: undefined,
 }
+
+type CartaoErrors = { nome?: string; bancoId?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
+
+// Fatura real OU prevista (projetada das assinaturas, com lançamentos locais).
+type ProjLancamento = { id: string; descricao: string; valor: number; data: string }
+type FaturaView = Fatura & { prevista?: boolean; projLancamentos?: ProjLancamento[] }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -79,22 +159,21 @@ export default function CreditCardsPage() {
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [bancos, setBancos] = useState<Banco[]>([])
+  const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
 
-  // Modal cartão
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
-  const [formErrors, setFormErrors] = useState<{ nome?: string; conta?: string }>({})
+  const [formErrors, setFormErrors] = useState<CartaoErrors>({})
   const [loading, setLoading] = useState(false)
+  const clearErr = (k: keyof CartaoErrors) => setFormErrors((p) => ({ ...p, [k]: undefined }))
 
-  // Faturas
   const [faturasCartaoId, setFaturasCartaoId] = useState<string | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [loadingFaturas, setLoadingFaturas] = useState(false)
-  const [expandedFaturaId, setExpandedFaturaId] = useState<string | null>(null)
   const [faturaDetalhes, setFaturaDetalhes] = useState<Record<string, FaturaDetalhe>>({})
+  const [faturaIdx, setFaturaIdx] = useState(0) // 0 = fatura mais recente (atual)
 
-  // Pagamento
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
   const [pagarForm, setPagarForm] = useState({
@@ -103,15 +182,15 @@ export default function CreditCardsPage() {
   const [pagarErrors, setPagarErrors] = useState<{ conta?: string; valor?: string }>({})
   const [pagarLoading, setPagarLoading] = useState(false)
 
-  // Exclusão
   const [delId, setDelId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
-      const [cs, conts, bs] = await Promise.all([getCartoes(), getContas(), getBancos()])
+      const [cs, conts, bs, recs] = await Promise.all([getCartoes(), getContas(), getBancos(), getRecorrentes().catch(() => [])])
       setCartoes(cs)
       setContas(conts.filter((c) => !c.isCarteira))
       setBancos(bs)
+      setRecorrentes(recs)
     } catch {
       notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
     }
@@ -119,36 +198,54 @@ export default function CreditCardsPage() {
 
   useEffect(() => { void loadData() }, [loadData])
 
-  // Recarrega quando uma transação é criada pelo popup global (gastos/limite/fatura).
+  const refreshFaturas = useCallback(async (cartaoId: string) => {
+    setFaturas(await getFaturasByCartao(cartaoId))
+  }, [])
+
+  // Recarrega o detalhe (lançamentos + pagamentos) de uma fatura no cache.
+  const refreshDetalhe = useCallback(async (cartaoId: string, faturaId: string) => {
+    try {
+      const d = await getFaturaDetalhe(cartaoId, faturaId)
+      setFaturaDetalhes((prev) => ({ ...prev, [faturaId]: d }))
+    } catch { /* ignore */ }
+  }, [])
+
+  // Recarrega quando uma transação é criada pelo popup global.
   useEffect(() => {
     const onCreated = () => {
       void loadData()
-      if (faturasCartaoId) getFaturasByCartao(faturasCartaoId).then(setFaturas).catch(() => { /* ignore */ })
+      if (faturasCartaoId) {
+        refreshFaturas(faturasCartaoId).catch(() => { /* ignore */ })
+        setFaturaDetalhes({}) // invalida cache → auto-load refaz o detalhe do mês atual
+      }
     }
     window.addEventListener("transactionCreated", onCreated)
     return () => window.removeEventListener("transactionCreated", onCreated)
-  }, [loadData, faturasCartaoId])
+  }, [loadData, faturasCartaoId, refreshFaturas])
 
+  // Ao abrir o cartão, o effect ajusta faturaIdx pra fatura atual (período contém hoje).
+  const justOpenedRef = useRef(false)
   const openFaturas = async (cartaoId: string) => {
     if (faturasCartaoId === cartaoId) { setFaturasCartaoId(null); return }
     setFaturasCartaoId(cartaoId)
+    setFaturaIdx(0)
+    justOpenedRef.current = true
     setLoadingFaturas(true)
-    try { setFaturas(await getFaturasByCartao(cartaoId)) }
+    try { await refreshFaturas(cartaoId) }
     finally { setLoadingFaturas(false) }
   }
 
-  const toggleFatura = async (faturaId: string, cartaoId: string) => {
-    if (expandedFaturaId === faturaId) { setExpandedFaturaId(null); return }
-    setExpandedFaturaId(faturaId)
-    if (!faturaDetalhes[faturaId]) {
-      try {
-        const detalhe = await getFaturaDetalhe(cartaoId, faturaId)
-        setFaturaDetalhes((prev) => ({ ...prev, [faturaId]: detalhe }))
-      } catch {
-        notify({ open: true, message: "Erro ao carregar transações da fatura", severity: "error" })
-      }
+  // Com um único cartão de crédito, já abre direto no modo foco (uma vez).
+  const didAutoOpenRef = useRef(false)
+  useEffect(() => {
+    if (didAutoOpenRef.current || faturasCartaoId) return
+    const credito = cartoes.filter((c) => c.temCredito)
+    if (cartoes.length === 1 && credito.length === 1) {
+      didAutoOpenRef.current = true
+      void openFaturas(credito[0].id)
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartoes])
 
   const openPagar = (faturaId: string, cartaoId: string, valorRestante: number, contaId?: string) => {
     setPagarFaturaId(faturaId)
@@ -177,7 +274,9 @@ export default function CreditCardsPage() {
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
       setPagarFaturaId(null)
       await loadData()
-      if (faturasCartaoId) setFaturas(await getFaturasByCartao(faturasCartaoId))
+      if (faturasCartaoId) await refreshFaturas(faturasCartaoId)
+      // Invalida o detalhe da fatura paga pra timeline mostrar o pagamento.
+      await refreshDetalhe(pagarCartaoId, pagarFaturaId)
     } catch {
       notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
     } finally { setPagarLoading(false) }
@@ -194,9 +293,20 @@ export default function CreditCardsPage() {
   }
 
   const handleSalvar = async () => {
-    const e: { nome?: string; conta?: string } = {}
+    const e: CartaoErrors = {}
     if (!form.nome.trim()) e.nome = "Informe o nome do cartão"
-    if (form.modo !== "prepago" && !form.contaId) e.conta = "Selecione a conta vinculada"
+    if (!form.bancoId) e.bancoId = "Selecione o banco emissor"
+    if (form.ultimosDigitos && form.ultimosDigitos.length !== 4) e.ultimosDigitos = "Use os 4 últimos dígitos"
+    if (temCredito) {
+      if (form.limite == null) e.limite = "Informe o limite"
+      else if (form.limite <= 0) e.limite = "Limite deve ser maior que zero"
+      if (form.diaFechamento == null) e.diaFechamento = "Informe o dia"
+      else if (!Number.isInteger(form.diaFechamento) || form.diaFechamento < 1 || form.diaFechamento > 31)
+        e.diaFechamento = "Dia entre 1 e 31"
+      if (form.diaVencimento == null) e.diaVencimento = "Informe o dia"
+      else if (!Number.isInteger(form.diaVencimento) || form.diaVencimento < 1 || form.diaVencimento > 31)
+        e.diaVencimento = "Dia entre 1 e 31"
+    }
     setFormErrors(e)
     if (Object.keys(e).length) return
     setLoading(true)
@@ -234,11 +344,280 @@ export default function CreditCardsPage() {
 
   const totalLimite = cartoes.filter((c) => c.temCredito && c.limite).reduce((s, c) => s + (c.limite ?? 0), 0)
   const totalGastos = cartoes.filter((c) => c.temCredito).reduce((s, c) => s + c.gastosNoCicloAtual, 0)
+  const totalDisp = Math.max(0, totalLimite - totalGastos)
   const isPrePago = form.modo === "prepago"
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
-
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
+  const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
+
+  // "Agora" capturado uma vez no mount — puro (sem Date.now no render).
+  const [now] = useState(() => Date.now())
+  // Índice da fatura ATUAL = a que contém hoje. Faturas futuras podem existir
+  // como reais (geradas pelo job de recorrentes), então não dá pra assumir que
+  // faturasSorted[0] é a atual.
+  const atualIdx = useMemo(() => {
+    const i = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now && now <= new Date(f.dataFechamento).getTime())
+    if (i >= 0) return i
+    const j = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now)
+    return j >= 0 ? j : 0
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturas, now])
+
+  // Quando acabou de abrir o cartão, posiciona na fatura atual (não na [0]).
+  useEffect(() => {
+    if (!justOpenedRef.current || faturasSorted.length === 0) return
+    justOpenedRef.current = false
+    setFaturaIdx(atualIdx)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturas])
+
+  // Atalhos teclado ← → pra navegar entre meses quando o painel está aberto.
+  // Ignora quando foco está num campo de texto/select (não atrapalha digitação).
+  useEffect(() => {
+    if (!faturasCartaoId) return
+    const onKey = (ev: KeyboardEvent) => {
+      const tgt = ev.target as HTMLElement | null
+      if (tgt && /input|textarea|select/i.test(tgt.tagName)) return
+      if (tgt && tgt.isContentEditable) return
+      if (ev.key === "ArrowLeft") { ev.preventDefault(); setFaturaIdx((i) => i + 1) }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); setFaturaIdx((i) => i - 1) }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [faturasCartaoId])
+
+  // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
+  // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
+  const idsParaCarregar = (() => {
+    if (!faturasCartaoId || faturasSorted.length === 0) return [] as string[]
+    const sel = Math.max(0, Math.min(faturaIdx, faturasSorted.length - 1))
+    return [sel - 1, sel, sel + 1]
+      .filter((i) => i >= 0 && i < faturasSorted.length)
+      .map((i) => faturasSorted[i].id)
+      .filter((id) => !faturaDetalhes[id])
+  })()
+  const idsKey = idsParaCarregar.join(",")
+  useEffect(() => {
+    if (!faturasCartaoId || !idsKey) return
+    idsKey.split(",").forEach((id) => {
+      getFaturaDetalhe(faturasCartaoId, id)
+        .then((d) => setFaturaDetalhes((prev) => (prev[id] ? prev : { ...prev, [id]: d })))
+        .catch(() => { /* ignore */ })
+    })
+  }, [faturasCartaoId, idsKey])
+
+  // Faturas previstas das assinaturas (recorrentes mensais no cartão) — até 12 meses
+  // a partir de hoje (sem ultrapassar, sem duplicar com faturas reais já criadas).
+  const addMonthsISO = (iso: string, n: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + n); return d.toISOString() }
+  const assinaturasCartao = recorrentes.filter((r) => r.ativo && r.cartaoCreditoId === faturasCartaoId && r.frequencia === 2)
+  const baseFatura = faturasSorted[0]
+  const previstas: FaturaView[] = []
+  if (cartaoAtivo && baseFatura && assinaturasCartao.length > 0) {
+    const total = assinaturasCartao.reduce((s, r) => s + r.valor, 0)
+    // Horizonte = fim do ano corrente (Dezembro). Projeta os meses faltantes até lá.
+    const horizonte = new Date(new Date(now).getFullYear(), 11, 1) // Dez/01 (mês 11)
+    const baseDate = new Date(baseFatura.dataFechamento)
+    const monthsToProject = Math.max(0, (horizonte.getFullYear() - baseDate.getFullYear()) * 12 + (horizonte.getMonth() - baseDate.getMonth()))
+    for (let n = 1; n <= monthsToProject; n++) {
+      const dataFechamento = addMonthsISO(baseFatura.dataFechamento, n)
+      const fech = new Date(dataFechamento)
+      previstas.push({
+        ...baseFatura,
+        id: `prev-${baseFatura.id}-${n}`,
+        dataInicio: addMonthsISO(baseFatura.dataInicio, n),
+        dataFechamento,
+        dataVencimento: addMonthsISO(baseFatura.dataVencimento, n),
+        valorTotal: total, valorPago: 0, valorRestante: total,
+        estadoCiclo: 0, estadoPagamento: 0, vencida: false,
+        prevista: true,
+        projLancamentos: assinaturasCartao.map((r) => ({
+          id: `prevl-${r.id}-${n}`,
+          descricao: r.descricao,
+          valor: r.valor,
+          data: new Date(Date.UTC(fech.getFullYear(), fech.getMonth(), Math.min(r.dia, 28))).toISOString(),
+        })),
+      })
+    }
+  }
+
+  const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
+    const ids = new Set<string>()
+    if (!detalhe?.transacoes?.length) return ids
+    const sorted = [...detalhe.transacoes].sort((a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime())
+    let cum = 0
+    for (const t of sorted) { cum += t.valor; if (f.valorPago >= cum) ids.add(t.id) }
+    return ids
+  }
+
+  const renderDetalhe = (f: FaturaView) => {
+    // Fatura prevista: lançamentos vêm das assinaturas projetadas (sem ir ao backend).
+    if (f.prevista) {
+      const proj = f.projLancamentos ?? []
+      if (proj.length === 0) return <div className={styles.detailMuted}>Sem assinaturas previstas.</div>
+      return (
+        <div className={styles.txList}>
+          {proj.map((l) => (
+            <div key={l.id} className={styles.txRow}>
+              <div className={styles.txMain}>
+                <span className={styles.txDesc}>{l.descricao}</span>
+                <span className={styles.txMeta}>{new Date(l.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · assinatura</span>
+              </div>
+              <span className={styles.txValor}>{formatMoney(l.valor)}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    const detalhe = faturaDetalhes[f.id]
+    if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
+    const paid = paidIdsOf(f, detalhe)
+    const pagamentos = detalhe.pagamentos ?? []
+    if (detalhe.transacoes.length === 0 && pagamentos.length === 0)
+      return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
+
+    // Linha do tempo única: compras + pagamentos ordenados por data (cronológico).
+    type Linha =
+      | { kind: "compra"; id: string; ts: number; t: FaturaDetalhe["transacoes"][number] }
+      | { kind: "pagamento"; id: string; ts: number; p: FaturaPagamento }
+    // Ordena por data + hora (criadoEm carrega o horário do lançamento).
+    const linhas: Linha[] = [
+      ...detalhe.transacoes.map((t) => ({ kind: "compra" as const, id: t.id, ts: new Date(t.criadoEm).getTime(), t })),
+      ...pagamentos.map((p) => ({ kind: "pagamento" as const, id: p.id, ts: new Date(p.criadoEm).getTime(), p })),
+    ].sort((a, b) => a.ts - b.ts)
+
+    return (
+      <>
+      <div className={styles.txList}>
+        {linhas.map((l) => l.kind === "compra" ? (
+          <div key={l.id} className={styles.txRow}>
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}>{l.t.descricao}</span>
+              <span className={styles.txMeta}>
+                {new Date(l.t.data).toLocaleDateString("pt-BR")} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {l.t.categoriaDescricao ? ` · ${l.t.categoriaDescricao}` : ""}
+              </span>
+            </div>
+            <span className={styles.txValor} data-paid={paid.has(l.t.id) ? "true" : "false"}>
+              {paid.has(l.t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(l.t.valor)}
+            </span>
+          </div>
+        ) : (
+          <div key={l.id} className={styles.txRow} data-pagamento="true">
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}><Check size={13} strokeWidth={2.5} /> Pagamento · {l.p.meioPagamentoDescricao}</span>
+              <span className={styles.txMeta}>
+                {new Date(l.p.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+            <span className={styles.payValor}>− {formatMoney(l.p.valor)}</span>
+          </div>
+        ))}
+      </div>
+      {f.valorPago > 0 && (
+        <div className={styles.paidNote}>
+          <span className={styles.paidNoteLabel}>Total pago</span>
+          <span className={styles.paidNoteValue}>
+            {formatMoney(f.valorPago)}
+            {f.valorRestante > 0 && <span className={styles.paidNoteRest}> · falta {formatMoney(f.valorRestante)}</span>}
+          </span>
+        </div>
+      )}
+      </>
+    )
+  }
+
+  const renderCartao = (c: CartaoCredito) => {
+    const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
+    const over = pct > 80
+    const sel = faturasCartaoId === c.id
+    const clickable = c.temCredito
+    return (
+      <div
+        key={c.id}
+        className={styles.cardTile}
+        data-selected={sel ? "true" : undefined}
+        data-clickable={clickable ? "true" : undefined}
+        onClick={clickable ? () => openFaturas(c.id) : undefined}
+      >
+        {/* Cartão físico — gradiente do banco se tem cor, senão bandeira */}
+        <div className={styles.card} style={{ background: cardGradient(c.bancoCor, c.bandeira) }}>
+          <div className={styles.cardSheen1} />
+          <div className={styles.cardSheen2} />
+
+          <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+            <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}><Pencil size={14} /></PontesIconButton>
+            <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}><Trash2 size={14} /></PontesIconButton>
+          </div>
+
+          <div className={styles.cardFace}>
+            <div className={styles.faceTop}>
+              <div className={styles.cardNameWrap}>
+                <span className={styles.cardName}>{c.nome}</span>
+                {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+              </div>
+            </div>
+            <div className={styles.chipRow}>
+              <div className={styles.cardChip} />
+              <Wifi size={18} className={styles.contactless} />
+            </div>
+            <div className={styles.faceBottom}>
+              <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
+              <div className={styles.bandeiraSlot}>
+                <BandeiraMark bandeira={c.bandeira} label={c.bandeiraDescricao} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bloco de info — separado do cartão (fundo neutro) */}
+        {c.temCredito && c.limite ? (
+          <div className={styles.cardMeta}>
+            <div className={styles.panelTop}>
+              <div className={styles.cardDispWrap}>
+                <span className={styles.cardInfoLabel}>Disponível</span>
+                <span className={styles.cardDisp}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
+              </div>
+              <div className={styles.cardInfoRight}>
+                <span className={styles.cardPct} data-over={over ? "true" : undefined}>{Math.round(pct)}%</span>
+                <span className={styles.cardOfLimit}>de {formatMoney(c.limite)}</span>
+              </div>
+            </div>
+            <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
+            <div className={styles.cardMetaRow}>
+              {(() => {
+                const dF = diasAteProxDia(c.diaFechamento, now)
+                const dV = diasAteProxDia(c.diaVencimento, now)
+                // Próximos 5 dias = destaque. Vencimento prioridade sobre fechamento.
+                const urgenteV = dV != null && dV <= 5
+                const urgenteF = dF != null && dF <= 5
+                if (urgenteV) {
+                  return <span className={styles.urgentDate} data-tone="danger">vence {dV === 0 ? "hoje" : dV === 1 ? "amanhã" : `em ${dV} dias`}</span>
+                }
+                if (urgenteF) {
+                  return <span className={styles.urgentDate} data-tone="warning">fecha {dF === 0 ? "hoje" : dF === 1 ? "amanhã" : `em ${dF} dias`}</span>
+                }
+                if (c.diaFechamento || c.diaVencimento) {
+                  return <span>{c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</span>
+                }
+                return <span>{formatMoney(c.gastosNoCicloAtual)} usado</span>
+              })()}
+              <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Em foco" : "Faturas"}</span>
+            </div>
+          </div>
+        ) : (c.contaNome || c.temDebito || c.ehPrePago) ? (
+          <div className={styles.cardMeta}>
+            <div className={styles.cardMetaRow}>
+              <span>{c.contaNome ? "Conta que paga" : " "}</span>
+              {c.contaNome && <span className={styles.cardFootValue}>{c.contaNome}</span>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className={styles.root}>
@@ -246,32 +625,39 @@ export default function CreditCardsPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Cartões</h1>
-          <div className={styles.subtitle}>Gerencie seus cartões e acompanhe faturas</div>
+          <div className={styles.subtitle}>Seus cartões e faturas, num lugar só</div>
         </div>
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Cartão
         </PontesButton>
       </div>
 
-      {/* Stats */}
-      <div className={styles.statsGrid}>
-        {[
-          { label: "Total de Cartões", value: String(cartoes.length), sub: cartoes.length === 1 ? "cartão cadastrado" : "cartões cadastrados", icon: <CreditCard size={18} /> },
-          { label: "Limite Total", value: formatMoney(totalLimite), sub: "cartões com crédito", icon: <Wallet size={18} /> },
-          { label: "Gastos no Ciclo", value: formatMoney(totalGastos), sub: "ciclo atual", icon: <ReceiptText size={18} /> },
-        ].map((s) => (
-          <PontesCard key={s.label} padding={20} radius={14}>
-            <div className={styles.statHead}>
-              <span className={styles.statLabel}>{s.label}</span>
-              <span className={styles.statIcon}>{s.icon}</span>
-            </div>
-            <div className={styles.statValue}>{s.value}</div>
-            <div className={styles.statSub}>{s.sub}</div>
-          </PontesCard>
-        ))}
-      </div>
+      {/* Resumo slim */}
+      {cartoes.length > 0 && (
+        <div className={styles.summary}>
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Cartões</span>
+            <span className={styles.sumValue}>{cartoes.length}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Limite total</span>
+            <span className={styles.sumValue}>{formatMoney(totalLimite)}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Disponível</span>
+            <span className={styles.sumValue} data-pos="true">{formatMoney(totalDisp)}</span>
+          </div>
+          <div className={styles.sumDiv} />
+          <div className={styles.sumItem}>
+            <span className={styles.sumLabel}>Usado no ciclo</span>
+            <span className={styles.sumValue}>{formatMoney(totalGastos)}</span>
+          </div>
+        </div>
+      )}
 
-      {/* Cards grid */}
+      {/* Grid de cartões */}
       {cartoes.length === 0 ? (
         <PontesEmptyState
           icon={<CreditCard size={28} />}
@@ -279,201 +665,104 @@ export default function CreditCardsPage() {
           description="Adicione seus cartões de crédito, débito ou pré-pagos."
           actions={<PontesButton iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>Novo Cartão</PontesButton>}
         />
+      ) : faturasCartaoId && cartaoAtivo ? (
+        // Modo foco: só o cartão selecionado, com a fatura logo abaixo.
+        <>
+          <button type="button" className={styles.backCards} onClick={() => setFaturasCartaoId(null)}>
+            <ChevronLeft size={16} /> Todos os cartões
+          </button>
+          <div className={styles.focusCard}>{renderCartao(cartaoAtivo)}</div>
+        </>
       ) : (
         <div className={styles.cardsGrid}>
-          {cartoes.map((c) => {
-            const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
-            const sel = faturasCartaoId === c.id
-            return (
-              <div key={c.id} className={styles.card} data-selected={sel ? "true" : undefined}>
-                {/* Visual do cartão */}
-                <div className={styles.cardVisual} style={{ background: grad(c.bandeira) }}>
-                  <div className={styles.cardCircle1} />
-                  <div className={styles.cardCircle2} />
-                  <div className={styles.cardVisualHead}>
-                    <span className={styles.cardName}>{c.nome}</span>
-                    <span className={styles.cardChip} />
-                  </div>
-                  <div className={styles.cardVisualFoot}>
-                    <span className={styles.cardDigits}>
-                      {c.ultimosDigitos ? `•••• •••• •••• ${c.ultimosDigitos}` : "•••• •••• •••• ••••"}
-                    </span>
-                    <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
-                  </div>
-                </div>
-
-                {/* Info + ações */}
-                <div className={styles.cardBody}>
-                  <div className={styles.actionsRow}>
-                    <div className={styles.chips}>
-                      {c.temCredito && <PontesBadge tone="soft" size="sm">Crédito</PontesBadge>}
-                      {c.temDebito && <PontesBadge tone="success" size="sm">Débito</PontesBadge>}
-                      {c.ehPrePago && <PontesBadge tone="neutral" size="sm">Pré-Pago</PontesBadge>}
-                    </div>
-                    <div className={styles.icons}>
-                      {c.temCredito && (
-                        <PontesIconButton size={32} variant="ghost" aria-label="Ver faturas" onClick={() => openFaturas(c.id)}>
-                          <ReceiptText size={15} />
-                        </PontesIconButton>
-                      )}
-                      <PontesIconButton size={32} variant="ghost" aria-label="Editar" onClick={() => openEdit(c)}>
-                        <Pencil size={15} />
-                      </PontesIconButton>
-                      <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(c.id)}>
-                        <Trash2 size={15} />
-                      </PontesIconButton>
-                    </div>
-                  </div>
-
-                  {c.contaNome && (
-                    <div className={styles.contaRow}>
-                      <span className={styles.muted}>Conta vinculada</span>
-                      <span className={styles.strong}>{c.contaNome}</span>
-                    </div>
-                  )}
-
-                  {(c.diaFechamento || c.diaVencimento) && (
-                    <div className={styles.chips}>
-                      {c.diaFechamento && <PontesBadge tone="neutral" size="sm">{`Fecha dia ${c.diaFechamento}`}</PontesBadge>}
-                      {c.diaVencimento && <PontesBadge tone="warning" size="sm">{`Vence dia ${c.diaVencimento}`}</PontesBadge>}
-                    </div>
-                  )}
-
-                  {c.temCredito && c.limite && (
-                    <div>
-                      <div className={styles.limitHead}>
-                        <span className={styles.muted}>Utilizado</span>
-                        <span className={styles.limitVal} data-over={pct > 80 ? "true" : undefined}>
-                          {formatMoney(c.gastosNoCicloAtual)} <span className={styles.muted}>/ {formatMoney(c.limite)}</span>
-                        </span>
-                      </div>
-                      <PontesProgress value={pct} showValue={false} height={6} color={pct > 80 ? "var(--pontes-danger)" : "var(--pontes-primary)"} />
-                      <div className={styles.limitFoot}>
-                        <span className={styles.muted}>Disponível</span>
-                        <span className={styles.dispVal}>{formatMoney(c.limiteDisponivel ?? 0)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+          {cartoes.map(renderCartao)}
         </div>
       )}
 
-      {/* Painel de Faturas */}
+      {/* Painel de faturas */}
       {faturasCartaoId && cartaoAtivo && (
-        <PontesCard padding={0} radius={14}>
-          <div className={styles.faturaHead}>
-            <span className={styles.faturaHeadIcon} style={{ background: grad(cartaoAtivo.bandeira) }}>
-              <ReceiptText size={17} />
-            </span>
-            <div>
-              <div className={styles.faturaTitle}>Faturas — {cartaoAtivo.nome}</div>
-              <div className={styles.faturaSub}>Histórico de faturas</div>
-            </div>
-          </div>
-
+        <PontesCard padding={0} radius={16}>
           {loadingFaturas ? (
-            <div className={styles.faturaEmpty}>Carregando…</div>
-          ) : faturas.length === 0 ? (
+            <div className={styles.faturaSkeleton}><PontesSkeletonList rows={4} /></div>
+          ) : faturasSorted.length === 0 ? (
             <div className={styles.faturaEmpty}>
-              Nenhuma fatura encontrada. Registre uma transação de crédito para criar a primeira fatura.
+              <PontesEmptyState
+                icon={<ReceiptText size={26} />}
+                title="Nenhuma fatura ainda"
+                description="Registre uma compra no crédito pra criar a primeira fatura."
+              />
             </div>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thIcon} />
-                    <th className={styles.th}>Período</th>
-                    <th className={styles.th}>Vencimento</th>
-                    <th className={styles.th}>Status</th>
-                    <th className={styles.thRight}>Total</th>
-                    <th className={styles.thRight}>Pago</th>
-                    <th className={styles.thRight}>Restante</th>
-                    <th className={styles.thCenter}>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {faturas.map((f) => {
-                    const statusKey = f.estadoPagamento === 2 ? 3 : f.estadoCiclo === 1 ? 2 : 1
-                    const st = STATUS[statusKey]
-                    const isExpanded = expandedFaturaId === f.id
-                    const detalhe = faturaDetalhes[f.id]
-                    const paidIds = (() => {
-                      const ids = new Set<string>()
-                      if (!detalhe?.transacoes?.length) return ids
-                      const sorted = [...detalhe.transacoes].sort((a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime())
-                      let cum = 0
-                      for (const t of sorted) { cum += t.valor; if (f.valorPago >= cum) ids.add(t.id) }
-                      return ids
-                    })()
-                    return (
-                      <React.Fragment key={f.id}>
-                        <tr className={styles.faturaRow} data-expanded={isExpanded ? "true" : undefined} onClick={() => toggleFatura(f.id, faturasCartaoId)}>
-                          <td className={styles.tdIcon}>
-                            <span className={styles.chev}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
-                          </td>
-                          <td className={styles.td}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</td>
-                          <td className={styles.td}>
-                            <span data-vencida={f.vencida ? "true" : undefined} className={styles.venc}>{formatDate(f.dataVencimento)}</span>
-                            {f.vencida && <span className={styles.vencidaTag}>Vencida</span>}
-                          </td>
-                          <td className={styles.td}><PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge></td>
-                          <td className={styles.tdRight} data-strong="true">{formatMoney(f.valorTotal)}</td>
-                          <td className={styles.tdRight} data-pos="true">{formatMoney(f.valorPago)}</td>
-                          <td className={styles.tdRight} data-rest={f.valorRestante > 0 ? "open" : "done"}>{formatMoney(f.valorRestante)}</td>
-                          <td className={styles.tdCenter} onClick={(e) => e.stopPropagation()}>
-                            {f.valorRestante > 0 && (
-                              <PontesIconButton size={32} variant="ghost" aria-label="Pagar fatura"
-                                onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
-                                <Banknote size={16} />
-                              </PontesIconButton>
-                            )}
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr>
-                            <td colSpan={8} className={styles.detailCell}>
-                              {!detalhe ? (
-                                <div className={styles.detailLoading}>Carregando…</div>
-                              ) : detalhe.transacoes.length === 0 ? (
-                                <div className={styles.detailEmpty}>Nenhuma transação nesta fatura.</div>
-                              ) : (
-                                <table className={styles.detailTable}>
-                                  <thead>
-                                    <tr>
-                                      <th className={styles.th}>Data</th>
-                                      <th className={styles.th}>Horário</th>
-                                      <th className={styles.th}>Descrição</th>
-                                      <th className={styles.th}>Categoria</th>
-                                      <th className={styles.thRight}>Valor</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {detalhe.transacoes.map((t) => (
-                                      <tr key={t.id}>
-                                        <td className={styles.td}>{new Date(t.data).toLocaleDateString("pt-BR")}</td>
-                                        <td className={styles.tdMono}>{new Date(t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
-                                        <td className={styles.td}>{t.descricao}</td>
-                                        <td className={styles.tdMuted}>{t.categoriaDescricao ?? "—"}</td>
-                                        <td className={styles.tdRight} data-paid={paidIds.has(t.id) ? "true" : "false"}>{formatMoney(t.valor)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ) : (() => {
+            const clampLo = -previstas.length
+            const clampHi = faturasSorted.length - 1
+            const idx = Math.max(clampLo, Math.min(faturaIdx, clampHi))
+            const ehPrevista = idx < 0
+            const f: FaturaView = ehPrevista ? previstas[-idx - 1] : faturasSorted[idx]
+            const st = STATUS[statusKey(f, now)]
+            const open = f.valorRestante > 0
+            const ehAtual = idx === atualIdx
+            // Ciclo ainda não começou (dataInicio > hoje) — fatura "Futura".
+            // Bancos reais não permitem pagar fatura futura inteira; bloqueia botão.
+            const ehFutura = !ehPrevista && new Date(f.dataInicio).getTime() > now
+            return (
+              <div className={styles.faturaBody}>
+                {/* Navegação por mês: ‹ anterior | (Hoje?) | mês | (Hoje?) | próximo › */}
+                <div className={styles.monthNav}>
+                  <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
+                    disabled={idx >= clampHi} onClick={() => setFaturaIdx(idx + 1)}>
+                    <ChevronLeft size={18} />
+                  </button>
+                  {idx < atualIdx && (
+                    <PontesButton size="md" variant="outline" iconStart={<ChevronLeft size={16} strokeWidth={2.5} />}
+                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                  )}
+                  <div className={styles.monthLabel}>
+                    <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
+                    <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
+                  </div>
+                  {idx > atualIdx && (
+                    <PontesButton size="md" variant="outline" iconEnd={<ChevronRight size={16} strokeWidth={2.5} />}
+                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                  )}
+                  <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
+                    disabled={idx <= clampLo} onClick={() => setFaturaIdx(idx - 1)}>
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                {/* Fatura do mês selecionado */}
+                <div className={styles.atual} data-open={open ? "true" : undefined}>
+                  <div className={styles.atualTop}>
+                    <div>
+                      <div className={styles.atualValor}>{formatMoney(open ? f.valorRestante : f.valorTotal)}</div>
+                      <div className={styles.atualMeta}>
+                        {ehPrevista
+                          ? <PontesBadge tone="neutral" size="sm">Prevista</PontesBadge>
+                          : <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>}
+                        {!ehPrevista && f.vencida && <PontesBadge tone="danger" size="sm">Vencida</PontesBadge>}
+                        <span className={styles.muted}>
+                          {f.vencida ? "Venceu " : "Vence "}{formatDate(f.dataVencimento)}
+                        </span>
+                        {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
+                      </div>
+                    </div>
+                    {open && !ehPrevista && !ehFutura && (
+                      <PontesButton size="sm" iconStart={<Banknote size={16} strokeWidth={2.5} />}
+                        onClick={() => openPagar(f.id, faturasCartaoId, f.valorRestante, cartaoAtivo.contaId)}>
+                        Pagar
+                      </PontesButton>
+                    )}
+                  </div>
+                  {!ehPrevista && f.valorPago > 0 && open && (
+                    <div className={styles.paidBar} title={`Pago ${formatMoney(f.valorPago)} de ${formatMoney(f.valorTotal)}`}>
+                      <div className={styles.paidFill} style={{ width: `${Math.min(100, (f.valorPago / f.valorTotal) * 100)}%` }} />
+                    </div>
+                  )}
+                  {renderDetalhe(f)}
+                </div>
+              </div>
+            )
+          })()}
         </PontesCard>
       )}
 
@@ -502,40 +791,46 @@ export default function CreditCardsPage() {
             <PontesField label="Bandeira">
               <PontesSelect value={String(form.bandeira)} onChange={(v) => setF("bandeira", Number(v))} options={BANDEIRAS} />
             </PontesField>
-            <PontesField label="Últimos 4 dígitos">
-              <PontesInput value={form.ultimosDigitos ?? ""} onChange={(e) => setF("ultimosDigitos", e.target.value || undefined)} maxLength={4} placeholder="0000" />
+            <PontesField label="Últimos 4 dígitos" error={formErrors.ultimosDigitos}>
+              <PontesInput
+                value={form.ultimosDigitos ?? ""}
+                onChange={(e) => { const d = e.target.value.replace(/\D/g, "").slice(0, 4); setF("ultimosDigitos", d || undefined); clearErr("ultimosDigitos") }}
+                invalid={!!formErrors.ultimosDigitos}
+                inputMode="numeric" maxLength={4} placeholder="0000"
+              />
             </PontesField>
           </div>
-
+          <PontesField label="Banco emissor" required error={formErrors.bancoId}>
+            <PontesSelect value={form.bancoId ?? ""} onChange={(v) => { setF("bancoId", v || undefined); clearErr("bancoId") }} invalid={!!formErrors.bancoId} placeholder="Quem emitiu o cartão" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
+          </PontesField>
           {!isPrePago && (
-            <PontesField label={temCredito ? "Conta que paga a fatura" : "Conta vinculada"} required error={formErrors.conta}>
+            <PontesField label="Conta que paga a fatura">
               <PontesSelect
                 value={form.contaId ?? ""}
-                onChange={(v) => { const conta = contas.find((c) => c.id === v); setForm((f) => ({ ...f, contaId: v || undefined, bancoId: conta?.bancoId })); setFormErrors((p) => ({ ...p, conta: undefined })) }}
-                placeholder="Selecione a conta"
-                invalid={!!formErrors.conta}
+                onChange={(v) => setF("contaId", v || undefined)}
+                placeholder="Opcional — escolhe ao pagar"
                 options={contas.map((c) => ({ value: c.id, label: c.nome }))}
               />
             </PontesField>
           )}
-          {isPrePago && (
-            <PontesField label="Banco emissor">
-              <PontesSelect value={form.bancoId ?? ""} onChange={(v) => setF("bancoId", v || undefined)} placeholder="Sem vínculo" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
-            </PontesField>
-          )}
-
           {temCredito && (
-            <PontesField label="Limite de crédito">
-              <PontesInput type="number" value={form.limite != null ? String(form.limite) : ""} onChange={(e) => setF("limite", e.target.value ? Number(e.target.value) : undefined)} min={0} step="0.01" />
+            <PontesField label="Limite de crédito" required error={formErrors.limite}>
+              <PontesInput
+                iconStart="R$"
+                value={fmtMoneyInput(form.limite)}
+                onChange={(e) => { setF("limite", parseMoney(e.target.value)); clearErr("limite") }}
+                invalid={!!formErrors.limite}
+                inputMode="decimal" placeholder="0,00"
+              />
             </PontesField>
           )}
           {temCredito && (
             <div className={styles.grid2}>
-              <PontesField label="Dia fechamento">
-                <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined)} min={1} max={31} />
+              <PontesField label="Dia fechamento" required error={formErrors.diaFechamento}>
+                <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => { setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaFechamento") }} invalid={!!formErrors.diaFechamento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
-              <PontesField label="Dia vencimento">
-                <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined)} min={1} max={31} />
+              <PontesField label="Dia vencimento" required error={formErrors.diaVencimento}>
+                <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => { setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaVencimento") }} invalid={!!formErrors.diaVencimento} min={1} max={31} step={1} inputMode="numeric" />
               </PontesField>
             </div>
           )}
@@ -563,7 +858,18 @@ export default function CreditCardsPage() {
             />
           </PontesField>
           <PontesField label="Valor" required error={pagarErrors.valor}>
-            <PontesInput type="number" value={pagarForm.valor} onChange={(e) => { setPagarForm((f) => ({ ...f, valor: e.target.value })); setPagarErrors((p) => ({ ...p, valor: undefined })) }} invalid={!!pagarErrors.valor} min={0.01} step="0.01" />
+            <PontesInput
+              iconStart="R$"
+              value={fmtMoneyInput(pagarForm.valor ? Number(pagarForm.valor) : undefined)}
+              onChange={(e) => {
+                const v = parseMoney(e.target.value)
+                setPagarForm((f) => ({ ...f, valor: v != null ? String(v) : "" }))
+                setPagarErrors((p) => ({ ...p, valor: undefined }))
+              }}
+              invalid={!!pagarErrors.valor}
+              inputMode="decimal"
+              placeholder="0,00"
+            />
           </PontesField>
           <div className={styles.grid2}>
             <PontesField label="Data do pagamento" required>
@@ -576,11 +882,10 @@ export default function CreditCardsPage() {
         </div>
       </PontesModal>
 
-      {/* Confirmação de exclusão */}
       <PontesDialog
         open={delId !== null}
         title="Remover cartão?"
-        description="Todas as transações e faturas vinculadas também serão excluídas."
+        description="O cartão sai da lista e as compras vinculadas somem do extrato, mas os pagamentos de fatura ficam preservados no histórico da conta."
         confirmLabel="Remover"
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}

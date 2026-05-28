@@ -20,7 +20,7 @@ public class ExpandirRecorrentesJob
     public async Task ExecuteAsync()
     {
         var hoje = DateTime.UtcNow.Date;
-        var dataProximaJanela = hoje.AddMonths(3);
+        var dataProximaJanela = new DateTime(hoje.Year + 1, 1, 1); // previsão até o fim do ano corrente (inclusive Dez/31)
 
         var recorrentes = await _context.Recorrentes
             .Where(r => r.Ativo && (r.DataFim == null || r.DataFim.Value.Date >= hoje))
@@ -51,6 +51,7 @@ public class ExpandirRecorrentesJob
                     ContaId = r.ContaId,
                     CartaoCreditoId = r.CartaoCreditoId,
                     FaturaId = faturaId,
+                    UsadoComoCredito = r.CartaoCreditoId.HasValue, // sem isso DetalheAsync exclui o lançamento da fatura
                     StatusTransacao = StatusTransacao.Previsao,
                     Ativo = true,
                     CriadoPor = r.CriadoPor,

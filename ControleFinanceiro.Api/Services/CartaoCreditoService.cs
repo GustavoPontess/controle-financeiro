@@ -12,8 +12,9 @@ public class CartaoCreditoService(AppDbContext context)
 
     public async Task<List<CartaoCreditoDto>> ListarAsync(Guid usuarioId)
     {
+        // Soft-delete: cartões inativos ficam no DB mas somem da listagem.
         var cartoes = await _context.CartoesCredito
-            .Where(c => c.CriadoPor == usuarioId)
+            .Where(c => c.CriadoPor == usuarioId && c.Ativo)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
@@ -27,7 +28,7 @@ public class CartaoCreditoService(AppDbContext context)
     public async Task<CartaoCreditoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
     {
         var cartao = await _context.CartoesCredito
-            .Where(c => c.Id == id && c.CriadoPor == usuarioId)
+            .Where(c => c.Id == id && c.CriadoPor == usuarioId && c.Ativo)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
             .Include(c => c.Transacoes)
@@ -128,20 +129,21 @@ public class CartaoCreditoService(AppDbContext context)
 
     public async Task<bool> DeletarAsync(Guid id, Guid usuarioId)
     {
-        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
+        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId && c.Ativo);
         if (cartao is null) return false;
 
-        var transacoes = await _context.Transacoes
-            .Where(t => t.CartaoCreditoId == id)
+        // Soft-delete preserva histórico (auditoria, relatórios pretéritos).
+        // - Cartão: Ativo=false → some da listagem mas registros vinculados continuam acessíveis.
+        // - Compras feitas no cartão: Ativo=false → somem do extrato/relatório atual.
+        // - Pagamentos de fatura: mantêm vínculo (FaturaPagaId) e Ativo=true — saída real de
+        //   dinheiro da conta continua refletida no saldo. Fica rastreável pelo cartão histórico.
+        // - Faturas: ficam intactas. Acessíveis só via cartão (que está oculto), então somem da UI.
+        var compras = await _context.Transacoes
+            .Where(t => t.CartaoCreditoId == id && t.Ativo)
             .ToListAsync();
-        _context.Transacoes.RemoveRange(transacoes);
+        foreach (var c in compras) c.Ativo = false;
 
-        var faturas = await _context.Faturas
-            .Where(f => f.CartaoCreditoId == id)
-            .ToListAsync();
-        _context.Faturas.RemoveRange(faturas);
-
-        _context.CartoesCredito.Remove(cartao);
+        cartao.Ativo = false;
         await _context.SaveChangesAsync();
         return true;
     }
@@ -225,6 +227,8 @@ public class CartaoCreditoService(AppDbContext context)
             ContaNome = c.Conta?.Nome,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome,
+            BancoLogoUrl = c.Banco?.LogoUrl,
+            BancoCor = c.Banco?.Cor,
             Ativo = c.Ativo,
         };
     }

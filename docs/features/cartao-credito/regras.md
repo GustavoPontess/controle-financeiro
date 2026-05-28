@@ -1,6 +1,6 @@
 ---
 owner: Caio
-last_reviewed: 2026-05-23
+last_reviewed: 2026-05-26
 next_review: 2026-08-19
 status: CURRENT
 ---
@@ -191,3 +191,37 @@ Na listagem de transações dentro de uma fatura, a cor do valor indica cobertur
 | Estados da fatura (enums) | `Domain/Enums/EstadoCicloFatura.cs`, `EstadoPagamentoFatura.cs` |
 | UI — histórico de faturas | `controle-financeiro.web/src/pages/CreditCards/CreditCardsPage.tsx` |
 | Tipos frontend | `controle-financeiro.web/src/types/Fatura.ts`, `CartaoCredito.ts` |
+
+---
+
+## 9. Decisões #138 (redesign visual/UX — 2026-05-26)
+
+### 9.1 Fatura "atual" é identificada pela data, não pela posição
+O job `ExpandirRecorrentes` cria faturas reais futuras (com transações `StatusTransacao.Previsao` das assinaturas), então `faturasSorted[0]` deixou de ser a "atual" (passou a ser a mais futura). A atual é a que contém hoje no período: `dataInicio <= hoje <= dataFechamento`. Frontend determina via `atualIdx` (com fallback pra primeira que já começou).
+
+### 9.2 Excluir cartão — pagamentos viram histórico da conta
+`CartaoCreditoService.DeletarAsync` antes barrava no FK `Restrict` da relação `Transacao.FaturaPaga → Fatura`. Decisão: ao deletar o cartão, **as transações de pagamento de fatura** (débito real numa conta) são **desvinculadas da fatura** (`FaturaPagaId = null`) e permanecem como despesas no extrato da conta. As **compras** feitas no cartão são removidas junto (cascade hard-delete — viola o princípio geral de soft-delete, mas é cascade do cartão removido; pendência: avaliar manter como soft-deleted).
+
+### 9.3 Job `ExpandirRecorrentes` precisa marcar `UsadoComoCredito = true`
+Sem essa flag, `FaturaService.DetalheAsync` (filtra por `t.UsadoComoCredito`) esconde as transações previstas — assinaturas sumiam da fatura. Agora a flag é setada quando `r.CartaoCreditoId.HasValue`.
+
+### 9.4 Horizonte de previsão = fim do ano corrente (Dezembro)
+Tanto o job (`dataProximaJanela = 1º Jan do ano seguinte`) quanto a projeção visual do frontend (em cima da última fatura real, capada em Dezembro). Em maio cobre mai→dez (7 meses); em janeiro cobre jan→dez (12 meses).
+
+### 9.5 Pagamentos no detalhe da fatura
+`FaturaDetalheDto.Pagamentos` retorna as transações com `FaturaPagaId == fatura.Id` (separadas das compras, que vão em `Transacoes`). Frontend renderiza compras + pagamentos numa **linha do tempo única ordenada por `criadoEm`** (data+hora) — dá pra acompanhar parcial-1, compra, parcial-2, compra, total. Linha de pagamento destacada em verde. Nota "Total pago" no fim quando houver pagamento.
+
+### 9.6 "Paga" só quando fechada + quitada
+`statusKey` (UI):
+- `EstadoCiclo === Fechada` e `valorRestante <= 0` → **Paga**
+- `EstadoCiclo === Fechada` e `valorRestante > 0` → **Fechada** (a pagar)
+- `EstadoCiclo === Aberta` → **Aberta** (mesmo com pagamento parcial/antecipado — novas compras ainda podem entrar)
+
+### 9.7 Cartão visual = face + bloco de info separados
+- `.card`: gradiente da bandeira (cor real, valor de dado), arredondado em tudo, chip + contactless, número em relevo.
+- `.cardMeta`: bloco neutro (`var(--pontes-surface)`) abaixo do cartão com disponível/limite/barra/data — fora do gradiente, com cores via `var(--pontes-*)`.
+- **Modo foco**: ao clicar no cartão, esconde os outros e mostra só ele com a fatura abaixo (sem o header redundante "Fatura — {nome}"). Botão "Todos os cartões" volta.
+- **1 cartão só → abre direto no foco** (auto-open via ref).
+
+### 9.8 Navegação por mês (em vez de histórico)
+Painel da fatura tem setas ‹ ›; previstas usam `faturaIdx < 0`. Carregamento por **janela de 3** (mês selecionado + vizinhos) — escala pra muitas faturas sem disparar N requests.
