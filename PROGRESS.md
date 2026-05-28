@@ -18,11 +18,11 @@ status: CURRENT
 
 ```
 Site público (6):       6/6  ✅ #75 #76 #77 #78 #79 #80
-Telas internas (9):     6/9  ✅ #81 #82 #83 #84 #85 #86  ⏳ #87 #88 #89
+Telas internas (9):     7/9  ✅ #81 #82 #83 #84 #85 #86 #87  ⏳ #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          12/18 telas+site (#75-#92) — +#138 (redesign cartões)
+Total Q5 2026:          13/18 telas+site (#75-#92) — +#138 (redesign cartões)
 ```
 
 > Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
@@ -39,9 +39,18 @@ Total Q5 2026:          12/18 telas+site (#75-#92) — +#138 (redesign cartões)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80)
+(nenhuma issue em execução — próxima livre: #88 Bancos, #89 Recorrentes)
 
 ## Resolvidos Q5
+
+- **#87** — Limites por categoria com alertas (PR #144 · aguardando review · sessão 2026-05-28)
+  - LimitesPage: grid de cards, progress bar com cores primary/warning/danger, badges "Em alerta" / "Ultrapassado"
+  - Seletor de período (mês/ano), modal criar/editar (PontesModal), dialog confirmar exclusão (PontesDialog)
+  - Validação por campo: valorLimite > 0, percentualAlerta 1–100 (bloqueia submit, erro inline)
+  - OrcamentoService (boy-scout): filtros ObterGastosAsync corrigidos (Ativo + Executado + !EhTransferencia + !EhSaldoInicial + !EhPagamentoFatura)
+  - Bug URL orcamentoService: `BASE "/api/orcamentos"` → `"orcamentos"` (axios double-path com baseURL `/api/v1`)
+  - 14 testes backend (OrcamentoServiceTests) + 12 testes frontend (LimitesPage.test.tsx)
+  - 191/191 backend + 208/208 frontend verdes
 
 - **#138** — Redesign visual/UX da tela de Cartões (mergeado · PR #139 · sessão 2026-05-27)
   - Cartão físico com gradiente da cor da marca do banco (Nubank roxo, fallback bandeira); chip + contactless + número em relevo; bandeira Mastercard SVG inline
