@@ -7,7 +7,7 @@ import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
-  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target,
+  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
   Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
 } from "lucide-react"
 import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
@@ -41,6 +41,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/categories", label: "Categorias", icon: <Tags size={19} strokeWidth={2} /> },
       { to: "/familias", label: "Famílias", icon: <Users size={19} strokeWidth={2} /> },
       { to: "/metas", label: "Metas", icon: <Target size={19} strokeWidth={2} /> },
+      { to: "/limites", label: "Limites", icon: <Gauge size={19} strokeWidth={2} /> },
     ],
   },
 ]

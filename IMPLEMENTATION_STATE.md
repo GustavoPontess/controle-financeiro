@@ -1,11 +1,15 @@
 ---
-owner: Gustavo
-last_reviewed: 2026-05-27
+owner: Caio
+last_reviewed: 2026-05-28
 status: LIVRE
-issue_atual: 'nenhuma — #138 mergeado (PR #139 squash em c6630b3). Próxima livre: #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80.'
+issue_atual: 'nenhuma — #87 Limites (PR #144) aguardando review. Próxima livre: #88 Bancos, #89 Recorrentes.'
 ---
 
-## Última issue concluída — #138 (redesign visual/UX da tela de Cartões) ✅ MERGEADO
+## Última issue concluída — #87 (Limites por categoria com alertas) ✅ PR ABERTO
+
+PR #144 — branch `feature/87-limites-categoria`. LimitesPage: grid de cards com progress bar, badge Em alerta (warning) / Ultrapassado (danger), seletor de período (mês/ano), modal criar/editar (PontesModal), dialog de confirmação de exclusão (PontesDialog). Boy-scout: OrcamentoService.ObterGastosAsync corrigido (filtros Ativo + Executado + !EhTransferencia + !EhSaldoInicial + !EhPagamentoFatura). Bug URL: `BASE = "/api/orcamentos"` → `"orcamentos"` (axios combina relative path com baseURL `/api/v1`). 14 testes backend + 12 testes frontend. 191/191 back + 208/208 front verdes.
+
+## Última issue mergeada — #138 (redesign visual/UX da tela de Cartões) ✅ MERGEADO
 
 PR #139 squash `c6630b3`. Cartão físico com gradiente da cor da marca do banco (Nubank roxo, fallback bandeira); modo foco; navegação por mês com botão "Hoje" (PontesButton outline) + atalhos teclado ← → respeitando foco em input; timeline cronológica pagamentos+compras com nota "Total pago"; previstas das assinaturas até Dez; **bloqueio de pagar fatura futura** (padrão Nubank/Itaú/Bradesco — fatura com `dataInicio > hoje` recebe badge "Futura" sem botão Pagar); destaque dias até vencimento/fechamento (≤5 dias → danger/warning); Pagar modal com máscara R$; skeleton + EmptyState; badge "Vencida" danger; **soft-delete cartão** preservando pagamentos (saída real de dinheiro continua refletida) e faturas (auditoria); seeder rico (MeioPagamento, faturas reais, recorrentes). 135/135 frontend + 160/160 backend verde.
 
