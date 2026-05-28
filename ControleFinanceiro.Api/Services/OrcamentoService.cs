@@ -121,10 +121,14 @@ public class OrcamentoService
         var fim = inicio.AddMonths(1);
 
         var gastos = await _context.Transacoes
-            .Where(t => t.Tipo == TipoTransacao.Despesa &&
-                        t.Data >= inicio && t.Data < fim &&
-                        (t.Conta!.UsuarioIdProprietario == usuarioId ||
-                         t.CartaoCredito!.CriadoPor == usuarioId))
+            .Where(t => t.CriadoPor == usuarioId &&
+                        t.Tipo == TipoTransacao.Despesa &&
+                        t.Ativo &&
+                        t.StatusTransacao == StatusTransacao.Executado &&
+                        !t.EhTransferencia &&
+                        !t.EhSaldoInicial &&
+                        !t.EhPagamentoFatura &&
+                        t.Data >= inicio && t.Data < fim)
             .GroupBy(t => t.CategoriaId)
             .Select(g => new { CategoriaId = g.Key, Total = g.Sum(t => t.Valor) })
             .ToListAsync();
