@@ -18,11 +18,11 @@ status: CURRENT
 
 ```
 Site público (6):       6/6  ✅ #75 #76 #77 #78 #79 #80
-Telas internas (9):     7/9  ✅ #81 #82 #83 #84 #85 #86 #87  ⏳ #88 #89
+Telas internas (9):     8/9  ✅ #81 #82 #83 #84 #85 #86 #87 #89  ⏳ #88
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          13/18 telas+site (#75-#92) — +#138 (redesign cartões)
+Total Q5 2026:          14/18 telas+site (#75-#92) — +#138 (redesign cartões)
 ```
 
 > Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
@@ -39,9 +39,20 @@ Total Q5 2026:          13/18 telas+site (#75-#92) — +#138 (redesign cartões)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #88 Bancos, #89 Recorrentes)
+(nenhuma issue em execução — próxima livre: #88 Bancos, #85 Família)
 
 ## Resolvidos Q5
+
+- **#89** — Recorrentes refator + cancelar/editar próxima (PR #145 · aguardando review · sessão 2026-05-28)
+  - Backend: `EditarProximaOcorrenciaDto`, endpoints `POST /{id}/cancelar` + `PATCH /{id}/proxima`
+  - Fix exception types em todos os métodos: KeyNotFoundException/UnauthorizedAccessException/ArgumentException
+  - Frontend: refactor completo MUI→Pontes + CSS Modules (zero Box/Paper/Typography/Dialog/tokens.ts/CustomButton)
+  - 3 stat cards (Ativas, Custo mensal despesas, Próximas 30 dias)
+  - Modal cancelar: motivo obrigatório, soft-delete recorrente + cancela Previsoes; motivo exibido na row
+  - Modal editar próxima: altera apenas o primeiro Previsao (valor/descrição opcionais)
+  - Fix parseMoneyString: suporte "45,90" (BR) e "1.234,56" (BR completo)
+  - 18 novos testes backend (RecorrenteServiceTests) → 209/209
+  - 16 novos testes frontend (RecorrentesPage.test.tsx) → 224/224
 
 - **#87** — Limites por categoria com alertas (PR #144 · aguardando review · sessão 2026-05-28)
   - LimitesPage: grid de cards, progress bar com cores primary/warning/danger, badges "Em alerta" / "Ultrapassado"

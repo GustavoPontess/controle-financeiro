@@ -2,10 +2,14 @@
 owner: Caio
 last_reviewed: 2026-05-28
 status: LIVRE
-issue_atual: 'nenhuma — #87 Limites (PR #144) aguardando review. Próxima livre: #88 Bancos, #89 Recorrentes.'
+issue_atual: 'nenhuma — #89 Recorrentes (PR #145) aguardando review. Próxima livre: #88 Bancos, #85 Família.'
 ---
 
-## Última issue concluída — #87 (Limites por categoria com alertas) ✅ PR ABERTO
+## Última issue concluída — #89 (Recorrentes refator + cancelar/editar próxima) ✅ PR ABERTO
+
+PR #145 — branch `feat/89-recorrentes-refactor`. Backend: `EditarProximaOcorrenciaDto`, endpoint `POST /{id}/cancelar` (motivo obrigatório, soft-delete recorrente + cancela Previsoes), endpoint `PATCH /{id}/proxima` (edita primeiro Previsao). Fix exception types em todos os métodos (KeyNotFoundException/UnauthorizedAccessException/ArgumentException). 18 novos testes backend → 209/209. Frontend: refactor completo MUI→Pontes + CSS Modules (zero Box/Paper/Typography/Dialog/tokens.ts/CustomButton), 3 stat cards (Ativas/Custo mensal/Próximas 30 dias), modais Cancelar (validação motivo obrigatório) e Editar próxima (valor/descrição opcionais). Fix parseMoneyString para aceitar formato BR "45,90" e "1.234,56". Update types (canceladoEm/motivoCancelamento/EditarProximaDto) e service (cancelarRecorrente/editarProximaOcorrencia). 16 novos testes frontend → 224/224.
+
+## Última issue mergeada — #87 (Limites por categoria com alertas) ✅ PR #144 MERGEADO
 
 PR #144 — branch `feature/87-limites-categoria`. LimitesPage: grid de cards com progress bar, badge Em alerta (warning) / Ultrapassado (danger), seletor de período (mês/ano), modal criar/editar (PontesModal), dialog de confirmação de exclusão (PontesDialog). Boy-scout: OrcamentoService.ObterGastosAsync corrigido (filtros Ativo + Executado + !EhTransferencia + !EhSaldoInicial + !EhPagamentoFatura). Bug URL: `BASE = "/api/orcamentos"` → `"orcamentos"` (axios combina relative path com baseURL `/api/v1`). 14 testes backend + 12 testes frontend. 191/191 back + 208/208 front verdes.
 
