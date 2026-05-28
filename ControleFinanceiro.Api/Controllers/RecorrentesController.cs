@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace ControleFinanceiro.Api.Controllers;
 
@@ -58,6 +59,22 @@ public class RecorrentesController : ControllerBase
     {
         var uid = GetUserId();
         await _service.ToggleAtivoAsync(id, uid);
+        return NoContent();
+    }
+
+    [HttpPost("{id}/cancelar")]
+    public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarRecorrenteDto dto)
+    {
+        var uid = GetUserId();
+        var result = await _service.CancelarAsync(id, dto, uid);
+        return Ok(result);
+    }
+
+    [HttpPatch("{id}/proxima")]
+    public async Task<IActionResult> EditarProxima(Guid id, [FromBody] EditarProximaOcorrenciaDto dto)
+    {
+        var uid = GetUserId();
+        await _service.EditarProximaOcorrenciaAsync(id, dto, uid);
         return NoContent();
     }
 

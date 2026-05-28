@@ -256,16 +256,45 @@ public class RecorrenteService
         }
     }
 
+    public async Task EditarProximaOcorrenciaAsync(Guid id, EditarProximaOcorrenciaDto dto, Guid usuarioId)
+    {
+        var recorrente = await _context.Recorrentes.FindAsync(id)
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
+        if (recorrente.CriadoPor != usuarioId)
+            throw new UnauthorizedAccessException("Sem permissão.");
+
+        var proxima = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId == id &&
+                        t.StatusTransacao == StatusTransacao.Previsao &&
+                        t.Ativo)
+            .OrderBy(t => t.Data)
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Nenhuma ocorrência futura encontrada.");
+
+        if (dto.Valor.HasValue)
+        {
+            if (dto.Valor.Value <= 0)
+                throw new ArgumentException("Valor deve ser positivo.");
+            proxima.Valor = dto.Valor.Value;
+        }
+        if (dto.Descricao != null)
+            proxima.Descricao = dto.Descricao;
+        if (dto.CategoriaId.HasValue)
+            proxima.CategoriaId = dto.CategoriaId;
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<object> CancelarAsync(Guid id, CancelarRecorrenteDto dto, Guid usuarioId)
     {
         var recorrente = await _context.Recorrentes.FindAsync(id)
-            ?? throw new Exception("Recorrente não encontrado.");
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (recorrente.CriadoPor != usuarioId)
-            throw new Exception("Sem permissão.");
+            throw new UnauthorizedAccessException("Sem permissão.");
 
         var motivo = dto.Motivo;
         if (string.IsNullOrWhiteSpace(motivo))
-            throw new Exception("Motivo do cancelamento é obrigatório.");
+            throw new ArgumentException("Motivo do cancelamento é obrigatório.");
 
         var correlationId = Guid.NewGuid();
         var idempotencyKey = ObterIdempotencyKey();
@@ -325,9 +354,9 @@ public class RecorrenteService
     public async Task AtualizarAsync(Guid id, CriarRecorrenteDto dto, Guid usuarioId)
     {
         var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new Exception("Recorrente não encontrado.");
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new Exception("Sem permissão.");
+            throw new UnauthorizedAccessException("Sem permissão.");
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;
@@ -345,9 +374,9 @@ public class RecorrenteService
     public async Task ToggleAtivoAsync(Guid id, Guid usuarioId)
     {
         var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new Exception("Recorrente não encontrado.");
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new Exception("Sem permissão.");
+            throw new UnauthorizedAccessException("Sem permissão.");
 
         r.Ativo = !r.Ativo;
         await _context.SaveChangesAsync();
@@ -356,9 +385,9 @@ public class RecorrenteService
     public async Task DeletarAsync(Guid id, Guid usuarioId)
     {
         var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new Exception("Recorrente não encontrado.");
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new Exception("Sem permissão.");
+            throw new UnauthorizedAccessException("Sem permissão.");
 
         _context.Recorrentes.Remove(r);
         await _context.SaveChangesAsync();
