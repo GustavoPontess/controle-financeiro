@@ -6,8 +6,8 @@
   font-family: var(--pontes-font); position: relative;
   transition: gap 200ms ease, background-color .15s ease, color .15s ease;
 }
-.item[data-collapsed="true"] { gap: 0; }
-.item:hover { background: var(--pontes-bg); }
+.item[data-collapsed="true"] { gap: 0; justify-content: center; padding-left: 0; padding-right: 0; }
+.item:hover { background: color-mix(in srgb, var(--pontes-primary-soft) 70%, transparent); }
 .item[data-active="true"], .item[data-active="true"]:hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); font-weight: 700; }
 .bar {
   position: absolute; left: 0; top: 50%; width: 4px; height: 14px; border-radius: 999px;

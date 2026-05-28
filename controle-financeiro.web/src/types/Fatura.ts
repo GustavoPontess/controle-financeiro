@@ -31,8 +31,18 @@ export interface FaturaTransacao {
   numeroParcela?: number
 }
 
+export interface FaturaPagamento {
+  id: string
+  valor: number
+  data: string
+  criadoEm: string
+  meioPagamento: number
+  meioPagamentoDescricao: string
+}
+
 export interface FaturaDetalhe extends Fatura {
   transacoes: FaturaTransacao[]
+  pagamentos: FaturaPagamento[]
 }
 
 export interface PagarFaturaPayload {

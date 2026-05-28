@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" rx="112" fill="#111827"/>
-  <rect x="104" y="160" width="304" height="208" rx="36" fill="none" stroke="#ffffff" stroke-width="28"/>
-  <path d="M104 224 h304" fill="none" stroke="#ffffff" stroke-width="28"/>
-  <text x="256" y="332" font-family="Arial, Helvetica, sans-serif" font-size="118" font-weight="700" fill="#ffffff" text-anchor="middle">R$</text>
+  <text x="256" y="318" font-family="'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif" font-size="300" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-12">P</text>
+  <path d="M128 384 Q256 312 384 384" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
 </svg>

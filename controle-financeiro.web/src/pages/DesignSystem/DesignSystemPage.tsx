@@ -317,6 +317,7 @@ function FormSection({ p }: { p: Palette }) {
   const [grpSub, setGrpSub] = useState("merc")
   const [categoria, setCategoria] = useState("mercado")
   const [conta, setConta] = useState("nubank")
+  const [bancoBusca, setBancoBusca] = useState("")
   const [notif, setNotif] = useState(true)
   const [dark, setDark] = useState(false)
   const [remember, setRemember] = useState(true)
@@ -365,6 +366,19 @@ function FormSection({ p }: { p: Palette }) {
               value={conta}
               onChange={setConta}
               options={["nubank", "itau", "bradesco", "bb", "inter", "c6", "carteira"]}
+            />
+          </PontesField>
+          <PontesField label="Select com busca (auto > 8 opções; rola + filtra)">
+            <PontesSelect
+              value={bancoBusca}
+              onChange={setBancoBusca}
+              placeholder="Selecione o banco"
+              searchable
+              options={[
+                "Nubank", "Itaú", "Bradesco", "Banco do Brasil", "Inter", "C6 Bank",
+                "Santander", "Caixa", "BTG Pactual", "Sicoob", "Sicredi", "Banrisul",
+                "Original", "Next", "PicPay", "Mercado Pago", "Neon", "Will Bank",
+              ].map((b) => ({ value: b, label: b }))}
             />
           </PontesField>
           <PontesField label="Textarea">

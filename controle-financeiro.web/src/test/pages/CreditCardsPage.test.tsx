@@ -44,6 +44,20 @@ const fatura = {
 } as unknown as Fatura
 const detalhe = { transacoes: [] } as unknown as FaturaDetalhe
 
+// Fixtures pros 3 estados de status (statusKey): aberta parcial, fechada quitada, fechada com saldo.
+const fAbertaParcial = {
+  id: "fo", dataInicio: "2026-05-20", dataFechamento: "2026-06-20", dataVencimento: "2026-06-28",
+  estadoCiclo: 0, estadoPagamento: 1, valorTotal: 130, valorPago: 50, valorRestante: 80, vencida: false,
+} as unknown as Fatura
+const fFechadaPaga = {
+  id: "fp", dataInicio: "2026-04-20", dataFechamento: "2026-05-20", dataVencimento: "2026-05-28",
+  estadoCiclo: 1, estadoPagamento: 2, valorTotal: 300, valorPago: 300, valorRestante: 0, vencida: false,
+} as unknown as Fatura
+const fFechadaComSaldo = {
+  id: "fd", dataInicio: "2026-03-20", dataFechamento: "2026-04-20", dataVencimento: "2026-04-28",
+  estadoCiclo: 1, estadoPagamento: 0, valorTotal: 200, valorPago: 0, valorRestante: 200, vencida: false,
+} as unknown as Fatura
+
 function renderPage() {
   return render(<PontesThemeProvider><CreditCardsPage /></PontesThemeProvider>)
 }
@@ -56,27 +70,58 @@ describe("CreditCardsPage (#84)", () => {
     pagarFatura.mockReset().mockResolvedValue(undefined)
   })
 
-  it("lista cartão + stats e limite", async () => {
+  it("lista cartão + resumo e limite", async () => {
     renderPage()
     expect(await screen.findByText("Nubank")).toBeInTheDocument()
-    expect(screen.getByText("Total de Cartões")).toBeInTheDocument()
-    expect(screen.getByText(/R\$\s?4\.850,00/)).toBeInTheDocument() // disponível
+    expect(screen.getByText("Limite total")).toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s?4\.850,00/).length).toBeGreaterThan(0) // disponível
   })
 
-  it("abre faturas e mostra a fatura aberta", async () => {
+  it("abre faturas (clica no card) e destaca a fatura atual", async () => {
     renderPage()
-    await screen.findByText("Nubank")
-    fireEvent.click(screen.getByLabelText("Ver faturas"))
-    expect(await screen.findByText(/Faturas — Nubank/)).toBeInTheDocument()
+    fireEvent.click(await screen.findByText("Nubank"))
+    expect(await screen.findByText("Todos os cartões")).toBeInTheDocument()
+    expect(screen.getByText(/· atual/)).toBeInTheDocument()
     expect(screen.getByText("Aberta")).toBeInTheDocument()
+  })
+
+  it("status: aberta parcial NÃO vira Paga; fechada quitada = Paga; fechada com saldo = Fechada", async () => {
+    getFaturasByCartao.mockReset().mockResolvedValue([fAbertaParcial, fFechadaPaga, fFechadaComSaldo])
+    renderPage()
+    // Cartão único → auto-foco; aguarda fatura carregar (badge Aberta da atual).
+    expect(await screen.findByText("Aberta")).toBeInTheDocument()
+    expect(screen.getByText(/Pago R\$\s?50,00 de R\$\s?130,00/)).toBeInTheDocument()
+    expect(screen.queryByText("Paga")).not.toBeInTheDocument()
+    // Mês anterior: fatura fechada e quitada → "Paga"
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Paga")).toBeInTheDocument()
+    // Mês anterior: fatura fechada com saldo → "Fechada"
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Fechada")).toBeInTheDocument()
+  })
+
+  it("valida form: submit sem nome bloqueia e mostra erro", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Novo Cartão"))
+    await screen.findByText("Novo cartão")
+    fireEvent.click(screen.getByText("Cadastrar"))
+    expect(await screen.findByText("Informe o nome do cartão")).toBeInTheDocument()
+    expect(createCartao).not.toHaveBeenCalled()
+  })
+
+  it("últimos dígitos aceita só números", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Novo Cartão"))
+    await screen.findByText("Novo cartão")
+    const input = screen.getByPlaceholderText("0000") as HTMLInputElement
+    fireEvent.change(input, { target: { value: "ab12cd34xy" } })
+    expect(input.value).toBe("1234")
   })
 
   it("paga fatura: chama pagarFatura com conta e valor", async () => {
     renderPage()
-    await screen.findByText("Nubank")
-    fireEvent.click(screen.getByLabelText("Ver faturas"))
-    await screen.findByText(/Faturas — Nubank/)
-    fireEvent.click(screen.getByLabelText("Pagar fatura"))
+    // Cartão único → auto-foco; aguarda Pagar aparecer (fatura carregada).
+    fireEvent.click(await screen.findByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))
     await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(1))
