@@ -15,12 +15,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Eye, EyeOff, ChevronLeft, ChevronRight, Wallet,
-  ArrowDownLeft, ArrowUpRight, ArrowRight, Landmark, PiggyBank, Clock, type LucideIcon,
+  ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock, type LucideIcon,
 } from "lucide-react"
 import {
   AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
-import { PontesCard, PontesIconButton, PontesBadge, usePontesTheme, semantic } from "@/components/pontes"
+import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, usePontesTheme, semantic } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
 import type { DashboardData, SaldoConta, TransacaoRecente } from "../../types/Dashboard"
 import { useAuth } from "../../hooks/useAuth"
@@ -300,29 +300,16 @@ export default function DashboardPage() {
 function AccountTile({ conta, fmt, share }: {
   conta: SaldoConta; fmt: (v: number) => string; share: number | null
 }) {
-  const [imgErr, setImgErr] = useState(false)
   const neg = conta.saldo < 0
-  // Carteira → Wallet; Poupança (tipo 2) → PiggyBank; Corrente/outros → Landmark.
-  const Icon = conta.isCarteira ? Wallet : conta.tipo === 2 ? PiggyBank : Landmark
-  const showLogo = !!conta.logoUrl && !imgErr
   return (
     <div className={styles.tile}>
       <div className={styles.tileHead}>
-        <div
-          className={styles.tileLogo}
-          style={showLogo && conta.cor ? { background: conta.cor } : undefined}
-        >
-          {showLogo ? (
-            <img
-              src={conta.logoUrl}
-              alt={conta.bancoNome ?? conta.nome}
-              onError={() => setImgErr(true)}
-              className={styles.tileLogoImg}
-            />
-          ) : (
-            <Icon size={18} strokeWidth={2} />
-          )}
-        </div>
+        <PontesBankBadge
+          name={conta.bancoNome ?? conta.nome}
+          logoUrl={conta.logoUrl}
+          cor={conta.cor}
+          size={36}
+        />
         <div style={{ minWidth: 0 }}>
           <div className={styles.tileName}>{conta.nome}</div>
           <div className={styles.tileSub}>{conta.bancoNome ?? conta.tipoDescricao}</div>

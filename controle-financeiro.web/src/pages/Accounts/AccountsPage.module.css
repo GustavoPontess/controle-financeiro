@@ -1,0 +1,202 @@
+/* AccountsPage.module.css — #88 refactor, zero tokens.ts, zero MUI */
+
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--pontes-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+/* ── Carteira card ───────────────────────────────────────────────────────── */
+
+.carteiraCard {
+  border-radius: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #0f172a 0%, #111827 55%, #1f2937 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.carteiraHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.carteiraTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.carteiraDesc {
+  font-size: 13px;
+  color: #cbd5e1;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.carteiraBody {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.carteiraNome {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.carteiraSaldo {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.carteiraChip {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 11px;
+}
+
+/* ── Account grid ────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* ── Account card ────────────────────────────────────────────────────────── */
+
+.card {
+  border: 1px solid var(--pontes-border, #e5e7eb);
+  border-radius: 16px;
+  padding: 20px;
+  background: var(--pontes-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pontes-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cardBanco {
+  font-size: 12px;
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 2px 0 0;
+}
+
+.cardSaldo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.saldoLabel {
+  font-size: 12px;
+  color: var(--pontes-text-secondary, #6b7280);
+}
+
+.saldoValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--pontes-success, #22c55e);
+}
+
+.saldoValue[data-neg="true"] {
+  color: var(--pontes-danger, #ef4444);
+}
+
+.cardNumeroConta {
+  text-align: right;
+}
+
+.numeroLabel {
+  font-size: 12px;
+  color: var(--pontes-text-secondary, #6b7280);
+}
+
+.numeroValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pontes-text);
+}
+
+.cardFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
