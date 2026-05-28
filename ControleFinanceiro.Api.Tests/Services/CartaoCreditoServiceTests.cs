@@ -150,6 +150,64 @@ public class CartaoCreditoServiceTests
     }
 
     [Fact]
+    public async Task DeletarAsync_SoftDelete_CartaoComprasInativosFaturasPagamentosPreservados()
+    {
+        var ctx = CreateContext();
+        var svc = new CartaoCreditoService(ctx);
+        var usuarioId = Guid.NewGuid();
+
+        // Cartão + compra + fatura + pagamento (transação com FaturaPagaId).
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Nubank", TemCredito = true, LimiteTotal = 5000,
+            CriadoPor = usuarioId, Ativo = true,
+        };
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
+            DataInicio = DateTime.UtcNow.AddDays(-30), DataFechamento = DateTime.UtcNow,
+            DataVencimento = DateTime.UtcNow.AddDays(7), CriadoPor = usuarioId,
+        };
+        var compra = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Compra X", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
+            Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+        };
+        var pagamento = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Pagamento fatura", Valor = 100, Tipo = TipoTransacao.Despesa,
+            FaturaPagaId = fatura.Id, Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.Add(fatura);
+        ctx.Transacoes.AddRange(compra, pagamento);
+        await ctx.SaveChangesAsync();
+
+        var ok = await svc.DeletarAsync(cartao.Id, usuarioId);
+
+        Assert.True(ok);
+        // Cartão e compras desativados (soft).
+        var cartaoDb = await ctx.CartoesCredito.FindAsync(cartao.Id);
+        Assert.NotNull(cartaoDb);
+        Assert.False(cartaoDb!.Ativo);
+        var compraDb = await ctx.Transacoes.FindAsync(compra.Id);
+        Assert.NotNull(compraDb);
+        Assert.False(compraDb!.Ativo);
+        // Pagamento mantém Ativo + link com fatura (saída real de dinheiro preservada).
+        var pagDb = await ctx.Transacoes.FindAsync(pagamento.Id);
+        Assert.NotNull(pagDb);
+        Assert.True(pagDb!.Ativo);
+        Assert.Equal(fatura.Id, pagDb.FaturaPagaId);
+        // Fatura intacta no DB.
+        var faturaDb = await ctx.Faturas.FindAsync(fatura.Id);
+        Assert.NotNull(faturaDb);
+        // Listagem não mostra o cartão soft-deleted.
+        var lista = await svc.ListarAsync(usuarioId);
+        Assert.Empty(lista);
+    }
+
+    [Fact]
     public async Task AtualizarAsync_LimiteNegativo_LancaException()
     {
         var ctx = CreateContext();

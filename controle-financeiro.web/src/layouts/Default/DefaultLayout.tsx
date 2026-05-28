@@ -9,7 +9,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
-  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Settings,
+  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
 import { PontesToast, PontesCommandPalette, type PontesCommandItem } from "@/components/pontes"
@@ -40,6 +40,7 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/accounts", label: "Contas", icon: <Landmark size={18} strokeWidth={2} /> },
   { to: "/categories", label: "Categorias", icon: <Tags size={18} strokeWidth={2} /> },
   { to: "/familias", label: "Famílias", icon: <Users size={18} strokeWidth={2} /> },
+  { to: "/metas", label: "Metas", icon: <Target size={18} strokeWidth={2} /> },
   { to: "/settings", label: "Configurações", icon: <Settings size={18} strokeWidth={2} /> },
 ]
 

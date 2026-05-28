@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-23
+last_reviewed: 2026-05-27
 next_review: 2026-08-21
 status: CURRENT
 ---
@@ -17,12 +17,12 @@ status: CURRENT
 ## Dashboard
 
 ```
-Site público (6):       2/6  ✅ #75 #77  ⏳ #76 #78 #79 #80
-Telas internas (9):     5/9  ✅ #81 #82 #83 #84 #85  ⏳ #86 #87 #88 #89
+Site público (6):       6/6  ✅ #75 #76 #77 #78 #79 #80
+Telas internas (9):     6/9  ✅ #81 #82 #83 #84 #85 #86  ⏳ #87 #88 #89
 Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          7/18 telas+site (#75-#92)
+Total Q5 2026:          12/18 telas+site (#75-#92) — +#138 (redesign cartões)
 ```
 
 > Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
@@ -39,9 +39,24 @@ Total Q5 2026:          7/18 telas+site (#75-#92)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #86 Metas, #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80)
+(nenhuma issue em execução — próxima livre: #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80)
 
 ## Resolvidos Q5
+
+- **#138** — Redesign visual/UX da tela de Cartões (mergeado · PR #139 · sessão 2026-05-27)
+  - Cartão físico com gradiente da cor da marca do banco (Nubank roxo, fallback bandeira); chip + contactless + número em relevo; bandeira Mastercard SVG inline
+  - Modo foco (clica → isola cartão + fatura); 1 cartão → auto-foco
+  - Fatura: navegação por mês, atual por data, janela de 3 pré-cacheada, timeline cronológica compras + pagamentos por data+hora, "Total pago", previstas das assinaturas até Dez
+  - Botão "Hoje" (PontesButton outline) na nav de mês; atalhos teclado ← → respeitando foco em input
+  - Bloqueio pagar fatura futura (padrão Nubank/Itaú/Bradesco); badge "Futura" neutral
+  - Destaque dias: ≤5 dias até vencimento → cor danger; até fechamento → warning
+  - Pagar modal: PontesInput máscara R$ (parseMoney/fmtMoneyInput); skeleton + EmptyState
+  - Form: validação por campo (nome/banco obrigatórios, últimos 4 só número, limite máscara, dia 1–31); PontesSelect busca >8 + portal + fix scroll
+  - **Soft-delete cartão**: Ativo=false no cartão + compras; pagamentos preservados com FaturaPagaId; faturas intactas; listar/buscar filtram Ativo; teste regressão
+  - Backend: CartaoCreditoDto ganha BancoLogoUrl + BancoCor; FaturaDetalheDto.Pagamentos; ExpandirRecorrentes horizonte = fim do ano + UsadoComoCredito=true; seeder rico (MeioPagamento, faturas reais, recorrentes)
+  - Sidebar rail colapsado: avatar 28px sem anel, hover azul claro
+  - Favicon Pontes; dedupe contas por email
+  - 135/135 frontend + 160/160 backend verde
 
 - **#85** — Família — rateio explícito + aprovação despesa + acerto (mergeado · PR #140 · sessão 2026-05-25)
   - Backend 100% completo (Issues #22–#27): Família, Convite, Despesa Compartilhada, Dependentes, Rateio, Acerto de Contas

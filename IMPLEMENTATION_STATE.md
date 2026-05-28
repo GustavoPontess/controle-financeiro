@@ -1,11 +1,27 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-23
-status: PRONTO_PRA_PROXIMA
-issue_atual: 'Nenhuma em execução. #82 (Transação), #128 (contabilidade/P&L) e #129 (validação forms) CONCLUÍDOS e mergeados na main. Próxima: pegar issue livre (ver ISSUES.md / GitHub).'
+last_reviewed: 2026-05-27
+status: LIVRE
+issue_atual: 'nenhuma — #138 mergeado (PR #139 squash em c6630b3). Próxima livre: #87 Limites, #88 Bancos, #89 Recorrentes, ou site #76/#78/#79/#80.'
 ---
 
-## Última issue concluída — #129 (validação por campo nos forms) ✅ MERGEADO
+## Última issue concluída — #138 (redesign visual/UX da tela de Cartões) ✅ MERGEADO
+
+PR #139 squash `c6630b3`. Cartão físico com gradiente da cor da marca do banco (Nubank roxo, fallback bandeira); modo foco; navegação por mês com botão "Hoje" (PontesButton outline) + atalhos teclado ← → respeitando foco em input; timeline cronológica pagamentos+compras com nota "Total pago"; previstas das assinaturas até Dez; **bloqueio de pagar fatura futura** (padrão Nubank/Itaú/Bradesco — fatura com `dataInicio > hoje` recebe badge "Futura" sem botão Pagar); destaque dias até vencimento/fechamento (≤5 dias → danger/warning); Pagar modal com máscara R$; skeleton + EmptyState; badge "Vencida" danger; **soft-delete cartão** preservando pagamentos (saída real de dinheiro continua refletida) e faturas (auditoria); seeder rico (MeioPagamento, faturas reais, recorrentes). 135/135 frontend + 160/160 backend verde.
+
+### Decisões registradas em `docs/features/cartao-credito/regras.md` (§9)
+
+### Spin-offs ainda abertos
+- **#130** editar bloqueia data futura no crédito
+- **#131** mover `components/transactions` → `pages/Transactions`
+- **#88** logo banco via SVG limpo (gilbarbara CDN ou local sprite) — favicon Google bloqueia CORS pra mask, vira badge ruim; tentativas com mix-blend-mode deixam halo do anti-aliasing
+
+### Dev local
+Postgres docker `controlefinanceiro-db` + API 5293 + front 5173. Login `dev@controle.test` / `Dev@123456`. Preview MCP serverId muda a cada sessão.
+
+---
+
+## Anterior — #129 (validação por campo nos forms) ✅ MERGEADO
 
 PR #135 (`66d11ad`). Login/Register/Categorias validam por campo com o estado do
 DS (borda vermelha + erro inline), `form noValidate` (mata o balão nativo).

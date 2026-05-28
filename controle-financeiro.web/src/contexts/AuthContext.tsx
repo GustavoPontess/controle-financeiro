@@ -37,10 +37,19 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const SAVED_ACCOUNTS_KEY = 'savedAccounts'
 
+const normEmail = (e: string) => e.trim().toLowerCase()
+
+/** Remove contas duplicadas pelo mesmo e-mail, mantendo a última (id mais recente). */
+function dedupeByEmail(accounts: StoredAccount[]): StoredAccount[] {
+  const byEmail = new Map<string, StoredAccount>()
+  for (const a of accounts) byEmail.set(normEmail(a.email), a)
+  return [...byEmail.values()]
+}
+
 function loadSavedAccounts(): StoredAccount[] {
   try {
     const data = localStorage.getItem(SAVED_ACCOUNTS_KEY)
-    return data ? JSON.parse(data) : []
+    return data ? dedupeByEmail(JSON.parse(data)) : []
   } catch {
     return []
   }
@@ -67,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const upsertSavedAccount = (account: StoredAccount) => {
     setSavedAccounts(prev => {
-      const updated = [...prev.filter(a => a.id !== account.id), account]
+      // Dedupe por e-mail (identidade real) E por id — relogin do mesmo e-mail
+      // (ex.: id mudou) substitui a entrada antiga em vez de duplicar.
+      const updated = [...prev.filter(a => a.id !== account.id && normEmail(a.email) !== normEmail(account.email)), account]
       persistSavedAccounts(updated)
       return updated
     })
@@ -136,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const usuario = await fetchCurrentUser()
       if (!usuario) throw new Error('Erro ao buscar dados da conta')
 
-      if (savedAccounts.some(a => a.id === usuario.id)) {
+      if (savedAccounts.some(a => a.id === usuario.id || normEmail(a.email) === normEmail(usuario.email))) {
         throw new Error('Esta conta já está conectada')
       }
 
