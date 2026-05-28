@@ -48,7 +48,10 @@
 
 /* Face do cartão — frente realista */
 .cardFace { position: relative; z-index: 1; flex: 1 1 auto; min-height: 168px; padding: 20px 22px 18px; display: flex; flex-direction: column; }
-.faceTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-right: 50px; }
+.faceTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-right: 56px; }
+/* Logo banco em destaque no canto sup direito do cartão (badge branco arredondado) */
+.bancoBadge { width: 44px; height: 44px; border-radius: 10px; background: rgba(255, 255, 255, 0.96); padding: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.bancoBadge img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cardNameWrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cardName { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cardEmissor { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -59,9 +62,6 @@
 .cardChip::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1px; transform: translateX(-50%); background: rgba(0, 0, 0, 0.22); box-shadow: -8px 0 0 rgba(0, 0, 0, 0.12), 8px 0 0 rgba(0, 0, 0, 0.12); }
 .faceBottom { margin-top: auto; padding-top: 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .cardNumber { font-family: ui-monospace, "SF Mono", monospace; font-size: 19px; font-weight: 600; letter-spacing: 0.16em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 -1px 0 rgba(255, 255, 255, 0.14); }
-
-/* Banco logo inline com o nome do banco no topo do cartão */
-.bancoLogo { width: 16px; height: 16px; border-radius: 4px; background: rgba(255, 255, 255, 0.95); padding: 1px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 5px; }
 
 /* Bandeira: canto inferior direito (Mastercard SVG ou wordmark) */
 .bandeiraSlot { display: flex; align-items: center; justify-content: flex-end; min-height: 30px; }

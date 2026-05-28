@@ -73,6 +73,24 @@ const BANDEIRA_GRAD: Record<number, string> = {
 }
 const grad = (b: number) => BANDEIRA_GRAD[b] ?? BANDEIRA_GRAD[6]
 
+// Escurece um hex (mistura com preto) — pra gerar gradient bonito a partir
+// da cor da marca do banco (Nubank #820AD1 → #4a0577 + #820AD1).
+function darken(hex: string, amount = 0.45): string {
+  const h = hex.replace("#", "")
+  const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h
+  const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16)
+  const k = 1 - amount
+  const rr = Math.round(r * k), gg = Math.round(g * k), bb = Math.round(b * k)
+  return `#${rr.toString(16).padStart(2, "0")}${gg.toString(16).padStart(2, "0")}${bb.toString(16).padStart(2, "0")}`
+}
+function cardGradient(bancoCor: string | undefined, bandeira: number): string {
+  if (bancoCor && /^#?[0-9a-f]{3,8}$/i.test(bancoCor)) {
+    const hex = bancoCor.startsWith("#") ? bancoCor : `#${bancoCor}`
+    return `linear-gradient(135deg, ${darken(hex, 0.45)}, ${hex})`
+  }
+  return grad(bandeira)
+}
+
 // Próxima ocorrência (dia do mês) a partir de hoje. Se o dia já passou no mês
 // atual, pula pro próximo mês. Retorna dias inteiros até essa data.
 function diasAteProxDia(dia: number | undefined, now: number): number | null {
@@ -524,8 +542,8 @@ export default function CreditCardsPage() {
         data-clickable={clickable ? "true" : undefined}
         onClick={clickable ? () => openFaturas(c.id) : undefined}
       >
-        {/* Cartão físico (gradiente da bandeira, arredondado em tudo) */}
-        <div className={styles.card} style={{ background: grad(c.bandeira) }}>
+        {/* Cartão físico — gradiente do banco se tem cor, senão bandeira */}
+        <div className={styles.card} style={{ background: cardGradient(c.bancoCor, c.bandeira) }}>
           <div className={styles.cardSheen1} />
           <div className={styles.cardSheen2} />
 
@@ -538,15 +556,13 @@ export default function CreditCardsPage() {
             <div className={styles.faceTop}>
               <div className={styles.cardNameWrap}>
                 <span className={styles.cardName}>{c.nome}</span>
-                {c.bancoNome && (
-                  <span className={styles.cardEmissor}>
-                    {c.bancoLogoUrl && (
-                      <img src={c.bancoLogoUrl} alt="" className={styles.bancoLogo} aria-hidden="true" />
-                    )}
-                    {c.bancoNome}
-                  </span>
-                )}
+                {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
               </div>
+              {c.bancoLogoUrl && (
+                <div className={styles.bancoBadge}>
+                  <img src={c.bancoLogoUrl} alt={c.bancoNome ?? ""} />
+                </div>
+              )}
             </div>
             <div className={styles.chipRow}>
               <div className={styles.cardChip} />

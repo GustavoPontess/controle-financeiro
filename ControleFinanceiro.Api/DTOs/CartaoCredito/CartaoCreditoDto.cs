@@ -20,5 +20,6 @@ public class CartaoCreditoDto
     public Guid? BancoId { get; set; }
     public string? BancoNome { get; set; }
     public string? BancoLogoUrl { get; set; }
+    public string? BancoCor { get; set; }
     public bool Ativo { get; set; }
 }

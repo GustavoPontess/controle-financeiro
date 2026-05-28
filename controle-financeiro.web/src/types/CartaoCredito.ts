@@ -17,6 +17,7 @@ export interface CartaoCredito {
   bancoId?: string
   bancoNome?: string
   bancoLogoUrl?: string
+  bancoCor?: string
   ativo: boolean
 }
 
