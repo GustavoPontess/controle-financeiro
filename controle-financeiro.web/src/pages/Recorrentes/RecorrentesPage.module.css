@@ -1,0 +1,207 @@
+/* RecorrentesPage.module.css — #89 refactor, zero tokens.ts, zero MUI */
+
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--pontes-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+/* ── List card ───────────────────────────────────────────────────────────── */
+
+.list {
+  border: 1px solid var(--pontes-border, #e5e7eb);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--pontes-surface, #fff);
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--pontes-border, #e5e7eb);
+}
+
+.listTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pontes-text);
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ── Row ─────────────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--pontes-border, #e5e7eb);
+  transition: background 0.15s;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--pontes-bg-hover, #f9fafb);
+}
+
+.row[data-inactive="true"] {
+  opacity: 0.5;
+}
+
+/* icon */
+.rowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rowIcon[data-tipo="despesa"] {
+  background: var(--pontes-danger-light, #fee2e2);
+  color: var(--pontes-danger, #ef4444);
+}
+
+.rowIcon[data-tipo="receita"] {
+  background: var(--pontes-success-light, #dcfce7);
+  color: var(--pontes-success, #22c55e);
+}
+
+/* info */
+.rowInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowDescricao {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pontes-text);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.rowSub {
+  font-size: 12px;
+  color: var(--pontes-text-secondary, #6b7280);
+}
+
+.rowCancelado {
+  font-size: 12px;
+  color: var(--pontes-danger, #ef4444);
+}
+
+/* right */
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rowValor {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rowValor[data-tipo="despesa"] {
+  color: var(--pontes-danger, #ef4444);
+}
+
+.rowValor[data-tipo="receita"] {
+  color: var(--pontes-success, #22c55e);
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ── Form (inside modals) ────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Modal footer ────────────────────────────────────────────────────────── */
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ── Info text in modals ─────────────────────────────────────────────────── */
+
+.cancelarInfo,
+.editarInfo {
+  font-size: 13px;
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 0;
+  line-height: 1.5;
+}

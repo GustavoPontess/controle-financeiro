@@ -17,6 +17,18 @@ export interface Recorrente {
   dataFim?: string
   ativo: boolean
   dataProximaGeracao?: string
+  canceladoEm?: string
+  motivoCancelamento?: string
+}
+
+export interface EditarProximaDto {
+  valor?: number
+  descricao?: string
+  categoriaId?: string
+}
+
+export interface CancelarRecorrenteDto {
+  motivo: string
 }
 
 export interface CriarRecorrente {

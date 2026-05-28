@@ -1,28 +1,29 @@
 import { useCallback, useEffect, useState } from "react"
-import {
-  Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Select, MenuItem as MuiMenuItem, FormControl, InputLabel,
-  IconButton, Chip, Switch,
-} from "@mui/material"
-import AddIcon from "@mui/icons-material/Add"
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
-import RepeatIcon from "@mui/icons-material/Repeat"
-import TrendingUpIcon from "@mui/icons-material/TrendingUp"
-import TrendingDownIcon from "@mui/icons-material/TrendingDown"
 import { useOutletContext } from "react-router-dom"
-import CustomButton from "../../components/CustomButton"
+import {
+  Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle,
+} from "lucide-react"
+import {
+  PontesButton, PontesIconButton, PontesBadge,
+  PontesModal, PontesDialog,
+  PontesField, PontesInput, PontesSelect,
+  PontesStatCard, PontesEmptyState, PontesLoadingDots,
+} from "@/components/pontes"
 import {
   getRecorrentes, createRecorrente, toggleRecorrente, deleteRecorrente,
+  cancelarRecorrente, editarProximaOcorrencia,
 } from "../../services/recorrenteService"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
-import type { Recorrente, CriarRecorrente } from "../../types/Recorrente"
+import type { Recorrente, CriarRecorrente, EditarProximaDto } from "../../types/Recorrente"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
-import { tokens } from "../../theme/tokens"
+import styles from "./RecorrentesPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -32,326 +33,616 @@ const formatDate = (d?: string) =>
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-const freqBadgeColor: Record<number, { bg: string; color: string }> = {
-  1: { bg: tokens.color.status.warning.light, color: tokens.color.status.warning.dark },
-  2: { bg: "#ede9fe", color: "#7c3aed" },
-  3: { bg: tokens.color.status.info.light, color: tokens.color.status.info.dark },
+const parseMoneyString = (s: string) => {
+  // Handle BR format "1.234,56" and plain "45.90"/"45,90"
+  let normalized = s
+  if (s.includes(",") && s.includes(".")) {
+    // BR thousands+decimal: "1.234,56" → "1234.56"
+    normalized = s.replace(/\./g, "").replace(",", ".")
+  } else if (s.includes(",")) {
+    // BR decimal only: "45,90" → "45.90"
+    normalized = s.replace(",", ".")
+  }
+  const n = parseFloat(normalized)
+  return isNaN(n) ? 0 : n
 }
 
-const emptyForm: CriarRecorrente = {
-  descricao: "",
-  valor: 0,
-  tipo: 1,
-  categoriaId: undefined,
-  contaId: "",
-  frequencia: 2,
-  dia: 1,
-  dataInicio: today(),
-  dataFim: undefined,
+// ── tipos de form ─────────────────────────────────────────────────────────────
+
+type CriarForm = {
+  descricao: string
+  valor: string
+  tipo: string
+  categoriaId: string
+  contaId: string
+  frequencia: string
+  dia: string
+  dataInicio: string
+  dataFim: string
 }
+
+type CriarErrors = Partial<Record<keyof CriarForm, string>>
+
+const emptyCriarForm = (): CriarForm => ({
+  descricao: "",
+  valor: "",
+  tipo: "1",
+  categoriaId: "",
+  contaId: "",
+  frequencia: "2",
+  dia: "1",
+  dataInicio: today(),
+  dataFim: "",
+})
+
+function validateCriar(f: CriarForm): CriarErrors {
+  const errs: CriarErrors = {}
+  if (!f.descricao.trim()) errs.descricao = "Descrição obrigatória."
+  const v = parseMoneyString(f.valor)
+  if (!f.valor || v <= 0) errs.valor = "Informe um valor positivo."
+  if (!f.contaId) errs.contaId = "Selecione uma conta."
+  if (!f.dataInicio) errs.dataInicio = "Data de início obrigatória."
+  const dia = parseInt(f.dia)
+  if (isNaN(dia) || dia < 1 || dia > 31) errs.dia = "Dia de 1 a 31."
+  return errs
+}
+
+type EditarProximaForm = {
+  valor: string
+  descricao: string
+}
+
+type EditarProximaErrors = Partial<Record<keyof EditarProximaForm, string>>
+
+function validateEditarProxima(f: EditarProximaForm): EditarProximaErrors {
+  const errs: EditarProximaErrors = {}
+  if (f.valor) {
+    const v = parseMoneyString(f.valor)
+    if (v <= 0) errs.valor = "Valor deve ser positivo."
+  }
+  return errs
+}
+
+type CancelarForm = { motivo: string }
+type CancelarErrors = Partial<Record<keyof CancelarForm, string>>
+
+function validateCancelar(f: CancelarForm): CancelarErrors {
+  const errs: CancelarErrors = {}
+  if (!f.motivo.trim()) errs.motivo = "Motivo é obrigatório."
+  return errs
+}
+
+type ConfirmState = {
+  title: string
+  description: string
+  onConfirm: () => Promise<void>
+  tone?: "danger" | "warning" | "info"
+} | null
+
+// ── componente ────────────────────────────────────────────────────────────────
 
 export default function RecorrentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
+
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState<CriarRecorrente>(emptyForm)
-  const [erro, setErro] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  // modal criar
+  const [criarOpen, setCriarOpen] = useState(false)
+  const [criarForm, setCriarForm] = useState<CriarForm>(emptyCriarForm())
+  const [criarErrors, setCriarErrors] = useState<CriarErrors>({})
+  const [criarSaving, setCriarSaving] = useState(false)
+
+  // modal cancelar
+  const [cancelarOpen, setCancelarOpen] = useState(false)
+  const [cancelarTarget, setCancelarTarget] = useState<Recorrente | null>(null)
+  const [cancelarForm, setCancelarForm] = useState<CancelarForm>({ motivo: "" })
+  const [cancelarErrors, setCancelarErrors] = useState<CancelarErrors>({})
+  const [cancelarSaving, setCancelarSaving] = useState(false)
+
+  // modal editar próxima
+  const [editarOpen, setEditarOpen] = useState(false)
+  const [editarTarget, setEditarTarget] = useState<Recorrente | null>(null)
+  const [editarForm, setEditarForm] = useState<EditarProximaForm>({ valor: "", descricao: "" })
+  const [editarErrors, setEditarErrors] = useState<EditarProximaErrors>({})
+  const [editarSaving, setEditarSaving] = useState(false)
+
+  // confirm delete
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+
+  // ── load ────────────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
+    setLoading(true)
     try {
       const [r, c, cat] = await Promise.all([getRecorrentes(), getContas(), getCategories()])
       setRecorrentes(r)
       setContas(c)
       setCategorias(cat)
-    } catch (error) {
-      console.error("Erro ao carregar recorrentes:", error)
-      notify({ open: true, message: "Erro ao carregar recorrentes", severity: "error" })
+    } catch {
+      notify({ open: true, message: "Erro ao carregar recorrentes.", severity: "error" })
+    } finally {
+      setLoading(false)
     }
   }, [notify])
 
   useEffect(() => { void loadData() }, [loadData])
 
-  const openDialog = () => {
-    setForm(emptyForm)
-    setErro("")
-    setDialogOpen(true)
+  // ── stats ────────────────────────────────────────────────────────────────────
+
+  const ativas = recorrentes.filter(r => r.ativo).length
+  const totalMensalDespesa = recorrentes
+    .filter(r => r.ativo && r.frequencia === 2 && r.tipo === 1)
+    .reduce((s, r) => s + r.valor, 0)
+  const proximas30 = recorrentes.filter(r => {
+    if (!r.ativo || !r.dataProximaGeracao) return false
+    const d = new Date(r.dataProximaGeracao)
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 30)
+    return d <= cutoff
+  }).length
+
+  // ── criar ────────────────────────────────────────────────────────────────────
+
+  function openCriar() {
+    setCriarForm(emptyCriarForm())
+    setCriarErrors({})
+    setCriarOpen(true)
   }
 
-  const handleSalvar = async () => {
-    setErro("")
-    if (!form.descricao || !form.valor || !form.contaId) {
-      setErro("Preencha todos os campos obrigatórios.")
-      return
-    }
-    setLoading(true)
+  async function handleCriar() {
+    const errs = validateCriar(criarForm)
+    if (Object.keys(errs).length > 0) { setCriarErrors(errs); return }
+    setCriarSaving(true)
     try {
-      await createRecorrente({
-        ...form,
-        valor: Number(form.valor),
-        dataInicio: new Date(form.dataInicio).toISOString(),
-        dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : undefined,
-        categoriaId: form.categoriaId || undefined,
-      })
-      setDialogOpen(false)
+      const dto: CriarRecorrente = {
+        descricao: criarForm.descricao,
+        valor: parseMoneyString(criarForm.valor),
+        tipo: parseInt(criarForm.tipo),
+        contaId: criarForm.contaId || undefined,
+        categoriaId: criarForm.categoriaId || undefined,
+        frequencia: parseInt(criarForm.frequencia),
+        dia: parseInt(criarForm.dia),
+        dataInicio: new Date(criarForm.dataInicio).toISOString(),
+        dataFim: criarForm.dataFim ? new Date(criarForm.dataFim).toISOString() : undefined,
+      }
+      await createRecorrente(dto)
+      setCriarOpen(false)
       await loadData()
       window.dispatchEvent(new Event("transactionCreated"))
+      notify({ open: true, message: "Assinatura criada com sucesso.", severity: "success" })
     } catch {
-      setErro("Erro ao criar assinatura.")
+      notify({ open: true, message: "Erro ao criar assinatura.", severity: "error" })
     } finally {
-      setLoading(false)
+      setCriarSaving(false)
     }
   }
 
-  const handleToggle = async (id: string) => {
-    await toggleRecorrente(id)
-    await loadData()
+  // ── toggle ───────────────────────────────────────────────────────────────────
+
+  async function handleToggle(r: Recorrente) {
+    try {
+      await toggleRecorrente(r.id)
+      await loadData()
+    } catch {
+      notify({ open: true, message: "Erro ao atualizar assinatura.", severity: "error" })
+    }
   }
 
-  const handleDeletar = async (id: string) => {
-    if (!confirm("Remover esta assinatura? As transações já geradas serão mantidas.")) return
-    await deleteRecorrente(id)
-    await loadData()
+  // ── deletar ───────────────────────────────────────────────────────────────────
+
+  function openDeletar(r: Recorrente) {
+    setConfirm({
+      title: "Remover assinatura",
+      description: `Remover "${r.descricao}"? As transações já geradas serão mantidas.`,
+      tone: "danger",
+      onConfirm: async () => {
+        await deleteRecorrente(r.id)
+        await loadData()
+        notify({ open: true, message: "Assinatura removida.", severity: "success" })
+      },
+    })
   }
 
-  const totalMensal = recorrentes
-    .filter(r => r.ativo && r.frequencia === 2)
-    .reduce((sum, r) => sum + (r.tipo === 1 ? -r.valor : r.valor), 0)
+  // ── cancelar ─────────────────────────────────────────────────────────────────
 
-  const ativos = recorrentes.filter(r => r.ativo).length
+  function openCancelar(r: Recorrente) {
+    setCancelarTarget(r)
+    setCancelarForm({ motivo: "" })
+    setCancelarErrors({})
+    setCancelarOpen(true)
+  }
+
+  async function handleCancelar() {
+    const errs = validateCancelar(cancelarForm)
+    if (Object.keys(errs).length > 0) { setCancelarErrors(errs); return }
+    if (!cancelarTarget) return
+    setCancelarSaving(true)
+    try {
+      await cancelarRecorrente(cancelarTarget.id, { motivo: cancelarForm.motivo })
+      setCancelarOpen(false)
+      await loadData()
+      notify({ open: true, message: "Assinatura cancelada.", severity: "success" })
+    } catch {
+      notify({ open: true, message: "Erro ao cancelar assinatura.", severity: "error" })
+    } finally {
+      setCancelarSaving(false)
+    }
+  }
+
+  // ── editar próxima ────────────────────────────────────────────────────────────
+
+  function openEditarProxima(r: Recorrente) {
+    setEditarTarget(r)
+    setEditarForm({ valor: "", descricao: "" })
+    setEditarErrors({})
+    setEditarOpen(true)
+  }
+
+  async function handleEditarProxima() {
+    const errs = validateEditarProxima(editarForm)
+    if (Object.keys(errs).length > 0) { setEditarErrors(errs); return }
+    if (!editarTarget) return
+    setEditarSaving(true)
+    try {
+      const dto: EditarProximaDto = {}
+      if (editarForm.valor) dto.valor = parseMoneyString(editarForm.valor)
+      if (editarForm.descricao.trim()) dto.descricao = editarForm.descricao
+      await editarProximaOcorrencia(editarTarget.id, dto)
+      setEditarOpen(false)
+      await loadData()
+      notify({ open: true, message: "Próxima ocorrência atualizada.", severity: "success" })
+    } catch {
+      notify({ open: true, message: "Erro ao editar próxima ocorrência.", severity: "error" })
+    } finally {
+      setEditarSaving(false)
+    }
+  }
+
+  // ── selects options ───────────────────────────────────────────────────────────
+
+  const contaOpts = contas.map(c => ({ value: c.id, label: c.nome }))
+  const categoriaOpts = [
+    { value: "", label: "Sem categoria" },
+    ...categorias.map(c => ({ value: c.id, label: c.descricao })),
+  ]
+  const tipoOpts = [
+    { value: "1", label: "Despesa" },
+    { value: "2", label: "Receita" },
+  ]
+  const freqOpts = [
+    { value: "1", label: "Semanal" },
+    { value: "2", label: "Mensal" },
+    { value: "3", label: "Anual" },
+  ]
+
+  const freqBadge: Record<number, "warning" | "neutral" | "primary"> = { 1: "warning", 2: "primary", 3: "neutral" }
+
+  // ── render ────────────────────────────────────────────────────────────────────
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className={styles.page}>
       {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box>
-          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Assinaturas</Typography>
-          <Typography fontSize={13} color={tokens.color.text.secondary}>Assinaturas e pagamentos automáticos</Typography>
-        </Box>
-        <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={openDialog}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Assinaturas</h1>
+          <p className={styles.subtitle}>Assinaturas e pagamentos automáticos</p>
+        </div>
+        <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} />} onClick={openCriar}>
           Nova Assinatura
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
       {/* Stats */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Ativos</Typography>
-          <Typography fontSize={26} fontWeight={800} color={tokens.color.text.primary}>{ativos}</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Impacto mensal</Typography>
-          <Typography fontSize={22} fontWeight={800} color={totalMensal >= 0 ? tokens.color.status.success.dark : tokens.color.status.error.main}>
-            {formatMoney(Math.abs(totalMensal))}
-          </Typography>
-          <Typography fontSize={11} color={tokens.color.text.secondary}>{totalMensal >= 0 ? "saldo positivo" : "saldo negativo"}</Typography>
-        </Paper>
-      </Box>
+      <div className={styles.stats}>
+        <PontesStatCard label="Ativas" value={String(ativas)} />
+        <PontesStatCard label="Custo mensal (despesas)" value={formatMoney(totalMensalDespesa)} />
+        <PontesStatCard label="Próximas 30 dias" value={String(proximas30)} />
+      </div>
 
       {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Suas Assinaturas</Typography>
-        </Box>
+      <div className={styles.list}>
+        <div className={styles.listHeader}>
+          <span className={styles.listTitle}>Suas Assinaturas</span>
+        </div>
 
-        {recorrentes.length === 0 ? (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <RepeatIcon sx={{ fontSize: 40, color: tokens.color.text.disabled, mb: 1 }} />
-            <Typography fontSize={14} color={tokens.color.text.secondary}>Nenhuma assinatura cadastrada</Typography>
-            <Typography fontSize={13} color={tokens.color.text.secondary}>Cadastre assinaturas como Netflix, academia, etc.</Typography>
-          </Box>
+        {loading ? (
+          <div className={styles.center}><PontesLoadingDots /></div>
+        ) : recorrentes.length === 0 ? (
+          <PontesEmptyState
+            icon={<Repeat size={40} />}
+            title="Nenhuma assinatura"
+            description="Cadastre Netflix, academia ou qualquer pagamento recorrente."
+            actions={<PontesButton variant="primary" size="sm" onClick={openCriar}>Nova Assinatura</PontesButton>}
+          />
         ) : (
-          recorrentes.map((r, i) => {
-            const freq = freqBadgeColor[r.frequencia] ?? { bg: "#f3f4f6", color: "#6b7280" }
+          recorrentes.map((r) => {
             const isDespesa = r.tipo === 1
+            const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
             return (
-              <Box
+              <div
                 key={r.id}
-                sx={{
-                  px: 3, py: 2,
-                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
-                  borderBottom: i < recorrentes.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
-                  opacity: r.ativo ? 1 : 0.5,
-                  "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
-                }}
+                className={styles.row}
+                data-inactive={!r.ativo ? "true" : undefined}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
-                  <Box sx={{
-                    width: 36, height: 36, borderRadius: tokens.radius.md, flexShrink: 0,
-                    bgcolor: isDespesa ? tokens.color.status.error.light : tokens.color.status.success.light,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {isDespesa
-                      ? <TrendingDownIcon sx={{ fontSize: 18, color: tokens.color.status.error.main }} />
-                      : <TrendingUpIcon sx={{ fontSize: 18, color: tokens.color.status.success.main }} />
-                    }
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography fontWeight={600} fontSize={14} noWrap>{r.descricao}</Typography>
-                    <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.3, flexWrap: "wrap" }}>
-                      <Chip
-                        label={r.frequenciaDescricao}
-                        size="small"
-                        sx={{ fontSize: 11, height: 18, bgcolor: freq.bg, color: freq.color }}
-                      />
-                      {r.categoriaNome && (
-                        <Chip label={r.categoriaNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.background.hover, color: tokens.color.text.primary }} />
-                      )}
-                      <Typography fontSize={12} color={tokens.color.text.secondary}>{r.contaNome}</Typography>
-                      <Typography fontSize={12} color={tokens.color.text.secondary}>próxima: {formatDate(r.dataProximaGeracao)}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
+                {/* Icon */}
+                <div className={styles.rowIcon} data-tipo={isDespesa ? "despesa" : "receita"}>
+                  {isDespesa
+                    ? <TrendingDown size={18} />
+                    : <TrendingUp size={18} />
+                  }
+                </div>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexShrink: 0 }}>
-                  <Typography
-                    fontWeight={700} fontSize={15}
-                    color={isDespesa ? tokens.color.status.error.main : tokens.color.status.success.main}
-                  >
+                {/* Info */}
+                <div className={styles.rowInfo}>
+                  <span className={styles.rowDescricao}>{r.descricao}</span>
+                  <div className={styles.rowMeta}>
+                    <PontesBadge tone={tone} size="sm">{r.frequenciaDescricao}</PontesBadge>
+                    {r.categoriaNome && (
+                      <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>
+                    )}
+                    {r.contaNome && <span className={styles.rowSub}>{r.contaNome}</span>}
+                    {r.dataProximaGeracao && (
+                      <span className={styles.rowSub}>próxima: {formatDate(r.dataProximaGeracao)}</span>
+                    )}
+                    {!r.ativo && r.motivoCancelamento && (
+                      <span className={styles.rowCancelado}>cancelado: {r.motivoCancelamento}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Value + actions */}
+                <div className={styles.rowRight}>
+                  <span className={styles.rowValor} data-tipo={isDespesa ? "despesa" : "receita"}>
                     {isDespesa ? "-" : "+"}{formatMoney(r.valor)}
-                  </Typography>
-                  <Switch
-                    size="small"
-                    checked={r.ativo}
-                    onChange={() => handleToggle(r.id)}
-                    color="success"
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeletar(r.id)}
-                    sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
-                  >
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Box>
+                  </span>
+                  <div className={styles.rowActions}>
+                    {r.ativo && (
+                      <>
+                        <PontesIconButton
+                          aria-label="Editar próxima ocorrência"
+                          onClick={() => openEditarProxima(r)}
+                          title="Editar próxima ocorrência"
+                        >
+                          <Pencil size={15} />
+                        </PontesIconButton>
+                        <PontesIconButton
+                          aria-label="Cancelar assinatura"
+                          onClick={() => openCancelar(r)}
+                          title="Cancelar assinatura"
+                        >
+                          <XCircle size={15} />
+                        </PontesIconButton>
+                      </>
+                    )}
+                    <PontesIconButton
+                      aria-label={r.ativo ? "Pausar" : "Ativar"}
+                      onClick={() => handleToggle(r)}
+                      title={r.ativo ? "Pausar" : "Ativar"}
+                    >
+                      {r.ativo ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
+                    </PontesIconButton>
+                    <PontesIconButton
+                      aria-label="Excluir assinatura"
+                      onClick={() => openDeletar(r)}
+                      title="Excluir"
+                    >
+                      <Trash2 size={15} />
+                    </PontesIconButton>
+                  </div>
+                </div>
+              </div>
             )
           })
         )}
-      </Paper>
+      </div>
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>Nova Assinatura</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
-
-          <TextField
-            label="Descrição *"
-            size="small"
-            fullWidth
-            value={form.descricao}
-            onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))}
-          />
-
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <FormControl size="small" fullWidth>
-              <InputLabel>Tipo *</InputLabel>
-              <Select
-                value={form.tipo}
-                label="Tipo *"
-                onChange={(e) => setForm(f => ({ ...f, tipo: Number(e.target.value) }))}
-              >
-                <MuiMenuItem value={1}>Despesa</MuiMenuItem>
-                <MuiMenuItem value={2}>Receita</MuiMenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Valor *"
-              size="small"
-              type="number"
-              fullWidth
-              value={form.valor || ""}
-              onChange={(e) => setForm(f => ({ ...f, valor: Number(e.target.value) }))}
-              inputProps={{ min: 0.01, step: "0.01" }}
+      {/* ── Modal criar ──────────────────────────────────────────────────────── */}
+      <PontesModal
+        open={criarOpen}
+        title="Nova Assinatura"
+        onClose={() => setCriarOpen(false)}
+        maxWidth={520}
+        footer={
+          <div className={styles.modalFooter}>
+            <PontesButton variant="outline" size="sm" onClick={() => setCriarOpen(false)}>Cancelar</PontesButton>
+            <PontesButton variant="primary" size="sm" loading={criarSaving} onClick={handleCriar}>
+              Criar Assinatura
+            </PontesButton>
+          </div>
+        }
+      >
+        <div className={styles.form}>
+          <PontesField label="Descrição" required error={criarErrors.descricao}>
+            <PontesInput
+              placeholder="Ex: Netflix, Academia..."
+              value={criarForm.descricao}
+              invalid={!!criarErrors.descricao}
+              onChange={e => {
+                setCriarForm(f => ({ ...f, descricao: e.target.value }))
+                if (criarErrors.descricao) setCriarErrors(e2 => ({ ...e2, descricao: undefined }))
+              }}
             />
-          </Box>
+          </PontesField>
 
-          <FormControl size="small" fullWidth>
-            <InputLabel>Conta *</InputLabel>
-            <Select
-              value={form.contaId}
-              label="Conta *"
-              onChange={(e) => setForm(f => ({ ...f, contaId: e.target.value }))}
-            >
-              {contas.map(c => (
-                <MuiMenuItem key={c.id} value={c.id}>{c.nome}</MuiMenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <div className={styles.row2}>
+            <PontesField label="Tipo" required>
+              <PontesSelect
+                options={tipoOpts}
+                value={criarForm.tipo}
+                onChange={v => setCriarForm(f => ({ ...f, tipo: v }))}
+              />
+            </PontesField>
+            <PontesField label="Valor (R$)" required error={criarErrors.valor}>
+              <PontesInput
+                placeholder="0,00"
+                inputMode="decimal"
+                value={criarForm.valor}
+                invalid={!!criarErrors.valor}
+                onChange={e => {
+                  setCriarForm(f => ({ ...f, valor: e.target.value }))
+                  if (criarErrors.valor) setCriarErrors(e2 => ({ ...e2, valor: undefined }))
+                }}
+              />
+            </PontesField>
+          </div>
 
-          <FormControl size="small" fullWidth>
-            <InputLabel>Categoria</InputLabel>
-            <Select
-              value={form.categoriaId ?? ""}
-              label="Categoria"
-              onChange={(e) => setForm(f => ({ ...f, categoriaId: e.target.value || undefined }))}
-            >
-              <MuiMenuItem value="">Sem categoria</MuiMenuItem>
-              {categorias.map(c => (
-                <MuiMenuItem key={c.id} value={c.id}>{c.descricao}</MuiMenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <FormControl size="small" fullWidth>
-              <InputLabel>Frequência *</InputLabel>
-              <Select
-                value={form.frequencia}
-                label="Frequência *"
-                onChange={(e) => setForm(f => ({ ...f, frequencia: Number(e.target.value) }))}
-              >
-                <MuiMenuItem value={1}>Semanal</MuiMenuItem>
-                <MuiMenuItem value={2}>Mensal</MuiMenuItem>
-                <MuiMenuItem value={3}>Anual</MuiMenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Dia do mês"
-              size="small"
-              type="number"
-              fullWidth
-              value={form.dia}
-              onChange={(e) => setForm(f => ({ ...f, dia: Number(e.target.value) }))}
-              inputProps={{ min: 1, max: 31 }}
-              helperText="1 a 31"
+          <PontesField label="Conta" required error={criarErrors.contaId}>
+            <PontesSelect
+              options={contaOpts}
+              value={criarForm.contaId}
+              onChange={v => {
+                setCriarForm(f => ({ ...f, contaId: v }))
+                if (criarErrors.contaId) setCriarErrors(e => ({ ...e, contaId: undefined }))
+              }}
+              placeholder="Selecione uma conta"
+              invalid={!!criarErrors.contaId}
             />
-          </Box>
+          </PontesField>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <TextField
-              label="Início *"
-              type="date"
-              size="small"
-              fullWidth
-              value={form.dataInicio}
-              onChange={(e) => setForm(f => ({ ...f, dataInicio: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
+          <PontesField label="Categoria">
+            <PontesSelect
+              options={categoriaOpts}
+              value={criarForm.categoriaId}
+              onChange={v => setCriarForm(f => ({ ...f, categoriaId: v }))}
+              placeholder="Sem categoria"
             />
-            <TextField
-              label="Fim (opcional)"
-              type="date"
-              size="small"
-              fullWidth
-              value={form.dataFim ?? ""}
-              onChange={(e) => setForm(f => ({ ...f, dataFim: e.target.value || undefined }))}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
+          </PontesField>
 
-          {erro && <Typography fontSize={13} color={tokens.color.status.error.main}>{erro}</Typography>}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handleSalvar} disabled={loading}>
-            {loading ? "Salvando..." : "Criar Assinatura"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          <div className={styles.row2}>
+            <PontesField label="Frequência" required>
+              <PontesSelect
+                options={freqOpts}
+                value={criarForm.frequencia}
+                onChange={v => setCriarForm(f => ({ ...f, frequencia: v }))}
+              />
+            </PontesField>
+            <PontesField label="Dia do mês" error={criarErrors.dia}>
+              <PontesInput
+                type="number"
+                min={1}
+                max={31}
+                value={criarForm.dia}
+                invalid={!!criarErrors.dia}
+                onChange={e => {
+                  setCriarForm(f => ({ ...f, dia: e.target.value }))
+                  if (criarErrors.dia) setCriarErrors(e2 => ({ ...e2, dia: undefined }))
+                }}
+              />
+            </PontesField>
+          </div>
+
+          <div className={styles.row2}>
+            <PontesField label="Data início" required error={criarErrors.dataInicio}>
+              <PontesInput
+                type="date"
+                value={criarForm.dataInicio}
+                invalid={!!criarErrors.dataInicio}
+                onChange={e => {
+                  setCriarForm(f => ({ ...f, dataInicio: e.target.value }))
+                  if (criarErrors.dataInicio) setCriarErrors(e2 => ({ ...e2, dataInicio: undefined }))
+                }}
+              />
+            </PontesField>
+            <PontesField label="Data fim (opcional)">
+              <PontesInput
+                type="date"
+                value={criarForm.dataFim}
+                onChange={e => setCriarForm(f => ({ ...f, dataFim: e.target.value }))}
+              />
+            </PontesField>
+          </div>
+        </div>
+      </PontesModal>
+
+      {/* ── Modal cancelar ───────────────────────────────────────────────────── */}
+      <PontesModal
+        open={cancelarOpen}
+        title={`Cancelar: ${cancelarTarget?.descricao ?? ""}`}
+        onClose={() => setCancelarOpen(false)}
+        maxWidth={420}
+        footer={
+          <div className={styles.modalFooter}>
+            <PontesButton variant="outline" size="sm" onClick={() => setCancelarOpen(false)}>Voltar</PontesButton>
+            <PontesButton variant="danger" size="sm" loading={cancelarSaving} onClick={handleCancelar}>
+              Confirmar cancelamento
+            </PontesButton>
+          </div>
+        }
+      >
+        <div className={styles.form}>
+          <p className={styles.cancelarInfo}>
+            As transações futuras em <strong>Previsão</strong> serão canceladas.
+            As já executadas serão mantidas.
+          </p>
+          <PontesField label="Motivo do cancelamento" required error={cancelarErrors.motivo}>
+            <PontesInput
+              placeholder="Ex: Não uso mais, preço alto..."
+              value={cancelarForm.motivo}
+              invalid={!!cancelarErrors.motivo}
+              onChange={e => {
+                setCancelarForm({ motivo: e.target.value })
+                if (cancelarErrors.motivo) setCancelarErrors({})
+              }}
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      {/* ── Modal editar próxima ─────────────────────────────────────────────── */}
+      <PontesModal
+        open={editarOpen}
+        title={`Editar próxima: ${editarTarget?.descricao ?? ""}`}
+        onClose={() => setEditarOpen(false)}
+        maxWidth={420}
+        footer={
+          <div className={styles.modalFooter}>
+            <PontesButton variant="outline" size="sm" onClick={() => setEditarOpen(false)}>Cancelar</PontesButton>
+            <PontesButton variant="primary" size="sm" loading={editarSaving} onClick={handleEditarProxima}>
+              Salvar
+            </PontesButton>
+          </div>
+        }
+      >
+        <div className={styles.form}>
+          <p className={styles.editarInfo}>
+            Altere somente a <strong>próxima ocorrência</strong>. As seguintes não serão afetadas.
+          </p>
+          <PontesField label="Novo valor (opcional)" error={editarErrors.valor}>
+            <PontesInput
+              placeholder={editarTarget ? formatMoney(editarTarget.valor) : "0,00"}
+              inputMode="decimal"
+              value={editarForm.valor}
+              invalid={!!editarErrors.valor}
+              onChange={e => {
+                setEditarForm(f => ({ ...f, valor: e.target.value }))
+                if (editarErrors.valor) setEditarErrors(e2 => ({ ...e2, valor: undefined }))
+              }}
+            />
+          </PontesField>
+          <PontesField label="Nova descrição (opcional)">
+            <PontesInput
+              placeholder={editarTarget?.descricao ?? "Descrição..."}
+              value={editarForm.descricao}
+              onChange={e => setEditarForm(f => ({ ...f, descricao: e.target.value }))}
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      {/* ── Confirm dialog ───────────────────────────────────────────────────── */}
+      {confirm && (
+        <PontesDialog
+          open
+          title={confirm.title}
+          description={confirm.description}
+          tone={confirm.tone}
+          confirmLabel="Confirmar"
+          onConfirm={() => { void confirm.onConfirm().then(() => setConfirm(null)) }}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+    </div>
   )
 }
