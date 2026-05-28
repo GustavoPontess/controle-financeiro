@@ -73,6 +73,37 @@ const BANDEIRA_GRAD: Record<number, string> = {
 }
 const grad = (b: number) => BANDEIRA_GRAD[b] ?? BANDEIRA_GRAD[6]
 
+// Próxima ocorrência (dia do mês) a partir de hoje. Se o dia já passou no mês
+// atual, pula pro próximo mês. Retorna dias inteiros até essa data.
+function diasAteProxDia(dia: number | undefined, now: number): number | null {
+  if (!dia) return null
+  const today = new Date(now); today.setHours(0, 0, 0, 0)
+  const y = today.getFullYear(), m = today.getMonth()
+  const ultimoDoMes = new Date(y, m + 1, 0).getDate()
+  let alvo = new Date(y, m, Math.min(dia, ultimoDoMes))
+  if (alvo < today) {
+    const proxUltimo = new Date(y, m + 2, 0).getDate()
+    alvo = new Date(y, m + 1, Math.min(dia, proxUltimo))
+  }
+  return Math.round((alvo.getTime() - today.getTime()) / 86_400_000)
+}
+
+// Marca visual da bandeira no canto inferior direito do card físico.
+// Mastercard usa 2 círculos icônicos. Demais usam wordmark estilizado.
+function BandeiraMark({ bandeira, label }: { bandeira: number; label: string }) {
+  if (bandeira === 2) {
+    return (
+      <svg width="46" height="30" viewBox="0 0 46 30" aria-label="Mastercard" role="img">
+        <circle cx="17" cy="15" r="13" fill="#eb001b" opacity="0.92" />
+        <circle cx="29" cy="15" r="13" fill="#f79e1b" opacity="0.92" />
+        <path d="M23 5.5a13 13 0 0 0 0 19 13 13 0 0 0 0-19z" fill="#ff5f00" opacity="0.95" />
+      </svg>
+    )
+  }
+  // Wordmark estilizado em branco semi-transparente.
+  return <span className={styles.bandeiraWordmark}>{label}</span>
+}
+
 const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" | "neutral" }> = {
   1: { label: "Aberta", tone: "soft" },
   2: { label: "Fechada", tone: "warning" },
@@ -507,7 +538,14 @@ export default function CreditCardsPage() {
             <div className={styles.faceTop}>
               <div className={styles.cardNameWrap}>
                 <span className={styles.cardName}>{c.nome}</span>
-                {c.bancoNome && <span className={styles.cardEmissor}>{c.bancoNome}</span>}
+                {c.bancoNome && (
+                  <span className={styles.cardEmissor}>
+                    {c.bancoLogoUrl && (
+                      <img src={c.bancoLogoUrl} alt="" className={styles.bancoLogo} aria-hidden="true" />
+                    )}
+                    {c.bancoNome}
+                  </span>
+                )}
               </div>
             </div>
             <div className={styles.chipRow}>
@@ -515,9 +553,9 @@ export default function CreditCardsPage() {
               <Wifi size={18} className={styles.contactless} />
             </div>
             <div className={styles.faceBottom}>
-              <div className={styles.faceBottomCol}>
-                <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
-                <span className={styles.cardBandeira}>{c.bandeiraDescricao}</span>
+              <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
+              <div className={styles.bandeiraSlot}>
+                <BandeiraMark bandeira={c.bandeira} label={c.bandeiraDescricao} />
               </div>
             </div>
           </div>
@@ -538,9 +576,23 @@ export default function CreditCardsPage() {
             </div>
             <div className={styles.bar}><div className={styles.barFill} data-over={over ? "true" : undefined} style={{ width: `${pct}%` }} /></div>
             <div className={styles.cardMetaRow}>
-              <span>{(c.diaFechamento || c.diaVencimento)
-                ? `${c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}`
-                : `${formatMoney(c.gastosNoCicloAtual)} usado`}</span>
+              {(() => {
+                const dF = diasAteProxDia(c.diaFechamento, now)
+                const dV = diasAteProxDia(c.diaVencimento, now)
+                // Próximos 5 dias = destaque. Vencimento prioridade sobre fechamento.
+                const urgenteV = dV != null && dV <= 5
+                const urgenteF = dF != null && dF <= 5
+                if (urgenteV) {
+                  return <span className={styles.urgentDate} data-tone="danger">vence {dV === 0 ? "hoje" : dV === 1 ? "amanhã" : `em ${dV} dias`}</span>
+                }
+                if (urgenteF) {
+                  return <span className={styles.urgentDate} data-tone="warning">fecha {dF === 0 ? "hoje" : dF === 1 ? "amanhã" : `em ${dF} dias`}</span>
+                }
+                if (c.diaFechamento || c.diaVencimento) {
+                  return <span>{c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</span>
+                }
+                return <span>{formatMoney(c.gastosNoCicloAtual)} usado</span>
+              })()}
               <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Em foco" : "Faturas"}</span>
             </div>
           </div>

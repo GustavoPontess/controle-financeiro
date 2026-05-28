@@ -227,6 +227,7 @@ public class CartaoCreditoService(AppDbContext context)
             ContaNome = c.Conta?.Nome,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome,
+            BancoLogoUrl = c.Banco?.LogoUrl,
             Ativo = c.Ativo,
         };
     }
