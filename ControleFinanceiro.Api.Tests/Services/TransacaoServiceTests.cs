@@ -298,4 +298,36 @@ public class TransacaoServiceTests
         var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("pertence", ex.Message);
     }
+
+    // ── Filtro tipo (#185 redesign) ─────────────────────────────────────────
+    // Busca `q` usa EF.Functions.Like (relacional) e não roda no provider
+    // InMemory — validada manualmente em Postgres. Aqui cobrimos só o filtro
+    // de tipo, que é Where puro e roda em qualquer provider.
+
+    [Fact]
+    public async Task ListarAsync_FiltroTipo_RetornaSomenteDoTipo()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Salário", Valor = 1000, Tipo = TipoTransacao.Receita, Data = DateTime.UtcNow.AddDays(-2) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Mercado", Valor = 200, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-1) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Uber", Valor = 30, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+
+        // tipo=1 (Despesa) → 2 itens
+        var despesas = await svc.ListarAsync(usuarioId, tipo: 1);
+        Assert.Equal(2, despesas.Total);
+        Assert.All(despesas.Items, t => Assert.Equal(TipoTransacao.Despesa, t.Tipo));
+
+        // tipo=2 (Receita) → 1 item
+        var receitas = await svc.ListarAsync(usuarioId, tipo: 2);
+        Assert.Equal(1, receitas.Total);
+        Assert.Equal(TipoTransacao.Receita, receitas.Items.Single().Tipo);
+
+        // sem tipo → todos
+        var todos = await svc.ListarAsync(usuarioId);
+        Assert.Equal(3, todos.Total);
+    }
 }

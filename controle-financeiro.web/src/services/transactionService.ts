@@ -8,6 +8,10 @@ export type ListTransactionsFilter = {
   /** ISO date — `Data < to` (semi-aberto). */
   to?: string
   categoriaId?: string
+  /** Busca na descrição (LIKE no banco). */
+  q?: string
+  /** 1=despesa, 2=receita. */
+  tipo?: number
 }
 
 export type TransacaoStats = {
@@ -51,6 +55,8 @@ export const listTransactionsPage = async (
   if (filter.from) params.from = filter.from
   if (filter.to) params.to = filter.to
   if (filter.categoriaId) params.categoriaId = filter.categoriaId
+  if (filter.q) params.q = filter.q
+  if (filter.tipo) params.tipo = filter.tipo
   const res = await api.get("/transacoes", { params })
   return res.data
 }

@@ -104,10 +104,12 @@ namespace ControleFinanceiro.Api.Controllers
             [FromQuery] int pageSize = 25,
             [FromQuery] DateTime? from = null,
             [FromQuery] DateTime? to = null,
-            [FromQuery] Guid? categoriaId = null)
+            [FromQuery] Guid? categoriaId = null,
+            [FromQuery] string? q = null,
+            [FromQuery] int? tipo = null)
         {
             var usuarioId = GetUserId();
-            var resultado = await _service.ListarAsync(usuarioId, page, pageSize, from, to, categoriaId);
+            var resultado = await _service.ListarAsync(usuarioId, page, pageSize, from, to, categoriaId, q, tipo);
 
             return Ok(new PagedResult<TransacaoDto>
             {
