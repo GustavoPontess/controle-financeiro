@@ -8,10 +8,12 @@ namespace ControleFinanceiro.Api.Services;
 public class DashboardService
 {
     private readonly AppDbContext _context;
+    private readonly LimiteCalculatorService _limiteCalc;
 
-    public DashboardService(AppDbContext context)
+    public DashboardService(AppDbContext context, LimiteCalculatorService limiteCalc)
     {
         _context = context;
+        _limiteCalc = limiteCalc;
     }
 
     public async Task<DashboardDto> GetResumoAsync(Guid usuarioId, int ano, int mes)
@@ -171,9 +173,80 @@ public class DashboardService
             });
         }
 
+        // Saldo no fim do mês anterior — usado pelo hero pra mostrar variação.
+        // O `evolucao` já tem 6 pontos terminando no mês selecionado; pego o penúltimo.
+        var saldoMesAnterior = evolucao.Count >= 2 ? evolucao[^2].Saldo : 0m;
+
+        // Top 3 cartões ativos por % limite usado (desc). Mostra quem está mais
+        // "pressionado" no widget do dashboard.
+        var cartoesResumo = new List<CartaoResumoDto>();
+        var hoje = DateTime.UtcNow.Date;
+        var cartoesAtivosComCredito = cartoes
+            .Where(c => c.Ativo && c.TemCredito && (c.LimiteTotal ?? 0m) > 0m)
+            .ToList();
+        foreach (var cartao in cartoesAtivosComCredito)
+        {
+            // Recalcula limite via LimiteCalculatorService (fonte da verdade — não
+            // duplicar lógica aqui). Falha em algum cartão pula só ele, não derruba
+            // o dashboard inteiro.
+            try
+            {
+                var snap = await _limiteCalc.CalcularAsync(cartao.Id, usuarioId);
+                var limiteUsado = snap.LimiteTotal - snap.LimiteDisponivel;
+                var pct = snap.LimiteTotal > 0
+                    ? Math.Round(limiteUsado / snap.LimiteTotal * 100, 1)
+                    : 0m;
+
+                // Próximo fechamento: se DiaFechamento >= hoje no mês corrente, é esse;
+                // senão é no próximo mês. Defensivo com Math.Min pro Feb (29 → 28).
+                DateTime? proximoFechamento = null;
+                int? diasAteFechamento = null;
+                if (cartao.DiaFechamento.HasValue)
+                {
+                    var dia = cartao.DiaFechamento.Value;
+                    var anoCorr = hoje.Year;
+                    var mesCorr = hoje.Month;
+                    var diaSafe = Math.Min(dia, DateTime.DaysInMonth(anoCorr, mesCorr));
+                    var candidato = new DateTime(anoCorr, mesCorr, diaSafe);
+                    if (candidato < hoje)
+                    {
+                        var prox = new DateTime(anoCorr, mesCorr, 1).AddMonths(1);
+                        var diaSafe2 = Math.Min(dia, DateTime.DaysInMonth(prox.Year, prox.Month));
+                        candidato = new DateTime(prox.Year, prox.Month, diaSafe2);
+                    }
+                    proximoFechamento = candidato;
+                    diasAteFechamento = (candidato - hoje).Days;
+                }
+
+                cartoesResumo.Add(new CartaoResumoDto
+                {
+                    Id = cartao.Id,
+                    Nome = cartao.Nome,
+                    BancoNome = cartao.Banco?.NomeFantasia,
+                    BancoLogoUrl = cartao.Banco?.LogoUrl,
+                    BancoCor = cartao.Banco?.Cor,
+                    LimiteTotal = snap.LimiteTotal,
+                    LimiteUsado = limiteUsado,
+                    LimiteDisponivel = snap.LimiteDisponivel,
+                    PercentualUsado = pct,
+                    ProximoFechamento = proximoFechamento,
+                    DiasAteFechamento = diasAteFechamento,
+                });
+            }
+            catch
+            {
+                // Cartão sem limite ou sem TemCredito — ignora silenciosamente.
+            }
+        }
+        var topCartoes = cartoesResumo
+            .OrderByDescending(c => c.PercentualUsado)
+            .Take(3)
+            .ToList();
+
         return new DashboardDto
         {
             SaldoTotal = saldoTotal,
+            SaldoMesAnterior = saldoMesAnterior,
             ReceitasMes = receitasMes,
             DespesasMes = despesasMes,
             SaldoMes = saldoAnteriorAoMes + receitasCaixaMes - despesasCaixaMes,
@@ -184,7 +257,8 @@ public class DashboardService
             EvolucaoSaldo = evolucao,
             TopCategorias = categoriasDtos,
             TransacoesRecentes = recentes,
-            SaldoContas = saldoContas
+            SaldoContas = saldoContas,
+            CartoesResumo = topCartoes,
         };
     }
 }

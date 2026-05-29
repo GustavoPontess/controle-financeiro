@@ -15,7 +15,8 @@ vi.mock("recharts", () => {
 })
 
 const mockData: DashboardData = {
-  saldoTotal: 5000, receitasMes: 1400, despesasMes: 500, saldoMes: 900,
+  saldoTotal: 5000, saldoMesAnterior: 4200,
+  receitasMes: 1400, despesasMes: 500, saldoMes: 900,
   recebido: 1000, aReceber: 400, pago: 300, aPagar: 200,
   evolucaoSaldo: [{ label: "mai/26", ano: 2026, mes: 5, saldo: 5000 }],
   topCategorias: [{ descricao: "Mercado", valor: 300, percentual: 60 }],
@@ -24,6 +25,7 @@ const mockData: DashboardData = {
     { id: "2", descricao: "Mercado", valor: 300, tipo: 1, data: "2026-05-12", categoria: "Alimentação", conta: "Conta" },
   ],
   saldoContas: [{ id: "c1", nome: "Conta Corrente", saldo: 5000, tipo: 1, tipoDescricao: "Conta Corrente" }],
+  cartoesResumo: [],
 }
 
 const getDashboard = vi.fn()

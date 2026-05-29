@@ -38,8 +38,26 @@ export interface EvolucaoMes {
   saldo: number
 }
 
+export interface CartaoResumo {
+  id: string
+  nome: string
+  bancoNome?: string
+  bancoLogoUrl?: string
+  bancoCor?: string
+  limiteTotal: number
+  limiteUsado: number
+  limiteDisponivel: number
+  /** 0..100 */
+  percentualUsado: number
+  /** ISO date or null. */
+  proximoFechamento?: string | null
+  /** Negativo = passou. */
+  diasAteFechamento?: number | null
+}
+
 export interface DashboardData {
   saldoTotal: number
+  saldoMesAnterior: number
   receitasMes: number
   despesasMes: number
   saldoMes: number
@@ -51,4 +69,5 @@ export interface DashboardData {
   topCategorias: CategoriaGasto[]
   transacoesRecentes: TransacaoRecente[]
   saldoContas: SaldoConta[]
+  cartoesResumo: CartaoResumo[]
 }

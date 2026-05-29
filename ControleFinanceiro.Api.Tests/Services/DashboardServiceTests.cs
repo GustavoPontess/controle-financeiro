@@ -49,7 +49,7 @@ public class DashboardServiceTests
         );
         await ctx.SaveChangesAsync();
 
-        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
 
         Assert.Equal(1000m, r.Recebido);
         Assert.Equal(400m, r.AReceber);
@@ -84,7 +84,7 @@ public class DashboardServiceTests
         );
         await ctx.SaveChangesAsync();
 
-        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
 
         // KPIs de P&L: só o que é receita/despesa real
         Assert.Equal(1000m, r.Recebido);
@@ -107,7 +107,7 @@ public class DashboardServiceTests
         );
         await ctx.SaveChangesAsync();
 
-        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
 
         Assert.Equal(1000m, r.SaldoTotal);
     }
@@ -120,7 +120,7 @@ public class DashboardServiceTests
         ctx.Contas.Add(new Conta { Id = Guid.NewGuid(), Nome = "C", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId });
         await ctx.SaveChangesAsync();
 
-        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
 
         Assert.Equal(6, r.EvolucaoSaldo.Count);
         Assert.Equal(5, r.EvolucaoSaldo[^1].Mes);
@@ -137,7 +137,7 @@ public class DashboardServiceTests
         ctx.Transacoes.Add(Tx(conta.Id, TipoTransacao.Receita, 1000, new DateTime(2026, 3, 10)));
         await ctx.SaveChangesAsync();
 
-        var r = await new DashboardService(ctx).GetResumoAsync(usuarioId, 2026, 5);
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
 
         Assert.Equal(1000m, r.EvolucaoSaldo[^1].Saldo);
     }
