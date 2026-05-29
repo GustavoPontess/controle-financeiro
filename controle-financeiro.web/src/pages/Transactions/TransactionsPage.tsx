@@ -22,9 +22,14 @@ const formatMoney = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
 
 // Janela ISO do mês [from, to) — usada nos query params do backend.
+// Importante usar Date.UTC: transações são salvas em UTC midnight do dia
+// escolhido (sem offset de TZ). Se calcular janela em LOCAL e converter pra
+// ISO, fica deslocado +3h (BR) e transações do dia 1 às 00:00 UTC ficam
+// fora. Mantém alinhado com o filtro de mês do DashboardService
+// (t.Data.Year/Month UTC raw).
 const monthWindow = (d: Date) => {
-  const from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
-  const to = new Date(d.getFullYear(), d.getMonth() + 1, 1).toISOString()
+  const from = new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1)).toISOString()
+  const to = new Date(Date.UTC(d.getFullYear(), d.getMonth() + 1, 1)).toISOString()
   return { from, to }
 }
 
@@ -83,9 +88,12 @@ export default function TransactionsPage() {
     try {
       const { from, to } = monthWindow(currentDate)
       const stats = await getTransactionStats({ from, to })
+      // Cards mostram CAIXA REAL (exclui crédito não-pago) — alinhado com
+      // Dashboard "Entrou/Saiu/Sobrou". `entradas/saidas` totais ficam
+      // disponíveis no DTO pra quem precisar (drilldown, P&L).
       setMonthStats({
-        entradas: stats.entradas,
-        saidas: stats.saidas,
+        entradas: stats.entradasCaixa,
+        saidas: stats.saidasCaixa,
         saldoMes: stats.saldoPeriodo,
       })
     } catch (error) {

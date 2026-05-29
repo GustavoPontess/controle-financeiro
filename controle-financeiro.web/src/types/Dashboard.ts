@@ -65,6 +65,10 @@ export interface DashboardData {
   aReceber: number
   pago: number
   aPagar: number
+  /** Caixa real do mês — exclui crédito (alinha com /transacoes/stats). */
+  entradasCaixa: number
+  saidasCaixa: number
+  saldoCaixaMes: number
   evolucaoSaldo: EvolucaoMes[]
   topCategorias: CategoriaGasto[]
   transacoesRecentes: TransacaoRecente[]

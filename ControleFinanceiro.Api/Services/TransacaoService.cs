@@ -187,17 +187,23 @@ namespace ControleFinanceiro.Api.Services
             var saidas = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa)
                 .SumAsync(t => (decimal?)t.Valor) ?? 0m;
-            // Saldo do período: receitas - despesas, ignorando o que vira só lançamento
-            // de cartão (UsadoComoCredito) — esse vira P&L quando a fatura é paga.
-            var saldoPeriodo = await query
-                .Where(t => !t.UsadoComoCredito)
-                .SumAsync(t => (decimal?)(t.Tipo == Domain.Enums.TipoTransacao.Receita ? t.Valor : -t.Valor)) ?? 0m;
+            // Versões "caixa" — excluem UsadoComoCredito. Cards visíveis usam isso
+            // pra bater com o Dashboard e com SaldoPeriodo.
+            var entradasCaixa = await query
+                .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita && !t.UsadoComoCredito)
+                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+            var saidasCaixa = await query
+                .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa && !t.UsadoComoCredito)
+                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+            var saldoPeriodo = entradasCaixa - saidasCaixa;
             var qtd = await query.CountAsync();
 
             return new DTOs.Transacao.TransacaoStatsDto
             {
                 Entradas = entradas,
                 Saidas = saidas,
+                EntradasCaixa = entradasCaixa,
+                SaidasCaixa = saidasCaixa,
                 SaldoPeriodo = saldoPeriodo,
                 QtdTransacoes = qtd,
             };

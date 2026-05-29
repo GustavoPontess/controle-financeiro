@@ -11,8 +11,13 @@ export type ListTransactionsFilter = {
 }
 
 export type TransacaoStats = {
+  /** Total registrado (inclui crédito). */
   entradas: number
   saidas: number
+  /** Movimento real de caixa do período. */
+  entradasCaixa: number
+  saidasCaixa: number
+  /** = entradasCaixa - saidasCaixa */
   saldoPeriodo: number
   qtdTransacoes: number
 }
