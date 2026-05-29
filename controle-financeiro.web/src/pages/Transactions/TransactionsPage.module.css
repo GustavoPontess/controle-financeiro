@@ -1,0 +1,15 @@
+.root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
+
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.monthNav { display: inline-flex; align-items: center; gap: 8px; }
+.monthLabel { min-width: 180px; text-align: center; font-size: 17px; font-weight: 700; letter-spacing: 0.02em; color: var(--pontes-text); }
+.headerActions { display: inline-flex; gap: 8px; }
+
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+
+.filterRow { display: flex; gap: 12px; flex-wrap: wrap; }
+.filterField { min-width: 200px; }
+
+.tableHead { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); }
+.tableTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.tableMeta { font-size: 12px; color: var(--pontes-text-muted); }

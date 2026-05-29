@@ -1,32 +1,24 @@
-import { useState, useRef, useCallback } from "react"
+import React, { useState, useRef, useCallback } from "react"
 import {
-  Box, Table, TableHead, TableBody, TableRow, TableCell,
-  TableContainer, Typography, Chip, IconButton, TextField, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Menu, ListItemIcon, ListItemText,
-} from "@mui/material"
-import EditIcon from "@mui/icons-material/Edit"
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
-import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined"
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline"
-import CallSplitIcon from "@mui/icons-material/CallSplit"
-import TrendingUpIcon from "@mui/icons-material/TrendingUp"
-import TrendingDownIcon from "@mui/icons-material/TrendingDown"
-import MoreVertIcon from "@mui/icons-material/MoreVert"
+  Pencil, Trash2, Users, User, Split, TrendingUp, TrendingDown, MoreVertical,
+} from "lucide-react"
+import {
+  PontesButton, PontesIconButton, PontesBadge, PontesModal, PontesDialog,
+  PontesField, PontesInput, PontesSelect,
+} from "@/components/pontes"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
-import { tokens } from "../../../theme/tokens"
 import { deleteTransaction } from "../../../services/transactionService"
 import {
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
   getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
 } from "../../../services/familiaService"
 import type { Familia, Dependente, ModoRateio, RateioTransacao } from "../../../types/Familia"
-import CustomButton from "../../CustomButton"
+import styles from "./TransactionTable.module.css"
 
-const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
-  { value: 1, label: "Igualitário" },
-  { value: 2, label: "Proporcional à renda" },
-  { value: 3, label: "Personalizado" },
+const MODOS_RATEIO: { value: string; label: string }[] = [
+  { value: "1", label: "Igualitário" },
+  { value: "2", label: "Proporcional à renda" },
+  { value: "3", label: "Personalizado" },
 ]
 
 export interface TransactionRow {
@@ -59,24 +51,6 @@ const formatMoney = (v: number) =>
 
 const RECEITA = 2
 
-const headerSx = {
-  fontSize: tokens.typography.fontSize["2xs"],
-  fontWeight: tokens.typography.fontWeight.medium,
-  color: tokens.color.text.secondary,
-  textTransform: "uppercase" as const,
-  letterSpacing: 0.5,
-  bgcolor: tokens.color.background.secondary,
-  borderBottom: `1px solid ${tokens.color.border.default}`,
-  py: 1.5,
-}
-
-const cellSx = {
-  fontSize: tokens.typography.fontSize.sm,
-  color: tokens.color.text.primary,
-  py: 1.75,
-  borderBottom: `1px solid ${tokens.color.border.subtle}`,
-}
-
 type RowActionsProps = {
   isReceita: boolean
   compact: boolean
@@ -89,82 +63,58 @@ type RowActionsProps = {
 
 /**
  * Ações de uma linha. Com a tabela larga mostra os ícones em linha; quando o
- * container fica estreito (`compact`) colapsa num botão "⋮" que abre um menu
- * (ícone + descrição). O menu fecha quando o ponteiro sai dele.
+ * container fica estreito (`compact`) colapsa num botão "⋮" que abre um menu.
  */
 function RowActions({ isReceita, compact, onShare, onAssign, onRatear, onEdit, onDelete }: RowActionsProps) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const close = () => setAnchor(null)
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
 
   const actions = [
     ...(!isReceita
       ? [
-          { icon: <GroupAddOutlinedIcon sx={{ fontSize: 18 }} />, label: "Compartilhar com família", run: onShare },
-          { icon: <PersonOutlineIcon sx={{ fontSize: 18 }} />, label: "Atribuir a dependente", run: onAssign },
-          { icon: <CallSplitIcon sx={{ fontSize: 18 }} />, label: "Definir rateio", run: onRatear },
+          { icon: <Users size={16} />, label: "Compartilhar com família", run: onShare },
+          { icon: <User size={16} />, label: "Atribuir a dependente", run: onAssign },
+          { icon: <Split size={16} />, label: "Definir rateio", run: onRatear },
         ]
       : []),
-    { icon: <EditIcon sx={{ fontSize: 18 }} />, label: "Editar", run: onEdit },
-    { icon: <DeleteOutlineIcon sx={{ fontSize: 18 }} />, label: "Excluir", run: onDelete, danger: true },
+    { icon: <Pencil size={14} />, label: "Editar", run: onEdit },
+    { icon: <Trash2 size={14} />, label: "Excluir", run: onDelete, danger: true },
   ]
 
   if (!compact) {
     return (
-      <Box sx={{ display: "flex", flexWrap: "nowrap", justifyContent: "flex-end", gap: 0.25 }}>
+      <div className={styles.rowActions}>
         {actions.map((a, i) => (
-          <IconButton
-            key={i}
-            size="small"
-            title={a.label}
-            onClick={a.run}
-            sx={{
-              p: 0.5,
-              color: tokens.color.text.secondary,
-              "&:hover": { color: a.danger ? tokens.color.status.error.main : tokens.color.brand.primary },
-            }}
-          >
+          <PontesIconButton key={i} size={32} variant="ghost" aria-label={a.label} onClick={a.run}>
             {a.icon}
-          </IconButton>
+          </PontesIconButton>
         ))}
-      </Box>
+      </div>
     )
   }
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-      <IconButton
-        size="small"
-        title="Ações"
-        onClick={(e) => setAnchor(e.currentTarget)}
-        sx={{ p: 0.5, color: tokens.color.text.secondary }}
-      >
-        <MoreVertIcon sx={{ fontSize: 18 }} />
-      </IconButton>
-      <Menu
-        anchorEl={anchor}
-        open={Boolean(anchor)}
-        onClose={close}
-        MenuListProps={{ dense: true, onMouseLeave: close }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        {actions.map((a, i) => (
-          <MenuItem
-            key={i}
-            onClick={() => {
-              a.run()
-              close()
-            }}
-            sx={{ color: a.danger ? tokens.color.status.error.main : tokens.color.text.primary }}
-          >
-            <ListItemIcon sx={{ color: "inherit", minWidth: 32 }}>{a.icon}</ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: tokens.typography.fontSize.sm }}>
-              {a.label}
-            </ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-    </Box>
+    <div ref={wrapRef} className={styles.compactWrap} onMouseLeave={() => setOpen(false)}>
+      <PontesIconButton size={32} variant="ghost" aria-label="Ações" onClick={() => setOpen((v) => !v)}>
+        <MoreVertical size={16} />
+      </PontesIconButton>
+      {open && (
+        <div className={styles.menu}>
+          {actions.map((a, i) => (
+            <button
+              key={i}
+              type="button"
+              className={styles.menuItem}
+              data-danger={a.danger ? "true" : undefined}
+              onClick={() => { a.run(); setOpen(false) }}
+            >
+              <span className={styles.menuItemIcon}>{a.icon}</span>
+              <span>{a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -180,8 +130,9 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   const [rateioModo, setRateioModo] = useState<ModoRateio>(1)
   const [percentuais, setPercentuais] = useState<Record<string, string>>({})
 
-  // Colapsa as ações num menu "⋮" quando a tabela fica estreita demais
-  // para os ícones em linha. Mede o container real (não o viewport).
+  const [delTx, setDelTx] = useState<TransactionRow | null>(null)
+
+  // Colapsa as ações quando a tabela fica estreita demais. Observa container real.
   const [compact, setCompact] = useState(false)
   const [slim, setSlim] = useState(false)
   const roRef = useRef<ResizeObserver | null>(null)
@@ -221,7 +172,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
     setAssigning(row)
     try {
       const fams = await getFamilias()
-      const listas = await Promise.all(fams.map(f => getDependentes(f.id)))
+      const listas = await Promise.all(fams.map((f) => getDependentes(f.id)))
       setDependentes(listas.flat())
     } catch {
       notify({ open: true, message: "Erro ao carregar dependentes", severity: "error" })
@@ -251,7 +202,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
       setRateio(r)
       setRateioModo(r.modo ?? 1)
       setPercentuais(Object.fromEntries(
-        r.membros.map(m => [m.usuarioId, m.percentual ? String(m.percentual) : ""])))
+        r.membros.map((m) => [m.usuarioId, m.percentual ? String(m.percentual) : ""])))
     } catch {
       notify({
         open: true,
@@ -266,7 +217,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
     if (!ratear) return
     let itens = null
     if (rateioModo === 3) {
-      itens = (rateio?.membros ?? []).map(m => ({
+      itens = (rateio?.membros ?? []).map((m) => ({
         usuarioId: m.usuarioId,
         percentual: Number(percentuais[m.usuarioId] ?? 0),
       }))
@@ -296,14 +247,16 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
     }
   }
 
-  const handleDelete = async (id: string, descricao: string) => {
-    if (!confirm(`Excluir "${descricao}"?`)) return
+  const handleDelete = async () => {
+    if (!delTx) return
     try {
-      await deleteTransaction(id)
+      await deleteTransaction(delTx.id)
       notify({ open: true, message: "Transação excluída", severity: "success" })
       onRefresh()
     } catch {
       notify({ open: true, message: "Erro ao excluir transação", severity: "error" })
+    } finally {
+      setDelTx(null)
     }
   }
 
@@ -324,118 +277,66 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
 
   if (rows.length === 0) {
     return (
-      <Box sx={{ py: 6, textAlign: "center" }}>
-        <Typography fontSize={13} color="text.secondary">
-          {emptyMessage ?? "Nenhuma transação encontrada"}
-        </Typography>
-      </Box>
+      <div className={styles.empty}>{emptyMessage ?? "Nenhuma transação encontrada"}</div>
     )
   }
 
   return (
     <>
-      <TableContainer ref={containerRef}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell sx={headerSx}>Data</TableCell>
-              <TableCell sx={headerSx}>Descrição</TableCell>
-              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Categoria</TableCell>
-              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Conta</TableCell>
-              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Tipo</TableCell>
-              <TableCell sx={{ ...headerSx, display: slim ? "none" : undefined }}>Pagamento</TableCell>
-              <TableCell sx={{ ...headerSx, textAlign: "right" }}>Valor</TableCell>
-              <TableCell sx={{ ...headerSx, textAlign: "right", whiteSpace: "nowrap", width: 1 }}>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div ref={containerRef} className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Descrição</th>
+              {!slim && <th>Categoria</th>}
+              {!slim && <th>Conta</th>}
+              {!slim && <th>Tipo</th>}
+              {!slim && <th>Pagamento</th>}
+              <th className={styles.alignRight}>Valor</th>
+              <th className={styles.alignRight}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
             {rows.map((row) => {
               const isReceita = row.tipo === RECEITA
               return (
-                <TableRow key={row.id} sx={{ "&:hover": { bgcolor: tokens.color.background.hover } }}>
-                  <TableCell sx={{ ...cellSx, color: tokens.color.text.secondary, whiteSpace: "nowrap" }}>
+                <tr key={row.id}>
+                  <td className={styles.cellMuted}>
                     {new Date(row.data).toLocaleDateString("pt-BR")}
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, maxWidth: 260 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                      <Box
-                        sx={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: tokens.radius.md,
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
-                          color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main,
-                        }}
-                      >
-                        {isReceita ? <TrendingUpIcon sx={{ fontSize: 18 }} /> : <TrendingDownIcon sx={{ fontSize: 18 }} />}
-                      </Box>
-                      <Typography
-                        fontSize={tokens.typography.fontSize.sm}
-                        fontWeight={tokens.typography.fontWeight.medium}
-                        color={tokens.color.text.primary}
-                        noWrap
-                        title={row.descricao}
-                      >
-                        {row.descricao}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
-                    {row.categoriaDescricao ? (
-                      <Chip
-                        label={row.categoriaDescricao}
-                        size="small"
-                        sx={{
-                          fontSize: tokens.typography.fontSize["2xs"],
-                          height: 22,
-                          borderRadius: tokens.radius.sm,
-                          bgcolor: tokens.color.background.tertiary,
-                          color: tokens.color.text.secondary,
-                          fontWeight: tokens.typography.fontWeight.medium,
-                        }}
-                      />
-                    ) : (
-                      <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}>—</Typography>
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
-                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
-                      {row.contaNome ?? "—"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
-                    <Chip
-                      label={isReceita ? "Receita" : "Despesa"}
-                      size="small"
-                      sx={{
-                        fontSize: tokens.typography.fontSize["2xs"],
-                        height: 22,
-                        borderRadius: tokens.radius.sm,
-                        fontWeight: tokens.typography.fontWeight.medium,
-                        bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
-                        color: isReceita ? tokens.color.status.success.dark : tokens.color.status.error.dark,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, display: slim ? "none" : undefined }}>
-                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
-                      {row.meioPagamentoDescricao ?? "—"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, textAlign: "right", whiteSpace: "nowrap" }}>
-                    <Typography
-                      fontSize={tokens.typography.fontSize.sm}
-                      fontWeight={tokens.typography.fontWeight.bold}
-                      color={isReceita ? tokens.color.status.success.main : tokens.color.status.error.main}
-                    >
-                      {isReceita ? "+" : "−"}{formatMoney(row.valor)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ ...cellSx, whiteSpace: "nowrap" }}>
+                  </td>
+                  <td>
+                    <div className={styles.descCell}>
+                      <span className={styles.tipoIcon} data-tone={isReceita ? "success" : "danger"}>
+                        {isReceita ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                      </span>
+                      <span className={styles.descText} title={row.descricao}>{row.descricao}</span>
+                    </div>
+                  </td>
+                  {!slim && (
+                    <td>
+                      {row.categoriaDescricao
+                        ? <PontesBadge tone="neutral" size="sm">{row.categoriaDescricao}</PontesBadge>
+                        : <span className={styles.cellMuted}>—</span>}
+                    </td>
+                  )}
+                  {!slim && (
+                    <td className={styles.cellMuted}>{row.contaNome ?? "—"}</td>
+                  )}
+                  {!slim && (
+                    <td>
+                      <PontesBadge tone={isReceita ? "success" : "danger"} size="sm">
+                        {isReceita ? "Receita" : "Despesa"}
+                      </PontesBadge>
+                    </td>
+                  )}
+                  {!slim && (
+                    <td className={styles.cellMuted}>{row.meioPagamentoDescricao ?? "—"}</td>
+                  )}
+                  <td className={styles.alignRight + " " + styles.valueCell} data-tone={isReceita ? "success" : "danger"}>
+                    {isReceita ? "+" : "−"}{formatMoney(row.valor)}
+                  </td>
+                  <td className={styles.alignRight}>
                     <RowActions
                       isReceita={isReceita}
                       compact={compact}
@@ -443,15 +344,15 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       onAssign={() => openAssign(row)}
                       onRatear={() => openRatear(row)}
                       onEdit={() => openEdit(row)}
-                      onDelete={() => handleDelete(row.id, row.descricao)}
+                      onDelete={() => setDelTx(row)}
                     />
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )
             })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
       <EditTransactionDialog
         transaction={editing}
@@ -460,118 +361,104 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
         notify={notify}
       />
 
-      <Dialog open={sharing !== null} onClose={() => setSharing(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Compartilhar com a família</DialogTitle>
-        <DialogContent>
-          {familias.length === 0 ? (
-            <Typography fontSize={13} color="#9ca3af">
-              Você não participa de nenhuma família.
-            </Typography>
-          ) : (
-            <>
-              <Typography fontSize={13} color="#6b7280" mb={1.5}>
-                Em qual família lançar "{sharing?.descricao}"?
-              </Typography>
-              {familias.map(f => (
-                <Box
+      {/* Compartilhar com família */}
+      <PontesModal
+        open={sharing !== null}
+        title="Compartilhar com a família"
+        onClose={() => setSharing(null)}
+        footer={<PontesButton variant="outline" onClick={() => setSharing(null)}>Cancelar</PontesButton>}
+      >
+        {familias.length === 0 ? (
+          <div className={styles.modalMuted}>Você não participa de nenhuma família.</div>
+        ) : (
+          <>
+            <p className={styles.modalIntro}>Em qual família lançar “{sharing?.descricao}”?</p>
+            <div className={styles.optionList}>
+              {familias.map((f) => (
+                <button
                   key={f.id}
+                  type="button"
+                  className={styles.optionItem}
                   onClick={() => handleShare(f.id)}
-                  sx={{
-                    py: 1.25, px: 1.5, mb: 0.5, borderRadius: "8px", cursor: "pointer",
-                    border: "1px solid #e5e7eb",
-                    "&:hover": { bgcolor: "#f9fafb", borderColor: "#9ca3af" },
-                  }}
                 >
-                  <Typography fontSize={14} fontWeight={500}>{f.nome}</Typography>
-                </Box>
+                  {f.nome}
+                </button>
               ))}
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <CustomButton variant="secondary" size="small" onClick={() => setSharing(null)}>
-            Cancelar
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
+            </div>
+          </>
+        )}
+      </PontesModal>
 
-      <Dialog open={assigning !== null} onClose={() => setAssigning(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Atribuir a um dependente</DialogTitle>
-        <DialogContent>
-          {dependentes.length === 0 ? (
-            <Typography fontSize={13} color="#9ca3af">
-              Nenhum dependente cadastrado nas suas famílias.
-            </Typography>
-          ) : (
-            <>
-              <Typography fontSize={13} color="#6b7280" mb={1.5}>
-                A quem atribuir "{assigning?.descricao}"?
-              </Typography>
-              {dependentes.map(d => (
-                <Box
+      {/* Atribuir a dependente */}
+      <PontesModal
+        open={assigning !== null}
+        title="Atribuir a um dependente"
+        onClose={() => setAssigning(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => handleAssign(null)}>Remover atribuição</PontesButton>
+          <PontesButton variant="outline" onClick={() => setAssigning(null)}>Cancelar</PontesButton>
+        </>}
+      >
+        {dependentes.length === 0 ? (
+          <div className={styles.modalMuted}>Nenhum dependente cadastrado nas suas famílias.</div>
+        ) : (
+          <>
+            <p className={styles.modalIntro}>A quem atribuir “{assigning?.descricao}”?</p>
+            <div className={styles.optionList}>
+              {dependentes.map((d) => (
+                <button
                   key={d.id}
+                  type="button"
+                  className={styles.optionItem}
                   onClick={() => handleAssign(d.id)}
-                  sx={{
-                    py: 1.25, px: 1.5, mb: 0.5, borderRadius: "8px", cursor: "pointer",
-                    border: "1px solid #e5e7eb",
-                    "&:hover": { bgcolor: "#f9fafb", borderColor: "#9ca3af" },
-                  }}
                 >
-                  <Typography fontSize={14} fontWeight={500}>
-                    {d.nome}{d.apelido ? ` (${d.apelido})` : ""}
-                  </Typography>
-                </Box>
+                  {d.nome}{d.apelido ? ` (${d.apelido})` : ""}
+                </button>
               ))}
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between" }}>
-          <CustomButton variant="secondary" size="small" onClick={() => handleAssign(null)}>
-            Remover atribuição
-          </CustomButton>
-          <CustomButton variant="secondary" size="small" onClick={() => setAssigning(null)}>
-            Cancelar
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
+            </div>
+          </>
+        )}
+      </PontesModal>
 
-      <Dialog open={ratear !== null} onClose={() => setRatear(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Rateio de "{ratear?.descricao}"</DialogTitle>
-        <DialogContent>
-          <Typography fontSize={13} color="#6b7280" mb={1}>
-            Define o modo de rateio só para esta despesa, sobrepondo o padrão da família.
-          </Typography>
-          <TextField
-            select fullWidth size="small" margin="dense" label="Modo"
-            value={rateioModo}
-            onChange={e => setRateioModo(Number(e.target.value) as ModoRateio)}
-          >
-            {MODOS_RATEIO.map(m => (
-              <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-            ))}
-          </TextField>
-          {rateioModo === 3 && (rateio?.membros ?? []).map(m => (
-            <TextField
-              key={m.usuarioId}
-              fullWidth size="small" margin="dense" type="number"
-              label={`${m.nome} (%)`}
+      {/* Rateio */}
+      <PontesModal
+        open={ratear !== null}
+        title={`Rateio de “${ratear?.descricao ?? ""}”`}
+        onClose={() => setRatear(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={handleRemoverRateio}>Remover override</PontesButton>
+          <PontesButton variant="outline" onClick={() => setRatear(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvarRateio}>Salvar</PontesButton>
+        </>}
+      >
+        <p className={styles.modalIntro}>Define o modo de rateio só para esta despesa, sobrepondo o padrão da família.</p>
+        <PontesField label="Modo">
+          <PontesSelect
+            value={String(rateioModo)}
+            onChange={(v) => setRateioModo(Number(v) as ModoRateio)}
+            options={MODOS_RATEIO}
+          />
+        </PontesField>
+        {rateioModo === 3 && (rateio?.membros ?? []).map((m) => (
+          <PontesField key={m.usuarioId} label={`${m.nome} (%)`}>
+            <PontesInput
+              type="number"
               value={percentuais[m.usuarioId] ?? ""}
-              onChange={e => setPercentuais(p => ({ ...p, [m.usuarioId]: e.target.value }))}
+              onChange={(e) => setPercentuais((p) => ({ ...p, [m.usuarioId]: e.target.value }))}
+              min={0} max={100} step="0.01"
             />
-          ))}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between" }}>
-          <CustomButton variant="secondary" size="small" onClick={handleRemoverRateio}>
-            Remover override
-          </CustomButton>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <CustomButton variant="secondary" size="small" onClick={() => setRatear(null)}>
-              Cancelar
-            </CustomButton>
-            <CustomButton size="small" onClick={handleSalvarRateio}>Salvar</CustomButton>
-          </Box>
-        </DialogActions>
-      </Dialog>
+          </PontesField>
+        ))}
+      </PontesModal>
+
+      <PontesDialog
+        open={delTx !== null}
+        title="Excluir transação?"
+        description={`Excluir “${delTx?.descricao ?? ""}”? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        onConfirm={handleDelete}
+        onCancel={() => setDelTx(null)}
+      />
     </>
   )
 }
