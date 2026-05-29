@@ -1,224 +1,237 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
+import { useOutletContext } from "react-router-dom"
+import { Plus, Trash2, ArrowLeftRight } from "lucide-react"
 import {
-  Box, Paper, Typography, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Select, MenuItem as MuiMenuItem,
-  FormControl, InputLabel, IconButton, Chip,
-} from "@mui/material"
-import { tokens } from "../../theme/tokens"
-import AddIcon from "@mui/icons-material/Add"
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz"
-import CustomButton from "../../components/CustomButton"
+  PontesButton, PontesCard, PontesBadge, PontesIconButton,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect, PontesEmptyState,
+} from "@/components/pontes"
 import { getTransferencias, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
 import { getContas } from "../../services/contaService"
 import type { Transferencia } from "../../types/Transferencia"
 import type { Conta } from "../../types/Conta"
+import styles from "./TransferenciasPage.module.css"
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+const formatMoney = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+// Máscara monetária — dígitos → centavos formatados pt-BR.
+const parseMoney = (masked: string): number | undefined => {
+  const digits = masked.replace(/\D/g, "")
+  return digits ? Number(digits) / 100 : undefined
+}
+const fmtMoney = (n?: number): string =>
+  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
+
+type FormState = {
+  contaOrigemId: string
+  contaDestinoId: string
+  valor?: number
+  data: string
+  descricao: string
+}
+type Errors = Partial<Record<"contaOrigemId" | "contaDestinoId" | "valor", string>>
+
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
+
+const emptyForm: FormState = {
+  contaOrigemId: "", contaDestinoId: "", valor: undefined, data: today(), descricao: "",
+}
+
 export default function TransferenciasPage() {
+  const { notify } = useOutletContext<OutletContextType>()
   const [transferencias, setTransferencias] = useState<Transferencia[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    contaOrigemId: "",
-    contaDestinoId: "",
-    valor: "",
-    data: today(),
-    descricao: "",
-  })
-  const [erro, setErro] = useState("")
+  const [form, setForm] = useState<FormState>(emptyForm)
+  const [errors, setErrors] = useState<Errors>({})
+  const [delId, setDelId] = useState<string | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [t, c] = await Promise.all([getTransferencias(), getContas()])
       setTransferencias(t)
       setContas(c)
-    } catch (error) {
-      console.error("Erro ao carregar transferências:", error)
-      setErro("Erro ao carregar transferências")
+    } catch {
+      notify({ open: true, message: "Erro ao carregar transferências", severity: "error" })
     }
-  }
+  }, [notify])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { void loadData() }, [loadData])
+
+  const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  const openCreate = () => { setForm(emptyForm); setErrors({}); setDialogOpen(true) }
 
   const handleSalvar = async () => {
-    setErro("")
-    if (!form.contaOrigemId || !form.contaDestinoId || !form.valor) {
-      setErro("Preencha todos os campos obrigatórios.")
-      return
-    }
-    const valor = parseFloat(form.valor.replace(",", "."))
-    if (isNaN(valor) || valor <= 0) {
-      setErro("Valor inválido.")
-      return
-    }
+    const e: Errors = {}
+    if (!form.contaOrigemId) e.contaOrigemId = "Selecione a conta de origem"
+    if (!form.contaDestinoId) e.contaDestinoId = "Selecione a conta de destino"
+    else if (form.contaDestinoId === form.contaOrigemId) e.contaDestinoId = "Destino deve ser diferente da origem"
+    if (form.valor == null) e.valor = "Informe o valor"
+    else if (form.valor <= 0) e.valor = "Valor deve ser maior que zero"
+    setErrors(e)
+    if (Object.keys(e).length) return
+
     setLoading(true)
     try {
       await createTransferencia({
         contaOrigemId: form.contaOrigemId,
         contaDestinoId: form.contaDestinoId,
-        valor,
+        valor: form.valor!,
         data: new Date(form.data).toISOString(),
         descricao: form.descricao,
       })
+      notify({ open: true, message: "Transferência criada", severity: "success" })
       setDialogOpen(false)
-      setForm({ contaOrigemId: "", contaDestinoId: "", valor: "", data: today(), descricao: "" })
       await loadData()
       window.dispatchEvent(new Event("transactionCreated"))
     } catch {
-      setErro("Erro ao criar transferência.")
-    } finally {
-      setLoading(false)
-    }
+      notify({ open: true, message: "Erro ao criar transferência", severity: "error" })
+    } finally { setLoading(false) }
   }
 
-  const handleDeletar = async (id: string) => {
-    if (!confirm("Remover esta transferência? As duas transações vinculadas também serão removidas.")) return
-    await deleteTransferencia(id)
-    await loadData()
-    window.dispatchEvent(new Event("transactionCreated"))
+  const handleDelete = async () => {
+    if (!delId) return
+    try {
+      await deleteTransferencia(delId)
+      notify({ open: true, message: "Transferência removida", severity: "success" })
+      await loadData()
+      window.dispatchEvent(new Event("transactionCreated"))
+    } catch {
+      notify({ open: true, message: "Erro ao remover transferência", severity: "error" })
+    } finally { setDelId(null) }
   }
+
+  const optsOrigem = contas
+    .filter((c) => c.id !== form.contaDestinoId)
+    .map((c) => ({ value: c.id, label: c.nome }))
+  const optsDestino = contas
+    .filter((c) => c.id !== form.contaOrigemId)
+    .map((c) => ({ value: c.id, label: c.nome }))
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box>
-          <Typography fontSize={22} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Transferências</Typography>
-          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Mova dinheiro entre suas contas</Typography>
-        </Box>
-        <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Transferências</h1>
+          <div className={styles.subtitle}>Mova dinheiro entre suas contas</div>
+        </div>
+        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Nova Transferência
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
-      {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Histórico de Transferências</Typography>
-        </Box>
+      <PontesCard padding={0} radius={16}>
+        <div className={styles.listHead}>
+          <span className={styles.listHeadTitle}>Histórico</span>
+          <span className={styles.listHeadMeta}>{transferencias.length} {transferencias.length === 1 ? "transferência" : "transferências"}</span>
+        </div>
 
         {transferencias.length === 0 ? (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <SwapHorizIcon sx={{ fontSize: 40, color: "action.selected", mb: 1 }} />
-            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Nenhuma transferência realizada</Typography>
-            <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Clique em "Nova Transferência" para começar</Typography>
-          </Box>
+          <div className={styles.emptyWrap}>
+            <PontesEmptyState
+              icon={<ArrowLeftRight size={28} />}
+              title="Nenhuma transferência ainda"
+              description="Clique em 'Nova Transferência' pra mover dinheiro entre suas contas."
+            />
+          </div>
         ) : (
-          transferencias.map((t, i) => (
-            <Box
-              key={t.id}
-              sx={{
-                px: 3, py: 2,
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                borderBottom: i < transferencias.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
-                "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box sx={{ width: 36, height: 36, borderRadius: tokens.radius.md, bgcolor: tokens.color.status.info.light, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <SwapHorizIcon sx={{ fontSize: 18, color: tokens.color.status.info.main }} />
-                </Box>
-                <Box>
-                  <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={tokens.typography.fontSize.sm}>{t.descricao}</Typography>
-                  <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.3 }}>
-                    <Chip label={t.contaOrigemNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.error.light, color: tokens.color.status.error.main }} />
-                    <SwapHorizIcon sx={{ fontSize: 12, color: tokens.color.text.secondary }} />
-                    <Chip label={t.contaDestinoNome} size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.main }} />
-                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>
-                      {new Date(t.data).toLocaleDateString("pt-BR")}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Typography fontWeight={tokens.typography.fontWeight.bold} fontSize={15} color={tokens.color.status.info.main}>
-                  {formatMoney(t.valor)}
-                </Typography>
-                <IconButton
-                  size="small"
-                  onClick={() => handleDeletar(t.id)}
-                  sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
-          ))
+          <ul className={styles.list}>
+            {transferencias.map((t) => (
+              <li key={t.id} className={styles.item}>
+                <div className={styles.itemLeft}>
+                  <div className={styles.itemIcon}><ArrowLeftRight size={16} /></div>
+                  <div className={styles.itemMeta}>
+                    <span className={styles.itemDesc}>{t.descricao || "Transferência"}</span>
+                    <div className={styles.itemRoute}>
+                      <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
+                      <ArrowLeftRight size={12} className={styles.routeArrow} />
+                      <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
+                      <span className={styles.itemDate}>{new Date(t.data).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.itemRight}>
+                  <span className={styles.itemValue}>{formatMoney(t.valor)}</span>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(t.id)}>
+                    <Trash2 size={14} />
+                  </PontesIconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </Paper>
+      </PontesCard>
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>Nova Transferência</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
-          <FormControl size="small" fullWidth>
-            <InputLabel>Conta de Origem *</InputLabel>
-            <Select
+      <PontesModal
+        open={dialogOpen}
+        title="Nova transferência"
+        onClose={() => setDialogOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvar} loading={loading} disabled={loading}>Transferir</PontesButton>
+        </>}
+      >
+        <form noValidate onSubmit={(e) => { e.preventDefault(); void handleSalvar() }} className={styles.formCol}>
+          <PontesField label="Conta de origem" required error={errors.contaOrigemId}>
+            <PontesSelect
               value={form.contaOrigemId}
-              label="Conta de Origem *"
-              onChange={(e) => setForm(f => ({ ...f, contaOrigemId: e.target.value }))}
-            >
-              {contas.filter(c => c.id !== form.contaDestinoId).map(c => (
-                <MuiMenuItem key={c.id} value={c.id}>{c.nome}</MuiMenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              onChange={(v) => { setF("contaOrigemId", v); clearErr("contaOrigemId") }}
+              invalid={!!errors.contaOrigemId}
+              placeholder="Selecione"
+              options={optsOrigem}
+            />
+          </PontesField>
 
-          <FormControl size="small" fullWidth>
-            <InputLabel>Conta de Destino *</InputLabel>
-            <Select
+          <PontesField label="Conta de destino" required error={errors.contaDestinoId}>
+            <PontesSelect
               value={form.contaDestinoId}
-              label="Conta de Destino *"
-              onChange={(e) => setForm(f => ({ ...f, contaDestinoId: e.target.value }))}
-            >
-              {contas.filter(c => c.id !== form.contaOrigemId).map(c => (
-                <MuiMenuItem key={c.id} value={c.id}>{c.nome}</MuiMenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              onChange={(v) => { setF("contaDestinoId", v); clearErr("contaDestinoId") }}
+              invalid={!!errors.contaDestinoId}
+              placeholder="Selecione"
+              options={optsDestino}
+            />
+          </PontesField>
 
-          <TextField
-            label="Valor *"
-            size="small"
-            fullWidth
-            value={form.valor}
-            onChange={(e) => setForm(f => ({ ...f, valor: e.target.value }))}
-            inputProps={{ inputMode: "decimal" }}
-          />
+          <PontesField label="Valor" required error={errors.valor}>
+            <PontesInput
+              iconStart="R$"
+              value={fmtMoney(form.valor)}
+              onChange={(e) => { setF("valor", parseMoney(e.target.value)); clearErr("valor") }}
+              invalid={!!errors.valor}
+              inputMode="decimal"
+              placeholder="0,00"
+            />
+          </PontesField>
 
-          <TextField
-            label="Data"
-            type="date"
-            size="small"
-            fullWidth
-            value={form.data}
-            onChange={(e) => setForm(f => ({ ...f, data: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
+          <div className={styles.grid2}>
+            <PontesField label="Data" required>
+              <PontesInput type="date" value={form.data} onChange={(e) => setF("data", e.target.value)} />
+            </PontesField>
+            <PontesField label="Descrição" helper="Opcional">
+              <PontesInput
+                value={form.descricao}
+                onChange={(e) => setF("descricao", e.target.value)}
+                placeholder="Ex: Reserva pra emergência"
+              />
+            </PontesField>
+          </div>
+        </form>
+      </PontesModal>
 
-          <TextField
-            label="Descrição (opcional)"
-            size="small"
-            fullWidth
-            value={form.descricao}
-            onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))}
-          />
-
-          {erro && <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.status.error.main}>{erro}</Typography>}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handleSalvar} disabled={loading}>
-            {loading ? "Salvando..." : "Transferir"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <PontesDialog
+        open={delId !== null}
+        title="Remover transferência?"
+        description="As duas transações vinculadas (saída + entrada) também serão removidas."
+        confirmLabel="Remover"
+        onConfirm={handleDelete}
+        onCancel={() => setDelId(null)}
+      />
+    </div>
   )
 }
