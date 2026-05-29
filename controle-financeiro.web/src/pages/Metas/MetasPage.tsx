@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Target, Pencil, Trash2, Plus, Calendar } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge,
-  PontesModal, PontesDialog, PontesField, PontesInput,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput,
   PontesEmptyState, PontesLoadingDots,
 } from "@/components/pontes"
 import {
@@ -269,10 +269,9 @@ export default function MetasPage() {
             </PontesField>
 
             <PontesField label="Data limite">
-              <PontesInput
+              <PontesDateInput
                 value={form.dataLimite}
-                onChange={e => setField("dataLimite", e.target.value)}
-                type="date"
+                onChange={(v) => setField("dataLimite", v)}
               />
             </PontesField>
           </div>

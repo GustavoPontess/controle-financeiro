@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesTextarea, PontesEmptyState,
 } from "@/components/pontes"
 import {
@@ -296,10 +296,10 @@ export default function EmprestimosPage() {
 
           <div className={styles.grid2}>
             <PontesField label="Data" required>
-              <PontesInput type="date" value={form.dataInicio} onChange={(e) => setF("dataInicio", e.target.value)} />
+              <PontesDateInput value={form.dataInicio} onChange={(v) => setF("dataInicio", v)} />
             </PontesField>
             <PontesField label="Vencimento" helper="Opcional">
-              <PontesInput type="date" value={form.dataVencimento} onChange={(e) => setF("dataVencimento", e.target.value)} />
+              <PontesDateInput value={form.dataVencimento} onChange={(v) => setF("dataVencimento", v)} />
             </PontesField>
           </div>
 

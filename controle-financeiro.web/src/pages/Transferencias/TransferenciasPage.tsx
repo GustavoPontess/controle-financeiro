@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ArrowLeftRight } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect, PontesEmptyState,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
 } from "@/components/pontes"
 import { getTransferencias, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
 import { getContas } from "../../services/contaService"
@@ -211,7 +211,7 @@ export default function TransferenciasPage() {
 
           <div className={styles.grid2}>
             <PontesField label="Data" required>
-              <PontesInput type="date" value={form.data} onChange={(e) => setF("data", e.target.value)} />
+              <PontesDateInput value={form.data} onChange={(v) => setF("data", v)} />
             </PontesField>
             <PontesField label="Descrição" helper="Opcional">
               <PontesInput

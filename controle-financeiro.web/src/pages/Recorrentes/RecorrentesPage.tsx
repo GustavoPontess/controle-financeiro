@@ -6,7 +6,7 @@ import {
 import {
   PontesButton, PontesIconButton, PontesBadge,
   PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect,
+  PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesStatCard, PontesEmptyState, PontesLoadingDots,
 } from "@/components/pontes"
 import {
@@ -535,21 +535,19 @@ export default function RecorrentesPage() {
 
           <div className={styles.row2}>
             <PontesField label="Data início" required error={criarErrors.dataInicio}>
-              <PontesInput
-                type="date"
+              <PontesDateInput
                 value={criarForm.dataInicio}
                 invalid={!!criarErrors.dataInicio}
-                onChange={e => {
-                  setCriarForm(f => ({ ...f, dataInicio: e.target.value }))
+                onChange={(v) => {
+                  setCriarForm(f => ({ ...f, dataInicio: v }))
                   if (criarErrors.dataInicio) setCriarErrors(e2 => ({ ...e2, dataInicio: undefined }))
                 }}
               />
             </PontesField>
             <PontesField label="Data fim (opcional)">
-              <PontesInput
-                type="date"
+              <PontesDateInput
                 value={criarForm.dataFim}
-                onChange={e => setCriarForm(f => ({ ...f, dataFim: e.target.value }))}
+                onChange={(v) => setCriarForm(f => ({ ...f, dataFim: v }))}
               />
             </PontesField>
           </div>
