@@ -11,6 +11,10 @@
   font-size: 22px; font-weight: 800; color: var(--pontes-text);
   letter-spacing: -.02em; margin-bottom: 6px;
 }
+.value[data-tone="success"] { color: var(--pontes-success); }
+.value[data-tone="danger"] { color: var(--pontes-danger); }
+.value[data-tone="warning"] { color: var(--pontes-warning); }
 .trend { font-size: 12px; font-weight: 600; }
 .trend[data-up="true"] { color: var(--pontes-success); }
 .trend[data-up="false"] { color: var(--pontes-danger); }
+.hint { font-size: 11px; color: var(--pontes-text-muted); }
