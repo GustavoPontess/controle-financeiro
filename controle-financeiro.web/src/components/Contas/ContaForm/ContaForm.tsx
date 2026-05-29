@@ -1,30 +1,26 @@
 import { useState } from "react"
-import { Box, Typography, TextField, Select, MenuItem } from "@mui/material"
-import CustomButton from "../../CustomButton"
+import { PontesButton, PontesField, PontesInput, PontesSelect } from "@/components/pontes"
 import type { Conta } from "../../../types/Conta"
 import type { Banco } from "../../../types/Banco"
 import type { CriarContaPayload } from "../../../services/contaService"
+import styles from "./ContaForm.module.css"
 
 type ContaFormData = Omit<Conta, "id" | "tipoDescricao" | "tipoCartaoDescricao" | "bancoNome" | "saldoAtual"> & { saldoInicial?: number }
 
-const inputSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "8px",
-    fontSize: "14px",
-  },
-}
-
-const selectSx = {
-  borderRadius: "8px",
-  fontSize: "14px",
-}
-
 const TIPOS = [
-  { value: 1, label: "Conta Corrente" },
-  { value: 2, label: "Conta Poupança" },
-  { value: 4, label: "Dinheiro" },
-  { value: 5, label: "Empréstimo" },
+  { value: "1", label: "Conta Corrente" },
+  { value: "2", label: "Conta Poupança" },
+  { value: "4", label: "Dinheiro" },
+  { value: "5", label: "Empréstimo" },
 ]
+
+// Máscara monetária — dígitos → centavos formatados pt-BR, e reverso.
+const parseMoney = (masked: string): number | undefined => {
+  const digits = masked.replace(/\D/g, "")
+  return digits ? Number(digits) / 100 : undefined
+}
+const fmtMoney = (n?: number): string =>
+  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 
 interface Props {
   bancos: Banco[]
@@ -36,99 +32,105 @@ interface Props {
 
 export type { ContaFormData, CriarContaPayload }
 
-export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editingConta, onCancel }: Props) {
-  const [tipo, setTipo] = useState(editingConta?.tipo ?? 0)
+type FormState = {
+  bancoId: string
+  nome: string
+  numeroConta: string
+  tipo: string
+  saldoInicial?: number
+}
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+type Errors = Partial<Record<"nome" | "tipo", string>>
+
+export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editingConta, onCancel }: Props) {
+  const [form, setForm] = useState<FormState>({
+    bancoId: editingConta?.bancoId ?? preSelectedBancoId ?? "",
+    nome: editingConta?.nome ?? "",
+    numeroConta: editingConta?.numeroConta ?? "",
+    tipo: editingConta?.tipo ? String(editingConta.tipo) : "",
+    saldoInicial: undefined,
+  })
+  const [errors, setErrors] = useState<Errors>({})
+
+  const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const nome = formData.get("nome") as string
-    const numeroConta = (formData.get("numeroConta") as string) || undefined
-    const saldoInicial = !editingConta ? Number(formData.get("saldoInicial")) || 0 : undefined
-    const bancoId = (formData.get("bancoId") as string) || undefined
-    onSubmit({ nome, numeroConta, tipo, saldoInicial, bancoId, isCarteira: false })
-    e.currentTarget.reset()
+    const next: Errors = {}
+    if (!form.nome.trim()) next.nome = "Informe o nome da conta"
+    if (!form.tipo) next.tipo = "Selecione o tipo"
+    setErrors(next)
+    if (Object.keys(next).length) return
+
+    onSubmit({
+      nome: form.nome.trim(),
+      numeroConta: form.numeroConta.trim() || undefined,
+      tipo: Number(form.tipo),
+      saldoInicial: !editingConta ? form.saldoInicial ?? 0 : undefined,
+      bancoId: form.bancoId || undefined,
+      isCarteira: false,
+    })
   }
 
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
+
   return (
-    <Box component="form" key={editingConta?.id ?? "new"} onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      <Box>
-        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Banco / Instituição</Typography>
-        <Select
-          name="bancoId"
-          defaultValue={editingConta?.bancoId ?? preSelectedBancoId ?? ""}
-          size="small"
-          fullWidth
-          displayEmpty
-          sx={selectSx}
-        >
-          <MenuItem value="">Sem vínculo</MenuItem>
-          {bancos.map(b => (
-            <MenuItem key={b.id} value={b.id}>{b.nome}</MenuItem>
-          ))}
-        </Select>
-      </Box>
+    <form noValidate onSubmit={handleSubmit} className={styles.form}>
+      <PontesField label="Banco / Instituição">
+        <PontesSelect
+          value={form.bancoId}
+          onChange={(v) => setF("bancoId", v)}
+          placeholder="Sem vínculo"
+          options={bancos.map((b) => ({ value: b.id, label: b.nome }))}
+        />
+      </PontesField>
 
-      <Box>
-        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Nome da Conta</Typography>
-        <TextField
-          name="nome"
+      <PontesField label="Nome da conta" required error={errors.nome} helper="Máximo 100 caracteres">
+        <PontesInput
+          value={form.nome}
+          onChange={(e) => { setF("nome", e.target.value); clearErr("nome") }}
+          invalid={!!errors.nome}
+          maxLength={100}
           placeholder="Ex: NuConta, Conta Corrente BB"
-          defaultValue={editingConta?.nome ?? ""}
-          size="small"
-          fullWidth
-          required
-          inputProps={{ maxLength: 100 }}
-          helperText="Máximo de 100 caracteres"
-          sx={inputSx}
+          autoFocus
         />
-      </Box>
+      </PontesField>
 
-      <Box>
-        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Número da Conta</Typography>
-        <TextField
-          name="numeroConta"
+      <PontesField label="Número da conta" helper="Opcional — usado para exibição">
+        <PontesInput
+          value={form.numeroConta}
+          onChange={(e) => setF("numeroConta", e.target.value)}
+          maxLength={50}
           placeholder="Ex: 1234-5"
-          defaultValue={editingConta?.numeroConta ?? ""}
-          size="small"
-          fullWidth
-          inputProps={{ maxLength: 50 }}
-          helperText="Opcional — usado para exibição"
-          sx={inputSx}
         />
-      </Box>
+      </PontesField>
 
-      <Box>
-        <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Tipo</Typography>
-        <Select name="tipo" value={tipo} onChange={(e) => setTipo(Number(e.target.value))} size="small" fullWidth required displayEmpty sx={selectSx}>
-          <MenuItem value={0} disabled>Selecione o tipo</MenuItem>
-          {TIPOS.map(t => (
-            <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
-          ))}
-        </Select>
-      </Box>
+      <PontesField label="Tipo" required error={errors.tipo}>
+        <PontesSelect
+          value={form.tipo}
+          onChange={(v) => { setF("tipo", v); clearErr("tipo") }}
+          invalid={!!errors.tipo}
+          placeholder="Selecione o tipo"
+          options={TIPOS}
+        />
+      </PontesField>
 
       {!editingConta && (
-        <Box>
-          <Typography fontSize={13} fontWeight={500} color="text.primary" mb={0.75}>Saldo Inicial</Typography>
-          <TextField
-            name="saldoInicial"
+        <PontesField label="Saldo inicial" helper="Informe 0 se não souber o saldo atual">
+          <PontesInput
+            iconStart="R$"
+            value={fmtMoney(form.saldoInicial)}
+            onChange={(e) => setF("saldoInicial", parseMoney(e.target.value))}
+            inputMode="decimal"
             placeholder="0,00"
-            type="number"
-            defaultValue={0}
-            size="small"
-            fullWidth
-            inputProps={{ step: "0.01" }}
-            helperText="Informe 0 se não souber o saldo atual"
-            sx={inputSx}
           />
-        </Box>
+        </PontesField>
       )}
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 0.5 }}>
-        <CustomButton type="button" variant="secondary" onClick={onCancel}>Cancelar</CustomButton>
-        <CustomButton type="submit" variant="primary">{editingConta ? "Atualizar" : "Adicionar"}</CustomButton>
-      </Box>
-    </Box>
+      <div className={styles.actions}>
+        <PontesButton type="button" variant="outline" onClick={onCancel}>Cancelar</PontesButton>
+        <PontesButton type="submit">{editingConta ? "Atualizar" : "Adicionar"}</PontesButton>
+      </div>
+    </form>
   )
 }
