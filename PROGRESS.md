@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-27
+last_reviewed: 2026-05-29
 next_review: 2026-08-21
-status: CURRENT
+status: Q5 FECHADO
 ---
 
 # Progress Tracker — Q5 2026
@@ -11,6 +11,7 @@ status: CURRENT
 
 **Backlog atual:** 18 issues (#75-#92).
 **Iniciado em:** 2026-05-21.
+**Encerrado em:** 2026-05-29 (UI/refator 100% mergeados, sobrou só infra/legal opcional).
 
 ---
 
@@ -18,16 +19,16 @@ status: CURRENT
 
 ```
 Site público (6):       6/6  ✅ #75 #76 #77 #78 #79 #80
-Telas internas (9):     8/9  ✅ #81 #82 #83 #84 #85 #86 #87 #89  ⏳ #88
-Infra e qualidade (3):  0/3  ⏳ #90 (fundação feita) #91 #92
+Telas internas (9):     9/9  ✅ #81 #82 #83 #84 #85 #86 #87 #88 #89
+Infra e qualidade (3):  2/3  ✅ #90 #91   ⏳ #92 (E2E Playwright — média)
+Refatores extras:       8/8  ✅ #128 #129 #130 #131 #138 #149 #150 #151 #152 #153 #154
 Fundação:               ✅ #101 biblioteca Pontes (+ v2 #106, SiteLayout #108, #122 CSS Modules/vars)
 
-Total Q5 2026:          14/18 telas+site (#75-#92) — +#138 (redesign cartões)
+Total Q5 2026:          17/18 issues do backlog + 11 extras (spin-offs + refators massivos)
+Abertas:                #92 (E2E média) + #114 (drop SQLite baixa) + #125/#126 (legal/INPI/LGPD)
 ```
 
-> Spin-offs abertos no #82: ✅ **#128** contábil (saldo × P&L), ✅ **#129** validação nos forms (Login/Register/Categorias), ⏳ **#130** editar bloqueia data futura no crédito, ⏳ **#131** mover `components/transactions` → `pages/Transactions`.
-
-**Status geral:** ciclo recém iniciado. Q4 2026 fechado parcialmente — telas piloto (#61), propagação tokens (#62), brand preview + design system (#74) mergeados; dark mode (#63 / PR #73) cancelado e absorvido pela nova estratégia de refator completo.
+**Status geral:** **Q5 efetivamente fechado.** 0 MUI no codebase, bundle `-212 KiB` pós-purga, biblioteca Pontes única fonte de UI, CI gate com branch protection ativa, personalização global persistida. Q4 2026 absorvido (dark mode #63 virou parte de #90, agora entregue).
 
 **Marca decidida na sessão de 2026-05-21:**
 - Nome: **Pontes**
@@ -39,11 +40,45 @@ Total Q5 2026:          14/18 telas+site (#75-#92) — +#138 (redesign cartões)
 
 ## Em progresso
 
-(nenhuma issue em execução — próxima livre: #88 Bancos, #85 Família)
+(nenhuma issue em execução — Q5 fechado. Próximas livres: #92 E2E Playwright, #114 drop SQLite, #125/#126 legais.)
 
 ## Resolvidos Q5
 
-- **#89** — Recorrentes refator + cancelar/editar próxima (PR #145 · aguardando review · sessão 2026-05-28)
+- **#149/#150/#151/#152/#153/#154** — Refatores MUI→Pontes em massa (PRs #157, #158, #159, #162, #164, #165 · sessão 2026-05-29)
+  - **#151 Transferencias** (PR #157), **#152 Emprestimos** (PR #158), **#153 Parcelamentos** index+detalhe (PR #159)
+  - **#154 Importacao** (PR #162), **#150 Reports** (PR #164), **#149 Transactions** (PR #165 — maior bloco legado, ~500 MUI)
+  - Boy-scout: NewContaDialog (PR #147), SettingsPage (PR #148)
+  - Todos: CSS Modules + var(--pontes-*), validação por campo, PontesDialog em vez de window.confirm, PontesDateInput em vez de input nativo
+  - Hotfix PR #161 (PontesStatCard `tone` + hint standalone) e #160 (alinhamento .page Metas/Limites)
+
+- **#91** — CI gate (PR #155 · sessão 2026-05-29)
+  - Branch protection na main via GitHub API (build+lint+test obrigatórios pra merge)
+  - Status badge no README
+  - Auto-merge habilitado pra PRs com CI verde
+
+- **#90** — Personalização in-app — picker paleta + fonte (PR #156 · sessão 2026-05-29)
+  - SettingsPage `/perfil` ganhou seletor de paleta (15 opções) + fonte (7 opções)
+  - Persiste em localStorage via `PontesThemeProvider` (já fundação desde #108)
+  - Wordmark/cores semânticas/Alert/Toast imunes (regras de #101)
+
+- **#88** — Bancos com logo real + PontesBankBadge (PR #146 · sessão 2026-05-28)
+  - `PontesBankBadge` em `src/components/pontes/data/BankBadge.tsx`: img real (Google favicon sz=128) + fallback iniciais (onError)
+  - Quadrado-arredondado (border-radius 10px), logo cover 100% (fim do halo preto após #167/#168)
+  - AccountsPage refatorado MUI→Pontes; DashboardPage AccountTile boy-scout; BancosPage refatorado também
+  - 13 testes AccountsPage + 12 testes BancosPage
+
+- **#138 spin-offs** — fechados (sessão 2026-05-29)
+  - **#130** editar transação não bloqueia data futura no crédito (PR #169 — paridade com criar)
+  - **#131** mover `components/transactions` → `pages/Transactions/components` (PR #170 — saiu da zona legada)
+
+- **Purga legacy + polimento DS** (sessão 2026-05-29)
+  - **PR #166** — purge total dos componentes legados + desinstala MUI completo (`-212 KiB` bundle)
+  - **PR #167** — h1 padrão Fraunces 24px/600/-0.02em em TODAS as telas + BankBadge quadrado
+  - **PR #168** — BankBadge logo cobre 100%
+  - **PR #171** — novo `PontesDateInput` (popover do PontesDatePicker, API YYYY-MM-DD compatível); migrou 9 páginas
+  - **PRs #172-#177** — afinação do componente: dupla borda, height=Input, MoneyInput hero+clamp(), scrollbar fina, Select searchable default + auto-placement com BUFFER 24px
+
+- **#89** — Recorrentes refator + cancelar/editar próxima (PR #145 · sessão 2026-05-28)
   - Backend: `EditarProximaOcorrenciaDto`, endpoints `POST /{id}/cancelar` + `PATCH /{id}/proxima`
   - Fix exception types em todos os métodos: KeyNotFoundException/UnauthorizedAccessException/ArgumentException
   - Frontend: refactor completo MUI→Pontes + CSS Modules (zero Box/Paper/Typography/Dialog/tokens.ts/CustomButton)
@@ -169,6 +204,78 @@ Histórico em `docs/history/PROGRESS_2026Q4.md`.
 ---
 
 ## Histórico de sessões
+
+### Sessão 2026-05-29 — Q5 fechado (25 PRs mergeados)
+
+Sessão maratona que liquidou tudo que sobrou de UI/refator/personalização/CI no Q5. Estado final: 0 MUI no codebase, biblioteca Pontes única fonte de UI, bundle -212 KiB, CI gate ativo, personalização global.
+
+**Refatores MUI→Pontes (em massa):**
+- #157 (#151) Transferencias
+- #158 (#152) Emprestimos
+- #159 (#153) Parcelamentos index + detalhe
+- #162 (#154) Importacao
+- #164 (#150) Reports
+- #165 (#149) Transactions — maior bloco legado, ~500 ocorrências de MUI
+- #147 boy-scout: NewContaDialog
+- #148 quick win: SettingsPage
+
+**Infra/personalização:**
+- #155 (#91) CI gate: branch protection na main via gh API + status badge
+- #156 (#90) Settings picker paleta + fonte em /perfil
+- #161 hotfix PontesStatCard tone + hint standalone (resgate de build)
+
+**Polimento visual + DS:**
+- #160 alinhamento .page Metas/Limites
+- #163 fix BASE URL Metas (/api/v1/api/metas → /api/v1/metas)
+- #166 PURGA TOTAL: deletou src/components/ legado + desinstalou @mui (-212 KiB)
+- #167 h1 Fraunces 24px/600/-0.02em em todas as telas + BankBadge quadrado
+- #168 BankBadge logo cobre 100% (fim do halo preto via mix-blend/mask/filter)
+
+**Spin-offs do #82 (encerrados):**
+- #169 (#130) editar não bloqueia data futura no crédito (paridade com criar)
+- #170 (#131) mover components/transactions → pages/Transactions/components
+
+**PontesDateInput + afinação do componente:**
+- #171 novo PontesDateInput (popover do calendar custom, API YYYY-MM-DD); migrou 9 páginas
+- #172 remove dupla borda do popover
+- #173 PontesSelect menu width = trigger; tentativa MoneyInput compacto (revertida)
+- #174 MoneyInput RESTAURA visual hero + responsividade via clamp(20px,4vw,28px)/clamp(32px,7vw,48px) — responsivo no componente, sem fix por formulário (lição: "voce sempre faz o contrario do que eu pedi")
+- #175 DateInput trigger height = PontesInput (padding 12px 14px + border-radius 10px + box-sizing)
+- #176 scrollbar overlay --os-size 8px (era 12px); estados Inválido do DS em grid responsivo; cor da thumb via color-mix(var(--pontes-text-muted))
+- #177 PontesSelect: searchable default true em TODO select (igual Ctrl+K); auto-placement com BUFFER 24px — abre pra cima/encolhe se faltar espaço, nunca cobre footer
+
+**Padrões cristalizados:**
+- CSS Modules + var(--pontes-*) sempre, inline só pra valor dinâmico runtime
+- @/components/pontes única fonte de UI, src/components legado APAGADO
+- Validação por campo via PontesField error + invalid (zero toast pra campo)
+- PontesDialog em vez de window.confirm
+- PontesDateInput em todo formulário
+- lucide-react 14-16px / strokeWidth 2.5
+- BankBadge quadrado-arredondado 10px + logo cover 100%
+- h1 Fraunces 24px/600/-0.02em em todas as telas internas
+- MoneyInput visual hero responsivo via clamp() (responsividade NO componente)
+
+**Final state:** working tree clean, branch main em `3dfadf8`. 4 issues abertas só: #92 (E2E Playwright), #114 (drop SQLite), #125 (INPI), #126 (LGPD).
+
+**Próxima ação:** Gustavo decide próxima prioridade (#114, #92, ou pausar Q5 e ir pra outra coisa).
+
+### Sessão 2026-05-28 — telas internas finais (#87 + #89 + #88)
+
+- **#87 Limites por categoria** (PR #144): grid de cards com progress bar, badges Em alerta/Ultrapassado, seletor de período, modal criar/editar, dialog de exclusão. Boy-scout OrcamentoService (filtros Ativo + Executado + !EhTransferencia + !EhSaldoInicial + !EhPagamentoFatura). Fix URL `/api/v1/api/orcamentos` → `/api/v1/orcamentos`. 14 testes back + 12 front.
+- **#89 Recorrentes** (PR #145): backend `EditarProximaOcorrenciaDto` + endpoints `POST /{id}/cancelar` e `PATCH /{id}/proxima`; soft-delete recorrente + cancela Previsoes; refactor MUI→Pontes + CSS Modules; 3 stat cards; modais Cancelar (motivo obrigatório) e Editar próxima (valor/descrição opcionais); fix parseMoneyString BR. 18 back + 16 front.
+- **#88 Bancos com logo real** (PR #146): `PontesBankBadge` novo componente; AccountsPage refatorado; DashboardPage AccountTile boy-scout; BancosPage refatorado. 13+12 testes.
+
+### Sessão 2026-05-27 — #138 redesign Cartões (PR #139)
+
+Cartão físico com gradiente do banco; modo foco; navegação por mês + "Hoje" + atalhos teclado; timeline cronológica; bloqueio pagar fatura futura (padrão Nubank/Itaú/Bradesco); soft-delete cartão preservando pagamentos+faturas; seeder rico. Spin-offs #130/#131 abertos (fechados depois na sessão massiva).
+
+### Sessão 2026-05-25 — #84 + #85 (PRs #137 + #140)
+
+CreditCardsPage refator MUI→Pontes + auditoria (#84). FamiliasPage refator MUI→Pontes + 50 testes (#85). Fix bug `CriarDependenteDto` record + `[property: Attr]` (ASP.NET 8 joga InvalidOperationException).
+
+### Sessão 2026-05-23 — #82 + spin-offs #128/#129
+
+#82 Transação Adicionar/Editar (PR #132): TransactionForm único pra criar e editar; popup unificado por natureza; lib nova `PontesChoiceCards` + `PontesGroupedSelect`; validação por campo padronizada. #128 saldo×P&L (PR #133): flags EhTransferencia/EhSaldoInicial, relatórios e dashboard excluem as 3 não-receita-não-despesa. #129 validação Login/Register/Categorias (PR #135).
 
 ### Sessão 34 — 2026-05-21
 
