@@ -8,6 +8,8 @@ import {
   PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
   PontesSidebarItem, PontesChoiceCards, PontesGroupedSelect,
   PontesModal, PontesDialog,
+  PontesTable, PontesTablePagination,
+  PONTES_TABLE_PAGE_SIZE_DEFAULT, PONTES_TABLE_PAGE_SIZE_MAX, PONTES_TABLE_PAGE_SIZES,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -238,5 +240,76 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
       />
     )
     expect(v).toBe("b")
+  })
+
+  // ── PontesTable + paginação (padrão DS) ────────────────────────────────────
+  it("PONTES_TABLE_* constantes seguem o padrão decidido (10/25/50/100, default 25, cap 100)", () => {
+    expect(PONTES_TABLE_PAGE_SIZE_DEFAULT).toBe(25)
+    expect(PONTES_TABLE_PAGE_SIZE_MAX).toBe(100)
+    expect([...PONTES_TABLE_PAGE_SIZES]).toEqual([10, 25, 50, 100])
+  })
+
+  it("PontesTable com pagination=true renderiza só 1 página de cada vez", () => {
+    type R = { id: number; n: string }
+    const rows: R[] = Array.from({ length: 47 }, (_, i) => ({ id: i, n: `linha-${i + 1}` }))
+    render(
+      <PontesTable<R>
+        p={p} font={font}
+        columns={[
+          { key: "id", header: "ID", render: (r) => r.id },
+          { key: "n", header: "Nome", render: (r) => r.n },
+        ]}
+        rows={rows}
+        pagination={{ pageSize: 10 }}
+        rowKey={(r) => r.id}
+      />
+    )
+    // Página inicial mostra linhas 1-10. linha-11 NÃO deve estar no DOM.
+    expect(screen.getByText("linha-1")).toBeInTheDocument()
+    expect(screen.getByText("linha-10")).toBeInTheDocument()
+    expect(screen.queryByText("linha-11")).not.toBeInTheDocument()
+    // Range "1–10 de 47 registros" no rodapé.
+    expect(screen.getByText(/1–10 de 47/)).toBeInTheDocument()
+  })
+
+  it("PontesTablePagination dispara onPageChange + onPageSizeChange", () => {
+    let page = 1
+    let size = 25
+    render(
+      <PontesTablePagination
+        p={p} font={font}
+        total={100} page={page} pageSize={size}
+        onPageChange={(np) => { page = np }}
+        onPageSizeChange={(ns) => { size = ns }}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Próxima página"))
+    expect(page).toBe(2)
+  })
+
+  it("PontesTablePagination desabilita ←/→ nas pontas", () => {
+    render(
+      <PontesTablePagination
+        p={p} font={font}
+        total={10} page={1} pageSize={10}
+        onPageChange={() => {}}
+        onPageSizeChange={() => {}}
+      />
+    )
+    // 10 itens / 10 por página = 1 página total → ambos disabled.
+    expect(screen.getByLabelText("Página anterior")).toBeDisabled()
+    expect(screen.getByLabelText("Próxima página")).toBeDisabled()
+  })
+
+  it("PontesTablePagination mostra 0 registros sem quebrar quando total=0", () => {
+    render(
+      <PontesTablePagination
+        p={p} font={font}
+        total={0} page={1} pageSize={25}
+        onPageChange={() => {}}
+        onPageSizeChange={() => {}}
+      />
+    )
+    expect(screen.getByText(/0 registros/)).toBeInTheDocument()
   })
 })

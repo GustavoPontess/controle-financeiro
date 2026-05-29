@@ -52,6 +52,7 @@ export * from "./data/Progress"
 export * from "./data/StatCard"
 export * from "./data/Card"
 export * from "./data/Table"
+export * from "./data/TablePagination"
 export * from "./data/BankBadge"
 
 // ── Feedback & Overlays ──────────────────────────────────────────────────────

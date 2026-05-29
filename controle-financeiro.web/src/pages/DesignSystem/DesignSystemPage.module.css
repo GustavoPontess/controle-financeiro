@@ -14,6 +14,8 @@
 .body { max-width: 1280px; margin: 32px auto 0; padding: 0 48px; }
 .tabsRow { display: flex; justify-content: center; margin-bottom: 24px; }
 .panel { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 22px; padding: 36px; }
+.helper { font-size: 13px; color: var(--pontes-text-muted); margin: 0 0 12px; line-height: 1.5; max-width: 720px; }
+.helper code { background: var(--pontes-surface); border: 1px solid var(--pontes-border); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
 .spacer80 { height: 80px; }
 
 /* Control bar (dev, escura fixa) */

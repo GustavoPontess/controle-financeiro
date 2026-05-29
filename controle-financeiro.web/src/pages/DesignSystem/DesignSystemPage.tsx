@@ -529,13 +529,21 @@ function FormSection({ p }: { p: Palette }) {
 
 function DataSection({ p }: { p: Palette }) {
   type Row = { date: string; desc: string; cat: string; account: string; member: string; v: number }
-  const rows: Row[] = [
-    { date: "20/05", desc: "Mercado Pão de Açúcar", cat: "Mercado", account: "Nubank", member: "G", v: -142.30 },
-    { date: "20/05", desc: "Salário Gustavo", cat: "Renda", account: "Itaú", member: "G", v: 4200 },
-    { date: "19/05", desc: "Netflix", cat: "Lazer", account: "Nubank", member: "G", v: -55.90 },
-    { date: "19/05", desc: "Conta de Luz · rateada", cat: "Casa", account: "Itaú", member: "G+M", v: -240 },
-    { date: "18/05", desc: "iFood", cat: "Alimentação", account: "Nubank", member: "M", v: -68.50 },
-  ]
+  // Lista grande pra mostrar o paginator real funcionando (47 linhas → 5 páginas a 10/pág).
+  const paginationRows: Row[] = Array.from({ length: 47 }, (_, i) => {
+    const cats = ["Mercado", "Renda", "Lazer", "Casa", "Alimentação", "Transporte"]
+    const accs = ["Nubank", "Itaú", "Bradesco"]
+    const mems = ["G", "M", "G+M"]
+    const isReceita = i % 7 === 0
+    return {
+      date: `${String(((i % 28) + 1)).padStart(2, "0")}/05`,
+      desc: isReceita ? `Renda extra #${i + 1}` : `Lançamento #${i + 1}`,
+      cat: cats[i % cats.length],
+      account: accs[i % accs.length],
+      member: mems[i % mems.length],
+      v: isReceita ? 1000 + i * 37 : -(40 + (i * 13) % 800),
+    }
+  })
 
   return (
     <div>
@@ -600,10 +608,16 @@ function DataSection({ p }: { p: Palette }) {
         </div>
       </Group>
 
-      <Group title="Tabela">
+      <Group title="Tabela com paginação (padrão DS)">
+        <p className={styles.helper}>
+          Toda tabela do produto usa o rodapé padrão: <strong>10 / 25 / 50 / 100</strong>
+          linhas por página (default 25, cap 100). Renderiza só a página visível —
+          evita render gigante e jank em listas grandes. Modo uncontrolled (passa{" "}
+          <code>pagination</code>) ou controlado (passa <code>page</code>/<code>onPageChange</code>).
+        </p>
         <PontesTable<Row>
           title="Transações de maio"
-          subtitle="247 lançamentos · R$ 5.140,00 em despesas"
+          subtitle="Demonstração do paginator embutido"
           toolbar={<>
             <PontesButton size="sm" variant="outline">Filtros</PontesButton>
             <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}>Nova</PontesButton>
@@ -620,8 +634,8 @@ function DataSection({ p }: { p: Palette }) {
               </span>
             ) },
           ]}
-          rows={rows}
-          footer={<span>Mostrando 5 de 247</span>}
+          rows={paginationRows}
+          pagination={{ pageSize: 10 }}
         />
       </Group>
     </div>
