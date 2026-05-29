@@ -11,6 +11,19 @@ export const listEmprestimosPage = async (
   return res.data
 }
 
+export type EmprestimoStats = {
+  totalAReceber: number
+  totalAPagar: number
+  ativos: number
+  qtdTotal: number
+}
+
+/** KPIs agregados — a receber, a pagar, ativos, total. */
+export const getEmprestimoStats = async (): Promise<EmprestimoStats> => {
+  const res = await api.get("/emprestimos/stats")
+  return res.data
+}
+
 /** @deprecated Use listEmprestimosPage. Clampa em 100. */
 export const getEmprestimos = async (): Promise<Emprestimo[]> => {
   const res = await api.get("/emprestimos", { params: { page: 1, pageSize: 100 } })

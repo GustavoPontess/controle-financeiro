@@ -24,6 +24,15 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>KPIs agregados — a receber, a pagar, ativos e total.</summary>
+    [HttpGet("stats")]
+    [ProducesResponseType(typeof(EmprestimoStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterStats()
+    {
+        var stats = await _service.ObterStatsAsync(UserId);
+        return Ok(stats);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Buscar(Guid id)
     {

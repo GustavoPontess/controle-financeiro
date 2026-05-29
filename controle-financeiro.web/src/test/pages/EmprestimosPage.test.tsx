@@ -10,12 +10,14 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 const listEmprestimosPage = vi.fn()
+const getEmprestimoStats = vi.fn()
 const createEmprestimo = vi.fn()
 const registrarPagamento = vi.fn()
 const quitarEmprestimo = vi.fn()
 const deleteEmprestimo = vi.fn()
 vi.mock("../../services/emprestimoService", () => ({
   listEmprestimosPage: (...a: unknown[]) => listEmprestimosPage(...a),
+  getEmprestimoStats: (...a: unknown[]) => getEmprestimoStats(...a),
   getEmprestimos: () => Promise.resolve([]),
   createEmprestimo: (...a: unknown[]) => createEmprestimo(...a),
   registrarPagamento: (...a: unknown[]) => registrarPagamento(...a),
@@ -39,6 +41,9 @@ function renderPage() {
 describe("EmprestimosPage (#152)", () => {
   beforeEach(() => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([emp]))
+    getEmprestimoStats.mockReset().mockResolvedValue({
+      totalAReceber: 800, totalAPagar: 0, ativos: 1, qtdTotal: 1,
+    })
     createEmprestimo.mockReset().mockResolvedValue(undefined)
     registrarPagamento.mockReset().mockResolvedValue(undefined)
     quitarEmprestimo.mockReset().mockResolvedValue(undefined)
