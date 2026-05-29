@@ -89,4 +89,74 @@ describe("DashboardPage (#81)", () => {
       expect(screen.getAllByText((t) => t.includes("••••")).length).toBeGreaterThan(0)
     })
   })
+
+  // ── Redesign #181 ─────────────────────────────────────────────────────────
+
+  it("hero mostra delta vs mês anterior (5000 - 4200 = +800)", async () => {
+    renderDash()
+    await screen.findByText("Olá, Gabriel")
+    // Delta = 800; pct = 800/4200 = 19,05%. Tolerância: texto contém "vs mês anterior".
+    expect(await screen.findByText(/vs mês anterior/i)).toBeInTheDocument()
+    // %+ aparece com sinal positivo (delta>0)
+    expect(screen.getByText(/\+19[,.]0%|\+19\.0%/)).toBeInTheDocument()
+  })
+
+  it("hero esconde delta quando saldoMesAnterior=0 (baseline zero)", async () => {
+    getDashboard.mockReset()
+    getDashboard.mockResolvedValue({ ...mockData, saldoMesAnterior: 0 })
+    renderDash()
+    await screen.findByText("Olá, Gabriel")
+    // Fallback "Soma de todas as contas" aparece em vez do delta.
+    expect(await screen.findByText("Soma de todas as contas")).toBeInTheDocument()
+  })
+
+  it("QuickActions renderiza 4 atalhos com dicas N/T/C", async () => {
+    renderDash()
+    await screen.findByText("Olá, Gabriel")
+    expect(screen.getByText("Nova transação")).toBeInTheDocument()
+    expect(screen.getByText("Transações")).toBeInTheDocument()
+    expect(screen.getByText("Cartões")).toBeInTheDocument()
+    expect(screen.getByText("Transferir")).toBeInTheDocument()
+    // Dicas de teclado discretas
+    expect(screen.getByText("N")).toBeInTheDocument()
+    expect(screen.getByText("T")).toBeInTheDocument()
+    expect(screen.getByText("C")).toBeInTheDocument()
+  })
+
+  it("atalho N dispara evento openNewTransaction (fora de input)", async () => {
+    renderDash()
+    await screen.findByText("Olá, Gabriel")
+    let fired = 0
+    const handler = () => { fired++ }
+    window.addEventListener("openNewTransaction", handler)
+    fireEvent.keyDown(window, { key: "n" })
+    window.removeEventListener("openNewTransaction", handler)
+    expect(fired).toBe(1)
+  })
+
+  it("seção Cartões só aparece quando cartoesResumo > 0", async () => {
+    renderDash()
+    await screen.findByText("Olá, Gabriel")
+    // mockData padrão tem cartoesResumo=[], então não renderiza
+    expect(screen.queryByText("Seus cartões")).not.toBeInTheDocument()
+
+    // re-render com cartões
+    getDashboard.mockReset()
+    getDashboard.mockResolvedValue({
+      ...mockData,
+      cartoesResumo: [{
+        id: "card-1", nome: "Nubank Roxinho",
+        bancoNome: "Nubank",
+        limiteTotal: 5000, limiteUsado: 4250, limiteDisponivel: 750,
+        percentualUsado: 85, diasAteFechamento: 3,
+        proximoFechamento: "2026-06-01",
+      }],
+    })
+    const { unmount } = renderDash()
+    expect(await screen.findByText("Seus cartões")).toBeInTheDocument()
+    expect(screen.getByText("Nubank Roxinho")).toBeInTheDocument()
+    expect(screen.getByText("85%")).toBeInTheDocument()
+    expect(screen.getByText(/fecha em 3 dias/i)).toBeInTheDocument()
+    unmount()
+  })
 })
