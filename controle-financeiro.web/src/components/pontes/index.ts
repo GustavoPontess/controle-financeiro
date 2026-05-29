@@ -51,6 +51,7 @@ export * from "./data/Progress"
 export * from "./data/StatCard"
 export * from "./data/Card"
 export * from "./data/Table"
+export * from "./data/BankBadge"
 
 // ── Feedback & Overlays ──────────────────────────────────────────────────────
 export * from "./feedback/Toast"

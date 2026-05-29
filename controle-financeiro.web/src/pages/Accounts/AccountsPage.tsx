@@ -1,210 +1,251 @@
+/**
+ * AccountsPage — #88 refactor. Zero MUI, zero tokens.ts. CSS Modules + var(--pontes-*).
+ *
+ * - Saldo via conta.saldoAtual (sem getTransactions).
+ * - PontesBankBadge mostra logo real do banco com fallback de iniciais.
+ * - Carteira: card dark especial (não editável, criada automaticamente).
+ * - NewContaDialog ainda é legacy (refatorar em PR separado).
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Box, Typography, Paper, Chip } from "@mui/material"
 import { useOutletContext } from "react-router-dom"
-import { tokens } from "../../theme/tokens"
-import AddRoundedIcon from "@mui/icons-material/AddRounded"
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet"
-import CustomButton from "../../components/CustomButton"
+import { Plus, Wallet } from "lucide-react"
+import {
+  PontesButton, PontesIconButton, PontesBadge,
+  PontesStatCard, PontesEmptyState, PontesLoadingDots, PontesDialog,
+  PontesBankBadge,
+} from "@/components/pontes"
 import NewContaDialog from "../../components/Contas/NewContaDialog/NewContaDialog"
-import EmptyState from "../../components/EmptyState/EmptyState"
 import { getContas, deleteConta } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Dispatch, SetStateAction } from "react"
+import styles from "./AccountsPage.module.css"
+import { Pencil, Trash2 } from "lucide-react"
 
-const formatMoney = (v: number) =>
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
-const tipoContaColor: Record<number, { bg: string; color: string }> = {
-  1: { bg: tokens.color.status.info.light, color: tokens.color.status.info.dark },
-  2: { bg: tokens.color.status.success.light, color: tokens.color.status.success.dark },
-  3: { bg: "#ede9fe", color: "#7c3aed" },
-  5: { bg: tokens.color.status.warning.light, color: tokens.color.status.warning.dark },
+const TIPO_TONE: Record<number, "primary" | "success" | "accent" | "neutral" | "warning"> = {
+  1: "primary",   // Corrente
+  2: "success",   // Poupança
+  4: "accent",    // Investimento
+  5: "warning",   // Outro
 }
 
-type Notification = {
-  open: boolean
-  message: string
-  severity: "success" | "error"
-}
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-type OutletContextType = {
-  notify: Dispatch<SetStateAction<Notification>>
-}
-
-const getContaBalance = (conta: Conta) => conta.saldoAtual ?? 0
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
   const { notify } = useOutletContext<OutletContextType>()
+
   const [contas, setContas] = useState<Conta[]>([])
   const [bancos, setBancos] = useState<Banco[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [openContaDialog, setOpenContaDialog] = useState(false)
+  const [openDialog, setOpenDialog] = useState(false)
   const [editingConta, setEditingConta] = useState<Conta | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Conta | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
       const [cs, bs] = await Promise.all([getContas(), getBancos()])
       setContas(cs)
       setBancos(bs)
-    } catch (error) {
-      console.error("Erro ao carregar contas:", error)
+    } catch {
       notify({ open: true, message: "Erro ao carregar contas", severity: "error" })
+    } finally {
+      setLoading(false)
     }
   }, [notify])
 
   useEffect(() => { void loadData() }, [loadData])
 
-  const handleDeleteConta = async (id: string) => {
-    if (!confirm("Deseja realmente excluir esta conta?")) return
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await deleteConta(id)
+      await deleteConta(deleteTarget.id)
       notify({ open: true, message: "Conta removida com sucesso", severity: "success" })
+      setDeleteTarget(null)
       await loadData()
     } catch {
       notify({ open: true, message: "Erro ao remover conta", severity: "error" })
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const carteira = contas.find(conta => conta.isCarteira)
-  const contasBancarias = contas.filter(conta => !conta.isCarteira)
+  const carteira = contas.find(c => c.isCarteira)
+  const contasBancarias = contas.filter(c => !c.isCarteira)
 
-  const totalSaldo = useMemo(() => contas.reduce((sum, conta) => sum + getContaBalance(conta), 0), [contas])
-  const totalContas = contasBancarias.length
-  const totalCarteira = carteira ? getContaBalance(carteira) : 0
+  const totalSaldo = useMemo(() => contas.reduce((s, c) => s + c.saldoAtual, 0), [contas])
+  const totalCarteira = carteira?.saldoAtual ?? 0
+
+  if (loading) {
+    return (
+      <div className={styles.center}>
+        <PontesLoadingDots />
+      </div>
+    )
+  }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        <Box>
-          <Typography fontSize={22} fontWeight={800} color={tokens.color.text.primary}>Contas</Typography>
-          <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary}>Cartões, contas correntes e a carteira automática do sistema.</Typography>
-        </Box>
-        <CustomButton
-          size="small"
-          startIcon={<AddRoundedIcon sx={{ fontSize: 14 }} />}
-          onClick={() => { setEditingConta(null); setOpenContaDialog(true) }}
+    <div className={styles.page}>
+      {/* Header */}
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Contas</h1>
+          <p className={styles.subtitle}>
+            Cartões, contas correntes e a carteira automática do sistema.
+          </p>
+        </div>
+        <PontesButton
+          variant="primary"
+          size="sm"
+          iconStart={<Plus size={15} />}
+          onClick={() => { setEditingConta(null); setOpenDialog(true) }}
         >
           Nova Conta
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.xl }}>
-          <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} mb={0.5}>Saldo Total</Typography>
-          <Typography fontSize={28} fontWeight={800} color={tokens.color.status.success.dark}>{formatMoney(totalSaldo)}</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.xl }}>
-          <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} mb={0.5}>Contas Bancárias</Typography>
-          <Typography fontSize={28} fontWeight={800} color={tokens.color.text.primary}>{totalContas}</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.2, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.xl }}>
-          <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary} mb={0.5}>Carteira Física</Typography>
-          <Typography fontSize={28} fontWeight={800} color={tokens.color.text.primary}>{formatMoney(totalCarteira)}</Typography>
-        </Paper>
-      </Box>
+      {/* Stats */}
+      <div className={styles.stats}>
+        <PontesStatCard label="Saldo Total" value={fmt(totalSaldo)} />
+        <PontesStatCard label="Contas Bancárias" value={String(contasBancarias.length)} />
+        <PontesStatCard label="Carteira Física" value={fmt(totalCarteira)} />
+      </div>
 
-      <Paper elevation={0} sx={{ p: 2.5, border: `1px solid ${tokens.color.border.default}`, borderRadius: "18px", background: "linear-gradient(135deg, #0f172a 0%, #111827 55%, #1f2937 100%)", color: "#fff" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-          <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />
-          <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold}>Carteira automática</Typography>
-        </Box>
-        <Typography fontSize={tokens.typography.fontSize.sm} color="#cbd5e1" mb={2}>
-          Essa conta é criada automaticamente quando o usuário se cadastra e representa dinheiro em espécie.
-        </Typography>
-        {carteira ? (
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-            <Box>
-              <Typography fontSize={18} fontWeight={800}>{carteira.nome}</Typography>
-              <Chip
-                label="Não aparece como opção de cadastro"
-                size="small"
-                sx={{ mt: 1, backgroundColor: "rgba(255,255,255,0.12)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.18)" }}
-              />
-            </Box>
-            <Typography fontSize={28} fontWeight={800}>{formatMoney(getContaBalance(carteira))}</Typography>
-          </Box>
-        ) : (
-          <Typography fontSize={tokens.typography.fontSize.sm} color="#cbd5e1">Nenhuma carteira encontrada para este usuário.</Typography>
-        )}
-      </Paper>
-
-      {contasBancarias.length === 0 ? (
-        <EmptyState
-          title="Nenhuma conta bancária cadastrada"
-          description="Crie uma conta corrente, poupança, cartão de crédito ou empréstimo para organizar suas finanças."
-          actionLabel="Nova Conta"
-          onAction={() => { setEditingConta(null); setOpenContaDialog(true) }}
-        />
-      ) : (
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 2 }}>
-          {contasBancarias.map(conta => {
-            const banco = bancos.find(b => b.id === conta.bancoId)
-            const colors = tipoContaColor[conta.tipo] ?? { bg: "#f3f4f6", color: "#6b7280" }
-            return (
-              <Box key={conta.id} sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
-                <Paper elevation={0} sx={{ p: 2, border: 1, borderColor: tokens.color.border.default, borderRadius: "18px", bgcolor: tokens.color.background.surface }}>
-                  <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2, mb: 2 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                      <Box sx={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: banco?.cor || colors.bg, display: "flex", alignItems: "center", justifyContent: "center", color: banco?.cor ? "#fff" : colors.color, fontWeight: 800 }}>
-                        {(banco?.nomeFantasia ?? conta.nome).charAt(0).toUpperCase()}
-                      </Box>
-                      <Box>
-                        <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>{conta.nome}</Typography>
-                        <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>{banco?.nomeFantasia ?? "Sem banco vinculado"}</Typography>
-                      </Box>
-                    </Box>
-                    <Chip label={conta.tipoDescricao} size="small" sx={{ backgroundColor: colors.bg, color: colors.color, fontWeight: 700 }} />
-                  </Box>
-
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 2 }}>
-                    <Box>
-                      <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>Saldo atual</Typography>
-                      <Typography fontSize={22} fontWeight={800} color={tokens.color.status.success.dark}>{formatMoney(getContaBalance(conta))}</Typography>
-                    </Box>
-                    <Box sx={{ textAlign: "right" }}>
-                      <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>Número</Typography>
-                      <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>{conta.numeroConta || "—"}</Typography>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                    <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>{conta.isCarteira ? "Carteira física" : "Conta vinculada"}</Typography>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <CustomButton 
-                        size="small" 
-                        variant="secondary" 
-                        disabled={conta.isCarteira}
-                        onClick={() => { setEditingConta(conta); setOpenContaDialog(true) }}
-                      >
-                        Editar
-                      </CustomButton>
-                      <CustomButton 
-                        size="small" 
-                        variant="danger" 
-                        disabled={conta.isCarteira}
-                        onClick={() => handleDeleteConta(conta.id)}
-                      >
-                        Excluir
-                      </CustomButton>
-                    </Box>
-                  </Box>
-                </Paper>
-              </Box>
-            )
-          })}
-        </Box>
+      {/* Carteira automática */}
+      {carteira && (
+        <div className={styles.carteiraCard}>
+          <div className={styles.carteiraHead}>
+            <Wallet size={18} strokeWidth={2} />
+            <p className={styles.carteiraTitle}>Carteira automática</p>
+          </div>
+          <p className={styles.carteiraDesc}>
+            Criada automaticamente no cadastro — representa dinheiro em espécie.
+          </p>
+          <div className={styles.carteiraBody}>
+            <div>
+              <p className={styles.carteiraNome}>{carteira.nome}</p>
+              <span className={styles.carteiraChip}>Não aparece como opção de cadastro</span>
+            </div>
+            <span className={styles.carteiraSaldo}>{fmt(carteira.saldoAtual)}</span>
+          </div>
+        </div>
       )}
 
+      {/* Contas bancárias */}
+      {contasBancarias.length === 0 ? (
+        <PontesEmptyState
+          title="Nenhuma conta bancária cadastrada"
+          description="Crie uma conta corrente, poupança ou investimento para organizar suas finanças."
+          actions={
+            <PontesButton
+              variant="primary"
+              size="sm"
+              iconStart={<Plus size={15} />}
+              onClick={() => { setEditingConta(null); setOpenDialog(true) }}
+            >
+              Nova Conta
+            </PontesButton>
+          }
+        />
+      ) : (
+        <div className={styles.grid}>
+          {contasBancarias.map(conta => {
+            const banco = bancos.find(b => b.id === conta.bancoId)
+            const tone = TIPO_TONE[conta.tipo] ?? "neutral"
+            const neg = conta.saldoAtual < 0
+
+            return (
+              <div key={conta.id} className={styles.card}>
+                {/* Head: logo + nome + tipo badge */}
+                <div className={styles.cardHead}>
+                  <div className={styles.cardHeadLeft}>
+                    <PontesBankBadge
+                      name={banco?.nomeFantasia ?? conta.nome}
+                      logoUrl={banco?.logoUrl}
+                      cor={banco?.cor}
+                      size={42}
+                    />
+                    <div>
+                      <p className={styles.cardName}>{conta.nome}</p>
+                      <p className={styles.cardBanco}>{banco?.nomeFantasia ?? "Sem banco vinculado"}</p>
+                    </div>
+                  </div>
+                  <PontesBadge tone={tone} size="sm">{conta.tipoDescricao}</PontesBadge>
+                </div>
+
+                {/* Saldo + número da conta */}
+                <div className={styles.cardSaldo}>
+                  <div>
+                    <div className={styles.saldoLabel}>Saldo atual</div>
+                    <div className={styles.saldoValue} data-neg={neg ? "true" : undefined}>
+                      {fmt(conta.saldoAtual)}
+                    </div>
+                  </div>
+                  {conta.numeroConta && (
+                    <div className={styles.cardNumeroConta}>
+                      <div className={styles.numeroLabel}>Número</div>
+                      <div className={styles.numeroValue}>{conta.numeroConta}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className={styles.cardFoot}>
+                  <PontesIconButton
+                    size={32}
+                    title="Editar"
+                    onClick={() => { setEditingConta(conta); setOpenDialog(true) }}
+                  >
+                    <Pencil size={14} />
+                  </PontesIconButton>
+                  <PontesIconButton
+                    size={32}
+                    title="Excluir"
+                    style={{ color: "var(--pontes-danger, #ef4444)" }}
+                    onClick={() => setDeleteTarget(conta)}
+                  >
+                    <Trash2 size={14} />
+                  </PontesIconButton>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Dialog: criar / editar conta */}
       <NewContaDialog
-        open={openContaDialog}
+        open={openDialog}
         editingConta={editingConta}
         bancos={bancos}
-        onClose={() => { setOpenContaDialog(false); setEditingConta(null) }}
+        onClose={() => { setOpenDialog(false); setEditingConta(null) }}
         onSaved={loadData}
         notify={notify}
       />
-    </Box>
+
+      {/* Dialog: confirmar exclusão */}
+      {deleteTarget && (
+        <PontesDialog
+          open
+          title="Excluir conta"
+          description={`Remover "${deleteTarget.nome}"? Esta ação não pode ser desfeita.`}
+          tone="danger"
+          confirmLabel={deleting ? "Excluindo…" : "Confirmar"}
+          onConfirm={() => { void handleDelete() }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+    </div>
   )
 }
