@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import NewTransactionDialog from "../../components/transactions/NewTransactionDialog/NewTransactionDialog"
+import NewTransactionDialog from "../../pages/Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import { createTransferencia } from "../../services/transferenciaService"
 import { createTransaction } from "../../services/transactionService"
 
