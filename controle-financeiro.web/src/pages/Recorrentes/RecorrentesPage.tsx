@@ -11,9 +11,10 @@ import {
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
-  listRecorrentesPage, createRecorrente, toggleRecorrente, deleteRecorrente,
+  listRecorrentesPage, getRecorrenteStats, createRecorrente, toggleRecorrente, deleteRecorrente,
   cancelarRecorrente, editarProximaOcorrencia,
 } from "../../services/recorrenteService"
+import type { RecorrenteStats } from "../../services/recorrenteService"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
 import type { Recorrente, CriarRecorrente, EditarProximaDto } from "../../types/Recorrente"
@@ -126,10 +127,10 @@ export default function RecorrentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
 
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
-  // Agregado das 100 primeiras pros KPIs (ativas/custo/próximas30). Conforme
-  // qty de assinaturas crescer (>100) os KPIs ficam imprecisos — endpoint
-  // dedicado de stats fica pra depois.
-  const [todosParaStats, setTodosParaStats] = useState<Recorrente[]>([])
+  // KPIs exatos via /recorrentes/stats — endpoint dedicado (#179).
+  const [stats, setStats] = useState<RecorrenteStats>({
+    ativas: 0, custoMensalDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
+  })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
@@ -167,13 +168,13 @@ export default function RecorrentesPage() {
     try {
       const [pageResult, statsResult, c, cat] = await Promise.all([
         listRecorrentesPage(page, pageSize),
-        listRecorrentesPage(1, 100),
+        getRecorrenteStats(),
         getContas(),
         getCategories(),
       ])
       setRecorrentes(pageResult.items)
       setTotal(pageResult.total)
-      setTodosParaStats(statsResult.items)
+      setStats(statsResult)
       setContas(c)
       setCategorias(cat)
     } catch {
@@ -187,16 +188,9 @@ export default function RecorrentesPage() {
 
   // ── stats ────────────────────────────────────────────────────────────────────
 
-  const ativas = todosParaStats.filter(r => r.ativo).length
-  const totalMensalDespesa = todosParaStats
-    .filter(r => r.ativo && r.frequencia === 2 && r.tipo === 1)
-    .reduce((s, r) => s + r.valor, 0)
-  const proximas30 = todosParaStats.filter(r => {
-    if (!r.ativo || !r.dataProximaGeracao) return false
-    const d = new Date(r.dataProximaGeracao)
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 30)
-    return d <= cutoff
-  }).length
+  const ativas = stats.ativas
+  const totalMensalDespesa = stats.custoMensalDespesas
+  const proximas30 = stats.proximas30Dias
 
   // ── criar ────────────────────────────────────────────────────────────────────
 

@@ -10,6 +10,28 @@ export type ListTransactionsFilter = {
   categoriaId?: string
 }
 
+export type TransacaoStats = {
+  entradas: number
+  saidas: number
+  saldoPeriodo: number
+  qtdTransacoes: number
+}
+
+/**
+ * KPIs agregados — entradas, saídas, saldo do período, qtd.
+ * Calculado server-side, exato pra qualquer volume.
+ */
+export const getTransactionStats = async (
+  filter: ListTransactionsFilter = {},
+): Promise<TransacaoStats> => {
+  const params: Record<string, unknown> = {}
+  if (filter.from) params.from = filter.from
+  if (filter.to) params.to = filter.to
+  if (filter.categoriaId) params.categoriaId = filter.categoriaId
+  const res = await api.get("/transacoes/stats", { params })
+  return res.data
+}
+
 /**
  * Lista paginada com filtros opcionais aplicados no banco. Use sempre que
  * possível — backend faz Clamp(pageSize, 1, 100), então não adianta pedir

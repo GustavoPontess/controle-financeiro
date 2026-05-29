@@ -11,6 +11,19 @@ export const listTransferenciasPage = async (
   return res.data
 }
 
+export type TransferenciaStats = { totalMovimentado: number; qtdTotal: number }
+
+/** KPIs agregados — total movimentado, qtd. */
+export const getTransferenciaStats = async (
+  filter: { from?: string; to?: string } = {},
+): Promise<TransferenciaStats> => {
+  const params: Record<string, unknown> = {}
+  if (filter.from) params.from = filter.from
+  if (filter.to) params.to = filter.to
+  const res = await api.get("/transferencias/stats", { params })
+  return res.data
+}
+
 /** @deprecated Use listTransferenciasPage. Clampa em 100. */
 export const getTransferencias = async (): Promise<Transferencia[]> => {
   const res = await api.get("/transferencias", { params: { page: 1, pageSize: 100 } })

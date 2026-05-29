@@ -13,6 +13,19 @@ export const listRecorrentesPage = async (
   return res.data
 }
 
+export type RecorrenteStats = {
+  ativas: number
+  custoMensalDespesas: number
+  proximas30Dias: number
+  qtdTotal: number
+}
+
+/** KPIs agregados — ativas, custo mensal, próximas 30 dias, total. */
+export const getRecorrenteStats = async (): Promise<RecorrenteStats> => {
+  const res = await api.get(`${BASE}/stats`)
+  return res.data
+}
+
 /** @deprecated Use listRecorrentesPage em telas com paginação. Clampa em 100. */
 export const getRecorrentes = async (): Promise<Recorrente[]> => {
   const res = await api.get(BASE, { params: { page: 1, pageSize: 100 } })
