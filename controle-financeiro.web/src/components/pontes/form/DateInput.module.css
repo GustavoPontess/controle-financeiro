@@ -7,18 +7,21 @@
   width: 100%;
 }
 
+/* Padding/radius idênticos ao PontesInput pra altura bater com outros
+   campos do mesmo form (date + select + input lado a lado). */
 .trigger {
   display: inline-flex; align-items: center; gap: 8px;
   width: 100%;
-  padding: 9px 12px;
+  padding: 12px 14px;
   background: var(--pontes-surface);
   border: 1px solid var(--pontes-border);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-family: var(--pontes-font);
   font-size: 14px;
   color: var(--pontes-text);
   text-align: left;
+  box-sizing: border-box;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 .trigger:hover:not(:disabled) { border-color: var(--pontes-primary); }
