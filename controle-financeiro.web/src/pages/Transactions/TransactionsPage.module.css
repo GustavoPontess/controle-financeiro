@@ -7,8 +7,33 @@
 
 .statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 
-.filterRow { display: flex; gap: 12px; flex-wrap: wrap; }
-.filterField { min-width: 200px; }
+/* Toolbar — busca + tipo chips + categoria */
+.toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.searchWrap { flex: 1 1 240px; min-width: 200px; }
+.searchClear {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer; padding: 0;
+  color: var(--pontes-text-muted); pointer-events: auto;
+}
+.searchClear:hover { color: var(--pontes-text); }
+
+.tipoChips {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 11px;
+}
+.tipoChip {
+  padding: 7px 14px; border: none; background: transparent; cursor: pointer;
+  font-family: var(--pontes-font); font-size: 13px; font-weight: 600;
+  color: var(--pontes-text-muted); border-radius: 8px;
+  transition: background-color .14s ease, color .14s ease;
+}
+.tipoChip:hover { color: var(--pontes-text); }
+.tipoChip[data-active="true"] {
+  background: var(--pontes-surface); color: var(--pontes-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.catField { min-width: 200px; flex: 0 1 220px; }
 
 .tableHead { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); }
 .tableTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
