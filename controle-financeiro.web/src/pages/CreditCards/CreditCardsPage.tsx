@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect, PontesEmptyState, PontesSkeletonList,
+  PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState, PontesSkeletonList,
 } from "@/components/pontes"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
@@ -873,7 +873,7 @@ export default function CreditCardsPage() {
           </PontesField>
           <div className={styles.grid2}>
             <PontesField label="Data do pagamento" required>
-              <PontesInput type="date" value={pagarForm.dataPagamento} onChange={(e) => setPagarForm((f) => ({ ...f, dataPagamento: e.target.value }))} />
+              <PontesDateInput value={pagarForm.dataPagamento} onChange={(v) => setPagarForm((f) => ({ ...f, dataPagamento: v }))} />
             </PontesField>
             <PontesField label="Meio de pagamento">
               <PontesSelect value={pagarForm.meioPagamento} onChange={(v) => setPagarForm((f) => ({ ...f, meioPagamento: v }))} options={MEIOS_PAGAMENTO} />
