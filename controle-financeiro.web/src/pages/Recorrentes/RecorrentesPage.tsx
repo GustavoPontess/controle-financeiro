@@ -7,7 +7,7 @@ import {
   PontesButton, PontesIconButton, PontesBadge,
   PontesModal, PontesDialog,
   PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesStatCard, PontesEmptyState, PontesLoadingDots,
+  PontesEmptyState, PontesLoadingDots,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
@@ -34,6 +34,26 @@ const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR") : "—"
 
 const today = () => new Date().toISOString().slice(0, 10)
+
+// Dias até a data (negativo = passou). null se sem data.
+const diasAte = (iso?: string): number | null => {
+  if (!iso) return null
+  const d = new Date(iso)
+  const now = new Date()
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  return Math.round((b.getTime() - a.getTime()) / 86400000)
+}
+
+// Rótulo humano de "quando cobra": hoje / amanhã / em N dias / data.
+const cobraLabel = (iso?: string): string => {
+  const n = diasAte(iso)
+  if (n == null) return "—"
+  if (n === 0) return "hoje"
+  if (n === 1) return "amanhã"
+  if (n > 0 && n <= 30) return `em ${n} dias`
+  return formatDate(iso)
+}
 
 const parseMoneyString = (s: string) => {
   // Handle BR format "1.234,56" and plain "45.90"/"45,90"
@@ -330,6 +350,15 @@ export default function RecorrentesPage() {
 
   // ── render ────────────────────────────────────────────────────────────────────
 
+  // Projeção anual do custo mensal (×12). Próximas cobranças: assinaturas
+  // ativas da página atual com data futura, ordenadas asc, top 6.
+  // Caveat: usa só a página visível (1 página = até 25; cobre o caso comum).
+  const projecaoAnual = totalMensalDespesa * 12
+  const proximasCobrancas = recorrentes
+    .filter((r) => r.ativo && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
+    .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
+    .slice(0, 6)
+
   return (
     <div className={styles.page}>
       {/* Header */}
@@ -338,22 +367,66 @@ export default function RecorrentesPage() {
           <h1 className={styles.title}>Assinaturas</h1>
           <p className={styles.subtitle}>Assinaturas e pagamentos automáticos</p>
         </div>
-        <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} />} onClick={openCriar}>
+        <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
           Nova Assinatura
         </PontesButton>
       </div>
 
-      {/* Stats */}
-      <div className={styles.stats}>
-        <PontesStatCard label="Ativas" value={String(ativas)} />
-        <PontesStatCard label="Custo mensal (despesas)" value={formatMoney(totalMensalDespesa)} />
-        <PontesStatCard label="Próximas 30 dias" value={String(proximas30)} />
+      {/* Hero de custo */}
+      <div className={styles.hero}>
+        <div className={styles.heroBlob} />
+        <div className={styles.heroMain}>
+          <div className={styles.heroLabel}>Custo mensal em assinaturas</div>
+          <div className={styles.heroValue}>{formatMoney(totalMensalDespesa)}</div>
+          <div className={styles.heroProj}>
+            <Repeat size={14} strokeWidth={2.4} />
+            {formatMoney(projecaoAnual)} por ano
+          </div>
+        </div>
+        <div className={styles.heroStats}>
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatValue}>{ativas}</span>
+            <span className={styles.heroStatLabel}>ativas</span>
+          </div>
+          <div className={styles.heroStatDivider} />
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatValue}>{proximas30}</span>
+            <span className={styles.heroStatLabel}>próx. 30 dias</span>
+          </div>
+        </div>
       </div>
+
+      {/* Próximas cobranças */}
+      {!loading && proximasCobrancas.length > 0 && (
+        <div className={styles.proxSection}>
+          <div className={styles.proxTitle}>Próximas cobranças</div>
+          <div className={styles.proxGrid}>
+            {proximasCobrancas.map((r) => {
+              const dias = diasAte(r.dataProximaGeracao) ?? 0
+              const urgente = dias <= 7
+              return (
+                <div key={r.id} className={styles.proxCard} data-urgent={urgente ? "true" : undefined}>
+                  <div className={styles.proxCardTop}>
+                    <span className={styles.proxCardNome}>{r.descricao}</span>
+                    <span className={styles.proxCardWhen} data-urgent={urgente ? "true" : undefined}>
+                      {cobraLabel(r.dataProximaGeracao)}
+                    </span>
+                  </div>
+                  <span className={styles.proxCardValor}>{formatMoney(r.valor)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Lista */}
       <div className={styles.list}>
         <div className={styles.listHeader}>
-          <span className={styles.listTitle}>Suas Assinaturas</span>
+          <span className={styles.listTitle}>Suas assinaturas</span>
+          {!loading && total > 0 && (
+            <span className={styles.listMeta}>{total} {total === 1 ? "assinatura" : "assinaturas"}</span>
+          )}
         </div>
 
         {loading ? (
@@ -366,84 +439,69 @@ export default function RecorrentesPage() {
             actions={<PontesButton variant="primary" size="sm" onClick={openCriar}>Nova Assinatura</PontesButton>}
           />
         ) : (
-          recorrentes.map((r) => {
-            const isDespesa = r.tipo === 1
-            const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
-            return (
-              <div
-                key={r.id}
-                className={styles.row}
-                data-inactive={!r.ativo ? "true" : undefined}
-              >
-                {/* Icon */}
-                <div className={styles.rowIcon} data-tipo={isDespesa ? "despesa" : "receita"}>
-                  {isDespesa
-                    ? <TrendingDown size={18} />
-                    : <TrendingUp size={18} />
-                  }
-                </div>
+          <div className={styles.cards}>
+            {recorrentes.map((r) => {
+              const isDespesa = r.tipo === 1
+              const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
+              const dias = diasAte(r.dataProximaGeracao)
+              const urgente = r.ativo && dias != null && dias >= 0 && dias <= 7
+              return (
+                <div
+                  key={r.id}
+                  className={styles.card}
+                  data-inactive={!r.ativo ? "true" : undefined}
+                >
+                  <div className={styles.cardIcon} data-tipo={isDespesa ? "despesa" : "receita"}>
+                    {isDespesa ? <TrendingDown size={18} strokeWidth={2.4} /> : <TrendingUp size={18} strokeWidth={2.4} />}
+                  </div>
 
-                {/* Info */}
-                <div className={styles.rowInfo}>
-                  <span className={styles.rowDescricao}>{r.descricao}</span>
-                  <div className={styles.rowMeta}>
-                    <PontesBadge tone={tone} size="sm">{r.frequenciaDescricao}</PontesBadge>
-                    {r.categoriaNome && (
-                      <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>
-                    )}
-                    {r.contaNome && <span className={styles.rowSub}>{r.contaNome}</span>}
-                    {r.dataProximaGeracao && (
-                      <span className={styles.rowSub}>próxima: {formatDate(r.dataProximaGeracao)}</span>
+                  <div className={styles.cardInfo}>
+                    <div className={styles.cardTop}>
+                      <span className={styles.cardNome}>{r.descricao}</span>
+                      {!r.ativo && <PontesBadge tone="neutral" size="sm">Pausada</PontesBadge>}
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <PontesBadge tone={tone} size="sm">{r.frequenciaDescricao}</PontesBadge>
+                      {r.categoriaNome && <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>}
+                      {r.contaNome && <span className={styles.cardSub}>{r.contaNome}</span>}
+                    </div>
+                    {r.ativo && r.dataProximaGeracao && (
+                      <span className={styles.cardProx} data-urgent={urgente ? "true" : undefined}>
+                        próxima cobrança {cobraLabel(r.dataProximaGeracao)}
+                      </span>
                     )}
                     {!r.ativo && r.motivoCancelamento && (
-                      <span className={styles.rowCancelado}>cancelado: {r.motivoCancelamento}</span>
+                      <span className={styles.cardCancelado}>cancelada: {r.motivoCancelamento}</span>
                     )}
                   </div>
-                </div>
 
-                {/* Value + actions */}
-                <div className={styles.rowRight}>
-                  <span className={styles.rowValor} data-tipo={isDespesa ? "despesa" : "receita"}>
-                    {isDespesa ? "-" : "+"}{formatMoney(r.valor)}
-                  </span>
-                  <div className={styles.rowActions}>
-                    {r.ativo && (
-                      <>
-                        <PontesIconButton
-                          aria-label="Editar próxima ocorrência"
-                          onClick={() => openEditarProxima(r)}
-                          title="Editar próxima ocorrência"
-                        >
-                          <Pencil size={15} />
-                        </PontesIconButton>
-                        <PontesIconButton
-                          aria-label="Cancelar assinatura"
-                          onClick={() => openCancelar(r)}
-                          title="Cancelar assinatura"
-                        >
-                          <XCircle size={15} />
-                        </PontesIconButton>
-                      </>
-                    )}
-                    <PontesIconButton
-                      aria-label={r.ativo ? "Pausar" : "Ativar"}
-                      onClick={() => handleToggle(r)}
-                      title={r.ativo ? "Pausar" : "Ativar"}
-                    >
-                      {r.ativo ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
-                    </PontesIconButton>
-                    <PontesIconButton
-                      aria-label="Excluir assinatura"
-                      onClick={() => openDeletar(r)}
-                      title="Excluir"
-                    >
-                      <Trash2 size={15} />
-                    </PontesIconButton>
+                  <div className={styles.cardRight}>
+                    <span className={styles.cardValor} data-tipo={isDespesa ? "despesa" : "receita"}>
+                      {isDespesa ? "−" : "+"}{formatMoney(r.valor)}
+                    </span>
+                    <div className={styles.cardActions}>
+                      {r.ativo && (
+                        <>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Editar próxima ocorrência" onClick={() => openEditarProxima(r)} title="Editar próxima ocorrência">
+                            <Pencil size={15} />
+                          </PontesIconButton>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Cancelar assinatura" onClick={() => openCancelar(r)} title="Cancelar assinatura">
+                            <XCircle size={15} />
+                          </PontesIconButton>
+                        </>
+                      )}
+                      <PontesIconButton size={32} variant="ghost" aria-label={r.ativo ? "Pausar" : "Ativar"} onClick={() => handleToggle(r)} title={r.ativo ? "Pausar" : "Ativar"}>
+                        {r.ativo ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
+                      </PontesIconButton>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Excluir assinatura" onClick={() => openDeletar(r)} title="Excluir">
+                        <Trash2 size={15} />
+                      </PontesIconButton>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })
+              )
+            })}
+          </div>
         )}
         {!loading && total > 0 && (
           <PontesTablePagination
