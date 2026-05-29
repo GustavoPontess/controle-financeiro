@@ -18,6 +18,7 @@ const mockData: DashboardData = {
   saldoTotal: 5000, saldoMesAnterior: 4200,
   receitasMes: 1400, despesasMes: 500, saldoMes: 900,
   recebido: 1000, aReceber: 400, pago: 300, aPagar: 200,
+  entradasCaixa: 1000, saidasCaixa: 300, saldoCaixaMes: 700,
   evolucaoSaldo: [{ label: "mai/26", ano: 2026, mes: 5, saldo: 5000 }],
   topCategorias: [{ descricao: "Mercado", valor: 300, percentual: 60 }],
   transacoesRecentes: [
