@@ -19,6 +19,8 @@
   box-shadow: var(--pontes-shadow-lg); z-index: 10010; padding: 6px;
   display: flex; flex-direction: column; overflow: hidden;
   font-family: var(--pontes-font);
+  /* width inline vinda do trigger não pode somar border+padding em cima. */
+  box-sizing: border-box;
 }
 .searchRow { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin-bottom: 4px; border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-bg); flex-shrink: 0; }
 .searchIcon { color: var(--pontes-text-muted); flex-shrink: 0; }
