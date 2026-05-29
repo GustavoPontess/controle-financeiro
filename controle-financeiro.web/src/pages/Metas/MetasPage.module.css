@@ -1,15 +1,17 @@
 /* MetasPage — Metas financeiras (#86) */
 
+/* DefaultLayout já provê padding + largura. Apenas estrutura interna aqui. */
 .page {
-  padding: 1.5rem;
-  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: var(--pontes-font);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
   gap: 1rem;
   flex-wrap: wrap;
 }
