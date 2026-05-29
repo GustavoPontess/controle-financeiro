@@ -1,7 +1,8 @@
 import { api } from "../api/axiosConfig"
 import type { Meta, CriarMetaDto, ContribuirMetaDto } from "../types/Meta"
 
-const BASE = "/api/metas"
+// axiosClient já provê baseURL `/api/v1` — path relativo evita duplicar `/api`.
+const BASE = "metas"
 
 export const getMetas = (): Promise<{ data: Meta[] }> =>
   api.get(BASE)
