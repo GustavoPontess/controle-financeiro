@@ -179,13 +179,16 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* 3 números humanos */}
+            {/* 3 números humanos — usam FLUXO DE CAIXA (exclui crédito não-pago),
+                igual /transacoes/stats. "Entrou/Saiu" só conta o que de fato
+                moveu caixa; compras no crédito aparecem em Pendências abaixo
+                como "ainda vai sair" via APagar. */}
             <div className={styles.monthGrid}>
-              <MonthStat label="Entrou" value={fmt(data.recebido)} icon={ArrowUpRight} tone="success" />
-              <MonthStat label="Saiu" value={fmt(data.pago)} icon={ArrowDownLeft} tone="danger" />
+              <MonthStat label="Entrou" value={fmt(data.entradasCaixa)} icon={ArrowUpRight} tone="success" />
+              <MonthStat label="Saiu" value={fmt(data.saidasCaixa)} icon={ArrowDownLeft} tone="danger" />
               <MonthStat
-                label="Sobrou" value={fmt(data.recebido - data.pago)} icon={PiggyBank}
-                tone={data.recebido - data.pago >= 0 ? "success" : "danger"}
+                label="Sobrou" value={fmt(data.saldoCaixaMes)} icon={PiggyBank}
+                tone={data.saldoCaixaMes >= 0 ? "success" : "danger"}
                 emphasis
               />
             </div>

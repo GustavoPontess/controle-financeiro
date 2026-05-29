@@ -16,6 +16,14 @@ public class DashboardDto
     public decimal Pago { get; set; }
     public decimal APagar { get; set; }
 
+    // ── KPIs de FLUXO DE CAIXA do mês — alinhados com /transacoes/stats ──
+    // Excluem UsadoComoCredito (compras de crédito não saem do caixa até a
+    // fatura ser paga). Usado pelos cards "Entrou / Saiu / Sobrou" do
+    // Dashboard (#181) pra falar a mesma língua que /transactions.
+    public decimal EntradasCaixa { get; set; }
+    public decimal SaidasCaixa { get; set; }
+    public decimal SaldoCaixaMes { get; set; }
+
     public List<EvolucaoMesDto> EvolucaoSaldo { get; set; } = new();
     public List<CategoriaGastoDto> TopCategorias { get; set; } = new();
     public List<TransacaoRecenteDto> TransacoesRecentes { get; set; } = new();

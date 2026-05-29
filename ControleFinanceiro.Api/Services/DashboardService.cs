@@ -68,12 +68,17 @@ public class DashboardService
         var despesasMes = pago + aPagar;
 
         // SaldoMes usa apenas movimentos de caixa — crédito só entra quando a fatura é paga.
+        // Também filtra Ativo + Executado pra bater com /transacoes/stats.
         var receitasCaixaMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito)
+            .Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito
+                        && t.StatusTransacao == StatusTransacao.Executado
+                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
             .Sum(t => t.Valor);
 
         var despesasCaixaMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito)
+            .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito
+                        && t.StatusTransacao == StatusTransacao.Executado
+                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
             .Sum(t => t.Valor);
 
         var inicioDoPeriodo = new DateTime(ano, mes, 1);
@@ -255,6 +260,9 @@ public class DashboardService
             AReceber = aReceber,
             Pago = pago,
             APagar = aPagar,
+            EntradasCaixa = receitasCaixaMes,
+            SaidasCaixa = despesasCaixaMes,
+            SaldoCaixaMes = receitasCaixaMes - despesasCaixaMes,
             EvolucaoSaldo = evolucao,
             TopCategorias = categoriasDtos,
             TransacoesRecentes = recentes,
