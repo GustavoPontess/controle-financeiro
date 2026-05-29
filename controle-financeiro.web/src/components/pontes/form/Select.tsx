@@ -50,10 +50,18 @@ export function PontesSelect<T extends string = string>({
     if (!el) return
     const r = el.getBoundingClientRect()
     const gap = 6
-    const spaceBelow = window.innerHeight - r.bottom
-    const spaceAbove = r.top
-    const up = spaceBelow < 260 && spaceAbove > spaceBelow
-    const maxHeight = Math.max(140, Math.min(320, (up ? spaceAbove : spaceBelow) - 16))
+    // BUFFER: distância do menu até as bordas do viewport. Garante que o menu
+    // NÃO encoste em footer de modal/edge da página — sempre sobra respiro
+    // pros botões abaixo. Quem tiver pouco espaço de qualquer lado encolhe
+    // automaticamente em vez de cobrir o footer.
+    const BUFFER = 24
+    const spaceBelow = window.innerHeight - r.bottom - BUFFER
+    const spaceAbove = r.top - BUFFER
+    // Vira pra cima quando: (a) cabe pouco embaixo e tem mais espaço em cima,
+    // ou (b) embaixo cabe menos que o mínimo confortável (140px).
+    const up = (spaceBelow < 200 && spaceAbove > spaceBelow) || spaceBelow < 140
+    const room = up ? spaceAbove : spaceBelow
+    const maxHeight = Math.max(140, Math.min(320, room))
     setPos(up
       ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + gap, maxHeight }
       : { left: r.left, width: r.width, top: r.bottom + gap, maxHeight })
@@ -90,7 +98,10 @@ export function PontesSelect<T extends string = string>({
     typeof o === "string" ? { value: o as T, label: o } : (o as PontesSelectOption<T>)
   )
   const selected = normalized.find((o) => o.value === value)
-  const withSearch = searchable ?? normalized.length > 8
+  // Search habilitado por padrão — todo select Pontes tem caixa de busca
+  // (igual o select de pesquisa do Ctrl+K). Pass `searchable={false}` pra
+  // tirar em casos especiais (lista bem curta, controle único).
+  const withSearch = searchable ?? true
   const filtered = withSearch && query
     ? normalized.filter((o) => norm(o.label ?? o.value).includes(norm(query)))
     : normalized
