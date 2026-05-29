@@ -13,11 +13,13 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 const listarPaginado = vi.fn()
+const obterStats = vi.fn().mockResolvedValue({ ativos: 1, totalRestante: 2400, qtdTotal: 1 })
 const criar = vi.fn()
 const cancelar = vi.fn()
 vi.mock("../../services/ParcelamentoService", () => ({
   ParcelamentoService: {
     listarPaginado: (...a: unknown[]) => listarPaginado(...a),
+    obterStats: (...a: unknown[]) => obterStats(...a),
     listar: () => Promise.resolve([]),
     criar: (...a: unknown[]) => criar(...a),
     cancelar: (...a: unknown[]) => cancelar(...a),

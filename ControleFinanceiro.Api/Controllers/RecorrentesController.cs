@@ -38,6 +38,15 @@ public class RecorrentesController : ControllerBase
         return Ok(resultado);
     }
 
+    /// <summary>KPIs agregados — ativas, custo mensal, próximas 30 dias, total.</summary>
+    [HttpGet("stats")]
+    [ProducesResponseType(typeof(RecorrenteStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterStats()
+    {
+        var stats = await _service.ObterStatsAsync(GetUserId());
+        return Ok(stats);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarRecorrenteDto dto)
     {

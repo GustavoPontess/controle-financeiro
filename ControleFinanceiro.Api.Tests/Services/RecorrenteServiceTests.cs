@@ -427,4 +427,57 @@ public class RecorrenteServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             svc.AtualizarAsync(rec.Id, dto, u2));
     }
+
+    // ── Stats (#179) ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ObterStatsAsync_AgregaSomenteDoUsuario()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var uid = SeedUsuario(ctx);
+        var outroUid = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, uid);
+
+        // Usuário: 2 ativos mensais despesa (1200 + 800), 1 ativo mensal receita,
+        // 1 ativo SEMANAL (não conta no custo mensal), 1 cancelado.
+        SeedRecorrente(ctx, uid, conta);                            // ativo despesa mensal 1200
+        var r2 = SeedRecorrente(ctx, uid, conta);                   // ativo despesa mensal 800
+        r2.Valor = 800m; ctx.SaveChanges();
+        var rRec = SeedRecorrente(ctx, uid, conta);                 // ativo RECEITA mensal — não soma em custoMensalDespesas
+        rRec.Tipo = TipoTransacao.Receita; ctx.SaveChanges();
+        var rSem = SeedRecorrente(ctx, uid, conta);                 // ativo despesa SEMANAL — não soma
+        rSem.Frequencia = FrequenciaRecorrencia.Semanal; ctx.SaveChanges();
+        SeedRecorrente(ctx, uid, conta, ativo: false);              // inativo
+        SeedRecorrente(ctx, outroUid, SeedConta(ctx, outroUid));   // outro usuário
+
+        // Próxima 30 dias: 2 com dataProximaGeracao em 10 dias, 1 em 60 dias, 1 nulo
+        var hoje = DateTime.UtcNow;
+        var ativos = await ctx.Recorrentes.Where(r => r.CriadoPor == uid && r.Ativo).ToListAsync();
+        ativos[0].DataProximaGeracao = hoje.AddDays(10);
+        ativos[1].DataProximaGeracao = hoje.AddDays(10);
+        ativos[2].DataProximaGeracao = hoje.AddDays(60);  // fora dos 30
+        ativos[3].DataProximaGeracao = null;
+        await ctx.SaveChangesAsync();
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(4, stats.Ativas);                  // 4 ativos do usuário
+        Assert.Equal(2000m, stats.CustoMensalDespesas); // 1200 + 800 (mensais despesa)
+        Assert.Equal(2, stats.Proximas30Dias);          // só os 2 dentro do cutoff
+        Assert.Equal(5, stats.QtdTotal);                // 4 ativos + 1 inativo
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_SemRecorrentes_RetornaZero()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var stats = await svc.ObterStatsAsync(Guid.NewGuid());
+
+        Assert.Equal(0, stats.Ativas);
+        Assert.Equal(0m, stats.CustoMensalDespesas);
+        Assert.Equal(0, stats.Proximas30Dias);
+        Assert.Equal(0, stats.QtdTotal);
+    }
 }

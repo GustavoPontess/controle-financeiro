@@ -84,6 +84,37 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// KPIs agregados — ativas, custo mensal das despesas mensais, próximas 30 dias, total.
+    /// Calculado no banco, exato pra qualquer volume.
+    /// </summary>
+    public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
+    {
+        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
+        var ativas = query.Where(r => r.Ativo);
+
+        var qtdAtivas = await ativas.CountAsync();
+        var custoMensal = await ativas
+            .Where(r => r.Frequencia == FrequenciaRecorrencia.Mensal
+                        && r.Tipo == TipoTransacao.Despesa)
+            .SumAsync(r => (decimal?)r.Valor) ?? 0m;
+        // Cutoff +30d calculado no servidor pra não vazar lógica de tempo pro cliente.
+        // EF traduz `<=` em SQL nativo.
+        var cutoff = DateTime.UtcNow.AddDays(30);
+        var proximas30 = await ativas
+            .Where(r => r.DataProximaGeracao != null && r.DataProximaGeracao <= cutoff)
+            .CountAsync();
+        var qtdTotal = await query.CountAsync();
+
+        return new RecorrenteStatsDto
+        {
+            Ativas = qtdAtivas,
+            CustoMensalDespesas = custoMensal,
+            Proximas30Dias = proximas30,
+            QtdTotal = qtdTotal,
+        };
+    }
+
     public async Task<PagedResult<RecorrenteDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);

@@ -118,6 +118,22 @@ namespace ControleFinanceiro.Api.Controllers
             });
         }
 
+        /// <summary>
+        /// KPIs agregados — entradas, saídas, saldo do período e quantidade.
+        /// Calculado direto no banco, exato pra qualquer volume.
+        /// </summary>
+        [HttpGet("stats")]
+        [ProducesResponseType(typeof(DTOs.Transacao.TransacaoStatsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ObterStats(
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] Guid? categoriaId = null)
+        {
+            var usuarioId = GetUserId();
+            var stats = await _service.ObterStatsAsync(usuarioId, from, to, categoriaId);
+            return Ok(stats);
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(TransacaoDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

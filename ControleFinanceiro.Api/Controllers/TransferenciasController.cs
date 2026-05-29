@@ -36,6 +36,17 @@ public class TransferenciasController : ControllerBase
         return Ok(resultado);
     }
 
+    /// <summary>KPIs agregados — total movimentado e quantidade no filtro.</summary>
+    [HttpGet("stats")]
+    [ProducesResponseType(typeof(TransferenciaStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterStats(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        var stats = await _service.ObterStatsAsync(GetUserId(), from, to);
+        return Ok(stats);
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

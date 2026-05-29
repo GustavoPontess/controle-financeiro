@@ -64,7 +64,8 @@ export default function ParcelamentosPage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
   const [parcelamentos, setParcelamentos] = useState<Parcelamento[]>([])
-  const [todosParaStats, setTodosParaStats] = useState<Parcelamento[]>([])
+  // KPIs exatos via /parcelamentos/stats (#179).
+  const [stats, setStats] = useState({ ativos: 0, totalRestante: 0, qtdTotal: 0 })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
@@ -82,12 +83,12 @@ export default function ParcelamentosPage() {
     try {
       const [pageResult, statsResult, c] = await Promise.all([
         ParcelamentoService.listarPaginado(page, pageSize),
-        ParcelamentoService.listarPaginado(1, 100),
+        ParcelamentoService.obterStats(),
         getCartoes(),
       ])
       setParcelamentos(pageResult.items)
       setTotal(pageResult.total)
-      setTodosParaStats(statsResult.items)
+      setStats(statsResult)
       setCartoes(c)
     } catch {
       notify({ open: true, message: "Erro ao carregar parcelamentos", severity: "error" })
@@ -156,8 +157,7 @@ export default function ParcelamentosPage() {
     } finally { setCancelarId(null) }
   }
 
-  const ativos = todosParaStats.filter((p) => p.ativo).length
-  const totalRestante = todosParaStats.filter((p) => p.ativo).reduce((s, p) => s + p.valorRestante, 0)
+  const { ativos, totalRestante } = stats
 
   return (
     <div className={styles.root}>
