@@ -99,7 +99,9 @@ export default function TransactionForm({
   useEffect(() => { setErrors((e) => (Object.keys(e).length ? {} : e)) }, [form])
 
   const isTransferencia = form.natureza === "transferencia"
-  const isCredito = !isTransferencia && form.meioPagamento === 3
+  // Crédito por meio de pagamento OU por vínculo direto com cartão (edição de
+  // transação antiga sem meioPagamento setado mas com cartaoCreditoId).
+  const isCredito = !isTransferencia && (form.meioPagamento === 3 || !!form.cartaoCreditoId)
   const isRecorrente = !isTransferencia && form.modo === "recorrente"
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
   const today = new Date().toISOString().split("T")[0]
