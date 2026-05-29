@@ -417,7 +417,7 @@ function FormSection({ p }: { p: Palette }) {
       </Group>
 
       <Group title="Estado inválido (padrão: borda vermelha + ring, sem fundo)">
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, alignItems: "start" }}>
           <PontesField label="Input" required error="Campo obrigatório">
             <PontesInput placeholder="Texto" invalid />
           </PontesField>
@@ -434,7 +434,9 @@ function FormSection({ p }: { p: Palette }) {
           <PontesField label="Textarea" required error="Campo obrigatório">
             <PontesTextarea placeholder="Observação" invalid />
           </PontesField>
-          <PontesMoneyInput value="" onChange={() => { /* demo */ }} invalid />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <PontesMoneyInput value="" onChange={() => { /* demo */ }} invalid />
+          </div>
         </div>
       </Group>
 
