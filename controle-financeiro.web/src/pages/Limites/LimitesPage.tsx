@@ -241,6 +241,40 @@ export default function LimitesPage() {
         </div>
       </div>
 
+      {/* Hero/resumo — saúde do orçamento do período */}
+      {!loading && orcamentos.length > 0 && (() => {
+        const totalGasto = orcamentos.reduce((s, o) => s + o.valorGasto, 0)
+        const totalOrcado = orcamentos.reduce((s, o) => s + o.valorLimite, 0)
+        const pctGeral = totalOrcado > 0 ? (totalGasto / totalOrcado) * 100 : 0
+        const nEstourado = orcamentos.filter((o) => o.ultrapassado).length
+        const nAlerta = orcamentos.filter((o) => o.emAlerta && !o.ultrapassado).length
+        const tone = nEstourado > 0 ? "danger" : nAlerta > 0 ? "warning" : "ok"
+        return (
+          <div className={styles.hero} data-tone={tone}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroMain}>
+              <div className={styles.heroLabel}>Gasto no período</div>
+              <div className={styles.heroValue}>{formatMoney(totalGasto)}</div>
+              <div className={styles.heroSub}>de {formatMoney(totalOrcado)} orçados · {pctGeral.toFixed(0)}%</div>
+              <div className={styles.heroTrack}>
+                <div className={styles.heroFill} data-tone={tone} style={{ width: `${Math.min(100, pctGeral)}%` }} />
+              </div>
+            </div>
+            <div className={styles.heroStats}>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone={nAlerta > 0 ? "warning" : undefined}>{nAlerta}</span>
+                <span className={styles.heroStatLabel}>em alerta</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone={nEstourado > 0 ? "danger" : undefined}>{nEstourado}</span>
+                <span className={styles.heroStatLabel}>estourados</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Content */}
       {loading ? (
         <PontesLoadingDots />

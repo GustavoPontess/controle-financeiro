@@ -81,7 +81,16 @@ describe("LimitesPage", () => {
     getOrcamentos.mockResolvedValue({ data: [makeOrcamento()] })
     renderPage()
     expect(await screen.findByText("Alimentação")).toBeInTheDocument()
-    expect(screen.getByText("60%")).toBeInTheDocument()
+    expect(screen.getAllByText("60%").length).toBeGreaterThan(0)
+  })
+
+  it("exibe hero de saúde do orçamento", async () => {
+    getOrcamentos.mockResolvedValue({ data: [makeOrcamento()] })
+    renderPage()
+    await screen.findByText("Alimentação")
+    expect(screen.getByText("Gasto no período")).toBeInTheDocument()
+    expect(screen.getByText("estourados")).toBeInTheDocument()
+    expect(screen.getByText("em alerta")).toBeInTheDocument()
   })
 
   it("exibe badge 'Em alerta' quando emAlerta=true", async () => {
