@@ -28,6 +28,7 @@ public class DashboardService
 
         var cartoes = await _context.CartoesCredito
             .Where(c => c.CriadoPor == usuarioId)
+            .Include(c => c.Banco)
             .Include(c => c.Transacoes)
             .ThenInclude(t => t.Categoria)
             .AsNoTracking()
