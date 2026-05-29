@@ -34,13 +34,45 @@
   margin: 4px 0 0;
 }
 
-/* ── Stats ───────────────────────────────────────────────────────────────── */
+/* ── Hero de custo ───────────────────────────────────────────────────────── */
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+.hero {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 28px 32px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
+  color: var(--pontes-hero-fg);
+  font-family: var(--pontes-font);
 }
+.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.10); pointer-events: none; }
+.heroMain { position: relative; min-width: 0; }
+.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroProj { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; font-weight: 600; opacity: 0.85; }
+.heroStats { position: relative; display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+.heroStat { display: flex; flex-direction: column; align-items: center; }
+.heroStatValue { font-size: 26px; font-weight: 800; line-height: 1; }
+.heroStatLabel { font-size: 11px; opacity: 0.8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatDivider { width: 1px; height: 40px; background: rgba(255,255,255,0.25); }
+
+/* ── Próximas cobranças ──────────────────────────────────────────────────── */
+
+.proxSection { display: flex; flex-direction: column; gap: 12px; }
+.proxTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.proxGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.proxCard {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--pontes-border); border-radius: 12px;
+  background: var(--pontes-surface);
+}
+.proxCard[data-urgent="true"] { border-color: var(--pontes-warning); background: var(--pontes-warning-soft); }
+.proxCardTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.proxCardNome { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proxCardWhen { font-size: 11px; font-weight: 600; color: var(--pontes-text-muted); white-space: nowrap; flex-shrink: 0; }
+.proxCardWhen[data-urgent="true"] { color: var(--pontes-warning); }
+.proxCardValor { font-size: 18px; font-weight: 800; color: var(--pontes-text); letter-spacing: -0.01em; }
 
 /* ── List card ───────────────────────────────────────────────────────────── */
 
@@ -65,116 +97,51 @@
   color: var(--pontes-text);
 }
 
+.listMeta { font-size: 12px; color: var(--pontes-text-muted); }
+
 .center {
   display: flex;
   justify-content: center;
   padding: 48px 0;
 }
 
-/* ── Row ─────────────────────────────────────────────────────────────────── */
+/* ── Cards de assinatura ─────────────────────────────────────────────────── */
 
-.row {
+.cards { display: flex; flex-direction: column; }
+
+.card {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--pontes-border, #e5e7eb);
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--pontes-border);
   transition: background 0.15s;
 }
+.card:last-child { border-bottom: none; }
+.card:hover { background: var(--pontes-bg); }
+.card[data-inactive="true"] { opacity: 0.55; }
 
-.row:last-child {
-  border-bottom: none;
+.cardIcon {
+  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
+.cardIcon[data-tipo="despesa"] { background: color-mix(in srgb, var(--pontes-danger) 12%, transparent); color: var(--pontes-danger); }
+.cardIcon[data-tipo="receita"] { background: color-mix(in srgb, var(--pontes-success) 12%, transparent); color: var(--pontes-success); }
 
-.row:hover {
-  background: var(--pontes-bg-hover, #f9fafb);
-}
+.cardInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.cardTop { display: flex; align-items: center; gap: 8px; }
+.cardNome { font-size: 15px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cardSub { font-size: 12px; color: var(--pontes-text-muted); }
+.cardProx { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
+.cardProx[data-urgent="true"] { color: var(--pontes-warning); }
+.cardCancelado { font-size: 12px; color: var(--pontes-danger); }
 
-.row[data-inactive="true"] {
-  opacity: 0.5;
-}
-
-/* icon */
-.rowIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rowIcon[data-tipo="despesa"] {
-  background: var(--pontes-danger-light, #fee2e2);
-  color: var(--pontes-danger, #ef4444);
-}
-
-.rowIcon[data-tipo="receita"] {
-  background: var(--pontes-success-light, #dcfce7);
-  color: var(--pontes-success, #22c55e);
-}
-
-/* info */
-.rowInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.rowDescricao {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--pontes-text);
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.rowMeta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
-
-.rowSub {
-  font-size: 12px;
-  color: var(--pontes-text-secondary, #6b7280);
-}
-
-.rowCancelado {
-  font-size: 12px;
-  color: var(--pontes-danger, #ef4444);
-}
-
-/* right */
-.rowRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.rowValor {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.rowValor[data-tipo="despesa"] {
-  color: var(--pontes-danger, #ef4444);
-}
-
-.rowValor[data-tipo="receita"] {
-  color: var(--pontes-success, #22c55e);
-}
-
-.rowActions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
+.cardRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.cardValor { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.cardValor[data-tipo="despesa"] { color: var(--pontes-text); }
+.cardValor[data-tipo="receita"] { color: var(--pontes-success); }
+.cardActions { display: flex; align-items: center; gap: 2px; }
 
 /* ── Form (inside modals) ────────────────────────────────────────────────── */
 
