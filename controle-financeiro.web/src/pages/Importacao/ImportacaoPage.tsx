@@ -1,18 +1,17 @@
-import { useEffect, useState } from "react"
-import {
-  Box, Paper, Typography, Table, TableHead, TableBody, TableRow, TableCell,
-  TableContainer, Checkbox, Chip, MenuItem, TextField, CircularProgress,
-} from "@mui/material"
+import React, { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined"
-import CustomButton from "../../components/CustomButton"
+import { Upload, FileText } from "lucide-react"
+import {
+  PontesButton, PontesCard, PontesBadge, PontesField, PontesSelect,
+  PontesCheckbox, PontesLoadingDots,
+} from "@/components/pontes"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
 import { previewImportacao, confirmarImportacao } from "../../services/importacaoService"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import type { PreviewImportacao } from "../../types/Importacao"
-import { tokens } from "../../theme/tokens"
+import styles from "./ImportacaoPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -52,7 +51,7 @@ export default function ImportacaoPage() {
     try {
       const result = await previewImportacao(contaId, arquivo)
       setPreview(result)
-      setEstados(result.linhas.map(l => ({
+      setEstados(result.linhas.map((l) => ({
         selecionada: !l.duplicada,
         categoriaId: l.categoriaSugeridaId ?? "",
       })))
@@ -72,8 +71,8 @@ export default function ImportacaoPage() {
     if (!preview) return
     const linhas = preview.linhas
       .map((l, i) => ({ l, e: estados[i] }))
-      .filter(x => x.e.selecionada)
-      .map(x => ({
+      .filter((x) => x.e.selecionada)
+      .map((x) => ({
         data: x.l.data,
         descricao: x.l.descricao,
         valor: x.l.valor,
@@ -106,138 +105,125 @@ export default function ImportacaoPage() {
   }
 
   const setEstado = (i: number, patch: Partial<LinhaEstado>) => {
-    setEstados(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e))
+    setEstados((prev) => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e))
   }
 
-  const selecionadas = estados.filter(e => e.selecionada).length
+  const selecionadas = estados.filter((e) => e.selecionada).length
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box>
-        <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Importar extrato</Typography>
-        <Typography fontSize={13} color={tokens.color.text.secondary}>
-          Suba o extrato do banco (OFX ou CSV) e revise antes de salvar.
-        </Typography>
-      </Box>
+    <div className={styles.root}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Importar extrato</h1>
+        <p className={styles.subtitle}>Suba o extrato do banco (OFX ou CSV) e revise antes de salvar.</p>
+      </header>
 
       {/* Passo 1 — upload */}
-      <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-          <TextField
-            select size="small" label="Conta de destino" sx={{ minWidth: 220 }}
-            value={contaId} onChange={e => setContaId(e.target.value)}
-          >
-            {contas.map(c => (
-              <MenuItem key={c.id} value={c.id}>{c.nome}</MenuItem>
-            ))}
-          </TextField>
+      <PontesCard padding={20} radius={14}>
+        <div className={styles.uploadRow}>
+          <PontesField label="Conta de destino" required>
+            <PontesSelect
+              value={contaId}
+              onChange={(v) => setContaId(v)}
+              placeholder="Selecione"
+              options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+            />
+          </PontesField>
 
-          <CustomButton size="small" variant="secondary" startIcon={<UploadFileOutlinedIcon />}>
-            <label style={{ cursor: "pointer" }}>
-              {arquivo ? arquivo.name : "Escolher arquivo"}
-              <input
-                type="file" accept=".ofx,.csv" hidden
-                onChange={e => setArquivo(e.target.files?.[0] ?? null)}
-              />
-            </label>
-          </CustomButton>
+          <label className={styles.fileLabel} data-has={arquivo ? "true" : undefined}>
+            <FileText size={16} />
+            <span>{arquivo ? arquivo.name : "Escolher arquivo (.ofx, .csv)"}</span>
+            <input
+              type="file" accept=".ofx,.csv" hidden
+              onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+            />
+          </label>
 
-          <CustomButton size="small" onClick={handleAnalisar} disabled={carregando}>
+          <PontesButton iconStart={<Upload size={16} strokeWidth={2.5} />} onClick={handleAnalisar} disabled={carregando}>
             Analisar
-          </CustomButton>
-        </Box>
-      </Paper>
+          </PontesButton>
+        </div>
+      </PontesCard>
 
       {carregando && (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}><CircularProgress /></Box>
+        <div className={styles.loading}><PontesLoadingDots /></div>
       )}
 
       {/* Passo 2 — revisão */}
       {preview && !carregando && (
-        <Paper elevation={0} sx={{ border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.lg, p: 2.5 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-            <Typography fontSize={15} fontWeight={600}>
-              {preview.total} transações lidas · {preview.duplicadas} possíveis duplicatas
-            </Typography>
-            <CustomButton size="small" onClick={handleImportar} disabled={carregando}>
-              Importar {selecionadas} selecionada(s)
-            </CustomButton>
-          </Box>
+        <PontesCard padding={0} radius={14}>
+          <div className={styles.reviewHead}>
+            <div className={styles.reviewMeta}>
+              <span className={styles.reviewTitle}>{preview.total} transações lidas</span>
+              {preview.duplicadas > 0 && (
+                <PontesBadge tone="warning" size="sm">{preview.duplicadas} possíveis duplicatas</PontesBadge>
+              )}
+            </div>
+            <PontesButton size="sm" onClick={handleImportar} disabled={carregando}>
+              Importar {selecionadas} selecionada{selecionadas === 1 ? "" : "s"}
+            </PontesButton>
+          </div>
 
           {preview.total === 0 ? (
-            <Typography fontSize={13} color={tokens.color.text.disabled}>
-              Nenhuma transação encontrada no arquivo.
-            </Typography>
+            <div className={styles.emptyReview}>Nenhuma transação encontrada no arquivo.</div>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox" />
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>Data</TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>Descrição</TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>Tipo</TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600, textAlign: "right" }}>Valor</TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>Categoria</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th className={styles.checkCell}></th>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Tipo</th>
+                    <th className={styles.alignRight}>Valor</th>
+                    <th>Categoria</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {preview.linhas.map((l, i) => {
                     const est = estados[i]
                     const isReceita = l.tipo === 2
                     const catsCompat = categorias.filter(
-                      c => c.finalidade === 3 || c.finalidade === l.tipo)
+                      (c) => c.finalidade === 3 || c.finalidade === l.tipo)
                     return (
-                      <TableRow key={`${l.fitId ?? ""}-${i}`} sx={{ bgcolor: l.duplicada ? tokens.color.status.warning.light : undefined }}>
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            size="small" checked={est?.selecionada ?? false}
-                            onChange={e => setEstado(i, { selecionada: e.target.checked })}
+                      <tr key={`${l.fitId ?? ""}-${i}`} data-duplicada={l.duplicada ? "true" : undefined}>
+                        <td className={styles.checkCell}>
+                          <PontesCheckbox
+                            checked={est?.selecionada ?? false}
+                            onChange={(v) => setEstado(i, { selecionada: v })}
                           />
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 13 }}>{formatDate(l.data)}</TableCell>
-                        <TableCell sx={{ fontSize: 13 }}>
+                        </td>
+                        <td>{formatDate(l.data)}</td>
+                        <td>
                           {l.descricao}
                           {l.duplicada && (
-                            <Chip label="Duplicada" size="small" color="warning"
-                              sx={{ ml: 1, height: 18, fontSize: 10 }} />
+                            <PontesBadge tone="warning" size="sm">Duplicada</PontesBadge>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={isReceita ? "Receita" : "Despesa"} size="small"
-                            sx={{
-                              fontSize: 11, height: 20,
-                              bgcolor: isReceita ? tokens.color.status.success.light : tokens.color.status.error.light,
-                              color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 13, fontWeight: tokens.typography.fontWeight.bold, textAlign: "right",
-                          color: isReceita ? tokens.color.status.success.main : tokens.color.status.error.main }}>
-                          {formatMoney(l.valor)}
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            select size="small" variant="standard" sx={{ minWidth: 140 }}
+                        </td>
+                        <td>
+                          <PontesBadge tone={isReceita ? "success" : "danger"} size="sm">
+                            {isReceita ? "Receita" : "Despesa"}
+                          </PontesBadge>
+                        </td>
+                        <td className={styles.alignRight} data-tone={isReceita ? "success" : "danger"}>
+                          <strong>{formatMoney(l.valor)}</strong>
+                        </td>
+                        <td>
+                          <PontesSelect
                             value={est?.categoriaId ?? ""}
-                            onChange={e => setEstado(i, { categoriaId: e.target.value })}
-                          >
-                            <MenuItem value=""><em>Sem categoria</em></MenuItem>
-                            {catsCompat.map(c => (
-                              <MenuItem key={c.id} value={c.id}>{c.descricao}</MenuItem>
-                            ))}
-                          </TextField>
-                        </TableCell>
-                      </TableRow>
+                            onChange={(v) => setEstado(i, { categoriaId: v })}
+                            placeholder="Sem categoria"
+                            options={catsCompat.map((c) => ({ value: c.id, label: c.descricao }))}
+                          />
+                        </td>
+                      </tr>
                     )
                   })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </tbody>
+              </table>
+            </div>
           )}
-        </Paper>
+        </PontesCard>
       )}
-    </Box>
+    </div>
   )
 }
