@@ -81,6 +81,16 @@ describe("MetasPage", () => {
     expect(screen.getByText("30%")).toBeInTheDocument()
   })
 
+  it("exibe hero/resumo + valor que falta", async () => {
+    // alvo 10000, atual 3000 → falta 7000, % geral 30
+    getMetas.mockResolvedValue({ data: [makeMeta()] })
+    renderPage()
+    await screen.findByText("Viagem para Europa")
+    expect(screen.getByText("Total guardado nas metas")).toBeInTheDocument()
+    expect(screen.getByText(/Faltam/)).toBeInTheDocument()
+    expect(screen.getByText(/R\$\s?7\.000,00/)).toBeInTheDocument()
+  })
+
   it("exibe badge 'Concluída' quando percentual = 100", async () => {
     getMetas.mockResolvedValue({
       data: [makeMeta({ percentualConcluido: 100, concluida: true, valorAtual: 10000 })],
