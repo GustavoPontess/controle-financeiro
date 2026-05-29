@@ -368,12 +368,11 @@ function FormSection({ p }: { p: Palette }) {
               options={["nubank", "itau", "bradesco", "bb", "inter", "c6", "carteira"]}
             />
           </PontesField>
-          <PontesField label="Select com busca (auto > 8 opções; rola + filtra)">
+          <PontesField label="Select com busca — padrão de todo PontesSelect (rola + filtra ao digitar)">
             <PontesSelect
               value={bancoBusca}
               onChange={setBancoBusca}
               placeholder="Selecione o banco"
-              searchable
               options={[
                 "Nubank", "Itaú", "Bradesco", "Banco do Brasil", "Inter", "C6 Bank",
                 "Santander", "Caixa", "BTG Pactual", "Sicoob", "Sicredi", "Banrisul",
