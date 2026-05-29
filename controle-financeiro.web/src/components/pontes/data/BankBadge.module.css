@@ -1,10 +1,11 @@
-/* BankBadge.module.css — círculo de banco: logo real ou iniciais. */
+/* BankBadge.module.css — badge quadrado-arredondado (cartão real) com logo
+   ou iniciais. Estilo alinhado ao card físico do CreditCardsPage (.bancoBadge). */
 
 .badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 10px;
   /* var(--badge-bg) é injetado inline via CSSProperties quando `cor` prop está presente */
   background: var(--badge-bg, var(--pontes-primary));
   color: #ffffff;
