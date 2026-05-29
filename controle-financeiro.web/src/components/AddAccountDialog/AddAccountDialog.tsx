@@ -1,8 +1,7 @@
 import { useState } from "react"
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, Alert, CircularProgress, Box, Typography,
-} from "@mui/material"
+  PontesButton, PontesModal, PontesField, PontesInput, PontesAlert,
+} from "@/components/pontes"
 import { useAuth } from "../../hooks/useAuth"
 
 type Props = {
@@ -10,6 +9,11 @@ type Props = {
   onClose: () => void
 }
 
+/**
+ * Modal de adicionar OUTRA CONTA DO USUÁRIO (multi-account switching).
+ * NÃO é conta bancária — é login alternativo (trocar entre contas sem fazer
+ * login de novo). Roda no Sidebar.
+ */
 export default function AddAccountDialog({ open, onClose }: Props) {
   const { addAccount } = useAuth()
   const [email, setEmail] = useState("")
@@ -40,73 +44,41 @@ export default function AddAccountDialog({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog
+    <PontesModal
       open={open}
+      title="Adicionar conta"
       onClose={handleClose}
-      PaperProps={{ sx: { borderRadius: "16px", minWidth: "380px" } }}
+      footer={<>
+        <PontesButton variant="outline" onClick={handleClose} disabled={loading}>Cancelar</PontesButton>
+        <PontesButton onClick={(e) => handleSubmit(e as unknown as React.FormEvent)}
+          loading={loading} disabled={loading || !email || !password}>
+          Adicionar
+        </PontesButton>
+      </>}
     >
-      <DialogTitle sx={{ fontSize: 16, fontWeight: 700, pb: 0.5 }}>
-        Adicionar conta
-      </DialogTitle>
-      <form onSubmit={handleSubmit}>
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography fontSize={13} color="text.secondary" mb={2.5}>
-            Entre com as credenciais da conta que deseja conectar. Você poderá alternar entre contas sem precisar fazer login novamente.
-          </Typography>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2, fontSize: 13, borderRadius: "8px" }}>
-              {error}
-            </Alert>
-          )}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="E-mail"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              size="small"
-              disabled={loading}
-              autoFocus
-            />
-            <TextField
-              label="Senha"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              size="small"
-              disabled={loading}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button
-            onClick={handleClose}
+      <form noValidate onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--pontes-text-muted)" }}>
+          Entre com as credenciais da conta que deseja conectar. Você poderá alternar entre contas sem precisar fazer login novamente.
+        </p>
+        {error && <PontesAlert tone="error">{error}</PontesAlert>}
+        <PontesField label="E-mail" required>
+          <PontesInput
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
-            sx={{ fontSize: 13, color: "text.secondary", textTransform: "none" }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !email || !password}
-            sx={{
-              fontSize: 13,
-              borderRadius: "8px",
-              textTransform: "none",
-              bgcolor: "#111827",
-              "&:hover": { bgcolor: "#374151" },
-              minWidth: 100,
-            }}
-          >
-            {loading ? <CircularProgress size={16} sx={{ color: "white" }} /> : "Adicionar"}
-          </Button>
-        </DialogActions>
+            autoFocus
+          />
+        </PontesField>
+        <PontesField label="Senha" required>
+          <PontesInput
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+          />
+        </PontesField>
       </form>
-    </Dialog>
+    </PontesModal>
   )
 }
