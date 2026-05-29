@@ -5,10 +5,10 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesCard, PontesSelect, PontesStatCard,
-  PontesEmptyState,
+  PontesEmptyState, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
-import { getTransactions } from "../../services/transactionService"
+import { listTransactionsPage } from "../../services/transactionService"
 import { getContas } from "../../services/contaService"
 import type { Category } from "../../types/Category"
 import type { Transaction } from "../../types/Transaction"
@@ -23,37 +23,100 @@ const RECEITA = 2
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
 
+// Janela ISO do mês [from, to) — usada nos query params do backend.
+const monthWindow = (d: Date) => {
+  const from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+  const to = new Date(d.getFullYear(), d.getMonth() + 1, 1).toISOString()
+  return { from, to }
+}
+
 export default function TransactionsPage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
   const [categories, setCategories] = useState<Category[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  // Janela visível da página atual (vem do backend já paginado+filtrado).
+  const [pageItems, setPageItems] = useState<Transaction[]>([])
+  const [totalNoFiltro, setTotalNoFiltro] = useState(0)
+  // Stats do mês inteiro são separadas — agregamos uma página grande
+  // (max 100) só pros KPIs do topo, sem afetar a tabela.
+  const [monthStats, setMonthStats] = useState({ entradas: 0, saidas: 0, saldoMes: 0 })
   const [saldoTotal, setSaldoTotal] = useState(0)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [filterCategoryId, setFilterCategoryId] = useState("")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
 
-  const loadData = useCallback(async () => {
+  const loadCategories = useCallback(async () => {
     try {
-      const [cats, trans, contas] = await Promise.all([
-        getCategories(),
-        getTransactions(),
-        getContas(),
-      ])
+      const cats = await getCategories()
       setCategories(cats)
-      setTransactions(trans)
+    } catch (error) {
+      console.error("Erro ao carregar categorias:", error)
+    }
+  }, [])
+
+  const loadSaldo = useCallback(async () => {
+    try {
+      const contas = await getContas()
       setSaldoTotal(contas.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0))
     } catch (error) {
-      console.error("Erro ao carregar dados:", error)
+      console.error("Erro ao carregar contas:", error)
+    }
+  }, [])
+
+  const loadPage = useCallback(async () => {
+    try {
+      const { from, to } = monthWindow(currentDate)
+      const result = await listTransactionsPage(page, pageSize, {
+        from, to,
+        categoriaId: filterCategoryId || undefined,
+      })
+      setPageItems(result.items)
+      setTotalNoFiltro(result.total)
+    } catch (error) {
+      console.error("Erro ao carregar transações:", error)
       notify({ open: true, message: "Erro ao carregar transações", severity: "error" })
     }
-  }, [notify])
+  }, [currentDate, page, pageSize, filterCategoryId, notify])
 
+  // KPIs do topo — agregação do mês inteiro (ignora paginação + filtro categoria).
+  // Pega até 100 transações do mês; quem tiver +100 num mês perde acurácia nos KPIs
+  // (corner case raro pra finanças pessoais; resolveremos com endpoint dedicado depois).
+  const loadMonthStats = useCallback(async () => {
+    try {
+      const { from, to } = monthWindow(currentDate)
+      const result = await listTransactionsPage(1, 100, { from, to })
+      const entradas = result.items.filter((t) => t.tipo === RECEITA).reduce((s, t) => s + t.valor, 0)
+      const saidas = result.items.filter((t) => t.tipo !== RECEITA).reduce((s, t) => s + t.valor, 0)
+      const saldoMes = result.items
+        .filter((t) => !t.usadoComoCredito)
+        .reduce((s, t) => s + (t.tipo === RECEITA ? t.valor : -t.valor), 0)
+      setMonthStats({ entradas, saidas, saldoMes })
+    } catch (error) {
+      console.error("Erro ao calcular stats:", error)
+    }
+  }, [currentDate])
+
+  useEffect(() => { void loadCategories(); void loadSaldo() }, [loadCategories, loadSaldo])
+  useEffect(() => { void loadPage() }, [loadPage])
+  useEffect(() => { void loadMonthStats() }, [loadMonthStats])
+
+  // Filtro/mês muda → volta pra página 1 (senão usuário fica preso em página 5
+  // de um filtro que só tem 2 páginas).
+  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, pageSize])
+
+  // Refetch da página + stats quando transação é criada por dialog global.
   useEffect(() => {
-    void loadData()
-    const handler = () => { void loadData() }
+    const handler = () => {
+      void loadPage(); void loadMonthStats(); void loadSaldo()
+    }
     window.addEventListener("transactionCreated", handler)
     return () => window.removeEventListener("transactionCreated", handler)
-  }, [loadData])
+  }, [loadPage, loadMonthStats, loadSaldo])
+
+  const loadData = useCallback(() => {
+    void loadPage(); void loadMonthStats(); void loadSaldo()
+  }, [loadPage, loadMonthStats, loadSaldo])
 
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))
@@ -62,19 +125,7 @@ export default function TransactionsPage() {
     .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
     .replace(/^\w/, (c) => c.toUpperCase())
 
-  const filtered = transactions.filter((t) => {
-    const tDate = new Date(t.data)
-    if (tDate.getFullYear() !== currentDate.getFullYear()) return false
-    if (tDate.getMonth() !== currentDate.getMonth()) return false
-    if (filterCategoryId && t.categoriaId !== filterCategoryId) return false
-    return true
-  })
-
-  const totalEntradas = filtered.filter((t) => t.tipo === RECEITA).reduce((s, t) => s + t.valor, 0)
-  const totalSaidas = filtered.filter((t) => t.tipo !== RECEITA).reduce((s, t) => s + t.valor, 0)
-  const saldoFinal = filtered
-    .filter((t) => !t.usadoComoCredito)
-    .reduce((s, t) => s + (t.tipo === RECEITA ? t.valor : -t.valor), 0)
+  const { entradas: totalEntradas, saidas: totalSaidas, saldoMes: saldoFinal } = monthStats
 
   if (categories.length === 0) {
     return (
@@ -134,10 +185,10 @@ export default function TransactionsPage() {
       <PontesCard padding={0} radius={14}>
         <div className={styles.tableHead}>
           <span className={styles.tableTitle}>Todas as transações</span>
-          <span className={styles.tableMeta}>{filtered.length} {filtered.length === 1 ? "lançamento" : "lançamentos"}</span>
+          <span className={styles.tableMeta}>{totalNoFiltro} {totalNoFiltro === 1 ? "lançamento" : "lançamentos"}</span>
         </div>
         <TransactionTable
-          rows={filtered.map((t: Transaction): TransactionRow => ({
+          rows={pageItems.map((t: Transaction): TransactionRow => ({
             id: t.id,
             descricao: t.descricao,
             valor: t.valor,
@@ -155,6 +206,11 @@ export default function TransactionsPage() {
           onRefresh={loadData}
           notify={notify}
           emptyMessage="Nenhuma transação neste período"
+          pagination={{
+            page, pageSize, total: totalNoFiltro,
+            onPageChange: setPage,
+            onPageSizeChange: (s) => { setPageSize(s); setPage(1) },
+          }}
         />
       </PontesCard>
     </div>

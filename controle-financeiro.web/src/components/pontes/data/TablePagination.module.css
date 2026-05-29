@@ -1,0 +1,44 @@
+/* TablePagination — rodapé padrão. Cor via var(--pontes-*). */
+
+.wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding: 12px 20px;
+  background: var(--pontes-bg);
+  border-top: 1px solid var(--pontes-border);
+  font-family: var(--pontes-font);
+  font-size: 12px;
+  color: var(--pontes-text-muted);
+}
+
+.sizeGroup { display: flex; align-items: center; gap: 8px; }
+.sizeLabel { font-size: 12px; color: var(--pontes-text-muted); }
+/* PontesSelect default ocupa 100% — caixinha compacta pra page-size. */
+.sizeSelect { width: 84px; }
+
+.range { font-size: 12px; color: var(--pontes-text-muted); text-align: center; flex: 1 1 auto; }
+
+.nav { display: flex; align-items: center; gap: 6px; }
+
+.navBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--pontes-border);
+  border-radius: 8px;
+  background: var(--pontes-surface);
+  color: var(--pontes-text);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.navBtn:hover:not(:disabled) {
+  background: var(--pontes-primary-soft);
+  border-color: var(--pontes-primary);
+  color: var(--pontes-primary);
+}
+.navBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pageInfo {
+  font-size: 12px; font-weight: 600; color: var(--pontes-text);
+  min-width: 56px; text-align: center;
+}
+.pageOf { font-weight: 400; color: var(--pontes-text-muted); }

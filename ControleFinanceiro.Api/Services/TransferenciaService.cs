@@ -85,7 +85,7 @@ public class TransferenciaService
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
     }
 
-    public async Task<PagedResult<TransferenciaDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<TransferenciaDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);

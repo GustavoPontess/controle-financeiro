@@ -1,10 +1,21 @@
 import { api } from "../api/axiosConfig"
 import type { Recorrente, CriarRecorrente, EditarProximaDto, CancelarRecorrenteDto } from "../types/Recorrente"
+import type { PagedResult } from "../types/Paged"
 
 const BASE = "recorrentes"
 
+/** Lista paginada — backend clampa pageSize em 1..100. */
+export const listRecorrentesPage = async (
+  page: number,
+  pageSize: number,
+): Promise<PagedResult<Recorrente>> => {
+  const res = await api.get(BASE, { params: { page, pageSize } })
+  return res.data
+}
+
+/** @deprecated Use listRecorrentesPage em telas com paginação. Clampa em 100. */
 export const getRecorrentes = async (): Promise<Recorrente[]> => {
-  const res = await api.get(BASE, { params: { pageSize: 1000 } })
+  const res = await api.get(BASE, { params: { page: 1, pageSize: 100 } })
   return res.data.items
 }
 
