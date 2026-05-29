@@ -3,6 +3,8 @@ namespace ControleFinanceiro.Api.DTOs.Dashboard;
 public class DashboardDto
 {
     public decimal SaldoTotal { get; set; }
+    /// <summary>Saldo no fim do mês anterior — pra hero calcular variação.</summary>
+    public decimal SaldoMesAnterior { get; set; }
     public decimal ReceitasMes { get; set; }
     public decimal DespesasMes { get; set; }
     public decimal SaldoMes { get; set; }
@@ -18,6 +20,29 @@ public class DashboardDto
     public List<CategoriaGastoDto> TopCategorias { get; set; } = new();
     public List<TransacaoRecenteDto> TransacoesRecentes { get; set; } = new();
     public List<SaldoContaDto> SaldoContas { get; set; } = new();
+    /// <summary>Top 3 cartões ativos por % do limite usado (desc).</summary>
+    public List<CartaoResumoDto> CartoesResumo { get; set; } = new();
+}
+
+/// <summary>
+/// Resumo de cartão pra widget do dashboard. Limite usado + próximo fechamento.
+/// </summary>
+public class CartaoResumoDto
+{
+    public Guid Id { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string? BancoNome { get; set; }
+    public string? BancoLogoUrl { get; set; }
+    public string? BancoCor { get; set; }
+    public decimal LimiteTotal { get; set; }
+    public decimal LimiteUsado { get; set; }
+    public decimal LimiteDisponivel { get; set; }
+    /// <summary>0..100. Calculado server-side.</summary>
+    public decimal PercentualUsado { get; set; }
+    /// <summary>Próximo fechamento (atual se ainda no futuro, senão próximo mês).</summary>
+    public DateTime? ProximoFechamento { get; set; }
+    /// <summary>Dias até próximo fechamento. Negativo se passou.</summary>
+    public int? DiasAteFechamento { get; set; }
 }
 
 /// <summary>Ponto da série de evolução do saldo (gráfico de área do dashboard).</summary>
