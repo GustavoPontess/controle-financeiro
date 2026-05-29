@@ -1,5 +1,7 @@
 # Controle Financeiro
 
+[![CI](https://github.com/GustavoPontess/controle-financeiro/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GustavoPontess/controle-financeiro/actions/workflows/ci.yml)
+
 Sistema de controle de gastos residenciais desenvolvido como projeto full-stack.
 
 ## Sobre o Projeto
