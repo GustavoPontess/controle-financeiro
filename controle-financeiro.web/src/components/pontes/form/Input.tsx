@@ -5,7 +5,7 @@
  * Exports: PontesInput, PontesMoneyInput, PontesTextarea.
  */
 
-import { type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, type CSSProperties } from "react"
+import { forwardRef, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, type CSSProperties } from "react"
 import { scopedThemeVars, type Palette } from "../theme"
 import styles from "./Input.module.css"
 
@@ -22,11 +22,14 @@ export type PontesInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size
   fullWidth?: boolean
 }
 
-export function PontesInput({
+// forwardRef: telas que focam o input programaticamente (ex: atalho "/" da
+// busca em Transações) passam ref. Callers antigos seguem iguais.
+export const PontesInput = forwardRef<HTMLInputElement, PontesInputProps>(function PontesInput({
   p, font, iconStart, iconEnd, invalid, fullWidth = true, style, className, ...rest
-}: PontesInputProps) {
+}, ref) {
   const input = (
     <input
+      ref={ref}
       className={[styles.input, className].filter(Boolean).join(" ")}
       data-invalid={invalid ? "true" : undefined}
       data-has-start={iconStart ? "true" : undefined}
@@ -46,7 +49,7 @@ export function PontesInput({
       {iconEnd && <span className={styles.iconEnd}>{iconEnd}</span>}
     </div>
   )
-}
+})
 
 // =============================================================================
 // PontesMoneyInput

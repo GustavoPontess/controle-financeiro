@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import {
-  ChevronLeft, ChevronRight, Filter, CalendarDays, Wallet,
+  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesCard, PontesSelect, PontesStatCard,
-  PontesEmptyState, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesInput, PontesEmptyState, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
 import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
@@ -46,8 +46,18 @@ export default function TransactionsPage() {
   const [saldoTotal, setSaldoTotal] = useState(0)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [filterCategoryId, setFilterCategoryId] = useState("")
+  const [filterTipo, setFilterTipo] = useState<0 | 1 | 2>(0) // 0=todos, 1=despesa, 2=receita
+  const [searchInput, setSearchInput] = useState("") // valor digitado (imediato)
+  const [search, setSearch] = useState("")             // valor com debounce (query)
+  const searchRef = useRef<HTMLInputElement>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
+
+  // Debounce da busca: 350ms sem digitar → dispara query. Evita request por tecla.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   const loadCategories = useCallback(async () => {
     try {
@@ -73,6 +83,8 @@ export default function TransactionsPage() {
       const result = await listTransactionsPage(page, pageSize, {
         from, to,
         categoriaId: filterCategoryId || undefined,
+        q: search || undefined,
+        tipo: filterTipo || undefined,
       })
       setPageItems(result.items)
       setTotalNoFiltro(result.total)
@@ -80,7 +92,7 @@ export default function TransactionsPage() {
       console.error("Erro ao carregar transações:", error)
       notify({ open: true, message: "Erro ao carregar transações", severity: "error" })
     }
-  }, [currentDate, page, pageSize, filterCategoryId, notify])
+  }, [currentDate, page, pageSize, filterCategoryId, search, filterTipo, notify])
 
   // KPIs do topo — endpoint /stats dedicado, calculado no banco. Exato em qualquer
   // volume (#179 — antes agregava 1ª página de 100 e perdia acurácia >100/mês).
@@ -107,7 +119,23 @@ export default function TransactionsPage() {
 
   // Filtro/mês muda → volta pra página 1 (senão usuário fica preso em página 5
   // de um filtro que só tem 2 páginas).
-  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, pageSize])
+  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, filterTipo, search, pageSize])
+
+  // Atalho "/" foca a busca (fora de input). N abre nova transação.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable
+      if (e.key === "/" && !inField) {
+        e.preventDefault(); searchRef.current?.focus()
+      } else if (e.key.toLowerCase() === "n" && !inField && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault(); window.dispatchEvent(new Event("openNewTransaction"))
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   // Refetch da página + stats quando transação é criada por dialog global.
   useEffect(() => {
@@ -130,6 +158,20 @@ export default function TransactionsPage() {
     .replace(/^\w/, (c) => c.toUpperCase())
 
   const { entradas: totalEntradas, saidas: totalSaidas, saldoMes: saldoFinal } = monthStats
+
+  const hasFilters = useMemo(
+    () => !!(search || filterCategoryId || filterTipo),
+    [search, filterCategoryId, filterTipo]
+  )
+  const clearFilters = () => {
+    setSearchInput(""); setSearch(""); setFilterCategoryId(""); setFilterTipo(0)
+  }
+
+  const TIPO_CHIPS: { value: 0 | 1 | 2; label: string }[] = [
+    { value: 0, label: "Tudo" },
+    { value: 2, label: "Receitas" },
+    { value: 1, label: "Despesas" },
+  ]
 
   if (categories.length === 0) {
     return (
@@ -159,8 +201,9 @@ export default function TransactionsPage() {
             onClick={() => setCurrentDate(new Date())}>
             Hoje
           </PontesButton>
-          <PontesButton size="sm" variant="outline" iconStart={<Filter size={16} />} disabled>
-            Filtros
+          <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}
+            onClick={() => window.dispatchEvent(new Event("openNewTransaction"))}>
+            Nova transação
           </PontesButton>
         </div>
       </div>
@@ -172,8 +215,37 @@ export default function TransactionsPage() {
         <PontesStatCard label="Saldo do mês" value={formatMoney(saldoFinal)} tone={saldoFinal < 0 ? "danger" : "default"} />
       </div>
 
-      <div className={styles.filterRow}>
-        <div className={styles.filterField}>
+      {/* Toolbar — busca + filtro de tipo + categoria */}
+      <div className={styles.toolbar}>
+        <div className={styles.searchWrap}>
+          <PontesInput
+            ref={searchRef}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Buscar transação…  (/)"
+            iconStart={<Search size={16} />}
+            iconEnd={searchInput ? (
+              <button type="button" className={styles.searchClear} aria-label="Limpar busca"
+                onClick={() => { setSearchInput(""); setSearch(""); searchRef.current?.focus() }}>
+                <X size={15} strokeWidth={2.5} />
+              </button>
+            ) : undefined}
+          />
+        </div>
+        <div className={styles.tipoChips}>
+          {TIPO_CHIPS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              className={styles.tipoChip}
+              data-active={filterTipo === c.value ? "true" : undefined}
+              onClick={() => setFilterTipo(c.value)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.catField}>
           <PontesSelect
             value={filterCategoryId}
             onChange={(v) => setFilterCategoryId(v)}
@@ -184,11 +256,18 @@ export default function TransactionsPage() {
             ]}
           />
         </div>
+        {hasFilters && (
+          <PontesButton size="sm" variant="ghost" iconStart={<X size={15} strokeWidth={2.5} />} onClick={clearFilters}>
+            Limpar
+          </PontesButton>
+        )}
       </div>
 
       <PontesCard padding={0} radius={14}>
         <div className={styles.tableHead}>
-          <span className={styles.tableTitle}>Todas as transações</span>
+          <span className={styles.tableTitle}>
+            {hasFilters ? "Resultado" : "Todas as transações"}
+          </span>
           <span className={styles.tableMeta}>{totalNoFiltro} {totalNoFiltro === 1 ? "lançamento" : "lançamentos"}</span>
         </div>
         <TransactionTable
@@ -209,7 +288,7 @@ export default function TransactionsPage() {
           }))}
           onRefresh={loadData}
           notify={notify}
-          emptyMessage="Nenhuma transação neste período"
+          emptyMessage={hasFilters ? "Nada encontrado com esses filtros" : "Nenhuma transação neste período"}
           pagination={{
             page, pageSize, total: totalNoFiltro,
             onPageChange: setPage,
