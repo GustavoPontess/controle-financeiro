@@ -9,18 +9,22 @@ vi.mock("react-router-dom", async (orig) => ({
   useOutletContext: () => ({ notify: vi.fn() }),
 }))
 
-const getEmprestimos = vi.fn()
+const listEmprestimosPage = vi.fn()
 const createEmprestimo = vi.fn()
 const registrarPagamento = vi.fn()
 const quitarEmprestimo = vi.fn()
 const deleteEmprestimo = vi.fn()
 vi.mock("../../services/emprestimoService", () => ({
-  getEmprestimos: (...a: unknown[]) => getEmprestimos(...a),
+  listEmprestimosPage: (...a: unknown[]) => listEmprestimosPage(...a),
+  getEmprestimos: () => Promise.resolve([]),
   createEmprestimo: (...a: unknown[]) => createEmprestimo(...a),
   registrarPagamento: (...a: unknown[]) => registrarPagamento(...a),
   quitarEmprestimo: (...a: unknown[]) => quitarEmprestimo(...a),
   deleteEmprestimo: (...a: unknown[]) => deleteEmprestimo(...a),
 }))
+const paged = <T,>(items: T[]) => ({
+  items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
+})
 
 const emp = {
   id: "e1", descricao: "Viagem", pessoa: "João", valorTotal: 1000, valorPago: 200,
@@ -34,7 +38,7 @@ function renderPage() {
 
 describe("EmprestimosPage (#152)", () => {
   beforeEach(() => {
-    getEmprestimos.mockReset().mockResolvedValue([emp])
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([emp]))
     createEmprestimo.mockReset().mockResolvedValue(undefined)
     registrarPagamento.mockReset().mockResolvedValue(undefined)
     quitarEmprestimo.mockReset().mockResolvedValue(undefined)
@@ -49,7 +53,7 @@ describe("EmprestimosPage (#152)", () => {
   })
 
   it("empty state sem empréstimos", async () => {
-    getEmprestimos.mockReset().mockResolvedValue([])
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([]))
     renderPage()
     expect(await screen.findByText("Nenhum empréstimo cadastrado")).toBeInTheDocument()
   })

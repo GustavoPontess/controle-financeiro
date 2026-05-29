@@ -50,13 +50,19 @@ export function PontesSelect<T extends string = string>({
     if (!el) return
     const r = el.getBoundingClientRect()
     const gap = 6
-    // BUFFER: distância do menu até as bordas do viewport. Garante que o menu
-    // NÃO encoste em footer de modal/edge da página — sempre sobra respiro
-    // pros botões abaixo. Quem tiver pouco espaço de qualquer lado encolhe
-    // automaticamente em vez de cobrir o footer.
+    // BUFFER: distância do menu até as bordas do "container" (modal ou viewport).
+    // Garante que o menu NÃO encoste em footer/edge — sempre sobra respiro pros
+    // botões abaixo. Encolhe maxHeight automaticamente quando faltar espaço.
     const BUFFER = 24
-    const spaceBelow = window.innerHeight - r.bottom - BUFFER
-    const spaceAbove = r.top - BUFFER
+    // Bounds: se o trigger está dentro de um modal/popover Pontes, usa o rect
+    // dele como limite (senão o menu fixed vaza pra fora do footer do modal).
+    // Fallback: viewport.
+    const boundary = el.closest<HTMLElement>("[data-pontes-overlay-boundary]")
+    const b = boundary?.getBoundingClientRect()
+    const topLimit = b?.top ?? 0
+    const bottomLimit = b?.bottom ?? window.innerHeight
+    const spaceBelow = bottomLimit - r.bottom - BUFFER
+    const spaceAbove = r.top - topLimit - BUFFER
     // Vira pra cima quando: (a) cabe pouco embaixo e tem mais espaço em cima,
     // ou (b) embaixo cabe menos que o mínimo confortável (140px).
     const up = (spaceBelow < 200 && spaceAbove > spaceBelow) || spaceBelow < 140

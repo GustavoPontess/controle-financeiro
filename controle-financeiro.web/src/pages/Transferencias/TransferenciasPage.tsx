@@ -4,8 +4,9 @@ import { Plus, Trash2, ArrowLeftRight } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
+  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
-import { getTransferencias, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
+import { listTransferenciasPage, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
 import { getContas } from "../../services/contaService"
 import type { Transferencia } from "../../types/Transferencia"
 import type { Conta } from "../../types/Conta"
@@ -43,6 +44,9 @@ const emptyForm: FormState = {
 export default function TransferenciasPage() {
   const { notify } = useOutletContext<OutletContextType>()
   const [transferencias, setTransferencias] = useState<Transferencia[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [contas, setContas] = useState<Conta[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -52,13 +56,14 @@ export default function TransferenciasPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [t, c] = await Promise.all([getTransferencias(), getContas()])
-      setTransferencias(t)
+      const [result, c] = await Promise.all([listTransferenciasPage(page, pageSize), getContas()])
+      setTransferencias(result.items)
+      setTotal(result.total)
       setContas(c)
     } catch {
       notify({ open: true, message: "Erro ao carregar transferências", severity: "error" })
     }
-  }, [notify])
+  }, [notify, page, pageSize])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -129,10 +134,10 @@ export default function TransferenciasPage() {
       <PontesCard padding={0} radius={16}>
         <div className={styles.listHead}>
           <span className={styles.listHeadTitle}>Histórico</span>
-          <span className={styles.listHeadMeta}>{transferencias.length} {transferencias.length === 1 ? "transferência" : "transferências"}</span>
+          <span className={styles.listHeadMeta}>{total} {total === 1 ? "transferência" : "transferências"}</span>
         </div>
 
-        {transferencias.length === 0 ? (
+        {total === 0 ? (
           <div className={styles.emptyWrap}>
             <PontesEmptyState
               icon={<ArrowLeftRight size={28} />}
@@ -141,30 +146,38 @@ export default function TransferenciasPage() {
             />
           </div>
         ) : (
-          <ul className={styles.list}>
-            {transferencias.map((t) => (
-              <li key={t.id} className={styles.item}>
-                <div className={styles.itemLeft}>
-                  <div className={styles.itemIcon}><ArrowLeftRight size={16} /></div>
-                  <div className={styles.itemMeta}>
-                    <span className={styles.itemDesc}>{t.descricao || "Transferência"}</span>
-                    <div className={styles.itemRoute}>
-                      <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
-                      <ArrowLeftRight size={12} className={styles.routeArrow} />
-                      <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
-                      <span className={styles.itemDate}>{new Date(t.data).toLocaleDateString("pt-BR")}</span>
+          <>
+            <ul className={styles.list}>
+              {transferencias.map((t) => (
+                <li key={t.id} className={styles.item}>
+                  <div className={styles.itemLeft}>
+                    <div className={styles.itemIcon}><ArrowLeftRight size={16} /></div>
+                    <div className={styles.itemMeta}>
+                      <span className={styles.itemDesc}>{t.descricao || "Transferência"}</span>
+                      <div className={styles.itemRoute}>
+                        <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
+                        <ArrowLeftRight size={12} className={styles.routeArrow} />
+                        <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
+                        <span className={styles.itemDate}>{new Date(t.data).toLocaleDateString("pt-BR")}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className={styles.itemRight}>
-                  <span className={styles.itemValue}>{formatMoney(t.valor)}</span>
-                  <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(t.id)}>
-                    <Trash2 size={14} />
-                  </PontesIconButton>
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <div className={styles.itemRight}>
+                    <span className={styles.itemValue}>{formatMoney(t.valor)}</span>
+                    <PontesIconButton size={32} variant="ghost" aria-label="Remover" onClick={() => setDelId(t.id)}>
+                      <Trash2 size={14} />
+                    </PontesIconButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <PontesTablePagination
+              total={total} page={page} pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              itemLabel="transferências" itemLabelSingular="transferência"
+            />
+          </>
         )}
       </PontesCard>
 

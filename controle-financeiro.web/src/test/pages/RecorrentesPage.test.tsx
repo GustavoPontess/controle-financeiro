@@ -12,7 +12,7 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 // ── Service mocks ────────────────────────────────────────────────────────────
-const getRecorrentes = vi.fn()
+const listRecorrentesPage = vi.fn()
 const createRecorrente = vi.fn()
 const toggleRecorrente = vi.fn()
 const deleteRecorrente = vi.fn()
@@ -20,13 +20,17 @@ const cancelarRecorrente = vi.fn()
 const editarProximaOcorrencia = vi.fn()
 
 vi.mock("../../services/recorrenteService", () => ({
-  getRecorrentes:          (...a: unknown[]) => getRecorrentes(...a),
+  listRecorrentesPage:     (...a: unknown[]) => listRecorrentesPage(...a),
+  getRecorrentes:          () => Promise.resolve([]),
   createRecorrente:        (...a: unknown[]) => createRecorrente(...a),
   toggleRecorrente:        (...a: unknown[]) => toggleRecorrente(...a),
   deleteRecorrente:        (...a: unknown[]) => deleteRecorrente(...a),
   cancelarRecorrente:      (...a: unknown[]) => cancelarRecorrente(...a),
   editarProximaOcorrencia: (...a: unknown[]) => editarProximaOcorrencia(...a),
 }))
+const paged = <T,>(items: T[]) => ({
+  items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
+})
 
 vi.mock("../../services/contaService", () => ({
   getContas: () => Promise.resolve([
@@ -79,7 +83,7 @@ describe("RecorrentesPage", () => {
   // ── Empty state ──
 
   it("mostra empty state quando não há recorrentes", async () => {
-    getRecorrentes.mockResolvedValue([])
+    listRecorrentesPage.mockResolvedValue(paged([]))
     renderPage()
     expect(await screen.findByText("Nenhuma assinatura")).toBeInTheDocument()
   })
@@ -87,7 +91,7 @@ describe("RecorrentesPage", () => {
   // ── Listagem ──
 
   it("exibe recorrente carregado", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
     expect(await screen.findByText("Netflix")).toBeInTheDocument()
     expect(screen.getByText("Mensal")).toBeInTheDocument()
@@ -95,7 +99,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("exibe stats: ativas e custo mensal", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
     await screen.findByText("Netflix")
     expect(screen.getByText("Ativas")).toBeInTheDocument()
@@ -103,7 +107,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("inativa aparece com data-inactive", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente({ ativo: false })])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false })]))
     renderPage()
     await screen.findByText("Netflix")
     const row = document.querySelector("[data-inactive='true']")
@@ -113,7 +117,7 @@ describe("RecorrentesPage", () => {
   // ── Criar modal ──
 
   it("abre modal criar ao clicar em Nova Assinatura", async () => {
-    getRecorrentes.mockResolvedValue([])
+    listRecorrentesPage.mockResolvedValue(paged([]))
     renderPage()
     await screen.findByText("Nenhuma assinatura")
     fireEvent.click(screen.getAllByText("Nova Assinatura")[0])
@@ -121,7 +125,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("bloqueia submit com campos vazios e mostra erros", async () => {
-    getRecorrentes.mockResolvedValue([])
+    listRecorrentesPage.mockResolvedValue(paged([]))
     createRecorrente.mockResolvedValue(makeRecorrente())
     renderPage()
     await screen.findByText("Nenhuma assinatura")
@@ -133,9 +137,9 @@ describe("RecorrentesPage", () => {
   })
 
   it("chama createRecorrente com dados válidos", async () => {
-    getRecorrentes.mockResolvedValue([])
+    listRecorrentesPage.mockResolvedValue(paged([]))
     createRecorrente.mockResolvedValue(makeRecorrente())
-    getRecorrentes.mockResolvedValueOnce([]).mockResolvedValueOnce([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValueOnce(paged([])).mockResolvedValueOnce(paged([makeRecorrente()]))
     renderPage()
     await screen.findByText("Nenhuma assinatura")
 
@@ -163,7 +167,7 @@ describe("RecorrentesPage", () => {
   // ── Cancelar modal ──
 
   it("abre modal cancelar com campo motivo", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
     await screen.findByText("Netflix")
 
@@ -175,7 +179,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("bloqueia cancelamento sem motivo", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
     await screen.findByText("Netflix")
@@ -189,7 +193,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("chama cancelarRecorrente com motivo preenchido", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
     await screen.findByText("Netflix")
@@ -210,7 +214,7 @@ describe("RecorrentesPage", () => {
   // ── Editar próxima modal ──
 
   it("abre modal editar próxima", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
     await screen.findByText("Netflix")
 
@@ -220,7 +224,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("chama editarProximaOcorrencia ao salvar", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
     await screen.findByText("Netflix")
@@ -237,7 +241,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("valida valor negativo na edição de próxima", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
     await screen.findByText("Netflix")
@@ -257,7 +261,7 @@ describe("RecorrentesPage", () => {
   // ── Toggle ──
 
   it("chama toggleRecorrente ao clicar pausar", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     toggleRecorrente.mockResolvedValue(undefined)
     renderPage()
     await screen.findByText("Netflix")
@@ -271,7 +275,7 @@ describe("RecorrentesPage", () => {
   // ── Delete ──
 
   it("abre confirm dialog ao clicar excluir", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
     await screen.findByText("Netflix")
 
@@ -281,7 +285,7 @@ describe("RecorrentesPage", () => {
   })
 
   it("chama deleteRecorrente ao confirmar exclusão", async () => {
-    getRecorrentes.mockResolvedValue([makeRecorrente()])
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     deleteRecorrente.mockResolvedValue(undefined)
     renderPage()
     await screen.findByText("Netflix")

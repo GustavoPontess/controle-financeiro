@@ -11,7 +11,7 @@ public class EmprestimoService(AppDbContext context)
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<PagedResult<EmprestimoDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<EmprestimoDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);

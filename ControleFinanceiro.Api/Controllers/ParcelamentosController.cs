@@ -43,7 +43,7 @@ public class ParcelamentosController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<ParcelamentoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
     {
         var usuarioId = GetUserId();
         var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize);

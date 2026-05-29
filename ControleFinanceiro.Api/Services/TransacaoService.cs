@@ -112,7 +112,13 @@ namespace ControleFinanceiro.Api.Services
                 dto.SubcategoriaId);
         }
 
-        public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
+        public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(
+            Guid usuarioId,
+            int page = 1,
+            int pageSize = 25,
+            DateTime? from = null,
+            DateTime? to = null,
+            Guid? categoriaId = null)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -124,10 +130,18 @@ namespace ControleFinanceiro.Api.Services
                 .Include(t => t.Conta)
                 .Include(t => t.CartaoCredito)
                 .Include(t => t.Categoria)
-                .OrderByDescending(t => t.Data);
+                .AsQueryable();
 
-            var total = await query.CountAsync();
-            var items = await query
+            // Filtros opcionais aplicados no banco — só assim a paginação serve
+            // pra UI: o front pagina o conjunto JÁ filtrado (por mês, categoria
+            // etc), em vez de pedir tudo e filtrar no cliente.
+            if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
+            if (to.HasValue) query = query.Where(t => t.Data < to.Value);
+            if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
+
+            var ordered = query.OrderByDescending(t => t.Data);
+            var total = await ordered.CountAsync();
+            var items = await ordered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

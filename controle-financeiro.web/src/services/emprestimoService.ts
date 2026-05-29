@@ -1,8 +1,19 @@
 import { api } from "../api/axiosConfig"
 import type { Emprestimo, CriarEmprestimo } from "../types/Emprestimo"
+import type { PagedResult } from "../types/Paged"
 
+/** Lista paginada — backend clampa pageSize em 1..100. */
+export const listEmprestimosPage = async (
+  page: number,
+  pageSize: number,
+): Promise<PagedResult<Emprestimo>> => {
+  const res = await api.get("/emprestimos", { params: { page, pageSize } })
+  return res.data
+}
+
+/** @deprecated Use listEmprestimosPage. Clampa em 100. */
 export const getEmprestimos = async (): Promise<Emprestimo[]> => {
-  const res = await api.get("/emprestimos", { params: { pageSize: 1000 } })
+  const res = await api.get("/emprestimos", { params: { page: 1, pageSize: 100 } })
   return res.data.items
 }
 

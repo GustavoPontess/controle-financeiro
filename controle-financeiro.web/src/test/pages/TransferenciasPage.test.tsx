@@ -10,14 +10,18 @@ vi.mock("react-router-dom", async (orig) => ({
   useOutletContext: () => ({ notify: vi.fn() }),
 }))
 
-const getTransferencias = vi.fn()
+const listTransferenciasPage = vi.fn()
 const createTransferencia = vi.fn()
 const deleteTransferencia = vi.fn()
 vi.mock("../../services/transferenciaService", () => ({
-  getTransferencias: (...a: unknown[]) => getTransferencias(...a),
+  listTransferenciasPage: (...a: unknown[]) => listTransferenciasPage(...a),
+  getTransferencias: () => Promise.resolve([]),
   createTransferencia: (...a: unknown[]) => createTransferencia(...a),
   deleteTransferencia: (...a: unknown[]) => deleteTransferencia(...a),
 }))
+const paged = <T,>(items: T[]) => ({
+  items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
+})
 vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve(contas) }))
 
 const contas = [
@@ -42,7 +46,7 @@ function renderPage() {
 
 describe("TransferenciasPage (#151)", () => {
   beforeEach(() => {
-    getTransferencias.mockReset().mockResolvedValue([transferencia])
+    listTransferenciasPage.mockReset().mockResolvedValue(paged([transferencia]))
     createTransferencia.mockReset().mockResolvedValue(undefined)
     deleteTransferencia.mockReset().mockResolvedValue(undefined)
   })
@@ -54,7 +58,7 @@ describe("TransferenciasPage (#151)", () => {
   })
 
   it("empty state quando não há transferências", async () => {
-    getTransferencias.mockReset().mockResolvedValue([])
+    listTransferenciasPage.mockReset().mockResolvedValue(paged([]))
     renderPage()
     expect(await screen.findByText("Nenhuma transferência ainda")).toBeInTheDocument()
   })

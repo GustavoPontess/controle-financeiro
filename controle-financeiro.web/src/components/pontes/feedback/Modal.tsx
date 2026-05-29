@@ -41,6 +41,7 @@ export function PontesModal({
       <div
         onClick={(e) => e.stopPropagation()}
         className={styles.box}
+        data-pontes-overlay-boundary
         style={{ maxWidth, ...scopedThemeVars(p, font) } as CSSProperties}
       >
         {(title || header) && (
@@ -87,7 +88,7 @@ export function PontesDialog({
 
   return (
     <div onClick={onCancel} className={styles.overlay}>
-      <div onClick={(e) => e.stopPropagation()} className={styles.dialogBox} style={scopedThemeVars(p, font) as CSSProperties}>
+      <div onClick={(e) => e.stopPropagation()} className={styles.dialogBox} data-pontes-overlay-boundary style={scopedThemeVars(p, font) as CSSProperties}>
         <div className={styles.dialogIcon} data-tone={tone}><Icon size={26} strokeWidth={2.5} /></div>
         <div className={styles.dialogTitle}>{title}</div>
         {description && <div className={styles.dialogDesc}>{description}</div>}

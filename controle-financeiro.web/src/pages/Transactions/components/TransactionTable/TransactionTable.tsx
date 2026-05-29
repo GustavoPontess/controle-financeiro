@@ -4,7 +4,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect,
+  PontesField, PontesInput, PontesSelect, PontesTablePagination,
 } from "@/components/pontes"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
 import { deleteTransaction } from "../../../../services/transactionService"
@@ -44,6 +44,18 @@ type Props = {
   onRefresh: () => void
   notify: React.Dispatch<React.SetStateAction<Notification>>
   emptyMessage?: string
+  /**
+   * Paginação **controlled** pelo container. `rows` é só a página visível;
+   * `total` é o total real do backend (pra calcular nº de páginas no rodapé).
+   * Sem essa prop, a tabela mostra `rows` sem rodapé de paginação.
+   */
+  pagination?: {
+    page: number
+    pageSize: number
+    total: number
+    onPageChange: (page: number) => void
+    onPageSizeChange: (size: number) => void
+  }
 }
 
 const formatMoney = (v: number) =>
@@ -118,7 +130,7 @@ function RowActions({ isReceita, compact, onShare, onAssign, onRatear, onEdit, o
   )
 }
 
-export default function TransactionTable({ rows, onRefresh, notify, emptyMessage }: Props) {
+export default function TransactionTable({ rows, onRefresh, notify, emptyMessage, pagination }: Props) {
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
   const [sharing, setSharing] = useState<TransactionRow | null>(null)
   const [familias, setFamilias] = useState<Familia[]>([])
@@ -131,6 +143,9 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
   const [percentuais, setPercentuais] = useState<Record<string, string>>({})
 
   const [delTx, setDelTx] = useState<TransactionRow | null>(null)
+
+  // `rows` chega já paginado/filtrado pelo backend (controlled). Não fatia aqui.
+  const pagedRows = rows
 
   // Colapsa as ações quando a tabela fica estreita demais. Observa container real.
   const [compact, setCompact] = useState(false)
@@ -275,7 +290,11 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
     })
   }
 
-  if (rows.length === 0) {
+  // Empty state real = backend devolveu total zero. Em modo paginado, rows
+  // pode estar vazio mid-flight (carregando próxima página); o total é a
+  // fonte da verdade.
+  const trulyEmpty = pagination ? pagination.total === 0 : rows.length === 0
+  if (trulyEmpty) {
     return (
       <div className={styles.empty}>{emptyMessage ?? "Nenhuma transação encontrada"}</div>
     )
@@ -298,7 +317,7 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {pagedRows.map((row) => {
               const isReceita = row.tipo === RECEITA
               return (
                 <tr key={row.id}>
@@ -352,6 +371,17 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
             })}
           </tbody>
         </table>
+        {pagination && (
+          <PontesTablePagination
+            total={pagination.total}
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.onPageChange}
+            onPageSizeChange={pagination.onPageSizeChange}
+            itemLabel="lançamentos"
+            itemLabelSingular="lançamento"
+          />
+        )}
       </div>
 
       <EditTransactionDialog

@@ -29,7 +29,7 @@ public class TransferenciasController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<TransferenciaDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
     {
         var usuarioId = GetUserId();
         var resultado = await _service.ListarAsync(usuarioId, page, pageSize);
