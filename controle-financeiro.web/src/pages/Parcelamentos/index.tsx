@@ -4,6 +4,7 @@ import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
+  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getCartoes } from "../../services/cartaoCreditoService"
@@ -63,6 +64,10 @@ export default function ParcelamentosPage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
   const [parcelamentos, setParcelamentos] = useState<Parcelamento[]>([])
+  const [todosParaStats, setTodosParaStats] = useState<Parcelamento[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -75,13 +80,19 @@ export default function ParcelamentosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [p, c] = await Promise.all([ParcelamentoService.listar(), getCartoes()])
-      setParcelamentos(p)
+      const [pageResult, statsResult, c] = await Promise.all([
+        ParcelamentoService.listarPaginado(page, pageSize),
+        ParcelamentoService.listarPaginado(1, 100),
+        getCartoes(),
+      ])
+      setParcelamentos(pageResult.items)
+      setTotal(pageResult.total)
+      setTodosParaStats(statsResult.items)
       setCartoes(c)
     } catch {
       notify({ open: true, message: "Erro ao carregar parcelamentos", severity: "error" })
     }
-  }, [notify])
+  }, [notify, page, pageSize])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -145,8 +156,8 @@ export default function ParcelamentosPage() {
     } finally { setCancelarId(null) }
   }
 
-  const ativos = parcelamentos.filter((p) => p.ativo).length
-  const totalRestante = parcelamentos.filter((p) => p.ativo).reduce((s, p) => s + p.valorRestante, 0)
+  const ativos = todosParaStats.filter((p) => p.ativo).length
+  const totalRestante = todosParaStats.filter((p) => p.ativo).reduce((s, p) => s + p.valorRestante, 0)
 
   return (
     <div className={styles.root}>
@@ -168,10 +179,10 @@ export default function ParcelamentosPage() {
       <PontesCard padding={0} radius={16}>
         <div className={styles.listHead}>
           <span className={styles.listHeadTitle}>Seus parcelamentos</span>
-          <span className={styles.listHeadMeta}>{parcelamentos.length} {parcelamentos.length === 1 ? "registrado" : "registrados"}</span>
+          <span className={styles.listHeadMeta}>{total} {total === 1 ? "registrado" : "registrados"}</span>
         </div>
 
-        {parcelamentos.length === 0 ? (
+        {total === 0 ? (
           <div className={styles.emptyWrap}>
             <PontesEmptyState
               icon={<Layers size={28} />}
@@ -234,6 +245,14 @@ export default function ParcelamentosPage() {
               )
             })}
           </ul>
+        )}
+        {total > 0 && (
+          <PontesTablePagination
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="parcelamentos" itemLabelSingular="parcelamento"
+          />
         )}
       </PontesCard>
 

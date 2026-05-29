@@ -99,10 +99,15 @@ namespace ControleFinanceiro.Api.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<TransacaoDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> Listar(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 25,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] Guid? categoriaId = null)
         {
             var usuarioId = GetUserId();
-            var resultado = await _service.ListarAsync(usuarioId, page, pageSize);
+            var resultado = await _service.ListarAsync(usuarioId, page, pageSize, from, to, categoriaId);
 
             return Ok(new PagedResult<TransacaoDto>
             {

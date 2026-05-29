@@ -395,7 +395,7 @@ public class ParcelamentoService
     /// Lista parcelamentos do usuário, ordenados por data de criação (mais recentes primeiro).
     /// Filtra por <paramref name="ativo"/> se informado.
     /// </summary>
-    public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);

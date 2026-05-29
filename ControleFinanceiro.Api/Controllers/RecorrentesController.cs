@@ -30,7 +30,7 @@ public class RecorrentesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<RecorrenteDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
     {
         var uid = GetUserId();
         await _service.GerarPendentesAsync(uid);

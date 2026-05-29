@@ -8,9 +8,10 @@ import {
   PontesModal, PontesDialog,
   PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesStatCard, PontesEmptyState, PontesLoadingDots,
+  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
-  getRecorrentes, createRecorrente, toggleRecorrente, deleteRecorrente,
+  listRecorrentesPage, createRecorrente, toggleRecorrente, deleteRecorrente,
   cancelarRecorrente, editarProximaOcorrencia,
 } from "../../services/recorrenteService"
 import { getContas } from "../../services/contaService"
@@ -125,6 +126,13 @@ export default function RecorrentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
 
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
+  // Agregado das 100 primeiras pros KPIs (ativas/custo/próximas30). Conforme
+  // qty de assinaturas crescer (>100) os KPIs ficam imprecisos — endpoint
+  // dedicado de stats fica pra depois.
+  const [todosParaStats, setTodosParaStats] = useState<Recorrente[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -157,8 +165,15 @@ export default function RecorrentesPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [r, c, cat] = await Promise.all([getRecorrentes(), getContas(), getCategories()])
-      setRecorrentes(r)
+      const [pageResult, statsResult, c, cat] = await Promise.all([
+        listRecorrentesPage(page, pageSize),
+        listRecorrentesPage(1, 100),
+        getContas(),
+        getCategories(),
+      ])
+      setRecorrentes(pageResult.items)
+      setTotal(pageResult.total)
+      setTodosParaStats(statsResult.items)
       setContas(c)
       setCategorias(cat)
     } catch {
@@ -166,17 +181,17 @@ export default function RecorrentesPage() {
     } finally {
       setLoading(false)
     }
-  }, [notify])
+  }, [notify, page, pageSize])
 
   useEffect(() => { void loadData() }, [loadData])
 
   // ── stats ────────────────────────────────────────────────────────────────────
 
-  const ativas = recorrentes.filter(r => r.ativo).length
-  const totalMensalDespesa = recorrentes
+  const ativas = todosParaStats.filter(r => r.ativo).length
+  const totalMensalDespesa = todosParaStats
     .filter(r => r.ativo && r.frequencia === 2 && r.tipo === 1)
     .reduce((s, r) => s + r.valor, 0)
-  const proximas30 = recorrentes.filter(r => {
+  const proximas30 = todosParaStats.filter(r => {
     if (!r.ativo || !r.dataProximaGeracao) return false
     const d = new Date(r.dataProximaGeracao)
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 30)
@@ -349,7 +364,7 @@ export default function RecorrentesPage() {
 
         {loading ? (
           <div className={styles.center}><PontesLoadingDots /></div>
-        ) : recorrentes.length === 0 ? (
+        ) : total === 0 ? (
           <PontesEmptyState
             icon={<Repeat size={40} />}
             title="Nenhuma assinatura"
@@ -435,6 +450,14 @@ export default function RecorrentesPage() {
               </div>
             )
           })
+        )}
+        {!loading && total > 0 && (
+          <PontesTablePagination
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="assinaturas" itemLabelSingular="assinatura"
+          />
         )}
       </div>
 

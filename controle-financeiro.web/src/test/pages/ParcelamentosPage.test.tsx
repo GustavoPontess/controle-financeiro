@@ -12,16 +12,20 @@ vi.mock("react-router-dom", async (orig) => ({
   useNavigate: () => vi.fn(),
 }))
 
-const listar = vi.fn()
+const listarPaginado = vi.fn()
 const criar = vi.fn()
 const cancelar = vi.fn()
 vi.mock("../../services/ParcelamentoService", () => ({
   ParcelamentoService: {
-    listar: (...a: unknown[]) => listar(...a),
+    listarPaginado: (...a: unknown[]) => listarPaginado(...a),
+    listar: () => Promise.resolve([]),
     criar: (...a: unknown[]) => criar(...a),
     cancelar: (...a: unknown[]) => cancelar(...a),
   },
 }))
+const paged = <T,>(items: T[]) => ({
+  items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
+})
 vi.mock("../../services/cartaoCreditoService", () => ({
   getCartoes: () => Promise.resolve(cartoes),
 }))
@@ -47,7 +51,7 @@ function renderPage() {
 
 describe("ParcelamentosPage (#153)", () => {
   beforeEach(() => {
-    listar.mockReset().mockResolvedValue([p1])
+    listarPaginado.mockReset().mockResolvedValue(paged([p1]))
     criar.mockReset().mockResolvedValue(undefined)
     cancelar.mockReset().mockResolvedValue(undefined)
   })
@@ -60,7 +64,7 @@ describe("ParcelamentosPage (#153)", () => {
   })
 
   it("empty state", async () => {
-    listar.mockReset().mockResolvedValue([])
+    listarPaginado.mockReset().mockResolvedValue(paged([]))
     renderPage()
     expect(await screen.findByText("Nenhum parcelamento cadastrado")).toBeInTheDocument()
   })
