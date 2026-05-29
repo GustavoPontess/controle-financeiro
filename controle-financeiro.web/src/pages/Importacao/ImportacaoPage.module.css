@@ -1,0 +1,54 @@
+.root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
+
+.header { display: flex; flex-direction: column; gap: 4px; }
+.title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
+
+.uploadRow { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.uploadRow > * { flex: 1 1 220px; }
+
+.fileLabel {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 14px;
+  font-family: var(--pontes-font); font-size: 13px; font-weight: 600;
+  background: var(--pontes-surface);
+  color: var(--pontes-text-muted);
+  border: 1px dashed var(--pontes-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+.fileLabel:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
+.fileLabel[data-has="true"] { border-style: solid; color: var(--pontes-text); }
+
+.loading { display: flex; justify-content: center; padding: 32px; }
+
+.reviewHead {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px; gap: 14px;
+  border-bottom: 1px solid var(--pontes-border);
+}
+.reviewMeta { display: flex; align-items: center; gap: 10px; }
+.reviewTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+
+.emptyReview { padding: 32px 20px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
+
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  padding: 10px 16px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--pontes-text-muted); background: var(--pontes-bg);
+  text-align: left; border-bottom: 1px solid var(--pontes-border);
+}
+.table td {
+  padding: 10px 16px; border-bottom: 1px solid var(--pontes-border);
+  color: var(--pontes-text); vertical-align: middle;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr[data-duplicada="true"] td { background: color-mix(in srgb, var(--pontes-warning) 8%, transparent); }
+
+.checkCell { width: 40px; text-align: center; padding-right: 0 !important; }
+.alignRight { text-align: right; }
+.alignRight[data-tone="success"] { color: var(--pontes-success); }
+.alignRight[data-tone="danger"] { color: var(--pontes-danger); }
