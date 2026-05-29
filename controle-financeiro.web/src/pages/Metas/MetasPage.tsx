@@ -28,6 +28,16 @@ const formatMoney = (v: number) =>
 const formatDate = (s: string) =>
   new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
 
+// Dias até a data limite (negativo = passou). Pra mostrar urgência de prazo.
+const diasAtePrazo = (s: string | null): number | null => {
+  if (!s) return null
+  const d = new Date(s)
+  const now = new Date()
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  return Math.round((b.getTime() - a.getTime()) / 86400000)
+}
+
 // ── Form state ──────────────────────────────────────────────────────────────
 
 type FormState = {
@@ -200,6 +210,38 @@ export default function MetasPage() {
           Nova meta
         </PontesButton>
       </div>
+
+      {/* Hero/resumo — total guardado vs alvo + % geral */}
+      {!loading && metas.length > 0 && (() => {
+        const totalGuardado = metas.reduce((s, m) => s + m.valorAtual, 0)
+        const totalAlvo = metas.reduce((s, m) => s + m.valorAlvo, 0)
+        const pctGeral = totalAlvo > 0 ? Math.min(100, (totalGuardado / totalAlvo) * 100) : 0
+        const concluidas = metas.filter((m) => m.concluida).length
+        return (
+          <div className={styles.hero}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroMain}>
+              <div className={styles.heroLabel}>Total guardado nas metas</div>
+              <div className={styles.heroValue}>{formatMoney(totalGuardado)}</div>
+              <div className={styles.heroSub}>de {formatMoney(totalAlvo)} · {pctGeral.toFixed(0)}% do total</div>
+              <div className={styles.heroTrack}>
+                <div className={styles.heroFill} style={{ width: `${pctGeral}%` }} />
+              </div>
+            </div>
+            <div className={styles.heroStats}>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue}>{metas.length}</span>
+                <span className={styles.heroStatLabel}>metas</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue}>{concluidas}</span>
+                <span className={styles.heroStatLabel}>concluídas</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Content */}
       {loading ? (
@@ -380,32 +422,48 @@ function MetaCard({ meta, onEdit, onContribuir, onExcluir }: MetaCardProps) {
           />
         </div>
         <div className={styles.progressLabels}>
-          <span>{formatMoney(meta.valorAtual)}</span>
-          <span className={styles.progressPct}>{pct.toFixed(0)}%</span>
+          <span className={styles.valorAtual}>{formatMoney(meta.valorAtual)} <span className={styles.valorAlvo}>de {formatMoney(meta.valorAlvo)}</span></span>
+          <span className={styles.progressPct} data-done={meta.concluida ? "true" : undefined}>{pct.toFixed(0)}%</span>
         </div>
       </div>
 
+      {/* Falta + prazo */}
+      {!meta.concluida && (
+        <div className={styles.faltaRow}>
+          <span className={styles.faltaValor}>
+            Faltam <strong>{formatMoney(Math.max(0, meta.valorAlvo - meta.valorAtual))}</strong>
+          </span>
+          {(() => {
+            const dias = diasAtePrazo(meta.dataLimite)
+            if (dias == null) return null
+            const atrasada = dias < 0
+            return (
+              <span className={styles.prazo} data-atrasada={atrasada ? "true" : undefined}>
+                <Calendar size={12} strokeWidth={2.4} />
+                {atrasada ? `venceu há ${Math.abs(dias)}d` : dias === 0 ? "vence hoje" : `faltam ${dias} dias`}
+              </span>
+            )
+          })()}
+        </div>
+      )}
+
       {/* Footer */}
       <div className={styles.cardFooter}>
-        <div className={styles.cardValores}>
-          <span className={styles.valorAtual}>{formatMoney(meta.valorAtual)}</span>
-          <span className={styles.valorAlvo}>de {formatMoney(meta.valorAlvo)}</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.375rem" }}>
-          {meta.dataLimite && (
-            <span className={styles.dataLimite}>
-              <Calendar size={12} /> {formatDate(meta.dataLimite)}
-            </span>
-          )}
-          <PontesButton
-            variant="outline"
-            size="xs"
-            onClick={() => onContribuir(meta)}
-            disabled={meta.concluida}
-          >
-            {meta.concluida ? "Concluída ✓" : "Contribuir"}
-          </PontesButton>
-        </div>
+        {meta.concluida ? (
+          <span className={styles.celebracao}>🎉 Meta batida!</span>
+        ) : (
+          <span className={styles.dataLimite}>
+            {meta.dataLimite ? <>{<Calendar size={12} />} {formatDate(meta.dataLimite)}</> : "Sem prazo"}
+          </span>
+        )}
+        <PontesButton
+          variant={meta.concluida ? "ghost" : "primary"}
+          size="xs"
+          onClick={() => onContribuir(meta)}
+          disabled={meta.concluida}
+        >
+          {meta.concluida ? "Concluída ✓" : "Contribuir"}
+        </PontesButton>
       </div>
     </div>
   )
