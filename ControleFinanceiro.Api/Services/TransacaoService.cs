@@ -118,7 +118,9 @@ namespace ControleFinanceiro.Api.Services
             int pageSize = 25,
             DateTime? from = null,
             DateTime? to = null,
-            Guid? categoriaId = null)
+            Guid? categoriaId = null,
+            string? q = null,
+            int? tipo = null)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -138,6 +140,15 @@ namespace ControleFinanceiro.Api.Services
             if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
             if (to.HasValue) query = query.Where(t => t.Data < to.Value);
             if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
+            if (tipo.HasValue) query = query.Where(t => (int)t.Tipo == tipo.Value);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                // Busca case-insensitive na descrição. Postgres LIKE é
+                // case-SENSITIVE por padrão — por isso baixamos os dois lados pra
+                // LOWER() (traduz pra SQL nativo em PG e SQLite). Trim + wildcard.
+                var termo = $"%{q.Trim().ToLower()}%";
+                query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
+            }
 
             var ordered = query.OrderByDescending(t => t.Data);
             var total = await ordered.CountAsync();
