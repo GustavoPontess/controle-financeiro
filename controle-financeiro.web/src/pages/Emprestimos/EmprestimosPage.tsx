@@ -1,21 +1,18 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
+import { useOutletContext } from "react-router-dom"
 import {
-  Box, Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Select, MenuItem as MuiMenuItem, FormControl, InputLabel,
-  IconButton, Chip, LinearProgress,
-} from "@mui/material"
-import AddIcon from "@mui/icons-material/Add"
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"
-import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined"
-import TrendingUpIcon from "@mui/icons-material/TrendingUp"
-import TrendingDownIcon from "@mui/icons-material/TrendingDown"
-import PaidOutlinedIcon from "@mui/icons-material/PaidOutlined"
-import CustomButton from "../../components/CustomButton"
+  Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign,
+} from "lucide-react"
+import {
+  PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect,
+  PontesTextarea, PontesEmptyState,
+} from "@/components/pontes"
 import {
   getEmprestimos, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
 } from "../../services/emprestimoService"
 import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
-import { tokens } from "../../theme/tokens"
+import styles from "./EmprestimosPage.module.css"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -25,362 +22,339 @@ const formatDate = (d?: string) =>
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-const emptyForm: CriarEmprestimo = {
-  descricao: "",
-  pessoa: "",
-  valorTotal: 0,
-  tipo: 1,
-  dataInicio: today(),
-  dataVencimento: undefined,
-  observacao: undefined,
+const parseMoney = (masked: string): number | undefined => {
+  const digits = masked.replace(/\D/g, "")
+  return digits ? Number(digits) / 100 : undefined
 }
+const fmtMoney = (n?: number): string =>
+  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
+
+const TIPOS = [
+  { value: "1", label: "Emprestei (vou receber)" },
+  { value: "2", label: "Peguei emprestado (vou pagar)" },
+]
+
+type FormState = {
+  descricao: string
+  pessoa: string
+  valorTotal?: number
+  tipo: string
+  dataInicio: string
+  dataVencimento: string
+  observacao: string
+}
+const emptyForm: FormState = {
+  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
+  dataInicio: today(), dataVencimento: "", observacao: "",
+}
+type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal", string>>
+
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 export default function EmprestimosPage() {
+  const { notify } = useOutletContext<OutletContextType>()
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [valorPagamento, setValorPagamento] = useState("")
+  const [pagamentoFor, setPagamentoFor] = useState<string | null>(null)
+  const [valorPagamento, setValorPagamento] = useState<number | undefined>(undefined)
+  const [pagamentoErr, setPagamentoErr] = useState<string | undefined>(undefined)
+  const [quitarId, setQuitarId] = useState<string | null>(null)
+  const [delId, setDelId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState<CriarEmprestimo>(emptyForm)
-  const [erro, setErro] = useState("")
+  const [form, setForm] = useState<FormState>(emptyForm)
+  const [errors, setErrors] = useState<Errors>({})
 
-  const loadData = async () => {
-    const data = await getEmprestimos()
-    setEmprestimos(data)
-  }
+  const loadData = useCallback(async () => {
+    try {
+      setEmprestimos(await getEmprestimos())
+    } catch {
+      notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
+    }
+  }, [notify])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { void loadData() }, [loadData])
 
-  const openDialog = () => {
-    setForm(emptyForm)
-    setErro("")
-    setDialogOpen(true)
-  }
+  const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  const openCreate = () => { setForm(emptyForm); setErrors({}); setDialogOpen(true) }
 
   const handleSalvar = async () => {
-    setErro("")
-    if (!form.descricao || !form.pessoa || !form.valorTotal) {
-      setErro("Preencha todos os campos obrigatórios.")
+    const e: Errors = {}
+    if (!form.descricao.trim()) e.descricao = "Informe a descrição"
+    if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+    if (form.valorTotal == null) e.valorTotal = "Informe o valor"
+    else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
+    setErrors(e)
+    if (Object.keys(e).length) return
+
+    setLoading(true)
+    try {
+      const payload: CriarEmprestimo = {
+        descricao: form.descricao.trim(),
+        pessoa: form.pessoa.trim(),
+        valorTotal: form.valorTotal!,
+        tipo: Number(form.tipo),
+        dataInicio: new Date(form.dataInicio).toISOString(),
+        dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
+        observacao: form.observacao.trim() || undefined,
+      }
+      await createEmprestimo(payload)
+      notify({ open: true, message: "Empréstimo criado", severity: "success" })
+      setDialogOpen(false)
+      await loadData()
+    } catch {
+      notify({ open: true, message: "Erro ao criar empréstimo", severity: "error" })
+    } finally { setLoading(false) }
+  }
+
+  const handlePagamento = async () => {
+    if (!pagamentoFor) return
+    if (valorPagamento == null || valorPagamento <= 0) {
+      setPagamentoErr("Informe um valor maior que zero")
       return
     }
     setLoading(true)
     try {
-      await createEmprestimo({
-        ...form,
-        valorTotal: Number(form.valorTotal),
-        dataInicio: new Date(form.dataInicio).toISOString(),
-        dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
-      })
-      setDialogOpen(false)
+      await registrarPagamento(pagamentoFor, valorPagamento)
+      notify({ open: true, message: "Pagamento registrado", severity: "success" })
+      setPagamentoFor(null); setValorPagamento(undefined); setPagamentoErr(undefined)
       await loadData()
     } catch {
-      setErro("Erro ao criar empréstimo.")
-    } finally {
-      setLoading(false)
-    }
+      notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
+    } finally { setLoading(false) }
   }
 
-  const handlePagamento = async () => {
-    if (!selectedId || !valorPagamento) return
-    setLoading(true)
+  const handleQuitar = async () => {
+    if (!quitarId) return
     try {
-      await registrarPagamento(selectedId, Number(valorPagamento))
-      setPagamentoDialogOpen(false)
-      setValorPagamento("")
-      setSelectedId(null)
+      await quitarEmprestimo(quitarId)
+      notify({ open: true, message: "Empréstimo quitado", severity: "success" })
       await loadData()
-    } finally {
-      setLoading(false)
-    }
+    } catch {
+      notify({ open: true, message: "Erro ao quitar empréstimo", severity: "error" })
+    } finally { setQuitarId(null) }
   }
 
-  const handleQuitar = async (id: string) => {
-    if (!confirm("Marcar empréstimo como quitado?")) return
-    await quitarEmprestimo(id)
-    await loadData()
+  const handleDelete = async () => {
+    if (!delId) return
+    try {
+      await deleteEmprestimo(delId)
+      notify({ open: true, message: "Empréstimo removido", severity: "success" })
+      await loadData()
+    } catch {
+      notify({ open: true, message: "Erro ao remover empréstimo", severity: "error" })
+    } finally { setDelId(null) }
   }
 
-  const handleDeletar = async (id: string) => {
-    if (!confirm("Remover este empréstimo? Esta ação não pode ser desfeita.")) return
-    await deleteEmprestimo(id)
-    await loadData()
-  }
-
-  const ativos = emprestimos.filter(e => !e.quitado)
-  const totalAReceber = ativos
-    .filter(e => e.tipo === 1)
-    .reduce((s, e) => s + e.valorRestante, 0)
-  const totalAPagar = ativos
-    .filter(e => e.tipo === 2)
-    .reduce((s, e) => s + e.valorRestante, 0)
+  const ativos = emprestimos.filter((e) => !e.quitado)
+  const totalAReceber = ativos.filter((e) => e.tipo === 1).reduce((s, e) => s + e.valorRestante, 0)
+  const totalAPagar = ativos.filter((e) => e.tipo === 2).reduce((s, e) => s + e.valorRestante, 0)
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box>
-          <Typography fontSize={22} fontWeight={700} color={tokens.color.text.primary}>Empréstimos</Typography>
-          <Typography fontSize={13} color={tokens.color.text.secondary}>Controle de dinheiro emprestado e recebido</Typography>
-        </Box>
-        <CustomButton variant="primary" size="small" startIcon={<AddIcon />} onClick={openDialog}>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Empréstimos</h1>
+          <div className={styles.subtitle}>Controle de dinheiro emprestado e recebido</div>
+        </div>
+        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Empréstimo
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
-      {/* Stats */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 2 }}>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>A receber</Typography>
-          <Typography fontSize={22} fontWeight={800} color={tokens.color.status.success.dark}>{formatMoney(totalAReceber)}</Typography>
-          <Typography fontSize={11} color={tokens.color.text.secondary}>dinheiro que emprestei</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>A pagar</Typography>
-          <Typography fontSize={22} fontWeight={800} color={tokens.color.status.error.main}>{formatMoney(totalAPagar)}</Typography>
-          <Typography fontSize={11} color={tokens.color.text.secondary}>dinheiro que peguei emprestado</Typography>
-        </Paper>
-        <Paper elevation={0} sx={{ p: 2.5, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.text.secondary} mb={0.5}>Ativos</Typography>
-          <Typography fontSize={26} fontWeight={800} color={tokens.color.text.primary}>{ativos.length}</Typography>
-        </Paper>
-      </Box>
+      <div className={styles.statsGrid}>
+        <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
+        <PontesStatCard label="A pagar" value={formatMoney(totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
+        <PontesStatCard label="Ativos" value={String(ativos.length)} hint="empréstimos em andamento" />
+      </div>
 
-      {/* Lista */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Seus Empréstimos</Typography>
-        </Box>
+      <PontesCard padding={0} radius={16}>
+        <div className={styles.listHead}>
+          <span className={styles.listHeadTitle}>Seus empréstimos</span>
+          <span className={styles.listHeadMeta}>{emprestimos.length} {emprestimos.length === 1 ? "registrado" : "registrados"}</span>
+        </div>
 
         {emprestimos.length === 0 ? (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <HandshakeOutlinedIcon sx={{ fontSize: 40, color: tokens.color.text.disabled, mb: 1 }} />
-            <Typography fontSize={14} color={tokens.color.text.secondary}>Nenhum empréstimo cadastrado</Typography>
-            <Typography fontSize={13} color={tokens.color.text.secondary}>Registre dinheiro emprestado ou que você tomou emprestado</Typography>
-          </Box>
+          <div className={styles.emptyWrap}>
+            <PontesEmptyState
+              icon={<Handshake size={28} />}
+              title="Nenhum empréstimo cadastrado"
+              description="Registre dinheiro que você emprestou ou que tomou emprestado."
+            />
+          </div>
         ) : (
-          emprestimos.map((e, i) => {
-            const isEmprestei = e.tipo === 1
-            return (
-              <Box
-                key={e.id}
-                sx={{
-                  px: 3, py: 2,
-                  borderBottom: i < emprestimos.length - 1 ? 1 : 0, borderColor: tokens.color.border.default,
-                  opacity: e.quitado ? 0.55 : 1,
-                  "&:hover": { bgcolor: tokens.color.background.hover }, transition: "background 0.15s",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
-                  {/* Left */}
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, minWidth: 0, flex: 1 }}>
-                    <Box sx={{
-                      width: 36, height: 36, borderRadius: tokens.radius.md, flexShrink: 0, mt: 0.3,
-                      bgcolor: isEmprestei ? tokens.color.status.success.light : tokens.color.status.error.light,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {isEmprestei
-                        ? <TrendingUpIcon sx={{ fontSize: 18, color: tokens.color.status.success.main }} />
-                        : <TrendingDownIcon sx={{ fontSize: 18, color: tokens.color.status.error.main }} />
-                      }
-                    </Box>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                        <Typography fontWeight={600} fontSize={14}>{e.descricao}</Typography>
-                        {e.quitado && (
-                          <Chip label="Quitado" size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.success.light, color: tokens.color.status.success.dark }} />
-                        )}
-                        {e.vencido && (
-                          <Chip label="Vencido" size="small" sx={{ fontSize: 11, height: 18, bgcolor: tokens.color.status.error.light, color: tokens.color.status.error.main }} />
-                        )}
-                      </Box>
-                      <Typography fontSize={12} color={tokens.color.text.secondary} mt={0.2}>
-                        {isEmprestei ? "Para:" : "De:"} <strong>{e.pessoa}</strong>
+          <ul className={styles.list}>
+            {emprestimos.map((e) => {
+              const isEmprestei = e.tipo === 1
+              return (
+                <li key={e.id} className={styles.item} data-quitado={e.quitado ? "true" : undefined}>
+                  <div className={styles.itemLeft}>
+                    <div className={styles.itemIcon} data-tone={isEmprestei ? "success" : "danger"}>
+                      {isEmprestei ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                    </div>
+                    <div className={styles.itemMeta}>
+                      <div className={styles.itemHead}>
+                        <span className={styles.itemDesc}>{e.descricao}</span>
+                        {e.quitado && <PontesBadge tone="success" size="sm">Quitado</PontesBadge>}
+                        {e.vencido && !e.quitado && <PontesBadge tone="danger" size="sm">Vencido</PontesBadge>}
+                      </div>
+                      <span className={styles.itemSub}>
+                        {isEmprestei ? "Para: " : "De: "}
+                        <strong>{e.pessoa}</strong>
                         {e.dataVencimento && ` · vence ${formatDate(e.dataVencimento)}`}
-                      </Typography>
-                      {/* Progress bar */}
+                      </span>
                       {!e.quitado && (
-                        <Box sx={{ mt: 1, maxWidth: 280 }}>
-                          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.3 }}>
-                            <Typography fontSize={11} color={tokens.color.text.secondary}>
-                              {formatMoney(e.valorPago)} pago de {formatMoney(e.valorTotal)}
-                            </Typography>
-                            <Typography fontSize={11} color={tokens.color.text.secondary} fontWeight={tokens.typography.fontWeight.bold}>
-                              {e.percentualPago}%
-                            </Typography>
-                          </Box>
-                          <LinearProgress
-                            variant="determinate"
-                            value={e.percentualPago}
-                            sx={{
-                              height: 5, borderRadius: 3,
-                              bgcolor: tokens.color.background.hover,
-                              "& .MuiLinearProgress-bar": { bgcolor: isEmprestei ? tokens.color.status.success.main : tokens.color.status.error.main, borderRadius: 3 },
-                            }}
-                          />
-                        </Box>
+                        <div className={styles.progressWrap}>
+                          <div className={styles.progressMeta}>
+                            <span>{formatMoney(e.valorPago)} pago de {formatMoney(e.valorTotal)}</span>
+                            <span className={styles.progressPct}>{e.percentualPago}%</span>
+                          </div>
+                          <div className={styles.bar}>
+                            <div className={styles.barFill} data-tone={isEmprestei ? "success" : "danger"} style={{ width: `${e.percentualPago}%` }} />
+                          </div>
+                        </div>
                       )}
-                    </Box>
-                  </Box>
+                    </div>
+                  </div>
 
-                  {/* Right */}
-                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0 }}>
-                    <Typography fontWeight={700} fontSize={15} color={isEmprestei ? tokens.color.status.success.main : tokens.color.status.error.main}>
+                  <div className={styles.itemRight}>
+                    <span className={styles.itemValue} data-tone={isEmprestei ? "success" : "danger"}>
                       {formatMoney(e.valorRestante)}
-                    </Typography>
-                    <Typography fontSize={11} color={tokens.color.text.secondary}>restante</Typography>
-                    {!e.quitado && (
-                      <Box sx={{ display: "flex", gap: 0.5 }}>
-                        <IconButton
-                          size="small"
-                          title="Registrar pagamento"
-                          onClick={() => { setSelectedId(e.id); setValorPagamento(""); setPagamentoDialogOpen(true) }}
-                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.brand.primary } }}
-                        >
-                          <PaidOutlinedIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          title="Marcar como quitado"
-                          onClick={() => handleQuitar(e.id)}
-                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.success.main } }}
-                        >
-                          <HandshakeOutlinedIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeletar(e.id)}
-                          sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    )}
-                    {e.quitado && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeletar(e.id)}
-                        sx={{ color: tokens.color.text.secondary, "&:hover": { color: tokens.color.status.error.main } }}
-                      >
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            )
-          })
+                    </span>
+                    <span className={styles.itemValueLabel}>restante</span>
+                    <div className={styles.actions}>
+                      {!e.quitado && (
+                        <>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Registrar pagamento"
+                            onClick={() => { setPagamentoFor(e.id); setValorPagamento(undefined); setPagamentoErr(undefined) }}>
+                            <DollarSign size={14} />
+                          </PontesIconButton>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Marcar como quitado"
+                            onClick={() => setQuitarId(e.id)}>
+                            <Handshake size={14} />
+                          </PontesIconButton>
+                        </>
+                      )}
+                      <PontesIconButton size={32} variant="ghost" aria-label="Remover"
+                        onClick={() => setDelId(e.id)}>
+                        <Trash2 size={14} />
+                      </PontesIconButton>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         )}
-      </Paper>
+      </PontesCard>
 
-      {/* Dialog: Novo Empréstimo */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>Novo Empréstimo</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
+      {/* Modal: Novo empréstimo */}
+      <PontesModal
+        open={dialogOpen}
+        title="Novo empréstimo"
+        onClose={() => setDialogOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvar} loading={loading} disabled={loading}>Criar empréstimo</PontesButton>
+        </>}
+      >
+        <form noValidate onSubmit={(e) => { e.preventDefault(); void handleSalvar() }} className={styles.formCol}>
+          <PontesField label="Tipo" required>
+            <PontesSelect value={form.tipo} onChange={(v) => setF("tipo", v)} options={TIPOS} />
+          </PontesField>
 
-          <FormControl size="small" fullWidth>
-            <InputLabel>Tipo *</InputLabel>
-            <Select
-              value={form.tipo}
-              label="Tipo *"
-              onChange={(e) => setForm(f => ({ ...f, tipo: Number(e.target.value) }))}
-            >
-              <MuiMenuItem value={1}>Emprestei (vou receber)</MuiMenuItem>
-              <MuiMenuItem value={2}>Peguei emprestado (vou pagar)</MuiMenuItem>
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Descrição *"
-            size="small"
-            fullWidth
-            value={form.descricao}
-            onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))}
-            placeholder="Ex: Empréstimo para viagem"
-          />
-
-          <TextField
-            label={form.tipo === 1 ? "Para quem emprestei *" : "De quem peguei *"}
-            size="small"
-            fullWidth
-            value={form.pessoa}
-            onChange={(e) => setForm(f => ({ ...f, pessoa: e.target.value }))}
-            placeholder="Nome da pessoa"
-          />
-
-          <TextField
-            label="Valor *"
-            size="small"
-            type="number"
-            fullWidth
-            value={form.valorTotal || ""}
-            onChange={(e) => setForm(f => ({ ...f, valorTotal: Number(e.target.value) }))}
-            inputProps={{ min: 0.01, step: "0.01" }}
-          />
-
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <TextField
-              label="Data *"
-              type="date"
-              size="small"
-              fullWidth
-              value={form.dataInicio}
-              onChange={(e) => setForm(f => ({ ...f, dataInicio: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
+          <PontesField label="Descrição" required error={errors.descricao}>
+            <PontesInput
+              value={form.descricao}
+              onChange={(e) => { setF("descricao", e.target.value); clearErr("descricao") }}
+              invalid={!!errors.descricao}
+              placeholder="Ex: Empréstimo para viagem"
             />
-            <TextField
-              label="Vencimento"
-              type="date"
-              size="small"
-              fullWidth
-              value={form.dataVencimento ?? ""}
-              onChange={(e) => setForm(f => ({ ...f, dataVencimento: e.target.value || undefined }))}
-              InputLabelProps={{ shrink: true }}
+          </PontesField>
+
+          <PontesField label={form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={errors.pessoa}>
+            <PontesInput
+              value={form.pessoa}
+              onChange={(e) => { setF("pessoa", e.target.value); clearErr("pessoa") }}
+              invalid={!!errors.pessoa}
+              placeholder="Nome da pessoa"
             />
-          </Box>
+          </PontesField>
 
-          <TextField
-            label="Observação"
-            size="small"
-            fullWidth
-            multiline
-            rows={2}
-            value={form.observacao ?? ""}
-            onChange={(e) => setForm(f => ({ ...f, observacao: e.target.value || undefined }))}
-          />
+          <PontesField label="Valor" required error={errors.valorTotal}>
+            <PontesInput
+              iconStart="R$"
+              value={fmtMoney(form.valorTotal)}
+              onChange={(e) => { setF("valorTotal", parseMoney(e.target.value)); clearErr("valorTotal") }}
+              invalid={!!errors.valorTotal}
+              inputMode="decimal"
+              placeholder="0,00"
+            />
+          </PontesField>
 
-          {erro && <Typography fontSize={13} color={tokens.color.status.error.main}>{erro}</Typography>}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setDialogOpen(false)}>Cancelar</CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handleSalvar} disabled={loading}>
-            {loading ? "Salvando..." : "Criar Empréstimo"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
+          <div className={styles.grid2}>
+            <PontesField label="Data" required>
+              <PontesInput type="date" value={form.dataInicio} onChange={(e) => setF("dataInicio", e.target.value)} />
+            </PontesField>
+            <PontesField label="Vencimento" helper="Opcional">
+              <PontesInput type="date" value={form.dataVencimento} onChange={(e) => setF("dataVencimento", e.target.value)} />
+            </PontesField>
+          </div>
 
-      {/* Dialog: Registrar Pagamento */}
-      <Dialog open={pagamentoDialogOpen} onClose={() => setPagamentoDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>Registrar Pagamento</DialogTitle>
-        <DialogContent sx={{ pt: "12px !important" }}>
-          <TextField
-            label="Valor pago *"
-            type="number"
-            size="small"
-            fullWidth
-            value={valorPagamento}
-            onChange={(e) => setValorPagamento(e.target.value)}
-            inputProps={{ min: 0.01, step: "0.01" }}
-            autoFocus
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setPagamentoDialogOpen(false)}>Cancelar</CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handlePagamento} disabled={loading || !valorPagamento}>
-            {loading ? "Salvando..." : "Confirmar"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          <PontesField label="Observação" helper="Opcional">
+            <PontesTextarea
+              value={form.observacao}
+              onChange={(e) => setF("observacao", e.target.value)}
+              rows={2}
+            />
+          </PontesField>
+        </form>
+      </PontesModal>
+
+      {/* Modal: Registrar pagamento */}
+      <PontesModal
+        open={pagamentoFor !== null}
+        title="Registrar pagamento"
+        onClose={() => { setPagamentoFor(null); setPagamentoErr(undefined) }}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => { setPagamentoFor(null); setPagamentoErr(undefined) }}>Cancelar</PontesButton>
+          <PontesButton onClick={handlePagamento} loading={loading} disabled={loading}>Confirmar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="Valor pago" required error={pagamentoErr}>
+            <PontesInput
+              iconStart="R$"
+              value={fmtMoney(valorPagamento)}
+              onChange={(e) => { setValorPagamento(parseMoney(e.target.value)); setPagamentoErr(undefined) }}
+              invalid={!!pagamentoErr}
+              inputMode="decimal"
+              placeholder="0,00"
+              autoFocus
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      <PontesDialog
+        open={quitarId !== null}
+        title="Marcar como quitado?"
+        description="O empréstimo será fechado e não aceitará mais pagamentos."
+        confirmLabel="Quitar"
+        onConfirm={handleQuitar}
+        onCancel={() => setQuitarId(null)}
+      />
+
+      <PontesDialog
+        open={delId !== null}
+        title="Remover empréstimo?"
+        description="Esta ação não pode ser desfeita. Os pagamentos registrados serão excluídos junto."
+        confirmLabel="Remover"
+        onConfirm={handleDelete}
+        onCancel={() => setDelId(null)}
+      />
+    </div>
   )
 }
