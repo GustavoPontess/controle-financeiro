@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import React, { useCallback, useEffect, useState } from "react"
+import { useParams, useNavigate, useOutletContext } from "react-router-dom"
+import { ChevronLeft } from "lucide-react"
 import {
-  Box, Paper, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Card, CardContent, Button, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, FormControl, InputLabel, Select,
-  MenuItem as MuiMenuItem, LinearProgress, Chip,
-} from "@mui/material"
-import ArrowBackIcon from "@mui/icons-material/ArrowBack"
-import CustomButton from "../../components/CustomButton"
+  PontesButton, PontesCard, PontesBadge, PontesStatCard,
+  PontesModal, PontesField, PontesSelect, PontesTextarea,
+} from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getContas } from "../../services/contaService"
 import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
-import { tokens } from "../../theme/tokens"
+import styles from "./ParcelamentoDetalhePage.module.css"
 
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -26,21 +23,16 @@ const formatarMesAno = (data: string) => {
   return `${meses[parseInt(mes) - 1]}/${ano}`
 }
 
-const statusLabel: Record<number, string> = {
-  0: "Pendente",
-  1: "Paga",
-  2: "Cancelada",
-}
+const statusLabel: Record<number, string> = { 0: "Pendente", 1: "Paga", 2: "Cancelada" }
+const statusTone: Record<number, "warning" | "success" | "neutral"> = { 0: "warning", 1: "success", 2: "neutral" }
 
-const statusCor: Record<number, string> = {
-  0: tokens.color.status.warning.main,
-  1: tokens.color.status.success.main,
-  2: tokens.color.text.disabled,
-}
+type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 export default function ParcelamentoDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { notify } = useOutletContext<OutletContextType>()
   const [parcelamento, setParcelamento] = useState<ParcelamentoDetalhe | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,10 +42,11 @@ export default function ParcelamentoDetalhePage() {
   const [parcelaIdSelecionada, setParcelaIdSelecionada] = useState<string>("")
   const [contaSelecionada, setContaSelecionada] = useState<string>("")
   const [loadingPagar, setLoadingPagar] = useState(false)
-  const [erroPagar, setErroPagar] = useState("")
+  const [erroPagar, setErroPagar] = useState<string | undefined>(undefined)
 
   const [modalCancelar, setModalCancelar] = useState(false)
   const [motivo, setMotivo] = useState("")
+  const [motivoErr, setMotivoErr] = useState<string | undefined>(undefined)
   const [loadingCancelar, setLoadingCancelar] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -76,9 +69,8 @@ export default function ParcelamentoDetalhePage() {
   useEffect(() => { void loadData() }, [loadData])
 
   const handlePagar = async () => {
-    setErroPagar("")
-    if (!parcelaIdSelecionada || !contaSelecionada) {
-      setErroPagar("Selecione parcela e conta")
+    if (!contaSelecionada) {
+      setErroPagar("Selecione a conta de débito")
       return
     }
     setLoadingPagar(true)
@@ -88,267 +80,204 @@ export default function ParcelamentoDetalhePage() {
         dataPagamento: new Date().toISOString(),
         idempotencyKey: crypto.randomUUID(),
       })
+      notify({ open: true, message: "Parcela paga", severity: "success" })
       setModalPagar(false)
+      setErroPagar(undefined)
       await loadData()
     } catch {
-      setErroPagar("Erro ao pagar parcela")
+      notify({ open: true, message: "Erro ao pagar parcela", severity: "error" })
     } finally {
       setLoadingPagar(false)
     }
   }
 
   const handleCancelar = async () => {
-    if (!id || !motivo.trim()) {
-      alert("Preencha o motivo")
+    if (!id) return
+    if (!motivo.trim()) {
+      setMotivoErr("Informe o motivo do cancelamento")
       return
     }
-    if (!confirm("Confirmou? Esta ação não poderá ser desfeita.")) return
     setLoadingCancelar(true)
     try {
       await ParcelamentoService.cancelar(id, {
         motivo: motivo.trim(),
         idempotencyKey: crypto.randomUUID(),
       })
+      notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
       navigate("/parcelamentos")
     } catch {
-      alert("Erro ao cancelar parcelamento")
+      notify({ open: true, message: "Erro ao cancelar parcelamento", severity: "error" })
     } finally {
       setLoadingCancelar(false)
     }
   }
 
-  if (loading) return <Typography>Carregando...</Typography>
-  if (erro || !parcelamento) return <Typography color={tokens.color.status.error.main}>{erro || "Parcelamento não encontrado"}</Typography>
+  if (loading) return <div className={styles.muted}>Carregando…</div>
+  if (erro || !parcelamento) return <div className={styles.error}>{erro || "Parcelamento não encontrado"}</div>
 
   const percentual = (parcelamento.parcelasPagas / parcelamento.quantidadeParcelas) * 100
-  const parceLasRestantes = parcelamento.parcelas.filter(p => p.status === 0).length
+  const parcelasRestantes = parcelamento.parcelas.filter((p) => p.status === 0).length
+  const tipoLabel = parcelamento.tipo === 0 ? "Compra Parcelada" : "PIX Crédito"
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/parcelamentos")}
-          sx={{ textTransform: "none", color: tokens.color.text.secondary }}
-        >
-          Voltar
-        </Button>
-      </Box>
+    <div className={styles.root}>
+      <button type="button" className={styles.back} onClick={() => navigate("/parcelamentos")}>
+        <ChevronLeft size={16} /> Voltar
+      </button>
 
-      {/* Informações principais */}
-      <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-          <Box>
-            <Typography fontSize={26} fontWeight={700} color={tokens.color.text.primary}>{parcelamento.descricao}</Typography>
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}>
-              <Chip
-                label={parcelamento.tipo === 0 ? "Compra Parcelada" : "PIX Crédito"}
-                size="small"
-              />
-              <Typography fontSize={12} color={tokens.color.text.secondary}>
-                {parcelamento.quantidadeParcelas} parcelas
-              </Typography>
-            </Box>
-          </Box>
-          <Typography fontSize={24} fontWeight={700}>{formatMoney(parcelamento.valorOriginal)}</Typography>
-        </Box>
+      <PontesCard padding={24} radius={16}>
+        <div className={styles.headerRow}>
+          <div className={styles.headerLeft}>
+            <h1 className={styles.title}>{parcelamento.descricao}</h1>
+            <div className={styles.headerMeta}>
+              <PontesBadge tone="neutral" size="sm">{tipoLabel}</PontesBadge>
+              <span className={styles.muted}>{parcelamento.quantidadeParcelas} parcelas</span>
+            </div>
+          </div>
+          <div className={styles.headerRight}>{formatMoney(parcelamento.valorOriginal)}</div>
+        </div>
 
-        {/* Progress */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-            <Typography fontSize={13} color={tokens.color.text.secondary}>Progresso</Typography>
-            <Typography fontSize={13} fontWeight={tokens.typography.fontWeight.bold}>{percentual.toFixed(0)}%</Typography>
-          </Box>
-          <LinearProgress variant="determinate" value={percentual} sx={{ height: 8, borderRadius: tokens.radius.xs }} />
-        </Box>
+        <div className={styles.progressWrap}>
+          <div className={styles.progressMeta}>
+            <span>Progresso</span>
+            <span className={styles.progressPct}>{percentual.toFixed(0)}%</span>
+          </div>
+          <div className={styles.bar}>
+            <div className={styles.barFill} style={{ width: `${percentual}%` }} />
+          </div>
+        </div>
 
-        {/* Stats */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 2 }}>
-          <Card elevation={0} sx={{ bgcolor: tokens.color.background.hover, border: 1, borderColor: tokens.color.border.default }}>
-            <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-              <Typography fontSize={11} color={tokens.color.text.secondary} mb={0.5}>Valor Original</Typography>
-              <Typography fontSize={16} fontWeight={tokens.typography.fontWeight.bold}>{formatMoney(parcelamento.valorOriginal)}</Typography>
-            </CardContent>
-          </Card>
-          <Card elevation={0} sx={{ bgcolor: tokens.color.status.success.light, border: `1px solid ${tokens.color.status.success.main}` }}>
-            <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-              <Typography fontSize={11} color={tokens.color.status.success.dark} mb={0.5}>Pago</Typography>
-              <Typography fontSize={16} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.status.success.dark}>{formatMoney(parcelamento.valorPago)}</Typography>
-            </CardContent>
-          </Card>
-          <Card elevation={0} sx={{ bgcolor: tokens.color.status.error.light, border: `1px solid ${tokens.color.status.error.main}` }}>
-            <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-              <Typography fontSize={11} color={tokens.color.status.error.dark} mb={0.5}>Restante</Typography>
-              <Typography fontSize={16} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.status.error.main}>{formatMoney(parcelamento.valorRestante)}</Typography>
-            </CardContent>
-          </Card>
-        </Box>
-      </Paper>
+        <div className={styles.miniStats}>
+          <PontesStatCard label="Valor original" value={formatMoney(parcelamento.valorOriginal)} />
+          <PontesStatCard label="Pago" value={formatMoney(parcelamento.valorPago)} tone="success" />
+          <PontesStatCard label="Restante" value={formatMoney(parcelamento.valorRestante)} tone="danger" />
+        </div>
+      </PontesCard>
 
-      {/* Próxima parcela */}
       {parcelamento.proximaParcela && (
-        <Paper elevation={0} sx={{ p: 2.5, border: `2px solid ${tokens.color.status.info.main}`, bgcolor: tokens.color.status.info.light, borderRadius: tokens.radius.lg }}>
-          <Typography fontSize={12} color={tokens.color.status.info.dark} fontWeight={tokens.typography.fontWeight.bold} mb={1}>📅 PRÓXIMA PARCELA</Typography>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Box>
-              <Typography fontSize={14} color={tokens.color.status.info.dark} fontWeight={tokens.typography.fontWeight.bold}>
-                Fatura {formatarMesAno(parcelamento.proximaParcela.dataVencimento)}
-              </Typography>
-              <Typography fontSize={12} color={tokens.color.status.info.dark}>
-                {formatDate(parcelamento.proximaParcela.dataVencimento)}
-              </Typography>
-            </Box>
-            <Typography fontSize={18} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.status.info.dark}>
-              {formatMoney(parcelamento.proximaParcela.valor)}
-            </Typography>
-          </Box>
-        </Paper>
+        <PontesCard padding={20} radius={14}>
+          <div className={styles.proxima}>
+            <span className={styles.proximaLabel}>Próxima parcela</span>
+            <div className={styles.proximaBody}>
+              <div>
+                <div className={styles.proximaFatura}>Fatura {formatarMesAno(parcelamento.proximaParcela.dataVencimento)}</div>
+                <div className={styles.proximaData}>{formatDate(parcelamento.proximaParcela.dataVencimento)}</div>
+              </div>
+              <div className={styles.proximaValor}>{formatMoney(parcelamento.proximaParcela.valor)}</div>
+            </div>
+          </div>
+        </PontesCard>
       )}
 
-      {/* Tabela de parcelas */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: tokens.color.border.default, borderRadius: tokens.radius.lg, overflow: "hidden" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: tokens.color.border.default }}>
-          <Typography fontSize={15} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>Parcelas ({parcelamento.parcelas.length})</Typography>
-        </Box>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: tokens.color.background.hover }}>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Nº</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Fatura</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Vencimento</TableCell>
-                <TableCell align="right" sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Valor</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: tokens.typography.fontWeight.bold, fontSize: 12, color: tokens.color.text.secondary }}>Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+      <PontesCard padding={0} radius={14}>
+        <div className={styles.tableHead}>
+          <span>Parcelas ({parcelamento.parcelas.length})</span>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Nº</th>
+                <th>Fatura</th>
+                <th>Vencimento</th>
+                <th className={styles.alignRight}>Valor</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
               {parcelamento.parcelas.map((parcela, i) => (
-                <TableRow key={parcela.id} sx={{ borderBottom: 1, borderColor: tokens.color.border.default, "&:hover": { bgcolor: tokens.color.background.hover } }}>
-                  <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{i + 1}</TableCell>
-                  <TableCell sx={{ fontSize: 13 }}>
-                    {formatarMesAno(parcela.dataVencimento)}
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 13 }}>
-                    {formatDate(parcela.dataVencimento)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontSize: 13, fontWeight: 600 }}>
-                    {formatMoney(parcela.valor)}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={statusLabel[parcela.status] || parcela.status}
-                      size="small"
-                      sx={{
-                        bgcolor: statusCor[parcela.status] || "#f3f4f6",
-                        color: "#fff",
-                        fontSize: 11,
-                        fontWeight: 600,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 12 }}>
+                <tr key={parcela.id}>
+                  <td className={styles.cellBold}>{i + 1}</td>
+                  <td>{formatarMesAno(parcela.dataVencimento)}</td>
+                  <td>{formatDate(parcela.dataVencimento)}</td>
+                  <td className={styles.alignRight + " " + styles.cellBold}>{formatMoney(parcela.valor)}</td>
+                  <td>
+                    <PontesBadge tone={statusTone[parcela.status] ?? "neutral"} size="sm">
+                      {statusLabel[parcela.status] ?? String(parcela.status)}
+                    </PontesBadge>
+                  </td>
+                  <td>
                     {parcela.status === 0 && (
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setParcelaIdSelecionada(parcela.id)
-                          setModalPagar(true)
-                        }}
-                        sx={{ textTransform: "none", color: tokens.color.text.primary, "&:hover": { bgcolor: tokens.color.background.hover } }}
-                      >
+                      <PontesButton size="sm" variant="ghost"
+                        onClick={() => { setParcelaIdSelecionada(parcela.id); setModalPagar(true); setErroPagar(undefined) }}>
                         Pagar
-                      </Button>
+                      </PontesButton>
                     )}
                     {parcela.status === 1 && (
-                      <Typography fontSize={12} color={tokens.color.text.secondary}>{formatDate(parcela.pagoEm)}</Typography>
+                      <span className={styles.muted}>{formatDate(parcela.pagoEm)}</span>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+            </tbody>
+          </table>
+        </div>
+      </PontesCard>
 
-      {/* Ações */}
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <CustomButton variant="secondary" onClick={() => setModalCancelar(true)}>
+      <div className={styles.bottomActions}>
+        <PontesButton variant="danger-outline" onClick={() => { setMotivo(""); setMotivoErr(undefined); setModalCancelar(true) }}>
           Cancelar Parcelamento
-        </CustomButton>
-      </Box>
+        </PontesButton>
+      </div>
 
-      {/* Modal pagar */}
-      <Dialog open={modalPagar} onClose={() => setModalPagar(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Pagar Parcela Antecipado</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-          {parcelamento.parcelas.find(p => p.id === parcelaIdSelecionada) && (
-            <>
-              <Box>
-                <Typography fontSize={12} color="text.secondary" mb={0.5}>Valor</Typography>
-                <Typography fontSize={18} fontWeight={700}>
-                  {formatMoney(parcelamento.parcelas.find(p => p.id === parcelaIdSelecionada)?.valor || 0)}
-                </Typography>
-              </Box>
+      <PontesModal
+        open={modalPagar}
+        title="Pagar parcela antecipado"
+        onClose={() => setModalPagar(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setModalPagar(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handlePagar} loading={loadingPagar} disabled={loadingPagar}>Confirmar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <div className={styles.valorRow}>
+            <span className={styles.valorLabel}>Valor</span>
+            <span className={styles.valorValue}>
+              {formatMoney(parcelamento.parcelas.find((p) => p.id === parcelaIdSelecionada)?.valor ?? 0)}
+            </span>
+          </div>
+          <PontesField label="Pagar de" required error={erroPagar}>
+            <PontesSelect
+              value={contaSelecionada}
+              onChange={(v) => { setContaSelecionada(v); setErroPagar(undefined) }}
+              invalid={!!erroPagar}
+              placeholder="Selecione a conta"
+              options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
 
-              <FormControl size="small" fullWidth>
-                <InputLabel>Pagar de *</InputLabel>
-                <Select
-                  value={contaSelecionada}
-                  label="Pagar de *"
-                  onChange={(e) => setContaSelecionada(e.target.value)}
-                >
-                  {contas.map(c => (
-                    <MuiMenuItem key={c.id} value={c.id}>{c.nome}</MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {erroPagar && <Typography fontSize={13} color={tokens.color.status.error.main}>{erroPagar}</Typography>}
-            </>
+      <PontesModal
+        open={modalCancelar}
+        title="Cancelar parcelamento"
+        onClose={() => setModalCancelar(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setModalCancelar(false)}>Manter parcelamento</PontesButton>
+          <PontesButton onClick={handleCancelar} loading={loadingCancelar} disabled={loadingCancelar}>Cancelar parcelamento</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <p className={styles.cancelInfo}>
+            Você cancelará as <strong>{parcelasRestantes}</strong> parcelas pendentes.
+          </p>
+          {parcelamento.parcelasPagas > 0 && (
+            <p className={styles.cancelWarning}>
+              As {parcelamento.parcelasPagas} parcelas já pagas <strong>não serão reembolsadas automaticamente</strong>.
+            </p>
           )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setModalPagar(false)}>Cancelar</CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handlePagar} disabled={loadingPagar}>
-            {loadingPagar ? "Pagando..." : "Confirmar"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modal cancelar */}
-      <Dialog open={modalCancelar} onClose={() => setModalCancelar(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Cancelar Parcelamento</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-          <Typography fontSize={13}>
-            Você cancelará as {parceLasRestantes} parcelas que ainda não foram pagas.
-            {parcelamento.parcelasPagas > 0 && (
-              <Typography component="div" fontSize={13} color={tokens.color.status.error.main} sx={{ mt: 1 }}>
-                As {parcelamento.parcelasPagas} parcelas já pagas NÃO serão reembolsadas automaticamente.
-              </Typography>
-            )}
-          </Typography>
-          <TextField
-            label="Motivo do cancelamento *"
-            multiline
-            rows={3}
-            size="small"
-            fullWidth
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Ex: Não preciso mais, descida de preço, etc"
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <CustomButton variant="secondary" size="small" onClick={() => setModalCancelar(false)}>
-            Manter Parcelamento
-          </CustomButton>
-          <CustomButton variant="primary" size="small" onClick={handleCancelar} disabled={loadingCancelar}>
-            {loadingCancelar ? "Cancelando..." : "Cancelar Parcelamento"}
-          </CustomButton>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          <PontesField label="Motivo do cancelamento" required error={motivoErr}>
+            <PontesTextarea
+              value={motivo}
+              onChange={(e) => { setMotivo(e.target.value); setMotivoErr(undefined) }}
+              invalid={!!motivoErr}
+              rows={3}
+              placeholder="Ex: Não preciso mais, descida de preço…"
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+    </div>
   )
 }
