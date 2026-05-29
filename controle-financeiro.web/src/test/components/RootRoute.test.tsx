@@ -58,7 +58,7 @@ describe("RootRoute (#75)", () => {
   it("mostra spinner enquanto carrega estado de auth", () => {
     currentAuth = { isAuthenticated: false, isLoading: true }
     const { container } = renderRoot()
-    expect(container.querySelector(".MuiCircularProgress-root")).toBeTruthy()
+    expect(container.querySelector('[class*="wrap"], [class*="dot"]')).toBeTruthy()
     expect(screen.queryByTestId("home-page")).not.toBeInTheDocument()
   })
 })
