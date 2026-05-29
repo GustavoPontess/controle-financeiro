@@ -15,14 +15,16 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Eye, EyeOff, ChevronLeft, ChevronRight, Wallet,
-  ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock, type LucideIcon,
+  ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock,
+  Plus, CreditCard, ArrowLeftRight, Receipt,
+  TrendingUp, TrendingDown, type LucideIcon,
 } from "lucide-react"
 import {
   AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
 import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, usePontesTheme, semantic } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
-import type { DashboardData, SaldoConta, TransacaoRecente } from "../../types/Dashboard"
+import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
 import { useAuth } from "../../hooks/useAuth"
 import styles from "./DashboardPage.module.css"
 
@@ -95,6 +97,33 @@ export default function DashboardPage() {
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))
 
+  // Atalhos teclado globais — só quando foco NÃO está em input/textarea.
+  // N → Nova transação, T → /transactions, C → /credit-cards, ←/→ navega mês.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      switch (e.key.toLowerCase()) {
+        case "n":
+          // Dispara o modal global de Nova Transação (escutado pelo Shell).
+          window.dispatchEvent(new Event("openNewTransaction"))
+          e.preventDefault(); break
+        case "t":
+          navigate("/transactions"); e.preventDefault(); break
+        case "c":
+          navigate("/credit-cards"); e.preventDefault(); break
+        case "arrowleft":
+          prevMonth(); e.preventDefault(); break
+        case "arrowright":
+          nextMonth(); e.preventDefault(); break
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [navigate])
+
   return (
     <div className={styles.root}>
       {/* Saudação + olho */}
@@ -124,7 +153,15 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          <HeroBalance value={fmt(data.saldoTotal)} />
+          <HeroBalance
+            saldoTotal={data.saldoTotal}
+            saldoMesAnterior={data.saldoMesAnterior}
+            fmt={fmt}
+            hide={hide}
+          />
+
+          {/* Atalhos rápidos — 4 ações principais. Teclado em parens. */}
+          <QuickActions navigate={navigate} />
 
           {/* Seu mês — Entrou / Saiu / Sobrou (resposta de relance) */}
           <PontesCard padding={0} radius={18}>
@@ -241,6 +278,27 @@ export default function DashboardPage() {
               )}
             </PontesCard>
           </div>
+
+          {/* Cartões — top 3 por % limite usado, com próximo fechamento */}
+          {data.cartoesResumo.length > 0 && (
+            <PontesCard padding={24} radius={18}>
+              <div className={styles.contasHead}>
+                <div className={styles.contasTitle}>Seus cartões</div>
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() => navigate("/credit-cards")}
+                >
+                  Ver todos <ArrowRight size={14} strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className={styles.cartoesGrid}>
+                {data.cartoesResumo.map((c) => (
+                  <CartaoTile key={c.id} cartao={c} fmt={fmt} onClick={() => navigate("/credit-cards")} />
+                ))}
+              </div>
+            </PontesCard>
+          )}
 
           {/* Suas contas */}
           <PontesCard padding={24} radius={18}>
@@ -381,18 +439,135 @@ function MonthStat({ label, value, icon: Icon, tone, emphasis }: {
   )
 }
 
-function HeroBalance({ value }: { value: string }) {
+/**
+ * HeroBalance — saldo total + delta vs mês anterior.
+ *
+ * Delta é a história: "subiu R$ 850 (+3,2%)" é mais útil que só "R$ 27.430".
+ * Se saldoMesAnterior === 0 e atual !== 0, esconde %  (divisão estouraria).
+ * `hide` aplica máscara no delta também — coerência com toggle do olho.
+ */
+function HeroBalance({ saldoTotal, saldoMesAnterior, fmt, hide }: {
+  saldoTotal: number; saldoMesAnterior: number;
+  fmt: (v: number) => string; hide: boolean
+}) {
+  const delta = saldoTotal - saldoMesAnterior
+  const hasBaseline = Math.abs(saldoMesAnterior) > 0.005
+  const pct = hasBaseline ? (delta / Math.abs(saldoMesAnterior)) * 100 : null
+  const tone = delta >= 0 ? "up" : "down"
+  const TrendIcon = delta >= 0 ? TrendingUp : TrendingDown
   return (
     <div className={styles.hero}>
       <div className={styles.heroBlob} />
+      <div className={styles.heroBlob2} />
       <div className={styles.heroInner}>
         <div className={styles.heroLabel}>Saldo total</div>
-        <div className={styles.heroValue}>{value}</div>
-        <div className={styles.heroSub}>Soma de todas as contas</div>
+        <div className={styles.heroValue}>{fmt(saldoTotal)}</div>
+        {/* Delta — só renderiza se houve mês anterior com saldo */}
+        {hasBaseline && (
+          <div className={styles.heroDelta} data-tone={tone}>
+            <TrendIcon size={15} strokeWidth={2.5} />
+            <span>
+              {hide ? "•••• " : `${delta >= 0 ? "+" : ""}${fmt(delta)} `}
+              {pct !== null && (
+                <span className={styles.heroDeltaPct}>
+                  ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)
+                </span>
+              )}
+            </span>
+            <span className={styles.heroDeltaLabel}>vs mês anterior</span>
+          </div>
+        )}
+        {!hasBaseline && (
+          <div className={styles.heroSub}>Soma de todas as contas</div>
+        )}
       </div>
       <div className={styles.heroIcon}>
         <Wallet size={26} strokeWidth={2} />
       </div>
     </div>
+  )
+}
+
+/**
+ * QuickActions — 4 atalhos horizontais. Cada um tem hover, ícone, label
+ * e dica de teclado (kbd). Específicos do dashboard.
+ *
+ * "Nova transação" dispara evento global `openNewTransaction` que o Shell
+ * já escuta pra abrir o modal (mesma porta de N do teclado).
+ */
+function QuickActions({ navigate }: { navigate: (to: string) => void }) {
+  const items: { icon: LucideIcon; label: string; kbd: string; action: () => void }[] = [
+    { icon: Plus, label: "Nova transação", kbd: "N", action: () => window.dispatchEvent(new Event("openNewTransaction")) },
+    { icon: Receipt, label: "Transações", kbd: "T", action: () => navigate("/transactions") },
+    { icon: CreditCard, label: "Cartões", kbd: "C", action: () => navigate("/credit-cards") },
+    { icon: ArrowLeftRight, label: "Transferir", kbd: "", action: () => navigate("/transfers") },
+  ]
+  return (
+    <div className={styles.quickActions}>
+      {items.map((it) => (
+        <button
+          key={it.label}
+          type="button"
+          onClick={it.action}
+          className={styles.quickAction}
+        >
+          <span className={styles.quickActionIcon}>
+            <it.icon size={18} strokeWidth={2.4} />
+          </span>
+          <span className={styles.quickActionLabel}>{it.label}</span>
+          {it.kbd && <span className={styles.quickActionKbd}>{it.kbd}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * CartaoTile — resumo de UM cartão (top 3 do dashboard).
+ * Limite usado em barra + status do próximo fechamento.
+ * Cor da barra varia com % usado (safe/warning/danger) — sinal visual rápido.
+ */
+function CartaoTile({ cartao, fmt, onClick }: {
+  cartao: CartaoResumo; fmt: (v: number) => string; onClick: () => void
+}) {
+  const pct = Math.max(0, Math.min(100, cartao.percentualUsado))
+  // Pressão: <60 ok, 60-85 atenção, >85 perigo. Não-linear porque user só sente
+  // dor quando passa de 80%.
+  const tone = pct >= 85 ? "danger" : pct >= 60 ? "warning" : "ok"
+  const dias = cartao.diasAteFechamento
+  const fechaLabel =
+    dias == null ? null :
+      dias === 0 ? "fecha hoje" :
+        dias === 1 ? "fecha amanhã" :
+          dias > 0 ? `fecha em ${dias} dias` :
+            `fechou há ${Math.abs(dias)}d`
+  const fechaUrgente = dias != null && dias >= 0 && dias <= 5
+  return (
+    <button type="button" onClick={onClick} className={styles.cartaoTile}>
+      <div className={styles.cartaoHead}>
+        <PontesBankBadge
+          name={cartao.bancoNome ?? cartao.nome}
+          logoUrl={cartao.bancoLogoUrl ?? undefined}
+          cor={cartao.bancoCor ?? undefined}
+          size={36}
+        />
+        <div className={styles.cartaoInfo}>
+          <div className={styles.cartaoNome}>{cartao.nome}</div>
+          <div className={styles.cartaoBanco}>{cartao.bancoNome ?? "Cartão"}</div>
+        </div>
+        <span className={styles.cartaoPct} data-tone={tone}>{pct.toFixed(0)}%</span>
+      </div>
+      <div className={styles.cartaoBar} data-tone={tone}>
+        <div className={styles.cartaoBarFill} data-tone={tone} style={{ width: `${pct}%` }} />
+      </div>
+      <div className={styles.cartaoFoot}>
+        <span>{fmt(cartao.limiteUsado)} <span className={styles.cartaoMuted}>de {fmt(cartao.limiteTotal)}</span></span>
+        {fechaLabel && (
+          <span className={styles.cartaoFecha} data-urgent={fechaUrgente}>
+            {fechaLabel}
+          </span>
+        )}
+      </div>
+    </button>
   )
 }
