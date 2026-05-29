@@ -111,13 +111,115 @@
 
 /* Hero */
 .hero {
-  position: relative; overflow: hidden; border-radius: 18px; padding: 32px; color: var(--pontes-hero-fg);
+  position: relative; overflow: hidden; border-radius: 20px; padding: 32px; color: var(--pontes-hero-fg);
   background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
-  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-.heroBlob { position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); }
-.heroInner { position: relative; }
+.heroBlob { position: absolute; right: -40px; top: -40px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+.heroBlob2 { position: absolute; left: -60px; bottom: -80px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); pointer-events: none; }
+.heroInner { position: relative; min-width: 0; flex: 1; }
 .heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-.heroValue { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px; }
-.heroSub { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+.heroValue { font-size: 42px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+.heroDelta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+  font-size: 14px; font-weight: 600; flex-wrap: wrap;
+}
+.heroDelta[data-tone="up"] { color: #BBF7D0; }
+.heroDelta[data-tone="down"] { color: #FECACA; }
+.heroDeltaPct { opacity: 0.85; font-weight: 500; }
+.heroDeltaLabel { opacity: 0.6; font-weight: 400; font-size: 12px; }
 .heroIcon { position: relative; width: 56px; height: 56px; border-radius: 14px; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* QuickActions */
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.quickAction {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--pontes-surface);
+  border: 1px solid var(--pontes-border);
+  border-radius: 14px;
+  cursor: pointer; font-family: var(--pontes-font);
+  text-align: left;
+  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1), border-color 160ms, background 160ms;
+}
+.quickAction:hover {
+  border-color: var(--pontes-primary);
+  background: var(--pontes-primary-soft);
+  transform: translateY(-2px);
+}
+.quickActionIcon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--pontes-primary-soft); color: var(--pontes-primary);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.quickAction:hover .quickActionIcon { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
+.quickActionLabel { flex: 1; font-size: 14px; font-weight: 600; color: var(--pontes-text); }
+.quickActionKbd {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 7px; border-radius: 5px;
+  background: var(--pontes-bg); border: 1px solid var(--pontes-border);
+  color: var(--pontes-text-muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Linha "Ver todos →" reusada por Cartões + outras seções com link */
+.linkBtn {
+  background: transparent; border: none; cursor: pointer;
+  font-family: var(--pontes-font); font-size: 13px; font-weight: 600;
+  color: var(--pontes-primary);
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 6px;
+  transition: background-color 120ms ease;
+}
+.linkBtn:hover { background: var(--pontes-primary-soft); }
+
+/* Cartões — grid */
+.cartoesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.cartaoTile {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--pontes-border);
+  border-radius: 14px;
+  background: var(--pontes-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--pontes-font);
+  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1), border-color 160ms, background 160ms;
+}
+.cartaoTile:hover {
+  transform: translateY(-2px);
+  border-color: var(--pontes-primary);
+  background: var(--pontes-primary-soft);
+}
+.cartaoHead { display: flex; align-items: center; gap: 12px; }
+.cartaoInfo { flex: 1; min-width: 0; }
+.cartaoNome { font-size: 14px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cartaoBanco { font-size: 12px; color: var(--pontes-text-muted); }
+.cartaoPct {
+  font-size: 14px; font-weight: 800;
+  padding: 4px 8px; border-radius: 7px;
+}
+.cartaoPct[data-tone="ok"] { color: var(--pontes-success); background: var(--pontes-success-soft); }
+.cartaoPct[data-tone="warning"] { color: var(--pontes-warning); background: var(--pontes-warning-soft); }
+.cartaoPct[data-tone="danger"] { color: var(--pontes-danger); background: var(--pontes-danger-soft); }
+.cartaoBar { width: 100%; height: 8px; border-radius: 999px; background: var(--pontes-border); overflow: hidden; }
+.cartaoBarFill { height: 100%; border-radius: 999px; transition: width 240ms ease; }
+.cartaoBarFill[data-tone="ok"] { background: var(--pontes-success); }
+.cartaoBarFill[data-tone="warning"] { background: var(--pontes-warning); }
+.cartaoBarFill[data-tone="danger"] { background: var(--pontes-danger); }
+.cartaoFoot {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 600; color: var(--pontes-text); flex-wrap: wrap; gap: 6px;
+}
+.cartaoMuted { font-weight: 500; color: var(--pontes-text-muted); }
+.cartaoFecha { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
+.cartaoFecha[data-urgent="true"] { color: var(--pontes-warning); }
