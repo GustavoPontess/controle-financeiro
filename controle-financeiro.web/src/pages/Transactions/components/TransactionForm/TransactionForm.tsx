@@ -4,10 +4,10 @@ import {
   PontesButton, PontesToggle, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
   PontesChoiceCards, PontesGroupedSelect,
 } from "@/components/pontes"
-import type { Category } from "../../../types/Category"
-import type { Subcategory } from "../../../types/Subcategory"
-import type { Conta } from "../../../types/Conta"
-import type { CartaoCredito } from "../../../types/CartaoCredito"
+import type { Category } from "../../../../types/Category"
+import type { Subcategory } from "../../../../types/Subcategory"
+import type { Conta } from "../../../../types/Conta"
+import type { CartaoCredito } from "../../../../types/CartaoCredito"
 import styles from "./TransactionForm.module.css"
 
 const MEIOS_PAGAMENTO = [

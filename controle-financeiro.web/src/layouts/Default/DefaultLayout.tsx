@@ -17,7 +17,7 @@ import styles from "./DefaultLayout.module.css"
 
 import Navbar from "../../components/Navbar/Navbar"
 import Sidebar from "../../components/Sidebar/Sidebar"
-import NewTransactionDialog from "../../components/transactions/NewTransactionDialog/NewTransactionDialog"
+import NewTransactionDialog from "../../pages/Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
 import { getCategories } from "../../services/categoryService"
