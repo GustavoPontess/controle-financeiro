@@ -1,11 +1,17 @@
 ---
 owner: Caio
 last_reviewed: 2026-05-28
-status: LIVRE
-issue_atual: 'nenhuma — #89 Recorrentes (PR #145) aguardando review. Próxima livre: #88 Bancos, #85 Família.'
+status: EM PROGRESSO
+issue_atual: '#88 Bancos com logo real — branch feature/88-bancos-logo-real'
 ---
 
-## Última issue concluída — #89 (Recorrentes refator + cancelar/editar próxima) ✅ PR ABERTO
+## Issue em execução — #88 (Bancos com logo real + PontesBankBadge) ⏳ PR ABERTO
+
+Branch `feature/88-bancos-logo-real`. Frontend only (sem backend). `PontesBankBadge` novo componente em `src/components/pontes/data/BankBadge.tsx` + `BankBadge.module.css` — círculo colorido com img real do banco (Google favicon sz=128) + fallback de iniciais (onError). Exportado no barrel `index.ts`. `AccountsPage.tsx` refatorado MUI→Pontes: zero Box/Paper/Typography/Chip/tokens.ts/CustomButton, CSS Modules `AccountsPage.module.css`, `PontesBankBadge` para cada conta (pega banco.logoUrl + banco.cor), `PontesDialog` para confirmação de exclusão (remove window.confirm), saldo via `conta.saldoAtual` (remove getTransactions). `DashboardPage.AccountTile` boy-scout: substituiu inline img+onError+imgErr state por `PontesBankBadge`. `BancosPage.tsx` refatorado (página separada, não está no router mas útil para futuro). 13 testes AccountsPage + 12 testes BancosPage → 249/249 frontend verde. 209/209 backend inalterado.
+
+## Última issue mergeada — #89 (Recorrentes refator + cancelar/editar próxima) ✅ PR #145 MERGEADO
+
+PR #145 — branch `feat/89-recorrentes-refactor`. Backend: `EditarProximaOcorrenciaDto`, endpoint `POST /{id}/cancelar` (motivo obrigatório, soft-delete recorrente + cancela Previsoes), endpoint `PATCH /{id}/proxima` (edita primeiro Previsao). Fix exception types em todos os métodos (KeyNotFoundException/UnauthorizedAccessException/ArgumentException). 18 novos testes backend → 209/209. Frontend: refactor completo MUI→Pontes + CSS Modules (zero Box/Paper/Typography/Dialog/tokens.ts/CustomButton), 3 stat cards (Ativas/Custo mensal/Próximas 30 dias), modais Cancelar (validação motivo obrigatório) e Editar próxima (valor/descrição opcionais). Fix parseMoneyString para aceitar formato BR "45,90" e "1.234,56". Update types (canceladoEm/motivoCancelamento/EditarProximaDto) e service (cancelarRecorrente/editarProximaOcorrencia). 16 novos testes frontend → 224/224.
 
 PR #145 — branch `feat/89-recorrentes-refactor`. Backend: `EditarProximaOcorrenciaDto`, endpoint `POST /{id}/cancelar` (motivo obrigatório, soft-delete recorrente + cancela Previsoes), endpoint `PATCH /{id}/proxima` (edita primeiro Previsao). Fix exception types em todos os métodos (KeyNotFoundException/UnauthorizedAccessException/ArgumentException). 18 novos testes backend → 209/209. Frontend: refactor completo MUI→Pontes + CSS Modules (zero Box/Paper/Typography/Dialog/tokens.ts/CustomButton), 3 stat cards (Ativas/Custo mensal/Próximas 30 dias), modais Cancelar (validação motivo obrigatório) e Editar próxima (valor/descrição opcionais). Fix parseMoneyString para aceitar formato BR "45,90" e "1.234,56". Update types (canceladoEm/motivoCancelamento/EditarProximaDto) e service (cancelarRecorrente/editarProximaOcorrencia). 16 novos testes frontend → 224/224.
 
