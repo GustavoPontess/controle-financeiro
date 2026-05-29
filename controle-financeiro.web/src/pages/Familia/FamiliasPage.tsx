@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Users, UserPlus, Trash2, Pencil, Wallet, ArrowRight, Heart } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesEmptyState, PontesLoadingDots,
 } from "@/components/pontes"
 import {
@@ -760,10 +760,9 @@ export default function FamiliasPage() {
             />
           </PontesField>
           <PontesField label="Data de nascimento (opcional)">
-            <PontesInput
-              type="date"
+            <PontesDateInput
               value={depNascimento}
-              onChange={e => setDepNascimento(e.target.value)}
+              onChange={(v) => setDepNascimento(v)}
             />
           </PontesField>
           <PontesField label="Tipo">

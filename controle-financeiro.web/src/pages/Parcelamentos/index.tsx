@@ -3,7 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect, PontesEmptyState,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getCartoes } from "../../services/cartaoCreditoService"
@@ -280,7 +280,7 @@ export default function ParcelamentosPage() {
 
           <div className={styles.grid2}>
             <PontesField label="Data da compra" required>
-              <PontesInput type="date" value={form.dataCompra} onChange={(e) => setF("dataCompra", e.target.value)} />
+              <PontesDateInput value={form.dataCompra} onChange={(v) => setF("dataCompra", v)} />
             </PontesField>
             <PontesField label="Primeira parcela (mês)" required>
               <PontesInput type="month" value={form.primeiraParcelaMes} onChange={(e) => setF("primeiraParcelaMes", e.target.value)} />

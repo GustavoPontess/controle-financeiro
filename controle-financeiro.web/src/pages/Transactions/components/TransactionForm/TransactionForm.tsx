@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { TrendingDown, TrendingUp, ArrowLeftRight } from "lucide-react"
 import {
-  PontesButton, PontesToggle, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
+  PontesButton, PontesToggle, PontesField, PontesInput, PontesDateInput, PontesMoneyInput, PontesSelect,
   PontesChoiceCards, PontesGroupedSelect,
 } from "@/components/pontes"
 import type { Category } from "../../../../types/Category"
@@ -228,7 +228,7 @@ export default function TransactionForm({
             </PontesField>
           </div>
           <PontesField label="Data" required>
-            <PontesInput type="date" value={form.data} max={dateMax} onChange={(e) => set("data", e.target.value)} required />
+            <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
           </PontesField>
         </>
       ) : (
@@ -237,7 +237,7 @@ export default function TransactionForm({
           {/* Data + Meio de pagamento */}
           <div className={styles.grid2}>
             <PontesField label={isRecorrente ? "Início" : "Data"} required>
-              <PontesInput type="date" value={form.data} max={dateMax} onChange={(e) => set("data", e.target.value)} required />
+              <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
             </PontesField>
             <PontesField label="Meio de pagamento">
               <PontesSelect
@@ -305,7 +305,7 @@ export default function TransactionForm({
                     <PontesSelect value={String(form.frequencia)} onChange={(v) => set("frequencia", Number(v))} options={FREQ_OPTS} />
                   </PontesField>
                   <PontesField label="Repetir até (opcional)">
-                    <PontesInput type="date" value={form.dataFim} min={form.data} onChange={(e) => set("dataFim", e.target.value)} />
+                    <PontesDateInput value={form.dataFim} min={form.data} onChange={(v) => set("dataFim", v)} />
                   </PontesField>
                 </div>
               )}

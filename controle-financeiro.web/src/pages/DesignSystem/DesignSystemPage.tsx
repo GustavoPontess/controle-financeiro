@@ -25,7 +25,7 @@ import {
   // form
   PontesField, PontesInput, PontesMoneyInput, PontesTextarea,
   PontesSelect, PontesGroupedSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
-  PontesOtpInput, PontesSlider, PontesDatePicker, PontesFileDrop,
+  PontesOtpInput, PontesSlider, PontesDatePicker, PontesDateInput, PontesFileDrop,
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
@@ -452,8 +452,22 @@ function FormSection({ p }: { p: Palette }) {
         />
       </Group>
 
-      <Group title="Date picker">
+      <Group title="Date picker (inline) — agenda/visualização">
         <PontesDatePicker value={date} onChange={setDate} events={[new Date(2026, 4, 10), new Date(2026, 4, 18), new Date(2026, 4, 25)]} />
+      </Group>
+
+      <Group title="Date input (popover) — uso em forms">
+        <div style={{ maxWidth: 260 }}>
+          <PontesDateInput
+            value={date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : ""}
+            onChange={(v) => {
+              if (!v) { setDate(null); return }
+              const [y, m, d] = v.split("-").map(Number)
+              setDate(new Date(y, m - 1, d))
+            }}
+            placeholder="Selecione uma data"
+          />
+        </div>
       </Group>
 
       <Group title="File upload">
