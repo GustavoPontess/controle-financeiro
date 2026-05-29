@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  Box, Paper, Typography, CircularProgress,
-} from "@mui/material"
-import { tokens } from "../../theme/tokens"
-import CheckCircleIcon from "@mui/icons-material/CheckCircle"
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked"
-import CustomButton from "../../components/CustomButton"
+import { CheckCircle2, Circle } from "lucide-react"
+import { PontesButton, PontesLoadingDots } from "@/components/pontes"
 import { getOnboardingStatus, concluirOnboarding } from "../../services/onboardingService"
 import type { OnboardingStatus } from "../../types/Onboarding"
+import styles from "./OnboardingPage.module.css"
 
 type Passo = {
   titulo: string
@@ -23,25 +19,25 @@ const PASSOS: Passo[] = [
     titulo: "Cadastre sua primeira conta",
     descricao: "Conta corrente, poupança ou carteira — onde seu dinheiro entra e sai.",
     rota: "/accounts",
-    done: s => s.temConta,
+    done: (s) => s.temConta,
   },
   {
     titulo: "Adicione um cartão de crédito",
     descricao: "Acompanhe faturas e parcelamentos junto das suas contas.",
     rota: "/credit-cards",
-    done: s => s.temCartao,
+    done: (s) => s.temCartao,
   },
   {
     titulo: "Registre suas transações",
     descricao: "Importe o extrato do banco ou lance as primeiras transações.",
     rota: "/transactions",
-    done: s => s.temTransacao,
+    done: (s) => s.temTransacao,
   },
   {
     titulo: "Crie uma família (opcional)",
     descricao: "Divida despesas e organize as finanças com quem você divide a vida.",
     rota: "/familias",
-    done: s => s.temFamilia,
+    done: (s) => s.temFamilia,
     opcional: true,
   },
 ]
@@ -53,7 +49,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     getOnboardingStatus()
-      .then(s => {
+      .then((s) => {
         if (s.concluido) {
           navigate("/dashboard", { replace: true })
           return
@@ -73,70 +69,51 @@ export default function OnboardingPage() {
   }
 
   if (carregando) {
-    return <Box sx={{ display: "flex", justifyContent: "center", p: 10 }}><CircularProgress /></Box>
+    return <div className={styles.loading}><PontesLoadingDots /></div>
   }
 
   const obrigatoriosFeitos = status
-    ? PASSOS.filter(p => !p.opcional).every(p => p.done(status))
+    ? PASSOS.filter((p) => !p.opcional).every((p) => p.done(status))
     : false
 
   return (
-    <Box sx={{
-      minHeight: "100vh", bgcolor: tokens.color.background.page,
-      display: "flex", alignItems: "center", justifyContent: "center", p: 3,
-    }}>
-      <Paper elevation={0} sx={{
-        width: "100%", maxWidth: 560, p: 4,
-        border: `1px solid ${tokens.color.border.default}`, borderRadius: tokens.radius.xl,
-      }}>
-        <Typography fontSize={tokens.typography.fontSize.xl} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
-          Bem-vindo(a)! Vamos começar
-        </Typography>
-        <Typography fontSize={tokens.typography.fontSize.sm} color={tokens.color.text.secondary} mt={0.5} mb={3}>
-          Alguns passos rápidos para o app ficar útil de verdade.
-        </Typography>
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Bem-vindo(a)! Vamos começar</h1>
+        <p className={styles.subtitle}>Alguns passos rápidos para o app ficar útil de verdade.</p>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {PASSOS.map(passo => {
+        <ul className={styles.steps}>
+          {PASSOS.map((passo) => {
             const feito = status ? passo.done(status) : false
             return (
-              <Box key={passo.rota} sx={{
-                display: "flex", alignItems: "center", gap: 1.5,
-                p: 2, borderRadius: tokens.radius.lg, border: `1px solid ${tokens.color.border.default}`,
-                bgcolor: feito ? tokens.color.status.success.light : tokens.color.background.surface,
-              }}>
-                {feito
-                  ? <CheckCircleIcon sx={{ color: tokens.color.status.success.main }} />
-                  : <RadioButtonUncheckedIcon sx={{ color: tokens.color.text.disabled }} />}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontSize={tokens.typography.fontSize.sm} fontWeight={tokens.typography.fontWeight.bold} color={tokens.color.text.primary}>
+              <li key={passo.rota} className={styles.step} data-done={feito ? "true" : undefined}>
+                <span className={styles.stepIcon} data-done={feito ? "true" : undefined}>
+                  {feito ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                </span>
+                <div className={styles.stepMeta}>
+                  <span className={styles.stepTitle}>
                     {passo.titulo}
-                    {passo.opcional && (
-                      <Typography component="span" fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.disabled}> · opcional</Typography>
-                    )}
-                  </Typography>
-                  <Typography fontSize={tokens.typography.fontSize.xs} color={tokens.color.text.secondary}>{passo.descricao}</Typography>
-                </Box>
+                    {passo.opcional && <span className={styles.stepOpcional}> · opcional</span>}
+                  </span>
+                  <span className={styles.stepDesc}>{passo.descricao}</span>
+                </div>
                 {!feito && (
-                  <CustomButton size="small" variant="secondary"
-                    onClick={() => navigate(passo.rota)}>
+                  <PontesButton size="sm" variant="outline" onClick={() => navigate(passo.rota)}>
                     Fazer agora
-                  </CustomButton>
+                  </PontesButton>
                 )}
-              </Box>
+              </li>
             )
           })}
-        </Box>
+        </ul>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, mt: 3 }}>
-          <CustomButton variant="secondary" size="small" onClick={finalizar}>
-            Pular por agora
-          </CustomButton>
-          <CustomButton size="small" onClick={finalizar}>
+        <div className={styles.actions}>
+          <PontesButton variant="outline" onClick={finalizar}>Pular por agora</PontesButton>
+          <PontesButton onClick={finalizar}>
             {obrigatoriosFeitos ? "Ir para o app" : "Concluir mesmo assim"}
-          </CustomButton>
-        </Box>
-      </Paper>
-    </Box>
+          </PontesButton>
+        </div>
+      </div>
+    </div>
   )
 }
