@@ -84,7 +84,7 @@ public class RecorrenteService
             await _context.SaveChangesAsync();
     }
 
-    public async Task<PagedResult<RecorrenteDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<RecorrenteDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);

@@ -7,9 +7,10 @@ import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesTextarea, PontesEmptyState,
+  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
-  getEmprestimos, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
+  listEmprestimosPage, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
 } from "../../services/emprestimoService"
 import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
 import styles from "./EmprestimosPage.module.css"
@@ -54,7 +55,13 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 export default function EmprestimosPage() {
   const { notify } = useOutletContext<OutletContextType>()
+  // Página visível (server-side) + agregado das 100 primeiras pros KPIs do topo.
+  // KPIs perdem acurácia depois de 100 empréstimos — corner case raro pra B2C.
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
+  const [todosParaStats, setTodosParaStats] = useState<Emprestimo[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [pagamentoFor, setPagamentoFor] = useState<string | null>(null)
   const [valorPagamento, setValorPagamento] = useState<number | undefined>(undefined)
@@ -67,11 +74,17 @@ export default function EmprestimosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      setEmprestimos(await getEmprestimos())
+      const [pageResult, statsResult] = await Promise.all([
+        listEmprestimosPage(page, pageSize),
+        listEmprestimosPage(1, 100),
+      ])
+      setEmprestimos(pageResult.items)
+      setTotal(pageResult.total)
+      setTodosParaStats(statsResult.items)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify])
+  }, [notify, page, pageSize])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -148,7 +161,7 @@ export default function EmprestimosPage() {
     } finally { setDelId(null) }
   }
 
-  const ativos = emprestimos.filter((e) => !e.quitado)
+  const ativos = todosParaStats.filter((e) => !e.quitado)
   const totalAReceber = ativos.filter((e) => e.tipo === 1).reduce((s, e) => s + e.valorRestante, 0)
   const totalAPagar = ativos.filter((e) => e.tipo === 2).reduce((s, e) => s + e.valorRestante, 0)
 
@@ -173,10 +186,10 @@ export default function EmprestimosPage() {
       <PontesCard padding={0} radius={16}>
         <div className={styles.listHead}>
           <span className={styles.listHeadTitle}>Seus empréstimos</span>
-          <span className={styles.listHeadMeta}>{emprestimos.length} {emprestimos.length === 1 ? "registrado" : "registrados"}</span>
+          <span className={styles.listHeadMeta}>{total} {total === 1 ? "registrado" : "registrados"}</span>
         </div>
 
-        {emprestimos.length === 0 ? (
+        {total === 0 ? (
           <div className={styles.emptyWrap}>
             <PontesEmptyState
               icon={<Handshake size={28} />}
@@ -247,6 +260,14 @@ export default function EmprestimosPage() {
               )
             })}
           </ul>
+        )}
+        {total > 0 && (
+          <PontesTablePagination
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="empréstimos" itemLabelSingular="empréstimo"
+          />
         )}
       </PontesCard>
 

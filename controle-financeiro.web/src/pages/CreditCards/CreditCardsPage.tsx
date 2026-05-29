@@ -139,6 +139,15 @@ const statusKey = (f: Fatura, now: number) => {
   return new Date(f.dataInicio).getTime() > now ? 4 : 1
 }
 
+// Clampa input de dia em [1..31] enquanto digita — `<input max=31>` deixa
+// digitar 99; melhor capar no onChange pra não confundir o usuário.
+const clampDia = (raw: string): number | undefined => {
+  if (!raw) return undefined
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return undefined
+  return Math.max(1, Math.min(31, Math.trunc(n)))
+}
+
 type FormState = Omit<CriarCartaoCredito, "temCredito" | "temDebito" | "ehPrePago"> & { modo: Modo }
 const emptyForm: FormState = {
   nome: "", ultimosDigitos: undefined, bandeira: 6, modo: "credito_debito",
@@ -827,10 +836,22 @@ export default function CreditCardsPage() {
           {temCredito && (
             <div className={styles.grid2}>
               <PontesField label="Dia fechamento" required error={formErrors.diaFechamento}>
-                <PontesInput type="number" value={form.diaFechamento != null ? String(form.diaFechamento) : ""} onChange={(e) => { setF("diaFechamento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaFechamento") }} invalid={!!formErrors.diaFechamento} min={1} max={31} step={1} inputMode="numeric" />
+                <PontesInput
+                  type="number"
+                  value={form.diaFechamento != null ? String(form.diaFechamento) : ""}
+                  onChange={(e) => { setF("diaFechamento", clampDia(e.target.value)); clearErr("diaFechamento") }}
+                  invalid={!!formErrors.diaFechamento}
+                  min={1} max={31} step={1} inputMode="numeric" placeholder="1 a 31"
+                />
               </PontesField>
               <PontesField label="Dia vencimento" required error={formErrors.diaVencimento}>
-                <PontesInput type="number" value={form.diaVencimento != null ? String(form.diaVencimento) : ""} onChange={(e) => { setF("diaVencimento", e.target.value ? Number(e.target.value) : undefined); clearErr("diaVencimento") }} invalid={!!formErrors.diaVencimento} min={1} max={31} step={1} inputMode="numeric" />
+                <PontesInput
+                  type="number"
+                  value={form.diaVencimento != null ? String(form.diaVencimento) : ""}
+                  onChange={(e) => { setF("diaVencimento", clampDia(e.target.value)); clearErr("diaVencimento") }}
+                  invalid={!!formErrors.diaVencimento}
+                  min={1} max={31} step={1} inputMode="numeric" placeholder="1 a 31"
+                />
               </PontesField>
             </div>
           )}

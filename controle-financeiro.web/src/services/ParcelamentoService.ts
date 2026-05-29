@@ -12,12 +12,26 @@ import type {
   CancelarParcelaPayload,
   CancelarParcelaResultado,
 } from '../types/ParcelaTransacao'
+import type { PagedResult } from '../types/Paged'
 
 export const ParcelamentoService = {
   // ── Parcelamentos ──
 
+  /** Lista paginada — backend clampa pageSize em 1..100. */
+  async listarPaginado(
+    page: number,
+    pageSize: number,
+    ativo?: boolean,
+  ): Promise<PagedResult<Parcelamento>> {
+    const params: Record<string, unknown> = { page, pageSize }
+    if (ativo !== undefined) params.ativo = ativo
+    const res = await api.get('/parcelamentos', { params })
+    return res.data
+  },
+
+  /** @deprecated Use listarPaginado. Clampa em 100. */
   async listar(ativo?: boolean): Promise<Parcelamento[]> {
-    const params: Record<string, unknown> = { pageSize: 1000 }
+    const params: Record<string, unknown> = { page: 1, pageSize: 100 }
     if (ativo !== undefined) params.ativo = ativo
     const res = await api.get('/parcelamentos', { params })
     return res.data.items
