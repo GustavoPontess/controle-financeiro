@@ -12,7 +12,7 @@ import { getTransactions } from "../../services/transactionService"
 import { getContas } from "../../services/contaService"
 import type { Category } from "../../types/Category"
 import type { Transaction } from "../../types/Transaction"
-import TransactionTable, { type TransactionRow } from "../../components/transactions/TransactionTable/TransactionTable"
+import TransactionTable, { type TransactionRow } from "./components/TransactionTable/TransactionTable"
 import styles from "./TransactionsPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }

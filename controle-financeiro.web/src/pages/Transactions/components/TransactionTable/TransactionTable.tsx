@@ -7,12 +7,12 @@ import {
   PontesField, PontesInput, PontesSelect,
 } from "@/components/pontes"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
-import { deleteTransaction } from "../../../services/transactionService"
+import { deleteTransaction } from "../../../../services/transactionService"
 import {
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
   getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
-} from "../../../services/familiaService"
-import type { Familia, Dependente, ModoRateio, RateioTransacao } from "../../../types/Familia"
+} from "../../../../services/familiaService"
+import type { Familia, Dependente, ModoRateio, RateioTransacao } from "../../../../types/Familia"
 import styles from "./TransactionTable.module.css"
 
 const MODOS_RATEIO: { value: string; label: string }[] = [
