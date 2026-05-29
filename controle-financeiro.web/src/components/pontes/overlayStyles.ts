@@ -7,16 +7,18 @@ const OS_STYLE_ID = "pontes-os-styles"
 
 const OS_CSS = `
 .os-theme-pontes {
-  --os-handle-bg: var(--pontes-os-thumb, #1E40AF);
-  --os-handle-bg-hover: var(--pontes-os-thumb, #1E40AF);
-  --os-handle-bg-active: var(--pontes-os-thumb, #1E40AF);
-  --os-size: 12px;
+  --os-handle-bg: var(--pontes-os-thumb, color-mix(in srgb, var(--pontes-text-muted) 35%, transparent));
+  --os-handle-bg-hover: var(--pontes-os-thumb, color-mix(in srgb, var(--pontes-text-muted) 60%, transparent));
+  --os-handle-bg-active: var(--pontes-os-thumb, color-mix(in srgb, var(--pontes-text-muted) 70%, transparent));
+  --os-size: 8px;
   --os-padding-perpendicular: 2px;
   --os-padding-axis: 2px;
   --os-handle-border-radius: 999px;
   --os-handle-min-size: 44px;
 }
-.os-theme-pontes .os-scrollbar-handle { opacity: 1; }
+.os-theme-pontes:hover { --os-size: 10px; }
+.os-theme-pontes .os-scrollbar-handle { opacity: .75; transition: opacity .15s ease; }
+.os-theme-pontes:hover .os-scrollbar-handle { opacity: 1; }
 .os-theme-pontes .os-scrollbar-track { background: transparent; }
 `
 
