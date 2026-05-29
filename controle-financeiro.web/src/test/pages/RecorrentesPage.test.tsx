@@ -13,6 +13,9 @@ vi.mock("react-router-dom", async (orig) => ({
 
 // ── Service mocks ────────────────────────────────────────────────────────────
 const listRecorrentesPage = vi.fn()
+const getRecorrenteStats = vi.fn().mockResolvedValue({
+  ativas: 1, custoMensalDespesas: 45.9, proximas30Dias: 1, qtdTotal: 1,
+})
 const createRecorrente = vi.fn()
 const toggleRecorrente = vi.fn()
 const deleteRecorrente = vi.fn()
@@ -21,6 +24,7 @@ const editarProximaOcorrencia = vi.fn()
 
 vi.mock("../../services/recorrenteService", () => ({
   listRecorrentesPage:     (...a: unknown[]) => listRecorrentesPage(...a),
+  getRecorrenteStats:      (...a: unknown[]) => getRecorrenteStats(...a),
   getRecorrentes:          () => Promise.resolve([]),
   createRecorrente:        (...a: unknown[]) => createRecorrente(...a),
   toggleRecorrente:        (...a: unknown[]) => toggleRecorrente(...a),

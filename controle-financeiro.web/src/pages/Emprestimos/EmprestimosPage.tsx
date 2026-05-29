@@ -10,8 +10,9 @@ import {
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
-  listEmprestimosPage, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
+  listEmprestimosPage, getEmprestimoStats, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
 } from "../../services/emprestimoService"
+import type { EmprestimoStats } from "../../services/emprestimoService"
 import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
 import styles from "./EmprestimosPage.module.css"
 
@@ -55,10 +56,11 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 export default function EmprestimosPage() {
   const { notify } = useOutletContext<OutletContextType>()
-  // Página visível (server-side) + agregado das 100 primeiras pros KPIs do topo.
-  // KPIs perdem acurácia depois de 100 empréstimos — corner case raro pra B2C.
+  // Página visível (server-side) + KPIs exatos via /stats endpoint dedicado (#179).
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
-  const [todosParaStats, setTodosParaStats] = useState<Emprestimo[]>([])
+  const [stats, setStats] = useState<EmprestimoStats>({
+    totalAReceber: 0, totalAPagar: 0, ativos: 0, qtdTotal: 0,
+  })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
@@ -76,11 +78,11 @@ export default function EmprestimosPage() {
     try {
       const [pageResult, statsResult] = await Promise.all([
         listEmprestimosPage(page, pageSize),
-        listEmprestimosPage(1, 100),
+        getEmprestimoStats(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
-      setTodosParaStats(statsResult.items)
+      setStats(statsResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -161,9 +163,7 @@ export default function EmprestimosPage() {
     } finally { setDelId(null) }
   }
 
-  const ativos = todosParaStats.filter((e) => !e.quitado)
-  const totalAReceber = ativos.filter((e) => e.tipo === 1).reduce((s, e) => s + e.valorRestante, 0)
-  const totalAPagar = ativos.filter((e) => e.tipo === 2).reduce((s, e) => s + e.valorRestante, 0)
+  const { totalAReceber, totalAPagar, ativos: qtdAtivos } = stats
 
   return (
     <div className={styles.root}>
@@ -180,7 +180,7 @@ export default function EmprestimosPage() {
       <div className={styles.statsGrid}>
         <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
         <PontesStatCard label="A pagar" value={formatMoney(totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
-        <PontesStatCard label="Ativos" value={String(ativos.length)} hint="empréstimos em andamento" />
+        <PontesStatCard label="Ativos" value={String(qtdAtivos)} hint="empréstimos em andamento" />
       </div>
 
       <PontesCard padding={0} radius={16}>

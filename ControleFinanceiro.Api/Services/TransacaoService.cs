@@ -155,6 +155,54 @@ namespace ControleFinanceiro.Api.Services
             };
         }
 
+        /// <summary>
+        /// KPIs agregados (entradas, saídas, saldo) calculados no banco. Exclui
+        /// transferência, pagamento de fatura, saldo inicial e soft-deleted —
+        /// mesma regra contábil de saldo×P&L (#128). Exato pra qualquer volume.
+        /// </summary>
+        public async Task<DTOs.Transacao.TransacaoStatsDto> ObterStatsAsync(
+            Guid usuarioId,
+            DateTime? from = null,
+            DateTime? to = null,
+            Guid? categoriaId = null)
+        {
+            var query = _context.Transacoes
+                .Where(t =>
+                    (t.ContaId.HasValue && t.Conta!.UsuarioIdProprietario == usuarioId) ||
+                    (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId))
+                .Where(t => t.Ativo
+                            && t.StatusTransacao == Domain.Enums.StatusTransacao.Executado
+                            && !t.EhTransferencia
+                            && !t.EhPagamentoFatura
+                            && !t.EhSaldoInicial)
+                .AsQueryable();
+
+            if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
+            if (to.HasValue) query = query.Where(t => t.Data < to.Value);
+            if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
+
+            var entradas = await query
+                .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita)
+                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+            var saidas = await query
+                .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa)
+                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+            // Saldo do período: receitas - despesas, ignorando o que vira só lançamento
+            // de cartão (UsadoComoCredito) — esse vira P&L quando a fatura é paga.
+            var saldoPeriodo = await query
+                .Where(t => !t.UsadoComoCredito)
+                .SumAsync(t => (decimal?)(t.Tipo == Domain.Enums.TipoTransacao.Receita ? t.Valor : -t.Valor)) ?? 0m;
+            var qtd = await query.CountAsync();
+
+            return new DTOs.Transacao.TransacaoStatsDto
+            {
+                Entradas = entradas,
+                Saidas = saidas,
+                SaldoPeriodo = saldoPeriodo,
+                QtdTransacoes = qtd,
+            };
+        }
+
         public async Task<Transacao?> BuscarPorIdAsync(Guid id, Guid usuarioId)
         {
             return await _context.Transacoes

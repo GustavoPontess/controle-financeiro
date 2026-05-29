@@ -85,6 +85,29 @@ public class TransferenciaService
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
     }
 
+    /// <summary>
+    /// KPIs agregados — total movimentado e quantidade no filtro de data opcional.
+    /// Calculado no banco, exato pra qualquer volume.
+    /// </summary>
+    public async Task<TransferenciaStatsDto> ObterStatsAsync(
+        Guid usuarioId,
+        DateTime? from = null,
+        DateTime? to = null)
+    {
+        var query = _context.Transferencias.Where(t => t.CriadoPor == usuarioId);
+        if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
+        if (to.HasValue) query = query.Where(t => t.Data < to.Value);
+
+        var total = await query.SumAsync(t => (decimal?)t.Valor) ?? 0m;
+        var qtd = await query.CountAsync();
+
+        return new TransferenciaStatsDto
+        {
+            TotalMovimentado = total,
+            QtdTotal = qtd,
+        };
+    }
+
     public async Task<PagedResult<TransferenciaDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);

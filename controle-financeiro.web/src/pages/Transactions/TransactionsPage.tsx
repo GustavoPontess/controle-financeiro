@@ -8,7 +8,7 @@ import {
   PontesEmptyState, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
-import { listTransactionsPage } from "../../services/transactionService"
+import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
 import { getContas } from "../../services/contaService"
 import type { Category } from "../../types/Category"
 import type { Transaction } from "../../types/Transaction"
@@ -17,8 +17,6 @@ import styles from "./TransactionsPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
-
-const RECEITA = 2
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
@@ -79,19 +77,17 @@ export default function TransactionsPage() {
     }
   }, [currentDate, page, pageSize, filterCategoryId, notify])
 
-  // KPIs do topo — agregação do mês inteiro (ignora paginação + filtro categoria).
-  // Pega até 100 transações do mês; quem tiver +100 num mês perde acurácia nos KPIs
-  // (corner case raro pra finanças pessoais; resolveremos com endpoint dedicado depois).
+  // KPIs do topo — endpoint /stats dedicado, calculado no banco. Exato em qualquer
+  // volume (#179 — antes agregava 1ª página de 100 e perdia acurácia >100/mês).
   const loadMonthStats = useCallback(async () => {
     try {
       const { from, to } = monthWindow(currentDate)
-      const result = await listTransactionsPage(1, 100, { from, to })
-      const entradas = result.items.filter((t) => t.tipo === RECEITA).reduce((s, t) => s + t.valor, 0)
-      const saidas = result.items.filter((t) => t.tipo !== RECEITA).reduce((s, t) => s + t.valor, 0)
-      const saldoMes = result.items
-        .filter((t) => !t.usadoComoCredito)
-        .reduce((s, t) => s + (t.tipo === RECEITA ? t.valor : -t.valor), 0)
-      setMonthStats({ entradas, saidas, saldoMes })
+      const stats = await getTransactionStats({ from, to })
+      setMonthStats({
+        entradas: stats.entradas,
+        saidas: stats.saidas,
+        saldoMes: stats.saldoPeriodo,
+      })
     } catch (error) {
       console.error("Erro ao calcular stats:", error)
     }

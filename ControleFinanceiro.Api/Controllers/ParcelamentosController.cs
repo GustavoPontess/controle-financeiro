@@ -50,6 +50,15 @@ public class ParcelamentosController : ControllerBase
         return Ok(parcelamentos);
     }
 
+    /// <summary>KPIs agregados — ativos, soma do restante, total.</summary>
+    [HttpGet("stats")]
+    [ProducesResponseType(typeof(ParcelamentoStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterStats()
+    {
+        var stats = await _service.ObterStatsAsync(GetUserId());
+        return Ok(stats);
+    }
+
     /// <summary>
     /// Detalhe de um parcelamento com todas as parcelas.
     /// </summary>

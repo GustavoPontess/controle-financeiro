@@ -395,6 +395,37 @@ public class ParcelamentoService
     /// Lista parcelamentos do usuário, ordenados por data de criação (mais recentes primeiro).
     /// Filtra por <paramref name="ativo"/> se informado.
     /// </summary>
+    /// <summary>
+    /// KPIs agregados — ativos e soma do valor restante (efetivo - pago). Total inclui cancelados.
+    /// Calculado no banco, exato pra qualquer volume.
+    /// </summary>
+    public async Task<ParcelamentoStatsDto> ObterStatsAsync(Guid usuarioId)
+    {
+        var query = _context.Parcelamentos.Where(p => p.CriadoPor == usuarioId);
+        var ativos = query.Where(p => p.Ativo);
+
+        var qtdAtivos = await ativos.CountAsync();
+        var qtdTotal = await query.CountAsync();
+
+        // Valor restante = valor total efetivo (com juros se houver) - soma das parcelas pagas.
+        // Cálculo em duas queries (sum vs sum) — EF traduz sem N+1.
+        var totalEfetivoAtivos = await ativos
+            .SumAsync(p => (decimal?)(p.ValorComJuros ?? p.ValorTotal)) ?? 0m;
+        var pagoAtivos = await _context.ParcelasTransacao
+            .Where(par => par.Parcelamento != null
+                          && par.Parcelamento.CriadoPor == usuarioId
+                          && par.Parcelamento.Ativo
+                          && par.Status == StatusParcela.Paga)
+            .SumAsync(par => (decimal?)(par.ValorComJuros ?? par.Valor)) ?? 0m;
+
+        return new ParcelamentoStatsDto
+        {
+            Ativos = qtdAtivos,
+            TotalRestante = totalEfetivoAtivos - pagoAtivos,
+            QtdTotal = qtdTotal,
+        };
+    }
+
     public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 25)
     {
         page = Math.Max(1, page);

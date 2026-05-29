@@ -37,6 +37,33 @@ public class EmprestimoService(AppDbContext context)
         };
     }
 
+    /// <summary>
+    /// KPIs agregados — a receber/a pagar (restante dos ativos), qtd ativos e total.
+    /// Calculado no banco, exato pra qualquer volume.
+    /// </summary>
+    public async Task<EmprestimoStatsDto> ObterStatsAsync(Guid usuarioId)
+    {
+        var query = _context.Emprestimos.Where(e => e.CriadoPor == usuarioId);
+        var ativos = query.Where(e => !e.Quitado);
+
+        var totalAReceber = await ativos
+            .Where(e => e.Tipo == TipoEmprestimo.Emprestei)
+            .SumAsync(e => (decimal?)(e.ValorTotal - e.ValorPago)) ?? 0m;
+        var totalAPagar = await ativos
+            .Where(e => e.Tipo != TipoEmprestimo.Emprestei)
+            .SumAsync(e => (decimal?)(e.ValorTotal - e.ValorPago)) ?? 0m;
+        var qtdAtivos = await ativos.CountAsync();
+        var qtdTotal = await query.CountAsync();
+
+        return new EmprestimoStatsDto
+        {
+            TotalAReceber = totalAReceber,
+            TotalAPagar = totalAPagar,
+            Ativos = qtdAtivos,
+            QtdTotal = qtdTotal,
+        };
+    }
+
     public async Task<EmprestimoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
     {
         var e = await _context.Emprestimos.FirstOrDefaultAsync(x => x.Id == id && x.CriadoPor == usuarioId);

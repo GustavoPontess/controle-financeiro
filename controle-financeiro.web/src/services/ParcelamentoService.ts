@@ -29,6 +29,12 @@ export const ParcelamentoService = {
     return res.data
   },
 
+  /** KPIs agregados — ativos, soma do restante, total. */
+  async obterStats(): Promise<{ ativos: number; totalRestante: number; qtdTotal: number }> {
+    const res = await api.get('/parcelamentos/stats')
+    return res.data
+  },
+
   /** @deprecated Use listarPaginado. Clampa em 100. */
   async listar(ativo?: boolean): Promise<Parcelamento[]> {
     const params: Record<string, unknown> = { page: 1, pageSize: 100 }
