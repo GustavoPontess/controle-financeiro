@@ -1,5 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, IconButton, Box } from "@mui/material"
-import CloseIcon from "@mui/icons-material/Close"
+import { PontesModal } from "@/components/pontes"
 import ContaForm from "../ContaForm/ContaForm"
 import type { ContaFormData } from "../ContaForm/ContaForm"
 import { createConta, updateConta } from "../../../services/contaService"
@@ -41,24 +40,19 @@ export default function NewContaDialog({ open, onClose, onSaved, notify, bancos,
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
-      <DialogTitle sx={{ p: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2, fontWeight: 600, fontSize: 16 }}>
-          {editingConta ? "Editar Conta" : "Adicionar Conta"}
-          <IconButton onClick={onClose} sx={{ width: 24, height: 24, color: "text.secondary", "&:hover": { bgcolor: "action.hover", color: "text.primary" } }}>
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      <DialogContent sx={{ pt: 2 }}>
-        <ContaForm
-          bancos={bancos}
-          preSelectedBancoId={preSelectedBancoId}
-          onSubmit={handleSubmit}
-          editingConta={editingConta}
-          onCancel={onClose}
-        />
-      </DialogContent>
-    </Dialog>
+    <PontesModal
+      open={open}
+      onClose={onClose}
+      title={editingConta ? "Editar conta" : "Adicionar conta"}
+    >
+      <ContaForm
+        key={editingConta?.id ?? "new"}
+        bancos={bancos}
+        preSelectedBancoId={preSelectedBancoId}
+        onSubmit={handleSubmit}
+        editingConta={editingConta}
+        onCancel={onClose}
+      />
+    </PontesModal>
   )
 }
