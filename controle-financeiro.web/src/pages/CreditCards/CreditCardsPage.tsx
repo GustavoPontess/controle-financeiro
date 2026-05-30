@@ -11,6 +11,7 @@ import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../serv
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
+import { dataComHora } from "../../utils/dateTime"
 import { getRecorrentes } from "../../services/recorrenteService"
 import type { Recorrente } from "../../types/Recorrente"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
@@ -277,7 +278,8 @@ export default function CreditCardsPage() {
     try {
       const payload: PagarFaturaPayload = {
         contaId: pagarForm.contaId, valor: Number(pagarForm.valor),
-        dataPagamento: pagarForm.dataPagamento, meioPagamento: Number(pagarForm.meioPagamento),
+        // Pagamento é ação real: grava a hora (hoje → agora) pra aparecer na lista.
+        dataPagamento: dataComHora(pagarForm.dataPagamento), meioPagamento: Number(pagarForm.meioPagamento),
       }
       await pagarFatura(pagarCartaoId, pagarFaturaId, payload)
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })

@@ -29,6 +29,23 @@
 .cellData { white-space: nowrap; }
 .dataDia { display: block; font-size: 13px; font-weight: 600; color: var(--pontes-text); }
 .dataHora { display: block; font-size: 11px; color: var(--pontes-text-muted); margin-top: 1px; }
+/* Selo de origem (recorrente / parcelado) */
+.origemTag {
+  display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--pontes-primary);
+  background: color-mix(in srgb, var(--pontes-primary) 12%, transparent);
+  padding: 1px 7px 1px 5px; border-radius: 999px;
+}
+/* Lançamento previsto (não efetivado) — badge + linha esmaecida */
+.previstoTag {
+  display: inline-block; margin-top: 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--pontes-warning);
+  background: color-mix(in srgb, var(--pontes-warning) 14%, transparent);
+  padding: 1px 7px; border-radius: 999px;
+}
+.rowPrevisto td { opacity: 0.6; }
 
 .descCell { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 320px; }
 .tipoIcon {

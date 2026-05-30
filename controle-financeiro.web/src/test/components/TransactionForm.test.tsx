@@ -166,3 +166,37 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(data.natureza).toBe("receita")
   })
 })
+
+describe("TransactionForm — efetivado (previsto vs realizado)", () => {
+  it("despesa única mostra 'Já paguei' marcado por padrão", () => {
+    setup()
+    expect(screen.getByText("Já paguei")).toBeInTheDocument()
+  })
+
+  it("receita troca o rótulo para 'Já recebi'", () => {
+    setup()
+    fireEvent.click(screen.getByText("Receita"))
+    expect(screen.getByText("Já recebi")).toBeInTheDocument()
+    expect(screen.queryByText("Já paguei")).not.toBeInTheDocument()
+  })
+
+  it("desmarcar revela o hint de previsão", () => {
+    setup()
+    expect(screen.queryByText(/Fica como previsão/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("Já paguei"))
+    expect(screen.getByText(/Fica como previsão/i)).toBeInTheDocument()
+  })
+
+  it("recorrente esconde o toggle (já gera previsões)", () => {
+    setup()
+    fireEvent.click(screen.getByText("Repetir automaticamente (assinatura)"))
+    expect(screen.queryByText("Já paguei")).not.toBeInTheDocument()
+  })
+
+  it("transferência esconde o toggle", () => {
+    setup()
+    fireEvent.click(screen.getByText("Transferência"))
+    expect(screen.queryByText("Já paguei")).not.toBeInTheDocument()
+    expect(screen.queryByText("Já recebi")).not.toBeInTheDocument()
+  })
+})

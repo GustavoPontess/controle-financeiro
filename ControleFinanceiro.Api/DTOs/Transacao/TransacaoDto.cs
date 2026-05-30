@@ -16,6 +16,14 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public int? MeioPagamento { get; set; }
         public string? MeioPagamentoDescricao { get; set; }
         public Guid? FaturaId { get; set; }
+        // Origem do lançamento — front rotula a natureza na lista
+        // (recorrente / parcelado / pagamento de fatura).
+        public Guid? RecorrenteOrigemId { get; set; }
+        public Guid? ParcelamentoId { get; set; }
+        public Guid? ParcelaTransacaoId { get; set; }
+        public bool EhPagamentoFatura { get; set; }
+        // 0 = Previsao, 1 = Executado, 2 = Cancelado.
+        public int StatusTransacao { get; set; }
         public DateTime Data { get; set; }
     }
 }

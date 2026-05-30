@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from "react"
 import {
   Pencil, Trash2, Users, User, Split, TrendingUp, TrendingDown, MoreVertical,
+  Repeat, Layers,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesModal, PontesDialog,
@@ -35,6 +36,11 @@ export interface TransactionRow {
   contaNome?: string
   meioPagamento?: number
   meioPagamentoDescricao?: string
+  recorrenteOrigemId?: string | null
+  parcelamentoId?: string | null
+  parcelaTransacaoId?: string | null
+  ehPagamentoFatura?: boolean
+  statusTransacao?: number
 }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -82,6 +88,16 @@ const fmtHora = (iso: string): string | null => {
   const m = d.getUTCMinutes()
   if (h === 0 && m === 0) return null
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
+// Selo de origem — só pra lançamentos GERADOS pelo sistema, que nascem sem
+// horário real (recorrente e parcela projetadas no futuro). Lançamentos de
+// ação humana (compra à vista, pagamento de fatura) têm hora e mostram a hora.
+type OrigemTag = { icon: typeof Repeat; label: string }
+const origemTag = (row: TransactionRow): OrigemTag | null => {
+  if (row.recorrenteOrigemId) return { icon: Repeat, label: "Recorrente" }
+  if (row.parcelamentoId || row.parcelaTransacaoId) return { icon: Layers, label: "Parcelado" }
+  return null
 }
 
 const RECEITA = 2
@@ -341,12 +357,23 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
           <tbody>
             {pagedRows.map((row) => {
               const isReceita = row.tipo === RECEITA
+              const isPrevisto = row.statusTransacao === 0
               const hora = fmtHora(row.data)
+              const tag = origemTag(row)
               return (
-                <tr key={row.id}>
+                <tr key={row.id} className={isPrevisto ? styles.rowPrevisto : undefined}>
                   <td className={styles.cellData}>
                     <span className={styles.dataDia}>{fmtDataCurta(row.data)}</span>
-                    {hora && <span className={styles.dataHora}>{hora}</span>}
+                    {isPrevisto ? (
+                      <span className={styles.previstoTag}>Previsto</span>
+                    ) : tag ? (
+                      <span className={styles.origemTag}>
+                        <tag.icon size={11} strokeWidth={2.5} />
+                        {tag.label}
+                      </span>
+                    ) : hora ? (
+                      <span className={styles.dataHora}>{hora}</span>
+                    ) : null}
                   </td>
                   <td>
                     <div className={styles.descCell}>
@@ -384,18 +411,20 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
             })}
           </tbody>
         </table>
-        {pagination && (
-          <PontesTablePagination
-            total={pagination.total}
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            onPageChange={pagination.onPageChange}
-            onPageSizeChange={pagination.onPageSizeChange}
-            itemLabel="lançamentos"
-            itemLabelSingular="lançamento"
-          />
-        )}
       </div>
+      {/* Paginação FORA do wrapper com overflow-x: ocupa a largura visível do
+          card e não rola junto com a tabela larga (sem espaço vazio do lado). */}
+      {pagination && (
+        <PontesTablePagination
+          total={pagination.total}
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.onPageChange}
+          onPageSizeChange={pagination.onPageSizeChange}
+          itemLabel="lançamentos"
+          itemLabelSingular="lançamento"
+        />
+      )}
 
       <EditTransactionDialog
         transaction={editing}
