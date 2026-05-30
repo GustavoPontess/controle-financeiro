@@ -61,43 +61,27 @@ type Props = {
 const formatMoney = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
-// Chave de dia (YYYY-MM-DD em horário local) pra agrupar o feed.
-const dayKey = (iso: string) => {
+// IMPORTANTE: datas vêm do backend como instante UTC (timestamp), mas
+// representam wall-clock (dia/hora "de parede" que o usuário escolheu).
+// Formatar com `getUTC*` evita o shift de fuso (BR-3) que jogaria
+// "28/05 00:00" pra "27/05 21:00". O create encoda o wall-clock local
+// como UTC (ver NewTransactionDialog.dataComHora) pra fechar o ciclo.
+const fmtDataCurta = (iso: string) => {
   const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  const dd = String(d.getUTCDate()).padStart(2, "0")
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0")
+  const yy = String(d.getUTCFullYear()).slice(2)
+  return `${dd}/${mm}/${yy}`
 }
 
-// Rótulo humano do header de dia: Hoje / Ontem / "qua, 12 mai".
-const dayLabel = (iso: string): string => {
+// Hora "de parede" (UTC getters). Esconde 00:00 — seed/dados antigos sem
+// hora real não poluem a coluna.
+const fmtHora = (iso: string): string | null => {
   const d = new Date(iso)
-  const now = new Date()
-  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const diff = Math.round((a.getTime() - b.getTime()) / 86400000)
-  if (diff === 0) return "Hoje"
-  if (diff === 1) return "Ontem"
-  return d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })
-    .replace(/^\w/, (c) => c.toUpperCase())
-}
-
-type DayGroup = { key: string; label: string; rows: TransactionRow[]; net: number }
-
-// Agrupa rows (já ordenadas desc por data) em dias. Net = receitas - despesas
-// do dia (visíveis na página). Mantém a ordem de chegada.
-function groupByDay(rows: TransactionRow[]): DayGroup[] {
-  const map = new Map<string, DayGroup>()
-  const order: string[] = []
-  for (const row of rows) {
-    const k = dayKey(row.data)
-    if (!map.has(k)) {
-      map.set(k, { key: k, label: dayLabel(row.data), rows: [], net: 0 })
-      order.push(k)
-    }
-    const g = map.get(k)!
-    g.rows.push(row)
-    g.net += row.tipo === RECEITA ? row.valor : -row.valor
-  }
-  return order.map((k) => map.get(k)!)
+  const h = d.getUTCHours()
+  const m = d.getUTCMinutes()
+  if (h === 0 && m === 0) return null
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
 const RECEITA = 2
@@ -339,45 +323,52 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
     )
   }
 
-  const groups = groupByDay(pagedRows)
-
   return (
     <>
-      <div ref={containerRef} className={styles.feed}>
-        {groups.map((g) => (
-          <div key={g.key} className={styles.dayGroup}>
-            <div className={styles.dayHeader}>
-              <span className={styles.dayLabel}>{g.label}</span>
-              <span className={styles.daySub}>
-                {g.rows.length} {g.rows.length === 1 ? "lançamento" : "lançamentos"}
-                <span className={styles.dayNet} data-tone={g.net >= 0 ? "success" : "danger"}>
-                  {g.net >= 0 ? "+" : "−"}{formatMoney(Math.abs(g.net))}
-                </span>
-              </span>
-            </div>
-            <div className={styles.dayRows}>
-              {g.rows.map((row) => {
-                const isReceita = row.tipo === RECEITA
-                return (
-                  <div key={row.id} className={styles.row}>
-                    <span className={styles.rowIcon} data-tone={isReceita ? "success" : "danger"}>
-                      {isReceita ? <TrendingUp size={18} strokeWidth={2.4} /> : <TrendingDown size={18} strokeWidth={2.4} />}
-                    </span>
-                    <div className={styles.rowMain}>
-                      <span className={styles.rowDesc} title={row.descricao}>{row.descricao}</span>
-                      <div className={styles.rowMeta}>
-                        {row.categoriaDescricao && (
-                          <PontesBadge tone="neutral" size="sm">{row.categoriaDescricao}</PontesBadge>
-                        )}
-                        {row.contaNome && <span className={styles.rowMetaItem}>{row.contaNome}</span>}
-                        {!slim && row.meioPagamentoDescricao && (
-                          <span className={styles.rowMetaItem}>{row.meioPagamentoDescricao}</span>
-                        )}
-                      </div>
+      <div ref={containerRef} className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th className={styles.thData}>Data</th>
+              <th>Descrição</th>
+              {!slim && <th>Categoria</th>}
+              {!slim && <th>Conta</th>}
+              {!slim && <th>Pagamento</th>}
+              <th className={styles.alignRight}>Valor</th>
+              <th className={styles.alignRight}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pagedRows.map((row) => {
+              const isReceita = row.tipo === RECEITA
+              const hora = fmtHora(row.data)
+              return (
+                <tr key={row.id}>
+                  <td className={styles.cellData}>
+                    <span className={styles.dataDia}>{fmtDataCurta(row.data)}</span>
+                    {hora && <span className={styles.dataHora}>{hora}</span>}
+                  </td>
+                  <td>
+                    <div className={styles.descCell}>
+                      <span className={styles.tipoIcon} data-tone={isReceita ? "success" : "danger"}>
+                        {isReceita ? <TrendingUp size={16} strokeWidth={2.4} /> : <TrendingDown size={16} strokeWidth={2.4} />}
+                      </span>
+                      <span className={styles.descText} title={row.descricao}>{row.descricao}</span>
                     </div>
-                    <span className={styles.rowValue} data-tone={isReceita ? "success" : "danger"}>
-                      {isReceita ? "+" : "−"}{formatMoney(row.valor)}
-                    </span>
+                  </td>
+                  {!slim && (
+                    <td>
+                      {row.categoriaDescricao
+                        ? <PontesBadge tone="neutral" size="sm">{row.categoriaDescricao}</PontesBadge>
+                        : <span className={styles.cellMuted}>—</span>}
+                    </td>
+                  )}
+                  {!slim && <td className={styles.cellMuted}>{row.contaNome ?? "—"}</td>}
+                  {!slim && <td className={styles.cellMuted}>{row.meioPagamentoDescricao ?? "—"}</td>}
+                  <td className={`${styles.alignRight} ${styles.valueCell}`} data-tone={isReceita ? "success" : "danger"}>
+                    {isReceita ? "+" : "−"}{formatMoney(row.valor)}
+                  </td>
+                  <td className={styles.alignRight}>
                     <RowActions
                       isReceita={isReceita}
                       compact={compact}
@@ -387,12 +378,12 @@ export default function TransactionTable({ rows, onRefresh, notify, emptyMessage
                       onEdit={() => openEdit(row)}
                       onDelete={() => setDelTx(row)}
                     />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
         {pagination && (
           <PontesTablePagination
             total={pagination.total}
