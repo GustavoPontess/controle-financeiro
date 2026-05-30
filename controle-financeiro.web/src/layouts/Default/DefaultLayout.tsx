@@ -78,6 +78,21 @@ export default function DefaultLayout() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
+  // Modal global de Nova Transação — disparado por botões das telas e pela
+  // tecla N (que emitem o evento `openNewTransaction`). Centralizado no Shell
+  // porque o dialog vive aqui. Sem este listener, os disparos caíam no vazio.
+  useEffect(() => {
+    const handler = () => {
+      if (canCreateTransaction) {
+        setOpenTransaction(true)
+      } else {
+        setNotification({ open: true, message: "Cadastre uma categoria antes de criar transações.", severity: "error" })
+      }
+    }
+    window.addEventListener("openNewTransaction", handler)
+    return () => window.removeEventListener("openNewTransaction", handler)
+  }, [canCreateTransaction])
+
   // Auto-hide do toast
   useEffect(() => {
     if (!notification.open) return
