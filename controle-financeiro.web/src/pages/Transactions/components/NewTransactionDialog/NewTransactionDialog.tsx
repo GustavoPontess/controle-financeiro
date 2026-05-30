@@ -9,28 +9,12 @@ import { createRecorrente } from "../../../../services/recorrenteService"
 import { createTransferencia } from "../../../../services/transferenciaService"
 import { getContas } from "../../../../services/contaService"
 import { getCartoes } from "../../../../services/cartaoCreditoService"
+import { dataComHora } from "../../../../utils/dateTime"
 import type { Category } from "../../../../types/Category"
 import type { Subcategory } from "../../../../types/Subcategory"
 import type { Conta } from "../../../../types/Conta"
 import type { CartaoCredito } from "../../../../types/CartaoCredito"
 
-// Converte data "YYYY-MM-DD" em ISO com hora, encodando o wall-clock LOCAL
-// como UTC (Date.UTC dos componentes locais). O backend guarda como
-// timestamp e a tabela formata com getUTC* — assim o que o usuário vê é
-// exatamente a hora que ele lançou, sem shift de fuso.
-// Hoje → hora atual (ordena cronológico por dia+hora). Passado → meio-dia.
-function dataComHora(dateStr: string): string {
-  const hojeLocal = (() => {
-    const n = new Date()
-    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`
-  })()
-  if (dateStr === hojeLocal) {
-    const n = new Date()
-    return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), n.getMinutes(), n.getSeconds())).toISOString()
-  }
-  const [y, m, d] = dateStr.split("-").map(Number)
-  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString()
-}
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type Props = {
@@ -137,6 +121,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           usadoComoCredito: isCredito,
           meioPagamento: data.meioPagamento,
           parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
+          efetivado: data.efetivado,
           data: dataComHora(data.data),
         })
         notify({ open: true, message: "Transação criada com sucesso", severity: "success" })

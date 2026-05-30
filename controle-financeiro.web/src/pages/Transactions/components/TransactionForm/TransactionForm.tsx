@@ -49,6 +49,8 @@ export interface TransactionFormData {
   data: string
   descricao: string
   parcelas: number
+  // já recebido/pago (Executado) vs previsão (Previsao)
+  efetivado: boolean
   // recorrente
   frequencia: number
   dataFim: string
@@ -88,6 +90,7 @@ export default function TransactionForm({
     data: new Date().toISOString().split("T")[0],
     descricao: "",
     parcelas: 1,
+    efetivado: true,
     frequencia: 2,
     dataFim: "",
     ...initial,
@@ -310,6 +313,23 @@ export default function TransactionForm({
                 </div>
               )}
             </>
+          )}
+
+          {/* Já efetivado vs previsão — só em lançamento único (recorrente já gera
+              previsões; transferência é sempre imediata). Default: efetivado. */}
+          {!isTransferencia && !isRecorrente && (
+            <div>
+              <PontesToggle
+                checked={form.efetivado}
+                onChange={(on) => setForm((f) => ({ ...f, efetivado: on }))}
+                label={form.natureza === "receita" ? "Já recebi" : "Já paguei"}
+              />
+              {!form.efetivado && (
+                <div className={styles.previsaoHint}>
+                  Fica como previsão — não mexe no saldo até você confirmar.
+                </div>
+              )}
+            </div>
           )}
 
           {/* Categoria (picker agrupado cat > subcategoria — lib) */}
