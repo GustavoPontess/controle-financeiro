@@ -4,8 +4,8 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus,
 } from "lucide-react"
 import {
-  PontesButton, PontesIconButton, PontesCard, PontesSelect, PontesStatCard,
-  PontesInput, PontesEmptyState, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesButton, PontesCard, PontesSelect,
+  PontesInput, PontesEmptyState,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
 import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
@@ -20,6 +20,9 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+
+// Chave de persistência da preferência de linhas-por-página.
+const PAGE_SIZE_KEY = "transactions:pageSize"
 
 // Janela ISO do mês [from, to) — usada nos query params do backend.
 // Importante usar Date.UTC: transações são salvas em UTC midnight do dia
@@ -51,7 +54,12 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState("")             // valor com debounce (query)
   const searchRef = useRef<HTMLInputElement>(null)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
+  // Default 10, mas respeita a última escolha do usuário (persistida em
+  // localStorage) — sobrevive reload e troca de tela.
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const saved = Number(localStorage.getItem(PAGE_SIZE_KEY))
+    return Number.isFinite(saved) && saved > 0 ? saved : 10
+  })
 
   // Debounce da busca: 350ms sem digitar → dispara query. Evita request por tecla.
   useEffect(() => {
@@ -186,33 +194,59 @@ export default function TransactionsPage() {
 
   return (
     <div className={styles.root}>
+      {/* Header padrão — título + ações (igual às outras telas) */}
       <div className={styles.header}>
-        <div className={styles.monthNav}>
-          <PontesIconButton size={32} variant="outline" aria-label="Mês anterior" onClick={prevMonth}>
-            <ChevronLeft size={16} />
-          </PontesIconButton>
-          <span className={styles.monthLabel}>{monthLabel}</span>
-          <PontesIconButton size={32} variant="outline" aria-label="Próximo mês" onClick={nextMonth}>
-            <ChevronRight size={16} />
-          </PontesIconButton>
+        <div>
+          <h1 className={styles.title}>Transações</h1>
+          <div className={styles.subtitle}>Todos os seus lançamentos, mês a mês</div>
         </div>
-        <div className={styles.headerActions}>
-          <PontesButton size="sm" variant="outline" iconStart={<CalendarDays size={16} />}
-            onClick={() => setCurrentDate(new Date())}>
-            Hoje
-          </PontesButton>
-          <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}
-            onClick={() => window.dispatchEvent(new Event("openNewTransaction"))}>
-            Nova transação
-          </PontesButton>
-        </div>
+        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}
+          onClick={() => window.dispatchEvent(new Event("openNewTransaction"))}>
+          Nova transação
+        </PontesButton>
       </div>
 
-      <div className={styles.statsGrid}>
-        <PontesStatCard label="Saldo total" value={formatMoney(saldoTotal)} hint="todas as contas" />
-        <PontesStatCard label="Entradas no mês" value={formatMoney(totalEntradas)} tone="success" />
-        <PontesStatCard label="Saídas no mês" value={formatMoney(totalSaidas)} tone="danger" />
-        <PontesStatCard label="Saldo do mês" value={formatMoney(saldoFinal)} tone={saldoFinal < 0 ? "danger" : "default"} />
+      {/* Hero composto — saldo total (global) à esquerda; resumo do mês à direita.
+          Mesma linguagem hero das outras telas, mas composição própria desta:
+          junta "quanto tenho" + "como foi o mês" numa peça só. */}
+      <div className={styles.hero}>
+        <div className={styles.heroBlob} />
+        <div className={styles.heroMain}>
+          <div className={styles.heroLabel}>Saldo total</div>
+          <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
+          <div className={styles.heroSub}>Soma de todas as contas</div>
+        </div>
+
+        <div className={styles.heroSide}>
+          <div className={styles.heroMonthNav}>
+            <button type="button" className={styles.heroNavBtn} aria-label="Mês anterior" onClick={prevMonth}>
+              <ChevronLeft size={16} strokeWidth={2.5} />
+            </button>
+            <span className={styles.heroMonthLabel}>{monthLabel}</span>
+            <button type="button" className={styles.heroNavBtn} aria-label="Próximo mês" onClick={nextMonth}>
+              <ChevronRight size={16} strokeWidth={2.5} />
+            </button>
+            <button type="button" className={styles.heroTodayBtn} onClick={() => setCurrentDate(new Date())}>
+              <CalendarDays size={14} strokeWidth={2.5} /> Hoje
+            </button>
+          </div>
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue} data-tone="up">{formatMoney(totalEntradas)}</span>
+              <span className={styles.heroStatLabel}>Entrou</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue} data-tone="down">{formatMoney(totalSaidas)}</span>
+              <span className={styles.heroStatLabel}>Saiu</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue}>{formatMoney(saldoFinal)}</span>
+              <span className={styles.heroStatLabel}>Sobrou</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Toolbar — busca + filtro de tipo + categoria */}
@@ -285,6 +319,11 @@ export default function TransactionsPage() {
             contaNome: t.contaNome ?? t.cartaoCreditoNome,
             meioPagamento: t.meioPagamento,
             meioPagamentoDescricao: t.meioPagamentoDescricao,
+            recorrenteOrigemId: t.recorrenteOrigemId,
+            parcelamentoId: t.parcelamentoId,
+            parcelaTransacaoId: t.parcelaTransacaoId,
+            ehPagamentoFatura: t.ehPagamentoFatura,
+            statusTransacao: t.statusTransacao,
           }))}
           onRefresh={loadData}
           notify={notify}
@@ -292,7 +331,7 @@ export default function TransactionsPage() {
           pagination={{
             page, pageSize, total: totalNoFiltro,
             onPageChange: setPage,
-            onPageSizeChange: (s) => { setPageSize(s); setPage(1) },
+            onPageSizeChange: (s) => { setPageSize(s); setPage(1); localStorage.setItem(PAGE_SIZE_KEY, String(s)) },
           }}
         />
       </PontesCard>
