@@ -114,6 +114,8 @@ export default function DashboardPage() {
           navigate("/transactions"); e.preventDefault(); break
         case "c":
           navigate("/credit-cards"); e.preventDefault(); break
+        case "f":
+          navigate("/transfers"); e.preventDefault(); break
         case "arrowleft":
           prevMonth(); e.preventDefault(); break
         case "arrowright":
@@ -503,7 +505,7 @@ function QuickActions({ navigate }: { navigate: (to: string) => void }) {
     { icon: Plus, label: "Nova transação", kbd: "N", action: () => window.dispatchEvent(new Event("openNewTransaction")) },
     { icon: Receipt, label: "Transações", kbd: "T", action: () => navigate("/transactions") },
     { icon: CreditCard, label: "Cartões", kbd: "C", action: () => navigate("/credit-cards") },
-    { icon: ArrowLeftRight, label: "Transferir", kbd: "", action: () => navigate("/transfers") },
+    { icon: ArrowLeftRight, label: "Transferir", kbd: "F", action: () => navigate("/transfers") },
   ]
   return (
     <div className={styles.quickActions}>

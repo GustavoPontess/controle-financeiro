@@ -125,6 +125,31 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("Alimentação · Mercado")).toBeInTheDocument()
   })
 
+  it("PontesGroupedSelect busca filtra grupos e itens (acento-insensível)", () => {
+    render(
+      <PontesGroupedSelect
+        p={p} font={font}
+        groups={[
+          { value: "cat1", label: "Alimentação", items: [{ value: "s1", label: "Supermercado" }, { value: "s2", label: "Delivery" }] },
+          { value: "cat2", label: "Transporte", items: [{ value: "s3", label: "Uber" }] },
+        ]}
+        groupValue="" itemValue="" onChange={() => { /* noop */ }}
+      />
+    )
+    fireEvent.click(screen.getByText("Selecione"))
+    const busca = screen.getByPlaceholderText("Buscar categoria…")
+    fireEvent.change(busca, { target: { value: "aliment" } }) // sem acento, acha "Alimentação"
+    expect(screen.getByText("Supermercado")).toBeInTheDocument()
+    expect(screen.queryByText("Uber")).not.toBeInTheDocument()
+    // busca por item: mostra o grupo-cabeçalho + só o item que bate
+    fireEvent.change(busca, { target: { value: "uber" } })
+    expect(screen.getByText("Uber")).toBeInTheDocument()
+    expect(screen.queryByText("Supermercado")).not.toBeInTheDocument()
+    // termo sem match → "Nada encontrado"
+    fireEvent.change(busca, { target: { value: "zzz" } })
+    expect(screen.getByText("Nada encontrado")).toBeInTheDocument()
+  })
+
   it("PontesModal mostra título, ícone X (svg) e fecha", () => {
     let closed = 0
     render(

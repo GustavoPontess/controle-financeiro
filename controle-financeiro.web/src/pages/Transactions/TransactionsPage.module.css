@@ -1,11 +1,55 @@
 .root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
 
+/* Header padrão (igual às outras telas: título + subtitle + ação) */
 .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-.monthNav { display: inline-flex; align-items: center; gap: 8px; }
-.monthLabel { min-width: 180px; text-align: center; font-size: 17px; font-weight: 700; letter-spacing: 0.02em; color: var(--pontes-text); }
-.headerActions { display: inline-flex; gap: 8px; }
+.title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
 
-.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+/* Hero composto — linguagem hero das outras telas, composição própria:
+   saldo total (global) à esquerda + resumo do mês à direita, numa peça só. */
+.hero {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg);
+  background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
+  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between;
+  gap: 32px; flex-wrap: wrap;
+}
+.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+.heroMain { position: relative; min-width: 0; }
+.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+
+/* Lado direito do hero — nav de mês + 3 números do mês */
+.heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+.heroMonthNav { display: inline-flex; align-items: center; gap: 6px; }
+.heroNavBtn {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+  border: none; border-radius: 8px; cursor: pointer; color: var(--pontes-hero-fg);
+  background: rgba(255, 255, 255, 0.15); transition: background-color .14s ease;
+}
+.heroNavBtn:hover { background: rgba(255, 255, 255, 0.28); }
+.heroMonthLabel { min-width: 130px; text-align: center; font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
+.heroTodayBtn {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--pontes-hero-fg); font-family: var(--pontes-font);
+  font-size: 12px; font-weight: 600; transition: background-color .14s ease;
+}
+.heroTodayBtn:hover { background: rgba(255, 255, 255, 0.15); }
+.heroStats { display: flex; align-items: stretch; gap: 18px; }
+.heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.heroStatValue[data-tone="up"] { color: #4ADE80; }
+.heroStatValue[data-tone="down"] { color: #FB7185; }
+.heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatDivider { width: 1px; background: rgba(255, 255, 255, 0.22); }
+
+@media (max-width: 720px) {
+  .hero { gap: 20px; }
+  .heroSide { align-items: flex-start; width: 100%; }
+  .heroStats { width: 100%; justify-content: space-between; }
+  .heroStat { align-items: flex-start; }
+}
 
 /* Toolbar — busca + tipo chips + categoria */
 .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }

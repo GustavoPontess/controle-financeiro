@@ -8,7 +8,12 @@
 .chev { color: var(--pontes-text-muted); display: inline-flex; flex-shrink: 0; transition: transform 160ms ease; }
 .chev[data-open="true"] { transform: rotate(180deg); }
 
-.panel { margin-top: 6px; width: 100%; max-height: 240px; overflow-y: auto; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; box-shadow: var(--pontes-shadow-md); padding: 6px; }
+.panel { margin-top: 6px; width: 100%; max-height: 280px; overflow-y: auto; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; box-shadow: var(--pontes-shadow-md); padding: 6px; }
+/* Busca fixa no topo do painel (não rola com a lista) */
+.searchWrap { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: -6px -6px 4px; padding: 8px 10px; background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border); }
+.searchIcon { color: var(--pontes-text-muted); flex-shrink: 0; }
+.search { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; color: var(--pontes-text); }
+.search::placeholder { color: var(--pontes-text-muted); }
 .groupRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; font-weight: 700; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
 .groupRow:hover { background: var(--pontes-bg); }
 .groupRow[data-active="true"] { color: var(--pontes-primary); }
