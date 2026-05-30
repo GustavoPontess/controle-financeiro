@@ -20,9 +20,9 @@ import {
   TrendingUp, TrendingDown, type LucideIcon,
 } from "lucide-react"
 import {
-  AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
-import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, usePontesTheme, semantic } from "@/components/pontes"
+import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
 import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
 import { useAuth } from "../../hooks/useAuth"
@@ -50,8 +50,6 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const firstName = currentUser?.nome?.trim().split(" ")[0] ?? ""
 
-  // Cores do donut: paleta + semantic (sem hex solto).
-  const chartColors = [p.primary, p.accent, semantic.warning, semantic.info, semantic.success, p.textMuted]
 
   const [data, setData] = useState<DashboardData | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -252,35 +250,11 @@ export default function DashboardPage() {
             <PontesCard padding={24} radius={18} hover style={{ minWidth: 0 }}>
               <div className={styles.cardTitle}>Maiores gastos</div>
               <div className={styles.cardSub}>Onde seu dinheiro foi este mês</div>
-              {data.topCategorias.length === 0 ? (
-                <div className={styles.donutEmpty}>Nenhuma despesa no período</div>
-              ) : (
-                <div className={styles.donutWrap}>
-                  <div className={styles.donutChart}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={data.topCategorias} dataKey="valor" nameKey="descricao" innerRadius={54} outerRadius={80} paddingAngle={2} stroke="none">
-                          {data.topCategorias.map((_, i) => <Cell key={i} fill={chartColors[i % chartColors.length]} />)}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className={styles.donutCenter}>
-                      <div className={styles.donutCenterLabel}>Total</div>
-                      <div className={styles.donutCenterValue}>{fmt(data.topCategorias.reduce((s, c) => s + c.valor, 0))}</div>
-                    </div>
-                  </div>
-                  <div className={styles.legend}>
-                    {data.topCategorias.map((cat, i) => (
-                      <div key={cat.descricao} className={styles.legendRow}>
-                        <span className={styles.legendDot} style={{ background: chartColors[i % chartColors.length] }} />
-                        <span className={styles.legendName}>{cat.descricao}</span>
-                        <span className={styles.legendPct}>{cat.percentual}%</span>
-                        <span className={styles.legendValue}>{fmt(cat.valor)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <PontesCategoryDonut
+                data={data.topCategorias.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
+                formatMoney={fmt}
+                emptyLabel="Nenhuma despesa no período"
+              />
             </PontesCard>
           </div>
 

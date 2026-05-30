@@ -2,11 +2,11 @@ import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-  ResponsiveContainer, AreaChart, Area, Cell, PieChart, Pie, ReferenceLine,
+  ResponsiveContainer, AreaChart, Area, ReferenceLine,
 } from "recharts"
 import {
   PontesCard, PontesIconButton, PontesSelect, PontesLoadingDots,
-  usePontesTheme,
+  PontesCategoryDonut, usePontesTheme,
 } from "@/components/pontes"
 import { getRelatorio } from "../../services/relatorioService"
 import type { RelatorioData } from "../../types/Relatorio"
@@ -19,11 +19,6 @@ const formatMoneyShort = (v: number) => {
   if (Math.abs(v) >= 1000) return `R$${(v / 1000).toFixed(1)}k`
   return `R$${v.toFixed(0)}`
 }
-
-const PIE_COLORS = [
-  "#0d9488", "#6366f1", "#f59e0b", "#e5484d", "#10b981",
-  "#8b5cf6", "#00a2c7", "#ec4899", "#84cc16", "#f97316",
-]
 
 export default function ReportsPage() {
   // recharts precisa de cor hex real (não CSS var) em atributos SVG.
@@ -38,7 +33,6 @@ export default function ReportsPage() {
   const [data, setData] = useState<RelatorioData | null>(null)
   const [ano, setAno] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
-  const [activeSlice, setActiveSlice] = useState<number | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -175,92 +169,16 @@ export default function ReportsPage() {
             )}
           </PontesCard>
 
-          {/* Distribuição de despesas (donut + lista) */}
+          {/* Distribuição de despesas — donut + lista (componente da biblioteca) */}
           <PontesCard padding={24} radius={14}>
             <div className={styles.cardHead}>
               <span className={styles.cardTitle}>Distribuição de despesas</span>
             </div>
-            {data.gastosPorCategoria.length === 0 ? (
-              <div className={styles.emptyChart}>Nenhuma despesa em {ano}</div>
-            ) : (
-              <div className={styles.distGrid}>
-                <div className={styles.donutWrap}>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={data.gastosPorCategoria}
-                        dataKey="valor" nameKey="descricao"
-                        cx="50%" cy="50%"
-                        innerRadius={62} outerRadius={90}
-                        paddingAngle={2}
-                        onMouseEnter={(_, index) => setActiveSlice(index)}
-                        onMouseLeave={() => setActiveSlice(null)}
-                      >
-                        {data.gastosPorCategoria.map((_, index) => (
-                          <Cell key={index}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                            opacity={activeSlice === null || activeSlice === index ? 1 : 0.35}
-                            stroke="none" />
-                        ))}
-                      </Pie>
-                      <RTooltip
-                        // @ts-expect-error recharts formatter types are loose
-                        formatter={(val: number, name: string) => [formatMoney(val), name]}
-                        contentStyle={tooltipStyle}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className={styles.donutCenter}>
-                    {activeSlice !== null ? (
-                      <>
-                        <div className={styles.donutPct} style={{ color: PIE_COLORS[activeSlice % PIE_COLORS.length] }}>
-                          {data.gastosPorCategoria[activeSlice].percentual}%
-                        </div>
-                        <div className={styles.donutLabel}>{data.gastosPorCategoria[activeSlice].descricao}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={styles.donutTotalLabel}>Total</div>
-                        <div className={styles.donutTotalValue}>
-                          {formatMoney(data.gastosPorCategoria.reduce((s, c) => s + c.valor, 0))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.catList}>
-                  {data.gastosPorCategoria.map((cat, index) => {
-                    const color = PIE_COLORS[index % PIE_COLORS.length]
-                    const isActive = activeSlice === index
-                    return (
-                      <div
-                        key={cat.descricao}
-                        className={styles.catItem}
-                        data-active={isActive ? "true" : undefined}
-                        title={formatMoney(cat.valor)}
-                        onMouseEnter={() => setActiveSlice(index)}
-                        onMouseLeave={() => setActiveSlice(null)}
-                      >
-                        <div className={styles.catRow}>
-                          <div className={styles.catLeft}>
-                            <span className={styles.catDot} style={{ background: color }} />
-                            <span className={styles.catName} data-bold={isActive ? "true" : undefined}>{cat.descricao}</span>
-                          </div>
-                          <div className={styles.catRight}>
-                            <span className={styles.catPct}>{cat.percentual}%</span>
-                            <span className={styles.catValue}>{formatMoney(cat.valor)}</span>
-                          </div>
-                        </div>
-                        <div className={styles.catBar}>
-                          <div className={styles.catBarFill} style={{ width: `${cat.percentual}%`, background: color }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <PontesCategoryDonut
+              data={data.gastosPorCategoria.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
+              formatMoney={formatMoney}
+              emptyLabel={`Nenhuma despesa em ${ano}`}
+            />
           </PontesCard>
         </>
       )}
