@@ -7,10 +7,14 @@
  * Estilo via GroupedSelect.module.css + var(--pontes-*). `p`/`font` override opcional.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { ChevronDown, Check, Search } from "lucide-react"
 import { scopedThemeVars, type Palette } from "../theme"
 import styles from "./GroupedSelect.module.css"
+
+// Normaliza p/ busca: minúsculas e sem acento (categoria "Alimentação" acha "alimenta").
+const DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g")
+const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(DIACRITICS, "")
 
 export type PontesGroupedItem<T extends string = string> = {
   value: T
@@ -37,14 +41,18 @@ export type PontesGroupedSelectProps<T extends string = string> = {
   /** Texto quando não há grupos. */
   emptyLabel?: string
   invalid?: boolean
+  /** Mostra campo de busca no topo do painel (default true). */
+  searchable?: boolean
 }
 
 export function PontesGroupedSelect<T extends string = string>({
   p, font, groups, groupValue, itemValue, onChange,
-  placeholder = "Selecione", emptyLabel = "Nenhuma opção", invalid,
+  placeholder = "Selecione", emptyLabel = "Nenhuma opção", invalid, searchable = true,
 }: PontesGroupedSelectProps<T>) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
   const ref = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -52,6 +60,26 @@ export function PontesGroupedSelect<T extends string = string>({
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
   }, [open])
+
+  // Foca a busca ao abrir; limpa o termo ao fechar.
+  useEffect(() => {
+    if (open) { searchRef.current?.focus() }
+    else { setQuery("") }
+  }, [open])
+
+  // Filtra grupos+itens pelo termo. Grupo cujo NOME bate mostra todos os itens;
+  // senão, mostra só os itens que batem (e some se nenhum bater).
+  const visibleGroups = useMemo(() => {
+    const q = norm(query.trim())
+    if (!q) return groups
+    return groups
+      .map((g) => {
+        if (norm(g.label).includes(q)) return g
+        const items = (g.items ?? []).filter((it) => norm(it.label).includes(q))
+        return items.length ? { ...g, items } : null
+      })
+      .filter((g): g is PontesGroupedOption<T> => g !== null)
+  }, [groups, query])
 
   const selGroup = groups.find((g) => g.value === groupValue)
   const selItem = selGroup?.items?.find((i) => i.value === itemValue)
@@ -74,10 +102,24 @@ export function PontesGroupedSelect<T extends string = string>({
 
       {open && (
         <div className={styles.panel}>
+          {searchable && groups.length > 0 && (
+            <div className={styles.searchWrap}>
+              <Search size={14} className={styles.searchIcon} />
+              <input
+                ref={searchRef}
+                className={styles.search}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar categoria…"
+              />
+            </div>
+          )}
           {groups.length === 0 ? (
             <div className={styles.empty}>{emptyLabel}</div>
+          ) : visibleGroups.length === 0 ? (
+            <div className={styles.empty}>Nada encontrado</div>
           ) : (
-            groups.map((g) => (
+            visibleGroups.map((g) => (
               <div key={g.value}>
                 <button
                   type="button"

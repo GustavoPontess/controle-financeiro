@@ -71,6 +71,8 @@ namespace ControleFinanceiro.Api.Controllers
                 CartaoCreditoId = dto.CartaoCreditoId,
                 UsadoComoCredito = dto.UsadoComoCredito,
                 MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
+                // Efetivado → entra no saldo real; não efetivado → previsão (futura permitida).
+                StatusTransacao = dto.Efetivado ? StatusTransacao.Executado : StatusTransacao.Previsao,
                 Data = dto.Data.ToUniversalTime()
             };
 
@@ -94,6 +96,11 @@ namespace ControleFinanceiro.Api.Controllers
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : null,
             MeioPagamentoDescricao = MeioPagamentoLabel(t.MeioPagamento),
             FaturaId = t.FaturaId,
+            RecorrenteOrigemId = t.RecorrenteOrigemId,
+            ParcelamentoId = t.ParcelamentoId,
+            ParcelaTransacaoId = t.ParcelaTransacaoId,
+            EhPagamentoFatura = t.EhPagamentoFatura,
+            StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
         };
 

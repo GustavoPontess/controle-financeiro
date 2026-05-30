@@ -100,6 +100,52 @@ public class TransacaoServiceTests
     }
 
     [Fact]
+    public async Task CriarTransacaoAsync_PrevisaoComDataFutura_PersisteSucesso()
+    {
+        // Previsão (ex.: salário do próximo mês) PODE ser futura — é o ponto dela.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            Descricao = "Salário (previsto)",
+            Valor = 5000,
+            Tipo = TipoTransacao.Receita,
+            StatusTransacao = StatusTransacao.Previsao,
+            Data = DateTime.UtcNow.AddDays(15),
+        };
+
+        var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
+
+        Assert.Equal(StatusTransacao.Previsao, resultado.StatusTransacao);
+        Assert.True(resultado.Data > DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task CriarTransacaoAsync_Efetivado_PersisteComoExecutado()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            Descricao = "Compra à vista",
+            Valor = 100,
+            Tipo = TipoTransacao.Despesa,
+            StatusTransacao = StatusTransacao.Executado,
+            Data = DateTime.UtcNow,
+        };
+
+        var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
+
+        Assert.Equal(StatusTransacao.Executado, resultado.StatusTransacao);
+    }
+
+    [Fact]
     public async Task CriarTransacaoAsync_ContaNaoEncontrada_LancaException()
     {
         var (_, svc) = Build();

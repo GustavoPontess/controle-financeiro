@@ -13,6 +13,9 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public int? MeioPagamento { get; set; }
         // Parcelamento: 1 = à vista (ou null). > 1 = gera N transações em N faturas
         public int? Parcelas { get; set; }
+        // true (default) = já recebido/pago → Executado (entra no saldo real, com hora).
+        // false = previsão (ex.: salário do próximo mês ainda não caiu) → Previsao.
+        public bool Efetivado { get; set; } = true;
         public DateTime Data { get; set; }
     }
 }
