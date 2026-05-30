@@ -71,7 +71,11 @@ namespace ControleFinanceiro.Api.Services
             if (transacao.Valor <= 0)
                 throw new Exception("O valor da transação deve ser positivo.");
 
-            if (!transacao.CartaoCreditoId.HasValue && transacao.Data.Date > DateTime.UtcNow.Date)
+            // Data futura só é proibida pra lançamento JÁ efetivado em conta. Previsão
+            // (ex.: salário do próximo mês) pode ser futura — é justamente o ponto dela.
+            if (!transacao.CartaoCreditoId.HasValue
+                && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
+                && transacao.Data.Date > DateTime.UtcNow.Date)
                 throw new Exception("A data da transação não pode ser futura.");
 
             // Transação de crédito → associar à fatura correspondente (invariante 2)
