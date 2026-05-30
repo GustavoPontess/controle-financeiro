@@ -111,17 +111,18 @@ describe("DashboardPage (#81)", () => {
     expect(await screen.findByText("Soma de todas as contas")).toBeInTheDocument()
   })
 
-  it("QuickActions renderiza 4 atalhos com dicas N/T/C", async () => {
+  it("QuickActions renderiza 4 atalhos com dicas N/T/C/F", async () => {
     renderDash()
     await screen.findByText("Olá, Gabriel")
     expect(screen.getByText("Nova transação")).toBeInTheDocument()
     expect(screen.getByText("Transações")).toBeInTheDocument()
     expect(screen.getByText("Cartões")).toBeInTheDocument()
     expect(screen.getByText("Transferir")).toBeInTheDocument()
-    // Dicas de teclado discretas
+    // Dicas de teclado discretas — Transferir agora tem atalho F
     expect(screen.getByText("N")).toBeInTheDocument()
     expect(screen.getByText("T")).toBeInTheDocument()
     expect(screen.getByText("C")).toBeInTheDocument()
+    expect(screen.getByText("F")).toBeInTheDocument()
   })
 
   it("atalho N dispara evento openNewTransaction (fora de input)", async () => {
