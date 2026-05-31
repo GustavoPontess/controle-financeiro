@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-  ResponsiveContainer, AreaChart, Area, ReferenceLine,
+  ResponsiveContainer, AreaChart, Area, ReferenceLine, Cell,
 } from "recharts"
 import {
   PontesCard, PontesIconButton, PontesSelect, PontesLoadingDots,
@@ -24,7 +24,7 @@ const formatMoneyShort = (v: number) => {
 // Tooltip rico compartilhado pelos gráficos — card com ponto colorido, nome e
 // valor formatado por série (substitui o tooltip cru do recharts).
 type TooltipPayload = { name: string; value: number; color?: string; stroke?: string; fill?: string }
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
+function ChartTooltip({ active, payload, label, format = formatMoney }: { active?: boolean; payload?: TooltipPayload[]; label?: string; format?: (v: number) => string }) {
   if (!active || !payload?.length) return null
   return (
     <div className={styles.tooltip}>
@@ -33,7 +33,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
         <div key={p.name} className={styles.tooltipRow}>
           <span className={styles.tooltipDot} style={{ background: p.color ?? p.stroke ?? p.fill }} />
           <span className={styles.tooltipName}>{p.name}</span>
-          <span className={styles.tooltipValue}>{formatMoney(p.value)}</span>
+          <span className={styles.tooltipValue}>{format(p.value)}</span>
         </div>
       ))}
     </div>
@@ -82,6 +82,22 @@ export default function ReportsPage() {
   const variacao = (atual: number, ant: number): number | null =>
     ant > 0 ? ((atual - ant) / ant) * 100 : null
   const fmtPct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`)
+
+  // Saldo acumulado: patrimônio mês a mês (soma corrida do saldo mensal).
+  // n ≤ 12 → O(n²) é trivial e mantém o cálculo imutável.
+  const saldoAcumulado = evolucaoComDados.map((m, i) => ({
+    mesLabel: m.mesLabel,
+    acumulado: evolucaoComDados.slice(0, i + 1).reduce((s, x) => s + x.saldo, 0),
+  }))
+
+  // Taxa de economia: quanto da receita sobrou no mês (saldo / receitas).
+  const taxaEconomia = evolucaoComDados.map((m) => ({
+    mesLabel: m.mesLabel,
+    taxa: m.receitas > 0 ? ((m.receitas - m.despesas) / m.receitas) * 100 : 0,
+  }))
+  const taxaMedia = taxaEconomia.length
+    ? taxaEconomia.reduce((s, m) => s + m.taxa, 0) / taxaEconomia.length
+    : 0
 
 
   return (
@@ -226,6 +242,61 @@ export default function ReportsPage() {
                   <ReferenceLine y={0} stroke={colorBorder} />
                   <Bar dataKey="receitas" name="Receitas" fill="url(#barReceitas)" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="despesas" name="Despesas" fill="url(#barDespesas)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </PontesCard>
+
+          {/* Saldo acumulado — patrimônio ao longo do ano */}
+          <PontesCard padding={24} radius={14}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Saldo acumulado</span>
+              <span className={styles.cardSub}>Seu patrimônio crescendo mês a mês</span>
+            </div>
+            {saldoAcumulado.length === 0 ? (
+              <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={saldoAcumulado} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradAcum" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colorPrimary} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={colorPrimary} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
+                  <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
+                  <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="acumulado" name="Acumulado"
+                    stroke={colorPrimary} strokeWidth={3} fill="url(#gradAcum)"
+                    dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </PontesCard>
+
+          {/* Taxa de economia — % da receita que sobrou por mês */}
+          <PontesCard padding={24} radius={14}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Taxa de economia</span>
+              <span className={styles.cardSub}>% da receita que sobrou — média {taxaMedia.toFixed(0)}%</span>
+            </div>
+            {taxaEconomia.length === 0 ? (
+              <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={taxaEconomia} barSize={28} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
+                  <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={44} />
+                  <RTooltip content={<ChartTooltip format={(v) => `${v.toFixed(1)}%`} />} cursor={{ fill: "color-mix(in srgb, var(--pontes-primary) 6%, transparent)", radius: 6 }} />
+                  <ReferenceLine y={0} stroke={colorBorder} />
+                  <Bar dataKey="taxa" name="Economia" radius={[6, 6, 0, 0]}>
+                    {taxaEconomia.map((m, i) => (
+                      <Cell key={i} fill={m.taxa >= 0 ? colorSuccess : colorDanger} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
