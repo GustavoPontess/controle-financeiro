@@ -1,8 +1,28 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-29
-status: Q5 FECHADO + paginação real entregue
-issue_atual: 'nenhuma — PR aberto pendente, depois pegar próxima'
+last_reviewed: 2026-05-31
+status: EM_EXECUCAO — features dos achados de concorrentes (sem gating/plano)
+issue_atual: 'Lote 1 (quick-wins) do docs/BUILD_PLAN_CONCORRENTES.md'
+---
+
+## Sessão 2026-05-31 — análise de concorrentes + início do build
+
+**Análise (commitada `a9d1357`):** Pierre, Despezzas, Monarch, Conta Azul, Bling, Qive — público + interno testado onde acessível. Docs em `docs/concorrentes/` (README/produto/design/comparativo por concorrente + `COMPARATIVO_GERAL.md` + `ACHADOS_ACIONAVEIS.md` + `PROCESSO.md`). **Fosso confirmado:** família real BR (rateio/papéis/dependentes/aprovação) + contador + personalização.
+
+**Decisão do dono:** ignorar plano/preço/gating por enquanto — tudo acessível. Mapear e construir os features. Plano em `docs/BUILD_PLAN_CONCORRENTES.md`.
+
+**Feito (commit `d6f5b8d`, branch `feature/privacy-toggle-ocultar-saldo`):**
+- ✅ **1.2 Privacy toggle (ocultar saldo)** — `PontesSensitiveValue` + `PontesHideBalanceToggle` + `useHideBalance` (store global). Wire no hero da TransactionsPage. 3 testes verdes, lint/tsc limpos.
+
+**Próximo (ordem do BUILD_PLAN):**
+1. **1.1 Filtros de transação ricos** (flagship) — back: `TransacaoService`/`TransacoesController` add `contaId`/`cartaoId`/`valorMin`/`valorMax`/`status`/`ordenacao` (mantendo paginação). front: drawer de filtros na TransactionsPage + chips de filtro ativo. testes back+front.
+2. 1.4 Orçamento simples · 1.3 Variação % · 3.1 Assinaturas · … (ver plano)
+3. **2.2 Família real (rateio/settle-up)** = fosso, maior peso — spec própria antes de codar.
+
+**Follow-ups do 1.2:** estender o olho pra Dashboard (saldo) e AccountsPage; demo no `/design-system`.
+
+**Pendências de git anteriores (não tocadas):** branch `feature/paginacao-server-side` (3 commits, PR pendente) e `polish/relatorios` (base desta branch). Dono decide estratégia de merge.
+
 ---
 
 ## Estado atual — Q5 fechado + paginação real
