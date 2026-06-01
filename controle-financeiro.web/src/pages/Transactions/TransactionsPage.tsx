@@ -6,8 +6,7 @@ import {
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesSelect,
-  PontesInput, PontesEmptyState,
-  PontesHideBalanceToggle, useHideBalance,
+  PontesInput, PontesEmptyState, useHideBalance,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
 import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
@@ -213,10 +212,7 @@ export default function TransactionsPage() {
       <div className={styles.hero}>
         <div className={styles.heroBlob} />
         <div className={styles.heroMain}>
-          <div className={styles.heroLabel}>
-            Saldo total
-            <PontesHideBalanceToggle size={15} />
-          </div>
+          <div className={styles.heroLabel}>Saldo total</div>
           <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
           <div className={styles.heroSub}>Soma de todas as contas</div>
         </div>

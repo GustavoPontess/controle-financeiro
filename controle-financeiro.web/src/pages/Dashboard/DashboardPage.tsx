@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
-  Eye, EyeOff, ChevronLeft, ChevronRight, Wallet,
+  ChevronLeft, ChevronRight, Wallet,
   ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock,
   Plus, CreditCard, ArrowLeftRight, Receipt,
   TrendingUp, TrendingDown, type LucideIcon,
@@ -54,8 +54,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
-  // Olho global (ocultar saldo): persiste em localStorage e sincroniza entre telas.
-  const [hide, toggleHide] = useHideBalance()
+  // Olho global (ocultar saldo): controlado pelo navbar; aqui só consumimos o estado.
+  const [hide] = useHideBalance()
 
   const fmt = useCallback((v: number) => (hide ? "R$ ••••" : fmtFull(v)), [hide])
 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.root}>
-      {/* Saudação + olho */}
+      {/* Saudação (olho de ocultar saldo vive no navbar global) */}
       <div className={styles.greetRow}>
         <div>
           <h1 className={styles.greetTitle}>
@@ -137,13 +137,6 @@ export default function DashboardPage() {
             {todayLabel} · <em className={styles.greetSubEm}>resumo das suas finanças</em>
           </div>
         </div>
-        <PontesIconButton
-          variant="outline" size={40}
-          onClick={toggleHide}
-          aria-label={hide ? "Mostrar valores" : "Esconder valores"}
-        >
-          {hide ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
-        </PontesIconButton>
       </div>
 
       {loading && !data && (
