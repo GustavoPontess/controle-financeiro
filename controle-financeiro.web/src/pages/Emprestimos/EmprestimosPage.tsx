@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign,
@@ -16,8 +17,6 @@ import type { EmprestimoStats } from "../../services/emprestimoService"
 import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
 import styles from "./EmprestimosPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR") : "—"

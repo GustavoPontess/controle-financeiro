@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { Target, Pencil, Trash2, Plus, Calendar } from "lucide-react"
 import {
@@ -22,8 +23,6 @@ type ConfirmState = {
   tone?: "danger" | "warning" | "info"
 } | null
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatDate = (s: string) =>
   new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })

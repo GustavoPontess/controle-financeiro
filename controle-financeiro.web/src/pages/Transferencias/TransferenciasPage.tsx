@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ArrowLeftRight } from "lucide-react"
 import {
@@ -12,8 +13,6 @@ import type { Transferencia } from "../../types/Transferencia"
 import type { Conta } from "../../types/Conta"
 import styles from "./TransferenciasPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const today = () => new Date().toISOString().slice(0, 10)
 

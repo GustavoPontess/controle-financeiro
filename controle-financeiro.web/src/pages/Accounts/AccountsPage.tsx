@@ -22,11 +22,9 @@ import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
 import styles from "./AccountsPage.module.css"
 import { Pencil, Trash2 } from "lucide-react"
+import { formatMoney as fmt } from "@/utils/money"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-const fmt = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const TIPO_TONE: Record<number, "primary" | "success" | "accent" | "neutral" | "warning"> = {
   1: "primary",   // Corrente

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { Upload, FileText } from "lucide-react"
 import {
@@ -17,8 +18,6 @@ type Notification = { open: boolean; message: string; severity: "success" | "err
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 type LinhaEstado = { selecionada: boolean; categoriaId: string }
 

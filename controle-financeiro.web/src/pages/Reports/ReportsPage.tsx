@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
@@ -13,8 +14,6 @@ import { getRelatorio } from "../../services/relatorioService"
 import type { RelatorioData } from "../../types/Relatorio"
 import styles from "./ReportsPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatMoneyShort = (v: number) => {
   if (Math.abs(v) >= 1000) return `R$${(v / 1000).toFixed(1)}k`

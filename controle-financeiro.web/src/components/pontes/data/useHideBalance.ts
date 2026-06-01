@@ -21,6 +21,9 @@ function emit() { listeners.forEach((l) => l()) }
 function subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l) } }
 function getSnapshot() { return hidden }
 
+/** Leitura não-reativa do estado global (para formatadores fora de componente). */
+export function isBalanceHidden(): boolean { return hidden }
+
 /** Define o estado global de ocultar valores (persiste em localStorage). */
 export function setHideBalance(value: boolean): void {
   hidden = value
