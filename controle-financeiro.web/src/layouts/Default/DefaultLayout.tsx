@@ -12,7 +12,7 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
-import { PontesToast, PontesCommandPalette, type PontesCommandItem } from "@/components/pontes"
+import { PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
 import styles from "./DefaultLayout.module.css"
 
 import Navbar from "../../components/Navbar/Navbar"
@@ -48,6 +48,9 @@ export default function DefaultLayout() {
   const { accountKey } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  // Assina o olho global aqui no shell → ao alternar, re-renderiza o Outlet
+  // (página atual) inteiro, mascarando/mostrando valores AO VIVO em qualquer tela.
+  useHideBalance()
 
   const [open, setOpen] = useState(true)
   const [openTransaction, setOpenTransaction] = useState(false)
