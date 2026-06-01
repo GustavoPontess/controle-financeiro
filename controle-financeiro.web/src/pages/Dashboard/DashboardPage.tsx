@@ -22,7 +22,7 @@ import {
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
-import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme } from "@/components/pontes"
+import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
 import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
 import { useAuth } from "../../hooks/useAuth"
@@ -54,7 +54,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
-  const [hide, setHide] = useState(false)
+  // Olho global (ocultar saldo): persiste em localStorage e sincroniza entre telas.
+  const [hide, toggleHide] = useHideBalance()
 
   const fmt = useCallback((v: number) => (hide ? "R$ ••••" : fmtFull(v)), [hide])
 
@@ -138,7 +139,7 @@ export default function DashboardPage() {
         </div>
         <PontesIconButton
           variant="outline" size={40}
-          onClick={() => setHide((h) => !h)}
+          onClick={toggleHide}
           aria-label={hide ? "Mostrar valores" : "Esconder valores"}
         >
           {hide ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
