@@ -1,9 +1,8 @@
 namespace ControleFinanceiro.Api.Infrastructure;
 
 /// <summary>
-/// Detecta o provedor de banco de dados a partir da connection string em DATABASE_URL.
-/// SQLite em dev (connection string com "Data Source="), Postgres em produção
-/// (connection string com "Host=").
+/// Configura o provedor Postgres. DATABASE_URL deve conter uma connection string
+/// Npgsql válida (com "Host=").
 /// </summary>
 public static class DatabaseProvider
 {
@@ -16,7 +15,4 @@ public static class DatabaseProvider
         // resolver tipos (acessado tanto pelo host quanto pelo design-time).
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     }
-
-    public static bool IsPostgres(string connectionString) =>
-        connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase);
 }

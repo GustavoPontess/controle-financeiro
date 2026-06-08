@@ -9,7 +9,6 @@ using ControleFinanceiro.Api.Infrastructure.Security;
 using ControleFinanceiro.Api.Services;
 using DotNetEnv;
 using Hangfire;
-using Hangfire.MemoryStorage;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -62,14 +61,10 @@ builder.Services.AddControllers(options =>
 
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
-var usePostgres = DatabaseProvider.IsPostgres(databaseUrl);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (usePostgres)
-        options.UseNpgsql(databaseUrl);
-    else
-        options.UseSqlite(databaseUrl);
+    options.UseNpgsql(databaseUrl);
 });
 
 builder.Services.AddScoped<TransacaoService>();
@@ -128,20 +123,15 @@ builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
 
-// Hangfire: Postgres (prod) persiste a fila de jobs entre deploys; SQLite
-// (dev) usa MemoryStorage — jobs não sobrevivem a restart, aceitável em dev.
 builder.Services.AddHangfire(config =>
 {
-    if (usePostgres)
-        config.UsePostgreSqlStorage(
-            c => c.UseNpgsqlConnection(databaseUrl),
-            new PostgreSqlStorageOptions
-            {
-                SchemaName = "hangfire",
-                PrepareSchemaIfNecessary = true,
-            });
-    else
-        config.UseMemoryStorage();
+    config.UsePostgreSqlStorage(
+        c => c.UseNpgsqlConnection(databaseUrl),
+        new PostgreSqlStorageOptions
+        {
+            SchemaName = "hangfire",
+            PrepareSchemaIfNecessary = true,
+        });
 });
 builder.Services.AddHangfireServer();
 
@@ -336,12 +326,7 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
 
-    // Postgres (prod) usa migrations versionadas; SQLite (dev) cria o schema
-    // direto do modelo via EnsureCreated — mais rápido para subir, sem histórico.
-    if (usePostgres)
-        await context.Database.MigrateAsync();
-    else
-        await context.Database.EnsureCreatedAsync();
+    await context.Database.MigrateAsync();
 
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
