@@ -151,11 +151,13 @@ builder.Services.AddRateLimiter(options =>
     static string PartitionByIp(HttpContext ctx) =>
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
+    // Em Development, limite alto para não bloquear testes E2E repetidos localmente
+    var isDev = builder.Environment.IsDevelopment();
     options.AddPolicy("auth-login", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
             new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0,
             }));
