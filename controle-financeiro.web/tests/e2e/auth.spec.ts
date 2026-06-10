@@ -1,5 +1,5 @@
 import { test, expect, request } from '@playwright/test';
-import { login, DEV_EMAIL, DEV_PASSWORD } from './helpers';
+import { login, DEV_EMAIL } from './helpers';
 
 // Verifica se o backend está acessível antes de rodar os testes
 test.beforeAll(async () => {
