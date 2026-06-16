@@ -7,7 +7,7 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 > **Projeto solo** (Gustavo). Sem coordenação de dupla. `gh issue` é opcional pra rastrear trabalho, sem assignee de terceiros.
 >
 > ### ⚖️ Segurança & Conformidade — regra inegociável
-> **Antes de QUALQUER lançamento, é obrigatório pesquisar e aplicar as práticas de segurança nível bancário/fintech, os requisitos da LGPD e as regras regulatórias aplicáveis (ANPD; BACEN/Open Finance se aplicável), e respeitar TODAS as regras impostas.** É um app de dinheiro + dados pessoais — nenhuma feature que toca auth/PII/dados sensíveis sobe sem essa checagem. Pesquisa = **deep-research verificado por fonte primária** (OWASP/NIST/ANPD/BACEN), nunca chute. Spec vivo: `docs/SEGURANCA_BEST_PRACTICES.md`. **`1.0.0` só sai com isso fechado.**
+> **Antes de QUALQUER lançamento, é obrigatório pesquisar e aplicar as práticas de segurança nível bancário/fintech, os requisitos da LGPD e as regras regulatórias aplicáveis (ANPD; BACEN/Open Finance se aplicável), e respeitar TODAS as regras impostas.** É um app de dinheiro + dados pessoais — nenhuma feature que toca auth/PII/dados sensíveis sobe sem essa checagem. Pesquisa = **deep-research verificado por fonte primária** (OWASP/NIST/ANPD/BACEN), nunca chute. **Fontes autoritativas (consultar sempre): `docs/CONFORMIDADE_BR.md`.** Spec técnico vivo: `docs/SEGURANCA_BEST_PRACTICES.md`. **`1.0.0` só sai com isso fechado.**
 
 ## Project Overview
 
