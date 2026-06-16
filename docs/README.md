@@ -37,6 +37,7 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 | [FLOWS.md](./FLOWS.md) | Fluxos de negócio (transação, parcelamento, fatura) |
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, biblioteca Pontes |
 | [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches, commits, PR, squash merge |
+| [RELEASING.md](./RELEASING.md) | Como cortar uma versão (SemVer 0.x, CHANGELOG, tag, release) |
 | [CONTROLLER_TEMPLATE.md](./CONTROLLER_TEMPLATE.md) | Scaffold para criar novo controller |
 | [ANALISE_PRODUTO.md](./ANALISE_PRODUTO.md) | Análise crítica de produto (maio/2026) — leitura recomendada para entender o porquê do roadmap atual |
 | [concorrentes/](./concorrentes/) | Análise de concorrentes (Pierre, Despezzas, Monarch, Conta Azul, Bling, Qive) + achados acionáveis |
