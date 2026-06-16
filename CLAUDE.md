@@ -10,12 +10,12 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
-- **Backend:** .NET 8 Web API com EF Core. **Dev e prod usam Postgres** (paridade dev/prod, via `docker compose up -d postgres`). Provider escolhido em runtime pela connection string (`Infrastructure/DatabaseProvider.cs`); SQLite continua suportado como fallback opcional sem Docker
+- **Backend:** .NET 8 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
 - **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
-- **Banco de dados:** 18 entidades. Provider dinâmico SQLite/Postgres (Issue #16 concluída); `docker-compose.yml` sobe Postgres local
+- **Banco de dados:** 18 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
-- **Jobs:** Hangfire — storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em prod, `MemoryStorage` em dev SQLite. Dashboard `/hangfire` exige autenticação
+- **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
 - **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
 - **Backlog ativo:** ver `ROADMAP.md` — features dos achados de concorrentes (Lotes 1-5) + fosso família. Estado granular em `STATE.md`
 
@@ -83,9 +83,8 @@ npm run lint
 - All endpoints except `/auth/login` and `/auth/register` require `[Authorize]`
 
 ### Database
-- Provider escolhido em runtime via `DATABASE_URL` (`DatabaseProvider.IsPostgres`): `Host=` → Postgres, senão SQLite
-- **SQLite (dev):** arquivo `ControleFinanceiro.Api/controlefinanceiro.db`, schema criado via `EnsureCreated` (sem migrations)
-- **Postgres (prod):** migrations versionadas em `Migrations/` (geradas para Postgres pelo `AppDbContextFactory`); `docker compose up -d` sobe Postgres local
+- **Postgres único** (SQLite removido no #114): `DATABASE_URL` deve conter connection string Npgsql (`Host=...`). Rodar a API **exige** Postgres no ar (`docker compose up -d postgres`)
+- **Schema via migrations versionadas** em `Migrations/` (25 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
 - `Npgsql.EnableLegacyTimestampBehavior` ativo — `DateTime` mapeia para `timestamp without time zone`
 - Some schema patches for the Fatura system are applied via raw DDL in `Program.cs` startup (check for column existence before executing)
 

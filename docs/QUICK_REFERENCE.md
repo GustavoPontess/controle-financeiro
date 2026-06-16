@@ -6,7 +6,7 @@
 
 ## 🏗️ Stack
 
-- **Backend:** .NET 8, C#, EF Core, **Postgres** (provider dinâmico; SQLite fallback sem Docker), JWT + refresh token
+- **Backend:** .NET 8, C#, EF Core, **Postgres único** (SQLite removido no #114; exige Docker/Postgres no ar), JWT + refresh token
 - **Frontend:** React 19, TypeScript, Vite, **biblioteca Pontes** (`src/components/pontes/`) — **zero MUI** (purgado PR #166), CSS Modules + `var(--pontes-*)`
 - **DB:** Postgres via `docker compose up -d postgres` (dev e prod). Provider escolhido em runtime por `DATABASE_URL`
 - **Auth:** JWT Bearer (HS256, 60min) + refresh token (rotação, 7 dias) + reset password (1h)
@@ -306,7 +306,7 @@ git push origin feature-branch
 1. **API versionada:** todas as rotas em `/api/v1/...` (configurado globalmente em `Program.cs`)
 2. **Delete behavior:** Contas cascade (txns deleted), Cartões restrict (can't delete if open Faturas)
 3. **Soft delete obrigatório** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`
-4. **Background jobs:** 5 jobs Hangfire (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`). Storage dinâmico: `PostgreSqlStorage` em prod, `MemoryStorage` em dev SQLite
+4. **Background jobs:** 5 jobs Hangfire (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`). Storage: `PostgreSqlStorage` (schema `hangfire`)
 5. **Backlog atual:** ver `../ROADMAP.md`. Estado vivo em `../STATE.md`
 
 ---
