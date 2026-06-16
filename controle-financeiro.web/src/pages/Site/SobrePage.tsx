@@ -135,8 +135,6 @@ function Valores() {
 function Time() {
   const team = [
     { nome: "Gustavo Pontes", papel: "Fundador · Produto & Engenharia", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&auto=format&fit=crop&q=80" },
-    { nome: "Caio Amaral", papel: "Cofundador · Engenharia & Design", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&auto=format&fit=crop&q=80" },
-    { nome: "João Vitor Costa", papel: "Cofundador · Engenharia", photo: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&auto=format&fit=crop&q=80" },
   ]
   return (
     <section className={styles.sectionSurface}>
