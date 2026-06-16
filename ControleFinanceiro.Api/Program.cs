@@ -322,15 +322,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Seed bancos na primeira execução
+// Migrations + seeds LOCAIS (rápidos, sem rede) rodam ANTES de servir: schema
+// e dados essenciais (categorias, usuário dev) prontos quando o app sobe.
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
 
     await context.Database.MigrateAsync();
 
-    await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
     await SubcategoriaSeeder.SeedAsync(context);
 
@@ -339,6 +338,25 @@ using (var scope = app.Services.CreateScope())
     if (app.Environment.IsDevelopment())
         await DevDataSeeder.SeedAsync(context);
 }
+
+// Seed de bancos usa API externa (BrasilAPI) — fica FORA do caminho crítico do
+// boot. Roda em background depois que o app começa a servir, pra /health
+// responder na hora e o startup não travar se a API externa estiver lenta/fora.
+// Idempotente (pula se já há bancos) e tolera falha (BancoSeeder tem try/catch).
+app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+        await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Seed de bancos (background) falhou: {ex.Message}");
+    }
+}));
 
 if (app.Environment.IsDevelopment())
 {
