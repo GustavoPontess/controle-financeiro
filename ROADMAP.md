@@ -59,11 +59,23 @@ status: ATIVO
 
 ## Higiene / dívida conhecida
 
-- [ ] **Auditoria do código herdado (Caio/joao)** — varredura completa dos 41 commits mergeados (segurança, infra, telas Q5). Ver STATE.md. **Em andamento.**
-- [ ] **Rotacionar segredos** — `Jwt:Key`, senha Postgres, API keys. Ex-colaboradores tinham clone local. ⚠️ pendente.
-- [ ] **KPIs de topo agregam só 1 página** (TransactionsPage, Recorrentes, Emprestimos, Parcelamentos) — quem tiver >100 itens vê stats imprecisos. Fix: endpoints `/stats` dedicados por tela (Dashboard e Transactions já têm).
-- [ ] **#125 INPI marca Pontes** (legal, não-código) · **#126 LGPD pré-lançamento** (legal, não-código).
-- [ ] **Lint debt:** `src/test/pages/ReportsPage.test.tsx` 2 erros NBSP (`no-irregular-whitespace`, herdado do branch reports).
+### 🔴 Fixes da auditoria do código herdado (`docs/AUDITORIA_CODIGO_HERDADO.md`) — bloqueiam produção
+- [ ] **C1 — reset token vazado na resposta HTTP** (`AuthService`/`AuthController`) = account takeover. Tirar token da resposta + enviar por e-mail.
+- [ ] **C2 — contrato de exceção furado** — 67 `throw new Exception(...)` nos services viram HTTP 500 + vazam mensagem. Trocar pelos tipos certos + middleware não ecoar `Message` no 500.
+- [ ] **C3 — soft-delete de `Transacao` violado** — `DeletarAsync` faz hard `Remove`; `ListarAsync` não filtra `Ativo`.
+
+### 🟠 Altos
+- [ ] **A1/A2 — PasswordHasher** — PBKDF2 10k→≥100k iterações + hash 20→32 bytes (rehash no próximo login).
+- [ ] **A3 — segredos no compose/CI versionado** — senha Postgres + JWT_SECRET default hardcoded → `.env`.
+- [ ] **A4 — critério de gasto divergente** Orçamento (`CriadoPor`) × Relatório (ownership) — padronizar.
+- [ ] **Rotacionar segredos** — `Jwt:Key`, senha Postgres, API keys. Ex-colaboradores tinham clone local. ⚠️
+
+### 🟡 / outros
+- [ ] Médios da auditoria (tokens em plaintext, enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
+- [ ] **Mergear branches pendentes do Caio:** `feature/114-drop-sqlite` → depois `feature/92-e2e-playwright` (com ajustes — ver auditoria; o 92 esconde mudança de rate-limit no `Program.cs`).
+- [ ] **KPIs de topo agregam só 1 página** (Transactions/Recorrentes/Emprestimos/Parcelamentos) — endpoints `/stats` dedicados.
+- [ ] **#125 INPI marca Pontes** · **#126 LGPD pré-lançamento** (legais, não-código).
+- [ ] **Lint debt:** `ReportsPage.test.tsx` 2 NBSP — é do Gustavo (`bae7d18`), NBSP intencional; resolver com `eslint-disable` ou ` ` escapado.
 
 ---
 

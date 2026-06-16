@@ -29,14 +29,18 @@ Projeto virou **solo** — toda a doc de "trabalho em dupla" estava obsoleta, e 
 - [ ] Atualizar `.github/` templates (PR + issue)
 - [ ] Atualizar memória (regra de issues-dependentes-pro-outro-dev é obsoleta)
 
-### Track paralelo — auditoria do código herdado
+### Auditoria do código herdado — ✅ CONCLUÍDA
 
-Caio-Amarall (39 commits) + Joao Coelho (2) mergearam trabalho substancial na `main`. Sem sócio agora → revisar tudo pra garantir que está correto/seguro. Áreas:
-- **Segurança:** auth refresh/reset token (#5), política de senha (#15), CSV formula injection (#121, Joao).
-- **Infra:** Docker/compose (#18), CI Actions (#19), Vitest setup (#21), remove SQLite (#114), Playwright E2E (#92).
-- **Telas Q5:** Familia (#85), Metas (#86), Limites (#87), Recorrentes (#89), Bancos (#88), redesign auth (#76).
+Varredura completa dos 41 commits (Caio 39 + Joao 2) em 6 frentes paralelas. Relatório em **`docs/AUDITORIA_CODIGO_HERDADO.md`**.
 
-**Próxima ação concreta:** terminar a reorg de docs (itens acima), commitar `chore/reorg-docs-solo`. Depois rodar a auditoria por área e gerar relatório de achados em `docs/AUDITORIA_CODIGO_HERDADO.md`.
+**Resultado:** maioria boa/alta qualidade (infra sólida, telas Q5 bem-feitas, 502 testes reais, família multi-tenancy trancada, CSV injection corrigido). Mas **3 🔴 bloqueiam produção:**
+- **C1** reset token vazado na resposta HTTP = account takeover.
+- **C2** 67 `throw new Exception` → erros viram HTTP 500 + vazam mensagem.
+- **C3** soft-delete de `Transacao` violado (hard delete + listagem mostra canceladas).
+
+Fixes priorizados no `ROADMAP.md` → "Higiene / dívida". Branches pendentes do Caio (`114-drop-sqlite`, `92-e2e-playwright`) = MERGEAR-COM-AJUSTE.
+
+**Próxima ação concreta:** decisão do dono — atacar os 🔴 da auditoria (começar por C1 reset token) OU seguir feature do roadmap (1.1 filtros ricos). Rotação de segredos continua pendente.
 
 ---
 
