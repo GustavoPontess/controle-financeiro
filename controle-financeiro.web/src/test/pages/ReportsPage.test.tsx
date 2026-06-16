@@ -33,9 +33,9 @@ function renderReports() {
   return render(<PontesThemeProvider><ReportsPage /></PontesThemeProvider>)
 }
 
-// Intl pt-BR usa NBSP ( ) após "R$" — normaliza p/ comparar com espaço normal.
+// Intl pt-BR usa NBSP (\u00A0) após "R$" — normaliza p/ comparar com espaço normal.
 // Matcher por elemento pode bater wrapper + value → usa getAllByText.
-const money = (val: string) => (content: string) => content.replace(/ /g, " ") === val
+const money = (val: string) => (content: string) => content.replace(/\u00A0/g, " ") === val
 
 describe("ReportsPage", () => {
   beforeEach(() => {
