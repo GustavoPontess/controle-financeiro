@@ -72,10 +72,10 @@ status: ATIVO
 
 ### 🟡 / outros
 - [ ] Médios da auditoria (tokens em plaintext, enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
-- [ ] **Mergear branches pendentes do Caio:** `feature/114-drop-sqlite` → depois `feature/92-e2e-playwright` (com ajustes — ver auditoria; o 92 esconde mudança de rate-limit no `Program.cs`).
+- [x] **Branches do Caio mergeadas** — #114 (Postgres único, SQLite removido) + #92 (E2E Playwright) cherry-picked na main (autor Caio preservado), auditadas e limpas. Dev agora **exige** Postgres no ar.
 - [ ] **KPIs de topo agregam só 1 página** (Transactions/Recorrentes/Emprestimos/Parcelamentos) — endpoints `/stats` dedicados.
 - [ ] **#125 INPI marca Pontes** · **#126 LGPD pré-lançamento** (legais, não-código).
-- [ ] **Lint debt:** `ReportsPage.test.tsx` 2 NBSP — é do Gustavo (`bae7d18`), NBSP intencional; resolver com `eslint-disable` ou ` ` escapado.
+- [x] **Lint debt NBSP** resolvido (escape `\u00A0` no ReportsPage.test, comportamento idêntico).
 
 ---
 
