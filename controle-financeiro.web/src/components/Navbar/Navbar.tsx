@@ -4,8 +4,8 @@
  */
 
 import { useLocation, useNavigate } from "react-router-dom"
-import { PanelLeftClose, PanelLeftOpen, Search, Plus } from "lucide-react"
-import { PontesButton, PontesIconButton } from "@/components/pontes"
+import { PanelLeftClose, PanelLeftOpen, Search, Plus, Eye, EyeOff } from "lucide-react"
+import { PontesButton, PontesIconButton, useHideBalance } from "@/components/pontes"
 import NotificationBell from "../Notificacoes/NotificationBell"
 import styles from "./Navbar.module.css"
 
@@ -44,6 +44,7 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
   const navigate = useNavigate()
   const title = resolveTitle(location.pathname)
   const isDashboard = location.pathname === "/dashboard"
+  const [hideBalance, toggleBalance] = useHideBalance()
 
   return (
     <header className={styles.header}>
@@ -69,6 +70,15 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
           <span className={styles.searchText}>Buscar telas…</span>
           <kbd className={styles.kbd}>Ctrl K</kbd>
         </button>
+
+        <PontesIconButton
+          variant="ghost" size={40}
+          onClick={toggleBalance}
+          aria-label={hideBalance ? "Mostrar valores" : "Ocultar valores"}
+          title={hideBalance ? "Mostrar valores" : "Ocultar valores"}
+        >
+          {hideBalance ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+        </PontesIconButton>
 
         <NotificationBell />
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
 import {
@@ -13,8 +14,6 @@ import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcela
 import type { CartaoCredito } from "../../types/CartaoCredito"
 import styles from "./ParcelamentosPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatarMesAno = (mesAno: string) => {
   const [ano, mes] = mesAno.split("-")

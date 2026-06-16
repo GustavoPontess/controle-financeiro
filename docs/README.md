@@ -21,9 +21,8 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 |---|---|
 | [`../CLAUDE.md`](../CLAUDE.md) | Convenções gerais, stack, padrões |
 | [`../PROMPT_NOVA_SESSAO.md`](../PROMPT_NOVA_SESSAO.md) | Protocolo de início e encerramento de sessão |
-| [`../IMPLEMENTATION_STATE.md`](../IMPLEMENTATION_STATE.md) | Estado vivo da issue em execução |
-| [`../ISSUES.md`](../ISSUES.md) | Backlog atual (Q3 2026, 4 blocos) |
-| [`../PROGRESS.md`](../PROGRESS.md) | Dashboard e histórico de sessões |
+| [`../STATE.md`](../STATE.md) | Estado vivo: onde a última sessão parou |
+| [`../ROADMAP.md`](../ROADMAP.md) | Backlog vivo (o que fazer a seguir, prioridade) |
 | [`../README.md`](../README.md) | README público do projeto |
 
 ---
@@ -36,11 +35,11 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 | [STANDARDS.md](./STANDARDS.md) | Convenções de código (C#, TS, naming, error handling, paginação) |
 | [DATABASE.md](./DATABASE.md) | Schema, ER, delete behavior, descrição das entidades |
 | [FLOWS.md](./FLOWS.md) | Fluxos de negócio (transação, parcelamento, fatura) |
-| [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, componentes MUI |
+| [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, biblioteca Pontes |
 | [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches, commits, PR, squash merge |
-| [COLLABORATION.md](./COLLABORATION.md) | Protocolo de trabalho em dupla (Issues, conflitos, review) |
 | [CONTROLLER_TEMPLATE.md](./CONTROLLER_TEMPLATE.md) | Scaffold para criar novo controller |
 | [ANALISE_PRODUTO.md](./ANALISE_PRODUTO.md) | Análise crítica de produto (maio/2026) — leitura recomendada para entender o porquê do roadmap atual |
+| [concorrentes/](./concorrentes/) | Análise de concorrentes (Pierre, Despezzas, Monarch, Conta Azul, Bling, Qive) + achados acionáveis |
 
 ---
 
@@ -52,17 +51,21 @@ Cada feature complexa tem sua própria pasta com spec técnica e UX. Ao iniciar 
 |---|---|---|
 | [cartao-credito](./features/cartao-credito/) | ✅ Ativo | [regras.md](./features/cartao-credito/regras.md) — ciclo, limite, fatura, pagamento |
 | [parcelamento](./features/parcelamento/) | ✅ Concluída (Q2 2026) | [arquitetura.md](./features/parcelamento/arquitetura.md), [ux.md](./features/parcelamento/ux.md) |
-| [familia](./features/familia/) | 🔵 Em visão (Q3 2026) | [visao.md](./features/familia/visao.md) |
+| [familia](./features/familia/) | 🔵 Fosso de produto — rateio/papéis/dependentes (ver ROADMAP Lote 2) | [visao.md](./features/familia/visao.md) + sub-1..5 arquitetura |
+| [b2b-contadores](./features/b2b-contadores/) | 💡 Visão (ROADMAP Lote 4) | [visao.md](./features/b2b-contadores/visao.md) |
+| outras | — | importacao, notificacoes, onboarding, pwa |
 
 ---
 
 ## Arquivos arquivados (`docs/history/`)
 
-Documentos que cumpriram seu propósito e ficam preservados para consulta histórica:
+Documentos que cumpriram seu propósito e ficam preservados para consulta histórica. Cada quarter fechado tem seu trio `ISSUES`/`PROGRESS`/`IMPLEMENTATION_STATE`:
 
-- [ISSUES_2026Q2.md](./history/ISSUES_2026Q2.md) — Backlog do Q2 2026, todos concluídos
-- [PROGRESS_2026Q2.md](./history/PROGRESS_2026Q2.md) — Tracker do Q2 2026
-- [IMPLEMENTATION_STATE_2026Q2_parcelamento.md](./history/IMPLEMENTATION_STATE_2026Q2_parcelamento.md) — Estado detalhado das 13 sessões que implementaram o Parcelamento Flexível
+- **Q2 2026** — feature Parcelamento. `ISSUES_2026Q2.md`, `PROGRESS_2026Q2.md`, `IMPLEMENTATION_STATE_2026Q2_parcelamento.md`
+- **Q3 2026** — higiene + infra + pivot Família. `*_2026Q3.md`
+- **Q4 2026** — redesign UX. `*_2026Q4.md`
+- **Q5 2026** — refator completo MUI→Pontes + paginação real + personalização. `*_2026Q5.md`
+- **BUILD_PLAN_CONCORRENTES.md** — plano original dos achados de concorrentes (absorvido pelo `ROADMAP.md`)
 
 ---
 

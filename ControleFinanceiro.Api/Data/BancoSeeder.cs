@@ -86,10 +86,13 @@ public static class BancoSeeder
 
         try
         {
-            var response = await httpClient.GetAsync(BrasilApiUrl);
+            // Timeout duro (15s) cobrindo headers + corpo: a BrasilAPI no caminho
+            // do boot não pode pendurar o startup se a rede estalar (visto em CI).
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var response = await httpClient.GetAsync(BrasilApiUrl, cts.Token);
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cts.Token);
             var bancosApi = JsonSerializer.Deserialize<List<BancoApiDto>>(json, JsonOptions) ?? [];
 
             var bancos = bancosApi

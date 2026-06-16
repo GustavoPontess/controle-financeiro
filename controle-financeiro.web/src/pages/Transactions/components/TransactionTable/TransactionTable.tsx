@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback } from "react"
+import { formatMoney } from "@/utils/money"
 import {
   Pencil, Trash2, Users, User, Split, TrendingUp, TrendingDown, MoreVertical,
   Repeat, Layers,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesSelect, PontesTablePagination,
+  PontesField, PontesInput, PontesSelect, PontesTablePagination, useHideBalance,
 } from "@/components/pontes"
 import EditTransactionDialog, { type EditableTransaction } from "../EditTransactionDialog/EditTransactionDialog"
 import { deleteTransaction } from "../../../../services/transactionService"
@@ -64,8 +65,6 @@ type Props = {
   }
 }
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 // IMPORTANTE: datas vêm do backend como instante UTC (timestamp), mas
 // representam wall-clock (dia/hora "de parede" que o usuário escolheu).
@@ -170,6 +169,7 @@ function RowActions({ isReceita, compact, onShare, onAssign, onRatear, onEdit, o
 }
 
 export default function TransactionTable({ rows, onRefresh, notify, emptyMessage, pagination }: Props) {
+  useHideBalance() // assina o olho global → mascara valores da tabela ao vivo
   const [editing, setEditing] = useState<EditableTransaction | null>(null)
   const [sharing, setSharing] = useState<TransactionRow | null>(null)
   const [familias, setFamilias] = useState<Familia[]>([])

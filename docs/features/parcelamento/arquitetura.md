@@ -1166,7 +1166,7 @@ ATIVIDADES CARTÃO (fatura de um CartaoCredito):
 - [ ] Atualizar `docs/STANDARDS.md` (idempotência, soft delete, FinancialEventLog)
 - [ ] Atualizar `CLAUDE.md` com novo modelo
 - [ ] Atualizar `UX_PARCELAMENTO.md` com componentes finalizados
-- [ ] Atualizar `PROGRESS.md` quando #1 for marcado como resolvido
+- [x] Feature concluída em Q2 2026 (estado histórico em `docs/history/*_2026Q2_parcelamento.md`)
 
 ---
 

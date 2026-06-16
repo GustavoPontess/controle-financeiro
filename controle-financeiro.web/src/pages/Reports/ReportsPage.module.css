@@ -13,6 +13,27 @@
 .cardTitle { font-size: 15px; font-weight: 700; color: var(--pontes-text); }
 .cardSub { font-size: 12px; color: var(--pontes-text-muted); }
 
+/* KPIs do ano */
+.kpiGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+
+/* Comparação mês vs mês anterior */
+.compareGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.compareItem { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 12px; }
+.compareLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--pontes-text-muted); }
+.compareValue { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--pontes-text); }
+.compareDelta { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; }
+.compareDelta[data-tone="good"] { color: var(--pontes-success); }
+.compareDelta[data-tone="bad"] { color: var(--pontes-danger); }
+.compareDelta[data-tone="muted"] { color: var(--pontes-text-muted); }
+
+/* Tooltip rico dos gráficos */
+.tooltip { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; padding: 10px 12px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.25); font-family: var(--pontes-font); min-width: 150px; }
+.tooltipLabel { font-size: 12px; font-weight: 700; color: var(--pontes-text); margin-bottom: 8px; }
+.tooltipRow { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.tooltipDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.tooltipName { font-size: 12px; color: var(--pontes-text-muted); flex: 1; }
+.tooltipValue { font-size: 13px; font-weight: 700; color: var(--pontes-text); }
+
 .emptyChart { padding: 32px 8px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
 
 .distGrid { display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: center; }

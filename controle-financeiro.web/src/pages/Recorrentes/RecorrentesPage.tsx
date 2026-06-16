@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle,
@@ -27,8 +28,6 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR") : "—"

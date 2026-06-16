@@ -15,6 +15,11 @@ dist-ssr
 # Atlas Playwright (#59) — gerado sob demanda, nao comitar
 screenshots/
 
+# Playwright E2E (#92) — storageState com cookie de sessão, nunca comitar
+playwright/.auth/
+test-results/
+playwright-report/
+
 # Monarch Session Recorder (#60) — perfil de browser persistente
 .playwright-monarch-profile/
 

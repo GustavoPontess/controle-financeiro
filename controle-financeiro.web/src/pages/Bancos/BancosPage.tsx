@@ -21,11 +21,9 @@ import { getContas, deleteConta } from "../../services/contaService"
 import type { Banco } from "../../types/Banco"
 import type { Conta } from "../../types/Conta"
 import styles from "./BancosPage.module.css"
+import { formatMoney as fmt } from "@/utils/money"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-const fmt = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 // Tone por tipo de conta (badge de tipo)
 const TIPO_TONE: Record<number, "primary" | "success" | "accent" | "neutral"> = {

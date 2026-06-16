@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import {
   ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesSelect,
-  PontesInput, PontesEmptyState,
+  PontesInput, PontesEmptyState, useHideBalance,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
 import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
@@ -18,8 +19,6 @@ import styles from "./TransactionsPage.module.css"
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
 
 // Chave de persistência da preferência de linhas-por-página.
 const PAGE_SIZE_KEY = "transactions:pageSize"
@@ -39,6 +38,7 @@ const monthWindow = (d: Date) => {
 export default function TransactionsPage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
+  useHideBalance() // assina o olho global → re-render (hero + stats) ao ocultar/mostrar
   const [categories, setCategories] = useState<Category[]>([])
   // Janela visível da página atual (vem do backend já paginado+filtrado).
   const [pageItems, setPageItems] = useState<Transaction[]>([])

@@ -29,7 +29,7 @@ import {
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
-  PontesProgress, PontesStatCard, PontesCard, PontesTable,
+  PontesProgress, PontesStatCard, PontesCategoryDonut, PontesCard, PontesTable,
   // feedback
   PontesToast, PontesModal, PontesDialog, PontesSkeleton, PontesSkeletonList,
   PontesEmptyState, PontesLoadingDots, PontesDrawer,
@@ -598,6 +598,21 @@ function DataSection({ p }: { p: Palette }) {
           <PontesStatCard label="Receitas mês" value="R$ 8.200" trend="+5.8%" trendUp />
           <PontesStatCard label="Economia" value="R$ 3.060" trend="+8.2%" trendUp />
         </div>
+      </Group>
+
+      <Group title="Category donut (distribuição por categoria)">
+        <PontesCard padding={24}>
+          <PontesCategoryDonut
+            formatMoney={(v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)}
+            data={[
+              { label: "Moradia", valor: 1800, percentual: 45 },
+              { label: "Alimentação", valor: 1000, percentual: 25 },
+              { label: "Transporte", valor: 600, percentual: 15 },
+              { label: "Lazer", valor: 400, percentual: 10 },
+              { label: "Outros", valor: 200, percentual: 5 },
+            ]}
+          />
+        </PontesCard>
       </Group>
 
       <Group title="Card (surface primitivo)">

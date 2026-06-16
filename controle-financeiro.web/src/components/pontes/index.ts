@@ -51,9 +51,12 @@ export * from "./data/Alert"
 export * from "./data/Progress"
 export * from "./data/StatCard"
 export * from "./data/Card"
+export * from "./data/CategoryDonut"
 export * from "./data/Table"
 export * from "./data/TablePagination"
 export * from "./data/BankBadge"
+export * from "./data/useHideBalance"
+export * from "./data/SensitiveValue"
 
 // ── Feedback & Overlays ──────────────────────────────────────────────────────
 export * from "./feedback/Toast"

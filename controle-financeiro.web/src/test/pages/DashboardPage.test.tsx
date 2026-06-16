@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import { PontesThemeProvider } from "../../components/pontes"
+import { PontesThemeProvider, setHideBalance } from "../../components/pontes"
 import DashboardPage from "../../pages/Dashboard/DashboardPage"
 import type { DashboardData } from "../../types/Dashboard"
 
@@ -45,6 +45,7 @@ describe("DashboardPage (#81)", () => {
   beforeEach(() => {
     getDashboard.mockReset()
     getDashboard.mockResolvedValue(mockData)
+    setHideBalance(false) // estado do olho é global — reseta entre testes
   })
 
   it("saúda o usuário pelo primeiro nome", async () => {
@@ -78,14 +79,15 @@ describe("DashboardPage (#81)", () => {
     expect(screen.getByText("Transações recentes")).toBeInTheDocument()
   })
 
-  it("olho esconde os valores", async () => {
+  it("olho global esconde os valores do dashboard", async () => {
     renderDash()
     await screen.findByText("Olá, Gabriel")
     // espera o valor aparecer (HeroBalance anima) e ignora separador de milhar (locale/ICU)
     await waitFor(() =>
       expect(screen.getAllByText((t) => t.replace(/\D/g, "").includes("5000")).length).toBeGreaterThan(0)
     )
-    fireEvent.click(screen.getByLabelText("Esconder valores"))
+    // O olho vive no navbar global agora; aqui simulamos o estado global ligado.
+    act(() => setHideBalance(true))
     await waitFor(() => {
       expect(screen.getAllByText((t) => t.includes("••••")).length).toBeGreaterThan(0)
     })
