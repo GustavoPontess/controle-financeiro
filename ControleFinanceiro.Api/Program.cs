@@ -322,14 +322,18 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Migrations + seeds LOCAIS (rápidos, sem rede) rodam ANTES de servir: schema
-// e dados essenciais (categorias, usuário dev) prontos quando o app sobe.
+// Migrations + seeds rodam antes de servir. Ordem importa: BancoSeeder primeiro
+// (DevDataSeeder usa a lista de bancos). O BancoSeeder chama a BrasilAPI mas tem
+// timeout interno (15s) + try/catch — se a API externa estiver lenta/fora, ele
+// desiste e segue, sem travar o boot. /health então sobe de forma previsível.
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
 
     await context.Database.MigrateAsync();
 
+    await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
     await SubcategoriaSeeder.SeedAsync(context);
 
@@ -338,25 +342,6 @@ using (var scope = app.Services.CreateScope())
     if (app.Environment.IsDevelopment())
         await DevDataSeeder.SeedAsync(context);
 }
-
-// Seed de bancos usa API externa (BrasilAPI) — fica FORA do caminho crítico do
-// boot. Roda em background depois que o app começa a servir, pra /health
-// responder na hora e o startup não travar se a API externa estiver lenta/fora.
-// Idempotente (pula se já há bancos) e tolera falha (BancoSeeder tem try/catch).
-app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () =>
-{
-    try
-    {
-        using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-        await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠ Seed de bancos (background) falhou: {ex.Message}");
-    }
-}));
 
 if (app.Environment.IsDevelopment())
 {
@@ -386,44 +371,21 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = new[] { new HangfireDashboardAuthFilter() }
 });
 
-// Schedule recurring jobs
-var bgJob = app.Services.GetRequiredService<IBackgroundJobClient>();
-var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+// Agenda os jobs recorrentes DEPOIS que o app sobe (ApplicationStarted), fora do
+// caminho crítico do boot. A primeira escrita no storage do Hangfire cria o schema
+// `hangfire` num DB novo — operação que pode ser lenta/travar (lock advisory) e
+// não deve impedir o /health de responder. Sai do boot, agenda em background.
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+    var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
 
-// Daily invoice closure (02:00 UTC)
-recManager.AddOrUpdate<FaturaFechamentoJob>(
-    "fatura-fechamento",
-    job => job.ExecuteAsync(),
-    "0 2 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily overdue mark (02:30 UTC)
-recManager.AddOrUpdate<FaturaAtrasoJob>(
-    "fatura-atraso",
-    job => job.ExecuteAsync(),
-    "30 2 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily expand recurring window (03:00 UTC)
-recManager.AddOrUpdate<ExpandirRecorrentesJob>(
-    "expandir-recorrentes",
-    job => job.ExecuteAsync(),
-    "0 3 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily execute pending transactions (03:30 UTC)
-recManager.AddOrUpdate<ExecutarRecorrentesJob>(
-    "executar-recorrentes",
-    job => job.ExecuteAsync(),
-    "30 3 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Hourly recalculate limits
-recManager.AddOrUpdate<RecalcularLimitesJob>(
-    "recalcular-limites",
-    job => job.ExecuteAsync(),
-    "0 * * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
+    recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
+    recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
+    recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
+    recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+});
 
 app.MapControllers();
 
