@@ -2,22 +2,22 @@
 
 Guia para Claude trabalhar eficientemente com este repositório. **Leia este arquivo antes de qualquer mudança.**
 
-> **Antes de uma sessão de trabalho:** ler também `PROMPT_NOVA_SESSAO.md` (ponto de entrada do workflow de sessão) e `IMPLEMENTATION_STATE.md` (estado vivo).
+> **Antes de uma sessão de trabalho:** ler `PROMPT_NOVA_SESSAO.md` (ponto de entrada do workflow de sessão), `STATE.md` (onde a última sessão parou) e `ROADMAP.md` (backlog vivo).
 >
-> **Trabalho em dupla:** o projeto é desenvolvido por dois devs em assíncrono. Antes de fazer mudança em código, ler `docs/COLLABORATION.md` para entender o protocolo de coordenação (GitHub Issues, branches, code review, conflitos em arquivos vivos).
+> **Projeto solo** (Gustavo). Sem coordenação de dupla. `gh issue` é opcional pra rastrear trabalho, sem assignee de terceiros.
 
 ## Project Overview
 
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
 - **Backend:** .NET 8 Web API com EF Core. **Dev e prod usam Postgres** (paridade dev/prod, via `docker compose up -d postgres`). Provider escolhido em runtime pela connection string (`Infrastructure/DatabaseProvider.cs`); SQLite continua suportado como fallback opcional sem Docker
-- **Frontend:** React 19 + TypeScript + Vite + Material-UI v7
+- **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
 - **Banco de dados:** 18 entidades. Provider dinâmico SQLite/Postgres (Issue #16 concluída); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — storage dinâmico: `PostgreSqlStorage` (schema `hangfire`) em prod, `MemoryStorage` em dev SQLite. Dashboard `/hangfire` exige autenticação
 - **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
-- **Backlog ativo:** ver `ISSUES.md` — 4 blocos sequenciais (A: higiene → B: infra → C: pivot Família → D: UX B2C)
+- **Backlog ativo:** ver `ROADMAP.md` — features dos achados de concorrentes (Lotes 1-5) + fosso família. Estado granular em `STATE.md`
 
 ## Commands
 
@@ -310,9 +310,8 @@ dotnet ef database update
 .
 ├── CLAUDE.md                    ← este arquivo (convenções e padrões)
 ├── PROMPT_NOVA_SESSAO.md        ← ponto de entrada de cada sessão de trabalho
-├── IMPLEMENTATION_STATE.md      ← estado vivo da issue em execução
-├── ISSUES.md                    ← backlog atual (Q5 2026, 18 issues #75-#92)
-├── PROGRESS.md                  ← dashboard de progresso e histórico de sessões
+├── STATE.md                     ← estado vivo: onde a última sessão parou
+├── ROADMAP.md                   ← backlog vivo (o que fazer a seguir, prioridade)
 ├── README.md                    ← README público do projeto
 └── docs/
     ├── README.md                ← índice da documentação
@@ -320,26 +319,24 @@ dotnet ef database update
     ├── STANDARDS.md             ← convenções de código (naming, error handling, etc.)
     ├── DATABASE.md              ← schema, ER, delete behavior
     ├── FLOWS.md                 ← fluxos de negócio
-    ├── DESIGN_SYSTEM.md         ← paleta, tipografia, componentes MUI
+    ├── DESIGN_SYSTEM.md         ← paleta, tipografia, biblioteca Pontes
     ├── GIT_WORKFLOW.md          ← padrão de branches e commits
     ├── CONTROLLER_TEMPLATE.md   ← scaffold de controller novo
     ├── ANALISE_PRODUTO.md       ← análise crítica de produto (maio/2026)
+    ├── concorrentes/            ← análise de concorrentes (Pierre, Despezzas, Monarch, etc.)
     ├── features/                ← uma pasta por feature
     │   ├── parcelamento/        ← (concluída em Q2 2026)
-    │   ├── familia/             ← (visão Q5, issue #85)
+    │   ├── familia/             ← visão do fosso (rateio/papéis/dependentes)
     │   │   └── visao.md
-    │   ├── cartao-credito/      ← regras de negócio (issue #84)
-    │   │   └── regras-de-negocio.md
-    │   └── redesign-ux/         ← Q4 visão e concorrentes
-    │       ├── visao.md
-    │       └── concorrentes.md
+    │   ├── b2b-contadores/      ← visão do eixo PJ/contador
+    │   ├── cartao-credito/      ← regras de negócio
+    │   │   └── regras.md
+    │   └── redesign-ux/         ← visão e concorrentes (Q4)
     ├── referencias/             ← prints de concorrentes + iterações de logo (gitignored)
-    └── history/                 ← documentos arquivados
-        ├── ISSUES_2026Q2.md, PROGRESS_2026Q2.md
-        ├── ISSUES_2026Q3.md, PROGRESS_2026Q3.md, IMPLEMENTATION_STATE_2026Q3.md
-        └── ISSUES_2026Q4.md, PROGRESS_2026Q4.md, IMPLEMENTATION_STATE_2026Q4.md
+    └── history/                 ← documentos arquivados (por quarter Q2-Q5)
+        └── {ISSUES,PROGRESS,IMPLEMENTATION_STATE}_2026Q{2,3,4,5}.md + BUILD_PLAN_CONCORRENTES.md
 ```
 
 **Princípio:** documentação por feature mora em `docs/features/<nome>/`. Quando uma feature complexa for iniciada, criar pelo menos `arquitetura.md` (spec técnica) e `ux.md` (mockups e copy) dentro da pasta da feature.
 
-**Manutenção:** ao fim de cada sessão que mudou padrões, schema ou fluxo, atualizar o doc correspondente — checklist em `PROMPT_NOVA_SESSAO.md` seção 5.
+**Manutenção:** ao fim de cada sessão que mudou padrões, schema ou fluxo, atualizar o doc correspondente — checklist em `PROMPT_NOVA_SESSAO.md` seção 9.

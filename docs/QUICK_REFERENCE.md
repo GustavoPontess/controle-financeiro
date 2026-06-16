@@ -6,10 +6,11 @@
 
 ## 🏗️ Stack
 
-- **Backend:** .NET 8, C#, EF Core, SQLite, JWT
-- **Frontend:** React 19, TypeScript, Material-UI v7, Vite
-- **DB:** SQLite (`controlefinanceiro.db`)
-- **Auth:** JWT Bearer (HS256, 60min expiration)
+- **Backend:** .NET 8, C#, EF Core, **Postgres** (provider dinâmico; SQLite fallback sem Docker), JWT + refresh token
+- **Frontend:** React 19, TypeScript, Vite, **biblioteca Pontes** (`src/components/pontes/`) — **zero MUI** (purgado PR #166), CSS Modules + `var(--pontes-*)`
+- **DB:** Postgres via `docker compose up -d postgres` (dev e prod). Provider escolhido em runtime por `DATABASE_URL`
+- **Auth:** JWT Bearer (HS256, 60min) + refresh token (rotação, 7 dias) + reset password (1h)
+- **API:** versionada em `/api/v1/...`; jobs via Hangfire; observabilidade `/health` + Serilog
 
 ---
 
@@ -33,7 +34,7 @@ npm run dev
 
 ```
 ControleFinanceiro.Api/
-├── Controllers/          # 12 thin HTTP layers
+├── Controllers/          # 16 thin HTTP layers
 ├── Services/             # Business logic (one per entity)
 ├── Domain/
 │   ├── Entities/         # EF Core models
@@ -41,17 +42,20 @@ ControleFinanceiro.Api/
 ├── DTOs/                 # Request/response contracts
 ├── Infrastructure/
 │   ├── AppDbContext.cs   # EF DbContext + migrations
-│   └── Identity/         # JWT + BCrypt
+│   └── Identity/         # JWT + PBKDF2 + refresh/reset tokens
 └── Data/                 # Seeders (Banco, Categoria)
 
 controle-financeiro.web/
-├── src/pages/            # Page containers
-├── src/components/       # Reusable UI
-├── src/services/         # API clients
+├── src/pages/            # Page containers (Site/ público + internas autenticadas)
+├── src/components/pontes/ # ⭐ Biblioteca Pontes — ÚNICA fonte de UI (37+ componentes)
+├── src/components/       # Só infra: Logo/, Auth/ (rotas), Navbar/, Sidebar/, Pwa/
+├── src/services/         # API clients (axiosClient)
 ├── src/types/            # DTOs (mirror backend)
-├── src/api/axiosClient.ts # Axios + JWT interceptor
-└── src/routes/           # React Router config
+├── src/api/axiosConfig.ts # Axios + JWT/CSRF interceptor
+└── src/routes/           # React Router v7 config
 ```
+
+> **Regra:** toda UI vem de `@/components/pontes`. Estilo em `*.module.css` com `var(--pontes-*)`. Detalhes em `docs/STANDARDS.md` e `PROMPT_NOVA_SESSAO.md` §5-6.
 
 ---
 
@@ -86,19 +90,24 @@ var transacoes = await _context.Transacoes
 
 ---
 
-## 📋 11 Core Entities
+## 📋 Entidades (18 no total — schema completo em `DATABASE.md`)
+
+Núcleo:
 
 1. **Usuario** — Auth + user data
-2. **Conta** — Bank accounts/wallets
+2. **Conta** — Bank accounts/wallets (Saldo calculado)
 3. **Banco** — Banks (synced from BCB API)
 4. **CartaoCredito** — Credit cards
 5. **Transacao** — Transactions (core)
-6. **Categoria** — Expense/income categories
+6. **Categoria** / **Subcategoria** — Expense/income categories
 7. **Fatura** — Credit card invoices (auto-created)
 8. **Transferencia** — Inter-account transfers
 9. **Recorrente** — Recurring expenses/income
 10. **Emprestimo** — Loan tracking
-11. **CompartilhamentoConta** — Share accounts (if implemented)
+11. **Parcelamento** / **ParcelaTransacao** — installments
+12. **Familia** / **Meta** / **Orcamento** / **FinancialEventLog** / etc.
+
+> Lista completa e relacionamentos: `DATABASE.md`.
 
 ---
 
@@ -171,25 +180,31 @@ const TransacaoService = {
 export default TransacaoService;
 ```
 
-### Frontend Component
+### Frontend Component (biblioteca Pontes — zero MUI)
 ```typescript
+import { PontesField, PontesInput, PontesButton } from "@/components/pontes";
+import styles from "./TransacaoForm.module.css";
+
 export const TransacaoForm = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
+  const [erro, setErro] = useState<string | null>(null); // erro por campo, inline
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!valido) { setErro("Campo obrigatório"); return; } // valida ANTES, bloqueia
     setLoading(true);
-    try {
-      await TransacaoService.criar(formData);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    try { await TransacaoService.criar(formData); }
+    finally { setLoading(false); }
   };
-  
-  return <Box component="form" onSubmit={handleSubmit}>{/* ... */}</Box>;
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <PontesField label="Valor" error={erro ?? undefined}>
+        <PontesInput invalid={!!erro} onChange={() => setErro(null)} />
+      </PontesField>
+      <PontesButton variant="primary" loading={loading}>Salvar</PontesButton>
+    </form>
+  );
 };
 ```
 
@@ -197,7 +212,7 @@ export const TransacaoForm = () => {
 
 ## 🗄️ Database
 
-**11 tables, all with UsuarioId for isolation:**
+**18 tabelas, todas com UsuarioId para isolamento:**
 
 Key relationships:
 - `Conta` ← has many → `Transacao` (cascade delete)
@@ -218,7 +233,7 @@ dotnet run
 # → http://localhost:5293/swagger
 ```
 
-**12 controllers com endpoints documentados:**
+**16 controllers com endpoints documentados:**
 - Auth (register, login, me, profile, change-password)
 - Transacoes (CRUD + parcelamento)
 - Contas (CRUD)
@@ -279,7 +294,7 @@ git push origin feature-branch
 |-----|---------|-------------|
 | **CLAUDE.md** (root) | Tech stack, architecture, patterns | First time setup |
 | **docs/STANDARDS.md** | Code conventions, naming, git | Before writing code |
-| **docs/API.md** | All endpoints + examples | When implementing frontend or testing |
+| **Swagger** (`/swagger`) | All endpoints + examples | When implementing frontend or testing |
 | **docs/DATABASE.md** | Schema + ER diagram | When working with data |
 | **docs/FLOWS.md** | Business logic sequences | When understanding how features work |
 | **docs/README.md** | Doc index | Navigation |
@@ -291,8 +306,8 @@ git push origin feature-branch
 1. **API versionada:** todas as rotas em `/api/v1/...` (configurado globalmente em `Program.cs`)
 2. **Delete behavior:** Contas cascade (txns deleted), Cartões restrict (can't delete if open Faturas)
 3. **Soft delete obrigatório** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`
-4. **Background jobs:** 5 jobs Hangfire ativos (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`). Atualmente usando `MemoryStorage` (migração para Postgres prevista em Issue #17)
-5. **Pendências de produção** (ver `../ISSUES.md` Bloco A): rate limiting, JWT em httpOnly cookie, secrets via env var, política de senha forte
+4. **Background jobs:** 5 jobs Hangfire (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`). Storage dinâmico: `PostgreSqlStorage` em prod, `MemoryStorage` em dev SQLite
+5. **Backlog atual:** ver `../ROADMAP.md`. Estado vivo em `../STATE.md`
 
 ---
 
