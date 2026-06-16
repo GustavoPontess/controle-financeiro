@@ -7,9 +7,9 @@ status: CURRENT
 
 # Git Workflow
 
-**Estratégia:** GitHub Flow + PR obrigatório + Squash Merge.
+**Estratégia:** GitHub Flow + PR (quando trabalhando com remoto) + Squash Merge.
 
-Para o protocolo de trabalho **em dupla** (quem pega qual Issue, conflitos previsíveis, code review), ver `COLLABORATION.md`. Este arquivo cobre apenas as regras de git em si.
+**Projeto solo** — sem coordenação de dupla nem review de terceiros. Este arquivo cobre as regras de git em si.
 
 ---
 
@@ -21,7 +21,7 @@ Para o protocolo de trabalho **em dupla** (quem pega qual Issue, conflitos previ
 feature/<numero-issue>-<slug-kebab-case>
 ```
 
-Sempre derivada de `main` atualizada. O número é o do GitHub Issue, que reflete o número em `ISSUES.md`.
+Sempre derivada de `main` atualizada. Se houver issue no GitHub, use o número; senão, só o slug (`feature/<slug-kebab>`).
 
 **Bons exemplos:**
 
@@ -51,11 +51,9 @@ Configurar no GitHub (Settings → Rules → Rulesets → New ruleset):
 - ✅ Block force pushes
 - ✅ Restrict deletions
 - ✅ Allowed merge methods: **Squash only**
-- ✅ Require status checks to pass (depois que Issue #19 entregar o CI)
+- ✅ Require status checks to pass (CI: build + lint + test)
 
-**Review do outro é cortesia, não barreira técnica** — ver `COLLABORATION.md` §6.3 para o critério de quando pedir review.
-
-Até habilitar formalmente, regra é por convenção: **ninguém commita direto em `main`**.
+Regra por convenção: **não commitar direto em `main`** — sempre via branch + PR.
 
 ---
 
@@ -101,7 +99,7 @@ Refs #12
 ```
 
 ```
-docs: atualiza COLLABORATION.md com regra de rebase
+docs: atualiza GIT_WORKFLOW.md com regra de rebase
 ```
 
 ### Errado
@@ -130,11 +128,11 @@ ajustes finais                    (vazio de sentido)
 git checkout main
 git pull --ff-only origin main
 
-# Antes de criar a branch, assigne-se no GitHub Issue
+# (opcional) se rastreia no GitHub, assigne-se
 gh issue edit <numero> --add-assignee @me
 
 # Cria a branch
-git checkout -b feature/<numero>-<slug>
+git checkout -b feature/<slug>          # ou feature/<numero>-<slug> se tiver issue
 ```
 
 ### 2. Trabalhar
@@ -148,7 +146,7 @@ git commit -m "feat(escopo): descrição"
 git push -u origin feature/<numero>-<slug>
 ```
 
-### 3. Sincronizar com `main` se o outro mergeou algo
+### 3. Sincronizar com `main` (se o remoto avançou)
 
 ```bash
 git fetch origin
@@ -171,16 +169,14 @@ gh pr create --fill --base main --head feature/<numero>-<slug>
 # Ou pela interface do GitHub. O template aparece automaticamente.
 ```
 
-### 5. Pedir review
+### 5. Checar CI
 
 - PR fica **Draft** enquanto trabalhando.
-- Quando todos os checks do template estão verdes, marca **Ready for review**.
-- Adiciona o sócio como reviewer (`gh pr edit --add-reviewer <user>` ou pela UI).
+- Quando todos os checks do template estão verdes (build + lint + test), marca **Ready** e mergeia.
 
-### 6. Após approval, fazer o merge
+### 6. Merge
 
-- **Quem abriu o PR faz o merge** (não o reviewer).
-- **Estratégia: Squash and merge** (botão padrão no GitHub se configurado).
+- **Estratégia: Squash and merge.**
 - **Mensagem do squash:** o GitHub usa o título do PR. Ajuste antes do merge se necessário.
 - **Deletar a branch** após merge (botão automático).
 
@@ -188,12 +184,12 @@ gh pr create --fill --base main --head feature/<numero>-<slug>
 # Após merge, na máquina local:
 git checkout main
 git pull --ff-only origin main
-git branch -d feature/<numero>-<slug>
+git branch -d feature/<slug>
 ```
 
 ### 7. Atualizar arquivos vivos
 
-Após merge, abrir uma **branch curta para atualizar `PROGRESS.md` e `ISSUES.md`** marcando a Issue como concluída. Esse update pode entrar via PR pequeno ou — se o time concordou — direto em `main` (acordo a tomar).
+Após merge (ou no próprio PR), atualizar `STATE.md` (onde parei) e `ROADMAP.md` (marcar item entregue).
 
 ---
 
@@ -231,14 +227,11 @@ Testes:
 1. **Nunca commitar em `main` direto** (mesmo antes do branch protection estar configurado).
 2. **Nunca `git push --force` no `main`.** Em branch própria, só `--force-with-lease`.
 3. **Nunca merge commit em PR.** Squash sempre. Histórico linear.
-4. **Nunca dois devs na mesma branch ao mesmo tempo.** Branch é território de um dev por vez.
-5. **Nunca abrir PR sem assignee.** O autor é sempre assignee.
-6. **Nunca deixar branch antiga (já mergeada) viva no remoto.** Deletar após merge.
-7. **Nunca `git reset --hard` sem antes verificar working tree.** O `--hard` apaga alterações não-commitadas **silenciosamente**. Antes de usar, rode `git status` e/ou `git stash` para preservar trabalho em andamento. Já perdemos trabalho de uma sessão por essa armadilha — não repete.
+4. **Nunca deixar branch antiga (já mergeada) viva no remoto.** Deletar após merge.
+5. **Nunca `git reset --hard` sem antes verificar working tree.** O `--hard` apaga alterações não-commitadas **silenciosamente**. Antes de usar, rode `git status` e/ou `git stash` para preservar trabalho em andamento. Já perdi trabalho de uma sessão por essa armadilha — não repete.
 
 ## Convenções (não-bloqueantes, mas valem a disciplina)
 
-- **Pedir review do outro em PRs grandes ou arquiteturais.** Critério detalhado em `COLLABORATION.md` §6.3. Auto-merge é permitido pra PRs pequenos/triviais.
 - **PR aberto há mais de 5 dias sem merge é red flag** — ou termina, ou fecha como "won't merge", ou divide em PRs menores.
 
 ---
@@ -282,7 +275,5 @@ git pf                              # force-push seguro
 ---
 
 ## Resolução de conflitos
-
-Para conflitos em arquivos compartilhados específicos (`PROGRESS.md`, migrations, `package-lock.json`), ver `COLLABORATION.md` seção 7.
 
 Princípio geral: **rebase, não merge.** Resolva conflito linha a linha, teste o resultado, depois `--continue`.

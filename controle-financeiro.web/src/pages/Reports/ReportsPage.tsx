@@ -1,29 +1,43 @@
 import { useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-  ResponsiveContainer, AreaChart, Area, Cell, PieChart, Pie, ReferenceLine,
+  ResponsiveContainer, AreaChart, Area, ReferenceLine, Cell,
 } from "recharts"
 import {
   PontesCard, PontesIconButton, PontesSelect, PontesLoadingDots,
-  usePontesTheme,
+  PontesCategoryDonut, PontesStatCard, usePontesTheme,
 } from "@/components/pontes"
+import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { getRelatorio } from "../../services/relatorioService"
 import type { RelatorioData } from "../../types/Relatorio"
 import styles from "./ReportsPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatMoneyShort = (v: number) => {
   if (Math.abs(v) >= 1000) return `R$${(v / 1000).toFixed(1)}k`
   return `R$${v.toFixed(0)}`
 }
 
-const PIE_COLORS = [
-  "#0d9488", "#6366f1", "#f59e0b", "#e5484d", "#10b981",
-  "#8b5cf6", "#00a2c7", "#ec4899", "#84cc16", "#f97316",
-]
+// Tooltip rico compartilhado pelos gráficos — card com ponto colorido, nome e
+// valor formatado por série (substitui o tooltip cru do recharts).
+type TooltipPayload = { name: string; value: number; color?: string; stroke?: string; fill?: string }
+function ChartTooltip({ active, payload, label, format = formatMoney }: { active?: boolean; payload?: TooltipPayload[]; label?: string; format?: (v: number) => string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className={styles.tooltip}>
+      <div className={styles.tooltipLabel}>{label}</div>
+      {payload.map((p) => (
+        <div key={p.name} className={styles.tooltipRow}>
+          <span className={styles.tooltipDot} style={{ background: p.color ?? p.stroke ?? p.fill }} />
+          <span className={styles.tooltipName}>{p.name}</span>
+          <span className={styles.tooltipValue}>{format(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function ReportsPage() {
   // recharts precisa de cor hex real (não CSS var) em atributos SVG.
@@ -38,7 +52,6 @@ export default function ReportsPage() {
   const [data, setData] = useState<RelatorioData | null>(null)
   const [ano, setAno] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
-  const [activeSlice, setActiveSlice] = useState<number | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -56,16 +69,35 @@ export default function ReportsPage() {
   const anosOpts = anos.map((a) => ({ value: String(a), label: String(a) }))
   const evolucaoComDados = data?.evolucaoMensal.filter((m) => m.receitas > 0 || m.despesas > 0) ?? []
 
-  const tooltipStyle = {
-    borderRadius: 10,
-    border: "1px solid var(--pontes-border)",
-    background: "var(--pontes-surface)",
-    fontSize: 13,
-    boxShadow: "0 6px 20px -8px rgba(0,0,0,0.18)",
-    color: "var(--pontes-text)",
-  } as const
+  // KPIs do ano (somatório) + média mensal de despesa.
+  const totalReceitas = evolucaoComDados.reduce((s, m) => s + m.receitas, 0)
+  const totalDespesas = evolucaoComDados.reduce((s, m) => s + m.despesas, 0)
+  const saldoAno = totalReceitas - totalDespesas
+  const mediaDespesa = evolucaoComDados.length ? totalDespesas / evolucaoComDados.length : 0
 
-  const labelStyle = { fontWeight: 600, marginBottom: 4, color: "var(--pontes-text)" } as const
+  // Comparação último mês com dados vs o anterior — variação % por dimensão.
+  const ultimo = evolucaoComDados[evolucaoComDados.length - 1]
+  const penultimo = evolucaoComDados[evolucaoComDados.length - 2]
+  const variacao = (atual: number, ant: number): number | null =>
+    ant > 0 ? ((atual - ant) / ant) * 100 : null
+  const fmtPct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`)
+
+  // Saldo acumulado: patrimônio mês a mês (soma corrida do saldo mensal).
+  // n ≤ 12 → O(n²) é trivial e mantém o cálculo imutável.
+  const saldoAcumulado = evolucaoComDados.map((m, i) => ({
+    mesLabel: m.mesLabel,
+    acumulado: evolucaoComDados.slice(0, i + 1).reduce((s, x) => s + x.saldo, 0),
+  }))
+
+  // Taxa de economia: quanto da receita sobrou no mês (saldo / receitas).
+  const taxaEconomia = evolucaoComDados.map((m) => ({
+    mesLabel: m.mesLabel,
+    taxa: m.receitas > 0 ? ((m.receitas - m.despesas) / m.receitas) * 100 : 0,
+  }))
+  const taxaMedia = taxaEconomia.length
+    ? taxaEconomia.reduce((s, m) => s + m.taxa, 0) / taxaEconomia.length
+    : 0
+
 
   return (
     <div className={styles.root}>
@@ -93,6 +125,47 @@ export default function ReportsPage() {
 
       {data && !loading && (
         <>
+          {/* KPIs do ano */}
+          <div className={styles.kpiGrid}>
+            <PontesStatCard label={`Receitas em ${ano}`} value={formatMoney(totalReceitas)} tone="success" />
+            <PontesStatCard label={`Despesas em ${ano}`} value={formatMoney(totalDespesas)} tone="danger" />
+            <PontesStatCard label="Saldo do ano" value={formatMoney(saldoAno)} tone={saldoAno < 0 ? "danger" : "default"} />
+            <PontesStatCard label="Média de gastos/mês" value={formatMoney(mediaDespesa)} hint={`${evolucaoComDados.length} ${evolucaoComDados.length === 1 ? "mês" : "meses"} com lançamentos`} />
+          </div>
+
+          {/* Comparação com o mês anterior */}
+          {ultimo && penultimo && (
+            <PontesCard padding={24} radius={14}>
+              <div className={styles.cardHead}>
+                <span className={styles.cardTitle}>{ultimo.mesLabel} vs {penultimo.mesLabel}</span>
+                <span className={styles.cardSub}>Variação em relação ao mês anterior</span>
+              </div>
+              <div className={styles.compareGrid}>
+                {([
+                  { label: "Receitas", atual: ultimo.receitas, ant: penultimo.receitas, bom: "up" as const },
+                  { label: "Despesas", atual: ultimo.despesas, ant: penultimo.despesas, bom: "down" as const },
+                  { label: "Saldo", atual: ultimo.saldo, ant: penultimo.saldo, bom: "up" as const },
+                ]).map((row) => {
+                  const v = variacao(row.atual, row.ant)
+                  const subiu = v !== null && v >= 0
+                  // "bom" = direção desejada. Verde quando vai pro lado bom.
+                  const positivo = v === null ? null : (row.bom === "up" ? subiu : !subiu)
+                  const tone = positivo === null ? "muted" : positivo ? "good" : "bad"
+                  return (
+                    <div key={row.label} className={styles.compareItem}>
+                      <span className={styles.compareLabel}>{row.label}</span>
+                      <span className={styles.compareValue}>{formatMoney(row.atual)}</span>
+                      <span className={styles.compareDelta} data-tone={tone}>
+                        {v !== null && (subiu ? <ArrowUpRight size={14} strokeWidth={2.5} /> : <ArrowDownRight size={14} strokeWidth={2.5} />)}
+                        {fmtPct(v)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </PontesCard>
+          )}
+
           {/* Evolução mensal — área */}
           <PontesCard padding={24} radius={14}>
             <div className={styles.cardHead}>
@@ -102,44 +175,38 @@ export default function ReportsPage() {
             {evolucaoComDados.length === 0 ? (
               <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={evolucaoComDados} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={evolucaoComDados} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
                   <defs>
+                    <linearGradient id="gradSaldo" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colorPrimary} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={colorPrimary} stopOpacity={0.02} />
+                    </linearGradient>
                     <linearGradient id="gradReceitas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={colorSuccess} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={colorSuccess} stopOpacity={0} />
+                      <stop offset="0%" stopColor={colorSuccess} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={colorSuccess} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gradDespesas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={colorDanger} stopOpacity={0.12} />
-                      <stop offset="95%" stopColor={colorDanger} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gradSaldo" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={colorPrimary} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={colorPrimary} stopOpacity={0} />
+                      <stop offset="0%" stopColor={colorDanger} stopOpacity={0.16} />
+                      <stop offset="100%" stopColor={colorDanger} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colorBorder} vertical={false} />
-                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
-                  <RTooltip
-                    // @ts-expect-error recharts formatter types are loose
-                    formatter={(val: number, name: string) => [formatMoney(val), name]}
-                    contentStyle={tooltipStyle}
-                    labelStyle={labelStyle}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12, color: "var(--pontes-text-muted)" }} />
+                  <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
+                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
+                  {/* Saldo é o protagonista: área cheia + linha grossa. Receitas e
+                      despesas viram linhas-contexto finas, sem competir. */}
+                  <Area type="monotone" dataKey="saldo" name="Saldo"
+                    stroke={colorPrimary} strokeWidth={3} fill="url(#gradSaldo)"
+                    dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
                   <Area type="monotone" dataKey="receitas" name="Receitas"
                     stroke={colorSuccess} strokeWidth={2} fill="url(#gradReceitas)"
-                    dot={{ r: 4, fill: colorSuccess, strokeWidth: 0 }}
-                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }} />
+                    dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--pontes-surface)", fill: colorSuccess }} />
                   <Area type="monotone" dataKey="despesas" name="Despesas"
                     stroke={colorDanger} strokeWidth={2} fill="url(#gradDespesas)"
-                    dot={{ r: 4, fill: colorDanger, strokeWidth: 0 }}
-                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }} />
-                  <Area type="monotone" dataKey="saldo" name="Saldo"
-                    stroke={colorPrimary} strokeWidth={2} strokeDasharray="5 3" fill="url(#gradSaldo)"
-                    dot={{ r: 4, fill: colorPrimary, strokeWidth: 0 }}
-                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }} />
+                    dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--pontes-surface)", fill: colorDanger }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -154,113 +221,96 @@ export default function ReportsPage() {
             {evolucaoComDados.length === 0 ? (
               <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={evolucaoComDados} barSize={20} barGap={6} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colorBorder} vertical={false} />
-                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} />
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={evolucaoComDados} barSize={26} barGap={6} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barReceitas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colorSuccess} stopOpacity={1} />
+                      <stop offset="100%" stopColor={colorSuccess} stopOpacity={0.55} />
+                    </linearGradient>
+                    <linearGradient id="barDespesas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colorDanger} stopOpacity={1} />
+                      <stop offset="100%" stopColor={colorDanger} stopOpacity={0.55} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
-                  <RTooltip
-                    // @ts-expect-error recharts formatter types are loose
-                    formatter={(val: number, name: string) => [formatMoney(val), name]}
-                    contentStyle={tooltipStyle}
-                    labelStyle={labelStyle}
-                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12, color: "var(--pontes-text-muted)" }} />
+                  <RTooltip content={<ChartTooltip />} cursor={{ fill: "color-mix(in srgb, var(--pontes-primary) 6%, transparent)", radius: 6 }} />
+                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
                   <ReferenceLine y={0} stroke={colorBorder} />
-                  <Bar dataKey="receitas" name="Receitas" fill={colorSuccess} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesas" name="Despesas" fill={colorDanger} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="receitas" name="Receitas" fill="url(#barReceitas)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill="url(#barDespesas)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </PontesCard>
 
-          {/* Distribuição de despesas (donut + lista) */}
+          {/* Saldo acumulado — patrimônio ao longo do ano */}
+          <PontesCard padding={24} radius={14}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Saldo acumulado</span>
+              <span className={styles.cardSub}>Seu patrimônio crescendo mês a mês</span>
+            </div>
+            {saldoAcumulado.length === 0 ? (
+              <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={saldoAcumulado} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradAcum" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colorPrimary} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={colorPrimary} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
+                  <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
+                  <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="acumulado" name="Acumulado"
+                    stroke={colorPrimary} strokeWidth={3} fill="url(#gradAcum)"
+                    dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </PontesCard>
+
+          {/* Taxa de economia — % da receita que sobrou por mês */}
+          <PontesCard padding={24} radius={14}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Taxa de economia</span>
+              <span className={styles.cardSub}>% da receita que sobrou — média {taxaMedia.toFixed(0)}%</span>
+            </div>
+            {taxaEconomia.length === 0 ? (
+              <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={taxaEconomia} barSize={28} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" stroke={colorBorder} vertical={false} />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
+                  <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={44} />
+                  <RTooltip content={<ChartTooltip format={(v) => `${v.toFixed(1)}%`} />} cursor={{ fill: "color-mix(in srgb, var(--pontes-primary) 6%, transparent)", radius: 6 }} />
+                  <ReferenceLine y={0} stroke={colorBorder} />
+                  <Bar dataKey="taxa" name="Economia" radius={[6, 6, 0, 0]}>
+                    {taxaEconomia.map((m, i) => (
+                      <Cell key={i} fill={m.taxa >= 0 ? colorSuccess : colorDanger} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </PontesCard>
+
+          {/* Distribuição de despesas — donut + lista (componente da biblioteca) */}
           <PontesCard padding={24} radius={14}>
             <div className={styles.cardHead}>
               <span className={styles.cardTitle}>Distribuição de despesas</span>
             </div>
-            {data.gastosPorCategoria.length === 0 ? (
-              <div className={styles.emptyChart}>Nenhuma despesa em {ano}</div>
-            ) : (
-              <div className={styles.distGrid}>
-                <div className={styles.donutWrap}>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={data.gastosPorCategoria}
-                        dataKey="valor" nameKey="descricao"
-                        cx="50%" cy="50%"
-                        innerRadius={62} outerRadius={90}
-                        paddingAngle={2}
-                        onMouseEnter={(_, index) => setActiveSlice(index)}
-                        onMouseLeave={() => setActiveSlice(null)}
-                      >
-                        {data.gastosPorCategoria.map((_, index) => (
-                          <Cell key={index}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                            opacity={activeSlice === null || activeSlice === index ? 1 : 0.35}
-                            stroke="none" />
-                        ))}
-                      </Pie>
-                      <RTooltip
-                        // @ts-expect-error recharts formatter types are loose
-                        formatter={(val: number, name: string) => [formatMoney(val), name]}
-                        contentStyle={tooltipStyle}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className={styles.donutCenter}>
-                    {activeSlice !== null ? (
-                      <>
-                        <div className={styles.donutPct} style={{ color: PIE_COLORS[activeSlice % PIE_COLORS.length] }}>
-                          {data.gastosPorCategoria[activeSlice].percentual}%
-                        </div>
-                        <div className={styles.donutLabel}>{data.gastosPorCategoria[activeSlice].descricao}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={styles.donutTotalLabel}>Total</div>
-                        <div className={styles.donutTotalValue}>
-                          {formatMoney(data.gastosPorCategoria.reduce((s, c) => s + c.valor, 0))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.catList}>
-                  {data.gastosPorCategoria.map((cat, index) => {
-                    const color = PIE_COLORS[index % PIE_COLORS.length]
-                    const isActive = activeSlice === index
-                    return (
-                      <div
-                        key={cat.descricao}
-                        className={styles.catItem}
-                        data-active={isActive ? "true" : undefined}
-                        title={formatMoney(cat.valor)}
-                        onMouseEnter={() => setActiveSlice(index)}
-                        onMouseLeave={() => setActiveSlice(null)}
-                      >
-                        <div className={styles.catRow}>
-                          <div className={styles.catLeft}>
-                            <span className={styles.catDot} style={{ background: color }} />
-                            <span className={styles.catName} data-bold={isActive ? "true" : undefined}>{cat.descricao}</span>
-                          </div>
-                          <div className={styles.catRight}>
-                            <span className={styles.catPct}>{cat.percentual}%</span>
-                            <span className={styles.catValue}>{formatMoney(cat.valor)}</span>
-                          </div>
-                        </div>
-                        <div className={styles.catBar}>
-                          <div className={styles.catBarFill} style={{ width: `${cat.percentual}%`, background: color }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <PontesCategoryDonut
+              data={data.gastosPorCategoria.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
+              formatMoney={formatMoney}
+              emptyLabel={`Nenhuma despesa em ${ano}`}
+            />
           </PontesCard>
         </>
       )}

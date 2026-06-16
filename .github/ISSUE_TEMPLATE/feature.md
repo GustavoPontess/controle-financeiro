@@ -1,16 +1,16 @@
 ---
 name: Feature ou tarefa do roadmap
-about: Use para criar uma nova Issue do roadmap (Bloco A/B/C/D)
-title: '#XX — Título curto'
+about: Use para criar uma nova Issue do roadmap (ver ROADMAP.md)
+title: 'Título curto'
 labels: ''
 assignees: ''
 ---
 
-## Bloco e severidade
+## Lote e severidade
 
-<!-- Selecione o bloco e a severidade aplicáveis -->
+<!-- Referencie o lote do ROADMAP.md, se aplicável -->
 
-**Bloco:** A — Higiene de Produção | B — Infraestrutura | C — Pivot Família | D — Retenção e UX
+**Lote (ROADMAP):** 1 quick-wins | 2 família/fosso | 3 aquisição/SEO | 4 PJ/contador | 5 estratégico
 
 **Severidade:** 🔴 Crítica | 🟡 Alta | 🟠 Média | 🟢 Feature
 
@@ -38,8 +38,8 @@ assignees: ''
 - [ ] `docs/DATABASE.md` (se schema mudou)
 - [ ] `docs/FLOWS.md` (se fluxo mudou)
 - [ ] `docs/features/<feature>/` (se feature)
-- [ ] `ISSUES.md` (marcar como concluída ao final)
-- [ ] `PROGRESS.md` (adicionar histórico)
+- [ ] `ROADMAP.md` (marcar item entregue)
+- [ ] `STATE.md` (atualizar estado vivo)
 
 ## Referências
 

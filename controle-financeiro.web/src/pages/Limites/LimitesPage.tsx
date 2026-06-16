@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { BarChart2, Pencil, Trash2, Plus, AlertTriangle, XCircle } from "lucide-react"
 import {
@@ -41,8 +42,6 @@ function buildYears() {
 
 const YEARS = buildYears()
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 // ── Form ────────────────────────────────────────────────────────────────────
 

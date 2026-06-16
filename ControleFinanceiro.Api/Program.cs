@@ -9,7 +9,6 @@ using ControleFinanceiro.Api.Infrastructure.Security;
 using ControleFinanceiro.Api.Services;
 using DotNetEnv;
 using Hangfire;
-using Hangfire.MemoryStorage;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -28,6 +27,14 @@ if (File.Exists(".env"))
 {
     Env.Load(".env");
 }
+
+// Npgsql 6+ mapeia DateTime p/ 'timestamp with time zone' e exige Kind=Utc. O
+// domínio usa DateTime naïve (datas civis sem timezone); o modo legado mapeia p/
+// 'timestamp without time zone' e aceita qualquer Kind. DEVE ser setado antes de
+// o Npgsql resolver tipos. (Antes vivia no ctor estático de DatabaseProvider, mas
+// o #114 removeu a última referência a essa classe — então nunca mais rodava, e
+// um DB novo crashava no seed. Setado explícito aqui pra não depender disso.)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,14 +69,10 @@ builder.Services.AddControllers(options =>
 
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set");
-var usePostgres = DatabaseProvider.IsPostgres(databaseUrl);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (usePostgres)
-        options.UseNpgsql(databaseUrl);
-    else
-        options.UseSqlite(databaseUrl);
+    options.UseNpgsql(databaseUrl);
 });
 
 builder.Services.AddScoped<TransacaoService>();
@@ -128,20 +131,15 @@ builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
 
-// Hangfire: Postgres (prod) persiste a fila de jobs entre deploys; SQLite
-// (dev) usa MemoryStorage — jobs não sobrevivem a restart, aceitável em dev.
 builder.Services.AddHangfire(config =>
 {
-    if (usePostgres)
-        config.UsePostgreSqlStorage(
-            c => c.UseNpgsqlConnection(databaseUrl),
-            new PostgreSqlStorageOptions
-            {
-                SchemaName = "hangfire",
-                PrepareSchemaIfNecessary = true,
-            });
-    else
-        config.UseMemoryStorage();
+    config.UsePostgreSqlStorage(
+        c => c.UseNpgsqlConnection(databaseUrl),
+        new PostgreSqlStorageOptions
+        {
+            SchemaName = "hangfire",
+            PrepareSchemaIfNecessary = true,
+        });
 });
 builder.Services.AddHangfireServer();
 
@@ -161,11 +159,13 @@ builder.Services.AddRateLimiter(options =>
     static string PartitionByIp(HttpContext ctx) =>
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
+    // Em Development, limite alto para não bloquear testes E2E repetidos localmente
+    var isDev = builder.Environment.IsDevelopment();
     options.AddPolicy("auth-login", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
             new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0,
             }));
@@ -330,18 +330,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Seed bancos na primeira execução
+// Migrations + seeds rodam antes de servir. Ordem importa: BancoSeeder primeiro
+// (DevDataSeeder usa a lista de bancos). O BancoSeeder chama a BrasilAPI mas tem
+// timeout interno (15s) + try/catch — se a API externa estiver lenta/fora, ele
+// desiste e segue, sem travar o boot. /health então sobe de forma previsível.
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
 
-    // Postgres (prod) usa migrations versionadas; SQLite (dev) cria o schema
-    // direto do modelo via EnsureCreated — mais rápido para subir, sem histórico.
-    if (usePostgres)
-        await context.Database.MigrateAsync();
-    else
-        await context.Database.EnsureCreatedAsync();
+    await context.Database.MigrateAsync();
 
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
@@ -381,44 +379,21 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = new[] { new HangfireDashboardAuthFilter() }
 });
 
-// Schedule recurring jobs
-var bgJob = app.Services.GetRequiredService<IBackgroundJobClient>();
-var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+// Agenda os jobs recorrentes DEPOIS que o app sobe (ApplicationStarted), fora do
+// caminho crítico do boot. A primeira escrita no storage do Hangfire cria o schema
+// `hangfire` num DB novo — operação que pode ser lenta/travar (lock advisory) e
+// não deve impedir o /health de responder. Sai do boot, agenda em background.
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+    var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
 
-// Daily invoice closure (02:00 UTC)
-recManager.AddOrUpdate<FaturaFechamentoJob>(
-    "fatura-fechamento",
-    job => job.ExecuteAsync(),
-    "0 2 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily overdue mark (02:30 UTC)
-recManager.AddOrUpdate<FaturaAtrasoJob>(
-    "fatura-atraso",
-    job => job.ExecuteAsync(),
-    "30 2 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily expand recurring window (03:00 UTC)
-recManager.AddOrUpdate<ExpandirRecorrentesJob>(
-    "expandir-recorrentes",
-    job => job.ExecuteAsync(),
-    "0 3 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Daily execute pending transactions (03:30 UTC)
-recManager.AddOrUpdate<ExecutarRecorrentesJob>(
-    "executar-recorrentes",
-    job => job.ExecuteAsync(),
-    "30 3 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Hourly recalculate limits
-recManager.AddOrUpdate<RecalcularLimitesJob>(
-    "recalcular-limites",
-    job => job.ExecuteAsync(),
-    "0 * * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
+    recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
+    recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
+    recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
+    recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+});
 
 app.MapControllers();
 

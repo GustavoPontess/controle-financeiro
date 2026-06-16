@@ -5,7 +5,7 @@ import {
   palettes, fonts,
   PontesButton, PontesIconButton, PontesField, PontesInput, PontesMoneyInput, PontesSelect,
   PontesToggle, PontesCheckbox, PontesBadge, PontesAvatar, PontesAlert,
-  PontesProgress, PontesStatCard, PontesCard, PontesTabs, PontesLogoMark,
+  PontesProgress, PontesStatCard, PontesCategoryDonut, PontesCard, PontesTabs, PontesLogoMark,
   PontesSidebarItem, PontesChoiceCards, PontesGroupedSelect,
   PontesModal, PontesDialog,
   PontesTable, PontesTablePagination,
@@ -240,6 +240,26 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("Saldo")).toBeInTheDocument()
     expect(screen.getByText("R$ 1.000")).toBeInTheDocument()
     expect(screen.getByText(/\+5%/)).toBeInTheDocument()
+  })
+
+  it("PontesCategoryDonut lista categorias com % e total; vazio mostra emptyLabel", () => {
+    const fmt = (v: number) => `R$ ${v}`
+    const { rerender } = render(
+      <PontesCategoryDonut
+        p={p} font={font} formatMoney={fmt}
+        data={[
+          { label: "Moradia", valor: 600, percentual: 60 },
+          { label: "Mercado", valor: 400, percentual: 40 },
+        ]}
+      />
+    )
+    expect(screen.getByText("Moradia")).toBeInTheDocument()
+    expect(screen.getByText("Mercado")).toBeInTheDocument()
+    expect(screen.getByText("60%")).toBeInTheDocument()
+    expect(screen.getByText("Total")).toBeInTheDocument()
+    expect(screen.getByText("R$ 1000")).toBeInTheDocument() // soma 600+400
+    rerender(<PontesCategoryDonut p={p} font={font} formatMoney={fmt} data={[]} emptyLabel="Nada aqui" />)
+    expect(screen.getByText("Nada aqui")).toBeInTheDocument()
   })
 
   it("PontesCard renderiza children", () => {

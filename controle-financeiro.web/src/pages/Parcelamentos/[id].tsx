@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
 import { ChevronLeft } from "lucide-react"
 import {
@@ -11,8 +12,6 @@ import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR") : "—"

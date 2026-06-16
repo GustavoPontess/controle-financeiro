@@ -53,6 +53,7 @@ dotnet run
 - [ ] `docs/STANDARDS.md` (se padrão novo introduzido)
 - [ ] `docs/QUICK_REFERENCE.md` (se algo essencial mudou)
 - [ ] `docs/features/<feature>/` (se feature foi tocada)
+- [ ] `STATE.md` / `ROADMAP.md` atualizados
 - [ ] Swagger atualizado (XML comments em endpoints novos)
 
 ### Commits e branch
@@ -66,21 +67,13 @@ dotnet run
 - [ ] `UsuarioId` checado em todas as queries novas (multi-tenancy)
 - [ ] Soft delete preservado em entidades financeiras
 
-## Review
+## Notas
 
-<!-- Marque uma das opções abaixo -->
-
-- [ ] **Auto-merge** — PR pequeno/trivial, build verde, dispensa review do outro
-- [ ] **Aguardando review** — pedi review do outro porque [arquitetural / decisão importante / inseguro / mudança grande]
-
-Critério em `docs/COLLABORATION.md` §6.3.
-
-## Notas para o reviewer (se pediu review)
-
-<!-- Algo específico que você quer que o reviewer olhe com mais atenção? Dúvidas em aberto? Decisão que mereceu trade-off? -->
+<!-- Decisão que mereceu trade-off? Dúvida em aberto? Algo a revisitar depois? -->
 
 ## Após pronto
 
-- [ ] Squash merge (executado pelo próprio autor)
+- [ ] CI verde (build + lint + test)
+- [ ] Squash merge
 - [ ] Branch deletada pós-merge (automático)
-- [ ] `ISSUES.md` e `PROGRESS.md` atualizados (neste PR ou em follow-up curto)
+- [ ] `STATE.md` e `ROADMAP.md` atualizados

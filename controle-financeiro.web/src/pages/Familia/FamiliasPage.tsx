@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { Users, UserPlus, Trash2, Pencil, Wallet, ArrowRight, Heart } from "lucide-react"
 import {
@@ -48,8 +49,6 @@ type ConfirmState = {
 } | null
 
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 
 export default function FamiliasPage() {
   const { notify } = useOutletContext<OutletContextType>()

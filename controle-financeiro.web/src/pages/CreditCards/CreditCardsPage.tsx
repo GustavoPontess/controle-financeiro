@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
@@ -20,8 +21,6 @@ import type { Banco } from "../../types/Banco"
 import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
 import styles from "./CreditCardsPage.module.css"
 
-const formatMoney = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
 // Máscara de moeda pro input de limite: dígitos → número (centavos) e volta.
 const parseMoney = (masked: string): number | undefined => {
   const digits = masked.replace(/\D/g, "")
