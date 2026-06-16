@@ -5,6 +5,9 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 > **Antes de uma sessão de trabalho:** ler `PROMPT_NOVA_SESSAO.md` (ponto de entrada do workflow de sessão), `STATE.md` (onde a última sessão parou) e `ROADMAP.md` (backlog vivo).
 >
 > **Projeto solo** (Gustavo). Sem coordenação de dupla. `gh issue` é opcional pra rastrear trabalho, sem assignee de terceiros.
+>
+> ### ⚖️ Segurança & Conformidade — regra inegociável
+> **Antes de QUALQUER lançamento, é obrigatório pesquisar e aplicar as práticas de segurança nível bancário/fintech, os requisitos da LGPD e as regras regulatórias aplicáveis (ANPD; BACEN/Open Finance se aplicável), e respeitar TODAS as regras impostas.** É um app de dinheiro + dados pessoais — nenhuma feature que toca auth/PII/dados sensíveis sobe sem essa checagem. Pesquisa = **deep-research verificado por fonte primária** (OWASP/NIST/ANPD/BACEN), nunca chute. Spec vivo: `docs/SEGURANCA_BEST_PRACTICES.md`. **`1.0.0` só sai com isso fechado.**
 
 ## Project Overview
 

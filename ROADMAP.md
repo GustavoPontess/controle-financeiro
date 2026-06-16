@@ -59,23 +59,39 @@ status: ATIVO
 
 ## Higiene / dívida conhecida
 
-### 🔴 Fixes da auditoria do código herdado (`docs/AUDITORIA_CODIGO_HERDADO.md`) — bloqueiam produção
-- [ ] **C1 — reset token vazado na resposta HTTP** (`AuthService`/`AuthController`) = account takeover. Tirar token da resposta + enviar por e-mail.
-- [ ] **C2 — contrato de exceção furado** — 67 `throw new Exception(...)` nos services viram HTTP 500 + vazam mensagem. Trocar pelos tipos certos + middleware não ecoar `Message` no 500.
-- [ ] **C3 — soft-delete de `Transacao` violado** — `DeletarAsync` faz hard `Remove`; `ListarAsync` não filtra `Ativo`.
-
-### 🟠 Altos
-- [ ] **A1/A2 — PasswordHasher** — PBKDF2 10k→≥100k iterações + hash 20→32 bytes (rehash no próximo login).
-- [ ] **A3 — segredos no compose/CI versionado** — senha Postgres + JWT_SECRET default hardcoded → `.env`.
+### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
+- [ ] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. Tirar token da resposta + e-mail **fire-and-forget** (resolve timing-enum junto). _OWASP Forgot Password._
+- [ ] **C2 — contrato de exceção furado** 🔴 — 67 `throw new Exception(...)` viram HTTP 500 + vazam mensagem. Tipos certos + middleware não ecoar `Message` no 500.
+- [ ] **C3 — soft-delete de `Transacao` violado** 🔴 — `DeletarAsync` faz hard `Remove`; `ListarAsync` não filtra `Ativo`.
+- [ ] **A1/A2 — PasswordHasher** 🟠 — PBKDF2 10k→**≥600k** (OWASP) ou migrar p/ **Argon2id** (Konscious); hash 20→32 bytes; rehash no próximo login.
+- [ ] **Reset token hasheado** no banco + **rate-limit por conta** + **política 15 chars** (NIST, sem MFA).
+- [ ] **Re-auth em operação sensível** (trocar e-mail/senha) + confirmar refresh token em cookie HttpOnly + **CSP estrita**.
 - [ ] **A4 — critério de gasto divergente** Orçamento (`CriadoPor`) × Relatório (ownership) — padronizar.
-- [ ] **Rotacionar segredos** — `Jwt:Key`, senha Postgres, API keys. Ex-colaboradores tinham clone local. ⚠️
+- [ ] **⚠️ Rotacionar segredos** — `Jwt:Key`, senha Postgres, API keys. Ex-colaboradores têm clone com a chave. **Urgente** (não depende de pesquisa).
+- [ ] **A3 — segredos no compose/CI versionado** — senha Postgres + JWT_SECRET default hardcoded → `.env`.
+
+### 🔬 Re-pesquisar (gaps que o rate-limit cortou) antes de codar
+- [ ] **Rotação de segredos / key rollover** da JWT key sem downtime · **MFA no .NET** (TOTP/passkeys) · **cripto-at-rest / PII em EF Core** · **logging/auditoria** · **LGPD + BACEN/Open Finance**. Deep-research verificado por fonte primária.
 
 ### 🟡 / outros
 - [ ] Médios da auditoria (tokens em plaintext, enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
-- [x] **Branches do Caio mergeadas** — #114 (Postgres único, SQLite removido) + #92 (E2E Playwright) cherry-picked na main (autor Caio preservado), auditadas e limpas. Dev agora **exige** Postgres no ar.
+- [x] **#114 Postgres único + #92 E2E** mergeados na main, auditados e limpos. Dev exige Postgres no ar.
+- [x] **Versionamento** — SemVer 0.x, CHANGELOG, `docs/RELEASING.md`, release `v0.9.0`.
+- [x] **Ex-colaboradores apagados** do repo (autoria/co-autoria/branches/site/co-autoria-IA) + histórico linearizado.
 - [ ] **KPIs de topo agregam só 1 página** (Transactions/Recorrentes/Emprestimos/Parcelamentos) — endpoints `/stats` dedicados.
 - [ ] **#125 INPI marca Pontes** · **#126 LGPD pré-lançamento** (legais, não-código).
 - [x] **Lint debt NBSP** resolvido (escape `\u00A0` no ReportsPage.test, comportamento idêntico).
+
+---
+
+## 🚦 Gate de lançamento `1.0.0` (conformidade obrigatória)
+
+> **Regra inegociável** (também em `CLAUDE.md`): app de dinheiro + dados pessoais. **Antes de lançar, pesquisar e aplicar prática bancária/fintech + LGPD + regras regulatórias (ANPD; BACEN/Open Finance se aplicável) e respeitar TODAS as regras impostas.** `1.0.0` só sai com:
+
+- [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
+- [ ] Segredos rotacionados
+- [ ] Pesquisa de conformidade completa (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126`
+- [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
 
 ---
 
