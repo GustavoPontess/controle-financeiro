@@ -28,6 +28,14 @@ if (File.Exists(".env"))
     Env.Load(".env");
 }
 
+// Npgsql 6+ mapeia DateTime p/ 'timestamp with time zone' e exige Kind=Utc. O
+// domínio usa DateTime naïve (datas civis sem timezone); o modo legado mapeia p/
+// 'timestamp without time zone' e aceita qualquer Kind. DEVE ser setado antes de
+// o Npgsql resolver tipos. (Antes vivia no ctor estático de DatabaseProvider, mas
+// o #114 removeu a última referência a essa classe — então nunca mais rodava, e
+// um DB novo crashava no seed. Setado explícito aqui pra não depender disso.)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog — logs estruturados em JSON: console + arquivo rotativo diário.
