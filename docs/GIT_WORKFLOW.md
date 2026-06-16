@@ -11,6 +11,8 @@ status: CURRENT
 
 **Projeto solo** — sem coordenação de dupla nem review de terceiros. Este arquivo cobre as regras de git em si.
 
+**Versionamento:** SemVer `0.x` pré-lançamento (`1.0.0` = lançamento público). Versão em `package.json` + `.csproj`, histórico em `CHANGELOG.md`. Como cortar uma release: **`RELEASING.md`** (na raiz `docs/`).
+
 ---
 
 ## Branches
