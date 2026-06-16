@@ -8,7 +8,7 @@ status: ATIVO
 
 **Fonte única do "o que fazer a seguir".** Backlog vivo do produto. O estado granular do que está em execução agora vive em [`STATE.md`](STATE.md).
 
-> Projeto **solo** (Gustavo). Sem coordenação de dupla. `gh issue` continua sendo usado pra rastrear trabalho no GitHub, mas sem assignee de terceiros.
+> Projeto **solo** (Gustavo). `gh issue` continua sendo usado pra rastrear trabalho no GitHub, mas sem assignee de terceiros.
 
 ---
 

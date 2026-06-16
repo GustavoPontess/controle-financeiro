@@ -329,9 +329,8 @@ dotnet ef database update
     │   ├── familia/             ← visão do fosso (rateio/papéis/dependentes)
     │   │   └── visao.md
     │   ├── b2b-contadores/      ← visão do eixo PJ/contador
-    │   ├── cartao-credito/      ← regras de negócio
-    │   │   └── regras.md
-    │   └── redesign-ux/         ← visão e concorrentes (Q4)
+    │   └── cartao-credito/      ← regras de negócio
+    │       └── regras.md
     ├── referencias/             ← prints de concorrentes + iterações de logo (gitignored)
     └── history/                 ← documentos arquivados (por quarter Q2-Q5)
         └── {ISSUES,PROGRESS,IMPLEMENTATION_STATE}_2026Q{2,3,4,5}.md + BUILD_PLAN_CONCORRENTES.md

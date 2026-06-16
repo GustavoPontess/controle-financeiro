@@ -53,7 +53,7 @@ Cada feature complexa tem sua própria pasta com spec técnica e UX. Ao iniciar 
 | [parcelamento](./features/parcelamento/) | ✅ Concluída (Q2 2026) | [arquitetura.md](./features/parcelamento/arquitetura.md), [ux.md](./features/parcelamento/ux.md) |
 | [familia](./features/familia/) | 🔵 Fosso de produto — rateio/papéis/dependentes (ver ROADMAP Lote 2) | [visao.md](./features/familia/visao.md) + sub-1..5 arquitetura |
 | [b2b-contadores](./features/b2b-contadores/) | 💡 Visão (ROADMAP Lote 4) | [visao.md](./features/b2b-contadores/visao.md) |
-| outras | — | importacao, notificacoes, onboarding, pwa, redesign-ux |
+| outras | — | importacao, notificacoes, onboarding, pwa |
 
 ---
 

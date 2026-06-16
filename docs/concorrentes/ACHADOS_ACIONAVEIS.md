@@ -1,5 +1,7 @@
 # Achados acionáveis — consolidado dos concorrentes
 
+> ⚠️ **Documento-fonte (pesquisa).** O backlog vivo e priorizado deriva daqui mas mora no **`ROADMAP.md`** (raiz) — é lá que se acompanha o que fazer/feito. Este arquivo guarda o raciocínio cru por trás de cada item.
+>
 > Itens concretos pra fazer, tirados das análises (Pierre, Despezzas, Monarch, Conta Azul, Bling). Priorizados por impacto × custo. Fonte = quem validou.
 
 ## 🟢 Curto prazo — barato, front/dados que já temos
