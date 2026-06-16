@@ -119,18 +119,26 @@ jobs:
       - name: Build backend
         run: dotnet build controle-financeiro.sln --configuration Release
 
-      - name: Start backend
+      - name: Start backend & run E2E
+        working-directory: controle-financeiro.web
         run: |
-          dotnet run --project ControleFinanceiro.Api --configuration Release &
-          echo "Waiting for backend..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:5293/health && break
+          # Sobe o backend em background NO MESMO step (processo persiste
+          # durante os testes). Pos-#114 o startup roda migrations + seeders
+          # antes de /health responder, entao o wait e generoso (ate 180s).
+          ( cd .. && dotnet run --project ControleFinanceiro.Api --configuration Release --no-build > "$RUNNER_TEMP/backend.log" 2>&1 & )
+          echo "Aguardando backend (migrations + seeders)..."
+          ok=""
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:5293/health > /dev/null; then ok=1; break; fi
             sleep 2
           done
-
-      - name: Run E2E tests
-        working-directory: controle-financeiro.web
-        run: npm run test:e2e
+          if [ -z "$ok" ]; then
+            echo "::error::Backend nao respondeu em /health apos 180s"
+            tail -80 "$RUNNER_TEMP/backend.log" || true
+            exit 1
+          fi
+          echo "Backend no ar. Rodando E2E..."
+          npm run test:e2e
 
       - name: Upload Playwright report
         if: failure()
