@@ -238,9 +238,11 @@ public class AuthService
         if (dto.NovaSenha != dto.ConfirmarNovaSenha)
             throw new ArgumentException("Senhas não conferem.");
 
+        // O banco guarda só o hash do token; o usuário envia o token bruto.
+        var tokenHash = OpaqueTokenHasher.Hash(dto.Token);
         var prt = await _context.PasswordResetTokens
             .Include(t => t.Usuario)
-            .FirstOrDefaultAsync(t => t.Token == dto.Token);
+            .FirstOrDefaultAsync(t => t.Token == tokenHash);
 
         if (prt == null || prt.Usado || prt.ExpiresAt <= DateTime.UtcNow)
             throw new ArgumentException("Token inválido ou expirado.");

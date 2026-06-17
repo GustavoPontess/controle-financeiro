@@ -28,8 +28,13 @@ public static class PasswordPolicyService
     {
         var erros = new List<string>();
 
-        if (senha.Length < 10)
-            erros.Add("Mínimo 10 caracteres");
+        // NIST SP 800-63B: mínimo 15 chars sem MFA (ainda não temos MFA). Teto alto para
+        // permitir passphrase, mas limitado p/ não alimentar entrada gigante ao Argon2id (DoS).
+        if (senha.Length < 15)
+            erros.Add("Mínimo 15 caracteres");
+
+        if (senha.Length > 128)
+            erros.Add("Máximo 128 caracteres");
 
         if (!Regex.IsMatch(senha, @"[a-z]"))
             erros.Add("Pelo menos 1 letra minúscula");

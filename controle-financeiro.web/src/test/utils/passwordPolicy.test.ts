@@ -2,14 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
 
 describe('getSenhaRequisitos', () => {
-  it('falha no comprimento quando senha tem menos de 10 chars', () => {
-    const r = getSenhaRequisitos('Ab1!')
+  it('falha no comprimento quando senha tem menos de 15 chars', () => {
+    const r = getSenhaRequisitos('Abcdefgh1!')
     expect(r[0].ok).toBe(false)
   })
 
-  it('passa no comprimento quando senha tem 10+ chars', () => {
-    const r = getSenhaRequisitos('Abcdefgh1!')
+  it('passa no comprimento quando senha tem 15+ chars', () => {
+    const r = getSenhaRequisitos('Abcdefghij12345!')
     expect(r[0].ok).toBe(true)
+  })
+
+  it('falha no comprimento quando senha passa de 128 chars', () => {
+    const r = getSenhaRequisitos('Aa1!'.repeat(40)) // 160 chars
+    expect(r[0].ok).toBe(false)
   })
 
   it('falha em minúscula quando não há letra minúscula', () => {
@@ -53,7 +58,7 @@ describe('getSenhaRequisitos', () => {
   })
 
   it('todos os requisitos ok com senha forte', () => {
-    const r = getSenhaRequisitos('Tr0ub4dor&3')
+    const r = getSenhaRequisitos('Tr0ub4dor&3Xyzw')
     expect(r.every((req) => req.ok)).toBe(true)
   })
 
@@ -70,13 +75,13 @@ describe('getSenhaForca', () => {
   })
 
   it('retorna 5 para senha forte', () => {
-    const r = getSenhaRequisitos('Tr0ub4dor&3')
+    const r = getSenhaRequisitos('Tr0ub4dor&3Xyzw')
     expect(getSenhaForca(r)).toBe(5)
   })
 
   it('retorna valor parcial corretamente', () => {
-    const r = getSenhaRequisitos('abcdefghij')
-    // tem minúscula e comprimento (>=10), sem maiúscula, número, especial
+    const r = getSenhaRequisitos('abcdefghijklmno')
+    // tem minúscula e comprimento (15), sem maiúscula, número, especial
     expect(getSenhaForca(r)).toBe(2)
   })
 })
