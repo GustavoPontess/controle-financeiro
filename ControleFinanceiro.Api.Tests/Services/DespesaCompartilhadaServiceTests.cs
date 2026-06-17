@@ -328,4 +328,88 @@ public class DespesaCompartilhadaServiceTests
         var d = Assert.Single(feed);
         Assert.Equal(StatusAprovacaoDespesa.Pendente, d.StatusAprovacao);
     }
+
+    // ── Feature 2.1 — responsável da despesa ───────────────────────────────────
+
+    [Fact]
+    public async Task AtribuirResponsavelAsync_DefineResponsavel()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var txId = SeedTransacao(ctx, ana, 100m, TipoTransacao.Despesa, familiaId);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await svc.AtribuirResponsavelAsync(familiaId, txId, bia, ana);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(bia, tx!.ResponsavelUsuarioId);
+    }
+
+    [Fact]
+    public async Task AtribuirResponsavelAsync_Null_Limpa()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var txId = SeedTransacao(ctx, ana, 100m, TipoTransacao.Despesa, familiaId);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.AtribuirResponsavelAsync(familiaId, txId, bia, ana);
+
+        await svc.AtribuirResponsavelAsync(familiaId, txId, null, ana);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Null(tx!.ResponsavelUsuarioId);
+    }
+
+    [Fact]
+    public async Task AtribuirResponsavelAsync_NaoMembro_LancaArgument()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var estranho = SeedUsuario(ctx, "estranho@test.com", "Estranho");
+        var familiaId = await SeedFamilia(ctx, ana);
+        var txId = SeedTransacao(ctx, ana, 100m, TipoTransacao.Despesa, familiaId);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.AtribuirResponsavelAsync(familiaId, txId, estranho, ana));
+    }
+
+    [Fact]
+    public async Task AtribuirResponsavelAsync_AtorNaoMembro_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var familiaId = await SeedFamilia(ctx, ana);
+        var txId = SeedTransacao(ctx, ana, 100m, TipoTransacao.Despesa, familiaId);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => svc.AtribuirResponsavelAsync(familiaId, txId, ana, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task ListarDespesas_FiltraPorResponsavel()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var tx1 = SeedTransacao(ctx, ana, 100m, TipoTransacao.Despesa, familiaId);
+        SeedTransacao(ctx, ana, 200m, TipoTransacao.Despesa, familiaId); // sem responsável
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.AtribuirResponsavelAsync(familiaId, tx1, bia, ana);
+
+        var doBia = await svc.ListarDespesasAsync(familiaId, ana, 5, 2026, responsavelId: bia);
+
+        var d = Assert.Single(doBia);
+        Assert.Equal(tx1, d.Id);
+        Assert.Equal("Bia", d.ResponsavelNome);
+    }
 }

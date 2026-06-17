@@ -15,6 +15,7 @@ import {
   definirModoRateio, definirRendaMembro,
   getAcertos, registrarAcerto, cancelarAcerto,
   definirLimiteAprovacao, aprovarDespesa, rejeitarDespesa,
+  atribuirResponsavel,
 } from "../../services/familiaService"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
@@ -112,6 +113,8 @@ export default function FamiliasPage() {
   const [limiteOpen, setLimiteOpen] = useState(false)
   const [limiteValor, setLimiteValor] = useState("")
   const [savingLimite, setSavingLimite] = useState(false)
+
+  const [filtroResponsavel, setFiltroResponsavel] = useState("")
 
   const [modoRateio, setModoRateio] = useState<string>("1")
 
@@ -435,6 +438,35 @@ export default function FamiliasPage() {
     }
   }
 
+  // ── Responsável da despesa (2.1) ──
+
+  const recarregarDespesas = async (familiaId: string, responsavelId: string) => {
+    const agora = new Date()
+    const desp = await getDespesasFamilia(
+      familiaId, agora.getMonth() + 1, agora.getFullYear(), responsavelId || undefined)
+    setDespesas(desp)
+  }
+
+  const handleFiltrarResponsavel = async (value: string) => {
+    if (!detalhe) return
+    setFiltroResponsavel(value)
+    try {
+      await recarregarDespesas(detalhe.id, value)
+    } catch {
+      notify({ open: true, message: "Erro ao filtrar despesas", severity: "error" })
+    }
+  }
+
+  const handleAtribuirResponsavel = async (transacaoId: string, value: string) => {
+    if (!detalhe) return
+    try {
+      await atribuirResponsavel(detalhe.id, transacaoId, value || null)
+      await recarregarDespesas(detalhe.id, filtroResponsavel)
+    } catch {
+      notify({ open: true, message: "Erro ao atribuir responsável", severity: "error" })
+    }
+  }
+
   const handleDissolver = () => {
     if (!detalhe) return
     setConfirmDialog({
@@ -474,6 +506,9 @@ export default function FamiliasPage() {
   }
 
   const membroOptions = (detalhe?.membros ?? []).map(m => ({ value: m.usuarioId, label: m.nomeUsuario }))
+  // 2.1 — opções de responsável: filtro ("Todos") e atribuição por linha ("Sem responsável").
+  const filtroResponsavelOptions = [{ value: "", label: "Todos" }, ...membroOptions]
+  const responsavelOptions = [{ value: "", label: "Sem responsável" }, ...membroOptions]
 
   return (
     <div className={styles.root}>
@@ -734,8 +769,24 @@ export default function FamiliasPage() {
                 </PontesButton>
               )}
             </div>
+            {/* 2.1 — filtro por responsável */}
+            {membroOptions.length > 0 && (
+              <div className={styles.secRow}>
+                <span className={styles.itemSub}>Responsável</span>
+                <div className={styles.filtroResp}>
+                  <PontesSelect
+                    value={filtroResponsavel}
+                    onChange={handleFiltrarResponsavel}
+                    options={filtroResponsavelOptions}
+                    placeholder="Todos"
+                  />
+                </div>
+              </div>
+            )}
             {despesas.length === 0 ? (
-              <span className={styles.emptyHint}>Nenhuma despesa compartilhada neste mês.</span>
+              <span className={styles.emptyHint}>
+                {filtroResponsavel ? "Nenhuma despesa deste responsável neste mês." : "Nenhuma despesa compartilhada neste mês."}
+              </span>
             ) : (
               <div className={styles.itemList}>
                 {despesas.map(d => (
@@ -743,6 +794,9 @@ export default function FamiliasPage() {
                     <span className={styles.itemSub}>
                       {d.descricao} · {d.pagadorNome} · {formatDate(d.data)}
                       {" "}{statusAprovacaoBadge(d.statusAprovacao)}
+                      {d.responsavelNome && (
+                        <> <PontesBadge tone="soft" size="sm">{d.responsavelNome}</PontesBadge></>
+                      )}
                     </span>
                     <div className={styles.rowActions}>
                       <span className={styles.itemValue}>{formatMoney(d.valor)}</span>
@@ -759,6 +813,15 @@ export default function FamiliasPage() {
                           </PontesIconButton>
                         </>
                       )}
+                      {/* 2.1 — atribuir responsável */}
+                      <div className={styles.respPicker}>
+                        <PontesSelect
+                          value={d.responsavelUsuarioId ?? ""}
+                          onChange={(v) => handleAtribuirResponsavel(d.id, v)}
+                          options={responsavelOptions}
+                          placeholder="Responsável"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

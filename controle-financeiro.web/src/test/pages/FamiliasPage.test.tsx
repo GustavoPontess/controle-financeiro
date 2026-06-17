@@ -45,6 +45,7 @@ const cancelarAcerto   = vi.fn()
 const definirLimiteAprovacao = vi.fn()
 const aprovarDespesa   = vi.fn()
 const rejeitarDespesa  = vi.fn()
+const atribuirResponsavel = vi.fn()
 
 vi.mock("../../services/familiaService", () => ({
   getFamilias:        (...a: unknown[]) => getFamilias(...a),
@@ -71,6 +72,7 @@ vi.mock("../../services/familiaService", () => ({
   definirLimiteAprovacao: (...a: unknown[]) => definirLimiteAprovacao(...a),
   aprovarDespesa:     (...a: unknown[]) => aprovarDespesa(...a),
   rejeitarDespesa:    (...a: unknown[]) => rejeitarDespesa(...a),
+  atribuirResponsavel: (...a: unknown[]) => atribuirResponsavel(...a),
 }))
 
 // ── Fixtures ──
@@ -106,6 +108,7 @@ const despesa: DespesaCompartilhada = {
   id: "dp1", descricao: "Supermercado", valor: 350.5, data: "2026-05-20",
   categoriaNome: "Alimentação", pagadorUsuarioId: "u1", pagadorNome: "Dev Test",
   statusAprovacao: 0, aprovadoPorNome: null,
+  responsavelUsuarioId: null, responsavelNome: null,
 }
 
 const balanco: BalancoFamilia = {
@@ -178,6 +181,7 @@ describe("FamiliasPage (#85)", () => {
     definirLimiteAprovacao.mockResolvedValue(undefined)
     aprovarDespesa.mockResolvedValue(undefined)
     rejeitarDespesa.mockResolvedValue(undefined)
+    atribuirResponsavel.mockResolvedValue(undefined)
     setupDetailMocks()
   })
 
@@ -612,6 +616,24 @@ describe("FamiliasPage (#85)", () => {
     fireEvent.change(input, { target: { value: "300" } })
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
     await waitFor(() => expect(definirLimiteAprovacao).toHaveBeenCalledWith("f1", 300))
+  })
+
+  // ── Responsável da despesa (2.1) ──
+
+  it("filtro de responsável renderiza com 'Todos' (2.1)", async () => {
+    await openDetalhe()
+    expect(screen.getByText("Todos")).toBeInTheDocument()
+  })
+
+  it("despesa com responsável mostra o nome no badge (2.1)", async () => {
+    setupDetailMocks({ despesas: [{ ...despesa, responsavelUsuarioId: "u2", responsavelNome: "Maria Resp" }] })
+    await openDetalhe()
+    expect(screen.getByText("Maria Resp")).toBeInTheDocument()
+  })
+
+  it("despesa sem responsável: picker mostra 'Sem responsável' (2.1)", async () => {
+    await openDetalhe()
+    expect(screen.getByText("Sem responsável")).toBeInTheDocument()
   })
 
   // ══════════════════════════════════════════

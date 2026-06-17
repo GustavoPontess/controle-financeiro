@@ -51,6 +51,10 @@ public class Transacao
     public Guid? DependenteId { get; set; }
     public Dependente? Dependente { get; set; }
 
+    /// <summary>Feature 2.1 — despesa compartilhada atribuída a um membro responsável
+    /// da família (quem o gasto representa). Null = não atribuída. Distinto de CriadoPor.</summary>
+    public Guid? ResponsavelUsuarioId { get; set; }
+
     /// <summary>Issue #25 — override do modo de rateio para esta despesa. Null =
     /// usa o modo padrão da família.</summary>
     public ModoRateio? ModoRateio { get; set; }

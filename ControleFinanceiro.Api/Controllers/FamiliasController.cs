@@ -116,11 +116,12 @@ public class FamiliasController : ControllerBase
     [HttpGet("{id:guid}/despesas")]
     [ProducesResponseType(typeof(List<DespesaCompartilhadaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListarDespesas(
-        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null,
+        [FromQuery] Guid? responsavelId = null)
     {
         var agora = DateTime.UtcNow;
         var result = await _despesaCompartilhada.ListarDespesasAsync(
-            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
+            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year, responsavelId);
         return Ok(result);
     }
 
@@ -161,6 +162,17 @@ public class FamiliasController : ControllerBase
     public async Task<IActionResult> RejeitarDespesa(Guid id, Guid transacaoId)
     {
         await _despesaCompartilhada.RejeitarAsync(id, transacaoId, GetUserId());
+        return NoContent();
+    }
+
+    /// <summary>Feature 2.1 — atribui/limpa o membro responsável por uma despesa compartilhada.</summary>
+    [HttpPut("{id:guid}/despesas/{transacaoId:guid}/responsavel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AtribuirResponsavel(
+        Guid id, Guid transacaoId, [FromBody] AtribuirResponsavelDto dto)
+    {
+        await _despesaCompartilhada.AtribuirResponsavelAsync(
+            id, transacaoId, dto.ResponsavelUsuarioId, GetUserId());
         return NoContent();
     }
 

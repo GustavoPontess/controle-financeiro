@@ -4,6 +4,9 @@ namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record CompartilharTransacaoDto(Guid FamiliaId);
 
+/// <summary>Feature 2.1 — atribui/limpa o membro responsável por uma despesa. Null = limpar.</summary>
+public record AtribuirResponsavelDto(Guid? ResponsavelUsuarioId);
+
 public record DespesaCompartilhadaDto(
     Guid Id,
     string Descricao,
@@ -13,7 +16,9 @@ public record DespesaCompartilhadaDto(
     Guid PagadorUsuarioId,
     string PagadorNome,
     StatusAprovacaoDespesa StatusAprovacao,
-    string? AprovadoPorNome);
+    string? AprovadoPorNome,
+    Guid? ResponsavelUsuarioId,
+    string? ResponsavelNome);
 
 public record SaldoMembroDto(
     Guid UsuarioId,

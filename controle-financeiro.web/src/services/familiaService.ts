@@ -81,10 +81,19 @@ export const descompartilharTransacao = async (transacaoId: string): Promise<voi
 }
 
 export const getDespesasFamilia = async (
-  familiaId: string, mes: number, ano: number,
+  familiaId: string, mes: number, ano: number, responsavelId?: string,
 ): Promise<DespesaCompartilhada[]> => {
-  const res = await api.get(`/familias/${familiaId}/despesas`, { params: { mes, ano } })
+  const res = await api.get(`/familias/${familiaId}/despesas`, {
+    params: { mes, ano, responsavelId },
+  })
   return res.data
+}
+
+/** Feature 2.1 — atribui/limpa o membro responsável por uma despesa compartilhada. */
+export const atribuirResponsavel = async (
+  familiaId: string, transacaoId: string, responsavelUsuarioId: string | null,
+): Promise<void> => {
+  await api.put(`/familias/${familiaId}/despesas/${transacaoId}/responsavel`, { responsavelUsuarioId })
 }
 
 export const getBalancoFamilia = async (

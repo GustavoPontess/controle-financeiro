@@ -54,6 +54,10 @@
 .rowActions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .emptyHint { font-size: 12px; color: var(--pontes-text-muted); padding: 6px 0 10px; }
 
+/* 2.1 — pickers de responsável (filtro no topo + atribuição por linha) */
+.filtroResp { width: 180px; }
+.respPicker { width: 160px; }
+
 .arrowIcon { vertical-align: middle; color: var(--pontes-text-muted); }
 
 /* Form col inside modals */

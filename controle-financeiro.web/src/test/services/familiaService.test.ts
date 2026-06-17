@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   registrarAcerto, definirLimiteAprovacao, aprovarDespesa, rejeitarDespesa,
+  atribuirResponsavel, getDespesasFamilia,
 } from "../../services/familiaService"
 import { api } from "../../api/axiosConfig"
 
-vi.mock("../../api/axiosConfig", () => ({ api: { post: vi.fn(), put: vi.fn() } }))
+vi.mock("../../api/axiosConfig", () => ({ api: { post: vi.fn(), put: vi.fn(), get: vi.fn() } }))
 
 const post = vi.mocked(api.post)
 const put = vi.mocked(api.put)
+const get = vi.mocked(api.get)
 
 describe("registrarAcerto — idempotência (#familia-acerto-safety)", () => {
   beforeEach(() => {
@@ -52,5 +54,31 @@ describe("aprovação de despesa (2.4)", () => {
   it("rejeitarDespesa faz POST no endpoint de rejeitar", async () => {
     await rejeitarDespesa("f1", "tx9")
     expect(post).toHaveBeenCalledWith("/familias/f1/despesas/tx9/rejeitar")
+  })
+})
+
+describe("responsável da despesa (2.1)", () => {
+  beforeEach(() => {
+    put.mockReset(); put.mockResolvedValue({ data: undefined })
+    get.mockReset(); get.mockResolvedValue({ data: [] })
+  })
+
+  it("atribuirResponsavel faz PUT com o responsável no body", async () => {
+    await atribuirResponsavel("f1", "tx9", "u2")
+    expect(put).toHaveBeenCalledWith(
+      "/familias/f1/despesas/tx9/responsavel", { responsavelUsuarioId: "u2" })
+  })
+
+  it("atribuirResponsavel com null limpa o responsável", async () => {
+    await atribuirResponsavel("f1", "tx9", null)
+    expect(put).toHaveBeenCalledWith(
+      "/familias/f1/despesas/tx9/responsavel", { responsavelUsuarioId: null })
+  })
+
+  it("getDespesasFamilia encaminha o responsavelId nos params", async () => {
+    await getDespesasFamilia("f1", 5, 2026, "u2")
+    expect(get).toHaveBeenCalledWith("/familias/f1/despesas", {
+      params: { mes: 5, ano: 2026, responsavelId: "u2" },
+    })
   })
 })

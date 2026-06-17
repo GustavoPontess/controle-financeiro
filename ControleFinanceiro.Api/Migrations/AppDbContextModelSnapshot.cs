@@ -1124,6 +1124,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("RecorrenteOrigemId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ResponsavelUsuarioId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("StatusAprovacao")
                         .HasColumnType("integer");
 
