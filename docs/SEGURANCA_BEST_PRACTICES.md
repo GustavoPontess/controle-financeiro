@@ -12,12 +12,16 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 
 ---
 
-## 1. Hash de senha ✅
+## 1. Hash de senha ✅ IMPLEMENTADO (A1/A2 — 2026-06-17)
 
-- **Algoritmo:** OWASP rankeia **Argon2id como 1ª escolha** (`m=19456 KiB, t=2, p=1`, ou `m=47104,t=1,p=1`), depois scrypt, bcrypt (legado), PBKDF2 (só se exigir FIPS-140). .NET: `Konscious.Security.Cryptography` (não tem Argon2 nativo no BCL).
-- **Se ficar no PBKDF2:** mínimo **600.000 iterações** (HMAC-SHA256) ou 220.000 (SHA512). O valor antigo de 310k está **superado**.
-- **Comparação constant-time** no verify (já usamos `FixedTimeEquals`).
-- _Fonte: OWASP Password Storage Cheat Sheet._
+- **Algoritmo:** OWASP rankeia **Argon2id como 1ª escolha** (`m=19456 KiB, t=2, p=1` = 19 MiB), depois scrypt, bcrypt (legado), PBKDF2 (só se exigir FIPS-140). **Decisão: Argon2id** (app não tem requisito FIPS) via `Konscious.Security.Cryptography.Argon2` v1.3.1 (MIT, targeta net8.0, maduro). _Deep-research verificado por fonte primária (24/25 claims confirmados)._
+- **Se ficasse no PBKDF2:** mínimo **600.000 iterações** (HMAC-SHA256). O valor antigo de 310k está superado; o do app (10k) estava ~60× abaixo.
+- **Parâmetros aplicados** (`PasswordHasher.cs`): Argon2id m=19456 KiB / t=2 / p=1, **salt 16 bytes** (RNG), **saída 32 bytes** (não truncar — 20 bytes derrubava a resistência a colisão p/ nível SHA-1, NIST SP 800-63B §3.1.1.2 SHOULD = tamanho nativo do algoritmo).
+- **Formato versionado, auto-descritivo:** `ARGON2ID$<memKiB>$<t>$<p>$<b64salt>$<b64hash>` — permite migrar parâmetros/algoritmo no futuro (NIST: guardar referência ao esquema + custo).
+- **Migração transparente:** `VerifyPassword` aceita o hash legado (PBKDF2 10k/20B, blob base64 sem `$`); `NeedsRehash` detecta hash fora do padrão atual; `LoginAsync` **regrava no esquema atual após login bem-sucedido** — upgrade gradual sem forçar reset (OWASP). `VerifyArgon2` recomputa com os parâmetros gravados no próprio hash, então subir os params no futuro não invalida hashes antigos.
+- **Comparação constant-time** no verify (`FixedTimeEquals`).
+- **Pepper (NIST SHOULD):** segredo server-side aplicado por cima do hash, guardado **separado** (KMS/HSM/env, nunca no banco). Não implementado ainda — depende de gestão/rotação de chave. Ponto de extensão pronto: `Argon2id.KnownSecret`. _Follow-up no ROADMAP, junto da rotação de segredos._
+- _Fontes: OWASP Password Storage Cheat Sheet; NIST SP 800-63B §3.1.1.2._
 
 ## 2. Política de senha ✅
 
@@ -75,7 +79,7 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | — | JWT validation (assinatura/exp/iss/aud) | ✅ já fazemos (ClockSkew=0) | ok |
 | — | CORS `WithOrigins` | ✅ restrito a localhost:5173 (falta allowlist prod) | 🟡 |
 | — | Token em cookie HttpOnly+SameSite=Strict | ✅ já usamos cookie HttpOnly (confirmar refresh tb) | verificar |
-| A1/A2 | PBKDF2 ≥600k OU Argon2id | **PBKDF2 10k + hash 20 bytes** (60× abaixo) | 🟠 |
+| A1/A2 | PBKDF2 ≥600k OU Argon2id | ✅ **Argon2id m=19456/t=2/p=1, salt 16B, saída 32B, rehash no login** | ✔ |
 | — | Reset token hasheado no banco | **plaintext** | 🟡 |
 | — | Anti-enumeração (timing) | ramo existe≠não-existe vaza timing | 🟡 |
 | — | Rate-limit reset por conta | só por IP, e reset sem limit | 🟡 |
@@ -84,11 +88,13 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | — | CSP estrita (pré-condição XSS) | confirmar | 🟡 |
 
 ### Sprint de Auth Hardening recomendado (cada um = branch → PR → CI)
-1. **C1** — tira reset token da resposta + e-mail fire-and-forget (mata account takeover + timing enum)
-2. **A1/A2** — PBKDF2 10k→600k agora + migração Argon2id (Konscious) com rehash no próximo login
-3. **Reset token hasheado** + rate-limit por conta + política 15 chars
-4. **Re-auth** em operações sensíveis + confirmar cookie do refresh + CSP
-5. **⚠️ Rotacionar segredos** (JWT key + senha Postgres) — não depende de pesquisa, é procedimento
+1. ✅ **C1** — tira reset token da resposta + e-mail fire-and-forget (mata account takeover + timing enum)
+2. ✅ **C2** — contrato de exceção (status corretos + 500 não vaza mensagem)
+3. ✅ **C3** — soft delete de Transacao + global query filter
+4. ✅ **A1/A2** — Argon2id (Konscious) com rehash transparente no login; salt 16B, saída 32B, formato versionado
+5. **Reset token hasheado** + rate-limit por conta + política 15 chars ← próximo
+6. **Re-auth** em operações sensíveis + confirmar cookie do refresh + CSP
+7. **⚠️ Rotacionar segredos** (JWT key + senha Postgres) + **pepper** (NIST SHOULD) — não depende de pesquisa, é procedimento
 
 ### Antes de codar os domínios abertos
 Re-rodar deep-research (quando o servidor não estiver rate-limitando) para: **rotação de segredos/key rollover**, **MFA no .NET**, **cripto-at-rest/PII**, **LGPD/BACEN**.
