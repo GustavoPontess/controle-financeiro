@@ -44,7 +44,7 @@ Varredura completa (READ-ONLY) de tudo que os ex-colaboradores mergearam, feita 
 ## 🟡 Médios
 
 **Auth/segredos**
-- ✅/⏳ **Reset token** agora hasheado (SHA-256 via `OpaqueTokenHasher`, 2026-06-17). **Refresh token ainda em plaintext** (`AuthService.cs:39-40`) → P2 no ROADMAP (hashear igual reset).
+- ✅ **Reset token E refresh token** agora hasheados no banco (SHA-256 via `OpaqueTokenHasher`, 2026-06-17). O bruto só vai pro usuário (e-mail/cookie); lookup por hash. Vazamento de DB não expõe tokens reutilizáveis.
 - ✅ Enumeração de usuário por **timing** no `forgot-password` — resolvido no C1 (fire-and-forget) + rate-limit por conta no job (2026-06-17).
 - JWT sem validação de comprimento de chave + `Encoding.ASCII` descarta bytes (`Program.cs:208`, `JwtTokenProvider.cs:26`). Exigir `Length>=32` + UTF8.
 - `reset-password` sem `[EnableRateLimiting]` (`AuthController.cs:196`) — brute-force do token (mitigado por 64 bytes de entropia).

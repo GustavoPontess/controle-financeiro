@@ -259,4 +259,65 @@ public class AuthServiceTests
         // Máx 3 por conta por hora — as chamadas extras são ignoradas.
         Assert.Equal(3, await ctx.PasswordResetTokens.CountAsync());
     }
+
+    // ── Refresh token hasheado no banco ─────────────────────────────────────────
+
+    private static Usuario SeedUsuarioComSenha(AppDbContext ctx, string email, string senha)
+    {
+        var u = new Usuario
+        {
+            Id = Guid.NewGuid(), Email = email, Nome = "User",
+            PasswordHash = PasswordHasher.HashPassword(senha), Ativo = true,
+        };
+        ctx.Usuarios.Add(u);
+        ctx.SaveChanges();
+        return u;
+    }
+
+    [Fact]
+    public async Task Login_guardaRefreshTokenHasheado_naoOBruto()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+
+        Assert.False(string.IsNullOrEmpty(resp.RefreshToken));
+        var stored = await ctx.RefreshTokens.SingleAsync();
+        Assert.NotEqual(resp.RefreshToken, stored.Token);                       // não guarda o bruto
+        Assert.Equal(OpaqueTokenHasher.Hash(resp.RefreshToken), stored.Token);  // guarda o hash
+    }
+
+    [Fact]
+    public async Task Refresh_comBruto_rotaciona_e_hashArmazenadoNaoVale()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var login = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+
+        var novo = await auth.RefreshAsync(login.RefreshToken);
+
+        Assert.False(string.IsNullOrEmpty(novo.RefreshToken));
+        Assert.NotEqual(login.RefreshToken, novo.RefreshToken);                  // rotacionou
+        // O hash armazenado (como se vazasse do banco) não vale como token bruto.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.RefreshAsync(OpaqueTokenHasher.Hash(novo.RefreshToken)));
+        // O token antigo (já rotacionado) também não vale mais.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
+    }
+
+    [Fact]
+    public async Task Logout_revogaPorTokenBruto()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var login = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+
+        await auth.LogoutAsync(login.RefreshToken);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
+    }
 }

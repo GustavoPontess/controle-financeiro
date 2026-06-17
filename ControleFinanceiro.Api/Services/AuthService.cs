@@ -34,19 +34,23 @@ public class AuthService
         return Convert.ToHexString(bytes).ToLower();
     }
 
-    private async Task<RefreshToken> CriarRefreshTokenAsync(Guid usuarioId)
+    // Retorna (entidade, token BRUTO). O bruto vai pro cliente (cookie); no banco
+    // guarda-se só o hash (igual ao reset token) — vazamento de DB não dá refresh tokens
+    // reutilizáveis.
+    private async Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId)
     {
+        var tokenBruto = GerarTokenOpaco();
         var rt = new RefreshToken
         {
             Id = Guid.NewGuid(),
             UsuarioId = usuarioId,
-            Token = GerarTokenOpaco(),
+            Token = OpaqueTokenHasher.Hash(tokenBruto),
             ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays),
             Revogado = false,
             CriadoEm = DateTime.UtcNow,
         };
         _context.RefreshTokens.Add(rt);
-        return rt;
+        return (rt, tokenBruto);
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -88,7 +92,7 @@ public class AuthService
             UsuarioIdProprietario = usuario.Id
         });
 
-        var rt = await CriarRefreshTokenAsync(usuario.Id);
+        var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
         var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
@@ -99,7 +103,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             Token = token,
-            RefreshToken = rt.Token,
+            RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = rt.ExpiresAt,
         };
     }
@@ -128,7 +132,7 @@ public class AuthService
         if (PasswordHasher.NeedsRehash(usuario.PasswordHash))
             usuario.PasswordHash = PasswordHasher.HashPassword(dto.Password);
 
-        var rt = await CriarRefreshTokenAsync(usuario.Id);
+        var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
         var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
@@ -139,7 +143,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             Token = token,
-            RefreshToken = rt.Token,
+            RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = rt.ExpiresAt,
         };
     }
@@ -154,9 +158,10 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(refreshToken))
             throw new ArgumentException("Refresh token é obrigatório.");
 
+        var tokenHash = OpaqueTokenHasher.Hash(refreshToken);
         var rt = await _context.RefreshTokens
             .Include(r => r.Usuario)
-            .FirstOrDefaultAsync(r => r.Token == refreshToken);
+            .FirstOrDefaultAsync(r => r.Token == tokenHash);
 
         if (rt == null || rt.Revogado || rt.ExpiresAt <= DateTime.UtcNow)
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
@@ -168,7 +173,7 @@ public class AuthService
         rt.Revogado = true;
 
         // Criar novo refresh token
-        var novoRt = await CriarRefreshTokenAsync(rt.UsuarioId);
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId);
         await _context.SaveChangesAsync();
 
         var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome);
@@ -179,7 +184,7 @@ public class AuthService
             Email = rt.Usuario.Email,
             Nome = rt.Usuario.Nome,
             Token = jwtToken,
-            RefreshToken = novoRt.Token,
+            RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = novoRt.ExpiresAt,
         };
     }
@@ -191,8 +196,9 @@ public class AuthService
     {
         if (string.IsNullOrWhiteSpace(refreshToken)) return;
 
+        var tokenHash = OpaqueTokenHasher.Hash(refreshToken);
         var rt = await _context.RefreshTokens
-            .FirstOrDefaultAsync(r => r.Token == refreshToken && !r.Revogado);
+            .FirstOrDefaultAsync(r => r.Token == tokenHash && !r.Revogado);
 
         if (rt != null)
         {
