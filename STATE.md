@@ -28,7 +28,7 @@ Nada em código. **Cluster P1 de segurança do acerto mergeado** (PR #221, `a331
 ## Próxima ação concreta
 
 **Follow-ups da auditoria família (catalogados no ROADMAP):**
-- **P2 🟡** `FamiliasPage:547` — `ehProprio` hardcoded `true` no remover-membro (admin removendo outro vê copy/efeito de "você saiu"). Fix: `ehProprio = m.usuarioId === currentUserId`. Branch própria (front).
+- ✅ **P2 🟡** `FamiliasPage` `ehProprio` — corrigido (PR à parte, branch `fix/familia-remover-membro-ehproprio`).
 - **P3 ⚪** Lote 2 real: **2.4 aprovação de despesa** (não-começado, maior gap de feature) e **2.3 papéis com enum + enforcement** (hoje papel é string livre).
 
 **Depois — escolha de direção** (decidir com o Gustavo):
