@@ -61,6 +61,9 @@ export interface DashboardData {
   receitasMes: number
   despesasMes: number
   saldoMes: number
+  /** Entradas/Saídas de caixa do mês anterior — pros cards "Entrou/Saiu" mostrarem variação % (#1.3). */
+  entradasCaixaMesAnterior: number
+  saidasCaixaMesAnterior: number
   recebido: number
   aReceber: number
   pago: number

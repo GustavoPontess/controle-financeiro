@@ -141,4 +141,29 @@ public class DashboardServiceTests
 
         Assert.Equal(1000m, r.EvolucaoSaldo[^1].Saldo);
     }
+
+    [Fact]
+    public async Task GetResumoAsync_CalculaCaixaDoMesAnterior()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "C", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
+        ctx.Contas.Add(conta);
+        // Mês atual (maio): só pra existir.
+        ctx.Transacoes.Add(Tx(conta.Id, TipoTransacao.Receita, 1000, new DateTime(2026, 5, 10)));
+        // Mês anterior (abril) — caixa: entradas 600, saídas 500. Previsão, cancelada e
+        // inativa NÃO entram no caixa (só Executado/Ativo).
+        ctx.Transacoes.AddRange(
+            Tx(conta.Id, TipoTransacao.Receita, 600, new DateTime(2026, 4, 5), StatusTransacao.Executado),
+            Tx(conta.Id, TipoTransacao.Receita, 200, new DateTime(2026, 4, 6), StatusTransacao.Previsao),
+            Tx(conta.Id, TipoTransacao.Despesa, 500, new DateTime(2026, 4, 8), StatusTransacao.Executado),
+            Tx(conta.Id, TipoTransacao.Despesa, 999, new DateTime(2026, 4, 9), StatusTransacao.Cancelado),
+            Tx(conta.Id, TipoTransacao.Despesa, 50, new DateTime(2026, 4, 9), StatusTransacao.Executado, ativo: false));
+        await ctx.SaveChangesAsync();
+
+        var r = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(usuarioId, 2026, 5);
+
+        Assert.Equal(600m, r.EntradasCaixaMesAnterior);  // só o Executado/Ativo
+        Assert.Equal(500m, r.SaidasCaixaMesAnterior);
+    }
 }

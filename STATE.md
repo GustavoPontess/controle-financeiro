@@ -19,8 +19,8 @@ Nada em código. **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 +
 
 ## Próxima ação concreta
 
-Frente de segurança de código acabou. Próximo passo é **escolha de direção** (decidir com o Gustavo):
-- **Produto — Lote 1** (quick-wins, `ROADMAP.md`): 1.1 filtros de transação ricos · 1.4 orçamento simples · 1.3 variação % vs mês anterior. _Pedem alinhamento de UX antes de codar._
+Frente de segurança de código acabou; começou o **produto (Lote 1)** — 1.3 entregue. Próximo passo é **escolha de direção** (decidir com o Gustavo):
+- **Produto — Lote 1** (quick-wins, `ROADMAP.md`): 1.1 filtros de transação ricos (flagship, maior) · 1.4 orçamento simples (entidade nova) · _1.3 ✅ feito_. Pedem alinhamento de UX antes de codar.
 - **Conformidade — pesquisa LEVE** (§8.6, não desperdiçar orçamento): **LGPD #126** (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
 - **P2 restante:** dropar regras de composição da senha (NIST) — **decisão de UX do Gustavo** (afrouxa a senha).
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
@@ -29,6 +29,7 @@ Frente de segurança de código acabou. Próximo passo é **escolha de direção
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **1.3 Variação % vs mês anterior** ✅ (1ª feature de produto pós-segurança) — cards "Entrou/Saiu" do Dashboard ganham delta % vs mês anterior + seta colorida. Back: `EntradasCaixaMesAnterior`/`SaidasCaixaMesAnterior` no `DashboardDto`/service. 1 teste back + 2 front; verificado no preview (real: Entrou +10% verde, Saiu +6% vermelho).
 - **CSP do SPA (frontend prod)** (P2) ✅ — `nginx.conf` que serve o build ganhou CSP estrita + headers de segurança (nosniff, X-Frame DENY, Referrer, Permissions). Dev/Vite não passa por nginx (HMR intacto). Verificado via build+curl. Prod real precisa ajustar `connect-src` + baseURL hardcoded do axios.
 - **403 (ownership) × 401 (auth)** (P2) ✅ — `ForbiddenAccessException`→403; 27 sites de ownership remapeados (401→403); AuthService mantém 401 só pra autenticação real. Front não desloga mais em erro de permissão (interceptor só age em 401). Convenção em `PROMPT §11`. 14 asserts + caso 403 no middleware (back 255/255).
 - **Refresh token hasheado no banco** (P2) ✅ — `RefreshToken.Token` virou hash SHA-256 (`OpaqueTokenHasher`); bruto só no cookie; `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout por hash. 3 testes (back 254/254).

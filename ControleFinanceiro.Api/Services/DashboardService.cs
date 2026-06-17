@@ -67,6 +67,20 @@ public class DashboardService
         var receitasMes = recebido + aReceber;
         var despesasMes = pago + aPagar;
 
+        // Caixa do mês anterior — pros cards "Entrou/Saiu" mostrarem variação % (#1.3).
+        // Mesma base do EntradasCaixa/SaidasCaixa (Executado, exclui crédito não-pago,
+        // transferência, pagamento de fatura e saldo inicial).
+        var inicioMesAnterior = new DateTime(ano, mes, 1).AddMonths(-1);
+        var transacoesMesAnterior = todasTransacoes
+            .Where(t => t.Data.Year == inicioMesAnterior.Year && t.Data.Month == inicioMesAnterior.Month)
+            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito
+                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+            .ToList();
+        var entradasCaixaMesAnterior = transacoesMesAnterior
+            .Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
+        var saidasCaixaMesAnterior = transacoesMesAnterior
+            .Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
+
         // SaldoMes usa apenas movimentos de caixa — crédito só entra quando a fatura é paga.
         // Também filtra Ativo + Executado pra bater com /transacoes/stats.
         var receitasCaixaMes = transacoesMes
@@ -255,6 +269,8 @@ public class DashboardService
             SaldoMesAnterior = saldoMesAnterior,
             ReceitasMes = receitasMes,
             DespesasMes = despesasMes,
+            EntradasCaixaMesAnterior = entradasCaixaMesAnterior,
+            SaidasCaixaMesAnterior = saidasCaixaMesAnterior,
             SaldoMes = saldoAnteriorAoMes + receitasCaixaMes - despesasCaixaMes,
             Recebido = recebido,
             AReceber = aReceber,
