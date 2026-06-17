@@ -114,6 +114,32 @@ Pontos **perigosos** (nunca parar aqui): migration criada não aplicada; entidad
 
 ---
 
+## 8.5. Triagem de achados (catalogar + priorizar) ⭐ INEGOCIÁVEL
+
+**Todo achado** (bug, falha de segurança, dívida, algo faltando) **é anotado em `ROADMAP.md` com prioridade explícita, na hora, ANTES de seguir.** Memória e chip de task são efêmeros — **não contam** como catalogar. Se não está no ROADMAP/STATE, vai ser esquecido.
+
+**Taxonomia de prioridade (define a fila):**
+
+| Nível | O que é | Tratamento |
+|---|---|---|
+| **P0 — Bloqueador / Segurança crítica** 🔴 | falha de segurança explorável; algo que impede o trabalho atual | **Fura fila → vira o próximo.** Se bloqueia o que estou fazendo: **PARA, parka a branch atual (deixa parada), anota nos arquivos, abre branch nova pra resolver, só volta na parada depois.** |
+| **P1 — Alta** 🟠 | dívida séria, hardening importante, bug que afeta uso | topo da fila de higiene/dívida |
+| **P2 — Média** 🟡 | melhoria relevante sem urgência | entra na fila média, na ordem |
+| **P3 — Baixa** ⚪ | nice-to-have, polish | fundo da fila |
+
+**Fluxo ao achar algo:** anota em ROADMAP (com nível) → decide se fura fila (só P0) ou entra na ordem → se P0-bloqueador, parka a branch e troca de contexto. Nunca largar um achado "pra depois" só na cabeça/no chat.
+
+## 8.6. Economia de pesquisa (orçamento de uso é escasso)
+
+O limite de uso renova de 5 em 5h — gastar cedo deixa o projeto parado. Pesquisa proporcional ao tamanho da dúvida:
+
+1. **Reusar primeiro:** `docs/SEGURANCA_BEST_PRACTICES.md` + `docs/CONFORMIDADE_BR.md` já têm muita coisa verificada e citada. **Não re-pesquisar o que já está documentado.**
+2. **Leve por padrão:** `WebFetch`/`WebSearch` direto na fonte primária (OWASP/NIST/ANPD), 1-3 fetches.
+3. **Deep-research pesado** (skill `deep-research`, ~100 agentes) **só pra incógnita grande e nova, avisando o custo e pedindo OK antes.**
+4. A regra de conformidade (`CLAUDE.md`) continua: fonte primária, nunca chute — só o **método** é proporcional.
+
+---
+
 ## 9. Encerramento de sessão
 
 > ⚠️ **`STATE.md` e `ROADMAP.md` são arquivos de estado críticos.** A próxima sessão depende deles. Terminou etapa relevante → atualize **na mesma sessão**, antes de encerrar.
