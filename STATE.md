@@ -15,7 +15,7 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 
 ## Em execução
 
-**Branch `fix/familia-acerto-safety`** — cluster P1 de segurança do acerto de contas fechado (commitado, verde). Pendente: push + PR + merge.
+Nada em código. **Cluster P1 de segurança do acerto mergeado** (PR #221, `a331efa`, CI verde nos 3 jobs).
 
 **Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
 
@@ -26,8 +26,6 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 > **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. Falta só deploy-config (prod) ou decisão/pesquisa.
 
 ## Próxima ação concreta
-
-**Imediato:** push + PR da `fix/familia-acerto-safety` → merge na main.
 
 **Follow-ups da auditoria família (catalogados no ROADMAP):**
 - **P2 🟡** `FamiliasPage:547` — `ehProprio` hardcoded `true` no remover-membro (admin removendo outro vê copy/efeito de "você saiu"). Fix: `ehProprio = m.usuarioId === currentUserId`. Branch própria (front).
