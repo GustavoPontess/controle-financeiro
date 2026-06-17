@@ -15,21 +15,21 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política + re-auth/CSP + A3 (código) fechados.** Sprint de Auth Hardening (parte de código) **completa** — resta só a metade manual da rotação de segredos (valores reais) + re-pesquisa dos gaps.
+Nada em código. **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. O que falta de segurança é deploy-config (prod) ou decisão/pesquisa.
 
 ## Próxima ação concreta
 
-- **Segredos de DEV rotacionados** ✅ (feito 2026-06-17): `JWT_SECRET` + senha Postgres novos (aleatórios) nos `.env` locais (gitignored); volume do Postgres recriado; API + login verificados. Chave de dev antiga invalidada. **Pendente só pra quando houver deploy:** gerar segredos frescos no secret manager de **produção** (nunca reaproveitar os de dev).
-- **Código (eu), por prioridade:** re-pesquisar gaps **LEVE** (§8.6) — key rollover sem downtime, MFA, cripto-at-rest/PII, logging/auditoria, **LGPD + BACEN/Open Finance** (#126) — ou pegar um P2 catalogado.
-
-P2 catalogados (não-bloqueantes): NIST remover regras de composição (decisão de UX); CSP no SPA (frontend prod). _(refresh token plaintext ✅; 403×401 ✅)_
-
-> Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
+Frente de segurança de código acabou. Próximo passo é **escolha de direção** (decidir com o Gustavo):
+- **Produto — Lote 1** (quick-wins, `ROADMAP.md`): 1.1 filtros de transação ricos · 1.4 orçamento simples · 1.3 variação % vs mês anterior. _Pedem alinhamento de UX antes de codar._
+- **Conformidade — pesquisa LEVE** (§8.6, não desperdiçar orçamento): **LGPD #126** (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
+- **P2 restante:** dropar regras de composição da senha (NIST) — **decisão de UX do Gustavo** (afrouxa a senha).
+- **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
 
 ---
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **CSP do SPA (frontend prod)** (P2) ✅ — `nginx.conf` que serve o build ganhou CSP estrita + headers de segurança (nosniff, X-Frame DENY, Referrer, Permissions). Dev/Vite não passa por nginx (HMR intacto). Verificado via build+curl. Prod real precisa ajustar `connect-src` + baseURL hardcoded do axios.
 - **403 (ownership) × 401 (auth)** (P2) ✅ — `ForbiddenAccessException`→403; 27 sites de ownership remapeados (401→403); AuthService mantém 401 só pra autenticação real. Front não desloga mais em erro de permissão (interceptor só age em 401). Convenção em `PROMPT §11`. 14 asserts + caso 403 no middleware (back 255/255).
 - **Refresh token hasheado no banco** (P2) ✅ — `RefreshToken.Token` virou hash SHA-256 (`OpaqueTokenHasher`); bruto só no cookie; `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout por hash. 3 testes (back 254/254).
 - **Rotação dos segredos de DEV** ✅ — `JWT_SECRET` + senha Postgres novos (aleatórios, `openssl`) nos `.env` locais; Postgres recriado (volume novo) com a senha nova; API reseedada + login do dev verificado (cookie jwt assinado pela chave nova). Chave de dev antiga morta. (Prod fica pra quando deployar.)

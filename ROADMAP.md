@@ -82,7 +82,7 @@ status: ATIVO
 
 ### 🟡 / outros
 - [x] **P2 — Refresh token em plaintext no banco** → ✅ — `RefreshToken.Token` agora é guardado como hash (SHA-256 via `OpaqueTokenHasher`); o bruto vai só pro cookie. `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout fazem lookup por hash. Vazamento de DB não dá refresh tokens reutilizáveis. 3 testes.
-- [ ] **P2 — CSP no SPA (frontend prod)** — o `SecurityHeadersMiddleware` cobre só a API. O Vite SPA é servido por host estático em prod; precisa de CSP própria lá (ou meta no `index.html` do build prod, cuidando p/ não quebrar o HMR do dev). _Achado na sessão do re-auth/CSP._
+- [x] **P2 — CSP no SPA (frontend prod)** → ✅ — headers de segurança + CSP estrita no `nginx.conf` que serve o SPA buildado (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'` p/ estilos inline do React, `connect-src` pro API, `frame-ancestors 'none'`, nosniff, X-Frame DENY, Referrer, Permissions). Dev (Vite) não passa por nginx → HMR intacto. Verificado via build+curl. _⚠️ prod real: ajustar `connect-src` pro domínio do API (e o baseURL hardcoded do axios)._
 - [ ] **P2 — Política: remover regras de composição (NIST)** — NIST SP 800-63B recomenda NÃO exigir maiúscula/número/símbolo (leva a senhas previsíveis tipo `Password1!`); com mín. 15 + blocklist já basta. Hoje `PasswordPolicyService` ainda exige as 4 classes. Mudança de UX — decidir antes. _Documentado em `docs/SEGURANCA_BEST_PRACTICES.md` §2._
 - [ ] Médios da auditoria (enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
 - [x] **#114 Postgres único + #92 E2E** mergeados na main, auditados e limpos. Dev exige Postgres no ar.

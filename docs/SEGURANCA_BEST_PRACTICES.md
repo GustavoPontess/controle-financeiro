@@ -86,7 +86,8 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | — | Rate-limit reset por conta | ✅ **3/conta/hora no job + 1/IP/15min no endpoint** | ✔ |
 | — | Política senha 15 chars (sem MFA) | ✅ **15 + teto 128** (front e back) | ✔ |
 | — | Re-auth em trocar e-mail/senha | ✅ troca de senha exige senha atual; não há troca de e-mail/delete de conta | ✔ |
-| — | CSP estrita + headers de segurança | ✅ `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame DENY, Referrer, Permissions, HSTS sob HTTPS) | ✔ |
+| — | CSP estrita + headers de segurança (API) | ✅ `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame DENY, Referrer, Permissions, HSTS sob HTTPS) | ✔ |
+| — | CSP + headers no SPA (prod) | ✅ `controle-financeiro.web/nginx.conf` (CSP estrita, nosniff, X-Frame DENY, Referrer, Permissions). Prod real: ajustar `connect-src`. | ✔ |
 
 ### Sprint de Auth Hardening recomendado (cada um = branch → PR → CI)
 1. ✅ **C1** — tira reset token da resposta + e-mail fire-and-forget (mata account takeover + timing enum)
