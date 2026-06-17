@@ -22,7 +22,7 @@ Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política 
 - **Segredos de DEV rotacionados** ✅ (feito 2026-06-17): `JWT_SECRET` + senha Postgres novos (aleatórios) nos `.env` locais (gitignored); volume do Postgres recriado; API + login verificados. Chave de dev antiga invalidada. **Pendente só pra quando houver deploy:** gerar segredos frescos no secret manager de **produção** (nunca reaproveitar os de dev).
 - **Código (eu), por prioridade:** re-pesquisar gaps **LEVE** (§8.6) — key rollover sem downtime, MFA, cripto-at-rest/PII, logging/auditoria, **LGPD + BACEN/Open Finance** (#126) — ou pegar um P2 catalogado.
 
-P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remover regras de composição; CSP no SPA (frontend prod); 403×401 ownership.
+P2 catalogados (não-bloqueantes): NIST remover regras de composição; CSP no SPA (frontend prod); 403×401 ownership. _(refresh token plaintext: ✅ feito)_
 
 > Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
@@ -30,6 +30,7 @@ P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remo
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **Refresh token hasheado no banco** (P2) ✅ — `RefreshToken.Token` virou hash SHA-256 (`OpaqueTokenHasher`); bruto só no cookie; `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout por hash. 3 testes (back 254/254).
 - **Rotação dos segredos de DEV** ✅ — `JWT_SECRET` + senha Postgres novos (aleatórios, `openssl`) nos `.env` locais; Postgres recriado (volume novo) com a senha nova; API reseedada + login do dev verificado (cookie jwt assinado pela chave nova). Chave de dev antiga morta. (Prod fica pra quando deployar.)
 - **A3 — segredos fora do compose/CI versionado** 🟠→✅ (código) — compose exige `${POSTGRES_PASSWORD:?}`/`${JWT_SECRET:?}` (sem default fraco), `.env.example` raiz + `.env` gitignored, CI passa valores efêmeros. Validado `docker compose config` (resolve com .env; falha sem). Confirmado: chave real **não está no git**.
 - **Re-auth + CSP/headers** 🟠→✅ — verificado que troca de senha exige senha atual e que jwt+refresh estão em cookie HttpOnly+Secure+SameSite=Strict (não há troca de e-mail/delete); `SecurityHeadersMiddleware` novo: CSP (estrita p/ API, relaxada p/ Swagger/Hangfire) + nosniff + X-Frame DENY + Referrer + Permissions + HSTS(HTTPS). 5 testes (back 251/251). Headers confirmados ao vivo via curl.

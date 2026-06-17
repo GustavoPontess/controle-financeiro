@@ -81,7 +81,7 @@ status: ATIVO
 - [ ] **Rotação de segredos / key rollover** da JWT key sem downtime · **MFA no .NET** (TOTP/passkeys) · **cripto-at-rest / PII em EF Core** · **logging/auditoria** · **LGPD + BACEN/Open Finance**. Deep-research verificado por fonte primária.
 
 ### 🟡 / outros
-- [ ] **P2 — Refresh token em plaintext no banco** — `RefreshToken.Token` é guardado bruto (mesma classe do reset token, que já foi hasheado). Se o banco vazar, refresh tokens viram acesso. Hashear (SHA-256 via `OpaqueTokenHasher`) e fazer lookup por hash, igual reset. _Achado na sessão do reset-token._
+- [x] **P2 — Refresh token em plaintext no banco** → ✅ — `RefreshToken.Token` agora é guardado como hash (SHA-256 via `OpaqueTokenHasher`); o bruto vai só pro cookie. `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout fazem lookup por hash. Vazamento de DB não dá refresh tokens reutilizáveis. 3 testes.
 - [ ] **P2 — CSP no SPA (frontend prod)** — o `SecurityHeadersMiddleware` cobre só a API. O Vite SPA é servido por host estático em prod; precisa de CSP própria lá (ou meta no `index.html` do build prod, cuidando p/ não quebrar o HMR do dev). _Achado na sessão do re-auth/CSP._
 - [ ] **P2 — Política: remover regras de composição (NIST)** — NIST SP 800-63B recomenda NÃO exigir maiúscula/número/símbolo (leva a senhas previsíveis tipo `Password1!`); com mín. 15 + blocklist já basta. Hoje `PasswordPolicyService` ainda exige as 4 classes. Mudança de UX — decidir antes. _Documentado em `docs/SEGURANCA_BEST_PRACTICES.md` §2._
 - [ ] Médios da auditoria (enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
