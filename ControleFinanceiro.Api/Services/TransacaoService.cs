@@ -124,7 +124,13 @@ namespace ControleFinanceiro.Api.Services
             DateTime? to = null,
             Guid? categoriaId = null,
             string? q = null,
-            int? tipo = null)
+            int? tipo = null,
+            Guid? contaId = null,
+            Guid? cartaoId = null,
+            decimal? valorMin = null,
+            decimal? valorMax = null,
+            int? status = null,
+            string? ordenacao = null)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -145,6 +151,13 @@ namespace ControleFinanceiro.Api.Services
             if (to.HasValue) query = query.Where(t => t.Data < to.Value);
             if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
             if (tipo.HasValue) query = query.Where(t => (int)t.Tipo == tipo.Value);
+            if (contaId.HasValue) query = query.Where(t => t.ContaId == contaId.Value);
+            if (cartaoId.HasValue) query = query.Where(t => t.CartaoCreditoId == cartaoId.Value);
+            if (valorMin.HasValue) query = query.Where(t => t.Valor >= valorMin.Value);
+            if (valorMax.HasValue) query = query.Where(t => t.Valor <= valorMax.Value);
+            // status: previsto (Previsao) vs efetivado (Executado). Cancelado já é
+            // excluído pelo global query filter (Ativo).
+            if (status.HasValue) query = query.Where(t => (int)t.StatusTransacao == status.Value);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 // Busca case-insensitive na descrição. Postgres LIKE é
@@ -154,7 +167,14 @@ namespace ControleFinanceiro.Api.Services
                 query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
             }
 
-            var ordered = query.OrderByDescending(t => t.Data);
+            // Ordenação (default: data desc). Empate sempre por Data desc pra estabilidade.
+            var ordered = ordenacao switch
+            {
+                "data_asc"  => query.OrderBy(t => t.Data),
+                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data),
+                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data),
+                _            => query.OrderByDescending(t => t.Data),
+            };
             var total = await ordered.CountAsync();
             var items = await ordered
                 .Skip((page - 1) * pageSize)
