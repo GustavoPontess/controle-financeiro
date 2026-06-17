@@ -57,7 +57,9 @@ public class TransferenciaServiceTests
         await service.DeletarAsync(dto.Id, usuarioId);
 
         // Transações preservadas (soft delete), não removidas fisicamente.
-        var txns = await ctx.Transacoes.ToListAsync();
+        // IgnoreQueryFilters: o filtro global de Transacao exclui canceladas — aqui
+        // queremos justamente confirmar que as linhas ainda EXISTEM no banco.
+        var txns = await ctx.Transacoes.IgnoreQueryFilters().ToListAsync();
         Assert.Equal(2, txns.Count);
         Assert.All(txns, t => Assert.False(t.Ativo));
         Assert.All(txns, t => Assert.Equal(StatusTransacao.Cancelado, t.StatusTransacao));

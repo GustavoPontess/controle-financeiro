@@ -278,7 +278,13 @@ namespace ControleFinanceiro.Api.Services
 
             if (transacao is null) return false;
 
-            _context.Transacoes.Remove(transacao);
+            // Soft delete (entidade financeira: nunca remover fisicamente — preserva
+            // histórico e a referência do FinancialEventLog). O filtro global de Transacao
+            // exclui a cancelada de toda query, então o saldo calculado se corrige sozinho.
+            transacao.Ativo = false;
+            transacao.StatusTransacao = StatusTransacao.Cancelado;
+            transacao.CanceladoEm = DateTime.UtcNow;
+            transacao.MotivoCancelamento = "Transação excluída pelo usuário";
             await _context.SaveChangesAsync();
             return true;
         }
