@@ -15,19 +15,21 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. A sessão fechou organização do repo + versionamento + pesquisa de segurança. Próximo passo = atacar a segurança.
+Nada em código. **C1 fechado** (reset token não vaza mais; geração+e-mail fire-and-forget via Hangfire). Seguindo a Sprint de Auth Hardening.
 
 ## Próxima ação concreta
 
-**Sprint de Auth Hardening** (ordem em `ROADMAP.md` → Higiene, e spec em `docs/SEGURANCA_BEST_PRACTICES.md`). Começar pelo:
-- **C1 — reset token vazado na resposta HTTP** (account takeover). Branch `fix/c1-reset-token`: tirar o token da resposta + e-mail fire-and-forget (resolve timing-enum junto) + teste de regressão que falha antes do fix.
+**Sprint de Auth Hardening** (ordem em `ROADMAP.md` → Higiene, spec em `docs/SEGURANCA_BEST_PRACTICES.md`). Próximo:
+- **C2 — contrato de exceção furado** 🔴 — 67 `throw new Exception(...)` viram HTTP 500 e vazam `Message`. Trocar pelos tipos certos (`ArgumentException`→400, `KeyNotFoundException`→404, `InvalidOperationException`→409, `UnauthorizedAccessException`→401) + garantir que o middleware não ecoa `Message` no 500. Branch `fix/c2-excecoes`.
 
-Depois: A1/A2 (PBKDF2 600k/Argon2id) → reset hasheado + rate-limit por conta + política 15 chars → re-auth em op sensível + CSP → **rotacionar segredos** (urgente, ex-colaboradores têm a JWT key no clone).
+Depois: **C3** (soft-delete de `Transacao`) → **A1/A2** (PBKDF2 600k/Argon2id) → reset hasheado + rate-limit por conta + política 15 chars → re-auth em op sensível + CSP → **rotacionar segredos** (urgente, ex-colaboradores têm a JWT key no clone).
 
 ---
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **C1 — reset token não vaza mais** 🔴→✅ — `/forgot-password` responde genérico e idêntico pra qualquer e-mail; geração de token + envio agora é **fire-and-forget** (`HangfirePasswordResetDispatcher` → `PasswordResetEmailJob` → `IPasswordResetEmailSender`). Mata account takeover + timing/enumeração. 6 testes de regressão (back 222/222).
+- **Flaky test `RecorrentesPage`** corrigido — `getAllByTitle` síncrono → `await findAllByTitle` (header estático rendava antes das rows async). PR #204.
 - **Reorg de docs (solo)** — modelo `ROADMAP` + `STATE`; Q5 arquivado; COLLABORATION deletado; QUICK_REFERENCE/CLAUDE/PROMPT/GIT_WORKFLOW atualizados; `docs/` limpo (redesign-ux Q4 → history, ponteiros consertados).
 - **Auditoria do código herdado** — `docs/AUDITORIA_CODIGO_HERDADO.md`. 3 🔴 (C1/C2/C3) + altos.
 - **Branches consolidadas na `main`** — #114 (Postgres único) + #92 (E2E Playwright) cherry-picked; fix crítico de boot (Npgsql legacy timestamp órfão pós-#114) achado pelo CI.

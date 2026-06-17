@@ -60,9 +60,8 @@ public class ResetPasswordDto
 public class ForgotPasswordResponseDto
 {
     /// <summary>
-    /// Token de reset (em produção seria enviado por e-mail; aqui retornado diretamente para testes).
+    /// Mensagem genérica e idêntica para qualquer e-mail (evita enumeração de usuário).
+    /// O token de reset NUNCA é retornado aqui — chega ao usuário apenas por e-mail.
     /// </summary>
-    public string ResetToken { get; set; } = string.Empty;
-    public DateTime ExpiresAt { get; set; }
     public string Mensagem { get; set; } = string.Empty;
 }

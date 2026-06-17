@@ -60,7 +60,7 @@ status: ATIVO
 ## Higiene / dívida conhecida
 
 ### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
-- [ ] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. Tirar token da resposta + e-mail **fire-and-forget** (resolve timing-enum junto). _OWASP Forgot Password._
+- [x] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. **Corrigido:** token fora da resposta (DTO só com `Mensagem` genérica idêntica), geração+e-mail **fire-and-forget** (Hangfire `PasswordResetEmailJob` + `IPasswordResetEmailSender`) → sem timing/enumeração. 6 testes de regressão. _OWASP Forgot Password._
 - [ ] **C2 — contrato de exceção furado** 🔴 — 67 `throw new Exception(...)` viram HTTP 500 + vazam mensagem. Tipos certos + middleware não ecoar `Message` no 500.
 - [ ] **C3 — soft-delete de `Transacao` violado** 🔴 — `DeletarAsync` faz hard `Remove`; `ListarAsync` não filtra `Ativo`.
 - [ ] **A1/A2 — PasswordHasher** 🟠 — PBKDF2 10k→**≥600k** (OWASP) ou migrar p/ **Argon2id** (Konscious); hash 20→32 bytes; rehash no próximo login.

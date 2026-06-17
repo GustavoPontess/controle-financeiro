@@ -8,7 +8,11 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 
 ## [Unreleased]
 
-_(mudanças desde a v0.9.0 entram aqui)_
+### Security
+- **C1 — reset de senha não vaza mais o token** (account takeover): `/forgot-password` passou a responder uma mensagem genérica e idêntica para qualquer e-mail (sem enumeração de usuário). A geração do token e o envio do e-mail agora rodam fire-and-forget (Hangfire `PasswordResetEmailJob`), eliminando o oráculo de timing; o token só chega ao usuário pelo e-mail.
+
+### Fixed
+- Teste flaky `RecorrentesPage` no CI (`getAllByTitle` síncrono → `await findAllByTitle`).
 
 ## [0.9.0] - 2026-06-16
 
