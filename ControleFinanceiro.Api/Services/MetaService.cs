@@ -120,7 +120,7 @@ public class MetaService
             ?? throw new KeyNotFoundException("Meta não encontrada.");
 
         if (meta.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Você não tem permissão para editar esta meta.");
+            throw new ForbiddenAccessException("Você não tem permissão para editar esta meta.");
 
         return meta;
     }
@@ -142,7 +142,7 @@ public class MetaService
             if (ehMembro) return meta;
         }
 
-        throw new UnauthorizedAccessException("Você não tem acesso a esta meta.");
+        throw new ForbiddenAccessException("Você não tem acesso a esta meta.");
     }
 
     private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)

@@ -119,7 +119,7 @@ public class FamiliaService
         // Admin edita qualquer um; membro edita apenas o próprio papel.
         var ehAdmin = familia.CriadoPorUsuarioId == usuarioId;
         if (!ehAdmin && membro.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode editar o próprio papel.");
+            throw new ForbiddenAccessException("Você só pode editar o próprio papel.");
 
         membro.Papel = dto.Papel.Trim();
         await _context.SaveChangesAsync();
@@ -138,7 +138,7 @@ public class FamiliaService
 
         var ehAdmin = familia.CriadoPorUsuarioId == usuarioId;
         if (!ehAdmin && membro.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode remover a si mesmo.");
+            throw new ForbiddenAccessException("Você só pode remover a si mesmo.");
 
         // O admin não sai sem dissolver — caso contrário a família ficaria sem dono.
         if (membro.UsuarioId == familia.CriadoPorUsuarioId)
@@ -158,6 +158,6 @@ public class FamiliaService
     private static void ExigirAdmin(Familia familia, Guid usuarioId)
     {
         if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Apenas o administrador pode executar esta ação.");
+            throw new ForbiddenAccessException("Apenas o administrador pode executar esta ação.");
     }
 }

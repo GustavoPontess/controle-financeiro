@@ -187,7 +187,7 @@ npm test -- --run
 - **Hangfire** para jobs recorrentes.
 - **3 flags ortogonais** na `Fatura` (`EstadoCiclo`, `EstadoPagamento`, `EstaAtrasada`).
 - **API versioning:** rotas em `/api/v1/...` (global).
-- **Error handling:** lançar `ArgumentException` (→400), `KeyNotFoundException` (→404), `InvalidOperationException` (→409), `UnauthorizedAccessException` (→401). Sem try/catch nos controllers.
+- **Error handling:** lançar `ArgumentException` (→400), `KeyNotFoundException` (→404), `InvalidOperationException` (→409), `ForbiddenAccessException` (→403, autorização/ownership — usuário autenticado mas sem permissão), `UnauthorizedAccessException` (→401, **só** autenticação real: login/refresh/senha inválida). Sem try/catch nos controllers. O middleware do 500 nunca ecoa `Message` (genérico; detalhe só no log). O front só desloga em 401 — por isso erro de permissão é 403.
 - **Paginação:** listagens grandes retornam `PagedResult<T>` com `?page=&pageSize=`.
 - **Provider dinâmico:** `DATABASE_URL` com `Host=` → Postgres, senão SQLite. Dev e prod usam Postgres (Docker).
 

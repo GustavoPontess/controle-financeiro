@@ -206,7 +206,7 @@ public class FaturaService
             ?? throw new KeyNotFoundException("Fatura não encontrada.");
 
         if (fatura.CartaoCredito.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você não tem permissão para pagar esta fatura.");
+            throw new ForbiddenAccessException("Você não tem permissão para pagar esta fatura.");
 
         if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
             throw new InvalidOperationException("Esta fatura já foi paga integralmente.");

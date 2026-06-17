@@ -139,7 +139,7 @@ public class DependenteServiceTests
         var dep = await svc.CriarAsync(familiaId, dono, NovoDep());
         var txId = SeedTransacao(ctx, dono, 100m);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.AtribuirAsync(txId, Guid.NewGuid(), dep.Id));
     }
 

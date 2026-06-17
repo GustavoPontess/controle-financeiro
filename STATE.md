@@ -22,7 +22,7 @@ Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política 
 - **Segredos de DEV rotacionados** ✅ (feito 2026-06-17): `JWT_SECRET` + senha Postgres novos (aleatórios) nos `.env` locais (gitignored); volume do Postgres recriado; API + login verificados. Chave de dev antiga invalidada. **Pendente só pra quando houver deploy:** gerar segredos frescos no secret manager de **produção** (nunca reaproveitar os de dev).
 - **Código (eu), por prioridade:** re-pesquisar gaps **LEVE** (§8.6) — key rollover sem downtime, MFA, cripto-at-rest/PII, logging/auditoria, **LGPD + BACEN/Open Finance** (#126) — ou pegar um P2 catalogado.
 
-P2 catalogados (não-bloqueantes): NIST remover regras de composição; CSP no SPA (frontend prod); 403×401 ownership. _(refresh token plaintext: ✅ feito)_
+P2 catalogados (não-bloqueantes): NIST remover regras de composição (decisão de UX); CSP no SPA (frontend prod). _(refresh token plaintext ✅; 403×401 ✅)_
 
 > Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
@@ -30,6 +30,7 @@ P2 catalogados (não-bloqueantes): NIST remover regras de composição; CSP no S
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **403 (ownership) × 401 (auth)** (P2) ✅ — `ForbiddenAccessException`→403; 27 sites de ownership remapeados (401→403); AuthService mantém 401 só pra autenticação real. Front não desloga mais em erro de permissão (interceptor só age em 401). Convenção em `PROMPT §11`. 14 asserts + caso 403 no middleware (back 255/255).
 - **Refresh token hasheado no banco** (P2) ✅ — `RefreshToken.Token` virou hash SHA-256 (`OpaqueTokenHasher`); bruto só no cookie; `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout por hash. 3 testes (back 254/254).
 - **Rotação dos segredos de DEV** ✅ — `JWT_SECRET` + senha Postgres novos (aleatórios, `openssl`) nos `.env` locais; Postgres recriado (volume novo) com a senha nova; API reseedada + login do dev verificado (cookie jwt assinado pela chave nova). Chave de dev antiga morta. (Prod fica pra quando deployar.)
 - **A3 — segredos fora do compose/CI versionado** 🟠→✅ (código) — compose exige `${POSTGRES_PASSWORD:?}`/`${JWT_SECRET:?}` (sem default fraco), `.env.example` raiz + `.env` gitignored, CI passa valores efêmeros. Validado `docker compose config` (resolve com .env; falha sem). Confirmado: chave real **não está no git**.

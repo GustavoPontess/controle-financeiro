@@ -129,7 +129,7 @@ public class SubcategoriaServiceTests
         var cat = await SeedCategoria(ctx, dono);
         var sub = await svc.CriarAsync(new Subcategoria { Nome = "Hortifruti", CategoriaId = cat.Id }, dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.AtualizarAsync(sub.Id, new Subcategoria { Nome = "Feira" }, Guid.NewGuid()));
     }
 

@@ -153,7 +153,7 @@ public class MetaServiceTests
         var svc = new MetaService(ctx);
         var criada = await svc.CriarAsync(MetaDto(), dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.AtualizarAsync(criada.Id, MetaDto(), outro));
     }
 
@@ -252,7 +252,7 @@ public class MetaServiceTests
         var svc = new MetaService(ctx);
         var meta = await svc.CriarAsync(MetaDto(), dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.ExcluirAsync(meta.Id, outro));
     }
 

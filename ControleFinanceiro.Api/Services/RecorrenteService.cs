@@ -196,14 +196,14 @@ public class RecorrenteService
                 var conta = await _context.Contas.FindAsync(dto.ContaId)
                     ?? throw new KeyNotFoundException("Conta não encontrada.");
                 if (conta.UsuarioIdProprietario != usuarioId)
-                    throw new UnauthorizedAccessException("Conta não pertence ao usuário.");
+                    throw new ForbiddenAccessException("Conta não pertence ao usuário.");
             }
             else if (dto.CartaoCreditoId.HasValue)
             {
                 var cartao = await _context.CartoesCredito.FindAsync(dto.CartaoCreditoId)
                     ?? throw new KeyNotFoundException("Cartão não encontrado.");
                 if (cartao.CriadoPor != usuarioId)
-                    throw new UnauthorizedAccessException("Cartão não pertence ao usuário.");
+                    throw new ForbiddenAccessException("Cartão não pertence ao usuário.");
             }
 
             // Criar recorrente com janela de 3 meses
@@ -292,7 +292,7 @@ public class RecorrenteService
         var recorrente = await _context.Recorrentes.FindAsync(id)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (recorrente.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Sem permissão.");
+            throw new ForbiddenAccessException("Sem permissão.");
 
         var proxima = await _context.Transacoes
             .Where(t => t.RecorrenteOrigemId == id &&
@@ -321,7 +321,7 @@ public class RecorrenteService
         var recorrente = await _context.Recorrentes.FindAsync(id)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (recorrente.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Sem permissão.");
+            throw new ForbiddenAccessException("Sem permissão.");
 
         var motivo = dto.Motivo;
         if (string.IsNullOrWhiteSpace(motivo))
@@ -387,7 +387,7 @@ public class RecorrenteService
         var r = await _context.Recorrentes.FindAsync(id)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Sem permissão.");
+            throw new ForbiddenAccessException("Sem permissão.");
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;
@@ -407,7 +407,7 @@ public class RecorrenteService
         var r = await _context.Recorrentes.FindAsync(id)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Sem permissão.");
+            throw new ForbiddenAccessException("Sem permissão.");
 
         r.Ativo = !r.Ativo;
         await _context.SaveChangesAsync();
@@ -418,7 +418,7 @@ public class RecorrenteService
         var r = await _context.Recorrentes.FindAsync(id)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Sem permissão.");
+            throw new ForbiddenAccessException("Sem permissão.");
 
         _context.Recorrentes.Remove(r);
         await _context.SaveChangesAsync();
