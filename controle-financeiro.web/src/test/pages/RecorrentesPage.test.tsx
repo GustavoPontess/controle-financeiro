@@ -177,8 +177,8 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    // The XCircle (cancelar) button
-    const cancelarBtn = screen.getAllByTitle("Cancelar assinatura")[0]
+    // The XCircle (cancelar) button — aguarda a row renderizar (header é estático)
+    const cancelarBtn = (await screen.findAllByTitle("Cancelar assinatura"))[0]
     fireEvent.click(cancelarBtn)
 
     expect(await screen.findByText("Motivo do cancelamento")).toBeInTheDocument()
@@ -190,7 +190,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Cancelar assinatura")[0])
+    fireEvent.click((await screen.findAllByTitle("Cancelar assinatura"))[0])
     await screen.findByText("Confirmar cancelamento")
     fireEvent.click(screen.getByText("Confirmar cancelamento"))
 
@@ -204,7 +204,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Cancelar assinatura")[0])
+    fireEvent.click((await screen.findAllByTitle("Cancelar assinatura"))[0])
     await screen.findByText("Confirmar cancelamento")
 
     fireEvent.change(screen.getByPlaceholderText("Ex: Não uso mais, preço alto..."), {
@@ -224,7 +224,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Editar próxima ocorrência")[0])
+    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     expect(await screen.findByText("Novo valor (opcional)")).toBeInTheDocument()
     expect(screen.getByText("Nova descrição (opcional)")).toBeInTheDocument()
   })
@@ -235,7 +235,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Editar próxima ocorrência")[0])
+    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     await screen.findByText("Novo valor (opcional)")
 
     // Just submit with empty (both are optional)
@@ -252,7 +252,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Editar próxima ocorrência")[0])
+    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     await screen.findByText("Novo valor (opcional)")
 
     // Find the valor input (first 0,00 placeholder)
@@ -272,7 +272,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Pausar")[0])
+    fireEvent.click((await screen.findAllByTitle("Pausar"))[0])
     await waitFor(() => {
       expect(toggleRecorrente).toHaveBeenCalledWith("rec-001")
     })
@@ -285,7 +285,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Excluir")[0])
+    fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
     expect(await screen.findByText("Remover assinatura")).toBeInTheDocument()
     expect(screen.getByText(/Remover "Netflix"/)).toBeInTheDocument()
   })
@@ -296,7 +296,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findByText("Suas assinaturas")
 
-    fireEvent.click(screen.getAllByTitle("Excluir")[0])
+    fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
     await screen.findByText("Remover assinatura")
     fireEvent.click(screen.getByText("Confirmar"))
 
