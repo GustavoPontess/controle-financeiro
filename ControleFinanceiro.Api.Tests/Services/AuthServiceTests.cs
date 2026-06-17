@@ -119,7 +119,12 @@ public class AuthServiceTests
         Assert.False(prt.Usado);
         Assert.True(prt.ExpiresAt > DateTime.UtcNow);
         Assert.False(string.IsNullOrWhiteSpace(prt.Token));
-        sender.Verify(s => s.EnviarAsync(u.Email, prt.Token, prt.ExpiresAt, It.IsAny<CancellationToken>()), Times.Once);
+        // O sender recebe o token BRUTO; o banco guarda o HASH dele.
+        sender.Verify(s => s.EnviarAsync(
+            u.Email,
+            It.Is<string>(raw => OpaqueTokenHasher.Hash(raw) == prt.Token),
+            prt.ExpiresAt,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -183,5 +188,75 @@ public class AuthServiceTests
 
         var depois = await ctx.Usuarios.FindAsync(u.Id);
         Assert.Equal(hashAntes, depois!.PasswordHash); // sem rehash desnecessário
+    }
+
+    // ── Reset token hasheado no banco + rate-limit por conta ────────────────────
+
+    private static (Mock<IPasswordResetEmailSender> sender, Func<string?> raw) SenderCapturandoToken()
+    {
+        string? capturado = null;
+        var sender = new Mock<IPasswordResetEmailSender>();
+        sender.Setup(s => s.EnviarAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+              .Callback<string, string, DateTime, CancellationToken>((_, token, _, _) => capturado = token)
+              .Returns(Task.CompletedTask);
+        return (sender, () => capturado);
+    }
+
+    [Fact]
+    public async Task Job_guardaHashDoToken_e_enviaTokenBruto()
+    {
+        using var ctx = CreateContext();
+        SeedUsuario(ctx, "reset@test.com");
+        var (sender, raw) = SenderCapturandoToken();
+        var job = new PasswordResetEmailJob(ctx, sender.Object);
+
+        await job.ExecuteAsync("reset@test.com");
+
+        var prt = Assert.Single(ctx.PasswordResetTokens);
+        Assert.NotNull(raw());
+        Assert.NotEqual(raw(), prt.Token);                              // não persiste o bruto
+        Assert.Equal(OpaqueTokenHasher.Hash(raw()!), prt.Token);        // persiste só o hash
+    }
+
+    [Fact]
+    public async Task ResetSenha_funcionaComTokenBruto_e_falhaComOHashArmazenado()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "reset@test.com");
+        var (sender, raw) = SenderCapturandoToken();
+        await new PasswordResetEmailJob(ctx, sender.Object).ExecuteAsync("reset@test.com");
+        var hashArmazenado = (await ctx.PasswordResetTokens.SingleAsync()).Token;
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        // Token bruto (o que vai no e-mail) reseta a senha.
+        await auth.ResetSenhaAsync(new DTOs.Auth.ResetPasswordDto
+        {
+            Token = raw()!, NovaSenha = "NovaSenhaForte!2026", ConfirmarNovaSenha = "NovaSenhaForte!2026",
+        });
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.True(PasswordHasher.VerifyPassword("NovaSenhaForte!2026", atualizado!.PasswordHash));
+
+        // Mandar o HASH armazenado (como se tivesse vazado do banco) não vale como token.
+        await new PasswordResetEmailJob(ctx, sender.Object).ExecuteAsync("reset@test.com");
+        var hash2 = (await ctx.PasswordResetTokens.OrderByDescending(t => t.CriadoEm).FirstAsync()).Token;
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.ResetSenhaAsync(new DTOs.Auth.ResetPasswordDto
+        {
+            Token = hash2, NovaSenha = "OutraSenhaForte!99", ConfirmarNovaSenha = "OutraSenhaForte!99",
+        }));
+    }
+
+    [Fact]
+    public async Task Job_rateLimitPorConta_naoCriaAlemDoMaximoPorHora()
+    {
+        using var ctx = CreateContext();
+        SeedUsuario(ctx, "spam@test.com");
+        var (sender, _) = SenderCapturandoToken();
+        var job = new PasswordResetEmailJob(ctx, sender.Object);
+
+        for (var i = 0; i < 6; i++)
+            await job.ExecuteAsync("spam@test.com");
+
+        // Máx 3 por conta por hora — as chamadas extras são ignoradas.
+        Assert.Equal(3, await ctx.PasswordResetTokens.CountAsync());
     }
 }

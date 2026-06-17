@@ -64,11 +64,11 @@ describe('RegisterPage', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
-  it('exibe requisito de comprimento com ✓ quando senha tem 10+ chars', () => {
+  it('exibe requisito de comprimento com ✓ quando senha tem 15+ chars', () => {
     const { container } = renderRegister()
     const [senhaInput] = container.querySelectorAll('input[type="password"]')
-    fireEvent.change(senhaInput, { target: { value: 'abcdefghij' } })
-    expect(screen.getByText(/mínimo 10 caracteres/i)).toBeInTheDocument()
+    fireEvent.change(senhaInput, { target: { value: 'abcdefghijklmno' } })
+    expect(screen.getByText(/mínimo 15 caracteres/i)).toBeInTheDocument()
     const items = screen.getAllByText(/✓/)
     expect(items.length).toBeGreaterThan(0)
   })
@@ -77,7 +77,7 @@ describe('RegisterPage', () => {
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
-    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'diferente' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
@@ -103,8 +103,8 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
     fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
-    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
-    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/onboarding'))
@@ -118,8 +118,8 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
     fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
-    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
-    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
@@ -163,8 +163,8 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
     fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
-    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3' } })
-    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)
 
     await waitFor(() =>

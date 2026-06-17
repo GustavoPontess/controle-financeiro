@@ -23,16 +23,17 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - **Pepper (NIST SHOULD):** segredo server-side aplicado por cima do hash, guardado **separado** (KMS/HSM/env, nunca no banco). Não implementado ainda — depende de gestão/rotação de chave. Ponto de extensão pronto: `Argon2id.KnownSecret`. _Follow-up no ROADMAP, junto da rotação de segredos._
 - _Fontes: OWASP Password Storage Cheat Sheet; NIST SP 800-63B §3.1.1.2._
 
-## 2. Política de senha ✅
+## 2. Política de senha ✅ (mín. 15 aplicado — 2026-06-17)
 
 - **NIST SP800-63B:** mínimo **15 chars sem MFA** (8 com MFA), **máximo ≥64** (permitir passphrase), **sem regra de composição** (não exigir maiúscula/número/símbolo).
+- **Aplicado:** `PasswordPolicyService` subiu de 10 → **15 chars** + teto **128** (anti-DoS no Argon2id); espelhado no front (`utils/passwordPolicy.ts`). _Pendência catalogada: NIST recomenda **remover** as regras de composição (hoje exigimos maiúscula/número/especial) — mudança de UX, P2 no ROADMAP._
 - _Fonte: OWASP Authentication Cheat Sheet + NIST SP800-63B-4._
 
-## 3. Reset de senha ✅
+## 3. Reset de senha ✅ (token hasheado + rate-limit por conta — 2026-06-17)
 
-- Token **aleatório-cripto** (`RandomNumberGenerator`), longo, **hasheado no banco** (SHA-256 basta p/ token de alta entropia — não precisa KDF lento), **uso único**, **expiry curto** (1h ok), **ligado a um user**, invalidado após uso.
-- **Anti-enumeração:** resposta **idêntica** p/ conta existente vs inexistente **e timing uniforme** — enviar o e-mail em **fire-and-forget** (a latência do envio não pode vazar se a conta existe).
-- **Rate-limit por conta** (não só por IP) + CAPTCHA/controle equivalente. .NET: `AddRateLimiter` keyed por e-mail.
+- Token **aleatório-cripto** (`RandomNumberGenerator`, 64 bytes), **hasheado no banco** (SHA-256 via `OpaqueTokenHasher` — basta p/ token de alta entropia, não precisa KDF lento), **uso único**, **expiry curto** (1h), **ligado a um user**, invalidado após uso. **Aplicado:** `PasswordResetEmailJob` guarda o hash, envia o bruto por e-mail; `ResetSenhaAsync` faz lookup pelo hash. Se o banco vazar, os hashes não dão tokens utilizáveis.
+- **Anti-enumeração:** resposta **idêntica** p/ conta existente vs inexistente **e timing uniforme** — e-mail em **fire-and-forget** (C1, já feito).
+- **Rate-limit por conta** (não só por IP): **aplicado** — `PasswordResetEmailJob` limita a 3 tokens por conta por hora (no worker, sem vazar timing), somado ao limite por-IP (1/15min) no endpoint.
 - _Fonte: OWASP Forgot Password Cheat Sheet._
 
 ## 4. Armazenamento de token (frontend) ✅
@@ -80,10 +81,10 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | — | CORS `WithOrigins` | ✅ restrito a localhost:5173 (falta allowlist prod) | 🟡 |
 | — | Token em cookie HttpOnly+SameSite=Strict | ✅ já usamos cookie HttpOnly (confirmar refresh tb) | verificar |
 | A1/A2 | PBKDF2 ≥600k OU Argon2id | ✅ **Argon2id m=19456/t=2/p=1, salt 16B, saída 32B, rehash no login** | ✔ |
-| — | Reset token hasheado no banco | **plaintext** | 🟡 |
-| — | Anti-enumeração (timing) | ramo existe≠não-existe vaza timing | 🟡 |
-| — | Rate-limit reset por conta | só por IP, e reset sem limit | 🟡 |
-| — | Política senha 15 chars (sem MFA) | temos 10 | 🟡 |
+| — | Reset token hasheado no banco | ✅ **SHA-256 (OpaqueTokenHasher); bruto só no e-mail** | ✔ |
+| — | Anti-enumeração (timing) | ✅ resolvido no C1 (fire-and-forget) | ✔ |
+| — | Rate-limit reset por conta | ✅ **3/conta/hora no job + 1/IP/15min no endpoint** | ✔ |
+| — | Política senha 15 chars (sem MFA) | ✅ **15 + teto 128** (front e back) | ✔ |
 | — | Re-auth em trocar e-mail/senha | confirmar se exige senha | 🟡 |
 | — | CSP estrita (pré-condição XSS) | confirmar | 🟡 |
 
@@ -92,8 +93,8 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 2. ✅ **C2** — contrato de exceção (status corretos + 500 não vaza mensagem)
 3. ✅ **C3** — soft delete de Transacao + global query filter
 4. ✅ **A1/A2** — Argon2id (Konscious) com rehash transparente no login; salt 16B, saída 32B, formato versionado
-5. **Reset token hasheado** + rate-limit por conta + política 15 chars ← próximo
-6. **Re-auth** em operações sensíveis + confirmar cookie do refresh + CSP
+5. ✅ **Reset token hasheado** + rate-limit por conta + política 15 chars
+6. **Re-auth** em operações sensíveis + confirmar cookie do refresh + CSP ← próximo
 7. **⚠️ Rotacionar segredos** (JWT key + senha Postgres) + **pepper** (NIST SHOULD) — não depende de pesquisa, é procedimento
 
 ### Antes de codar os domínios abertos

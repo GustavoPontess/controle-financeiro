@@ -69,7 +69,7 @@ status: ATIVO
 - [x] **C2 — contrato de exceção furado** 🔴 → ✅ — os 67 `throw new Exception(...)` viraram tipos certos (404/400/409/401 conforme semântica) e o middleware **não ecoa mais `Message` no 500** (mensagem genérica; detalhe só no log). 5 testes do middleware + 26 asserts de teste atualizados. _Follow-up registrado: distinguir 403 (ownership) de 401 (auth) — hoje 401 desloga; pré-existente em ~32 sites._
 - [x] **C3 — soft-delete de `Transacao` violado** 🔴 → ✅ — `DeletarAsync` agora faz soft delete (`Ativo=false` + `Cancelado` + `CanceladoEm` + motivo, padrão do `TransferenciaService`) e foi adicionado **global query filter** `HasQueryFilter(t => t.Ativo)` no `Transacao` → toda query/navegação (saldo, listagem, dashboard, relatório, totais de fatura) exclui canceladas automaticamente. Corrige de quebra o caso real do bug (pernas de transferência soft-deleted apareciam na lista). 3 testes de regressão.
 - [x] **A1/A2 — PasswordHasher** 🟠 → ✅ — migrado p/ **Argon2id** (Konscious v1.3.1, OWASP 1ª escolha) m=19456/t=2/p=1, salt 16B, **saída 32B** (era 20), formato versionado `ARGON2ID$...` + **rehash transparente no login** (verifica hash legado PBKDF2, regrava no esquema atual sem forçar reset). 8 testes. _Deep-research OWASP/NIST. Pepper (NIST SHOULD) fica de follow-up com a rotação de segredos._
-- [ ] **Reset token hasheado** no banco + **rate-limit por conta** + **política 15 chars** (NIST, sem MFA).
+- [x] **Reset token hasheado** no banco + **rate-limit por conta** + **política 15 chars** → ✅ — token guardado como SHA-256 (`OpaqueTokenHasher`), bruto só no e-mail; rate-limit 3/conta/hora no `PasswordResetEmailJob` (+ 1/IP/15min no endpoint); política 10→15 + teto 128 (front e back). 11 testes.
 - [ ] **Re-auth em operação sensível** (trocar e-mail/senha) + confirmar refresh token em cookie HttpOnly + **CSP estrita**.
 - [ ] **A4 — critério de gasto divergente** Orçamento (`CriadoPor`) × Relatório (ownership) — padronizar.
 - [ ] **⚠️ Rotacionar segredos** — `Jwt:Key`, senha Postgres, API keys. Ex-colaboradores têm clone com a chave. **Urgente** (não depende de pesquisa).
@@ -81,7 +81,9 @@ status: ATIVO
 - [ ] **Rotação de segredos / key rollover** da JWT key sem downtime · **MFA no .NET** (TOTP/passkeys) · **cripto-at-rest / PII em EF Core** · **logging/auditoria** · **LGPD + BACEN/Open Finance**. Deep-research verificado por fonte primária.
 
 ### 🟡 / outros
-- [ ] Médios da auditoria (tokens em plaintext, enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
+- [ ] **P2 — Refresh token em plaintext no banco** — `RefreshToken.Token` é guardado bruto (mesma classe do reset token, que já foi hasheado). Se o banco vazar, refresh tokens viram acesso. Hashear (SHA-256 via `OpaqueTokenHasher`) e fazer lookup por hash, igual reset. _Achado na sessão do reset-token._
+- [ ] **P2 — Política: remover regras de composição (NIST)** — NIST SP 800-63B recomenda NÃO exigir maiúscula/número/símbolo (leva a senhas previsíveis tipo `Password1!`); com mín. 15 + blocklist já basta. Hoje `PasswordPolicyService` ainda exige as 4 classes. Mudança de UX — decidir antes. _Documentado em `docs/SEGURANCA_BEST_PRACTICES.md` §2._
+- [ ] Médios da auditoria (enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
 - [x] **#114 Postgres único + #92 E2E** mergeados na main, auditados e limpos. Dev exige Postgres no ar.
 - [x] **Versionamento** — SemVer 0.x, CHANGELOG, `docs/RELEASING.md`, release `v0.9.0`.
 - [x] **Ex-colaboradores apagados** do repo (autoria/co-autoria/branches/site/co-autoria-IA) + histórico linearizado.

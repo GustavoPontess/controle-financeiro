@@ -15,14 +15,16 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 fechados.** Seguindo a Sprint de Auth Hardening.
+Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política fechados.** Seguindo a Sprint de Auth Hardening.
 
 ## Próxima ação concreta
 
 **Sprint de Auth Hardening** (ordem em `ROADMAP.md` → Higiene, spec em `docs/SEGURANCA_BEST_PRACTICES.md`). Próximo:
-- **Reset token hasheado no banco + rate-limit por conta + política 15 chars** 🟠. Hoje o `PasswordResetToken.Token` fica em plaintext (auditoria 🟡); hashear (SHA-256 basta — token tem alta entropia), comparar por hash no `ResetSenhaAsync`, e adicionar rate-limit **por conta** (não só IP) no `/forgot-password` (já enfileira via Hangfire). Subir política de senha 10→15 chars (NIST). Branch `fix/reset-token-hash`.
+- **Re-auth em operação sensível + CSP estrita** 🟠. Exigir senha atual ao trocar e-mail/senha (`AlterarSenhaAsync`/troca de e-mail); confirmar que o refresh token está em cookie HttpOnly; adicionar Content-Security-Policy estrita (pré-condição contra XSS). Branch `fix/reauth-csp`. _Sem pesquisa nova — já em `docs/SEGURANCA_BEST_PRACTICES.md`._
 
-Depois: re-auth em op sensível (trocar e-mail/senha) + CSP → **rotacionar segredos** + **pepper** (urgente, ex-colaboradores têm a JWT key no clone).
+Depois: **⚠️ rotacionar segredos** + **pepper** (urgente, ex-colaboradores têm a JWT key no clone) → re-pesquisar gaps (key rollover, MFA, cripto-at-rest, logging, LGPD/BACEN — pesquisa LEVE, ver §8.6).
+
+P2 catalogados (não-bloqueantes): refresh token também em plaintext (hashear igual reset); NIST recomenda remover regras de composição da senha.
 
 > Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
@@ -30,6 +32,7 @@ Depois: re-auth em op sensível (trocar e-mail/senha) + CSP → **rotacionar seg
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **Reset token hasheado + rate-limit por conta + política 15 chars** 🟠→✅ — token guardado como SHA-256 (`OpaqueTokenHasher`), bruto só no e-mail; rate-limit 3/conta/hora no job; política 10→15 + teto 128 (front e back, com testes ajustados). Achados catalogados (P2): refresh token plaintext, NIST dropar composição. Back 246/246, front 287/287.
 - **A1/A2 — PasswordHasher** 🟠→✅ — migrado p/ **Argon2id** (Konscious, m=19456/t=2/p=1, salt 16B, saída 32B), formato versionado + **rehash transparente no login** (aceita hash legado PBKDF2, regrava sem reset). Decisão por **deep-research verificado** (OWASP/NIST, 24/25 claims). 8 testes (back 238/238).
 - **C3 — soft-delete de `Transacao`** 🔴→✅ — `DeletarAsync` virou soft delete (`Ativo=false`+`Cancelado`+`CanceladoEm`+motivo) e **global query filter** `HasQueryFilter(t => t.Ativo)` no `Transacao` exclui canceladas de toda query/navegação. Corrige de quebra pernas de transferência soft-deleted que apareciam na lista. 3 testes (back 230/230).
 - **C2 — contrato de exceção** 🔴→✅ — 67 `throw new Exception(...)` → tipos certos (404/400/409/401 por semântica); `GlobalExceptionHandlerMiddleware` deixou de ecoar `Message` no 500 (genérico; detalhe só no log). 5 testes do middleware + 26 asserts atualizados (back 227/227). Conversão feita via workflow (9 services em paralelo + verificação adversarial).
