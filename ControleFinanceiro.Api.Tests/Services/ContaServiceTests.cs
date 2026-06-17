@@ -27,7 +27,7 @@ public class ContaServiceTests
 
         var conta = new Conta { Nome = "", Tipo = TipoConta.ContaCorrente };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(conta, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, usuarioId));
         Assert.Contains("Nome", ex.Message);
     }
 
@@ -40,7 +40,7 @@ public class ContaServiceTests
 
         var conta = new Conta { Nome = new string('A', 101), Tipo = TipoConta.ContaCorrente };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(conta, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, usuarioId));
         Assert.Contains("100", ex.Message);
     }
 
@@ -53,7 +53,7 @@ public class ContaServiceTests
 
         var conta = new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(conta, usuarioId, saldoInicial: -100));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, usuarioId, saldoInicial: -100));
         Assert.Contains("negativo", ex.Message);
     }
 
@@ -122,7 +122,7 @@ public class ContaServiceTests
         ctx.Contas.Add(carteira);
         await ctx.SaveChangesAsync();
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.DeletarAsync(carteira.Id, usuarioId));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(carteira.Id, usuarioId));
         Assert.Contains("carteira", ex.Message.ToLower());
     }
 }

@@ -35,7 +35,7 @@ public class EmprestimoServiceTests
         var dto = DtoValido();
         dto.ValorTotal = 0;
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("positivo", ex.Message);
     }
 
@@ -46,7 +46,7 @@ public class EmprestimoServiceTests
         var dto = DtoValido();
         dto.ValorTotal = -100;
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class EmprestimoServiceTests
         dto.DataInicio = DateTime.UtcNow;
         dto.DataVencimento = DateTime.UtcNow.AddDays(-1);
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("anterior", ex.Message);
     }
 
@@ -97,7 +97,7 @@ public class EmprestimoServiceTests
         var usuarioId = Guid.NewGuid();
         var resultado = await svc.CriarAsync(DtoValido(), usuarioId);
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.RegistrarPagamentoAsync(resultado.Id, 0, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarPagamentoAsync(resultado.Id, 0, usuarioId));
         Assert.Contains("positivo", ex.Message);
     }
 
@@ -109,7 +109,7 @@ public class EmprestimoServiceTests
         var usuarioId = Guid.NewGuid();
         var resultado = await svc.CriarAsync(DtoValido(), usuarioId);
 
-        await Assert.ThrowsAsync<Exception>(() => svc.RegistrarPagamentoAsync(resultado.Id, -50, usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarPagamentoAsync(resultado.Id, -50, usuarioId));
     }
 
     [Fact]

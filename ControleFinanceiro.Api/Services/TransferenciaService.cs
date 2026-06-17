@@ -19,20 +19,20 @@ public class TransferenciaService
     public async Task<TransferenciaDto> CriarAsync(CriarTransferenciaDto dto, Guid usuarioId)
     {
         if (dto.ContaOrigemId == dto.ContaDestinoId)
-            throw new Exception("Conta de origem e destino não podem ser iguais.");
+            throw new ArgumentException("Conta de origem e destino não podem ser iguais.");
 
         if (dto.Valor <= 0)
-            throw new Exception("O valor da transferência deve ser positivo.");
+            throw new ArgumentException("O valor da transferência deve ser positivo.");
 
         var contaOrigem = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaOrigemId && c.UsuarioIdProprietario == usuarioId);
         if (contaOrigem == null)
-            throw new Exception("Conta de origem não encontrada.");
+            throw new KeyNotFoundException("Conta de origem não encontrada.");
 
         var contaDestino = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaDestinoId && c.UsuarioIdProprietario == usuarioId);
         if (contaDestino == null)
-            throw new Exception("Conta de destino não encontrada.");
+            throw new KeyNotFoundException("Conta de destino não encontrada.");
 
         var descricao = string.IsNullOrWhiteSpace(dto.Descricao)
             ? $"Transferência: {contaOrigem.Nome} → {contaDestino.Nome}"
@@ -140,7 +140,7 @@ public class TransferenciaService
         var transferencia = await _context.Transferencias
             .FirstOrDefaultAsync(t => t.Id == id && t.CriadoPor == usuarioId);
         if (transferencia == null)
-            throw new Exception("Transferência não encontrada.");
+            throw new KeyNotFoundException("Transferência não encontrada.");
 
         var transacoes = await _context.Transacoes
             .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)

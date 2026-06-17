@@ -15,19 +15,22 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **C1 fechado** (reset token não vaza mais; geração+e-mail fire-and-forget via Hangfire). Seguindo a Sprint de Auth Hardening.
+Nada em código. **C1 e C2 fechados.** Seguindo a Sprint de Auth Hardening.
 
 ## Próxima ação concreta
 
 **Sprint de Auth Hardening** (ordem em `ROADMAP.md` → Higiene, spec em `docs/SEGURANCA_BEST_PRACTICES.md`). Próximo:
-- **C2 — contrato de exceção furado** 🔴 — 67 `throw new Exception(...)` viram HTTP 500 e vazam `Message`. Trocar pelos tipos certos (`ArgumentException`→400, `KeyNotFoundException`→404, `InvalidOperationException`→409, `UnauthorizedAccessException`→401) + garantir que o middleware não ecoa `Message` no 500. Branch `fix/c2-excecoes`.
+- **C3 — soft-delete de `Transacao` violado** 🔴 — `DeletarAsync` faz hard `_context.Remove()` (apaga histórico, quebra `FinancialEventLog`) e `ListarAsync` não filtra `Ativo` (lista canceladas junto). Aplicar soft delete (`Ativo=false` + status Cancelado, como `TransferenciaService`) + `.Where(t => t.Ativo)` na listagem + teste de regressão. Branch `fix/c3-soft-delete-transacao`.
 
-Depois: **C3** (soft-delete de `Transacao`) → **A1/A2** (PBKDF2 600k/Argon2id) → reset hasheado + rate-limit por conta + política 15 chars → re-auth em op sensível + CSP → **rotacionar segredos** (urgente, ex-colaboradores têm a JWT key no clone).
+Depois: **A1/A2** (PBKDF2 600k/Argon2id) → reset hasheado + rate-limit por conta + política 15 chars → re-auth em op sensível + CSP → **rotacionar segredos** (urgente, ex-colaboradores têm a JWT key no clone).
+
+> Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
 ---
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **C2 — contrato de exceção** 🔴→✅ — 67 `throw new Exception(...)` → tipos certos (404/400/409/401 por semântica); `GlobalExceptionHandlerMiddleware` deixou de ecoar `Message` no 500 (genérico; detalhe só no log). 5 testes do middleware + 26 asserts atualizados (back 227/227). Conversão feita via workflow (9 services em paralelo + verificação adversarial).
 - **C1 — reset token não vaza mais** 🔴→✅ — `/forgot-password` responde genérico e idêntico pra qualquer e-mail; geração de token + envio agora é **fire-and-forget** (`HangfirePasswordResetDispatcher` → `PasswordResetEmailJob` → `IPasswordResetEmailSender`). Mata account takeover + timing/enumeração. 6 testes de regressão (back 222/222).
 - **Flaky test `RecorrentesPage`** corrigido — `getAllByTitle` síncrono → `await findAllByTitle` (header estático rendava antes das rows async). PR #204.
 - **Reorg de docs (solo)** — modelo `ROADMAP` + `STATE`; Q5 arquivado; COLLABORATION deletado; QUICK_REFERENCE/CLAUDE/PROMPT/GIT_WORKFLOW atualizados; `docs/` limpo (redesign-ux Q4 → history, ponteiros consertados).

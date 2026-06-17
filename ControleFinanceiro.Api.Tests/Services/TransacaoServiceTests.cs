@@ -56,7 +56,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("positivo", ex.Message);
     }
 
@@ -76,7 +76,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow.AddDays(1),
         };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("futura", ex.Message);
     }
 
@@ -161,7 +161,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("conta ou", ex.Message.ToLower());
     }
 
@@ -210,7 +210,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("inválida", ex.Message);
     }
 
@@ -258,7 +258,7 @@ public class TransacaoServiceTests
 
         var dados = new Transacao { Descricao = "Editada", Valor = -50, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow };
 
-        await Assert.ThrowsAsync<Exception>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class TransacaoServiceTests
 
         var dados = new Transacao { Descricao = "Editada", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(5) };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
         Assert.Contains("futura", ex.Message);
     }
 
@@ -341,7 +341,7 @@ public class TransacaoServiceTests
             Data = DateTime.UtcNow,
         };
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
         Assert.Contains("pertence", ex.Message);
     }
 
