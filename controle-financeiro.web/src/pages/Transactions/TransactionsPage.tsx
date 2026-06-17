@@ -445,6 +445,9 @@ export default function TransactionsPage() {
           </div>
         }
       >
+        {/* Só monta o corpo quando aberto — drawer fechado não deixa inputs vivos
+            no DOM (evita colisão de locators e foco em campos invisíveis). */}
+        {filtersOpen && (
         <div className={styles.drawerBody}>
           <label className={styles.drawerLabel}>Conta
             <PontesSelect
@@ -479,6 +482,7 @@ export default function TransactionsPage() {
             <PontesSelect value={draft.ordenacao} onChange={(v) => setDraft((d) => ({ ...d, ordenacao: v }))} options={ORDENACAO_OPTS} />
           </label>
         </div>
+        )}
       </PontesDrawer>
     </div>
   )
