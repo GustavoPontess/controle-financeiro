@@ -7,5 +7,8 @@ public enum TipoNotificacao
     AcertoContas = 3,
     FaturaVencendo = 4,
     OrcamentoEstourado = 5,
+    DespesaAprovacaoPendente = 6,
+    DespesaAprovada = 7,
+    DespesaRejeitada = 8,
     Outro = 99,
 }

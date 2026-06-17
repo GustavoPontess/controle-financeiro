@@ -31,7 +31,20 @@ public class DespesaCompartilhadaService
 
         await ExigirMembroAsync(familiaId, usuarioId);
 
+        var familia = await _context.Familias
+            .FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
+            ?? throw new KeyNotFoundException("Família não encontrada.");
+
+        // Feature 2.4 — despesa ≥ limite da família entra Pendente (não conta no balanço
+        // até outro membro aprovar). Sem limite, ou abaixo dele, entra direto.
+        var requerAprovacao = familia.LimiteAprovacao is { } limite && transacao.Valor >= limite;
+
         transacao.FamiliaId = familiaId;
+        transacao.StatusAprovacao = requerAprovacao
+            ? StatusAprovacaoDespesa.Pendente
+            : StatusAprovacaoDespesa.NaoRequerida;
+        transacao.AprovadoPorUsuarioId = null;
+        transacao.AprovadoEm = null;
         await _context.SaveChangesAsync();
 
         // Issue #30 — notifica os demais membros ativos da família.
@@ -44,11 +57,53 @@ public class DespesaCompartilhadaService
         {
             await _notificacaoService.CriarAsync(
                 membroId,
-                TipoNotificacao.DespesaCompartilhada,
-                "Nova despesa compartilhada",
-                $"\"{transacao.Descricao}\" foi compartilhada na família.",
+                requerAprovacao ? TipoNotificacao.DespesaAprovacaoPendente : TipoNotificacao.DespesaCompartilhada,
+                requerAprovacao ? "Despesa aguardando aprovação" : "Nova despesa compartilhada",
+                requerAprovacao
+                    ? $"\"{transacao.Descricao}\" ({transacao.Valor:C}) precisa da sua aprovação."
+                    : $"\"{transacao.Descricao}\" foi compartilhada na família.",
                 "/familias");
         }
+    }
+
+    /// <summary>Feature 2.4 — aprova uma despesa pendente (membro ≠ criador).</summary>
+    public async Task AprovarAsync(Guid familiaId, Guid transacaoId, Guid usuarioId) =>
+        await AvaliarAsync(familiaId, transacaoId, usuarioId, aprovar: true);
+
+    /// <summary>Feature 2.4 — rejeita uma despesa pendente (membro ≠ criador).</summary>
+    public async Task RejeitarAsync(Guid familiaId, Guid transacaoId, Guid usuarioId) =>
+        await AvaliarAsync(familiaId, transacaoId, usuarioId, aprovar: false);
+
+    private async Task AvaliarAsync(Guid familiaId, Guid transacaoId, Guid usuarioId, bool aprovar)
+    {
+        await ExigirMembroAsync(familiaId, usuarioId);
+
+        var transacao = await _context.Transacoes
+            .FirstOrDefaultAsync(t => t.Id == transacaoId && t.FamiliaId == familiaId && t.Ativo)
+            ?? throw new KeyNotFoundException("Despesa compartilhada não encontrada.");
+
+        if (transacao.StatusAprovacao != StatusAprovacaoDespesa.Pendente)
+            throw new InvalidOperationException("Só despesas pendentes podem ser avaliadas.");
+
+        if (transacao.CriadoPor == usuarioId)
+            throw new ForbiddenAccessException("Você não pode aprovar a própria despesa.");
+
+        transacao.StatusAprovacao = aprovar
+            ? StatusAprovacaoDespesa.Aprovada
+            : StatusAprovacaoDespesa.Rejeitada;
+        transacao.AprovadoPorUsuarioId = usuarioId;
+        transacao.AprovadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        var avaliador = await _context.Usuarios
+            .Where(u => u.Id == usuarioId).Select(u => u.Nome).FirstOrDefaultAsync() ?? "Um membro";
+
+        await _notificacaoService.CriarAsync(
+            transacao.CriadoPor,
+            aprovar ? TipoNotificacao.DespesaAprovada : TipoNotificacao.DespesaRejeitada,
+            aprovar ? "Despesa aprovada" : "Despesa rejeitada",
+            $"{avaliador} {(aprovar ? "aprovou" : "rejeitou")} \"{transacao.Descricao}\".",
+            "/familias");
     }
 
     /// <summary>Desfaz o compartilhamento — a transação volta a ser pessoal.</summary>
@@ -76,19 +131,24 @@ public class DespesaCompartilhadaService
             {
                 t.Id, t.Descricao, t.Valor, t.Data,
                 CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null,
-                t.CriadoPor,
+                t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId,
             })
             .ToListAsync();
 
-        var pagadorIds = despesas.Select(d => d.CriadoPor).Distinct().ToList();
+        // Nomes do pagador e de quem aprovou/rejeitou (Feature 2.4).
+        var nomeIds = despesas.Select(d => d.CriadoPor)
+            .Concat(despesas.Where(d => d.AprovadoPorUsuarioId != null).Select(d => d.AprovadoPorUsuarioId!.Value))
+            .Distinct().ToList();
         var nomes = await _context.Usuarios
-            .Where(u => pagadorIds.Contains(u.Id))
+            .Where(u => nomeIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Nome);
 
         return despesas
             .Select(d => new DespesaCompartilhadaDto(
                 d.Id, d.Descricao, d.Valor, d.Data, d.CategoriaNome,
-                d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "—")))
+                d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "—"),
+                d.StatusAprovacao,
+                d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null))
             .ToList();
     }
 
@@ -108,7 +168,10 @@ public class DespesaCompartilhadaService
             .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.RendaMensal })
             .ToListAsync();
 
+        // Feature 2.4 — só despesas contabilizáveis entram no rateio (Pendente/Rejeitada fora).
         var despesas = await QueryDespesasDoMes(familiaId, mes, ano)
+            .Where(t => t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida
+                     || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada)
             .Select(t => new { t.Id, t.Valor, t.CriadoPor, t.ModoRateio })
             .ToListAsync();
 

@@ -56,6 +56,15 @@ public class Transacao
     public ModoRateio? ModoRateio { get; set; }
     public ICollection<RateioTransacao> Rateios { get; set; } = new List<RateioTransacao>();
 
+    /// <summary>Feature 2.4 — estado de aprovação quando compartilhada com família.
+    /// Só relevante com FamiliaId != null. Pendente/Rejeitada não contam no balanço.</summary>
+    public StatusAprovacaoDespesa StatusAprovacao { get; set; } = StatusAprovacaoDespesa.NaoRequerida;
+
+    /// <summary>Quem aprovou/rejeitou a despesa compartilhada (membro ≠ criador). Null se não avaliada.</summary>
+    public Guid? AprovadoPorUsuarioId { get; set; }
+
+    public DateTime? AprovadoEm { get; set; }
+
     [Required]
     public DateTime Data { get; set; }
 
