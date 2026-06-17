@@ -19,6 +19,7 @@ import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
   Dependente, TipoDependente, MembroFamilia, ModoRateio, AcertoContas,
 } from "../../types/Familia"
+import { useAuth } from "../../hooks/useAuth"
 import styles from "./FamiliasPage.module.css"
 
 const TIPOS_DEPENDENTE: { value: TipoDependente; label: string }[] = [
@@ -52,6 +53,7 @@ const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
 
 export default function FamiliasPage() {
   const { notify } = useOutletContext<OutletContextType>()
+  const { currentUser } = useAuth()
   const [familias, setFamilias] = useState<Familia[]>([])
   const [convitesPendentes, setConvitesPendentes] = useState<ConviteFamilia[]>([])
   const [loading, setLoading] = useState(true)
@@ -546,8 +548,16 @@ export default function FamiliasPage() {
                     <PontesIconButton size={32} variant="ghost" aria-label="Definir renda" onClick={() => abrirRendaDialog(m)}>
                       <Wallet size={14} strokeWidth={2} />
                     </PontesIconButton>
-                    {m.usuarioId !== detalhe.criadoPorUsuarioId && (
-                      <PontesIconButton size={32} variant="ghost" aria-label="Remover membro" onClick={() => handleRemoverMembro(m.id, true)}>
+                    {/* O criador nunca é removível (usa "Dissolver"). Mostra o botão
+                        para o próprio membro (sair) ou para um admin (remover outro). */}
+                    {m.usuarioId !== detalhe.criadoPorUsuarioId
+                      && (m.usuarioId === currentUser?.id || detalhe.ehAdmin) && (
+                      <PontesIconButton
+                        size={32}
+                        variant="ghost"
+                        aria-label={m.usuarioId === currentUser?.id ? "Sair da família" : "Remover membro"}
+                        onClick={() => handleRemoverMembro(m.id, m.usuarioId === currentUser?.id)}
+                      >
                         <Trash2 size={14} strokeWidth={2} />
                       </PontesIconButton>
                     )}

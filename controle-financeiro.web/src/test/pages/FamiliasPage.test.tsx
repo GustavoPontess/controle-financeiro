@@ -14,6 +14,12 @@ vi.mock("react-router-dom", async (orig) => ({
   useOutletContext: () => ({ notify: mockNotify }),
 }))
 
+// ── Auth mock ── (currentUser controla quem pode remover/sair na lista de membros)
+const { mockAuth } = vi.hoisted(() => ({
+  mockAuth: { currentUser: { id: "u1", nome: "Dev Test" } as { id: string; nome: string } | null },
+}))
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => mockAuth }))
+
 // ── Service mocks ──
 const getFamilias      = vi.fn()
 const getFamilia       = vi.fn()
@@ -144,6 +150,7 @@ describe("FamiliasPage (#85)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNotify.mockReset()
+    mockAuth.currentUser = { id: "u1", nome: "Dev Test" } // admin/criador por padrão
     getFamilias.mockResolvedValue([familia])
     getConvitesPendentes.mockResolvedValue([])
     criarFamilia.mockResolvedValue(undefined)
@@ -570,6 +577,32 @@ describe("FamiliasPage (#85)", () => {
     expect(await screen.findByText(/Sair desta família|Remover membro/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))
     await waitFor(() => expect(removerMembro).toHaveBeenCalledWith("f1", "m2"))
+  })
+
+  it("admin removendo OUTRO membro: dialog 'Remover membro?' (não 'Sair') (#ehProprio)", async () => {
+    // currentUser = u1 (admin/criador) por padrão; remove o membroOutro (u2)
+    await openDetalhe()
+    fireEvent.click(screen.getByLabelText("Remover membro"))
+    expect(await screen.findByText("Remover membro?")).toBeInTheDocument()
+    expect(screen.queryByText("Sair desta família?")).not.toBeInTheDocument()
+  })
+
+  it("membro sai da própria família: 'Sair da família' → 'Sair desta família?' (#ehProprio)", async () => {
+    mockAuth.currentUser = { id: "u2", nome: "Maria" } // logado como o membro não-criador
+    setupDetailMocks({ detalhe: { ...detalhe, ehAdmin: false } })
+    await openDetalhe()
+    fireEvent.click(screen.getByLabelText("Sair da família"))
+    expect(await screen.findByText("Sair desta família?")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))
+    await waitFor(() => expect(removerMembro).toHaveBeenCalledWith("f1", "m2"))
+  })
+
+  it("não-admin não vê 'Remover membro' alheio — só pode sair (#ehProprio)", async () => {
+    mockAuth.currentUser = { id: "u2", nome: "Maria" }
+    setupDetailMocks({ detalhe: { ...detalhe, ehAdmin: false } })
+    await openDetalhe()
+    expect(screen.queryByLabelText("Remover membro")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Sair da família")).toBeInTheDocument()
   })
 
   it("dissolver família: PontesDialog abre com descrição da família", async () => {

@@ -71,7 +71,7 @@ status: ATIVO
 - [x] **P1 🟠 — `AcertoService.CancelarAsync` sem checar dono** (authz hole) → ✅ — só criador OU participante (de/para) cancela; terceiro → `ForbiddenAccessException` (403). PR #221.
 - [x] **P1 🟠 — POST `/acertos` sem idempotência** → ✅ — `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`); front gera UUID estável por tentativa. PR #221.
 - [x] **P1 🟠 — acerto sem `FinancialEventLog`** → ✅ — `AcertoRegistrado`/`AcertoCancelado` gravados em registrar/cancelar. PR #221.
-- [ ] **P2 🟡 — `FamiliasPage:547` `ehProprio` hardcoded `true`** — admin removendo OUTRO membro vê copy/efeito de "você saiu da família" (`handleRemoverMembro(m.id, true)`). **Fix:** `ehProprio = m.usuarioId === currentUserId`. _branch própria (front)._
+- [x] **P2 🟡 — `FamiliasPage` `ehProprio` hardcoded `true`** → ✅ — `ehProprio = m.usuarioId === currentUser?.id` (via `useAuth`); botão remover só aparece pro próprio membro (sair) ou pra admin removendo outro; criador nunca removível; label dinâmico "Sair da família"/"Remover membro". 3 testes. _branch `fix/familia-remover-membro-ehproprio`._
 - [ ] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** — sem enum de papel/enforcement; compartilhar é unilateral. Feature, não bug. Ver Lote 2.
 - _Descartado (não é bug):_ `RateioService.RemoveRange` hard-delete de `RateioTransacao` — é config de split substituída por inteiro na edição, **não** entidade de ledger; soft-delete não se aplica.
 
