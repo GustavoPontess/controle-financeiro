@@ -15,9 +15,9 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 
 ## Em execução
 
-**Feature 2.4 — aprovação de despesa.** Backend completo na branch `feature/familia-aprovacao-despesa-backend` (spec + enum + entidades + migration + service + controller + 12 testes, back 278/278). **Próximo: fase frontend** (UI de limite + aprovar/rejeitar + badge de status na `FamiliasPage`). Spec: `docs/features/familia/aprovacao-despesa.md`.
+**Feature 2.4 — aprovação de despesa: COMPLETA.** Backend mergeado (PR #224, back 278/278). Frontend na branch `feature/familia-aprovacao-despesa-front` (UI de limite + badge de status + aprovar/rejeitar na `FamiliasPage`, service + types + 8 testes, front 306/306) — pendente push/PR/merge. Spec: `docs/features/familia/aprovacao-despesa.md`.
 
-Achados de segurança da auditoria família (P1+P2) já mergeados (PRs #221/#223).
+Achados de segurança da auditoria família (P1+P2) já mergeados (PRs #221/#223). Lote 2 agora: 2.2 ✅ · 2.4 ✅ · 2.1/2.3 parciais.
 
 **Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
 

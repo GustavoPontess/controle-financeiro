@@ -42,6 +42,9 @@ const definirRendaMembro = vi.fn()
 const getAcertos       = vi.fn()
 const registrarAcerto  = vi.fn()
 const cancelarAcerto   = vi.fn()
+const definirLimiteAprovacao = vi.fn()
+const aprovarDespesa   = vi.fn()
+const rejeitarDespesa  = vi.fn()
 
 vi.mock("../../services/familiaService", () => ({
   getFamilias:        (...a: unknown[]) => getFamilias(...a),
@@ -65,6 +68,9 @@ vi.mock("../../services/familiaService", () => ({
   getAcertos:         (...a: unknown[]) => getAcertos(...a),
   registrarAcerto:    (...a: unknown[]) => registrarAcerto(...a),
   cancelarAcerto:     (...a: unknown[]) => cancelarAcerto(...a),
+  definirLimiteAprovacao: (...a: unknown[]) => definirLimiteAprovacao(...a),
+  aprovarDespesa:     (...a: unknown[]) => aprovarDespesa(...a),
+  rejeitarDespesa:    (...a: unknown[]) => rejeitarDespesa(...a),
 }))
 
 // ── Fixtures ──
@@ -88,6 +94,7 @@ const detalhe: FamiliaDetalhe = {
   criadoEm: "2026-01-01T00:00:00", ehAdmin: true, modoRateioPadrao: 1,
   membros: [membroAdmin, membroOutro],
   convitesPendentes: [],
+  limiteAprovacao: null,
 }
 
 const dependente: Dependente = {
@@ -98,6 +105,7 @@ const dependente: Dependente = {
 const despesa: DespesaCompartilhada = {
   id: "dp1", descricao: "Supermercado", valor: 350.5, data: "2026-05-20",
   categoriaNome: "Alimentação", pagadorUsuarioId: "u1", pagadorNome: "Dev Test",
+  statusAprovacao: 0, aprovadoPorNome: null,
 }
 
 const balanco: BalancoFamilia = {
@@ -167,6 +175,9 @@ describe("FamiliasPage (#85)", () => {
     inativarDependente.mockResolvedValue(undefined)
     registrarAcerto.mockResolvedValue(undefined)
     cancelarAcerto.mockResolvedValue(undefined)
+    definirLimiteAprovacao.mockResolvedValue(undefined)
+    aprovarDespesa.mockResolvedValue(undefined)
+    rejeitarDespesa.mockResolvedValue(undefined)
     setupDetailMocks()
   })
 
@@ -564,6 +575,43 @@ describe("FamiliasPage (#85)", () => {
     expect(await screen.findByText("Cancelar acerto?")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))
     await waitFor(() => expect(cancelarAcerto).toHaveBeenCalledWith("f1", "a1"))
+  })
+
+  // ══════════════════════════════════════════
+  // Aprovação de despesa (2.4)
+  // ══════════════════════════════════════════
+
+  it("despesa pendente: badge + aprovar chama aprovarDespesa (não-pagador) (2.4)", async () => {
+    // currentUser = u1 (default); despesa paga por u2 (Maria), pendente
+    setupDetailMocks({ despesas: [{ ...despesa, id: "dp2", pagadorUsuarioId: "u2", pagadorNome: "Maria", statusAprovacao: 1 }] })
+    await openDetalhe()
+    expect(screen.getByText("Pendente")).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Aprovar despesa"))
+    await waitFor(() => expect(aprovarDespesa).toHaveBeenCalledWith("f1", "dp2"))
+  })
+
+  it("despesa pendente: rejeitar chama rejeitarDespesa (2.4)", async () => {
+    setupDetailMocks({ despesas: [{ ...despesa, id: "dp2", pagadorUsuarioId: "u2", statusAprovacao: 1 }] })
+    await openDetalhe()
+    fireEvent.click(screen.getByLabelText("Rejeitar despesa"))
+    await waitFor(() => expect(rejeitarDespesa).toHaveBeenCalledWith("f1", "dp2"))
+  })
+
+  it("despesa pendente: o próprio pagador não vê aprovar/rejeitar (2.4)", async () => {
+    // currentUser = u1 e despesa paga por u1
+    setupDetailMocks({ despesas: [{ ...despesa, id: "dp3", pagadorUsuarioId: "u1", statusAprovacao: 1 }] })
+    await openDetalhe()
+    expect(screen.getByText("Pendente")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Aprovar despesa")).not.toBeInTheDocument()
+  })
+
+  it("admin define limite de aprovação (2.4)", async () => {
+    await openDetalhe()
+    fireEvent.click(screen.getByRole("button", { name: /Aprovação: desligada/i }))
+    const input = await screen.findByPlaceholderText(/Ex\.: 200/)
+    fireEvent.change(input, { target: { value: "300" } })
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    await waitFor(() => expect(definirLimiteAprovacao).toHaveBeenCalledWith("f1", 300))
   })
 
   // ══════════════════════════════════════════
