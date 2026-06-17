@@ -376,4 +376,64 @@ public class TransacaoServiceTests
         var todos = await svc.ListarAsync(usuarioId);
         Assert.Equal(3, todos.Total);
     }
+
+    // ── C3: soft delete de Transacao ───────────────────────────────────────────
+
+    private static Transacao NovaDespesa(Guid contaId) => new()
+    {
+        Id = Guid.NewGuid(),
+        ContaId = contaId,
+        Descricao = "Despesa",
+        Valor = 100m,
+        Tipo = TipoTransacao.Despesa,
+        Data = DateTime.UtcNow,
+    };
+
+    [Fact]
+    public async Task DeletarAsync_FazSoftDelete_NaoRemoveFisicamente()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var criada = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+
+        var ok = await svc.DeletarAsync(criada.Id, usuarioId);
+
+        Assert.True(ok);
+        // A linha NÃO foi removida fisicamente (preserva histórico/FinancialEventLog).
+        var fisica = await ctx.Transacoes.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == criada.Id);
+        Assert.NotNull(fisica);
+        Assert.False(fisica!.Ativo);
+        Assert.Equal(StatusTransacao.Cancelado, fisica.StatusTransacao);
+        Assert.NotNull(fisica.CanceladoEm);
+        Assert.False(string.IsNullOrWhiteSpace(fisica.MotivoCancelamento));
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaoRetornaTransacaoCancelada()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var manter = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+        var excluir = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+
+        await svc.DeletarAsync(excluir.Id, usuarioId);
+
+        // Regressão C3: a listagem não pode mais misturar canceladas com ativas.
+        var lista = await svc.ListarAsync(usuarioId);
+        Assert.Equal(1, lista.Total);
+        Assert.Equal(manter.Id, lista.Items.Single().Id);
+    }
+
+    [Fact]
+    public async Task DbSetFiltrado_ExcluiCancelada_mas_IgnoreQueryFilters_aVe()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var criada = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+        await svc.DeletarAsync(criada.Id, usuarioId);
+
+        Assert.Empty(await ctx.Transacoes.ToListAsync());
+        Assert.Single(await ctx.Transacoes.IgnoreQueryFilters().ToListAsync());
+    }
 }

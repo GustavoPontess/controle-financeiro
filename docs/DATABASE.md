@@ -150,7 +150,8 @@ Movimentações financeiras. Core entity.
 **Constraints:**
 - `ContaId XOR CartaoCreditoId` — nunca ambos NULL ou ambos preenchidos
 - Se `CartaoCreditoId` + !ParcelamentoId → linkado a `FaturaId`
-- `Ativo=false` = soft deleted (nunca deletar fisicamente)
+- `Ativo=false` = soft deleted (nunca deletar fisicamente). `DeletarAsync` faz soft delete (`Ativo=false` + `StatusTransacao=Cancelado` + `CanceladoEm` + `MotivoCancelamento`).
+- **Global query filter (C3):** `modelBuilder.Entity<Transacao>().HasQueryFilter(t => t.Ativo)` no `AppDbContext` exclui canceladas de **toda** query e navegação automaticamente (saldo, listagem, dashboard, relatório, totais de fatura, limite). Para ver canceladas (auditoria), usar `.IgnoreQueryFilters()`. É o único entidade com filtro global — `Recorrente`/`Parcelamento`/`ParcelaTransacao` filtram `Ativo` à mão (algumas telas mostram inativos de propósito).
 
 ---
 

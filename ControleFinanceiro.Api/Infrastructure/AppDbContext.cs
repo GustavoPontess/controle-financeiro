@@ -80,6 +80,11 @@ public class AppDbContext : DbContext
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Soft delete de Transacao: filtro global exclui canceladas (Ativo=false) de TODA
+        // query e navegação (saldo, listagem, dashboard, relatório, totais de fatura, etc.)
+        // automaticamente. Para ver canceladas (auditoria), usar .IgnoreQueryFilters().
+        modelBuilder.Entity<Transacao>().HasQueryFilter(t => t.Ativo);
+
         modelBuilder.Entity<Conta>()
             .HasMany(c => c.Transacoes)
             .WithOne(t => t.Conta)

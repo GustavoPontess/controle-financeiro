@@ -11,6 +11,7 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 ### Security
 - **C1 — reset de senha não vaza mais o token** (account takeover): `/forgot-password` passou a responder uma mensagem genérica e idêntica para qualquer e-mail (sem enumeração de usuário). A geração do token e o envio do e-mail agora rodam fire-and-forget (Hangfire `PasswordResetEmailJob`), eliminando o oráculo de timing; o token só chega ao usuário pelo e-mail.
 - **C2 — o 500 não vaza mais detalhe interno**: o `GlobalExceptionHandlerMiddleware` deixou de ecoar a mensagem da exceção no HTTP 500 (vazava EF/Npgsql/SQL) — agora retorna mensagem genérica e loga o detalhe só no servidor. Os 67 `throw new Exception(...)` dos services viraram tipos específicos, então erros de validação/não-encontrado/conflito voltam com o status correto (400/404/409) em vez de 500.
+- **C3 — soft delete de transação**: excluir uma transação não a apaga mais fisicamente (preserva histórico e a referência do `FinancialEventLog`) — marca `Ativo=false`/`Cancelado`. Um filtro global passou a excluir transações canceladas de toda consulta (saldo, listagem, dashboard, relatórios, faturas); de quebra, pernas de transferências excluídas deixaram de aparecer na listagem.
 
 ### Fixed
 - Teste flaky `RecorrentesPage` no CI (`getAllByTitle` síncrono → `await findAllByTitle`).
