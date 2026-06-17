@@ -79,14 +79,14 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | C1 | Reset token não pode vir na resposta + e-mail fire-and-forget | **Vaza na resposta** (account takeover) | 🔴 |
 | — | JWT validation (assinatura/exp/iss/aud) | ✅ já fazemos (ClockSkew=0) | ok |
 | — | CORS `WithOrigins` | ✅ restrito a localhost:5173 (falta allowlist prod) | 🟡 |
-| — | Token em cookie HttpOnly+SameSite=Strict | ✅ já usamos cookie HttpOnly (confirmar refresh tb) | verificar |
+| — | Token em cookie HttpOnly+SameSite=Strict | ✅ jwt **e** refresh em cookie HttpOnly+Secure(HTTPS)+SameSite=Strict | ✔ |
 | A1/A2 | PBKDF2 ≥600k OU Argon2id | ✅ **Argon2id m=19456/t=2/p=1, salt 16B, saída 32B, rehash no login** | ✔ |
 | — | Reset token hasheado no banco | ✅ **SHA-256 (OpaqueTokenHasher); bruto só no e-mail** | ✔ |
 | — | Anti-enumeração (timing) | ✅ resolvido no C1 (fire-and-forget) | ✔ |
 | — | Rate-limit reset por conta | ✅ **3/conta/hora no job + 1/IP/15min no endpoint** | ✔ |
 | — | Política senha 15 chars (sem MFA) | ✅ **15 + teto 128** (front e back) | ✔ |
-| — | Re-auth em trocar e-mail/senha | confirmar se exige senha | 🟡 |
-| — | CSP estrita (pré-condição XSS) | confirmar | 🟡 |
+| — | Re-auth em trocar e-mail/senha | ✅ troca de senha exige senha atual; não há troca de e-mail/delete de conta | ✔ |
+| — | CSP estrita + headers de segurança | ✅ `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame DENY, Referrer, Permissions, HSTS sob HTTPS) | ✔ |
 
 ### Sprint de Auth Hardening recomendado (cada um = branch → PR → CI)
 1. ✅ **C1** — tira reset token da resposta + e-mail fire-and-forget (mata account takeover + timing enum)
@@ -94,8 +94,8 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 3. ✅ **C3** — soft delete de Transacao + global query filter
 4. ✅ **A1/A2** — Argon2id (Konscious) com rehash transparente no login; salt 16B, saída 32B, formato versionado
 5. ✅ **Reset token hasheado** + rate-limit por conta + política 15 chars
-6. **Re-auth** em operações sensíveis + confirmar cookie do refresh + CSP ← próximo
-7. **⚠️ Rotacionar segredos** (JWT key + senha Postgres) + **pepper** (NIST SHOULD) — não depende de pesquisa, é procedimento
+6. ✅ **Re-auth** (troca de senha já exige senha atual; sem troca de e-mail/delete) + refresh em cookie HttpOnly (confirmado) + **CSP/headers de segurança** (`SecurityHeadersMiddleware`)
+7. **⚠️ Rotacionar segredos** (JWT key + senha Postgres) + **pepper** (NIST SHOULD) — não depende de pesquisa, é procedimento ← próximo
 
 ### Antes de codar os domínios abertos
 Re-rodar deep-research (quando o servidor não estiver rate-limitando) para: **rotação de segredos/key rollover**, **MFA no .NET**, **cripto-at-rest/PII**, **LGPD/BACEN**.
