@@ -91,7 +91,7 @@ public class FaturaService
     public async Task<Fatura> ObterOuCriarFaturaAsync(Guid cartaoCreditoId, DateTime dataTransacao, Guid usuarioId)
     {
         var cartao = await _context.CartoesCredito.FindAsync(cartaoCreditoId)
-            ?? throw new Exception("Cartão de crédito não encontrado.");
+            ?? throw new KeyNotFoundException("Cartão de crédito não encontrado.");
 
         var (inicio, fechamento) = CalcularPeriodo(dataTransacao.Date, cartao.DiaFechamento);
 
@@ -150,7 +150,7 @@ public class FaturaService
         Guid? subcategoriaId = null)
     {
         if (numParcelas < 2)
-            throw new Exception("Parcelamento requer no mínimo 2 parcelas.");
+            throw new ArgumentException("Parcelamento requer no mínimo 2 parcelas.");
 
         var valorParcela = Math.Round(valorTotal / numParcelas, 2);
         var resto = valorTotal - valorParcela * numParcelas; // centavos residuais vão para a última parcela
@@ -203,24 +203,24 @@ public class FaturaService
             .Include(f => f.Transacoes)
             .Include(f => f.ParcelasTransacao)
             .FirstOrDefaultAsync(f => f.Id == faturaId)
-            ?? throw new Exception("Fatura não encontrada.");
+            ?? throw new KeyNotFoundException("Fatura não encontrada.");
 
         if (fatura.CartaoCredito.CriadoPor != usuarioId)
-            throw new Exception("Você não tem permissão para pagar esta fatura.");
+            throw new UnauthorizedAccessException("Você não tem permissão para pagar esta fatura.");
 
         if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
-            throw new Exception("Esta fatura já foi paga integralmente.");
+            throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
 
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
-            ?? throw new Exception("Conta não encontrada.");
+            ?? throw new KeyNotFoundException("Conta não encontrada.");
 
         // Inclui crédito à vista (legacy) + parcelas do sistema novo
         var valorTotal = CalcularValorTotal(fatura);
 
         var valorRestante = valorTotal - fatura.ValorPago;
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
-            throw new Exception($"Valor inválido. Restante a pagar: {valorRestante:C}.");
+            throw new ArgumentException($"Valor inválido. Restante a pagar: {valorRestante:C}.");
 
         // Cria transação de débito na conta (aqui o saldo da conta é afetado — invariante 5)
         var pagamento = new Transacao
@@ -263,7 +263,7 @@ public class FaturaService
     {
         var cartao = await _context.CartoesCredito
             .FirstOrDefaultAsync(c => c.Id == cartaoCreditoId && c.CriadoPor == usuarioId)
-            ?? throw new Exception("Cartão não encontrado.");
+            ?? throw new KeyNotFoundException("Cartão não encontrado.");
 
         var faturas = await _context.Faturas
             .Where(f => f.CartaoCreditoId == cartaoCreditoId)
@@ -286,7 +286,7 @@ public class FaturaService
             .Include(f => f.ParcelasTransacao)
             .AsNoTracking()
             .FirstOrDefaultAsync()
-            ?? throw new Exception("Fatura não encontrada.");
+            ?? throw new KeyNotFoundException("Fatura não encontrada.");
 
         var dto = new FaturaDetalheDto();
         PreencherDto(dto, fatura, fatura.CartaoCredito.Nome);

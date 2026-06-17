@@ -29,18 +29,18 @@ namespace ControleFinanceiro.Api.Services
                 var conta = await _context.Contas
                     .FirstOrDefaultAsync(c => c.Id == transacao.ContaId && c.UsuarioIdProprietario == usuarioId);
                 if (conta == null)
-                    throw new Exception("Conta não encontrada ou você não tem permissão.");
+                    throw new KeyNotFoundException("Conta não encontrada ou você não tem permissão.");
             }
             else if (transacao.CartaoCreditoId.HasValue)
             {
                 var cartao = await _context.CartoesCredito
                     .FirstOrDefaultAsync(c => c.Id == transacao.CartaoCreditoId && c.CriadoPor == usuarioId);
                 if (cartao == null)
-                    throw new Exception("Cartão não encontrado ou você não tem permissão.");
+                    throw new KeyNotFoundException("Cartão não encontrado ou você não tem permissão.");
             }
             else
             {
-                throw new Exception("Informe uma conta ou um cartão de crédito.");
+                throw new ArgumentException("Informe uma conta ou um cartão de crédito.");
             }
 
             if (transacao.CategoriaId.HasValue)
@@ -49,13 +49,13 @@ namespace ControleFinanceiro.Api.Services
                     .FirstOrDefaultAsync(c => c.Id == transacao.CategoriaId);
 
                 if (categoria == null)
-                    throw new Exception("Categoria não encontrada.");
+                    throw new KeyNotFoundException("Categoria não encontrada.");
 
                 if (categoria.Finalidade == Finalidade.Receita && transacao.Tipo == TipoTransacao.Despesa)
-                    throw new Exception("Categoria inválida para despesa.");
+                    throw new ArgumentException("Categoria inválida para despesa.");
 
                 if (categoria.Finalidade == Finalidade.Despesa && transacao.Tipo == TipoTransacao.Receita)
-                    throw new Exception("Categoria inválida para receita.");
+                    throw new ArgumentException("Categoria inválida para receita.");
             }
 
             if (transacao.SubcategoriaId.HasValue)
@@ -63,20 +63,20 @@ namespace ControleFinanceiro.Api.Services
                 var sub = await _context.Subcategorias
                     .FirstOrDefaultAsync(s => s.Id == transacao.SubcategoriaId && (s.UsuarioId == null || s.UsuarioId == usuarioId));
                 if (sub == null)
-                    throw new Exception("Subcategoria não encontrada.");
+                    throw new KeyNotFoundException("Subcategoria não encontrada.");
                 if (transacao.CategoriaId.HasValue && sub.CategoriaId != transacao.CategoriaId)
-                    throw new Exception("Subcategoria não pertence à categoria selecionada.");
+                    throw new ArgumentException("Subcategoria não pertence à categoria selecionada.");
             }
 
             if (transacao.Valor <= 0)
-                throw new Exception("O valor da transação deve ser positivo.");
+                throw new ArgumentException("O valor da transação deve ser positivo.");
 
             // Data futura só é proibida pra lançamento JÁ efetivado em conta. Previsão
             // (ex.: salário do próximo mês) pode ser futura — é justamente o ponto dela.
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
                 && transacao.Data.Date > DateTime.UtcNow.Date)
-                throw new Exception("A data da transação não pode ser futura.");
+                throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Transação de crédito → associar à fatura correspondente (invariante 2)
             if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue)
@@ -99,11 +99,11 @@ namespace ControleFinanceiro.Api.Services
         public async Task<List<Transacao>> CriarParcelamentoAsync(CriarTransacaoDto dto, Guid usuarioId)
         {
             if (!dto.CartaoCreditoId.HasValue)
-                throw new Exception("Parcelamento requer cartão de crédito.");
+                throw new ArgumentException("Parcelamento requer cartão de crédito.");
 
             var cartao = await _context.CartoesCredito
                 .FirstOrDefaultAsync(c => c.Id == dto.CartaoCreditoId && c.CriadoPor == usuarioId)
-                ?? throw new Exception("Cartão não encontrado.");
+                ?? throw new KeyNotFoundException("Cartão não encontrado.");
 
             return await _faturaService.CriarParcelamentoAsync(
                 cartao.Id,
@@ -249,10 +249,10 @@ namespace ControleFinanceiro.Api.Services
             if (transacao is null) return false;
 
             if (dados.Valor <= 0)
-                throw new Exception("O valor da transação deve ser positivo.");
+                throw new ArgumentException("O valor da transação deve ser positivo.");
 
             if (dados.Data.Date > DateTime.UtcNow.Date)
-                throw new Exception("A data da transação não pode ser futura.");
+                throw new ArgumentException("A data da transação não pode ser futura.");
 
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
@@ -289,7 +289,7 @@ namespace ControleFinanceiro.Api.Services
                 .FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId);
 
             if (conta == null)
-                throw new Exception("Conta não encontrada.");
+                throw new KeyNotFoundException("Conta não encontrada.");
 
             var transacoes = await _context.Transacoes
                 .Where(t => t.ContaId == contaId)

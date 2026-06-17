@@ -55,14 +55,24 @@ public sealed class GlobalExceptionHandlerMiddleware
             _                          => (StatusCodes.Status500InternalServerError,   "INTERNAL_ERROR")
         };
 
-        if (statusCode == StatusCodes.Status500InternalServerError)
+        var isServerError = statusCode == StatusCodes.Status500InternalServerError;
+
+        if (isServerError)
             _logger.LogError(exception, "Unhandled exception");
         else
             _logger.LogWarning(exception, "Handled exception [{Code}]", code);
 
+        // No 500 a mensagem da exceção pode carregar detalhe interno (EF/Npgsql, stack,
+        // SQL) — nunca ecoar pro cliente. O detalhe fica só no log do servidor; o cliente
+        // recebe uma mensagem genérica. Exceções mapeadas (4xx) têm mensagem de domínio
+        // intencional e segura, essas seguem pro cliente.
+        var message = isServerError
+            ? "Erro interno do servidor. Tente novamente mais tarde."
+            : exception.Message;
+
         var response = new ErrorResponseDto
         {
-            Message = exception.Message,
+            Message = message,
             Code    = code
         };
 

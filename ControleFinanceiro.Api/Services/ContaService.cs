@@ -36,13 +36,13 @@ namespace ControleFinanceiro.Api.Services
         public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0)
         {
             if (string.IsNullOrWhiteSpace(conta.Nome))
-                throw new Exception("Nome é obrigatório.");
+                throw new ArgumentException("Nome é obrigatório.");
 
             if (conta.Nome.Length > 100)
-                throw new Exception("Nome deve ter no máximo 100 caracteres.");
+                throw new ArgumentException("Nome deve ter no máximo 100 caracteres.");
 
             if (saldoInicial < 0)
-                throw new Exception("Saldo inicial não pode ser negativo.");
+                throw new ArgumentException("Saldo inicial não pode ser negativo.");
 
             conta.Id = Guid.NewGuid();
             conta.UsuarioIdProprietario = usuarioId;
@@ -71,16 +71,16 @@ namespace ControleFinanceiro.Api.Services
         public async Task AtualizarAsync(Guid id, Conta conta, Guid usuarioId)
         {
             var existente = await _context.Contas.FindAsync(id)
-                ?? throw new Exception("Conta não encontrada.");
+                ?? throw new KeyNotFoundException("Conta não encontrada.");
 
             if (existente.UsuarioIdProprietario != usuarioId)
-                throw new Exception("Você não tem permissão para atualizar esta conta.");
+                throw new UnauthorizedAccessException("Você não tem permissão para atualizar esta conta.");
 
             if (existente.IsCarteira)
-                throw new Exception("A carteira não pode ser editada.");
+                throw new InvalidOperationException("A carteira não pode ser editada.");
 
             if (string.IsNullOrWhiteSpace(conta.Nome))
-                throw new Exception("Nome é obrigatório.");
+                throw new ArgumentException("Nome é obrigatório.");
 
             existente.Nome = conta.Nome;
             existente.NumeroConta = conta.NumeroConta;
@@ -95,13 +95,13 @@ namespace ControleFinanceiro.Api.Services
         public async Task DeletarAsync(Guid id, Guid usuarioId)
         {
             var conta = await _context.Contas.FindAsync(id)
-                ?? throw new Exception("Conta não encontrada.");
+                ?? throw new KeyNotFoundException("Conta não encontrada.");
 
             if (conta.UsuarioIdProprietario != usuarioId)
-                throw new Exception("Você não tem permissão para deletar esta conta.");
+                throw new UnauthorizedAccessException("Você não tem permissão para deletar esta conta.");
 
             if (conta.IsCarteira)
-                throw new Exception("A carteira não pode ser deletada.");
+                throw new InvalidOperationException("A carteira não pode ser deletada.");
 
             _context.Contas.Remove(conta);
             await _context.SaveChangesAsync();

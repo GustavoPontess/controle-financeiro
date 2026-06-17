@@ -31,7 +31,7 @@ namespace ControleFinanceiro.Api.Services
         public async Task<Banco> CriarAsync(Banco banco)
         {
             if (string.IsNullOrWhiteSpace(banco.Nome))
-                throw new Exception("Nome é obrigatório.");
+                throw new ArgumentException("Nome é obrigatório.");
 
             banco.Id = Guid.NewGuid();
             _context.Bancos.Add(banco);
@@ -42,10 +42,10 @@ namespace ControleFinanceiro.Api.Services
         public async Task AtualizarAsync(Guid id, Banco banco)
         {
             var existente = await _context.Bancos.FindAsync(id)
-                ?? throw new Exception("Banco não encontrado.");
+                ?? throw new KeyNotFoundException("Banco não encontrado.");
 
             if (string.IsNullOrWhiteSpace(banco.Nome))
-                throw new Exception("Nome é obrigatório.");
+                throw new ArgumentException("Nome é obrigatório.");
 
             existente.Nome = banco.Nome;
             existente.Tipo = banco.Tipo;
@@ -55,7 +55,7 @@ namespace ControleFinanceiro.Api.Services
         public async Task DeletarAsync(Guid id)
         {
             var banco = await _context.Bancos.FindAsync(id)
-                ?? throw new Exception("Banco não encontrado.");
+                ?? throw new KeyNotFoundException("Banco não encontrado.");
 
             _context.Bancos.Remove(banco);
             await _context.SaveChangesAsync();

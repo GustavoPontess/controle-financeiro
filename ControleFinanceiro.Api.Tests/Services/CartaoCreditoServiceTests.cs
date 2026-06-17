@@ -40,7 +40,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.Nome = "   ";
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("Nome", ex.Message);
     }
 
@@ -52,7 +52,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.Limite = 0;
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("Limite", ex.Message);
     }
 
@@ -64,7 +64,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.Limite = -100;
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.DiaFechamento = 0;
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("fechamento", ex.Message);
     }
 
@@ -87,7 +87,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.DiaFechamento = 29;
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.DiaFechamento = null;
 
-        await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.DiaVencimento = 29;
 
-        var ex = await Assert.ThrowsAsync<Exception>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("vencimento", ex.Message);
     }
 
@@ -229,6 +229,6 @@ public class CartaoCreditoServiceTests
         var dto = DtoValido();
         dto.Limite = -500;
 
-        await Assert.ThrowsAsync<Exception>(() => svc.AtualizarAsync(cartao.Id, dto, usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(cartao.Id, dto, usuarioId));
     }
 }

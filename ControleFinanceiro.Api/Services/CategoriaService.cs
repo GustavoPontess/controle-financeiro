@@ -32,10 +32,10 @@ namespace ControleFinanceiro.Api.Services
         public async Task<Categoria> CriarAsync(Categoria categoria, Guid usuarioId)
         {
             if (string.IsNullOrWhiteSpace(categoria.Descricao))
-                throw new Exception("Descrição é obrigatória.");
+                throw new ArgumentException("Descrição é obrigatória.");
 
             if (categoria.Descricao.Length > 400)
-                throw new Exception("Descrição deve ter no máximo 400 caracteres.");
+                throw new ArgumentException("Descrição deve ter no máximo 400 caracteres.");
 
             categoria.Id = Guid.NewGuid();
             categoria.UsuarioId = usuarioId;
@@ -49,13 +49,13 @@ namespace ControleFinanceiro.Api.Services
         public async Task DeletarAsync(Guid id, Guid usuarioId)
         {
             var categoria = await _context.Categorias.FindAsync(id)
-                ?? throw new Exception("Categoria não encontrada.");
+                ?? throw new KeyNotFoundException("Categoria não encontrada.");
 
             if (categoria.UsuarioId == null)
-                throw new Exception("Categorias padrão não podem ser removidas.");
+                throw new InvalidOperationException("Categorias padrão não podem ser removidas.");
 
             if (categoria.UsuarioId != usuarioId)
-                throw new Exception("Você não tem permissão para remover esta categoria.");
+                throw new UnauthorizedAccessException("Você não tem permissão para remover esta categoria.");
 
             _context.Categorias.Remove(categoria);
             await _context.SaveChangesAsync();

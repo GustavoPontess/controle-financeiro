@@ -171,7 +171,7 @@ public class RecorrenteService
         // Validar ContaId XOR CartaoCreditoId
         if ((dto.ContaId == null && dto.CartaoCreditoId == null) ||
             (dto.ContaId != null && dto.CartaoCreditoId != null))
-            throw new Exception("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
+            throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
 
         Guid recorrenteId = Guid.NewGuid();
         var correlationId = Guid.NewGuid();
@@ -187,23 +187,23 @@ public class RecorrenteService
                 var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
                 if (prevEvent != null)
                     return (await ListarAsync(usuarioId)).Items.FirstOrDefault(r => r.Id == recorrenteId)
-                        ?? throw new Exception("Idempotência: evento anterior encontrado mas recorrente não existe.");
+                        ?? throw new InvalidOperationException("Idempotência: evento anterior encontrado mas recorrente não existe.");
             }
 
             // Validar origem
             if (dto.ContaId.HasValue)
             {
                 var conta = await _context.Contas.FindAsync(dto.ContaId)
-                    ?? throw new Exception("Conta não encontrada.");
+                    ?? throw new KeyNotFoundException("Conta não encontrada.");
                 if (conta.UsuarioIdProprietario != usuarioId)
-                    throw new Exception("Conta não pertence ao usuário.");
+                    throw new UnauthorizedAccessException("Conta não pertence ao usuário.");
             }
             else if (dto.CartaoCreditoId.HasValue)
             {
                 var cartao = await _context.CartoesCredito.FindAsync(dto.CartaoCreditoId)
-                    ?? throw new Exception("Cartão não encontrado.");
+                    ?? throw new KeyNotFoundException("Cartão não encontrado.");
                 if (cartao.CriadoPor != usuarioId)
-                    throw new Exception("Cartão não pertence ao usuário.");
+                    throw new UnauthorizedAccessException("Cartão não pertence ao usuário.");
             }
 
             // Criar recorrente com janela de 3 meses
