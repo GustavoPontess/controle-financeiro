@@ -19,6 +19,7 @@ const mockData: DashboardData = {
   receitasMes: 1400, despesasMes: 500, saldoMes: 900,
   recebido: 1000, aReceber: 400, pago: 300, aPagar: 200,
   entradasCaixa: 1000, saidasCaixa: 300, saldoCaixaMes: 700,
+  entradasCaixaMesAnterior: 800, saidasCaixaMesAnterior: 400,
   evolucaoSaldo: [{ label: "mai/26", ano: 2026, mes: 5, saldo: 5000 }],
   topCategorias: [{ descricao: "Mercado", valor: 300, percentual: 60 }],
   transacoesRecentes: [
@@ -60,6 +61,23 @@ describe("DashboardPage (#81)", () => {
     for (const stat of ["Entrou", "Saiu", "Sobrou"]) {
       expect(screen.getByText(stat)).toBeInTheDocument()
     }
+  })
+
+  it("mostra variação % vs mês anterior nos cards Entrou/Saiu (#1.3)", async () => {
+    renderDash()
+    await screen.findByText("Entrou")
+    // entrou 1000 vs 800 = +25%; saiu 300 vs 400 = -25%
+    expect(screen.getByText("+25%")).toBeInTheDocument()
+    expect(screen.getByText("-25%")).toBeInTheDocument()
+  })
+
+  it("esconde a variação quando não há mês anterior (baseline 0)", async () => {
+    getDashboard.mockReset()
+    getDashboard.mockResolvedValue({ ...mockData, entradasCaixaMesAnterior: 0, saidasCaixaMesAnterior: 0 })
+    renderDash()
+    await screen.findByText("Entrou")
+    expect(screen.queryByText("+25%")).not.toBeInTheDocument()
+    expect(screen.queryByText("-25%")).not.toBeInTheDocument()
   })
 
   it("mostra pendências quando há a receber / a pagar", async () => {

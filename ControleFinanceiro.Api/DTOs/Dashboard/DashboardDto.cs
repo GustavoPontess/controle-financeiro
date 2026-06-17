@@ -8,6 +8,10 @@ public class DashboardDto
     public decimal ReceitasMes { get; set; }
     public decimal DespesasMes { get; set; }
     public decimal SaldoMes { get; set; }
+    /// <summary>Entradas/Saídas de CAIXA do mês anterior — pros cards "Entrou/Saiu"
+    /// mostrarem variação % vs mês passado (#1.3). Mesma base do EntradasCaixa/SaidasCaixa.</summary>
+    public decimal EntradasCaixaMesAnterior { get; set; }
+    public decimal SaidasCaixaMesAnterior { get; set; }
 
     // 6 KPIs do mês (#81). Receitas = Recebido + AReceber; Despesas = Pago + APagar.
     // Recebido/Pago = StatusTransacao.Executado | AReceber/APagar = StatusTransacao.Previsao.

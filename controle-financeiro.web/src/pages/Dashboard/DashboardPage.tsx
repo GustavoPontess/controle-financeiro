@@ -11,7 +11,7 @@
  * para as cores dos gráficos recharts — var() não resolve em atributos SVG.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ChevronLeft, ChevronRight, Wallet,
@@ -178,8 +178,10 @@ export default function DashboardPage() {
                 moveu caixa; compras no crédito aparecem em Pendências abaixo
                 como "ainda vai sair" via APagar. */}
             <div className={styles.monthGrid}>
-              <MonthStat label="Entrou" value={fmt(data.entradasCaixa)} icon={ArrowUpRight} tone="success" />
-              <MonthStat label="Saiu" value={fmt(data.saidasCaixa)} icon={ArrowDownLeft} tone="danger" />
+              <MonthStat label="Entrou" value={fmt(data.entradasCaixa)} icon={ArrowUpRight} tone="success"
+                current={data.entradasCaixa} prev={data.entradasCaixaMesAnterior} higherIsBetter hide={hide} />
+              <MonthStat label="Saiu" value={fmt(data.saidasCaixa)} icon={ArrowDownLeft} tone="danger"
+                current={data.saidasCaixa} prev={data.saidasCaixaMesAnterior} hide={hide} />
               <MonthStat
                 label="Sobrou" value={fmt(data.saldoCaixaMes)} icon={PiggyBank}
                 tone={data.saldoCaixaMes >= 0 ? "success" : "danger"}
@@ -395,10 +397,27 @@ function TxRow({ t, fmt }: { t: TransacaoRecente; fmt: (v: number) => string }) 
  * Entrou/Saiu: valor neutro, só o ícone colorido (menos ruído).
  * Sobrou (emphasis): fundo soft + valor colorido — é a resposta que salta.
  */
-function MonthStat({ label, value, icon: Icon, tone, emphasis }: {
+function MonthStat({ label, value, icon: Icon, tone, emphasis, current, prev, higherIsBetter, hide }: {
   label: string; value: string; icon: LucideIcon
   tone: "success" | "danger"; emphasis?: boolean
+  /** Variação % vs mês anterior (#1.3). Só renderiza se houver baseline > 0. */
+  current?: number; prev?: number; higherIsBetter?: boolean; hide?: boolean
 }) {
+  // Variação vs mês anterior: seta na direção do número; cor por "bom/ruim" pra
+  // a métrica (mais entrada = bom; mais saída = ruim).
+  let delta: ReactNode = null
+  if (current !== undefined && prev !== undefined && Math.abs(prev) > 0.005) {
+    const pct = ((current - prev) / Math.abs(prev)) * 100
+    const subiu = pct >= 0
+    const bom = subiu === !!higherIsBetter
+    const DeltaIcon = subiu ? TrendingUp : TrendingDown
+    delta = (
+      <div className={styles.statDelta} data-tone={bom ? "up" : "down"} title="vs mês anterior">
+        <DeltaIcon size={13} strokeWidth={2.5} />
+        <span>{hide ? "••••" : `${subiu ? "+" : ""}${pct.toFixed(0)}%`}</span>
+      </div>
+    )
+  }
   return (
     <div className={styles.stat} data-emphasis={!!emphasis} data-tone={tone}>
       <div className={styles.statHead}>
@@ -408,6 +427,7 @@ function MonthStat({ label, value, icon: Icon, tone, emphasis }: {
         <span className={styles.statLabel}>{label}</span>
       </div>
       <div className={styles.statValue} data-emphasis={!!emphasis} data-tone={tone}>{value}</div>
+      {delta}
     </div>
   )
 }
