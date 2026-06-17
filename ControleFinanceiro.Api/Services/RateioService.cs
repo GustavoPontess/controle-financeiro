@@ -55,7 +55,7 @@ public class RateioService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode alterar suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
         if (transacao.FamiliaId is null)
             throw new InvalidOperationException(
@@ -96,7 +96,7 @@ public class RateioService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode alterar suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
         _context.RateiosTransacao.RemoveRange(transacao.Rateios);
         transacao.ModoRateio = null;
@@ -113,7 +113,7 @@ public class RateioService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode ver suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode ver suas próprias transações.");
 
         var percentualPorMembro = transacao.Rateios
             .ToDictionary(r => r.UsuarioId, r => r.Percentual);

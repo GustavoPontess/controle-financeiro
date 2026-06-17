@@ -69,7 +69,7 @@ public class DespesaCompartilhadaServiceTests
         var txId = SeedTransacao(ctx, dono, 100m);
         var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.CompartilharAsync(txId, familiaId, Guid.NewGuid()));
     }
 

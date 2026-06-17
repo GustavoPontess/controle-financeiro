@@ -71,7 +71,7 @@ public class SubcategoriaService
             throw new InvalidOperationException("Subcategorias padrão não podem ser editadas.");
 
         if (sub.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Você não tem permissão para editar esta subcategoria.");
+            throw new ForbiddenAccessException("Você não tem permissão para editar esta subcategoria.");
 
         if (string.IsNullOrWhiteSpace(dados.Nome))
             throw new ArgumentException("Nome é obrigatório.");
@@ -96,7 +96,7 @@ public class SubcategoriaService
             throw new InvalidOperationException("Subcategorias padrão não podem ser removidas.");
 
         if (sub.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Você não tem permissão para remover esta subcategoria.");
+            throw new ForbiddenAccessException("Você não tem permissão para remover esta subcategoria.");
 
         _context.Subcategorias.Remove(sub);
         await _context.SaveChangesAsync();

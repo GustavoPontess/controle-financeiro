@@ -130,7 +130,7 @@ public class RateioServiceTests
         var txId = SeedDespesa(ctx, dono, 100m, familiaId);
         var svc = new RateioService(ctx);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.DefinirRateioTransacaoAsync(
                 txId, Guid.NewGuid(), new DefinirRateioTransacaoDto(ModoRateio.Igualitario, null)));
     }

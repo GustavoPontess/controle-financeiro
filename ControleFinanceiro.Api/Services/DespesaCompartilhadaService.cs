@@ -24,7 +24,7 @@ public class DespesaCompartilhadaService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode compartilhar suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode compartilhar suas próprias transações.");
 
         if (transacao.Tipo != TipoTransacao.Despesa)
             throw new InvalidOperationException("Apenas despesas podem ser compartilhadas.");
@@ -59,7 +59,7 @@ public class DespesaCompartilhadaService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode alterar suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
         transacao.FamiliaId = null;
         await _context.SaveChangesAsync();

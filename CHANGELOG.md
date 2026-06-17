@@ -18,6 +18,9 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 - **Segredos fora do versionamento**: o `docker-compose.yml` não traz mais senha de banco nem chave JWT padrão — exige `POSTGRES_PASSWORD` e `JWT_SECRET` via `.env` (gitignored; template em `.env.example`), falhando o boot se ausentes em vez de cair num default fraco.
 - **Refresh token guardado como hash**: assim como o token de reset, o refresh token agora é gravado no banco como hash (SHA-256) — o valor real só vive no cookie do navegador. Um vazamento do banco não expõe sessões reutilizáveis.
 
+### Changed
+- **403 para falta de permissão (antes 401)**: erros de autorização (mexer em recurso/ação que não é seu) agora retornam HTTP 403 em vez de 401. Antes, qualquer erro de permissão deslogava o usuário; agora só falha de autenticação real (login/refresh/senha) desloga. A mensagem de "sem permissão" aparece na tela sem derrubar a sessão.
+
 ### Fixed
 - Teste flaky `RecorrentesPage` no CI (`getAllByTitle` síncrono → `await findAllByTitle`).
 

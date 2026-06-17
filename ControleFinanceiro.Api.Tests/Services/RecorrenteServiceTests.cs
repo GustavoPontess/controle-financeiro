@@ -218,7 +218,7 @@ public class RecorrenteServiceTests
         var rec = SeedRecorrente(ctx, u1, c);
 
         var svc = CreateService(ctx);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.CancelarAsync(rec.Id, new CancelarRecorrenteDto { Motivo = "Teste" }, u2));
     }
 
@@ -291,7 +291,7 @@ public class RecorrenteServiceTests
         SeedTransacaoPrevisao(ctx, u1, rec.Id, c);
 
         var svc = CreateService(ctx);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.EditarProximaOcorrenciaAsync(rec.Id, new EditarProximaOcorrenciaDto { Valor = 100m }, u2));
     }
 
@@ -346,7 +346,7 @@ public class RecorrenteServiceTests
         var rec = SeedRecorrente(ctx, u1, c);
 
         var svc = CreateService(ctx);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.ToggleAtivoAsync(rec.Id, u2));
     }
 
@@ -376,7 +376,7 @@ public class RecorrenteServiceTests
         var rec = SeedRecorrente(ctx, u1, c);
 
         var svc = CreateService(ctx);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.DeletarAsync(rec.Id, u2));
     }
 
@@ -424,7 +424,7 @@ public class RecorrenteServiceTests
             Descricao = "x", Valor = 1m, Tipo = 1, ContaId = c,
             Frequencia = 1, Dia = 1, DataInicio = DateTime.UtcNow.Date
         };
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.AtualizarAsync(rec.Id, dto, u2));
     }
 

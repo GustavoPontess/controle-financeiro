@@ -34,7 +34,7 @@ public class ConviteService
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
         if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Apenas o administrador pode convidar.");
+            throw new ForbiddenAccessException("Apenas o administrador pode convidar.");
 
         // E-mail já é membro ativo?
         var jaMembro = await _context.MembrosFamilia
@@ -94,7 +94,7 @@ public class ConviteService
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
         if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("Apenas o administrador pode revogar convites.");
+            throw new ForbiddenAccessException("Apenas o administrador pode revogar convites.");
 
         var convite = await _context.ConvitesFamilia
             .FirstOrDefaultAsync(c => c.Id == conviteId && c.FamiliaId == familiaId)
@@ -199,7 +199,7 @@ public class ConviteService
 
         if (!string.Equals(usuario.Email.Trim(), convite.EmailConvidado,
                 StringComparison.OrdinalIgnoreCase))
-            throw new UnauthorizedAccessException("Este convite não é para o seu e-mail.");
+            throw new ForbiddenAccessException("Este convite não é para o seu e-mail.");
 
         return usuario;
     }

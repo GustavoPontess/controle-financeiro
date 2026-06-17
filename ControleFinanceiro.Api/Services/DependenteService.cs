@@ -104,7 +104,7 @@ public class DependenteService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new UnauthorizedAccessException("Você só pode alterar suas próprias transações.");
+            throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
         if (dependenteId is null)
         {

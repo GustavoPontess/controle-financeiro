@@ -94,7 +94,7 @@ public class FamiliaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.DissolverAsync(familia.Id, Guid.NewGuid()));
     }
 

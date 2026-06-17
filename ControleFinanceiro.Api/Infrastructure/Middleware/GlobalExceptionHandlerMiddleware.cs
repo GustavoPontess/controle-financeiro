@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.DTOs.Common;
+using ControleFinanceiro.Api.Services;
 using System.Text.Json;
 
 namespace ControleFinanceiro.Api.Infrastructure.Middleware;
@@ -11,6 +12,7 @@ namespace ControleFinanceiro.Api.Infrastructure.Middleware;
 /// - <see cref="ArgumentException"/>           → 400 Bad Request   (VALIDATION_ERROR)
 /// - <see cref="KeyNotFoundException"/>         → 404 Not Found     (NOT_FOUND)
 /// - <see cref="InvalidOperationException"/>    → 409 Conflict      (BUSINESS_RULE_VIOLATION)
+/// - <see cref="ControleFinanceiro.Api.Services.ForbiddenAccessException"/> → 403 Forbidden (FORBIDDEN)
 /// - <see cref="UnauthorizedAccessException"/>  → 401 Unauthorized  (UNAUTHORIZED)
 /// - Qualquer outra                             → 500 Internal      (INTERNAL_ERROR)
 /// </summary>
@@ -51,6 +53,7 @@ public sealed class GlobalExceptionHandlerMiddleware
             ArgumentException          => (StatusCodes.Status400BadRequest,          "VALIDATION_ERROR"),
             KeyNotFoundException        => (StatusCodes.Status404NotFound,             "NOT_FOUND"),
             InvalidOperationException   => (StatusCodes.Status409Conflict,             "BUSINESS_RULE_VIOLATION"),
+            ForbiddenAccessException    => (StatusCodes.Status403Forbidden,            "FORBIDDEN"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized,         "UNAUTHORIZED"),
             _                          => (StatusCodes.Status500InternalServerError,   "INTERNAL_ERROR")
         };

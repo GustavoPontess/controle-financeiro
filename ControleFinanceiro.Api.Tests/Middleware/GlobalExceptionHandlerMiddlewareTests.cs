@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure.Middleware;
+using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -37,6 +38,7 @@ public class GlobalExceptionHandlerMiddlewareTests
     [InlineData(typeof(ArgumentException), 400, "VALIDATION_ERROR")]
     [InlineData(typeof(KeyNotFoundException), 404, "NOT_FOUND")]
     [InlineData(typeof(InvalidOperationException), 409, "BUSINESS_RULE_VIOLATION")]
+    [InlineData(typeof(ForbiddenAccessException), 403, "FORBIDDEN")]
     [InlineData(typeof(UnauthorizedAccessException), 401, "UNAUTHORIZED")]
     public async Task ExcecaoMapeada_status_codigo_e_mensagemDeDominioPreservada(
         Type tipo, int statusEsperado, string codeEsperado)

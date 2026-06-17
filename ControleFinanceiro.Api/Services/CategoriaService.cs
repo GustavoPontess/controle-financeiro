@@ -55,7 +55,7 @@ namespace ControleFinanceiro.Api.Services
                 throw new InvalidOperationException("Categorias padrão não podem ser removidas.");
 
             if (categoria.UsuarioId != usuarioId)
-                throw new UnauthorizedAccessException("Você não tem permissão para remover esta categoria.");
+                throw new ForbiddenAccessException("Você não tem permissão para remover esta categoria.");
 
             _context.Categorias.Remove(categoria);
             await _context.SaveChangesAsync();

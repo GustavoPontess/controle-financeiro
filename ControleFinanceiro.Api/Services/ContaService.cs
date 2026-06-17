@@ -74,7 +74,7 @@ namespace ControleFinanceiro.Api.Services
                 ?? throw new KeyNotFoundException("Conta não encontrada.");
 
             if (existente.UsuarioIdProprietario != usuarioId)
-                throw new UnauthorizedAccessException("Você não tem permissão para atualizar esta conta.");
+                throw new ForbiddenAccessException("Você não tem permissão para atualizar esta conta.");
 
             if (existente.IsCarteira)
                 throw new InvalidOperationException("A carteira não pode ser editada.");
@@ -98,7 +98,7 @@ namespace ControleFinanceiro.Api.Services
                 ?? throw new KeyNotFoundException("Conta não encontrada.");
 
             if (conta.UsuarioIdProprietario != usuarioId)
-                throw new UnauthorizedAccessException("Você não tem permissão para deletar esta conta.");
+                throw new ForbiddenAccessException("Você não tem permissão para deletar esta conta.");
 
             if (conta.IsCarteira)
                 throw new InvalidOperationException("A carteira não pode ser deletada.");

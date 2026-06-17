@@ -37,7 +37,7 @@ public class ConviteServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => conviteSvc.CriarAsync(familia.Id, new CriarConviteDto("x@test.com", "Filho"), Guid.NewGuid()));
     }
 
@@ -85,7 +85,7 @@ public class ConviteServiceTests
         var convite = await conviteSvc.CriarAsync(
             familia.Id, new CriarConviteDto("convidado@test.com", "Filho"), dono);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => conviteSvc.AceitarAsync(convite.Token, outro));
     }
 
