@@ -12,14 +12,18 @@ public class AuthService
 {
     private readonly AppDbContext _context;
     private readonly JwtTokenProvider _tokenProvider;
+    private readonly IPasswordResetDispatcher _resetDispatcher;
 
     private const int RefreshTokenDays = 7;
-    private const int ResetTokenHours = 1;
 
-    public AuthService(AppDbContext context, JwtTokenProvider tokenProvider)
+    public AuthService(
+        AppDbContext context,
+        JwtTokenProvider tokenProvider,
+        IPasswordResetDispatcher resetDispatcher)
     {
         _context = context;
         _tokenProvider = tokenProvider;
+        _resetDispatcher = resetDispatcher;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -194,55 +198,22 @@ public class AuthService
     // ── Forgot / Reset Password ───────────────────────────────────────────────
 
     /// <summary>
-    /// Gera um token de reset de senha com validade de 1 hora.
-    /// Em produção o token seria enviado por e-mail; aqui é retornado diretamente.
+    /// Solicita o reset de senha. A geração do token e o envio do e-mail são disparados
+    /// fire-and-forget (Hangfire), então a resposta é imediata e idêntica para qualquer
+    /// e-mail — sem oráculo de timing/enumeração e sem vazar o token na resposta HTTP.
+    /// O token só chega ao dono legítimo pelo e-mail.
     /// </summary>
-    public async Task<ForgotPasswordResponseDto> SolicitarResetSenhaAsync(string email)
+    public Task<ForgotPasswordResponseDto> SolicitarResetSenhaAsync(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("E-mail é obrigatório.");
 
-        // Resposta genérica mesmo quando e-mail não existe (evita user enumeration)
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.Email == email.ToLower() && u.Ativo);
+        _resetDispatcher.Disparar(email);
 
-        if (usuario == null)
+        return Task.FromResult(new ForgotPasswordResponseDto
         {
-            return new ForgotPasswordResponseDto
-            {
-                ResetToken = string.Empty,
-                ExpiresAt = DateTime.UtcNow.AddHours(ResetTokenHours),
-                Mensagem = "Se o e-mail existir, um link de recuperação será enviado.",
-            };
-        }
-
-        // Invalidar tokens anteriores do mesmo usuário
-        var tokensAntigos = await _context.PasswordResetTokens
-            .Where(t => t.UsuarioId == usuario.Id && !t.Usado && t.ExpiresAt > DateTime.UtcNow)
-            .ToListAsync();
-        foreach (var t in tokensAntigos)
-            t.Usado = true;
-
-        // Criar novo token
-        var prt = new PasswordResetToken
-        {
-            Id = Guid.NewGuid(),
-            UsuarioId = usuario.Id,
-            Token = GerarTokenOpaco(),
-            ExpiresAt = DateTime.UtcNow.AddHours(ResetTokenHours),
-            Usado = false,
-            CriadoEm = DateTime.UtcNow,
-        };
-        _context.PasswordResetTokens.Add(prt);
-        await _context.SaveChangesAsync();
-
-        // TODO: Em produção, enviar e-mail com link contendo prt.Token
-        return new ForgotPasswordResponseDto
-        {
-            ResetToken = prt.Token,
-            ExpiresAt = prt.ExpiresAt,
-            Mensagem = "Token gerado. Em produção seria enviado por e-mail.",
-        };
+            Mensagem = "Se o e-mail existir, um link de recuperação será enviado.",
+        });
     }
 
     /// <summary>

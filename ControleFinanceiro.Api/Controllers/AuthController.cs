@@ -179,7 +179,8 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Solicita reset de senha. Em produção enviaria e-mail; aqui retorna o token diretamente.
+    /// Solicita reset de senha. Resposta genérica e idêntica para qualquer e-mail; se o e-mail
+    /// existir, um link com o token é enviado por e-mail (o token nunca volta na resposta).
     /// </summary>
     [HttpPost("forgot-password")]
     [EnableRateLimiting("auth-forgot-password")]

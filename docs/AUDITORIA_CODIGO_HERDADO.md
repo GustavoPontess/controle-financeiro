@@ -16,9 +16,9 @@ Varredura completa (READ-ONLY) de tudo que os ex-colaboradores mergearam, feita 
 
 ## 🔴 Críticos — corrigir antes de qualquer release
 
-### C1. Reset token vazado na resposta HTTP → account takeover
-`AuthService.cs:240-245` + `AuthController.cs:189-191`. O endpoint `forgot-password` retorna `ResetToken` direto no JSON da resposta. O envio por e-mail é um `// TODO`. Qualquer um que saiba um e-mail cadastrado recebe o token e troca a senha da vítima — **takeover sem autenticação**.
-**Fix:** nunca retornar o token na resposta; enviar só por e-mail; resposta sempre genérica e idêntica (exista ou não o usuário).
+### C1. Reset token vazado na resposta HTTP → account takeover ✅ CORRIGIDO (2026-06-16)
+`AuthService.cs:240-245` + `AuthController.cs:189-191`. O endpoint `forgot-password` retornava `ResetToken` direto no JSON da resposta. O envio por e-mail era um `// TODO`. Qualquer um que soubesse um e-mail cadastrado recebia o token e trocava a senha da vítima — **takeover sem autenticação**.
+**Fix aplicado:** `ForgotPasswordResponseDto` agora só tem `Mensagem` (genérica e idêntica pra qualquer e-mail — sem enumeração). A geração do token + envio do e-mail passou a ser **fire-and-forget** via Hangfire (`IPasswordResetDispatcher` → `HangfirePasswordResetDispatcher` → `PasswordResetEmailJob` → `IPasswordResetEmailSender`), então o caminho da requisição é constante (sem timing oracle) e o token só chega pelo e-mail (`LoggingPasswordResetEmailSender` loga em Dev, omite em prod). 6 testes de regressão em `AuthServiceTests.cs`.
 
 ### C2. Contrato de exceção furado → erros viram HTTP 500 + vazam mensagem
 67 `throw new Exception("...")` espalhados pelos services (ex.: "Conta não encontrada", "valor deve ser positivo"). O `GlobalExceptionHandlerMiddleware` (#8) só mapeia `ArgumentException/KeyNotFoundException/InvalidOperationException/UnauthorizedAccessException`; `Exception` cai no default → **500 INTERNAL_ERROR** para o que deveria ser 400/404/409. Pior: o middleware (`:65`) ecoa `exception.Message` **inclusive no 500** → vaza detalhe interno (EF/Npgsql) e o front trata erro de validação como "erro do servidor".
