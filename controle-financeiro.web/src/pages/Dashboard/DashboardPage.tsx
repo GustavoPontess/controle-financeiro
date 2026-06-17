@@ -16,14 +16,16 @@ import { useNavigate } from "react-router-dom"
 import {
   ChevronLeft, ChevronRight, Wallet,
   ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock,
-  Plus, CreditCard, ArrowLeftRight, Receipt,
+  Plus, CreditCard, ArrowLeftRight, Receipt, Target,
   TrendingUp, TrendingDown, type LucideIcon,
 } from "lucide-react"
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
-import { PontesCard, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
+import { PontesCard, PontesButton, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
+import { getOrcamentos } from "../../services/orcamentoService"
+import type { Orcamento } from "../../types/Orcamento"
 import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
 import { useAuth } from "../../hooks/useAuth"
 import styles from "./DashboardPage.module.css"
@@ -52,6 +54,7 @@ export default function DashboardPage() {
 
 
   const [data, setData] = useState<DashboardData | null>(null)
+  const [orcamento, setOrcamento] = useState<Orcamento | null>(null) // orçamento GERAL do mês (#1.4)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   // Olho global (ocultar saldo): controlado pelo navbar; aqui só consumimos o estado.
@@ -79,8 +82,16 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    const ano = currentDate.getFullYear()
+    const mes = currentDate.getMonth() + 1
     try {
-      setData(await getDashboard(currentDate.getFullYear(), currentDate.getMonth() + 1))
+      setData(await getDashboard(ano, mes))
+      // Orçamento GERAL do mês (categoriaId null) — alimenta o card "safe-to-spend".
+      // Falha aqui não derruba o dashboard (orçamento é opcional).
+      try {
+        const { data: orcs } = await getOrcamentos(mes, ano)
+        setOrcamento(orcs.find((o) => o.categoriaId === null) ?? null)
+      } catch { setOrcamento(null) }
     } finally {
       setLoading(false)
     }
@@ -207,6 +218,9 @@ export default function DashboardPage() {
               </div>
             )}
           </PontesCard>
+
+          {/* Orçamento do mês (#1.4) — "safe-to-spend" sobre o orçamento geral. */}
+          <OrcamentoCard orcamento={orcamento} fmt={fmt} hide={hide} onConfigurar={() => navigate("/limites")} />
 
           {/* Gráficos lado a lado no desktop */}
           <div className={styles.chartsGrid}>
@@ -389,6 +403,58 @@ function TxRow({ t, fmt }: { t: TransacaoRecente; fmt: (v: number) => string }) 
         {receita ? "+ " : "− "}{fmt(t.valor)}
       </div>
     </div>
+  )
+}
+
+/**
+ * OrcamentoCard — "safe-to-spend" do mês (#1.4) sobre o orçamento GERAL.
+ * Sem orçamento → CTA pra configurar em /limites. Com → barra de progresso
+ * + "ainda pode gastar X" (ou "passou Y do limite"). Tom por consumo/alerta.
+ */
+function OrcamentoCard({ orcamento, fmt, hide, onConfigurar }: {
+  orcamento: Orcamento | null
+  fmt: (v: number) => string
+  hide: boolean
+  onConfigurar: () => void
+}) {
+  if (!orcamento) {
+    return (
+      <PontesCard padding={24} radius={18}>
+        <div className={styles.orcEmpty}>
+          <div>
+            <div className={styles.cardTitle}>Orçamento do mês</div>
+            <div className={styles.cardSub}>Defina quanto quer gastar e acompanhe quanto ainda pode.</div>
+          </div>
+          <PontesButton variant="outline" size="sm" iconStart={<Target size={15} strokeWidth={2.5} />} onClick={onConfigurar}>
+            Configurar
+          </PontesButton>
+        </div>
+      </PontesCard>
+    )
+  }
+  const pct = Math.min(100, Math.max(0, orcamento.percentualConsumido))
+  const tone = orcamento.ultrapassado ? "danger" : orcamento.emAlerta ? "warning" : "ok"
+  return (
+    <PontesCard padding={24} radius={18}>
+      <div className={styles.orcHead}>
+        <div>
+          <div className={styles.cardTitle}>Orçamento do mês</div>
+          <div className={styles.cardSub}>
+            {orcamento.ultrapassado
+              ? `Passou ${hide ? "••••" : fmt(orcamento.valorGasto - orcamento.valorLimite)} do limite`
+              : `Ainda pode gastar ${hide ? "••••" : fmt(orcamento.valorRestante)}`}
+          </div>
+        </div>
+        <div className={styles.orcPct} data-tone={tone}>{pct.toFixed(0)}%</div>
+      </div>
+      <div className={styles.orcBarTrack}>
+        <div className={styles.orcBarFill} data-tone={tone} style={{ width: `${pct}%` }} />
+      </div>
+      <div className={styles.orcFoot}>
+        <span>{hide ? "••••" : fmt(orcamento.valorGasto)} gastos</span>
+        <span>limite {hide ? "••••" : fmt(orcamento.valorLimite)}</span>
+      </div>
+    </PontesCard>
   )
 }
 

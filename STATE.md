@@ -15,15 +15,19 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **1.1 Filtros de transação ricos — COMPLETO** (back + front: drawer + chips + ordenação, verificado no preview). Segurança (código) toda fechada.
+Nada em código. **Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 variação% ✅ · 1.4 orçamento no Dashboard ✅). Segurança (código) toda fechada.
+
+> **1.4 decisão:** em vez do "salário+meta" do ROADMAP (modelo rígido), reaproveitamos o `Orcamento` por-categoria que já existe (suporta orçamento geral) num card "safe-to-spend" no Dashboard. Alinhado ao mercado (Monarch/YNAB), zero migration.
 
 > **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. Falta só deploy-config (prod) ou decisão/pesquisa.
 
 ## Próxima ação concreta
 
-Produto (Lote 1): **1.1 ✅ + 1.3 ✅**. Próximo passo é **escolha de direção** (decidir com o Gustavo):
-- **Produto — Lote 1** restante: **1.4 orçamento simples** (entidade nova `Orcamento` + card no Dashboard + barra de progresso) — pede decisão de produto (salário, meta).
-- **Lote 2 (fosso):** família real — rateio/settle-up (spec própria antes de codar).
+**Lote 1 completo.** Próximo passo é **escolha de direção** (decidir com o Gustavo):
+- **Lote 2 (fosso de produto):** família real — rateio "quem paga o quê" + settle-up. **Spec própria antes de codar** (`docs/features/familia/`). É o maior diferencial; pede planejamento + decisões.
+- **Lote 3 (aquisição/SEO):** tela de Assinaturas, ferramentas grátis, referral.
+- **Conformidade:** LGPD #126 (pesquisa leve + decisão legal).
+- **Polish:** replicar variação% em /reports; UI de orçamento geral mais explícita na /limites.
 - **Conformidade — pesquisa LEVE** (§8.6, não desperdiçar orçamento): **LGPD #126** (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
 - **P2 restante:** dropar regras de composição da senha (NIST) — **decisão de UX do Gustavo** (afrouxa a senha).
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.

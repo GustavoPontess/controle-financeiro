@@ -32,6 +32,8 @@ const mockData: DashboardData = {
 
 const getDashboard = vi.fn()
 vi.mock("../../services/dashboardService", () => ({ getDashboard: (...a: unknown[]) => getDashboard(...a) }))
+const getOrcamentos = vi.fn()
+vi.mock("../../services/orcamentoService", () => ({ getOrcamentos: (...a: unknown[]) => getOrcamentos(...a) }))
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ currentUser: { nome: "Gabriel Dev" } }) }))
 
 function renderDash() {
@@ -46,6 +48,8 @@ describe("DashboardPage (#81)", () => {
   beforeEach(() => {
     getDashboard.mockReset()
     getDashboard.mockResolvedValue(mockData)
+    getOrcamentos.mockReset()
+    getOrcamentos.mockResolvedValue({ data: [] }) // sem orçamento por padrão
     setHideBalance(false) // estado do olho é global — reseta entre testes
   })
 
@@ -78,6 +82,25 @@ describe("DashboardPage (#81)", () => {
     await screen.findByText("Entrou")
     expect(screen.queryByText("+25%")).not.toBeInTheDocument()
     expect(screen.queryByText("-25%")).not.toBeInTheDocument()
+  })
+
+  it("orçamento do mês: sem orçamento mostra CTA Configurar (#1.4)", async () => {
+    renderDash()
+    await screen.findByText("Orçamento do mês")
+    expect(screen.getByRole("button", { name: /configurar/i })).toBeInTheDocument()
+  })
+
+  it("orçamento do mês: com orçamento geral mostra progresso e quanto pode gastar (#1.4)", async () => {
+    getOrcamentos.mockReset()
+    getOrcamentos.mockResolvedValue({ data: [{
+      id: "o1", categoriaId: null, categoriaNome: null, mes: 6, ano: 2026,
+      valorLimite: 3000, percentualAlerta: 80, valorGasto: 1200, valorRestante: 1800,
+      percentualConsumido: 40, emAlerta: false, ultrapassado: false,
+    }] })
+    renderDash()
+    await screen.findByText("Orçamento do mês")
+    expect(screen.getByText(/ainda pode gastar/i)).toBeInTheDocument()
+    expect(screen.getByText("40%")).toBeInTheDocument()
   })
 
   it("mostra pendências quando há a receber / a pagar", async () => {
