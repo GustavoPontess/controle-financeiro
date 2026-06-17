@@ -15,6 +15,7 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 - **A1/A2 — hash de senha forte (Argon2id)**: o armazenamento de senha migrou de PBKDF2 com 10.000 iterações (≈60× abaixo da recomendação OWASP) e hash de 20 bytes para **Argon2id** (1ª escolha OWASP) com saída de 32 bytes. Senhas antigas continuam funcionando e são **regravadas no esquema novo no próximo login**, sem forçar reset.
 - **Reset de senha endurecido**: o token de reset agora é **guardado como hash (SHA-256)** no banco — o token em si só vai no e-mail, então um vazamento do banco não expõe tokens utilizáveis. Adicionado **limite por conta** (3 pedidos de reset por hora, além do limite por IP). A política de senha subiu para **mínimo de 15 caracteres** (teto de 128), alinhada à recomendação NIST sem MFA.
 - **Headers de segurança na API**: toda resposta agora traz Content-Security-Policy (estrita para a API; relaxada só nas páginas do Swagger/Hangfire), além de X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy e HSTS (sob HTTPS). Confirmado que troca de senha exige a senha atual e que os tokens ficam em cookies HttpOnly.
+- **Segredos fora do versionamento**: o `docker-compose.yml` não traz mais senha de banco nem chave JWT padrão — exige `POSTGRES_PASSWORD` e `JWT_SECRET` via `.env` (gitignored; template em `.env.example`), falhando o boot se ausentes em vez de cair num default fraco.
 
 ### Fixed
 - Teste flaky `RecorrentesPage` no CI (`getAllByTitle` síncrono → `await findAllByTitle`).
