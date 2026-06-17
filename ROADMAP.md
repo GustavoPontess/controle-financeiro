@@ -67,10 +67,10 @@ status: ATIVO
 - _(vazio — quando algo for descoberto e ainda não classificado/encaixado, cai aqui primeiro com um nível provisório, depois é movido pra seção certa.)_
 
 ### 🏠 Achados da auditoria família (2026-06-17) — segurança de app de dinheiro
-> Auditoria por workflow (7 agentes) do módulo família. Fosso construído; gaps = safety holes. Em correção na branch `fix/familia-acerto-safety` (P1).
-- [ ] **P1 🟠 — `AcertoService.CancelarAsync` sem checar dono** (authz hole) — só exige ser membro; qualquer membro cancela acerto de qualquer um. **Fix:** só criador OU participante (de/para) → `ForbiddenAccessException` (403). _branch em curso._
-- [ ] **P1 🟠 — POST `/acertos` sem idempotência** — retry de cliente duplica a quitação. **Fix:** `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`). _branch em curso._
-- [ ] **P1 🟠 — acerto sem `FinancialEventLog`** — mexe no balanço sem trilha de auditoria (viola CLAUDE.md). **Fix:** `Registrar(AcertoRegistrado/AcertoCancelado)`. _branch em curso._
+> Auditoria por workflow (7 agentes) do módulo família. Fosso construído; gaps = safety holes. **P1 fechado em PR #221 (`a331efa`).**
+- [x] **P1 🟠 — `AcertoService.CancelarAsync` sem checar dono** (authz hole) → ✅ — só criador OU participante (de/para) cancela; terceiro → `ForbiddenAccessException` (403). PR #221.
+- [x] **P1 🟠 — POST `/acertos` sem idempotência** → ✅ — `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`); front gera UUID estável por tentativa. PR #221.
+- [x] **P1 🟠 — acerto sem `FinancialEventLog`** → ✅ — `AcertoRegistrado`/`AcertoCancelado` gravados em registrar/cancelar. PR #221.
 - [ ] **P2 🟡 — `FamiliasPage:547` `ehProprio` hardcoded `true`** — admin removendo OUTRO membro vê copy/efeito de "você saiu da família" (`handleRemoverMembro(m.id, true)`). **Fix:** `ehProprio = m.usuarioId === currentUserId`. _branch própria (front)._
 - [ ] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** — sem enum de papel/enforcement; compartilhar é unilateral. Feature, não bug. Ver Lote 2.
 - _Descartado (não é bug):_ `RateioService.RemoveRange` hard-delete de `RateioTransacao` — é config de split substituída por inteiro na edição, **não** entidade de ledger; soft-delete não se aplica.
