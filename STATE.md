@@ -15,7 +15,9 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. O que falta de segurança é deploy-config (prod) ou decisão/pesquisa.
+**1.1 Filtros de transação ricos — BACK feito, FRONT pendente.** O endpoint `GET /transacoes` + `TransacaoService.Listar` já aceitam `contaId`, `cartaoId`, `valorMin/valorMax`, `status` (0=previsto/1=efetivado), `ordenacao` (`data_asc`/`valor_desc`/`valor_asc`; default data desc), mantendo paginação. 4 testes. **Próximo: o front** — `PontesDrawer` de filtros na TransactionsPage + chips + "Limpar"; montar MVP e mostrar no preview pro Gustavo ajustar.
+
+> **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. Falta só deploy-config (prod) ou decisão/pesquisa.
 
 ## Próxima ação concreta
 

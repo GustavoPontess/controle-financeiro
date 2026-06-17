@@ -27,7 +27,7 @@ status: ATIVO
 ### Lote 1 — quick-wins (front + dados que já temos)
 
 - [x] **1.2 Privacy toggle (ocultar saldo)** — olho global no navbar, `formatMoney` central, persiste em localStorage, mascara em toda tela. _(branch `feature/privacy-toggle-ocultar-saldo`)_
-- [ ] **1.1 Filtros de transação ricos** ⭐ flagship UX — back: `TransacaoService.Listar` + `TransacoesController` ganham `contaId`, `cartaoId`, `valorMin`/`valorMax`, `status` (previsto/efetivado), `ordenacao` (data/valor ↑↓), mantendo paginação. Front: `PontesDrawer` de filtros na TransactionsPage + chips de filtro ativo + "Limpar". Testes back+front. _Fonte: Despezzas + Pierre._
+- [ ] **1.1 Filtros de transação ricos** ⭐ flagship UX — **BACK ✅** (`TransacaoService.Listar` + `TransacoesController` ganharam `contaId`, `cartaoId`, `valorMin`/`valorMax`, `status` previsto/efetivado, `ordenacao` data/valor ↑↓, mantendo paginação; 4 testes). **FRONT pendente:** `PontesDrawer` de filtros na TransactionsPage + chips de filtro ativo + "Limpar" — fazer MVP e mostrar no preview pro Gustavo ajustar a UX. _Fonte: Despezzas + Pierre._
 - [ ] **1.4 Orçamento simples** — back: `Orcamento` (salário mensal + meta economia) por usuário, GET/PUT. Front: card "Configure seu orçamento" no Dashboard + seção em `/perfil` → "quanto posso gastar" + barra de progresso. _Fonte: Despezzas._
 - [x] **1.3 Variação % vs mês anterior** → ✅ (Dashboard) — cards "Entrou/Saiu" mostram delta % vs mês anterior + seta colorida (cor por bom/ruim pra métrica). Back: `DashboardDto.EntradasCaixaMesAnterior`/`SaidasCaixaMesAnterior` (mesma base caixa). Verificado no preview com dados reais. _Extensão opcional: replicar em `/reports`._ _Fonte: Pierre + Despezzas._
 

@@ -377,6 +377,77 @@ public class TransacaoServiceTests
         Assert.Equal(3, todos.Total);
     }
 
+    // ── Filtros ricos (#1.1) ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListarAsync_FiltraPorFaixaDeValor()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "A", Valor = 50, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-3) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "B", Valor = 200, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-2) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "C", Valor = 500, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-1) });
+        await ctx.SaveChangesAsync();
+
+        var r = await svc.ListarAsync(usuarioId, valorMin: 100, valorMax: 300);
+
+        Assert.Equal(1, r.Total);
+        Assert.Equal("B", r.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_FiltraPorStatus()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Exec", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-1), StatusTransacao = StatusTransacao.Executado },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Prev", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(5), StatusTransacao = StatusTransacao.Previsao });
+        await ctx.SaveChangesAsync();
+
+        var previstas = await svc.ListarAsync(usuarioId, status: (int)StatusTransacao.Previsao);
+        Assert.Equal(1, previstas.Total);
+        Assert.Equal("Prev", previstas.Items.Single().Descricao);
+
+        var efetivadas = await svc.ListarAsync(usuarioId, status: (int)StatusTransacao.Executado);
+        Assert.Equal("Exec", efetivadas.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_OrdenaPorValorDesc()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "m", Valor = 50, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-1) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "g", Valor = 500, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-2) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "p", Valor = 200, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-3) });
+        await ctx.SaveChangesAsync();
+
+        var r = await svc.ListarAsync(usuarioId, ordenacao: "valor_desc");
+
+        Assert.Equal(new[] { 500m, 200m, 50m }, r.Items.Select(t => t.Valor).ToArray());
+    }
+
+    [Fact]
+    public async Task ListarAsync_FiltraPorConta()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var conta2 = new Conta { Id = Guid.NewGuid(), Nome = "Conta 2", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.ContaCorrente };
+        ctx.Contas.Add(conta2);
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "na 1", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow.AddDays(-1) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = conta2.Id, Descricao = "na 2", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+
+        var r = await svc.ListarAsync(usuarioId, contaId: conta2.Id);
+
+        Assert.Equal(1, r.Total);
+        Assert.Equal("na 2", r.Items.Single().Descricao);
+    }
+
     // ── C3: soft delete de Transacao ───────────────────────────────────────────
 
     private static Transacao NovaDespesa(Guid contaId) => new()
