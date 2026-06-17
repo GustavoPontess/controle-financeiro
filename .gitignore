@@ -451,3 +451,9 @@ docs/referencias/
 
 # Claude Code — worktrees temporarios de tarefas spawnadas
 .claude/worktrees/
+
+# Segredos — NUNCA comitar .env (só os .env.example, que são templates)
+.env
+**/.env
+!.env.example
+!**/.env.example

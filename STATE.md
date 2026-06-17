@@ -15,15 +15,14 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política + re-auth/CSP fechados.** Sprint de Auth Hardening quase no fim — falta rotacionar segredos.
+Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política + re-auth/CSP + A3 (código) fechados.** Sprint de Auth Hardening (parte de código) **completa** — resta só a metade manual da rotação de segredos (valores reais) + re-pesquisa dos gaps.
 
 ## Próxima ação concreta
 
-- **⚠️ Rotacionar segredos** 🟠 (urgente, independe de pesquisa) — nova `Jwt:Key` (≥32 bytes), nova senha do Postgres, quaisquer API keys; tirar defaults hardcoded do `docker-compose.yml`/CI versionado (**A3**) → `.env` não-versionado com `${VAR:?obrigatório}`. Ex-colaboradores têm clone com a chave antiga → rotacionar invalida. **Procedimento, não pesquisa.** Branch `chore/rotacionar-segredos`. _Atenção: rotacionar a JWT key invalida tokens atuais (desloga todos) — esperado._
+- **Manual do Gustavo (não-código):** A3 fechado — compose/CI agora exigem `.env`. Falta **gerar e definir os valores reais** dos segredos: `JWT_SECRET` (`openssl rand -base64 48`) e senha Postgres (`openssl rand -base64 24`) no `.env` local / secret manager de prod. Rotacionar invalida a chave antiga dos ex-colaboradores (desloga todos, esperado).
+- **Código (eu):** re-pesquisar gaps **LEVE** (§8.6) e atacar por prioridade — key rollover sem downtime, MFA, cripto-at-rest/PII, logging/auditoria, **LGPD + BACEN/Open Finance** (#126). Ou pegar um P2 catalogado.
 
-Depois: re-pesquisar gaps **LEVE** (key rollover sem downtime, MFA, cripto-at-rest, logging, LGPD/BACEN — ver §8.6) → atacar por prioridade.
-
-P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remover regras de composição; CSP no SPA (frontend prod).
+P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remover regras de composição; CSP no SPA (frontend prod); 403×401 ownership.
 
 > Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
@@ -31,6 +30,7 @@ P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remo
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **A3 — segredos fora do compose/CI versionado** 🟠→✅ (código) — compose exige `${POSTGRES_PASSWORD:?}`/`${JWT_SECRET:?}` (sem default fraco), `.env.example` raiz + `.env` gitignored, CI passa valores efêmeros. Validado `docker compose config` (resolve com .env; falha sem). Confirmado: chave real **não está no git**.
 - **Re-auth + CSP/headers** 🟠→✅ — verificado que troca de senha exige senha atual e que jwt+refresh estão em cookie HttpOnly+Secure+SameSite=Strict (não há troca de e-mail/delete); `SecurityHeadersMiddleware` novo: CSP (estrita p/ API, relaxada p/ Swagger/Hangfire) + nosniff + X-Frame DENY + Referrer + Permissions + HSTS(HTTPS). 5 testes (back 251/251). Headers confirmados ao vivo via curl.
 - **Reset token hasheado + rate-limit por conta + política 15 chars** 🟠→✅ — token guardado como SHA-256 (`OpaqueTokenHasher`), bruto só no e-mail; rate-limit 3/conta/hora no job; política 10→15 + teto 128 (front e back, com testes ajustados). Achados catalogados (P2): refresh token plaintext, NIST dropar composição. Back 246/246, front 287/287.
 - **A1/A2 — PasswordHasher** 🟠→✅ — migrado p/ **Argon2id** (Konscious, m=19456/t=2/p=1, salt 16B, saída 32B), formato versionado + **rehash transparente no login** (aceita hash legado PBKDF2, regrava sem reset). Decisão por **deep-research verificado** (OWASP/NIST, 24/25 claims). 8 testes (back 238/238).
