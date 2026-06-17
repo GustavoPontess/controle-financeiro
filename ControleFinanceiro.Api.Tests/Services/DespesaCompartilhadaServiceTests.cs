@@ -166,4 +166,166 @@ public class DespesaCompartilhadaServiceTests
         Assert.Equal(100m, saldoAna.Saldo);   // pagou 300, cota 200
         Assert.Equal(-100m, saldoBia.Saldo);  // pagou 100, cota 200
     }
+
+    // ── Feature 2.4 — aprovação de despesa ─────────────────────────────────────
+
+    private static async Task SetLimite(AppDbContext ctx, Guid familiaId, Guid admin, decimal? limite) =>
+        await new FamiliaService(ctx).DefinirLimiteAprovacaoAsync(familiaId, admin, limite);
+
+    [Fact]
+    public async Task CompartilharAsync_AcimaDoLimite_FicaPendente()
+    {
+        var ctx = CreateContext();
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familiaId = await SeedFamilia(ctx, dono);
+        await SetLimite(ctx, familiaId, dono, 100m);
+        var txId = SeedTransacao(ctx, dono, 150m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await svc.CompartilharAsync(txId, familiaId, dono);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(StatusAprovacaoDespesa.Pendente, tx!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task CompartilharAsync_AbaixoDoLimite_NaoRequerida()
+    {
+        var ctx = CreateContext();
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familiaId = await SeedFamilia(ctx, dono);
+        await SetLimite(ctx, familiaId, dono, 100m);
+        var txId = SeedTransacao(ctx, dono, 50m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await svc.CompartilharAsync(txId, familiaId, dono);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(StatusAprovacaoDespesa.NaoRequerida, tx!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task CompartilharAsync_SemLimite_NaoRequerida()
+    {
+        var ctx = CreateContext();
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familiaId = await SeedFamilia(ctx, dono);
+        var txId = SeedTransacao(ctx, dono, 9999m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await svc.CompartilharAsync(txId, familiaId, dono);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(StatusAprovacaoDespesa.NaoRequerida, tx!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task AprovarAsync_PorOutroMembro_FicaAprovada()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        await SetLimite(ctx, familiaId, ana, 100m);
+        var txId = SeedTransacao(ctx, ana, 200m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana);
+
+        await svc.AprovarAsync(familiaId, txId, bia);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(StatusAprovacaoDespesa.Aprovada, tx!.StatusAprovacao);
+        Assert.Equal(bia, tx.AprovadoPorUsuarioId);
+    }
+
+    [Fact]
+    public async Task AprovarAsync_PeloCriador_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        await SetLimite(ctx, familiaId, ana, 100m);
+        var txId = SeedTransacao(ctx, ana, 200m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.AprovarAsync(familiaId, txId, ana)); // ana é a criadora
+    }
+
+    [Fact]
+    public async Task AprovarAsync_NaoPendente_LancaInvalidOperation()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var txId = SeedTransacao(ctx, ana, 50m); // sem limite → NaoRequerida
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.AprovarAsync(familiaId, txId, bia));
+    }
+
+    [Fact]
+    public async Task RejeitarAsync_FicaRejeitada()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        await SetLimite(ctx, familiaId, ana, 100m);
+        var txId = SeedTransacao(ctx, ana, 200m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana);
+
+        await svc.RejeitarAsync(familiaId, txId, bia);
+
+        var tx = await ctx.Transacoes.FindAsync(txId);
+        Assert.Equal(StatusAprovacaoDespesa.Rejeitada, tx!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task ObterBalanco_PendenteNaoConta_AprovadaConta()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        await SetLimite(ctx, familiaId, ana, 100m);
+        var txId = SeedTransacao(ctx, ana, 200m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana); // pendente (200 >= 100)
+
+        var pendente = await svc.ObterBalancoAsync(familiaId, ana, 5, 2026);
+        Assert.Equal(0m, pendente.Total); // pendente fica fora do rateio
+
+        await svc.AprovarAsync(familiaId, txId, bia);
+        var aprovado = await svc.ObterBalancoAsync(familiaId, ana, 5, 2026);
+        Assert.Equal(200m, aprovado.Total); // aprovada entra
+    }
+
+    [Fact]
+    public async Task ListarDespesas_IncluiPendenteComStatus()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var familiaId = await SeedFamilia(ctx, ana);
+        await SetLimite(ctx, familiaId, ana, 100m);
+        var txId = SeedTransacao(ctx, ana, 200m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+        await svc.CompartilharAsync(txId, familiaId, ana);
+
+        var feed = await svc.ListarDespesasAsync(familiaId, ana, 5, 2026);
+
+        var d = Assert.Single(feed);
+        Assert.Equal(StatusAprovacaoDespesa.Pendente, d.StatusAprovacao);
+    }
 }

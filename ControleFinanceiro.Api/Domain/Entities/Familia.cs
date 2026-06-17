@@ -18,6 +18,10 @@ public class Familia
     /// que não definem um override próprio.</summary>
     public ModoRateio ModoRateioPadrao { get; set; } = ModoRateio.Igualitario;
 
+    /// <summary>Feature 2.4 — despesa compartilhada com valor ≥ este limite exige
+    /// aprovação de outro membro. Null = aprovação desligada (compartilhar é direto).</summary>
+    public decimal? LimiteAprovacao { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public bool Ativa { get; set; } = true;

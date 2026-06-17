@@ -412,6 +412,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("CriadoPorUsuarioId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("LimiteAprovacao")
+                        .HasColumnType("numeric");
+
                     b.Property<int>("ModoRateioPadrao")
                         .HasColumnType("integer");
 
@@ -1042,6 +1045,12 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AprovadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("AprovadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
@@ -1114,6 +1123,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("RecorrenteOrigemId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("StatusAprovacao")
+                        .HasColumnType("integer");
 
                     b.Property<int>("StatusTransacao")
                         .HasColumnType("integer");

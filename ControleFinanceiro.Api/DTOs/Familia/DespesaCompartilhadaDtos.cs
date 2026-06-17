@@ -11,7 +11,9 @@ public record DespesaCompartilhadaDto(
     DateTime Data,
     string? CategoriaNome,
     Guid PagadorUsuarioId,
-    string PagadorNome);
+    string PagadorNome,
+    StatusAprovacaoDespesa StatusAprovacao,
+    string? AprovadoPorNome);
 
 public record SaldoMembroDto(
     Guid UsuarioId,

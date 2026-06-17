@@ -124,4 +124,49 @@ public class FamiliaServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.RemoverMembroAsync(familia.Id, membroAdmin.Id, dono));
     }
+
+    // ── Feature 2.4 — limite de aprovação ──────────────────────────────────────
+
+    [Fact]
+    public async Task DefinirLimiteAprovacaoAsync_Admin_Persiste()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+
+        await svc.DefinirLimiteAprovacaoAsync(familia.Id, dono, 250m);
+
+        var entidade = await ctx.Familias.FindAsync(familia.Id);
+        Assert.Equal(250m, entidade!.LimiteAprovacao);
+
+        // Limpar (null) desliga a aprovação.
+        await svc.DefinirLimiteAprovacaoAsync(familia.Id, dono, null);
+        entidade = await ctx.Familias.FindAsync(familia.Id);
+        Assert.Null(entidade!.LimiteAprovacao);
+    }
+
+    [Fact]
+    public async Task DefinirLimiteAprovacaoAsync_NaoAdmin_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.DefinirLimiteAprovacaoAsync(familia.Id, Guid.NewGuid(), 100m));
+    }
+
+    [Fact]
+    public async Task DefinirLimiteAprovacaoAsync_Negativo_LancaArgument()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.DefinirLimiteAprovacaoAsync(familia.Id, dono, -1m));
+    }
 }

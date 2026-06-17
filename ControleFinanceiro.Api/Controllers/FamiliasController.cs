@@ -136,6 +136,34 @@ public class FamiliasController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Feature 2.4 — define/limpa o limite de aprovação da família (só admin).</summary>
+    [HttpPut("{id:guid}/limite-aprovacao")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DefinirLimiteAprovacao(
+        Guid id, [FromBody] DefinirLimiteAprovacaoDto dto)
+    {
+        await _familiaService.DefinirLimiteAprovacaoAsync(id, GetUserId(), dto.LimiteAprovacao);
+        return NoContent();
+    }
+
+    /// <summary>Feature 2.4 — aprova uma despesa compartilhada pendente (membro ≠ criador).</summary>
+    [HttpPost("{id:guid}/despesas/{transacaoId:guid}/aprovar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AprovarDespesa(Guid id, Guid transacaoId)
+    {
+        await _despesaCompartilhada.AprovarAsync(id, transacaoId, GetUserId());
+        return NoContent();
+    }
+
+    /// <summary>Feature 2.4 — rejeita uma despesa compartilhada pendente (membro ≠ criador).</summary>
+    [HttpPost("{id:guid}/despesas/{transacaoId:guid}/rejeitar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RejeitarDespesa(Guid id, Guid transacaoId)
+    {
+        await _despesaCompartilhada.RejeitarAsync(id, transacaoId, GetUserId());
+        return NoContent();
+    }
+
     /// <summary>Cria um dependente na família.</summary>
     [HttpPost("{id:guid}/dependentes")]
     [ProducesResponseType(typeof(DependenteDto), StatusCodes.Status201Created)]

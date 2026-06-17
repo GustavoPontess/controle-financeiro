@@ -44,7 +44,7 @@ public class FamiliaService
         await _context.SaveChangesAsync();
 
         return new FamiliaDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,
-            familia.CriadoEm, EhAdmin: true, TotalMembros: 1);
+            familia.CriadoEm, EhAdmin: true, TotalMembros: 1, LimiteAprovacao: null);
     }
 
     public async Task<List<FamiliaDto>> ListarAsync(Guid usuarioId)
@@ -59,7 +59,8 @@ public class FamiliaService
                 f.CriadoPorUsuarioId,
                 f.CriadoEm,
                 f.CriadoPorUsuarioId == usuarioId,
-                f.Membros.Count(mm => mm.Ativo)))
+                f.Membros.Count(mm => mm.Ativo),
+                f.LimiteAprovacao))
             .AsNoTracking()
             .ToListAsync();
 
@@ -91,7 +92,20 @@ public class FamiliaService
 
         return new FamiliaDetalheDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,
             familia.CriadoEm, familia.CriadoPorUsuarioId == usuarioId,
-            familia.ModoRateioPadrao, membros, convites);
+            familia.ModoRateioPadrao, membros, convites, familia.LimiteAprovacao);
+    }
+
+    /// <summary>Feature 2.4 — define/limpa o limite de aprovação (só admin). Valor negativo é inválido.</summary>
+    public async Task DefinirLimiteAprovacaoAsync(Guid familiaId, Guid usuarioId, decimal? limite)
+    {
+        if (limite is < 0)
+            throw new ArgumentException("O limite de aprovação não pode ser negativo.");
+
+        var familia = await BuscarFamiliaAsync(familiaId);
+        ExigirAdmin(familia, usuarioId);
+
+        familia.LimiteAprovacao = limite;
+        await _context.SaveChangesAsync();
     }
 
     public async Task DissolverAsync(Guid familiaId, Guid usuarioId)
