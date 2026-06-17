@@ -12,6 +12,17 @@ export type ListTransactionsFilter = {
   q?: string
   /** 1=despesa, 2=receita. */
   tipo?: number
+  /** Filtra por conta de origem. */
+  contaId?: string
+  /** Filtra por cartão de crédito de origem. */
+  cartaoId?: string
+  /** Faixa de valor. */
+  valorMin?: number
+  valorMax?: number
+  /** 0=previsto (Previsao), 1=efetivado (Executado). */
+  status?: number
+  /** data_asc | valor_desc | valor_asc (default no back: data desc). */
+  ordenacao?: string
 }
 
 export type TransacaoStats = {
@@ -57,6 +68,12 @@ export const listTransactionsPage = async (
   if (filter.categoriaId) params.categoriaId = filter.categoriaId
   if (filter.q) params.q = filter.q
   if (filter.tipo) params.tipo = filter.tipo
+  if (filter.contaId) params.contaId = filter.contaId
+  if (filter.cartaoId) params.cartaoId = filter.cartaoId
+  if (filter.valorMin != null) params.valorMin = filter.valorMin
+  if (filter.valorMax != null) params.valorMax = filter.valorMax
+  if (filter.status != null) params.status = filter.status
+  if (filter.ordenacao) params.ordenacao = filter.ordenacao
   const res = await api.get("/transacoes", { params })
   return res.data
 }

@@ -15,14 +15,15 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-**1.1 Filtros de transação ricos — BACK feito, FRONT pendente.** O endpoint `GET /transacoes` + `TransacaoService.Listar` já aceitam `contaId`, `cartaoId`, `valorMin/valorMax`, `status` (0=previsto/1=efetivado), `ordenacao` (`data_asc`/`valor_desc`/`valor_asc`; default data desc), mantendo paginação. 4 testes. **Próximo: o front** — `PontesDrawer` de filtros na TransactionsPage + chips + "Limpar"; montar MVP e mostrar no preview pro Gustavo ajustar.
+Nada em código. **1.1 Filtros de transação ricos — COMPLETO** (back + front: drawer + chips + ordenação, verificado no preview). Segurança (código) toda fechada.
 
 > **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. Falta só deploy-config (prod) ou decisão/pesquisa.
 
 ## Próxima ação concreta
 
-Frente de segurança de código acabou; começou o **produto (Lote 1)** — 1.3 entregue. Próximo passo é **escolha de direção** (decidir com o Gustavo):
-- **Produto — Lote 1** (quick-wins, `ROADMAP.md`): 1.1 filtros de transação ricos (flagship, maior) · 1.4 orçamento simples (entidade nova) · _1.3 ✅ feito_. Pedem alinhamento de UX antes de codar.
+Produto (Lote 1): **1.1 ✅ + 1.3 ✅**. Próximo passo é **escolha de direção** (decidir com o Gustavo):
+- **Produto — Lote 1** restante: **1.4 orçamento simples** (entidade nova `Orcamento` + card no Dashboard + barra de progresso) — pede decisão de produto (salário, meta).
+- **Lote 2 (fosso):** família real — rateio/settle-up (spec própria antes de codar).
 - **Conformidade — pesquisa LEVE** (§8.6, não desperdiçar orçamento): **LGPD #126** (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
 - **P2 restante:** dropar regras de composição da senha (NIST) — **decisão de UX do Gustavo** (afrouxa a senha).
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
