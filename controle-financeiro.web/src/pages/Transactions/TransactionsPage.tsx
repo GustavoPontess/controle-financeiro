@@ -2,16 +2,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import {
-  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus,
+  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus, SlidersHorizontal,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesSelect,
-  PontesInput, PontesEmptyState, useHideBalance,
+  PontesInput, PontesEmptyState, PontesDrawer, useHideBalance,
 } from "@/components/pontes"
 import { getCategories } from "../../services/categoryService"
 import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
 import { getContas } from "../../services/contaService"
+import { getCartoes } from "../../services/cartaoCreditoService"
 import type { Category } from "../../types/Category"
+import type { Conta } from "../../types/Conta"
+import type { CartaoCredito } from "../../types/CartaoCredito"
 import type { Transaction } from "../../types/Transaction"
 import TransactionTable, { type TransactionRow } from "./components/TransactionTable/TransactionTable"
 import styles from "./TransactionsPage.module.css"
@@ -35,6 +38,26 @@ const monthWindow = (d: Date) => {
   return { from, to }
 }
 
+// Filtros avançados (#1.1) — vivem no PontesDrawer. Vazios = inativos.
+type AdvFilters = {
+  contaId: string; cartaoId: string
+  valorMin: string; valorMax: string
+  status: string      // "" = qualquer | "1" = efetivado | "0" = previsto
+  ordenacao: string   // "" = data desc (default) | data_asc | valor_desc | valor_asc
+}
+const EMPTY_ADV: AdvFilters = { contaId: "", cartaoId: "", valorMin: "", valorMax: "", status: "", ordenacao: "" }
+const ORDENACAO_OPTS = [
+  { value: "", label: "Mais recentes" },
+  { value: "data_asc", label: "Mais antigas" },
+  { value: "valor_desc", label: "Maior valor" },
+  { value: "valor_asc", label: "Menor valor" },
+]
+const STATUS_OPTS = [
+  { value: "", label: "Qualquer status" },
+  { value: "1", label: "Efetivadas" },
+  { value: "0", label: "Previstas" },
+]
+
 export default function TransactionsPage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
@@ -53,6 +76,13 @@ export default function TransactionsPage() {
   const [searchInput, setSearchInput] = useState("") // valor digitado (imediato)
   const [search, setSearch] = useState("")             // valor com debounce (query)
   const searchRef = useRef<HTMLInputElement>(null)
+  // Filtros avançados (#1.1): `adv` = aplicado (entra na query); `draft` = sendo
+  // editado no drawer. Aplicar copia draft→adv. Contas/cartões pras opções.
+  const [contas, setContas] = useState<Conta[]>([])
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
+  const [draft, setDraft] = useState<AdvFilters>(EMPTY_ADV)
   const [page, setPage] = useState(1)
   // Default 10, mas respeita a última escolha do usuário (persistida em
   // localStorage) — sobrevive reload e troca de tela.
@@ -78,10 +108,19 @@ export default function TransactionsPage() {
 
   const loadSaldo = useCallback(async () => {
     try {
-      const contas = await getContas()
-      setSaldoTotal(contas.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0))
+      const lista = await getContas()
+      setContas(lista)
+      setSaldoTotal(lista.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0))
     } catch (error) {
       console.error("Erro ao carregar contas:", error)
+    }
+  }, [])
+
+  const loadCartoes = useCallback(async () => {
+    try {
+      setCartoes(await getCartoes())
+    } catch (error) {
+      console.error("Erro ao carregar cartões:", error)
     }
   }, [])
 
@@ -93,6 +132,12 @@ export default function TransactionsPage() {
         categoriaId: filterCategoryId || undefined,
         q: search || undefined,
         tipo: filterTipo || undefined,
+        contaId: adv.contaId || undefined,
+        cartaoId: adv.cartaoId || undefined,
+        valorMin: adv.valorMin ? Number(adv.valorMin) : undefined,
+        valorMax: adv.valorMax ? Number(adv.valorMax) : undefined,
+        status: adv.status !== "" ? Number(adv.status) : undefined,
+        ordenacao: adv.ordenacao || undefined,
       })
       setPageItems(result.items)
       setTotalNoFiltro(result.total)
@@ -100,7 +145,7 @@ export default function TransactionsPage() {
       console.error("Erro ao carregar transações:", error)
       notify({ open: true, message: "Erro ao carregar transações", severity: "error" })
     }
-  }, [currentDate, page, pageSize, filterCategoryId, search, filterTipo, notify])
+  }, [currentDate, page, pageSize, filterCategoryId, search, filterTipo, adv, notify])
 
   // KPIs do topo — endpoint /stats dedicado, calculado no banco. Exato em qualquer
   // volume (#179 — antes agregava 1ª página de 100 e perdia acurácia >100/mês).
@@ -121,13 +166,13 @@ export default function TransactionsPage() {
     }
   }, [currentDate])
 
-  useEffect(() => { void loadCategories(); void loadSaldo() }, [loadCategories, loadSaldo])
+  useEffect(() => { void loadCategories(); void loadSaldo(); void loadCartoes() }, [loadCategories, loadSaldo, loadCartoes])
   useEffect(() => { void loadPage() }, [loadPage])
   useEffect(() => { void loadMonthStats() }, [loadMonthStats])
 
   // Filtro/mês muda → volta pra página 1 (senão usuário fica preso em página 5
   // de um filtro que só tem 2 páginas).
-  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, filterTipo, search, pageSize])
+  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, filterTipo, search, pageSize, adv])
 
   // Atalho "/" foca a busca (fora de input). N abre nova transação.
   useEffect(() => {
@@ -167,13 +212,23 @@ export default function TransactionsPage() {
 
   const { entradas: totalEntradas, saidas: totalSaidas, saldoMes: saldoFinal } = monthStats
 
+  // Quantos filtros avançados estão ativos (pro badge no botão Filtros).
+  const advCount = useMemo(
+    () => Object.values(adv).filter((v) => v !== "").length,
+    [adv]
+  )
   const hasFilters = useMemo(
-    () => !!(search || filterCategoryId || filterTipo),
-    [search, filterCategoryId, filterTipo]
+    () => !!(search || filterCategoryId || filterTipo || advCount),
+    [search, filterCategoryId, filterTipo, advCount]
   )
   const clearFilters = () => {
     setSearchInput(""); setSearch(""); setFilterCategoryId(""); setFilterTipo(0)
+    setAdv(EMPTY_ADV); setDraft(EMPTY_ADV)
   }
+
+  // Abre o drawer com o estado atual; "Aplicar" copia draft→adv.
+  const openFilters = () => { setDraft(adv); setFiltersOpen(true) }
+  const aplicarFilters = () => { setAdv(draft); setFiltersOpen(false) }
 
   const TIPO_CHIPS: { value: 0 | 1 | 2; label: string }[] = [
     { value: 0, label: "Tudo" },
@@ -290,12 +345,50 @@ export default function TransactionsPage() {
             ]}
           />
         </div>
+        <PontesButton
+          size="sm"
+          variant={advCount ? "primary" : "outline"}
+          iconStart={<SlidersHorizontal size={15} strokeWidth={2.5} />}
+          onClick={openFilters}
+        >
+          Filtros{advCount ? ` (${advCount})` : ""}
+        </PontesButton>
         {hasFilters && (
           <PontesButton size="sm" variant="ghost" iconStart={<X size={15} strokeWidth={2.5} />} onClick={clearFilters}>
             Limpar
           </PontesButton>
         )}
       </div>
+
+      {/* Chips dos filtros avançados ativos (#1.1) — clicar remove. */}
+      {advCount > 0 && (
+        <div className={styles.advChips}>
+          {adv.contaId && (
+            <FilterChip label={`Conta: ${contas.find((c) => c.id === adv.contaId)?.nome ?? "—"}`}
+              onClear={() => setAdv((a) => ({ ...a, contaId: "" }))} />
+          )}
+          {adv.cartaoId && (
+            <FilterChip label={`Cartão: ${cartoes.find((c) => c.id === adv.cartaoId)?.nome ?? "—"}`}
+              onClear={() => setAdv((a) => ({ ...a, cartaoId: "" }))} />
+          )}
+          {adv.valorMin && (
+            <FilterChip label={`≥ ${formatMoney(Number(adv.valorMin))}`}
+              onClear={() => setAdv((a) => ({ ...a, valorMin: "" }))} />
+          )}
+          {adv.valorMax && (
+            <FilterChip label={`≤ ${formatMoney(Number(adv.valorMax))}`}
+              onClear={() => setAdv((a) => ({ ...a, valorMax: "" }))} />
+          )}
+          {adv.status !== "" && (
+            <FilterChip label={STATUS_OPTS.find((o) => o.value === adv.status)?.label ?? ""}
+              onClear={() => setAdv((a) => ({ ...a, status: "" }))} />
+          )}
+          {adv.ordenacao && (
+            <FilterChip label={ORDENACAO_OPTS.find((o) => o.value === adv.ordenacao)?.label ?? ""}
+              onClear={() => setAdv((a) => ({ ...a, ordenacao: "" }))} />
+          )}
+        </div>
+      )}
 
       <PontesCard padding={0} radius={14}>
         <div className={styles.tableHead}>
@@ -335,6 +428,74 @@ export default function TransactionsPage() {
           }}
         />
       </PontesCard>
+
+      {/* Drawer de filtros avançados (#1.1) — edita `draft`; "Aplicar" copia pra `adv`. */}
+      <PontesDrawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filtros"
+        footer={
+          <div className={styles.drawerFooter}>
+            <PontesButton variant="ghost" size="sm" onClick={() => setDraft(EMPTY_ADV)}>
+              Limpar tudo
+            </PontesButton>
+            <PontesButton variant="primary" size="sm" onClick={aplicarFilters}>
+              Aplicar
+            </PontesButton>
+          </div>
+        }
+      >
+        {/* Só monta o corpo quando aberto — drawer fechado não deixa inputs vivos
+            no DOM (evita colisão de locators e foco em campos invisíveis). */}
+        {filtersOpen && (
+        <div className={styles.drawerBody}>
+          <label className={styles.drawerLabel}>Conta
+            <PontesSelect
+              value={draft.contaId}
+              onChange={(v) => setDraft((d) => ({ ...d, contaId: v }))}
+              placeholder="Qualquer conta"
+              options={[{ value: "", label: "Qualquer conta" }, ...contas.map((c) => ({ value: c.id, label: c.nome }))]}
+            />
+          </label>
+          <label className={styles.drawerLabel}>Cartão
+            <PontesSelect
+              value={draft.cartaoId}
+              onChange={(v) => setDraft((d) => ({ ...d, cartaoId: v }))}
+              placeholder="Qualquer cartão"
+              options={[{ value: "", label: "Qualquer cartão" }, ...cartoes.map((c) => ({ value: c.id, label: c.nome }))]}
+            />
+          </label>
+          <div className={styles.drawerRow}>
+            <label className={styles.drawerLabel}>Valor mín.
+              <PontesInput type="number" inputMode="decimal" placeholder="0,00"
+                value={draft.valorMin} onChange={(e) => setDraft((d) => ({ ...d, valorMin: e.target.value }))} />
+            </label>
+            <label className={styles.drawerLabel}>Valor máx.
+              <PontesInput type="number" inputMode="decimal" placeholder="—"
+                value={draft.valorMax} onChange={(e) => setDraft((d) => ({ ...d, valorMax: e.target.value }))} />
+            </label>
+          </div>
+          <label className={styles.drawerLabel}>Status
+            <PontesSelect value={draft.status} onChange={(v) => setDraft((d) => ({ ...d, status: v }))} options={STATUS_OPTS} />
+          </label>
+          <label className={styles.drawerLabel}>Ordenar por
+            <PontesSelect value={draft.ordenacao} onChange={(v) => setDraft((d) => ({ ...d, ordenacao: v }))} options={ORDENACAO_OPTS} />
+          </label>
+        </div>
+        )}
+      </PontesDrawer>
     </div>
+  )
+}
+
+/** Chip de filtro avançado ativo — clicar no × remove só ele. */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className={styles.advChip}>
+      {label}
+      <button type="button" className={styles.advChipX} aria-label={`Remover ${label}`} onClick={onClear}>
+        <X size={13} strokeWidth={2.5} />
+      </button>
+    </span>
   )
 }
