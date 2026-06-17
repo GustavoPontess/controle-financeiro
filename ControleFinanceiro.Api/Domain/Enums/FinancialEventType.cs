@@ -38,4 +38,8 @@ public enum FinancialEventType
     // Transação
     TransacaoCriada = 50,
     TransacaoCancelada = 51,
+
+    // Família — acerto de contas (settle-up)
+    AcertoRegistrado = 60,
+    AcertoCancelado = 61,
 }

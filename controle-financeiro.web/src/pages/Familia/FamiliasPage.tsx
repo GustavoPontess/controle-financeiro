@@ -94,6 +94,7 @@ export default function FamiliasPage() {
   const [acertoPara, setAcertoPara] = useState("")
   const [acertoValor, setAcertoValor] = useState("")
   const [acertoObs, setAcertoObs] = useState("")
+  const [acertoIdemKey, setAcertoIdemKey] = useState("")
   const [savingAcerto, setSavingAcerto] = useState(false)
 
   const [modoRateio, setModoRateio] = useState<string>("1")
@@ -319,6 +320,7 @@ export default function FamiliasPage() {
     setAcertoPara("")
     setAcertoValor("")
     setAcertoObs("")
+    setAcertoIdemKey(crypto.randomUUID()) // key estável por tentativa; reusa no retry
     setAcertoOpen(true)
   }
 
@@ -344,6 +346,7 @@ export default function FamiliasPage() {
         paraUsuarioId: acertoPara,
         valor,
         observacao: acertoObs.trim() || null,
+        idempotencyKey: acertoIdemKey,
       })
       notify({ open: true, message: "Acerto registrado", severity: "success" })
       setAcertoOpen(false)

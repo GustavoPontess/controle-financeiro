@@ -6,7 +6,8 @@ public record RegistrarAcertoDto(
     decimal Valor,
     int? Mes,
     int? Ano,
-    string? Observacao);
+    string? Observacao,
+    string IdempotencyKey);
 
 public record AcertoContasDto(
     Guid Id,

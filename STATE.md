@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-16
-status: AGUARDANDO_DECISAO
-foco: 'segurança — sprint de auth hardening (começar pelo C1)'
+last_reviewed: 2026-06-17
+status: EM_PROGRESSO
+foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto fechado; P2 ehProprio + P3 papéis/aprovação na fila)'
 ---
 
 # STATE — onde parei
@@ -15,7 +15,11 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 variação% ✅ · 1.4 orçamento no Dashboard ✅). Segurança (código) toda fechada.
+**Branch `fix/familia-acerto-safety`** — cluster P1 de segurança do acerto de contas fechado (commitado, verde). Pendente: push + PR + merge.
+
+**Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
+
+**Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 variação% ✅ · 1.4 orçamento no Dashboard ✅). Segurança (auth) toda fechada.
 
 > **1.4 decisão:** em vez do "salário+meta" do ROADMAP (modelo rígido), reaproveitamos o `Orcamento` por-categoria que já existe (suporta orçamento geral) num card "safe-to-spend" no Dashboard. Alinhado ao mercado (Monarch/YNAB), zero migration.
 
@@ -23,7 +27,13 @@ Nada em código. **Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 v
 
 ## Próxima ação concreta
 
-**Lote 1 completo.** Próximo passo é **escolha de direção** (decidir com o Gustavo):
+**Imediato:** push + PR da `fix/familia-acerto-safety` → merge na main.
+
+**Follow-ups da auditoria família (catalogados no ROADMAP):**
+- **P2 🟡** `FamiliasPage:547` — `ehProprio` hardcoded `true` no remover-membro (admin removendo outro vê copy/efeito de "você saiu"). Fix: `ehProprio = m.usuarioId === currentUserId`. Branch própria (front).
+- **P3 ⚪** Lote 2 real: **2.4 aprovação de despesa** (não-começado, maior gap de feature) e **2.3 papéis com enum + enforcement** (hoje papel é string livre).
+
+**Depois — escolha de direção** (decidir com o Gustavo):
 - **Lote 2 (fosso de produto):** família real — rateio "quem paga o quê" + settle-up. **Spec própria antes de codar** (`docs/features/familia/`). É o maior diferencial; pede planejamento + decisões.
 - **Lote 3 (aquisição/SEO):** tela de Assinaturas, ferramentas grátis, referral.
 - **Conformidade:** LGPD #126 (pesquisa leve + decisão legal).
@@ -33,6 +43,11 @@ Nada em código. **Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 v
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
 
 ---
+
+## Entregue (2026-06-17)
+
+- **Auditoria do módulo família (workflow 7 agentes)** ✅ — mapeou back+front+testes e reconciliou contra o ROADMAP. Veredito: fosso construído ponta-a-ponta com testes fortes; gaps reais = segurança de app de dinheiro. Status do Lote 2 corrigido no ROADMAP; achados catalogados (P1/P2/P3).
+- **Acerto de contas endurecido (P1, branch `fix/familia-acerto-safety`)** 🟠→✅ — (1) **authz no cancelamento** (`AcertoService.CancelarAsync`): só criador ou partes (de/para) cancelam → `ForbiddenAccessException` (era: qualquer membro cancelava acerto alheio); (2) **idempotência** no POST `/acertos` (`idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync`, padrão `ParcelamentoService`; front gera UUID estável por tentativa, reusa no retry); (3) **`FinancialEventLog`** (`AcertoRegistrado`/`AcertoCancelado`) em registrar/cancelar. Back 266/266 (+novos casos: replay idempotente, 403 de terceiro, cancel por participante, audit log); front 295/295 (+teste de service); build+lint verdes. _Descartado como não-bug: hard-delete de `RateioTransacao` (config de split, não ledger)._
 
 ## Entregue nesta sessão (2026-06-16)
 
