@@ -15,16 +15,15 @@ foco: 'segurança — sprint de auth hardening (começar pelo C1)'
 
 ## Em execução
 
-Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política fechados.** Seguindo a Sprint de Auth Hardening.
+Nada em código. **3 🔴 (C1/C2/C3) + A1/A2 + reset-token/rate-limit/política + re-auth/CSP fechados.** Sprint de Auth Hardening quase no fim — falta rotacionar segredos.
 
 ## Próxima ação concreta
 
-**Sprint de Auth Hardening** (ordem em `ROADMAP.md` → Higiene, spec em `docs/SEGURANCA_BEST_PRACTICES.md`). Próximo:
-- **Re-auth em operação sensível + CSP estrita** 🟠. Exigir senha atual ao trocar e-mail/senha (`AlterarSenhaAsync`/troca de e-mail); confirmar que o refresh token está em cookie HttpOnly; adicionar Content-Security-Policy estrita (pré-condição contra XSS). Branch `fix/reauth-csp`. _Sem pesquisa nova — já em `docs/SEGURANCA_BEST_PRACTICES.md`._
+- **⚠️ Rotacionar segredos** 🟠 (urgente, independe de pesquisa) — nova `Jwt:Key` (≥32 bytes), nova senha do Postgres, quaisquer API keys; tirar defaults hardcoded do `docker-compose.yml`/CI versionado (**A3**) → `.env` não-versionado com `${VAR:?obrigatório}`. Ex-colaboradores têm clone com a chave antiga → rotacionar invalida. **Procedimento, não pesquisa.** Branch `chore/rotacionar-segredos`. _Atenção: rotacionar a JWT key invalida tokens atuais (desloga todos) — esperado._
 
-Depois: **⚠️ rotacionar segredos** + **pepper** (urgente, ex-colaboradores têm a JWT key no clone) → re-pesquisar gaps (key rollover, MFA, cripto-at-rest, logging, LGPD/BACEN — pesquisa LEVE, ver §8.6).
+Depois: re-pesquisar gaps **LEVE** (key rollover sem downtime, MFA, cripto-at-rest, logging, LGPD/BACEN — ver §8.6) → atacar por prioridade.
 
-P2 catalogados (não-bloqueantes): refresh token também em plaintext (hashear igual reset); NIST recomenda remover regras de composição da senha.
+P2 catalogados (não-bloqueantes): refresh token também em plaintext; NIST remover regras de composição; CSP no SPA (frontend prod).
 
 > Follow-up aberto (não-bloqueante): **403 (ownership) × 401 (auth)** — hoje todo `UnauthorizedAccessException` vira 401 e o front desloga; separar ownership em 403. Pré-existente em ~32 sites. Chip `task_65e37c60`.
 
@@ -32,6 +31,7 @@ P2 catalogados (não-bloqueantes): refresh token também em plaintext (hashear i
 
 ## Entregue nesta sessão (2026-06-16)
 
+- **Re-auth + CSP/headers** 🟠→✅ — verificado que troca de senha exige senha atual e que jwt+refresh estão em cookie HttpOnly+Secure+SameSite=Strict (não há troca de e-mail/delete); `SecurityHeadersMiddleware` novo: CSP (estrita p/ API, relaxada p/ Swagger/Hangfire) + nosniff + X-Frame DENY + Referrer + Permissions + HSTS(HTTPS). 5 testes (back 251/251). Headers confirmados ao vivo via curl.
 - **Reset token hasheado + rate-limit por conta + política 15 chars** 🟠→✅ — token guardado como SHA-256 (`OpaqueTokenHasher`), bruto só no e-mail; rate-limit 3/conta/hora no job; política 10→15 + teto 128 (front e back, com testes ajustados). Achados catalogados (P2): refresh token plaintext, NIST dropar composição. Back 246/246, front 287/287.
 - **A1/A2 — PasswordHasher** 🟠→✅ — migrado p/ **Argon2id** (Konscious, m=19456/t=2/p=1, salt 16B, saída 32B), formato versionado + **rehash transparente no login** (aceita hash legado PBKDF2, regrava sem reset). Decisão por **deep-research verificado** (OWASP/NIST, 24/25 claims). 8 testes (back 238/238).
 - **C3 — soft-delete de `Transacao`** 🔴→✅ — `DeletarAsync` virou soft delete (`Ativo=false`+`Cancelado`+`CanceladoEm`+motivo) e **global query filter** `HasQueryFilter(t => t.Ativo)` no `Transacao` exclui canceladas de toda query/navegação. Corrige de quebra pernas de transferência soft-deleted que apareciam na lista. 3 testes (back 230/230).
