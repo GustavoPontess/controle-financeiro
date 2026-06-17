@@ -70,6 +70,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [frontend]
 
+    # Nível do job: todo `docker compose` (up/logs/down) precisa dessas vars pra
+    # interpolar o compose (${POSTGRES_PASSWORD:?}/${JWT_SECRET:?}). Valores
+    # efêmeros de CI (DB descartável) — não são segredos reais.
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      JWT_SECRET: ci-secret-key-minimum-32-characters-long!
+      POSTGRES_PASSWORD: ci-postgres-pw
+
     steps:
       - uses: actions/checkout@v4
 
@@ -89,12 +97,6 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Subir Postgres + API via docker compose
-        env:
-          # Development p/ o DevDataSeeder criar o usuario de teste (dev@controle.test)
-          ASPNETCORE_ENVIRONMENT: Development
-          # Valores efemeros de CI (DB descartavel) — nao sao segredos reais.
-          JWT_SECRET: ci-secret-key-minimum-32-characters-long!
-          POSTGRES_PASSWORD: ci-postgres-pw
         run: |
           # Usa o MESMO docker-compose.yml do dev. API em container (host 5293),
           # roda migrations + seeders no startup. Postgres ja tem healthcheck.
