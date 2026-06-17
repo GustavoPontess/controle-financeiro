@@ -122,6 +122,12 @@ public class AuthService
         if (!usuario.Ativo)
             throw new UnauthorizedAccessException("Usuário inativo");
 
+        // Rehash transparente: senha legada (PBKDF2 10k/20B) ou Argon2id com parâmetros
+        // antigos é regravada com o esquema atual após verificação bem-sucedida — upgrade
+        // gradual sem forçar reset (OWASP). Persistido no SaveChanges abaixo.
+        if (PasswordHasher.NeedsRehash(usuario.PasswordHash))
+            usuario.PasswordHash = PasswordHasher.HashPassword(dto.Password);
+
         var rt = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 

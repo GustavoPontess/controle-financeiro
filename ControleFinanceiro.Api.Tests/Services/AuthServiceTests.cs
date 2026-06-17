@@ -135,4 +135,53 @@ public class AuthServiceTests
         sender.Verify(s => s.EnviarAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── A1/A2: rehash transparente de senha legada no login ─────────────────────
+
+    private static string LegacyPbkdf2Hash(string password)
+    {
+        var salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+        var key = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+            System.Text.Encoding.UTF8.GetBytes(password), salt, 10000,
+            System.Security.Cryptography.HashAlgorithmName.SHA256, 20);
+        var blob = new byte[36];
+        Array.Copy(salt, 0, blob, 0, 16);
+        Array.Copy(key, 0, blob, 16, 20);
+        return Convert.ToBase64String(blob);
+    }
+
+    [Fact]
+    public async Task Login_comHashLegado_fazRehashParaArgon2_e_continuaValido()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "legado@test.com");
+        u.PasswordHash = LegacyPbkdf2Hash("Senha@Legada1");
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "legado@test.com", Password = "Senha@Legada1" });
+
+        Assert.False(string.IsNullOrEmpty(resp.Token));
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        // O hash foi regravado no esquema atual (Argon2id) e ainda valida a mesma senha.
+        Assert.StartsWith("ARGON2ID$", atualizado!.PasswordHash);
+        Assert.False(PasswordHasher.NeedsRehash(atualizado.PasswordHash));
+        Assert.True(PasswordHasher.VerifyPassword("Senha@Legada1", atualizado.PasswordHash));
+    }
+
+    [Fact]
+    public async Task Login_comHashArgon2Atual_naoRegrava()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "atual@test.com");
+        u.PasswordHash = PasswordHasher.HashPassword("Senha@Atual1");
+        await ctx.SaveChangesAsync();
+        var hashAntes = u.PasswordHash;
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "atual@test.com", Password = "Senha@Atual1" });
+
+        var depois = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.Equal(hashAntes, depois!.PasswordHash); // sem rehash desnecessário
+    }
 }

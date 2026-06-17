@@ -34,8 +34,8 @@ Varredura completa (READ-ONLY) de tudo que os ex-colaboradores mergearam, feita 
 
 | # | Local | Problema | Fix |
 |---|---|---|---|
-| A1 | `PasswordHasher.cs:10` | PBKDF2 com **10.000 iterações** (mín. pedido ≥100k; OWASP 210k). Acelera brute-force de hashes vazados. | Subir p/ ≥100k; versionar hash p/ rehash gradual. |
-| A2 | `PasswordHasher.cs:9` | Hash truncado em **20 bytes** (SHA-256 = 32). Resquício de exemplo SHA-1. | `HashSize = 32`. |
+| A1 | `PasswordHasher.cs:10` | ✅ **CORRIGIDO (2026-06-17).** Era PBKDF2 **10.000 iterações** (~60× abaixo do OWASP). Migrado p/ **Argon2id** (Konscious, m=19456/t=2/p=1) + formato versionado + **rehash transparente no login**. |
+| A2 | `PasswordHasher.cs:9` | ✅ **CORRIGIDO (2026-06-17).** Era hash truncado em **20 bytes**. Agora **32 bytes** (saída nativa). |
 | A3 | `docker-compose.yml:8,25-26` | Senha Postgres (`postgres`) e `JWT_SECRET` default hardcoded no compose **versionado**. | Mover p/ `.env` não-versionado; `${JWT_SECRET:?obrigatório}` p/ falhar fast. |
 | A4 | `OrcamentoService.cs:124` vs `RelatorioService.cs:41-42` | Critério de "gasto do usuário" **divergente**: Orçamento usa `CriadoPor`, Relatório usa ownership de conta/cartão. Mesmo mês mostra números diferentes nas duas telas. Não vaza cross-tenant. | Padronizar o critério e usar nos dois. |
 
