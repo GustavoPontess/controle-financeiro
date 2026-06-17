@@ -59,6 +59,11 @@ status: ATIVO
 
 ## Higiene / dívida conhecida
 
+> **Prioridade (protocolo de triagem — `PROMPT_NOVA_SESSAO.md` §8.5):** **P0** 🔴 bloqueador/segurança crítica (fura fila, vira o próximo; se bloqueia o trabalho atual, parka a branch e troca) · **P1** 🟠 alta · **P2** 🟡 média · **P3** ⚪ baixa. **Todo achado entra aqui com nível, na hora.**
+
+### 📥 Achados a triar (intake)
+- _(vazio — quando algo for descoberto e ainda não classificado/encaixado, cai aqui primeiro com um nível provisório, depois é movido pra seção certa.)_
+
 ### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
 - [x] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. **Corrigido:** token fora da resposta (DTO só com `Mensagem` genérica idêntica), geração+e-mail **fire-and-forget** (Hangfire `PasswordResetEmailJob` + `IPasswordResetEmailSender`) → sem timing/enumeração. 6 testes de regressão. _OWASP Forgot Password._
 - [x] **C2 — contrato de exceção furado** 🔴 → ✅ — os 67 `throw new Exception(...)` viraram tipos certos (404/400/409/401 conforme semântica) e o middleware **não ecoa mais `Message` no 500** (mensagem genérica; detalhe só no log). 5 testes do middleware + 26 asserts de teste atualizados. _Follow-up registrado: distinguir 403 (ownership) de 401 (auth) — hoje 401 desloga; pré-existente em ~32 sites._
