@@ -33,10 +33,12 @@ status: ATIVO
 
 ### Lote 2 — colaboração / família (o fosso)
 
-- [ ] **2.2 Família REAL — rateio + settle-up** ⭐⭐ FOSSO, maior peso — rateio proporcional de despesa entre membros, saldo "quem deve a quem", quitação. **Spec própria antes de codar** (ampliar `docs/features/familia/`). Quebrar em sub-issues: modelo de dados, cálculo de saldo, UI de divisão no lançamento, tela "acertos".
-- [ ] **2.1 Atribuir transação a um membro/responsável** — `Transacao.responsavelId` + filtro + badge na lista. _Fonte: Monarch._
-- [ ] **2.3 Papéis/permissões + dependentes** — admin/membro/dependente, permissões por papel, contas de dependente.
-- [ ] **2.4 Aprovação de despesa** — despesa acima de X exige aprovação de outro membro (pendente/aprovada).
+> ⚠️ **Reconciliação (auditoria 2026-06-17, workflow de 7 agentes):** o fosso **já está construído** ponta-a-ponta (entidades Familia/Membro/Convite/Dependente/RateioTransacao/AcertoContas; services Familia/Rateio/DespesaCompartilhada/Acerto/Dependente; `FamiliasController`; `FamiliasPage`; ~9 migrations; testes fortes). O ROADMAP listava tudo como `[ ]` — **errado**. Status real abaixo. Os gaps reais **não são features faltando**, são **buracos de segurança de app de dinheiro** (ver "Achados da auditoria família" na seção de higiene).
+
+- [~] **2.2 Família REAL — rateio + settle-up** ⭐⭐ FOSSO → **QUASE PRONTO** — rateio (igualitário/proporcional/personalizado) em `RateioService`, balanço "quem deve a quem" + abate por acerto em `DespesaCompartilhadaService`, quitação em `AcertoService`, UI completa na `FamiliasPage`. **Falta:** idempotência no POST de acerto + `FinancialEventLog` (auditoria) — ver P1 na higiene.
+- [~] **2.1 Atribuir transação a um membro/responsável** → **PARCIAL** — `Transacao.FamiliaId` existe e despesa é compartilhada via família; **falta** `responsavelId` por-membro + filtro + badge na lista. _Fonte: Monarch._
+- [~] **2.3 Papéis/permissões + dependentes** → **PARCIAL** — dependentes completos (`DependenteService`); **papéis são string livre (`MembroFamilia.Papel`), sem enum nem enforcement por papel** (admin/membro/dependente). Falta o controle de permissão real.
+- [ ] **2.4 Aprovação de despesa** → **NÃO COMEÇADO** — compartilhar despesa é unilateral (`DespesaCompartilhadaService`), sem fluxo pendente/aprovada. _Maior gap de feature do Lote 2._
 
 ### Lote 3 — aquisição / SEO (site público)
 
@@ -63,6 +65,15 @@ status: ATIVO
 
 ### 📥 Achados a triar (intake)
 - _(vazio — quando algo for descoberto e ainda não classificado/encaixado, cai aqui primeiro com um nível provisório, depois é movido pra seção certa.)_
+
+### 🏠 Achados da auditoria família (2026-06-17) — segurança de app de dinheiro
+> Auditoria por workflow (7 agentes) do módulo família. Fosso construído; gaps = safety holes. Em correção na branch `fix/familia-acerto-safety` (P1).
+- [ ] **P1 🟠 — `AcertoService.CancelarAsync` sem checar dono** (authz hole) — só exige ser membro; qualquer membro cancela acerto de qualquer um. **Fix:** só criador OU participante (de/para) → `ForbiddenAccessException` (403). _branch em curso._
+- [ ] **P1 🟠 — POST `/acertos` sem idempotência** — retry de cliente duplica a quitação. **Fix:** `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`). _branch em curso._
+- [ ] **P1 🟠 — acerto sem `FinancialEventLog`** — mexe no balanço sem trilha de auditoria (viola CLAUDE.md). **Fix:** `Registrar(AcertoRegistrado/AcertoCancelado)`. _branch em curso._
+- [ ] **P2 🟡 — `FamiliasPage:547` `ehProprio` hardcoded `true`** — admin removendo OUTRO membro vê copy/efeito de "você saiu da família" (`handleRemoverMembro(m.id, true)`). **Fix:** `ehProprio = m.usuarioId === currentUserId`. _branch própria (front)._
+- [ ] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** — sem enum de papel/enforcement; compartilhar é unilateral. Feature, não bug. Ver Lote 2.
+- _Descartado (não é bug):_ `RateioService.RemoveRange` hard-delete de `RateioTransacao` — é config de split substituída por inteiro na edição, **não** entidade de ledger; soft-delete não se aplica.
 
 ### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
 - [x] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. **Corrigido:** token fora da resposta (DTO só com `Mensagem` genérica idêntica), geração+e-mail **fire-and-forget** (Hangfire `PasswordResetEmailJob` + `IPasswordResetEmailSender`) → sem timing/enumeração. 6 testes de regressão. _OWASP Forgot Password._

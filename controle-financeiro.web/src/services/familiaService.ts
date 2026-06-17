@@ -175,12 +175,17 @@ export interface RegistrarAcertoInput {
   mes?: number | null
   ano?: number | null
   observacao?: string | null
+  // Idempotência: UUID estável por tentativa de quitação. Reusar no retry pra
+  // não duplicar o acerto no servidor (o backend exige e deduplica por ele).
+  idempotencyKey: string
 }
 
 export const registrarAcerto = async (
   familiaId: string, input: RegistrarAcertoInput,
 ): Promise<AcertoContas> => {
-  const res = await api.post(`/familias/${familiaId}/acertos`, input)
+  const res = await api.post(`/familias/${familiaId}/acertos`, input, {
+    headers: { "Idempotency-Key": input.idempotencyKey },
+  })
   return res.data
 }
 

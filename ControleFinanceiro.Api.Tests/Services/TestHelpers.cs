@@ -9,4 +9,7 @@ internal static class TestHelpers
     /// <summary>NotificacaoService com logger nulo, para injetar nos serviços sob teste.</summary>
     public static NotificacaoService Notif(AppDbContext ctx) =>
         new(ctx, NullLogger<NotificacaoService>.Instance);
+
+    /// <summary>FinancialEventLogService para injetar nos serviços transacionais.</summary>
+    public static FinancialEventLogService EventLog(AppDbContext ctx) => new(ctx);
 }

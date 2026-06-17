@@ -20,6 +20,15 @@ public class AcertoServiceTests
         return new AppDbContext(options);
     }
 
+    private static AcertoService NewSvc(AppDbContext ctx) =>
+        new(ctx, TestHelpers.Notif(ctx), TestHelpers.EventLog(ctx));
+
+    /// <summary>RegistrarAcertoDto com idempotencyKey aleatório (override quando o teste precisa fixá-lo).</summary>
+    private static RegistrarAcertoDto Dto(
+        Guid de, Guid para, decimal valor,
+        int? mes = null, int? ano = null, string? obs = null, string? key = null) =>
+        new(de, para, valor, mes, ano, obs, key ?? Guid.NewGuid().ToString());
+
     private static Guid SeedUsuario(AppDbContext ctx, string email, string nome = "User")
     {
         var u = new Usuario { Id = Guid.NewGuid(), Email = email, Nome = nome, PasswordHash = "x" };
@@ -64,11 +73,25 @@ public class AcertoServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => svc.RegistrarAsync(familiaId, Guid.NewGuid(),
-                new RegistrarAcertoDto(dono, dono, 100m, null, null, null)));
+            () => svc.RegistrarAsync(familiaId, Guid.NewGuid(), Dto(dono, dono, 100m)));
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_SemIdempotencyKey_LancaInvalidOperation()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var svc = NewSvc(ctx);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.RegistrarAsync(familiaId, ana,
+                new RegistrarAcertoDto(ana, bia, 100m, null, null, null, "  ")));
     }
 
     [Fact]
@@ -77,11 +100,10 @@ public class AcertoServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.RegistrarAsync(familiaId, dono,
-                new RegistrarAcertoDto(dono, dono, 100m, null, null, null)));
+            () => svc.RegistrarAsync(familiaId, dono, Dto(dono, dono, 100m)));
     }
 
     [Fact]
@@ -92,11 +114,10 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.RegistrarAsync(familiaId, ana,
-                new RegistrarAcertoDto(ana, bia, 0m, null, null, null)));
+            () => svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 0m)));
     }
 
     [Fact]
@@ -106,11 +127,10 @@ public class AcertoServiceTests
         var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
         var estranho = SeedUsuario(ctx, "estranho@test.com", "Estranho");
         var familiaId = await SeedFamilia(ctx, ana);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.RegistrarAsync(familiaId, ana,
-                new RegistrarAcertoDto(ana, estranho, 100m, null, null, null)));
+            () => svc.RegistrarAsync(familiaId, ana, Dto(ana, estranho, 100m)));
     }
 
     [Fact]
@@ -121,16 +141,52 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
-        var dto = await svc.RegistrarAsync(familiaId, ana,
-            new RegistrarAcertoDto(ana, bia, 150m, null, null, "PIX"));
+        var dto = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 150m, obs: "PIX"));
 
         Assert.Equal(150m, dto.Valor);
         Assert.Equal("Ana", dto.DeNome);
         Assert.Equal("Bia", dto.ParaNome);
         Assert.Equal(DateTime.UtcNow.Month, dto.Mes);
         Assert.Equal(DateTime.UtcNow.Year, dto.Ano);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_MesmaIdempotencyKey_NaoDuplica()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var svc = NewSvc(ctx);
+
+        var key = Guid.NewGuid().ToString();
+        var primeiro = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 80m, key: key));
+        var replay = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 80m, key: key));
+
+        Assert.Equal(primeiro.Id, replay.Id); // retry retorna o mesmo acerto
+        Assert.Single(await ctx.AcertosContas.ToListAsync()); // não duplicou
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_GravaFinancialEventLog()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var svc = NewSvc(ctx);
+
+        var acerto = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 120m));
+
+        var log = await ctx.FinancialEventLogs
+            .SingleAsync(e => e.Tipo == FinancialEventType.AcertoRegistrado);
+        Assert.Equal("AcertoContas", log.EntidadeAfetada);
+        Assert.Equal(acerto.Id, log.EntidadeId);
+        Assert.Equal(120m, log.ValorDepois);
     }
 
     [Fact]
@@ -141,10 +197,10 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
-        await svc.RegistrarAsync(familiaId, ana, new RegistrarAcertoDto(ana, bia, 10m, 5, 2026, null));
-        await svc.RegistrarAsync(familiaId, ana, new RegistrarAcertoDto(ana, bia, 20m, 4, 2026, null));
+        await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 10m, 5, 2026));
+        await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 20m, 4, 2026));
 
         var maio = await svc.ListarAsync(familiaId, ana, 5, 2026);
 
@@ -160,10 +216,9 @@ public class AcertoServiceTests
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
         AddMembro(ctx, familiaId, bia);
-        var svc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var svc = NewSvc(ctx);
 
-        var acerto = await svc.RegistrarAsync(
-            familiaId, ana, new RegistrarAcertoDto(ana, bia, 10m, 5, 2026, null));
+        var acerto = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 10m, 5, 2026));
 
         await svc.CancelarAsync(familiaId, acerto.Id, ana);
 
@@ -171,6 +226,67 @@ public class AcertoServiceTests
         var registro = await ctx.AcertosContas.FindAsync(acerto.Id);
         Assert.NotNull(registro);
         Assert.False(registro!.Ativo);
+    }
+
+    [Fact]
+    public async Task CancelarAsync_PorTerceiro_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");   // dono + criador do acerto
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");   // pagador
+        var caio = SeedUsuario(ctx, "caio@test.com", "Caio"); // terceiro, não envolvido
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        AddMembro(ctx, familiaId, caio);
+        var svc = NewSvc(ctx);
+
+        // Ana registra: Bia pagou Ana. Partes: Bia/Ana. Criador: Ana.
+        var acerto = await svc.RegistrarAsync(familiaId, ana, Dto(bia, ana, 50m));
+
+        // Caio (membro, mas não criador nem parte) não pode cancelar.
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.CancelarAsync(familiaId, acerto.Id, caio));
+
+        var registro = await ctx.AcertosContas.FindAsync(acerto.Id);
+        Assert.True(registro!.Ativo); // não foi cancelado
+    }
+
+    [Fact]
+    public async Task CancelarAsync_PorParticipante_Funciona()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");   // criador
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");   // pagador (parte)
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var svc = NewSvc(ctx);
+
+        var acerto = await svc.RegistrarAsync(familiaId, ana, Dto(bia, ana, 50m));
+
+        // Bia é parte (pagador), mesmo não sendo a criadora → pode cancelar.
+        await svc.CancelarAsync(familiaId, acerto.Id, bia);
+
+        var registro = await ctx.AcertosContas.FindAsync(acerto.Id);
+        Assert.False(registro!.Ativo);
+    }
+
+    [Fact]
+    public async Task CancelarAsync_GravaFinancialEventLog()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, bia);
+        var svc = NewSvc(ctx);
+
+        var acerto = await svc.RegistrarAsync(familiaId, ana, Dto(ana, bia, 30m));
+        await svc.CancelarAsync(familiaId, acerto.Id, ana);
+
+        var log = await ctx.FinancialEventLogs
+            .SingleAsync(e => e.Tipo == FinancialEventType.AcertoCancelado);
+        Assert.Equal(acerto.Id, log.EntidadeId);
+        Assert.Equal(30m, log.ValorAntes);
     }
 
     [Fact]
@@ -185,10 +301,9 @@ public class AcertoServiceTests
         // Ana pagou 200, igualitário: cota 100 cada. Bia deve 100 a Ana.
         SeedDespesa(ctx, ana, 200m, familiaId);
 
-        var acertoSvc = new AcertoService(ctx, TestHelpers.Notif(ctx));
+        var acertoSvc = NewSvc(ctx);
         // Bia paga os 100 que devia a Ana.
-        await acertoSvc.RegistrarAsync(
-            familiaId, ana, new RegistrarAcertoDto(bia, ana, 100m, 5, 2026, null));
+        await acertoSvc.RegistrarAsync(familiaId, ana, Dto(bia, ana, 100m, 5, 2026));
 
         var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
