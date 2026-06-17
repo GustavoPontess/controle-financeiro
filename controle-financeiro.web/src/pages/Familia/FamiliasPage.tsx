@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
-import { Users, UserPlus, Trash2, Pencil, Wallet, ArrowRight, Heart } from "lucide-react"
+import { Users, UserPlus, Trash2, Pencil, Wallet, ArrowRight, Heart, Check, X } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
@@ -14,10 +14,12 @@ import {
   getDependentes, criarDependente, atualizarDependente, inativarDependente,
   definirModoRateio, definirRendaMembro,
   getAcertos, registrarAcerto, cancelarAcerto,
+  definirLimiteAprovacao, aprovarDespesa, rejeitarDespesa,
 } from "../../services/familiaService"
 import type {
   Familia, FamiliaDetalhe, ConviteFamilia, DespesaCompartilhada, BalancoFamilia,
   Dependente, TipoDependente, MembroFamilia, ModoRateio, AcertoContas,
+  StatusAprovacaoDespesa,
 } from "../../types/Familia"
 import { useAuth } from "../../hooks/useAuth"
 import styles from "./FamiliasPage.module.css"
@@ -38,6 +40,14 @@ const MODOS_RATEIO: { value: ModoRateio; label: string }[] = [
 ]
 const modoRateioLabel = (m: ModoRateio) =>
   MODOS_RATEIO.find(x => x.value === m)?.label ?? "Igualitário"
+
+// Badge de status de aprovação da despesa (2.4). NaoRequerida (0) não mostra nada.
+const statusAprovacaoBadge = (s: StatusAprovacaoDespesa) => {
+  if (s === 1) return <PontesBadge tone="warning" size="sm">Pendente</PontesBadge>
+  if (s === 2) return <PontesBadge tone="success" size="sm">Aprovada</PontesBadge>
+  if (s === 3) return <PontesBadge tone="danger" size="sm">Rejeitada</PontesBadge>
+  return null
+}
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -98,6 +108,10 @@ export default function FamiliasPage() {
   const [acertoObs, setAcertoObs] = useState("")
   const [acertoIdemKey, setAcertoIdemKey] = useState("")
   const [savingAcerto, setSavingAcerto] = useState(false)
+
+  const [limiteOpen, setLimiteOpen] = useState(false)
+  const [limiteValor, setLimiteValor] = useState("")
+  const [savingLimite, setSavingLimite] = useState(false)
 
   const [modoRateio, setModoRateio] = useState<string>("1")
 
@@ -371,6 +385,54 @@ export default function FamiliasPage() {
         await abrirDetalhe(detalhe.id)
       },
     })
+  }
+
+  // ── Aprovação de despesa (2.4) ──
+
+  const abrirLimiteDialog = () => {
+    setLimiteValor(detalhe?.limiteAprovacao != null ? String(detalhe.limiteAprovacao) : "")
+    setLimiteOpen(true)
+  }
+
+  const handleSalvarLimite = async () => {
+    if (!detalhe) return
+    const v = limiteValor.trim()
+    const limite = v === "" ? null : Number(v)
+    if (limite !== null && (Number.isNaN(limite) || limite < 0)) {
+      notify({ open: true, message: "Limite inválido", severity: "error" })
+      return
+    }
+    setSavingLimite(true)
+    try {
+      await definirLimiteAprovacao(detalhe.id, limite)
+      notify({
+        open: true,
+        message: limite === null ? "Aprovação de despesa desativada" : "Limite de aprovação salvo",
+        severity: "success",
+      })
+      setLimiteOpen(false)
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao salvar o limite", severity: "error" })
+    } finally {
+      setSavingLimite(false)
+    }
+  }
+
+  const handleAvaliarDespesa = async (transacaoId: string, aprovar: boolean) => {
+    if (!detalhe) return
+    try {
+      if (aprovar) await aprovarDespesa(detalhe.id, transacaoId)
+      else await rejeitarDespesa(detalhe.id, transacaoId)
+      notify({
+        open: true,
+        message: aprovar ? "Despesa aprovada" : "Despesa rejeitada",
+        severity: "success",
+      })
+      await abrirDetalhe(detalhe.id)
+    } catch {
+      notify({ open: true, message: "Erro ao avaliar a despesa", severity: "error" })
+    }
   }
 
   const handleDissolver = () => {
@@ -664,6 +726,13 @@ export default function FamiliasPage() {
             {/* Despesas compartilhadas */}
             <div className={styles.secRow}>
               <span className={styles.secTitle}>Despesas compartilhadas</span>
+              {detalhe.ehAdmin && (
+                <PontesButton size="xs" variant="soft" onClick={abrirLimiteDialog}>
+                  {detalhe.limiteAprovacao != null
+                    ? `Aprovação ≥ ${formatMoney(detalhe.limiteAprovacao)}`
+                    : "Aprovação: desligada"}
+                </PontesButton>
+              )}
             </div>
             {despesas.length === 0 ? (
               <span className={styles.emptyHint}>Nenhuma despesa compartilhada neste mês.</span>
@@ -673,8 +742,24 @@ export default function FamiliasPage() {
                   <div key={d.id} className={styles.itemRow}>
                     <span className={styles.itemSub}>
                       {d.descricao} · {d.pagadorNome} · {formatDate(d.data)}
+                      {" "}{statusAprovacaoBadge(d.statusAprovacao)}
                     </span>
-                    <span className={styles.itemValue}>{formatMoney(d.valor)}</span>
+                    <div className={styles.rowActions}>
+                      <span className={styles.itemValue}>{formatMoney(d.valor)}</span>
+                      {/* Pendente: quem NÃO criou a despesa pode aprovar/rejeitar */}
+                      {d.statusAprovacao === 1 && d.pagadorUsuarioId !== currentUser?.id && (
+                        <>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Aprovar despesa"
+                            onClick={() => handleAvaliarDespesa(d.id, true)}>
+                            <Check size={14} strokeWidth={2.5} />
+                          </PontesIconButton>
+                          <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar despesa"
+                            onClick={() => handleAvaliarDespesa(d.id, false)}>
+                            <X size={14} strokeWidth={2.5} />
+                          </PontesIconButton>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -845,6 +930,32 @@ export default function FamiliasPage() {
               value={acertoObs}
               onChange={e => setAcertoObs(e.target.value)}
               placeholder="Pix, TED, dinheiro..."
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      {/* Modal limite de aprovação (2.4) */}
+      <PontesModal
+        open={limiteOpen}
+        title="Limite de aprovação"
+        onClose={() => setLimiteOpen(false)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setLimiteOpen(false)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvarLimite} loading={savingLimite} disabled={savingLimite}>Salvar</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <span className={styles.itemSub}>
+            Despesas compartilhadas com valor igual ou acima deste limite exigem a aprovação de
+            outro membro antes de entrar no balanço. Deixe em branco para desligar.
+          </span>
+          <PontesField label="Valor mínimo (R$)">
+            <PontesInput
+              type="number"
+              value={limiteValor}
+              onChange={e => setLimiteValor(e.target.value)}
+              placeholder="Ex.: 200,00 — em branco = sem aprovação"
             />
           </PontesField>
         </div>

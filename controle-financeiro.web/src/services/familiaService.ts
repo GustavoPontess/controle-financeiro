@@ -201,3 +201,24 @@ export const cancelarAcerto = async (
 ): Promise<void> => {
   await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
 }
+
+// ── Aprovação de despesa (2.4) ──
+
+/** Define/limpa o limite de aprovação da família (só admin). null = desliga. */
+export const definirLimiteAprovacao = async (
+  familiaId: string, limiteAprovacao: number | null,
+): Promise<void> => {
+  await api.put(`/familias/${familiaId}/limite-aprovacao`, { limiteAprovacao })
+}
+
+export const aprovarDespesa = async (
+  familiaId: string, transacaoId: string,
+): Promise<void> => {
+  await api.post(`/familias/${familiaId}/despesas/${transacaoId}/aprovar`)
+}
+
+export const rejeitarDespesa = async (
+  familiaId: string, transacaoId: string,
+): Promise<void> => {
+  await api.post(`/familias/${familiaId}/despesas/${transacaoId}/rejeitar`)
+}

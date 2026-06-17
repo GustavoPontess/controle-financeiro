@@ -61,7 +61,12 @@ export interface FamiliaDetalhe {
   modoRateioPadrao: ModoRateio
   membros: MembroFamilia[]
   convitesPendentes: ConviteFamilia[]
+  limiteAprovacao: number | null
 }
+
+// ── Aprovação de despesa (2.4) ──
+// NaoRequerida, Pendente, Aprovada, Rejeitada
+export type StatusAprovacaoDespesa = 0 | 1 | 2 | 3
 
 export interface DespesaCompartilhada {
   id: string
@@ -71,6 +76,8 @@ export interface DespesaCompartilhada {
   categoriaNome: string | null
   pagadorUsuarioId: string
   pagadorNome: string
+  statusAprovacao: StatusAprovacaoDespesa
+  aprovadoPorNome: string | null
 }
 
 export interface SaldoMembro {
