@@ -26,7 +26,7 @@ public class AcertoService
     public async Task<AcertoContasDto> RegistrarAsync(
         Guid familiaId, Guid usuarioId, RegistrarAcertoDto dto)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         // Idempotência — um acerto move dinheiro (afeta o balanço da família), então
         // o POST é transacional: um retry de cliente não pode duplicar a quitação.
@@ -141,7 +141,7 @@ public class AcertoService
     /// <summary>Cancela um acerto (soft delete — preserva o histórico).</summary>
     public async Task CancelarAsync(Guid familiaId, Guid acertoId, Guid usuarioId)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var acerto = await _context.AcertosContas
             .FirstOrDefaultAsync(a => a.Id == acertoId && a.FamiliaId == familiaId && a.Ativo)
@@ -192,13 +192,12 @@ public class AcertoService
             acerto.Valor, acerto.Mes, acerto.Ano, acerto.Observacao, acerto.CriadoEm);
     }
 
-    private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
-    {
-        var ehMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo);
-        if (!ehMembro)
-            throw new KeyNotFoundException("Família não encontrada.");
-    }
+    // Leitura: qualquer membro. Escrita: bloqueia Dependente (2.3).
+    private Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
+
+    private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
 
     /// <summary>Valida que o pagador/recebedor é membro ativo (erro de input, não 404).</summary>
     private async Task ExigirParticipanteMembroAsync(Guid familiaId, Guid usuarioId)

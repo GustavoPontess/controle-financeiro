@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
@@ -26,6 +27,22 @@ public class FamiliaServiceTests
         ctx.SaveChanges();
         return u.Id;
     }
+
+    /// <summary>Adiciona um membro ativo com o papel de permissão dado; retorna o usuarioId.</summary>
+    private static Guid SeedMembro(AppDbContext ctx, Guid familiaId, string email, PapelFamilia papel)
+    {
+        var uid = SeedUsuario(ctx, email);
+        ctx.MembrosFamilia.Add(new MembroFamilia
+        {
+            Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = uid,
+            Papel = "Membro", PapelPermissao = papel, EntrouEm = DateTime.UtcNow, Ativo = true,
+        });
+        ctx.SaveChanges();
+        return uid;
+    }
+
+    private static Guid MembroIdDe(AppDbContext ctx, Guid familiaId, Guid usuarioId) =>
+        ctx.MembrosFamilia.First(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId).Id;
 
     [Fact]
     public async Task CriarAsync_CriaFamiliaComMembroAdmin()
@@ -147,15 +164,91 @@ public class FamiliaServiceTests
     }
 
     [Fact]
-    public async Task DefinirLimiteAprovacaoAsync_NaoAdmin_LancaForbidden()
+    public async Task DefinirLimiteAprovacaoAsync_MembroComum_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var membro = SeedMembro(ctx, familia.Id, "membro@test.com", PapelFamilia.Membro);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.DefinirLimiteAprovacaoAsync(familia.Id, membro, 100m));
+    }
+
+    [Fact]
+    public async Task DefinirLimiteAprovacaoAsync_NaoMembro_LancaKeyNotFound()
     {
         var ctx = CreateContext();
         var svc = new FamiliaService(ctx);
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(
+        await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.DefinirLimiteAprovacaoAsync(familia.Id, Guid.NewGuid(), 100m));
+    }
+
+    // ── Feature 2.3 — papéis de permissão ──────────────────────────────────────
+
+    [Fact]
+    public async Task CriarAsync_CriadorEhAdmin()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+
+        var membro = await ctx.MembrosFamilia.FirstAsync(m => m.UsuarioId == dono);
+        Assert.Equal(PapelFamilia.Admin, membro.PapelPermissao);
+        Assert.True(familia.EhAdmin);
+    }
+
+    [Fact]
+    public async Task EditarPermissaoAsync_AdminPromoveMembro_ViraAdmin()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var membro = SeedMembro(ctx, familia.Id, "membro@test.com", PapelFamilia.Membro);
+        var membroId = MembroIdDe(ctx, familia.Id, membro);
+
+        await svc.EditarPermissaoAsync(
+            familia.Id, membroId, new EditarPermissaoDto(PapelFamilia.Admin), dono);
+
+        var atualizado = await ctx.MembrosFamilia.FindAsync(membroId);
+        Assert.Equal(PapelFamilia.Admin, atualizado!.PapelPermissao);
+    }
+
+    [Fact]
+    public async Task EditarPermissaoAsync_MembroComum_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var a = SeedMembro(ctx, familia.Id, "a@test.com", PapelFamilia.Membro);
+        var b = SeedMembro(ctx, familia.Id, "b@test.com", PapelFamilia.Membro);
+        var bId = MembroIdDe(ctx, familia.Id, b);
+
+        // 'a' é membro comum → não pode promover ninguém.
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.EditarPermissaoAsync(familia.Id, bId, new EditarPermissaoDto(PapelFamilia.Admin), a));
+    }
+
+    [Fact]
+    public async Task EditarPermissaoAsync_NoCriador_LancaInvalidOperation()
+    {
+        var ctx = CreateContext();
+        var svc = new FamiliaService(ctx);
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await svc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var donoMembroId = MembroIdDe(ctx, familia.Id, dono);
+
+        // O dono é sempre Admin e não pode ser rebaixado, nem por si mesmo.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.EditarPermissaoAsync(
+                familia.Id, donoMembroId, new EditarPermissaoDto(PapelFamilia.Membro), dono));
     }
 
     [Fact]

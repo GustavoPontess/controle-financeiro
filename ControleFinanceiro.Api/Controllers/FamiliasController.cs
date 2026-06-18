@@ -77,12 +77,21 @@ public class FamiliasController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Edita o papel de um membro (admin edita qualquer um; membro, o próprio).</summary>
+    /// <summary>Edita o rótulo de relação de um membro (admin edita qualquer um; membro, o próprio).</summary>
     [HttpPut("{id:guid}/membros/{membroId:guid}/papel")]
     [ProducesResponseType(typeof(MembroFamiliaDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> EditarPapel(Guid id, Guid membroId, [FromBody] EditarPapelDto dto)
     {
         return Ok(await _familiaService.EditarPapelAsync(id, membroId, dto, GetUserId()));
+    }
+
+    /// <summary>Feature 2.3 — promove/rebaixa a permissão de um membro (só admin; o dono não muda).</summary>
+    [HttpPut("{id:guid}/membros/{membroId:guid}/permissao")]
+    [ProducesResponseType(typeof(MembroFamiliaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> EditarPermissao(
+        Guid id, Guid membroId, [FromBody] EditarPermissaoDto dto)
+    {
+        return Ok(await _familiaService.EditarPermissaoAsync(id, membroId, dto, GetUserId()));
     }
 
     /// <summary>Remove um membro da família. Admin remove qualquer um; membro sai sozinho.</summary>

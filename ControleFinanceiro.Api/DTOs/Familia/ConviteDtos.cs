@@ -2,7 +2,7 @@ using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
-public record CriarConviteDto(string Email, string Papel);
+public record CriarConviteDto(string Email, string Papel, PapelFamilia PapelPermissao = PapelFamilia.Membro);
 
 public record ConviteFamiliaDto(
     Guid Id,
@@ -13,4 +13,5 @@ public record ConviteFamiliaDto(
     StatusConvite Status,
     DateTime ExpiraEm,
     DateTime CriadoEm,
-    string Token);
+    string Token,
+    PapelFamilia PapelPermissao);

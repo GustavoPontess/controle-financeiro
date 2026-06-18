@@ -28,8 +28,36 @@ public class ConviteServiceTests
         return u.Id;
     }
 
+    /// <summary>Adiciona um membro com o papel de permissão dado e retorna o usuarioId.</summary>
+    private static Guid SeedMembro(AppDbContext ctx, Guid familiaId, string email, PapelFamilia papel)
+    {
+        var uid = SeedUsuario(ctx, email);
+        ctx.MembrosFamilia.Add(new MembroFamilia
+        {
+            Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = uid,
+            Papel = "Membro", PapelPermissao = papel, EntrouEm = DateTime.UtcNow, Ativo = true,
+        });
+        ctx.SaveChanges();
+        return uid;
+    }
+
     [Fact]
-    public async Task CriarAsync_NaoAdmin_LancaUnauthorized()
+    public async Task CriarAsync_MembroComum_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var familiaSvc = new FamiliaService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var membro = SeedMembro(ctx, familia.Id, "membro@test.com", PapelFamilia.Membro);
+
+        // Membro comum (não-admin) não pode convidar → 403.
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => conviteSvc.CriarAsync(familia.Id, new CriarConviteDto("x@test.com", "Filho"), membro));
+    }
+
+    [Fact]
+    public async Task CriarAsync_NaoMembro_LancaKeyNotFound()
     {
         var ctx = CreateContext();
         var familiaSvc = new FamiliaService(ctx);
@@ -37,8 +65,43 @@ public class ConviteServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(
+        // Não-membro não distingue ação admin de inexistência → 404.
+        await Assert.ThrowsAsync<KeyNotFoundException>(
             () => conviteSvc.CriarAsync(familia.Id, new CriarConviteDto("x@test.com", "Filho"), Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComoAdmin_LancaArgument()
+    {
+        var ctx = CreateContext();
+        var familiaSvc = new FamiliaService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
+
+        // Não se convida direto como Admin (promove depois).
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => conviteSvc.CriarAsync(
+                familia.Id, new CriarConviteDto("x@test.com", "Filho", PapelFamilia.Admin), dono));
+    }
+
+    [Fact]
+    public async Task AceitarAsync_HerdaPapelDoConvite_Dependente()
+    {
+        var ctx = CreateContext();
+        var familiaSvc = new FamiliaService(ctx);
+        var conviteSvc = new ConviteService(ctx, TestHelpers.Notif(ctx));
+        var dono = SeedUsuario(ctx, "dono@test.com");
+        var convidado = SeedUsuario(ctx, "convidado@test.com");
+        var familia = await familiaSvc.CriarAsync(new CriarFamiliaDto("F"), dono);
+        var convite = await conviteSvc.CriarAsync(
+            familia.Id, new CriarConviteDto("convidado@test.com", "Filho", PapelFamilia.Dependente), dono);
+
+        await conviteSvc.AceitarAsync(convite.Token, convidado);
+
+        var membro = await ctx.MembrosFamilia
+            .FirstAsync(m => m.UsuarioId == convidado && m.FamiliaId == familia.Id);
+        Assert.Equal(PapelFamilia.Dependente, membro.PapelPermissao);
     }
 
     [Fact]

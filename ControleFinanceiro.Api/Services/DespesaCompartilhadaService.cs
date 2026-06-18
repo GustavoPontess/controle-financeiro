@@ -29,7 +29,7 @@ public class DespesaCompartilhadaService
         if (transacao.Tipo != TipoTransacao.Despesa)
             throw new InvalidOperationException("Apenas despesas podem ser compartilhadas.");
 
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var familia = await _context.Familias
             .FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
@@ -76,7 +76,7 @@ public class DespesaCompartilhadaService
 
     private async Task AvaliarAsync(Guid familiaId, Guid transacaoId, Guid usuarioId, bool aprovar)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var transacao = await _context.Transacoes
             .FirstOrDefaultAsync(t => t.Id == transacaoId && t.FamiliaId == familiaId && t.Ativo)
@@ -165,7 +165,7 @@ public class DespesaCompartilhadaService
     public async Task AtribuirResponsavelAsync(
         Guid familiaId, Guid transacaoId, Guid? responsavelUsuarioId, Guid usuarioId)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var transacao = await _context.Transacoes
             .FirstOrDefaultAsync(t => t.Id == transacaoId && t.FamiliaId == familiaId && t.Ativo)
@@ -279,11 +279,10 @@ public class DespesaCompartilhadaService
                 && t.Data.Year == ano);
     }
 
-    private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
-    {
-        var ehMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo);
-        if (!ehMembro)
-            throw new KeyNotFoundException("Família não encontrada.");
-    }
+    // Leitura (listar/balanço): qualquer membro. Escrita: bloqueia Dependente (2.3).
+    private Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
+
+    private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
 }

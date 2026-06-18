@@ -297,6 +297,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
 
+                    b.Property<int>("PapelPermissao")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -552,6 +555,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<int>("PapelPermissao")
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("RendaMensal")
                         .HasColumnType("numeric");

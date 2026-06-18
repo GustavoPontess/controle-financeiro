@@ -18,7 +18,7 @@ public class DependenteService
     /// <summary>Cria um dependente na família. Só membros ativos podem.</summary>
     public async Task<DependenteDto> CriarAsync(Guid familiaId, Guid usuarioId, CriarDependenteDto dto)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var dependente = new Dependente
         {
@@ -53,7 +53,7 @@ public class DependenteService
     public async Task<DependenteDto> AtualizarAsync(
         Guid familiaId, Guid dependenteId, Guid usuarioId, CriarDependenteDto dto)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var dependente = await BuscarDependenteAsync(familiaId, dependenteId);
 
@@ -69,7 +69,7 @@ public class DependenteService
     /// <summary>Inativa o dependente (soft delete — preserva histórico de atribuições).</summary>
     public async Task InativarAsync(Guid familiaId, Guid dependenteId, Guid usuarioId)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        await ExigirEscritaAsync(familiaId, usuarioId);
 
         var dependente = await BuscarDependenteAsync(familiaId, dependenteId);
         dependente.Ativo = false;
@@ -120,8 +120,8 @@ public class DependenteService
             .FirstOrDefaultAsync(d => d.Id == dependenteId && d.Ativo)
             ?? throw new KeyNotFoundException("Dependente não encontrado.");
 
-        // A transação deve pertencer a um membro da mesma família do dependente.
-        await ExigirMembroAsync(dependente.FamiliaId, usuarioId);
+        // A transação deve pertencer a um membro (≥ Membro) da mesma família do dependente.
+        await ExigirEscritaAsync(dependente.FamiliaId, usuarioId);
 
         transacao.DependenteId = dependente.Id;
         await _context.SaveChangesAsync();
@@ -134,13 +134,12 @@ public class DependenteService
             ?? throw new KeyNotFoundException("Dependente não encontrado.");
     }
 
-    private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
-    {
-        var ehMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo);
-        if (!ehMembro)
-            throw new KeyNotFoundException("Família não encontrada.");
-    }
+    // Leitura: qualquer membro (inclusive Dependente). Escrita: bloqueia Dependente (2.3).
+    private Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
+
+    private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
+        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
 
     private static DependenteDto MapToDto(Dependente d) =>
         new(d.Id, d.FamiliaId, d.Nome, d.Apelido, d.DataNascimento, d.Tipo, d.Ativo);
