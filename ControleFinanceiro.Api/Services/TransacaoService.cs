@@ -193,7 +193,7 @@ namespace ControleFinanceiro.Api.Services
         /// <summary>
         /// KPIs agregados (entradas, saídas, saldo) calculados no banco. Exclui
         /// transferência, pagamento de fatura, saldo inicial e soft-deleted —
-        /// mesma regra contábil de saldo×P&L (#128). Exato pra qualquer volume.
+        /// mesma regra contábil de saldo×P&amp;L (#128). Exato pra qualquer volume.
         /// </summary>
         public async Task<DTOs.Transacao.TransacaoStatsDto> ObterStatsAsync(
             Guid usuarioId,
