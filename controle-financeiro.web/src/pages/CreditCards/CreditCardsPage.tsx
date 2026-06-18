@@ -384,6 +384,13 @@ export default function CreditCardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faturas])
 
+  // Navegação iniciada pelo usuário cancela o auto-foco pendente — senão o effect
+  // de "abrir → fatura atual" pode disparar atrasado e sobrescrever a escolha.
+  const irParaFatura = useCallback((updater: number | ((i: number) => number)) => {
+    justOpenedRef.current = false
+    setFaturaIdx(updater)
+  }, [])
+
   // Atalhos teclado ← → pra navegar entre meses quando o painel está aberto.
   // Ignora quando foco está num campo de texto/select (não atrapalha digitação).
   useEffect(() => {
@@ -392,12 +399,12 @@ export default function CreditCardsPage() {
       const tgt = ev.target as HTMLElement | null
       if (tgt && /input|textarea|select/i.test(tgt.tagName)) return
       if (tgt && tgt.isContentEditable) return
-      if (ev.key === "ArrowLeft") { ev.preventDefault(); setFaturaIdx((i) => i + 1) }
-      else if (ev.key === "ArrowRight") { ev.preventDefault(); setFaturaIdx((i) => i - 1) }
+      if (ev.key === "ArrowLeft") { ev.preventDefault(); irParaFatura((i) => i + 1) }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); irParaFatura((i) => i - 1) }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [faturasCartaoId])
+  }, [faturasCartaoId, irParaFatura])
 
   // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
   // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
@@ -719,12 +726,12 @@ export default function CreditCardsPage() {
                 {/* Navegação por mês: ‹ anterior | (Hoje?) | mês | (Hoje?) | próximo › */}
                 <div className={styles.monthNav}>
                   <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
-                    disabled={idx >= clampHi} onClick={() => setFaturaIdx(idx + 1)}>
+                    disabled={idx >= clampHi} onClick={() => irParaFatura(idx + 1)}>
                     <ChevronLeft size={18} />
                   </button>
                   {idx < atualIdx && (
                     <PontesButton size="md" variant="outline" iconStart={<ChevronLeft size={16} strokeWidth={2.5} />}
-                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                      onClick={() => irParaFatura(atualIdx)}>Hoje</PontesButton>
                   )}
                   <div className={styles.monthLabel}>
                     <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
@@ -732,10 +739,10 @@ export default function CreditCardsPage() {
                   </div>
                   {idx > atualIdx && (
                     <PontesButton size="md" variant="outline" iconEnd={<ChevronRight size={16} strokeWidth={2.5} />}
-                      onClick={() => setFaturaIdx(atualIdx)}>Hoje</PontesButton>
+                      onClick={() => irParaFatura(atualIdx)}>Hoje</PontesButton>
                   )}
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
-                    disabled={idx <= clampLo} onClick={() => setFaturaIdx(idx - 1)}>
+                    disabled={idx <= clampLo} onClick={() => irParaFatura(idx - 1)}>
                     <ChevronRight size={18} />
                   </button>
                 </div>

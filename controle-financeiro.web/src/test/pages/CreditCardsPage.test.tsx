@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import CreditCardsPage from "../../pages/CreditCards/CreditCardsPage"
@@ -64,10 +64,17 @@ function renderPage() {
 
 describe("CreditCardsPage (#84)", () => {
   beforeEach(() => {
+    // "Agora" fixo dentro do ciclo da fatura aberta (20/mai–20/jun) — torna
+    // atualIdx determinístico e imune à data real do runner/CI (flake #84).
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-06-10T12:00:00Z").getTime())
     getCartoes.mockReset().mockResolvedValue([cartao])
     getFaturasByCartao.mockReset().mockResolvedValue([fatura])
     getFaturaDetalhe.mockReset().mockResolvedValue(detalhe)
     pagarFatura.mockReset().mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it("lista cartão + resumo e limite", async () => {
