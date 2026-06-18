@@ -18,7 +18,8 @@ import {
 } from "lucide-react"
 import {
   // theme
-  palettes, fonts, semantic, paletteVars, type Palette, type FontOption,
+  palettes, fonts, semantic, spacing, radii, shadows, transitions, paletteVars,
+  type Palette, type FontOption,
   // botões
   PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink, PontesNavLink,
   PontesChoiceCards,
@@ -1042,15 +1043,61 @@ function TokensSection({ p }: { p: Palette }) {
         </div>
       </Group>
 
-      <Group title="Tipografia">
+      <Group title="Tipografia (fonte ativa do tema)">
         <div className={styles.typoCol}>
-          <div className={styles.typoH1}>H1 Fraunces 56/600</div>
-          <div className={styles.typoH2}>H2 Fraunces 42/600</div>
-          <div className={styles.typoH3}>H3 Sans 28/700</div>
-          <div className={styles.typoH4}>H4 Sans 18/600</div>
-          <div className={styles.typoBody}>Body Sans 14/400 — texto padrão de UI.</div>
-          <div className={styles.typoCaption}>Caption Sans 12/400 — secundário.</div>
-          <div className={styles.typoEyebrow}>Eyebrow 11/700 LETRA-SPACED</div>
+          <div className={styles.typoH1}>H1 · 56 / 800</div>
+          <div className={styles.typoH2}>H2 · 42 / 800</div>
+          <div className={styles.typoH3}>H3 · 28 / 700</div>
+          <div className={styles.typoH4}>H4 · 18 / 600</div>
+          <div className={styles.typoBody}>Body · 14 / 400 — texto padrão de UI.</div>
+          <div className={styles.typoCaption}>Caption · 12 / 400 — secundário.</div>
+          <div className={styles.typoEyebrow}>Eyebrow · 11 / 700 LETRA-SPACED</div>
+        </div>
+      </Group>
+
+      <Group title="Espaçamento (escala base-4)">
+        <div className={styles.scaleCol}>
+          {Object.entries(spacing).map(([k, v]) => (
+            <div key={k} className={styles.scaleRow}>
+              <span className={styles.scaleKey}>{k}</span>
+              <span className={styles.scaleBar} style={{ width: v }} />
+              <span className={styles.tokenVal}>{v}px</span>
+            </div>
+          ))}
+        </div>
+      </Group>
+
+      <Group title="Raios (radii)">
+        <div className={styles.rowGap16}>
+          {Object.entries(radii).map(([k, v]) => (
+            <div key={k} className={styles.radiiCell}>
+              <div className={styles.radiiBox} style={{ borderRadius: v }} />
+              <span className={styles.tokenName}>{k}</span>
+              <span className={styles.tokenVal}>{v === 999 ? "full" : `${v}px`}</span>
+            </div>
+          ))}
+        </div>
+      </Group>
+
+      <Group title="Sombras">
+        <div className={styles.grid3}>
+          {Object.entries(shadows).map(([k, v]) => (
+            <div key={k} className={styles.shadowCell}>
+              <div className={styles.shadowBox} style={{ boxShadow: v }} />
+              <span className={styles.tokenName}>{k}</span>
+            </div>
+          ))}
+        </div>
+      </Group>
+
+      <Group title="Transições">
+        <div className={styles.colGap8}>
+          {Object.entries(transitions).map(([k, v]) => (
+            <div key={k} className={styles.tokenLine}>
+              <span className={styles.tokenName}>{k}</span>
+              <span className={styles.tokenVal}>{v}</span>
+            </div>
+          ))}
         </div>
       </Group>
 
