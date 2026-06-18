@@ -35,6 +35,7 @@ public class FamiliaService
             FamiliaId = familia.Id,
             UsuarioId = usuarioId,
             Papel = "Administrador",
+            PapelPermissao = PapelFamilia.Admin, // o criador é Admin (2.3)
             EntrouEm = DateTime.UtcNow,
             Ativo = true,
         };
@@ -49,18 +50,17 @@ public class FamiliaService
 
     public async Task<List<FamiliaDto>> ListarAsync(Guid usuarioId)
     {
+        // ehAdmin agora vem do papel de permissão do próprio membro (2.3), não de "é o criador".
         var familias = await _context.MembrosFamilia
-            .Where(m => m.UsuarioId == usuarioId && m.Ativo)
-            .Select(m => m.Familia!)
-            .Where(f => f.Ativa)
-            .Select(f => new FamiliaDto(
-                f.Id,
-                f.Nome,
-                f.CriadoPorUsuarioId,
-                f.CriadoEm,
-                f.CriadoPorUsuarioId == usuarioId,
-                f.Membros.Count(mm => mm.Ativo),
-                f.LimiteAprovacao))
+            .Where(m => m.UsuarioId == usuarioId && m.Ativo && m.Familia!.Ativa)
+            .Select(m => new FamiliaDto(
+                m.Familia!.Id,
+                m.Familia.Nome,
+                m.Familia.CriadoPorUsuarioId,
+                m.Familia.CriadoEm,
+                m.PapelPermissao == PapelFamilia.Admin,
+                m.Familia.Membros.Count(mm => mm.Ativo),
+                m.Familia.LimiteAprovacao))
             .AsNoTracking()
             .ToListAsync();
 
@@ -81,17 +81,21 @@ public class FamiliaService
         var membros = familia.Membros
             .Select(m => new MembroFamiliaDto(
                 m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
-                m.RendaMensal))
+                m.RendaMensal, m.PapelPermissao))
             .ToList();
 
         var convites = familia.Convites
             .Select(c => new ConviteFamiliaDto(
                 c.Id, c.FamiliaId, familia.Nome, c.EmailConvidado, c.Papel,
-                c.Status, c.ExpiraEm, c.CriadoEm, c.Token))
+                c.Status, c.ExpiraEm, c.CriadoEm, c.Token, c.PapelPermissao))
             .ToList();
 
+        // ehAdmin = o papel do próprio usuário é Admin (2.3).
+        var ehAdmin = familia.Membros
+            .First(m => m.UsuarioId == usuarioId && m.Ativo).PapelPermissao == PapelFamilia.Admin;
+
         return new FamiliaDetalheDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,
-            familia.CriadoEm, familia.CriadoPorUsuarioId == usuarioId,
+            familia.CriadoEm, ehAdmin,
             familia.ModoRateioPadrao, membros, convites, familia.LimiteAprovacao);
     }
 
@@ -102,7 +106,7 @@ public class FamiliaService
             throw new ArgumentException("O limite de aprovação não pode ser negativo.");
 
         var familia = await BuscarFamiliaAsync(familiaId);
-        ExigirAdmin(familia, usuarioId);
+        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
 
         familia.LimiteAprovacao = limite;
         await _context.SaveChangesAsync();
@@ -111,7 +115,7 @@ public class FamiliaService
     public async Task DissolverAsync(Guid familiaId, Guid usuarioId)
     {
         var familia = await BuscarFamiliaAsync(familiaId);
-        ExigirAdmin(familia, usuarioId);
+        ExigirCriador(familia, usuarioId); // só o dono dissolve
 
         familia.Ativa = false;
         await _context.SaveChangesAsync();
@@ -123,44 +127,70 @@ public class FamiliaService
         if (string.IsNullOrWhiteSpace(dto.Papel))
             throw new ArgumentException("Papel é obrigatório.");
 
-        var familia = await BuscarFamiliaAsync(familiaId);
+        await BuscarFamiliaAsync(familiaId);
+        var papelEditor = await FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
 
         var membro = await _context.MembrosFamilia
             .Include(m => m.Usuario)
             .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
             ?? throw new KeyNotFoundException("Membro não encontrado.");
 
-        // Admin edita qualquer um; membro edita apenas o próprio papel.
-        var ehAdmin = familia.CriadoPorUsuarioId == usuarioId;
-        if (!ehAdmin && membro.UsuarioId != usuarioId)
+        // Admin edita o rótulo de qualquer um; membro edita só o próprio.
+        if (papelEditor != PapelFamilia.Admin && membro.UsuarioId != usuarioId)
             throw new ForbiddenAccessException("Você só pode editar o próprio papel.");
 
         membro.Papel = dto.Papel.Trim();
         await _context.SaveChangesAsync();
 
         return new MembroFamiliaDto(membro.Id, membro.UsuarioId, membro.Usuario!.Nome,
-            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal);
+            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal,
+            membro.PapelPermissao);
     }
 
     public async Task RemoverMembroAsync(Guid familiaId, Guid membroId, Guid usuarioId)
     {
         var familia = await BuscarFamiliaAsync(familiaId);
+        var papelRemovedor = await FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
 
         var membro = await _context.MembrosFamilia
             .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
             ?? throw new KeyNotFoundException("Membro não encontrado.");
 
-        var ehAdmin = familia.CriadoPorUsuarioId == usuarioId;
-        if (!ehAdmin && membro.UsuarioId != usuarioId)
+        // Admin remove qualquer um; membro só remove a si mesmo (sair).
+        if (papelRemovedor != PapelFamilia.Admin && membro.UsuarioId != usuarioId)
             throw new ForbiddenAccessException("Você só pode remover a si mesmo.");
 
-        // O admin não sai sem dissolver — caso contrário a família ficaria sem dono.
+        // O criador não sai sem dissolver — caso contrário a família ficaria sem dono.
         if (membro.UsuarioId == familia.CriadoPorUsuarioId)
             throw new InvalidOperationException(
-                "O administrador não pode sair da família. Dissolva a família.");
+                "O dono não pode sair da família. Dissolva a família.");
 
         membro.Ativo = false;
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Feature 2.3 — admin promove/rebaixa a permissão de um membro. O criador
+    /// não pode ser alterado (continua sempre Admin).</summary>
+    public async Task<MembroFamiliaDto> EditarPermissaoAsync(
+        Guid familiaId, Guid membroId, EditarPermissaoDto dto, Guid usuarioId)
+    {
+        var familia = await BuscarFamiliaAsync(familiaId);
+        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+
+        var membro = await _context.MembrosFamilia
+            .Include(m => m.Usuario)
+            .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
+            ?? throw new KeyNotFoundException("Membro não encontrado.");
+
+        if (membro.UsuarioId == familia.CriadoPorUsuarioId)
+            throw new InvalidOperationException("O dono da família é sempre Admin e não pode ser alterado.");
+
+        membro.PapelPermissao = dto.PapelPermissao;
+        await _context.SaveChangesAsync();
+
+        return new MembroFamiliaDto(membro.Id, membro.UsuarioId, membro.Usuario!.Nome,
+            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal,
+            membro.PapelPermissao);
     }
 
     private async Task<Familia> BuscarFamiliaAsync(Guid familiaId)
@@ -169,9 +199,9 @@ public class FamiliaService
             ?? throw new KeyNotFoundException("Família não encontrada.");
     }
 
-    private static void ExigirAdmin(Familia familia, Guid usuarioId)
+    private static void ExigirCriador(Familia familia, Guid usuarioId)
     {
         if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Apenas o administrador pode executar esta ação.");
+            throw new ForbiddenAccessException("Apenas o dono da família pode executar esta ação.");
     }
 }

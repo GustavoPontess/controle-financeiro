@@ -19,6 +19,9 @@ public class ConviteFamilia
     [MaxLength(60)]
     public string Papel { get; set; } = string.Empty;
 
+    /// <summary>Feature 2.3 — papel de permissão que o convidado terá ao aceitar (Membro|Dependente).</summary>
+    public PapelFamilia PapelPermissao { get; set; } = PapelFamilia.Membro;
+
     [Required]
     [MaxLength(64)]
     public string Token { get; set; } = string.Empty;

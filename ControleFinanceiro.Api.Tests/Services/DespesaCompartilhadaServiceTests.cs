@@ -35,12 +35,13 @@ public class DespesaCompartilhadaServiceTests
         return familia.Id;
     }
 
-    private static void AddMembro(AppDbContext ctx, Guid familiaId, Guid usuarioId)
+    private static void AddMembro(AppDbContext ctx, Guid familiaId, Guid usuarioId,
+        PapelFamilia papel = PapelFamilia.Membro)
     {
         ctx.MembrosFamilia.Add(new MembroFamilia
         {
             Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = usuarioId,
-            Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true,
+            Papel = "Membro", PapelPermissao = papel, EntrouEm = DateTime.UtcNow, Ativo = true,
         });
         ctx.SaveChanges();
     }
@@ -391,6 +392,38 @@ public class DespesaCompartilhadaServiceTests
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.AtribuirResponsavelAsync(familiaId, txId, ana, Guid.NewGuid()));
+    }
+
+    // ── Feature 2.3 — Dependente é só-leitura ──────────────────────────────────
+
+    [Fact]
+    public async Task CompartilharAsync_Dependente_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var dep = SeedUsuario(ctx, "dep@test.com", "Dep");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, dep, PapelFamilia.Dependente);
+        var txId = SeedTransacao(ctx, dep, 100m);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.CompartilharAsync(txId, familiaId, dep));
+    }
+
+    [Fact]
+    public async Task ListarDespesas_Dependente_PodeLer()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var dep = SeedUsuario(ctx, "dep@test.com", "Dep");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, dep, PapelFamilia.Dependente);
+        var svc = new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx));
+
+        // Dependente lê o feed sem erro (lista vazia, mas sem 403).
+        var feed = await svc.ListarDespesasAsync(familiaId, dep, 5, 2026);
+        Assert.Empty(feed);
     }
 
     [Fact]

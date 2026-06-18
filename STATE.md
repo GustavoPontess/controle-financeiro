@@ -15,9 +15,9 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 
 ## Em execução
 
-**Feature 2.1 — responsável da despesa.** Back+front na branch `feature/familia-responsavel-despesa` (`Transacao.ResponsavelUsuarioId` + migration + endpoint + filtro no feed; front: filtro + picker por linha + nome visível; back 283/283, front 312/312) — pendente push/PR/merge.
+**Feature 2.3 — papéis + permissões.** Backend completo na branch `feature/familia-papeis-permissoes` (enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning) — pendente push/PR/merge. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI). Spec: `docs/features/familia/papeis-permissoes.md`.
 
-2.4 (aprovação) completa e mergeada (#224 back + #225 front). Achados de segurança da auditoria família (P1+P2) mergeados (#221/#223). **Lote 2 agora: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 parcial** (papéis sem enum/enforcement).
+2.1/2.2/2.4 completas e mergeadas (#221-#226). **Lote 2: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 back ✅/front pendente.** (Achado parkado: upgrade .NET 8→10, P2 no ROADMAP.)
 
 **Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
 

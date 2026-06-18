@@ -18,7 +18,8 @@ public class RateioService
     /// <summary>Define o modo de rateio padrão da família.</summary>
     public async Task DefinirModoFamiliaAsync(Guid familiaId, Guid usuarioId, ModoRateio modo)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        // 2.3 — modo de rateio é config da família: só Admin.
+        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
 
         var familia = await _context.Familias
             .FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
@@ -32,7 +33,8 @@ public class RateioService
     public async Task DefinirRendaAsync(
         Guid familiaId, Guid membroId, Guid usuarioId, decimal? rendaMensal)
     {
-        await ExigirMembroAsync(familiaId, usuarioId);
+        // 2.3 — escrita (bloqueia Dependente). Membro só edita a própria renda; Admin, qualquer.
+        var papel = await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
 
         if (rendaMensal is < 0)
             throw new ArgumentException("A renda mensal não pode ser negativa.");
@@ -40,6 +42,9 @@ public class RateioService
         var membro = await _context.MembrosFamilia
             .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
             ?? throw new KeyNotFoundException("Membro não encontrado.");
+
+        if (papel != PapelFamilia.Admin && membro.UsuarioId != usuarioId)
+            throw new ForbiddenAccessException("Você só pode definir a própria renda.");
 
         membro.RendaMensal = rendaMensal;
         await _context.SaveChangesAsync();
@@ -158,13 +163,5 @@ public class RateioService
 
         if (usuarioIds.Any(id => !membrosValidos.Contains(id)))
             throw new ArgumentException("O rateio inclui alguém que não é membro ativo da família.");
-    }
-
-    private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
-    {
-        var ehMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo);
-        if (!ehMembro)
-            throw new KeyNotFoundException("Família não encontrada.");
     }
 }

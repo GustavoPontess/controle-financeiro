@@ -33,8 +33,12 @@ public class ConviteService
         var familia = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
-        if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Apenas o administrador pode convidar.");
+        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+
+        // 2.3 — convida-se como Membro (default) ou Dependente; nunca direto como Admin.
+        var papelConvite = dto.PapelPermissao == 0 ? PapelFamilia.Membro : dto.PapelPermissao;
+        if (papelConvite != PapelFamilia.Membro && papelConvite != PapelFamilia.Dependente)
+            throw new ArgumentException("Convidado deve ser Membro ou Dependente (Admin se promove depois).");
 
         // E-mail já é membro ativo?
         var jaMembro = await _context.MembrosFamilia
@@ -62,6 +66,7 @@ public class ConviteService
             FamiliaId = familiaId,
             EmailConvidado = email,
             Papel = dto.Papel.Trim(),
+            PapelPermissao = papelConvite,
             Token = GerarToken(),
             Status = StatusConvite.Pendente,
             ExpiraEm = DateTime.UtcNow.Add(ValidadeConvite),
@@ -90,11 +95,10 @@ public class ConviteService
 
     public async Task RevogarAsync(Guid familiaId, Guid conviteId, Guid usuarioId)
     {
-        var familia = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
+        _ = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
-        if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Apenas o administrador pode revogar convites.");
+        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
 
         var convite = await _context.ConvitesFamilia
             .FirstOrDefaultAsync(c => c.Id == conviteId && c.FamiliaId == familiaId)
@@ -120,7 +124,7 @@ public class ConviteService
                 && c.ExpiraEm > agora)
             .Select(c => new ConviteFamiliaDto(
                 c.Id, c.FamiliaId, c.Familia!.Nome, c.EmailConvidado, c.Papel,
-                c.Status, c.ExpiraEm, c.CriadoEm, c.Token))
+                c.Status, c.ExpiraEm, c.CriadoEm, c.Token, c.PapelPermissao))
             .AsNoTracking()
             .ToListAsync();
     }
@@ -147,6 +151,7 @@ public class ConviteService
                 throw new InvalidOperationException("Você já é membro desta família.");
             membro.Ativo = true;
             membro.Papel = convite.Papel;
+            membro.PapelPermissao = convite.PapelPermissao; // herda a permissão do convite (2.3)
             membro.EntrouEm = DateTime.UtcNow;
         }
         else
@@ -157,6 +162,7 @@ public class ConviteService
                 FamiliaId = convite.FamiliaId,
                 UsuarioId = usuarioId,
                 Papel = convite.Papel,
+                PapelPermissao = convite.PapelPermissao,
                 EntrouEm = DateTime.UtcNow,
                 Ativo = true,
             });
@@ -206,7 +212,7 @@ public class ConviteService
 
     private static ConviteFamiliaDto ToDto(ConviteFamilia c, string nomeFamilia) =>
         new(c.Id, c.FamiliaId, nomeFamilia, c.EmailConvidado, c.Papel,
-            c.Status, c.ExpiraEm, c.CriadoEm, c.Token);
+            c.Status, c.ExpiraEm, c.CriadoEm, c.Token, c.PapelPermissao);
 
     private static string GerarToken()
     {

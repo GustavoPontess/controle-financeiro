@@ -6,6 +6,9 @@ public record CriarFamiliaDto(string Nome);
 
 public record EditarPapelDto(string Papel);
 
+/// <summary>Feature 2.3 — admin promove/rebaixa a permissão de um membro.</summary>
+public record EditarPermissaoDto(PapelFamilia PapelPermissao);
+
 /// <summary>Feature 2.4 — define/limpa o limite de aprovação da família. Null = desliga.</summary>
 public record DefinirLimiteAprovacaoDto(decimal? LimiteAprovacao);
 
@@ -25,7 +28,8 @@ public record MembroFamiliaDto(
     string EmailUsuario,
     string Papel,
     DateTime EntrouEm,
-    decimal? RendaMensal);
+    decimal? RendaMensal,
+    PapelFamilia PapelPermissao);
 
 public record FamiliaDetalheDto(
     Guid Id,

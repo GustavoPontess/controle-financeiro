@@ -43,12 +43,13 @@ public class AcertoServiceTests
         return familia.Id;
     }
 
-    private static void AddMembro(AppDbContext ctx, Guid familiaId, Guid usuarioId)
+    private static void AddMembro(AppDbContext ctx, Guid familiaId, Guid usuarioId,
+        PapelFamilia papel = PapelFamilia.Membro)
     {
         ctx.MembrosFamilia.Add(new MembroFamilia
         {
             Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = usuarioId,
-            Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true,
+            Papel = "Membro", PapelPermissao = papel, EntrouEm = DateTime.UtcNow, Ativo = true,
         });
         ctx.SaveChanges();
     }
@@ -287,6 +288,21 @@ public class AcertoServiceTests
             .SingleAsync(e => e.Tipo == FinancialEventType.AcertoCancelado);
         Assert.Equal(acerto.Id, log.EntidadeId);
         Assert.Equal(30m, log.ValorAntes);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_Dependente_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
+        var dep = SeedUsuario(ctx, "dep@test.com", "Dep");
+        var familiaId = await SeedFamilia(ctx, ana);
+        AddMembro(ctx, familiaId, dep, PapelFamilia.Dependente);
+        var svc = NewSvc(ctx);
+
+        // Dependente é só-leitura → não registra acerto (2.3).
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.RegistrarAsync(familiaId, dep, Dto(dep, ana, 50m)));
     }
 
     [Fact]
