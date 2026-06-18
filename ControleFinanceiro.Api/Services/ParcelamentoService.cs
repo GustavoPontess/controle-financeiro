@@ -392,10 +392,6 @@ public class ParcelamentoService
     // ── Listagem ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Lista parcelamentos do usuário, ordenados por data de criação (mais recentes primeiro).
-    /// Filtra por <paramref name="ativo"/> se informado.
-    /// </summary>
-    /// <summary>
     /// KPIs agregados — ativos e soma do valor restante (efetivo - pago). Total inclui cancelados.
     /// Calculado no banco, exato pra qualquer volume.
     /// </summary>

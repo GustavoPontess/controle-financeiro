@@ -37,7 +37,7 @@ public class AuthService
     // Retorna (entidade, token BRUTO). O bruto vai pro cliente (cookie); no banco
     // guarda-se só o hash (igual ao reset token) — vazamento de DB não dá refresh tokens
     // reutilizáveis.
-    private async Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId)
+    private Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId)
     {
         var tokenBruto = GerarTokenOpaco();
         var rt = new RefreshToken
@@ -50,7 +50,8 @@ public class AuthService
             CriadoEm = DateTime.UtcNow,
         };
         _context.RefreshTokens.Add(rt);
-        return (rt, tokenBruto);
+        // Sem I/O aqui (o SaveChanges é do caller) — não precisa de async/await.
+        return Task.FromResult((rt, tokenBruto));
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
