@@ -45,7 +45,7 @@ import {
 } from "../../components/pontes"
 import styles from "./DesignSystemPage.module.css"
 
-type TabId = "botoes" | "form" | "data" | "feedback" | "navegacao" | "site" | "tokens"
+type TabId = "botoes" | "form" | "data" | "feedback" | "navegacao" | "site" | "tokens" | "layout"
 
 const TABS: { value: TabId; label: string }[] = [
   { value: "botoes", label: "Botões" },
@@ -55,6 +55,7 @@ const TABS: { value: TabId; label: string }[] = [
   { value: "navegacao", label: "Navegação" },
   { value: "site", label: "Site" },
   { value: "tokens", label: "Tokens" },
+  { value: "layout", label: "Espaço & Efeitos" },
 ]
 
 export default function DesignSystemPage() {
@@ -136,6 +137,7 @@ export default function DesignSystemPage() {
             {tab === "navegacao" && <NavSection />}
             {tab === "site" && <SiteSection p={palette} />}
             {tab === "tokens" && <TokensSection p={palette} />}
+            {tab === "layout" && <LayoutTokensSection />}
           </div>
         </div>
         <div className={styles.spacer80} />
@@ -1013,47 +1015,13 @@ function NavbarPreview({ p }: { p: Palette }) {
 // TOKENS SECTION
 // =============================================================================
 
-function TokensSection({ p }: { p: Palette }) {
-  const tokens: { key: keyof Palette; label: string }[] = [
-    { key: "primary", label: "primary" },
-    { key: "primaryDark", label: "primaryDark" },
-    { key: "primarySoft", label: "primarySoft" },
-    { key: "accent", label: "accent" },
-    { key: "accentSoft", label: "accentSoft" },
-    { key: "text", label: "text" },
-    { key: "textMuted", label: "textMuted" },
-    { key: "bg", label: "bg" },
-    { key: "surface", label: "surface" },
-    { key: "border", label: "border" },
-  ]
-
+function LayoutTokensSection() {
   return (
     <div>
-      <Group title="Cores da paleta atual">
-        <div className={styles.grid5}>
-          {tokens.map((t) => (
-            <div key={t.key} className={styles.swatchCard}>
-              <div className={styles.swatchBlock} style={{ background: p[t.key] }} />
-              <div className={styles.swatchInfo}>
-                <div className={styles.swatchName}>{t.label}</div>
-                <div className={styles.swatchHex}>{p[t.key]}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Group>
-
-      <Group title="Tipografia (fonte ativa do tema)">
-        <div className={styles.typoCol}>
-          <div className={styles.typoH1}>H1 · 56 / 800</div>
-          <div className={styles.typoH2}>H2 · 42 / 800</div>
-          <div className={styles.typoH3}>H3 · 28 / 700</div>
-          <div className={styles.typoH4}>H4 · 18 / 600</div>
-          <div className={styles.typoBody}>Body · 14 / 400 — texto padrão de UI.</div>
-          <div className={styles.typoCaption}>Caption · 12 / 400 — secundário.</div>
-          <div className={styles.typoEyebrow}>Eyebrow · 11 / 700 LETRA-SPACED</div>
-        </div>
-      </Group>
+      <p className={styles.helper}>
+        Tokens de layout e efeito — espaçamento, raios, sombras e transições — definidos em{" "}
+        <code>theme.ts</code>. Independem da paleta.
+      </p>
 
       <Group title="Espaçamento (escala base-4)">
         <div className={styles.scaleCol}>
@@ -1098,6 +1066,55 @@ function TokensSection({ p }: { p: Palette }) {
               <span className={styles.tokenVal}>{v}</span>
             </div>
           ))}
+        </div>
+      </Group>
+    </div>
+  )
+}
+
+function TokensSection({ p }: { p: Palette }) {
+  const tokens: { key: keyof Palette; label: string }[] = [
+    { key: "primary", label: "primary" },
+    { key: "primaryDark", label: "primaryDark" },
+    { key: "primarySoft", label: "primarySoft" },
+    { key: "accent", label: "accent" },
+    { key: "accentSoft", label: "accentSoft" },
+    { key: "text", label: "text" },
+    { key: "textMuted", label: "textMuted" },
+    { key: "bg", label: "bg" },
+    { key: "surface", label: "surface" },
+    { key: "border", label: "border" },
+  ]
+
+  return (
+    <div>
+      <Group title="Cores da paleta atual">
+        <div className={styles.grid5}>
+          {tokens.map((t) => (
+            <div key={t.key} className={styles.swatchCard}>
+              <div className={styles.swatchBlock} style={{ background: p[t.key] }} />
+              <div className={styles.swatchInfo}>
+                <div className={styles.swatchName}>{t.label}</div>
+                <div className={styles.swatchHex}>{p[t.key]}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Group>
+
+      <Group title="Tipografia">
+        <p className={styles.helper}>
+          Títulos (H1/H2) usam a fonte de marca <code>--pontes-font-heading</code> (Fraunces, fixa).
+          Do H3 pra baixo é a fonte do tema <code>--pontes-font</code> (trocável no topo).
+        </p>
+        <div className={styles.typoCol}>
+          <div className={styles.typoH1}>H1 título · 56 / 600</div>
+          <div className={styles.typoH2}>H2 título · 42 / 600</div>
+          <div className={styles.typoH3}>H3 · 28 / 700</div>
+          <div className={styles.typoH4}>H4 · 18 / 600</div>
+          <div className={styles.typoBody}>Body · 14 / 400 — texto padrão de UI.</div>
+          <div className={styles.typoCaption}>Caption · 12 / 400 — secundário.</div>
+          <div className={styles.typoEyebrow}>Eyebrow · 11 / 700 LETRA-SPACED</div>
         </div>
       </Group>
 

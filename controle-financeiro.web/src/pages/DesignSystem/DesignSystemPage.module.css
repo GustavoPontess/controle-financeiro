@@ -108,8 +108,8 @@
 .swatchName { font-size: 12px; font-weight: 700; color: var(--pontes-text); }
 .swatchHex { font-size: 10px; color: var(--pontes-text-muted); font-family: monospace; }
 .typoCol { display: flex; flex-direction: column; gap: 14px; }
-.typoH1 { font-size: 56px; font-weight: 800; color: var(--pontes-text); font-family: var(--pontes-font); letter-spacing: -0.025em; line-height: 1.05; }
-.typoH2 { font-size: 42px; font-weight: 800; color: var(--pontes-text); font-family: var(--pontes-font); letter-spacing: -0.02em; }
+.typoH1 { font-size: 56px; font-weight: 600; color: var(--pontes-text); font-family: var(--pontes-font-heading); letter-spacing: -0.025em; line-height: 1.05; }
+.typoH2 { font-size: 42px; font-weight: 600; color: var(--pontes-text); font-family: var(--pontes-font-heading); letter-spacing: -0.02em; }
 .typoH3 { font-size: 28px; font-weight: 700; color: var(--pontes-text); }
 .typoH4 { font-size: 18px; font-weight: 600; color: var(--pontes-text); }
 .typoBody { font-size: 14px; color: var(--pontes-text); }
