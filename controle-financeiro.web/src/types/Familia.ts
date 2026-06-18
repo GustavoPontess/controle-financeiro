@@ -78,6 +78,8 @@ export interface DespesaCompartilhada {
   pagadorNome: string
   statusAprovacao: StatusAprovacaoDespesa
   aprovadoPorNome: string | null
+  responsavelUsuarioId: string | null
+  responsavelNome: string | null
 }
 
 export interface SaldoMembro {

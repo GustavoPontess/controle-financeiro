@@ -120,24 +120,30 @@ public class DespesaCompartilhadaService
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Feed de despesas compartilhadas da família no mês/ano.</summary>
+    /// <summary>Feed de despesas compartilhadas da família no mês/ano.
+    /// Feature 2.1 — opcionalmente filtra por membro responsável.</summary>
     public async Task<List<DespesaCompartilhadaDto>> ListarDespesasAsync(
-        Guid familiaId, Guid usuarioId, int mes, int ano)
+        Guid familiaId, Guid usuarioId, int mes, int ano, Guid? responsavelId = null)
     {
         await ExigirMembroAsync(familiaId, usuarioId);
 
-        var despesas = await QueryDespesasDoMes(familiaId, mes, ano)
+        var query = QueryDespesasDoMes(familiaId, mes, ano);
+        if (responsavelId is { } rid)
+            query = query.Where(t => t.ResponsavelUsuarioId == rid);
+
+        var despesas = await query
             .Select(t => new
             {
                 t.Id, t.Descricao, t.Valor, t.Data,
                 CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null,
-                t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId,
+                t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId, t.ResponsavelUsuarioId,
             })
             .ToListAsync();
 
-        // Nomes do pagador e de quem aprovou/rejeitou (Feature 2.4).
+        // Nomes do pagador (2.4: aprovador, 2.1: responsável).
         var nomeIds = despesas.Select(d => d.CriadoPor)
             .Concat(despesas.Where(d => d.AprovadoPorUsuarioId != null).Select(d => d.AprovadoPorUsuarioId!.Value))
+            .Concat(despesas.Where(d => d.ResponsavelUsuarioId != null).Select(d => d.ResponsavelUsuarioId!.Value))
             .Distinct().ToList();
         var nomes = await _context.Usuarios
             .Where(u => nomeIds.Contains(u.Id))
@@ -148,8 +154,33 @@ public class DespesaCompartilhadaService
                 d.Id, d.Descricao, d.Valor, d.Data, d.CategoriaNome,
                 d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "—"),
                 d.StatusAprovacao,
-                d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null))
+                d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null,
+                d.ResponsavelUsuarioId,
+                d.ResponsavelUsuarioId is { } rid2 ? nomes.GetValueOrDefault(rid2) : null))
             .ToList();
+    }
+
+    /// <summary>Feature 2.1 — atribui (ou limpa) o membro responsável por uma despesa
+    /// compartilhada. Qualquer membro ativo pode atribuir; o responsável deve ser membro ativo.</summary>
+    public async Task AtribuirResponsavelAsync(
+        Guid familiaId, Guid transacaoId, Guid? responsavelUsuarioId, Guid usuarioId)
+    {
+        await ExigirMembroAsync(familiaId, usuarioId);
+
+        var transacao = await _context.Transacoes
+            .FirstOrDefaultAsync(t => t.Id == transacaoId && t.FamiliaId == familiaId && t.Ativo)
+            ?? throw new KeyNotFoundException("Despesa compartilhada não encontrada.");
+
+        if (responsavelUsuarioId is { } rid)
+        {
+            var ehMembro = await _context.MembrosFamilia
+                .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == rid && m.Ativo);
+            if (!ehMembro)
+                throw new ArgumentException("O responsável deve ser um membro ativo da família.");
+        }
+
+        transacao.ResponsavelUsuarioId = responsavelUsuarioId;
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>Balanço mensal: quem pagou quanto vs a cota devida. A cota de cada
