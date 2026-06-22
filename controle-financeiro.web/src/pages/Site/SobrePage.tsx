@@ -81,7 +81,7 @@ function Manifesto() {
 
 function Historia() {
   const paras = [
-    "Começou com uma briga boba sobre quem tinha pagado mais no mês. A gente percebeu que nenhum app brasileiro respondia uma pergunta simples: “quem deve quanto pra quem?”",
+    "Começou com uma briga boba sobre quem tinha pagado mais no mês. A gente percebeu que nenhum app brasileiro respondia uma pergunta simples: “quem pagou mais, e como acertar isso?”",
     "Os apps existentes são feitos pra uma pessoa só. Quando duas pessoas dividem a vida, eles falham — cada um lança no seu silo, ninguém vê o todo, e no fim do mês vira discussão.",
     "Decidimos construir o que faltava: um app onde casais e famílias enxergam o dinheiro junto, dividem o que é compartilhado e mantêm privado o que é pessoal. Transparência sem invasão.",
   ]
@@ -103,7 +103,7 @@ function Historia() {
 function Valores() {
   const vals = [
     { icon: <Shield size={26} strokeWidth={2} />, t: "Privacidade primeiro", d: "Sua conta pessoal é sua. Nada vira compartilhado sem você marcar. Default seguro, sempre." },
-    { icon: <Eye size={26} strokeWidth={2} />, t: "Transparência sem briga", d: "Tudo explícito: quem pagou, quem deve, quanto falta. Linguagem que organiza, não que acusa." },
+    { icon: <Eye size={26} strokeWidth={2} />, t: "Transparência sem briga", d: "Tudo explícito: quem pagou, quem adiantou, quanto acertar. Linguagem que organiza, não que acusa." },
     { icon: <Heart size={26} strokeWidth={2.5} />, t: "Feito pro Brasil", d: "Pix, OFX dos bancos daqui, realidade da família brasileira. Não é tradução de app gringo." },
     { icon: <Sparkles size={26} strokeWidth={2} />, t: "Simples de verdade", d: "Poderoso por dentro, leve por fora. Em 15 minutos tá rodando — sem manual, sem curva." },
   ]

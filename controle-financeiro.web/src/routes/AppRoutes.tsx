@@ -20,6 +20,7 @@ import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
+import FamiliaDetalhePage from "../pages/Familia/FamiliaDetalhePage"
 import MetasPage from "../pages/Metas/MetasPage"
 import LimitesPage from "../pages/Limites/LimitesPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
@@ -87,6 +88,7 @@ export default function AppRoutes() {
           <Route path="/emprestimos" element={<EmprestimosPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
+          <Route path="/familias/:id" element={<FamiliaDetalhePage />} />
           <Route path="/metas" element={<MetasPage />} />
           <Route path="/limites" element={<LimitesPage />} />
           <Route path="/importacao" element={<ImportacaoPage />} />

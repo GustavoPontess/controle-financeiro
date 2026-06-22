@@ -863,7 +863,7 @@ function TabFamilia({ p }: { p: Palette }) {
         <div className={styles.panelCardPad20}>
           <div className={styles.acertoTitle}>Acerto do mês</div>
           <div className={styles.acertoBox}>
-            <div className={styles.acertoLabel}>MARIA DEVE A GUSTAVO</div>
+            <div className={styles.acertoLabel}>MARIA ACERTA COM GUSTAVO</div>
             <div className={styles.acertoBig}>R$ 180,00</div>
             <div className={styles.acertoSub}>Referente a 3 despesas compartilhadas</div>
           </div>
@@ -1204,7 +1204,7 @@ function Landing({ p, font }: { p: Palette; font: string }) {
           <FeatureBlock reverse={false}
             tag="RATEIO"
             title="Cada centavo onde ele deve estar"
-            text="A despesa cai 50/50, por porcentagem, valor fixo ou consumo real. Cada um vê o que pagou, o que deve, o que recebe. Sem 'achismo'."
+            text="A despesa cai 50/50, por porcentagem, valor fixo ou consumo real. Cada um vê o que pagou e o acerto de cada um. Sem 'achismo'."
             mockup={<RateioMockup />} />
 
           <FeatureBlock reverse={true}
