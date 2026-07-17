@@ -1,7 +1,7 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-05-22
-next_review: 2026-08-22
+last_reviewed: 2026-07-17
+next_review: 2026-10-17
 status: CURRENT
 ---
 
@@ -247,8 +247,6 @@ export default function MinhaTela() {
 </div>
 ```
 
-> **Nota:** os exemplos de componente MUI (`<TextField>`, `<Box sx>`) mais abaixo nesta página são **legado** e serão removidos. Não seguir em código novo.
-
 ### Validação de formulários (PADRÃO OBRIGATÓRIO) ⭐
 
 **Todo formulário valida por campo e mostra o erro visualmente. Sempre. Usa o mecanismo do Design System — não inventar outro.**
@@ -358,9 +356,10 @@ src/
 ### React Component Pattern
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import { useState } from 'react';
+import { PontesField, PontesInput, PontesMoneyInput, PontesButton } from '@/components/pontes';
 import TransacaoService from '@/services/TransacaoService';
+import styles from './TransacaoForm.module.css';
 
 interface Props {
   onSuccess?: () => void;
@@ -368,77 +367,67 @@ interface Props {
 
 export const TransacaoForm = ({ onSuccess }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
 
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!descricao.trim()) e.descricao = 'Descrição obrigatória';
+    if (!valor || Number(valor) <= 0) e.valor = 'Valor deve ser maior que zero';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    if (!validate()) return; // bloqueia submit se inválido
 
+    setLoading(true);
     try {
-      const result = await TransacaoService.criar({
-        descricao,
-        valor: parseFloat(valor),
-        // ...
-      });
-      
+      await TransacaoService.criar({ descricao, valor: parseFloat(valor) });
       setDescricao('');
       setValor('');
       onSuccess?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-      {error && <Alert severity="error">{error}</Alert>}
-      
-      <TextField
-        fullWidth
-        label="Descrição"
-        value={descricao}
-        onChange={(e) => setDescricao(e.target.value)}
-        disabled={loading}
-        required
-        margin="normal"
-      />
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <PontesField label="Descrição" error={errors.descricao}>
+        <PontesInput
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)}
+          invalid={!!errors.descricao}
+          disabled={loading}
+        />
+      </PontesField>
 
-      <TextField
-        fullWidth
-        label="Valor"
-        type="number"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        disabled={loading}
-        required
-        margin="normal"
-      />
+      <PontesField label="Valor" error={errors.valor}>
+        <PontesMoneyInput
+          value={valor}
+          onChange={setValor}
+          invalid={!!errors.valor}
+          disabled={loading}
+        />
+      </PontesField>
 
-      <Button
-        type="submit"
-        variant="contained"
-        disabled={loading}
-        sx={{ mt: 2 }}
-      >
-        {loading ? <CircularProgress size={24} /> : 'Criar'}
-      </Button>
-    </Box>
+      <PontesButton type="submit" variant="primary" loading={loading}>
+        Criar
+      </PontesButton>
+    </form>
   );
 };
 ```
 
 **Rules:**
 - Use `useState` for component state
-- Use `useEffect` for side effects
-- Always clean up subscriptions in useEffect return
-- Handle loading & error states
+- Use `useEffect` for side effects (com cleanup no `return`)
+- Valida por campo antes de submeter, bloqueia se inválido (ver "Validação de formulários" acima) — nunca deixar erro de campo silencioso
 - Type props with interfaces
-- Use Material-UI components
+- Use componentes da biblioteca Pontes (`@/components/pontes`) — nunca MUI, nunca HTML nativo pra input/select/button
 - Destructure props
 
 ### Service Pattern

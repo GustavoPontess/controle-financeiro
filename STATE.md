@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-17
+last_reviewed: 2026-07-17
 status: EM_PROGRESSO
-foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto fechado; P2 ehProprio + P3 papéis/aprovação na fila)'
+foco: 'Lote 2 família — só falta 2.3 frontend (papéis/permissões). Backend e 2.1/2.2/2.4 mergeados.'
 ---
 
 # STATE — onde parei
@@ -15,9 +15,11 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 
 ## Em execução
 
-**Feature 2.3 — papéis + permissões.** Backend completo na branch `feature/familia-papeis-permissoes` (enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning) — pendente push/PR/merge. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI). Spec: `docs/features/familia/papeis-permissoes.md`.
+**Feature 2.3 — papéis + permissões.** Backend completo e **já mergeado** (PR #228, 2026-06-18): enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI). Spec: `docs/features/familia/papeis-permissoes.md`.
 
-2.1/2.2/2.4 completas e mergeadas (#221-#226). **Lote 2: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 back ✅/front pendente.** (Achado parkado: upgrade .NET 8→10, P2 no ROADMAP.)
+2.1/2.2/2.4 completas e mergeadas (PRs #221-#226). **Lote 2: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 back ✅/front pendente.** (Achado parkado: upgrade .NET 8→10, P2 no ROADMAP.)
+
+> ⚠️ **Este arquivo ficou ~1 mês sem atualizar** (último review real 2026-06-17, hoje é 2026-07-17) e nem chegou a registrar o dia seguinte de trabalho (PRs #222-#231, 2026-06-18) antes de parar. Reconciliado nesta sessão contra `gh pr list`. Lição: fechar sessão sem passar pela seção 9 do `PROMPT_NOVA_SESSAO.md` é exatamente o que causa isso — não pular esse passo de novo.
 
 **Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
 
@@ -29,9 +31,10 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 
 ## Próxima ação concreta
 
-**Follow-ups da auditoria família (catalogados no ROADMAP):**
-- ✅ **P2 🟡** `FamiliasPage` `ehProprio` — corrigido (PR à parte, branch `fix/familia-remover-membro-ehproprio`).
-- **P3 ⚪** Lote 2 real: **2.4 aprovação de despesa** (não-começado, maior gap de feature) e **2.3 papéis com enum + enforcement** (hoje papel é string livre).
+**Follow-ups da auditoria família — todos resolvidos (catalogados no ROADMAP):**
+- ✅ **P2 🟡** `FamiliasPage` `ehProprio` — corrigido, PR #223.
+- ✅ **P3 ⚪** **2.4 aprovação de despesa** — back PR #224, front PR #225.
+- ✅ **P3 ⚪** **2.3 papéis com enum + enforcement** — back PR #228. **Front ainda pendente** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — é a próxima ação concreta real de Lote 2.
 
 **Depois — escolha de direção** (decidir com o Gustavo):
 - **Lote 2 (fosso de produto):** família real — rateio "quem paga o quê" + settle-up. **Spec própria antes de codar** (`docs/features/familia/`). É o maior diferencial; pede planejamento + decisões.
@@ -43,6 +46,15 @@ foco: 'Lote 2 família — remediar achados de segurança da auditoria (acerto f
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
 
 ---
+
+## Entregue (2026-06-18) — reconstruído via `gh pr list`, nunca tinha sido registrado aqui
+
+- **2.4 Aprovação de despesa** ✅ — back (PR #224): `Familia.LimiteAprovacao` + `Transacao.StatusAprovacao`, endpoints de aprovar/rejeitar, migration, 12 testes. Front (PR #225): config de limite, badge de status, botões aprovar/rejeitar.
+- **2.1 Responsável de despesa** ✅ (PR #226) — `Transacao.ResponsavelUsuarioId`, atribuição por qualquer membro, filtro no feed.
+- **2.3 Papéis/permissões — backend** ✅ (PR #228) — enum `PapelFamilia`, `FamiliaPermissoes` central nos 6 services, endpoint de permissão. Back 294/294. Front ainda não feito.
+- **CI: zero warnings + GitHub Actions Node 24** ✅ (PR #227).
+- **Vitrine do design system** ✅ — tokens de espaçamento/radii/sombras (PR #229), aba "Espaço & Efeitos" + fonte de título corrigida (PR #230).
+- **Flake `CreditCardsPage` (CI vermelho)** ✅ (PR #231) — race de auto-foco + data hardcoded corrigidos.
 
 ## Entregue (2026-06-17)
 

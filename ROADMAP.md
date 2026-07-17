@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-16
+last_reviewed: 2026-07-17
 status: ATIVO
 ---
 
@@ -64,7 +64,7 @@ status: ATIVO
 > **Prioridade (protocolo de triagem — `PROMPT_NOVA_SESSAO.md` §8.5):** **P0** 🔴 bloqueador/segurança crítica (fura fila, vira o próximo; se bloqueia o trabalho atual, parka a branch e troca) · **P1** 🟠 alta · **P2** 🟡 média · **P3** ⚪ baixa. **Todo achado entra aqui com nível, na hora.**
 
 ### 📥 Achados a triar (intake)
-- _(vazio — quando algo for descoberto e ainda não classificado/encaixado, cai aqui primeiro com um nível provisório, depois é movido pra seção certa.)_
+- [ ] **P3 ⚪ — `CLAUDE.md` "Adicionar Nova Entidade" usa `int Id`/`int usuarioId`** no template, mas toda entidade real usa `Guid` (`Emprestimo.Id`, `CriadoPor`, etc). Template desatualizado, confunde se copiado literal. Achado em 2026-07-17 enquanto corrigia os exemplos MUI do mesmo arquivo.
 
 ### 🏠 Achados da auditoria família (2026-06-17) — segurança de app de dinheiro
 > Auditoria por workflow (7 agentes) do módulo família. Fosso construído; gaps = safety holes. **P1 fechado em PR #221 (`a331efa`).**
@@ -72,7 +72,7 @@ status: ATIVO
 - [x] **P1 🟠 — POST `/acertos` sem idempotência** → ✅ — `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`); front gera UUID estável por tentativa. PR #221.
 - [x] **P1 🟠 — acerto sem `FinancialEventLog`** → ✅ — `AcertoRegistrado`/`AcertoCancelado` gravados em registrar/cancelar. PR #221.
 - [x] **P2 🟡 — `FamiliasPage` `ehProprio` hardcoded `true`** → ✅ — `ehProprio = m.usuarioId === currentUser?.id` (via `useAuth`); botão remover só aparece pro próprio membro (sair) ou pra admin removendo outro; criador nunca removível; label dinâmico "Sair da família"/"Remover membro". 3 testes. _branch `fix/familia-remover-membro-ehproprio`._
-- [ ] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** — sem enum de papel/enforcement; compartilhar é unilateral. Feature, não bug. Ver Lote 2.
+- [x] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** → ✅ — resolvido: 2.3 backend (PR #228) + 2.4 back+front (PR #224/#225). Ver status real no Lote 2 acima. _(item ficou desatualizado ~1 mês; reconciliado em 2026-07-17.)_
 - _Descartado (não é bug):_ `RateioService.RemoveRange` hard-delete de `RateioTransacao` — é config de split substituída por inteiro na edição, **não** entidade de ledger; soft-delete não se aplica.
 
 ### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
@@ -128,7 +128,10 @@ status: ATIVO
 
 ## Branches pendentes (decidir merge)
 
-- `feature/privacy-toggle-ocultar-saldo` — 1.2 entregue, não pushada.
-- `feature/paginacao-server-side` — 3 commits, PR pendente.
-- `polish/relatorios` — base de outras branches.
-- `chore/reorg-docs-solo` — esta reorganização de docs.
+> Reconciliado em 2026-07-17 contra `gh pr list` — todas as entradas abaixo já estavam resolvidas há semanas, só nunca foram tiradas daqui. Seção decai rápido; conferir `gh pr list --state all` antes de confiar cegamente da próxima vez.
+
+- [x] `feature/privacy-toggle-ocultar-saldo` — mergeada via PR #198 (2026-06-16).
+- [x] `feature/paginacao-server-side` — mergeada via PR #178 (2026-05-29).
+- [x] `chore/reorg-docs-solo` — mergeada via PR #198 (2026-06-16).
+- [x] `feature/familia-papeis-permissoes` — mergeada via PR #228 (2026-06-18) — era o backend da 2.3 (`STATE.md` ainda descrevia como pendente; corrigido).
+- [ ] `polish/relatorios` — nenhum PR encontrado no GitHub e branch não existe local/remoto. Provavelmente abandonada ou nunca chegou a ser pushada de fato. Se o trabalho ainda for necessário, tratar como item novo.
