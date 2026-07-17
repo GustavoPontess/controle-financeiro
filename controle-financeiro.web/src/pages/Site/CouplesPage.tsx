@@ -139,7 +139,7 @@ function ComoFunciona() {
   const steps = [
     { n: "01", icon: <Users size={28} strokeWidth={2} />, t: "Vocês entram juntos", d: "Cria conta de casal — cada um com login próprio. Convida o parceiro por e-mail em 30 segundos." },
     { n: "02", icon: <Zap size={28} strokeWidth={2} />, t: "Definem o rateio padrão", d: "50/50, proporcional à renda, ou customizado por categoria. Muda a regra quando quiser." },
-    { n: "03", icon: <Check size={28} strokeWidth={2.5} />, t: "O Pontes faz o resto", d: "Despesas conjuntas pedem aprovação. Acerto mensal mostra quem deve quanto. Privadas ficam privadas." },
+    { n: "03", icon: <Check size={28} strokeWidth={2.5} />, t: "O Pontes faz o resto", d: "Despesas conjuntas pedem aprovação. Acerto mensal mostra o que cada um tem a acertar. Privadas ficam privadas." },
   ]
   return (
     <section className={styles.sectionSurface}>
@@ -228,7 +228,7 @@ function SecaoAprovacao() {
   return (
     <section className={`${styles.feat} ${styles.featSurface}`}>
       <div className={styles.wide}>
-        <FeatureRow reverse={true} tag="Aprovação" title="Despesa grande não entra sem o sim do parceiro." text="Defina um limite (ex: R$ 300). Acima disso, qualquer compra conjunta pede aprovação por push antes de virar dívida no acerto. Fim do 'não combinamos isso'." mockup={<AprovacaoMockup />} />
+        <FeatureRow reverse={true} tag="Aprovação" title="Despesa grande não entra sem o sim do parceiro." text="Defina um limite (ex: R$ 300). Acima disso, qualquer compra conjunta pede aprovação por push antes de entrar no acerto do mês. Fim do 'não combinamos isso'." mockup={<AprovacaoMockup />} />
       </div>
     </section>
   )
@@ -269,7 +269,7 @@ function SecaoAcerto() {
   return (
     <section className={`${styles.feat} ${styles.featBg}`}>
       <div className={styles.wide}>
-        <FeatureRow reverse={false} tag="Acerto do mês" title="No fim do mês, o Pontes te diz exatamente quem deve quanto." text="Quem pagou mais durante o mês recebe a diferença. Calculado certinho com base no rateio combinado. Sem matemática mental, sem 'eu paguei o jantar três vezes seguidas'." mockup={<AcertoMockup />} />
+        <FeatureRow reverse={false} tag="Acerto do mês" title="No fim do mês, o Pontes te diz exatamente como acertar as contas." text="Quem pagou mais durante o mês recebe a diferença. Calculado certinho com base no rateio combinado. Sem matemática mental, sem 'eu paguei o jantar três vezes seguidas'." mockup={<AcertoMockup />} />
       </div>
     </section>
   )
@@ -280,7 +280,7 @@ function AcertoMockup() {
     <div className={styles.mockWrap}>
       <PontesCard padding={26} radius={18} shadow="xl">
         <div className={styles.acertoLabel}>Acerto · Maio 2026</div>
-        <div className={styles.acertoSub}>Maria deve <strong>R$ 340,00</strong> ao Gustavo</div>
+        <div className={styles.acertoSub}>Maria acerta <strong>R$ 340,00</strong> com o Gustavo</div>
         <div className={styles.acertoBars}>
           <PontesProgress label="Gustavo pagou" value={78} showValue={false} color="var(--pontes-primary)" />
           <div className={styles.acertoBarVal}>R$ 2.340</div>

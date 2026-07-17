@@ -53,3 +53,24 @@
 
 .footer { margin-top: 32px; text-align: center; font-size: 12px; color: var(--pontes-text-muted); }
 .footerMuted { color: var(--pontes-text-muted); }
+
+/* Atalho de DEV — canto inferior direito (só em desenvolvimento) */
+.devHint {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 10px;
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
+  font-family: var(--pontes-font); cursor: pointer; text-align: left;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.devHint:hover { border-color: var(--pontes-primary); transform: translateY(-1px); }
+.devHintTag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--pontes-primary); background: var(--pontes-primary-soft);
+  padding: 3px 7px; border-radius: 6px; flex-shrink: 0;
+}
+.devHintCol { display: flex; flex-direction: column; gap: 1px; }
+.devHintLabel { font-size: 10px; color: var(--pontes-text-muted); }
+.devHintCreds { font-size: 12px; font-weight: 600; color: var(--pontes-text); }
+@media (max-width: 480px) { .devHint { left: 16px; right: 16px; justify-content: center; } }

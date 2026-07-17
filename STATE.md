@@ -15,7 +15,7 @@ foco: 'Lote 2 família — só falta 2.3 frontend (papéis/permissões). Backend
 
 ## Em execução
 
-**Feature 2.3 — papéis + permissões.** Backend completo e **já mergeado** (PR #228, 2026-06-18): enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI). Spec: `docs/features/familia/papeis-permissoes.md`.
+**Feature 2.3 — papéis + permissões.** Backend completo e **já mergeado** (PR #228, 2026-06-18): enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — não confundir com a página de detalhe da família (PR #233), que é outra frente. Spec: `docs/features/familia/papeis-permissoes.md`.
 
 2.1/2.2/2.4 completas e mergeadas (PRs #221-#226). **Lote 2: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 back ✅/front pendente.** (Achado parkado: upgrade .NET 8→10, P2 no ROADMAP.)
 
@@ -46,6 +46,15 @@ foco: 'Lote 2 família — só falta 2.3 frontend (papéis/permissões). Backend
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
 
 ---
+
+## Entregue (2026-06-22)
+
+- **UI da família — lista com cards ricos + página de detalhe** ✅ (branch `feat/familia-pagina-detalhe`, PR #233) — `/familias`: lista virou cards ricos (avatares + nomes dos membros, papel, chip do modo de rateio, seu saldo do mês "a receber / a acertar / quitado") clicáveis → detalhe em página dedicada `/familias/:id`. Detalhe extraído no componente reutilizável `FamiliaDetalhe` + casca fina `FamiliaDetalhePage`; resumo dos cards buscado por cima da lista (`getFamilia`+`getBalancoFamilia`). Mata a modalzona antiga (tudo empilhado).
+- **Copy:** "deve" → "acerto / equilíbrio / a acertar / a receber" em todo contexto de casal (app `FamiliaDetalhe` + site Casais/Home/Sobre). "Deve" pesa como cobrança num relacionamento.
+- **Login:** atalho de credenciais de teste (`dev@controle.test`) no canto inferior direito, clicável p/ autopreencher — só em DEV (`import.meta.env.DEV`), nunca em prod.
+- tsc + lint limpos, 52 testes de família verdes, verificado no preview (cards, clique→detalhe, voltar, zero erro de console).
+- **Abandonado:** export do DS pro "Claude Designer" (refazer o front existente lá dava muito retrabalho e frustração). Pasta `docs/ds-export/` apagada — não vai pro repo.
+- _Ficou pronta e commitada em 2026-06-22 mas só ganhou PR/merge em 2026-07-17 — motivo de mais um mês sem review dos arquivos de estado._
 
 ## Entregue (2026-06-18) — reconstruído via `gh pr list`, nunca tinha sido registrado aqui
 

@@ -187,6 +187,27 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção) */}
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          className={styles.devHint}
+          onClick={() => {
+            setEmail('dev@controle.test')
+            setPassword('Dev@123456')
+            setErrors({})
+            setError('')
+          }}
+          title="Clique para preencher o login de teste"
+        >
+          <span className={styles.devHintTag}>DEV</span>
+          <span className={styles.devHintCol}>
+            <span className={styles.devHintLabel}>login de teste · clique p/ preencher</span>
+            <span className={styles.devHintCreds}>dev@controle.test · Dev@123456</span>
+          </span>
+        </button>
+      )}
     </div>
   )
 }
