@@ -151,7 +151,7 @@ src/pages/NovaFuncionalidade/
 ├── Form.tsx                   # Formulário reutilizável
 ├── List.tsx                   # Lista/tabela
 ├── Detail.tsx                 # Detalhe de um item
-└── styles.ts                  # Estilos Material-UI
+└── NovaFuncionalidade.module.css  # CSS Modules + var(--pontes-*)
 
 src/services/NovaFuncionalidadeService.ts
 src/types/NovaFuncionalidade.ts
@@ -160,31 +160,36 @@ src/types/NovaFuncionalidade.ts
 ### Padrão de Componente React
 
 ```typescript
-// Com hooks, forms, Material-UI buttons
+// Biblioteca Pontes — zero MUI. Estilo em CSS Modules + var(--pontes-*), validação por campo.
 import { useState } from 'react';
-import { TextField, Button, CircularProgress, Box } from '@mui/material';
+import { PontesField, PontesInput, PontesButton } from '@/components/pontes';
 import NovaFuncionalidadeService from '@/services/NovaFuncionalidadeService';
+import styles from './NovaFuncionalidade.module.css';
 
 export const NovaFuncionalidade = () => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [erro, setErro] = useState<string | undefined>();
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     try {
-      const result = await NovaFuncionalidadeService.criar(formData);
-      setData(result);
-    } catch (error) {
-      console.error(error);
+      await NovaFuncionalidadeService.criar(formData);
+    } catch {
+      setErro('Erro ao salvar');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      {/* MUI components */}
-    </Box>
+    <div className={styles.wrap}>
+      <PontesField label="Nome" error={erro}>
+        <PontesInput invalid={!!erro} onChange={() => setErro(undefined)} />
+      </PontesField>
+      <PontesButton variant="primary" loading={loading} onClick={() => handleSubmit(formData)}>
+        Salvar
+      </PontesButton>
+    </div>
   );
 };
 ```
