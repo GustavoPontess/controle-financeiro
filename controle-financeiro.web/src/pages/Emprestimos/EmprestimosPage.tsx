@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign,
+  Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign, Link2, Copy, Check, X,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
@@ -12,10 +12,18 @@ import {
 } from "@/components/pontes"
 import {
   listEmprestimosPage, getEmprestimoStats, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
+  vincularEmprestimo, listConvitesPendentesEmprestimo,
+  aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
 } from "../../services/emprestimoService"
 import type { EmprestimoStats } from "../../services/emprestimoService"
-import type { Emprestimo, CriarEmprestimo } from "../../types/Emprestimo"
+import {
+  StatusVinculoEmprestimo,
+  type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente,
+} from "../../types/Emprestimo"
 import styles from "./EmprestimosPage.module.css"
+
+const errorMessage = (err: unknown, fallback: string): string =>
+  (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback
 
 
 const formatDate = (d?: string) =>
@@ -72,16 +80,28 @@ export default function EmprestimosPage() {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<Errors>({})
+  const [idemKey, setIdemKey] = useState<string>("")
+
+  // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md)
+  const [pendentes, setPendentes] = useState<EmprestimoConvitePendente[]>([])
+  const [respondendoId, setRespondendoId] = useState<string | null>(null)
+  const [vincularFor, setVincularFor] = useState<string | null>(null)
+  const [vincularEmail, setVincularEmail] = useState("")
+  const [vincularErr, setVincularErr] = useState<string | undefined>(undefined)
+  const [vincularLink, setVincularLink] = useState<string | null>(null)
+  const [vincularLoading, setVincularLoading] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult] = await Promise.all([
         listEmprestimosPage(page, pageSize),
         getEmprestimoStats(),
+        listConvitesPendentesEmprestimo(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
       setStats(statsResult)
+      setPendentes(pendentesResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -92,7 +112,36 @@ export default function EmprestimosPage() {
   const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
-  const openCreate = () => { setForm(emptyForm); setErrors({}); setDialogOpen(true) }
+  const openCreate = () => {
+    setForm(emptyForm); setErrors({}); setDialogOpen(true)
+    setIdemKey(crypto.randomUUID()) // key estável por tentativa; reusa no retry
+  }
+
+  const handleAceitarConvite = async (id: string) => {
+    setRespondendoId(id)
+    try {
+      await aceitarVinculoEmprestimoPorId(id)
+      notify({ open: true, message: "Vínculo aceito", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao aceitar convite"), severity: "error" })
+    } finally {
+      setRespondendoId(null)
+    }
+  }
+
+  const handleRecusarConvite = async (id: string) => {
+    setRespondendoId(id)
+    try {
+      await recusarVinculoEmprestimoPorId(id)
+      notify({ open: true, message: "Convite recusado", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao recusar convite"), severity: "error" })
+    } finally {
+      setRespondendoId(null)
+    }
+  }
 
   const handleSalvar = async () => {
     const e: Errors = {}
@@ -113,6 +162,7 @@ export default function EmprestimosPage() {
         dataInicio: new Date(form.dataInicio).toISOString(),
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
+        idempotencyKey: idemKey,
       }
       await createEmprestimo(payload)
       notify({ open: true, message: "Empréstimo criado", severity: "success" })
@@ -121,6 +171,33 @@ export default function EmprestimosPage() {
     } catch {
       notify({ open: true, message: "Erro ao criar empréstimo", severity: "error" })
     } finally { setLoading(false) }
+  }
+
+  const openVincular = (id: string) => {
+    setVincularFor(id); setVincularEmail(""); setVincularErr(undefined); setVincularLink(null)
+  }
+
+  const handleVincular = async () => {
+    if (!vincularFor) return
+    if (!vincularEmail.trim() || !vincularEmail.includes("@")) {
+      setVincularErr("Informe um e-mail válido")
+      return
+    }
+    setVincularLoading(true)
+    try {
+      const resultado = await vincularEmprestimo(vincularFor, vincularEmail.trim())
+      setVincularLink(`${window.location.origin}${resultado.linkConvite}`)
+    } catch (err) {
+      setVincularErr(errorMessage(err, "Erro ao propor vínculo"))
+    } finally {
+      setVincularLoading(false)
+    }
+  }
+
+  const handleCopiarLink = async () => {
+    if (!vincularLink) return
+    await navigator.clipboard.writeText(vincularLink)
+    notify({ open: true, message: "Link copiado", severity: "success" })
   }
 
   const handlePagamento = async () => {
@@ -135,8 +212,8 @@ export default function EmprestimosPage() {
       notify({ open: true, message: "Pagamento registrado", severity: "success" })
       setPagamentoFor(null); setValorPagamento(undefined); setPagamentoErr(undefined)
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
     } finally { setLoading(false) }
   }
 
@@ -146,8 +223,8 @@ export default function EmprestimosPage() {
       await quitarEmprestimo(quitarId)
       notify({ open: true, message: "Empréstimo quitado", severity: "success" })
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao quitar empréstimo", severity: "error" })
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao quitar empréstimo"), severity: "error" })
     } finally { setQuitarId(null) }
   }
 
@@ -157,8 +234,8 @@ export default function EmprestimosPage() {
       await deleteEmprestimo(delId)
       notify({ open: true, message: "Empréstimo removido", severity: "success" })
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao remover empréstimo", severity: "error" })
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao remover empréstimo"), severity: "error" })
     } finally { setDelId(null) }
   }
 
@@ -175,6 +252,35 @@ export default function EmprestimosPage() {
           Novo Empréstimo
         </PontesButton>
       </div>
+
+      {pendentes.length > 0 && (
+        <PontesCard padding={16} radius={16} className={styles.pendentesCard}>
+          <div className={styles.listHeadTitle}>
+            {pendentes.length === 1 ? "1 convite de empréstimo pendente" : `${pendentes.length} convites de empréstimo pendentes`}
+          </div>
+          <ul className={styles.pendentesList}>
+            {pendentes.map((p) => (
+              <li key={p.emprestimoId} className={styles.pendenteItem}>
+                <span className={styles.pendenteDesc}>
+                  <strong>{p.credorOuDevedorNome}</strong> — {p.descricao} ({p.tipoDescricao}, {formatMoney(p.valorTotal)})
+                </span>
+                <div className={styles.actions}>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Aceitar convite"
+                    disabled={respondendoId === p.emprestimoId}
+                    onClick={() => handleAceitarConvite(p.emprestimoId)}>
+                    <Check size={14} />
+                  </PontesIconButton>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Recusar convite"
+                    disabled={respondendoId === p.emprestimoId}
+                    onClick={() => handleRecusarConvite(p.emprestimoId)}>
+                    <X size={14} />
+                  </PontesIconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </PontesCard>
+      )}
 
       <div className={styles.statsGrid}>
         <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
@@ -211,10 +317,16 @@ export default function EmprestimosPage() {
                         <span className={styles.itemDesc}>{e.descricao}</span>
                         {e.quitado && <PontesBadge tone="success" size="sm">Quitado</PontesBadge>}
                         {e.vencido && !e.quitado && <PontesBadge tone="danger" size="sm">Vencido</PontesBadge>}
+                        {e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
+                          <PontesBadge tone="success" size="sm">Vinculado</PontesBadge>
+                        )}
+                        {e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite && (
+                          <PontesBadge tone="warning" size="sm">Convite pendente</PontesBadge>
+                        )}
                       </div>
                       <span className={styles.itemSub}>
                         {isEmprestei ? "Para: " : "De: "}
-                        <strong>{e.pessoa}</strong>
+                        <strong>{e.contraparteNome ?? e.pessoa}</strong>
                         {e.dataVencimento && ` · vence ${formatDate(e.dataVencimento)}`}
                       </span>
                       {!e.quitado && (
@@ -237,7 +349,7 @@ export default function EmprestimosPage() {
                     </span>
                     <span className={styles.itemValueLabel}>restante</span>
                     <div className={styles.actions}>
-                      {!e.quitado && (
+                      {!e.quitado && e.souCredor && (
                         <>
                           <PontesIconButton size={32} variant="ghost" aria-label="Registrar pagamento"
                             onClick={() => { setPagamentoFor(e.id); setValorPagamento(undefined); setPagamentoErr(undefined) }}>
@@ -248,6 +360,13 @@ export default function EmprestimosPage() {
                             <Handshake size={14} />
                           </PontesIconButton>
                         </>
+                      )}
+                      {(e.statusVinculo === StatusVinculoEmprestimo.SemVinculo
+                        || e.statusVinculo === StatusVinculoEmprestimo.Recusado) && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Vincular a uma pessoa"
+                          onClick={() => openVincular(e.id)}>
+                          <Link2 size={14} />
+                        </PontesIconButton>
                       )}
                       <PontesIconButton size={32} variant="ghost" aria-label="Remover"
                         onClick={() => setDelId(e.id)}>
@@ -370,11 +489,61 @@ export default function EmprestimosPage() {
       <PontesDialog
         open={delId !== null}
         title="Remover empréstimo?"
-        description="Esta ação não pode ser desfeita. Os pagamentos registrados serão excluídos junto."
+        description="O registro sai da sua lista. Se já estiver vinculado a outra pessoa, não é possível remover — quite-o em vez disso."
         confirmLabel="Remover"
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}
       />
+
+      {/* Modal: Vincular a uma pessoa */}
+      <PontesModal
+        open={vincularFor !== null}
+        title="Vincular empréstimo"
+        onClose={() => setVincularFor(null)}
+        footer={vincularLink ? (
+          <PontesButton onClick={() => setVincularFor(null)}>Fechar</PontesButton>
+        ) : (
+          <>
+            <PontesButton variant="outline" onClick={() => setVincularFor(null)}>Cancelar</PontesButton>
+            <PontesButton onClick={handleVincular} loading={vincularLoading} disabled={vincularLoading}>
+              Gerar convite
+            </PontesButton>
+          </>
+        )}
+      >
+        <div className={styles.formCol}>
+          {!vincularLink ? (
+            <PontesField
+              label="E-mail da pessoa"
+              required
+              error={vincularErr}
+              helper="Se ela já tiver conta no Pontes, aceita direto. Se não tiver, o link leva pro cadastro."
+            >
+              <PontesInput
+                value={vincularEmail}
+                onChange={(e) => { setVincularEmail(e.target.value); setVincularErr(undefined) }}
+                invalid={!!vincularErr}
+                placeholder="nome@exemplo.com"
+                autoFocus
+              />
+            </PontesField>
+          ) : (
+            <>
+              <p className={styles.itemSub}>
+                Copie e envie esse link pra pessoa por WhatsApp, e-mail ou como preferir —
+                o Pontes não envia nada automaticamente.
+              </p>
+              <div className={styles.vincularLinkBox}>
+                <Link2 size={14} />
+                <span>{vincularLink}</span>
+              </div>
+              <PontesButton variant="outline" iconStart={<Copy size={14} />} onClick={handleCopiarLink}>
+                Copiar link
+              </PontesButton>
+            </>
+          )}
+        </div>
+      </PontesModal>
     </div>
   )
 }

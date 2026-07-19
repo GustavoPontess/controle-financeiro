@@ -283,9 +283,61 @@ public class EmprestimoService(
         }).ToList();
     }
 
-    public async Task AceitarVinculoAsync(string token, Guid usuarioId)
+    /// <summary>Pré-visualização do convite pelo token (landing pública, autenticado) — mesmas
+    /// checagens do aceite (token válido + e-mail bate), mas só leitura.</summary>
+    public async Task<EmprestimoConvitePendenteDto> ObterConvitePorTokenAsync(string token, Guid usuarioId)
     {
         var emprestimo = await BuscarPorTokenAsync(token);
+        await ExigirEmailDoConvidadoAsync(emprestimo, usuarioId);
+
+        if (emprestimo.ConviteExpiraEm is null || emprestimo.ConviteExpiraEm <= DateTime.UtcNow)
+            throw new InvalidOperationException("Convite expirado.");
+
+        var criador = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == emprestimo.CriadoPor);
+        var tipoEfetivo = emprestimo.Tipo == TipoEmprestimo.Emprestei
+            ? TipoEmprestimo.PeguiEmprestado
+            : TipoEmprestimo.Emprestei;
+
+        return new EmprestimoConvitePendenteDto(
+            emprestimo.Id,
+            emprestimo.Descricao,
+            emprestimo.ValorTotal,
+            criador?.Nome ?? "—",
+            tipoEfetivo == TipoEmprestimo.Emprestei ? "Emprestei" : "Peguei emprestado");
+    }
+
+    /// <summary>Aceite via token (fluxo da landing pública /convite/emprestimo/:token).</summary>
+    public async Task AceitarVinculoAsync(string token, Guid usuarioId)
+        => await AceitarInternoAsync(await BuscarPorTokenAsync(token), usuarioId);
+
+    /// <summary>
+    /// Aceite via id (lista "convites pendentes" in-app). Sem token — o token nunca fica
+    /// recuperável depois de gerado (só o hash é persistido), então quem já está autenticado
+    /// e com e-mail batendo (checado abaixo) não precisa reencontrar o link original.
+    /// </summary>
+    public async Task AceitarVinculoPorIdAsync(Guid id, Guid usuarioId)
+    {
+        var emprestimo = await _context.Emprestimos
+            .FirstOrDefaultAsync(e => e.Id == id && e.Ativo
+                && e.StatusVinculo == StatusVinculoEmprestimo.PendenteAceite)
+            ?? throw new KeyNotFoundException("Convite não encontrado.");
+        await AceitarInternoAsync(emprestimo, usuarioId);
+    }
+
+    public async Task RecusarVinculoAsync(string token, Guid usuarioId)
+        => await RecusarInternoAsync(await BuscarPorTokenAsync(token), usuarioId);
+
+    public async Task RecusarVinculoPorIdAsync(Guid id, Guid usuarioId)
+    {
+        var emprestimo = await _context.Emprestimos
+            .FirstOrDefaultAsync(e => e.Id == id && e.Ativo
+                && e.StatusVinculo == StatusVinculoEmprestimo.PendenteAceite)
+            ?? throw new KeyNotFoundException("Convite não encontrado.");
+        await RecusarInternoAsync(emprestimo, usuarioId);
+    }
+
+    private async Task AceitarInternoAsync(Emprestimo emprestimo, Guid usuarioId)
+    {
         var usuario = await ExigirEmailDoConvidadoAsync(emprestimo, usuarioId);
 
         if (emprestimo.ConviteExpiraEm is null || emprestimo.ConviteExpiraEm <= DateTime.UtcNow)
@@ -318,9 +370,8 @@ public class EmprestimoService(
         }
     }
 
-    public async Task RecusarVinculoAsync(string token, Guid usuarioId)
+    private async Task RecusarInternoAsync(Emprestimo emprestimo, Guid usuarioId)
     {
-        var emprestimo = await BuscarPorTokenAsync(token);
         await ExigirEmailDoConvidadoAsync(emprestimo, usuarioId);
 
         emprestimo.StatusVinculo = StatusVinculoEmprestimo.Recusado;

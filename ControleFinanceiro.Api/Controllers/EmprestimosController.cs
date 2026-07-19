@@ -87,6 +87,16 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         return Ok(pendentes);
     }
 
+    /// <summary>Pré-visualização do convite pelo token — landing pública /convite/emprestimo/:token,
+    /// já autenticado. Mesmas checagens do aceite (token + e-mail), só leitura.</summary>
+    [HttpGet("convites/{token}")]
+    [ProducesResponseType(typeof(EmprestimoConvitePendenteDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterConvitePorToken(string token)
+    {
+        var convite = await _service.ObterConvitePorTokenAsync(token, UserId);
+        return Ok(convite);
+    }
+
     [HttpPost("convites/{token}/aceitar")]
     public async Task<IActionResult> AceitarVinculo(string token)
     {
@@ -98,6 +108,22 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     public async Task<IActionResult> RecusarVinculo(string token)
     {
         await _service.RecusarVinculoAsync(token, UserId);
+        return NoContent();
+    }
+
+    /// <summary>Aceite pela lista "convites pendentes" in-app — sem token (o token nunca fica
+    /// recuperável; só o hash é persistido). Autenticação + e-mail batendo bastam.</summary>
+    [HttpPost("{id:guid}/aceitar-vinculo")]
+    public async Task<IActionResult> AceitarVinculoPorId(Guid id)
+    {
+        await _service.AceitarVinculoPorIdAsync(id, UserId);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/recusar-vinculo")]
+    public async Task<IActionResult> RecusarVinculoPorId(Guid id)
+    {
+        await _service.RecusarVinculoPorIdAsync(id, UserId);
         return NoContent();
     }
 }

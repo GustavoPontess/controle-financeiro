@@ -46,3 +46,10 @@
 
 .formCol { display: flex; flex-direction: column; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.pendentesCard { border: 1px solid var(--pontes-warning); background: var(--pontes-warning-soft, color-mix(in srgb, var(--pontes-warning) 10%, transparent)); }
+.pendentesList { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pendenteItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pendenteDesc { font-size: 13px; color: var(--pontes-text); }
+
+.vincularLinkBox { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 12px; word-break: break-all; }

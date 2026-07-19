@@ -1,5 +1,7 @@
 import { api } from "../api/axiosConfig"
-import type { Emprestimo, CriarEmprestimo } from "../types/Emprestimo"
+import type {
+  Emprestimo, CriarEmprestimo, EmprestimoConviteResultado, EmprestimoConvitePendente,
+} from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
 /** Lista paginada — backend clampa pageSize em 1..100. */
@@ -45,4 +47,42 @@ export const quitarEmprestimo = async (id: string): Promise<void> => {
 
 export const deleteEmprestimo = async (id: string): Promise<void> => {
   await api.delete(`/emprestimos/${id}`)
+}
+
+/** Propõe vínculo por e-mail. Resposta sempre igual, exista ou não a conta (anti-enumeração) —
+ * o link volta pra copiar/compartilhar por fora (sem envio de e-mail automático). */
+export const vincularEmprestimo = async (
+  id: string, email: string,
+): Promise<EmprestimoConviteResultado> => {
+  const res = await api.post(`/emprestimos/${id}/vincular`, { email })
+  return res.data
+}
+
+export const listConvitesPendentesEmprestimo = async (): Promise<EmprestimoConvitePendente[]> => {
+  const res = await api.get("/emprestimos/convites-pendentes")
+  return res.data
+}
+
+/** Pré-visualização do convite pelo token — landing pública, já autenticado. */
+export const obterConvitePorToken = async (token: string): Promise<EmprestimoConvitePendente> => {
+  const res = await api.get(`/emprestimos/convites/${token}`)
+  return res.data
+}
+
+export const aceitarVinculoEmprestimo = async (token: string): Promise<void> => {
+  await api.post(`/emprestimos/convites/${token}/aceitar`)
+}
+
+export const recusarVinculoEmprestimo = async (token: string): Promise<void> => {
+  await api.post(`/emprestimos/convites/${token}/recusar`)
+}
+
+/** Aceite pela lista "convites pendentes" in-app — sem token (o token só existe no link
+ * do convite, nunca fica recuperável depois). Autenticação + e-mail batendo bastam. */
+export const aceitarVinculoEmprestimoPorId = async (id: string): Promise<void> => {
+  await api.post(`/emprestimos/${id}/aceitar-vinculo`)
+}
+
+export const recusarVinculoEmprestimoPorId = async (id: string): Promise<void> => {
+  await api.post(`/emprestimos/${id}/recusar-vinculo`)
 }

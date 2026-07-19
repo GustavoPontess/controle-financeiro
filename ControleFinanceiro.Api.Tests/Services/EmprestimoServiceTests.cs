@@ -366,6 +366,42 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
+    public async Task ObterConvitePorTokenAsync_EmailCorreto_RetornaDetalhes()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com", "Gustavo");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        var token = link.LinkConvite.Split('/').Last();
+
+        var preview = await svc.ObterConvitePorTokenAsync(token, devedorId);
+
+        Assert.Equal(criado.Id, preview.EmprestimoId);
+        Assert.Equal("Gustavo", preview.CredorOuDevedorNome);
+        // Não muda estado nenhum — é só leitura.
+        var linha = await ctx.Emprestimos.FindAsync(criado.Id);
+        Assert.Equal(StatusVinculoEmprestimo.PendenteAceite, linha!.StatusVinculo);
+    }
+
+    [Fact]
+    public async Task ObterConvitePorTokenAsync_EmailErrado_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        SeedUsuario(ctx, "devedor@x.com");
+        var outroId = SeedUsuario(ctx, "outro@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        var token = link.LinkConvite.Split('/').Last();
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.ObterConvitePorTokenAsync(token, outroId));
+    }
+
+    [Fact]
     public async Task AceitarVinculoAsync_Sucesso_VinculaOsDoisLados()
     {
         var ctx = CreateContext();
@@ -433,6 +469,55 @@ public class EmprestimoServiceTests
 
         Assert.Single(pendentesDevedor);
         Assert.Empty(pendentesOutro);
+    }
+
+    [Fact]
+    public async Task AceitarVinculoPorIdAsync_SemToken_FuncionaComEmailBatendo()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+        await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+
+        // Aceita pela lista in-app (id), sem token nenhum.
+        await svc.AceitarVinculoPorIdAsync(criado.Id, devedorId);
+
+        var linha = await ctx.Emprestimos.FindAsync(criado.Id);
+        Assert.Equal(StatusVinculoEmprestimo.Vinculado, linha!.StatusVinculo);
+        Assert.Equal(devedorId, linha.ContraparteUsuarioId);
+    }
+
+    [Fact]
+    public async Task AceitarVinculoPorIdAsync_EmailErrado_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        SeedUsuario(ctx, "devedor@x.com");
+        var outroId = SeedUsuario(ctx, "outro@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+        await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(
+            () => svc.AceitarVinculoPorIdAsync(criado.Id, outroId));
+    }
+
+    [Fact]
+    public async Task RecusarVinculoPorIdAsync_SemToken_Funciona()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+        await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+
+        await svc.RecusarVinculoPorIdAsync(criado.Id, devedorId);
+
+        var linha = await ctx.Emprestimos.FindAsync(criado.Id);
+        Assert.Equal(StatusVinculoEmprestimo.Recusado, linha!.StatusVinculo);
     }
 
     // ── Autorização assimétrica de confirmação (o ponto mais fácil de inverter) ─
