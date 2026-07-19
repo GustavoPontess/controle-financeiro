@@ -10,5 +10,6 @@ public enum TipoNotificacao
     DespesaAprovacaoPendente = 6,
     DespesaAprovada = 7,
     DespesaRejeitada = 8,
+    EmprestimoVinculo = 9,
     Outro = 99,
 }

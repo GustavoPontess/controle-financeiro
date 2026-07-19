@@ -32,11 +32,14 @@ se a pessoa só vai descobrir o convite quando entrar no app com aquele e-mail.
    do C1 de reset-password, `docs/SEGURANCA_BEST_PRACTICES.md`): a API nunca confirma nem nega
    existência de conta.
 2. Se o e-mail já bate com um `Usuario` → notifica in-app na hora (`NotificacaoService`, mesmo
-   mecanismo do convite de família). Se não bate → só o e-mail com o link; a pessoa só vai ver o
-   convite quando se cadastrar e entrar logada com aquele e-mail (mesmo comportamento do
-   `ListarPendentesAsync` da família — filtra convite pendente pelo e-mail da conta logada, não
-   importa quando ela se cadastrou).
-3. **Link do e-mail leva a uma página pública dedicada** (`/convite/emprestimo/{token}`, fora de
+   mecanismo do convite de família). **Sem envio de e-mail automático** — o projeto não tem SMTP
+   real (nem o reset de senha manda e-mail de verdade hoje, só loga em dev); `ConviteFamilia`
+   também não manda. Mesmo padrão: a resposta do `Vincular` devolve o link pra credor **copiar e
+   compartilhar por fora** (WhatsApp, e-mail, o que for — cultura BR já é WhatsApp/Pix). Se a
+   pessoa não tem conta, só vai ver o convite quando se cadastrar e entrar logada com aquele
+   e-mail (mesmo comportamento do `ListarPendentesAsync` da família — filtra convite pendente
+   pelo e-mail da conta logada, não importa quando ela se cadastrou).
+3. **O link (copiado/compartilhado pelo credor) leva a uma página pública dedicada** (`/convite/emprestimo/{token}`, fora de
    `/auth`, `SiteLayout` — mesma casca das páginas institucionais `/casais`/`/contadores`), **não
    direto pro formulário de cadastro cru**. Mostra o contexto do convite (quem chamou, do que se
    trata — sem valor exato, sensível demais pra mostrar antes de logar) + uma apresentação curta

@@ -380,6 +380,25 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<AcertoContas>()
             .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
+
+        // ── Empréstimo compartilhado (docs/features/emprestimo-compartilhado/spec.md) ──
+
+        // Emprestimo → ContraparteUsuario (Restrict: não deletar usuário com vínculo ativo)
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.ContraparteUsuario)
+            .WithMany()
+            .HasForeignKey(e => e.ContraparteUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Default true no banco — sem isso o EF usa o default do CLR (false) na coluna,
+        // o que soft-deletaria todo empréstimo existente ao aplicar a migration.
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.Ativo)
+            .HasDefaultValue(true);
+
+        modelBuilder.Entity<Emprestimo>()
+            .HasIndex(e => e.ConviteTokenHash);
+
         // ── Issue #86 Metas ──
 
         // Meta → Usuario (Cascade: metas somem com o usuário)

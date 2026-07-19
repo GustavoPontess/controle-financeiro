@@ -363,6 +363,20 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid?>("ContraparteUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConviteExpiraEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ConviteTokenHash")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
@@ -376,6 +390,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("EmailContraparte")
+                        .HasColumnType("text");
+
                     b.Property<string>("Observacao")
                         .HasColumnType("text");
 
@@ -386,6 +403,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("Quitado")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("StatusVinculo")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
 
@@ -395,7 +415,14 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime?>("VinculoRespondidoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ContraparteUsuarioId");
+
+                    b.HasIndex("ConviteTokenHash");
 
                     b.ToTable("Emprestimos");
                 });
@@ -1384,6 +1411,16 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Familia");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "ContraparteUsuario")
+                        .WithMany()
+                        .HasForeignKey("ContraparteUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ContraparteUsuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>

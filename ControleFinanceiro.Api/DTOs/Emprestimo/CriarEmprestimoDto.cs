@@ -11,4 +11,5 @@ public class CriarEmprestimoDto
     public DateTime DataInicio { get; set; }
     public DateTime? DataVencimento { get; set; }
     public string? Observacao { get; set; }
+    public string IdempotencyKey { get; set; } = string.Empty;
 }

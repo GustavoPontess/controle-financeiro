@@ -42,4 +42,11 @@ public enum FinancialEventType
     // Família — acerto de contas (settle-up)
     AcertoRegistrado = 60,
     AcertoCancelado = 61,
+
+    // Empréstimo compartilhado (docs/features/emprestimo-compartilhado/spec.md)
+    EmprestimoCriado = 70,
+    EmprestimoPagamentoRegistrado = 71,
+    EmprestimoQuitado = 72,
+    EmprestimoVinculado = 73,
+    EmprestimoVinculoRecusado = 74,
 }

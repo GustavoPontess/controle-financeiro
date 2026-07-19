@@ -67,6 +67,39 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         var ok = await _service.DeletarAsync(id, UserId);
         return ok ? NoContent() : NotFound();
     }
+
+    /// <summary>Propõe vínculo bilateral por e-mail. Resposta sempre igual (anti-enumeração) —
+    /// o link só volta pra quem chamou, pra copiar/compartilhar por fora.</summary>
+    [HttpPost("{id:guid}/vincular")]
+    [ProducesResponseType(typeof(EmprestimoConviteResultadoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Vincular(Guid id, [FromBody] VincularEmprestimoDto dto)
+    {
+        var resultado = await _service.VincularAsync(id, dto, UserId);
+        return Ok(resultado);
+    }
+
+    /// <summary>Convites de vínculo pendentes pro usuário logado (por e-mail, igual convite de família).</summary>
+    [HttpGet("convites-pendentes")]
+    [ProducesResponseType(typeof(List<EmprestimoConvitePendenteDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarConvitesPendentes()
+    {
+        var pendentes = await _service.ListarConvitesPendentesAsync(UserId);
+        return Ok(pendentes);
+    }
+
+    [HttpPost("convites/{token}/aceitar")]
+    public async Task<IActionResult> AceitarVinculo(string token)
+    {
+        await _service.AceitarVinculoAsync(token, UserId);
+        return NoContent();
+    }
+
+    [HttpPost("convites/{token}/recusar")]
+    public async Task<IActionResult> RecusarVinculo(string token)
+    {
+        await _service.RecusarVinculoAsync(token, UserId);
+        return NoContent();
+    }
 }
 
 public record PagamentoDto(decimal Valor);

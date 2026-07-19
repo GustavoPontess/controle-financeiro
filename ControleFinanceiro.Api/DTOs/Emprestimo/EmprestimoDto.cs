@@ -16,4 +16,11 @@ public class EmprestimoDto
     public bool Quitado { get; set; }
     public bool Vencido { get; set; }
     public string? Observacao { get; set; }
+
+    // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md)
+    public int StatusVinculo { get; set; }
+    public string? ContraparteNome { get; set; }
+
+    /// <summary>Relativo a quem pediu — não ao CriadoPor. Só quem é SouCredor confirma pagamento/quita.</summary>
+    public bool SouCredor { get; set; }
 }

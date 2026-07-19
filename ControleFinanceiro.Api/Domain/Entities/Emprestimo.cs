@@ -15,4 +15,17 @@ public class Emprestimo
     public bool Quitado { get; set; } = false;
     public string? Observacao { get; set; }
     public Guid CriadoPor { get; set; }
+
+    /// <summary>Soft delete — nunca _context.Remove() (CLAUDE.md).</summary>
+    public bool Ativo { get; set; } = true;
+
+    // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md).
+    // Só setado no aceite explícito — antes disso é null, mesmo padrão de MembroFamilia.UsuarioId.
+    public Guid? ContraparteUsuarioId { get; set; }
+    public Usuario? ContraparteUsuario { get; set; }
+    public StatusVinculoEmprestimo StatusVinculo { get; set; } = StatusVinculoEmprestimo.SemVinculo;
+    public string? EmailContraparte { get; set; }
+    public string? ConviteTokenHash { get; set; }
+    public DateTime? ConviteExpiraEm { get; set; }
+    public DateTime? VinculoRespondidoEm { get; set; }
 }
