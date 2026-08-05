@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-07-17
+last_reviewed: 2026-07-20
 status: EM_PROGRESSO
-foco: 'Lote 2 família — só falta 2.3 frontend (papéis/permissões). Backend e 2.1/2.2/2.4 mergeados.'
+foco: 'Empréstimo compartilhado pronto (back+front), branch aberta sem PR ainda. Próximo: decidir cleanup + push, depois spec do fluxo pagamento-com-comprovante.'
 ---
 
 # STATE — onde parei
@@ -15,37 +15,54 @@ foco: 'Lote 2 família — só falta 2.3 frontend (papéis/permissões). Backend
 
 ## Em execução
 
-**Feature 2.3 — papéis + permissões.** Backend completo e **já mergeado** (PR #228, 2026-06-18): enum `PapelFamilia` + `PapelPermissao` em Membro/Convite + migration/backfill + `FamiliaPermissoes` central reaplicado nos 6 services + endpoint de permissão; back 294/294, 0 warning. **Próximo: fase frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — não confundir com a página de detalhe da família (PR #233), que é outra frente. Spec: `docs/features/familia/papeis-permissoes.md`.
+**Empréstimo compartilhado (vínculo bilateral)** — spec em `docs/features/emprestimo-compartilhado/spec.md`, **backend + frontend completos e testados**, mas **branch `feature/emprestimo-compartilhado` ainda não pushada, sem PR**. 3 commits locais: spec, backend, frontend. Verificado end-to-end no browser real (criar → vincular → copiar link → 2ª conta aceita → gate de autorização confirmado).
 
-2.1/2.2/2.4 completas e mergeadas (PRs #221-#226). **Lote 2: 2.1 ✅ · 2.2 ✅ · 2.4 ✅ · 2.3 back ✅/front pendente.** (Achado parkado: upgrade .NET 8→10, P2 no ROADMAP.)
+**Working tree tem mudanças NÃO commitadas agora** (feitas depois do commit de frontend, em cima da mesma branch):
+- `.gitignore` + `ControleFinanceiro.Api/Program.cs` — wiring via reflection do `MeuCenarioSeeder.cs` (novo arquivo, **gitignored de propósito**, não aparece no `git status`). Compilação testada com e sem o arquivo presente.
+- `ROADMAP.md` — 5 achados novos catalogados no intake (ver seção própria abaixo).
+- `controle-financeiro.web/src/pages/Auth/LoginPage.tsx` + `.module.css` — painel DEV do login virou lista (3 contas fictícias do seeder + extensível via `.env` local `VITE_DEV_LOGIN_EXTRA`, gitignored).
+- `docs/concorrentes/the-box-app/` — prints novos, untracked, seguro comitar (só UI de concorrente).
 
-> ⚠️ **Este arquivo ficou ~1 mês sem atualizar** (último review real 2026-06-17, hoje é 2026-07-17) e nem chegou a registrar o dia seguinte de trabalho (PRs #222-#231, 2026-06-18) antes de parar. Reconciliado nesta sessão contra `gh pr list`. Lição: fechar sessão sem passar pela seção 9 do `PROMPT_NOVA_SESSAO.md` é exatamente o que causa isso — não pular esse passo de novo.
+**Pendências reais, na ordem:**
+1. Decidir: limpar dado de teste do banco de dev (empréstimo "Ajuda com aluguel atrasado" em `dev@controle.test` + conta `terceira.pessoa@teste.com`, ambos criados durante a verificação manual) — Gustavo ainda não respondeu.
+2. Commitar as mudanças soltas acima (provavelmente 1-2 commits pequenos na mesma branch).
+3. Push + abrir PR de `feature/emprestimo-compartilhado`.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — **estavam no ar** no fim da sessão; confirmar se ainda estão ou se precisam subir de novo (`docker compose up -d postgres`, `dotnet run`, `npm run dev`).
 
-**Auditoria do módulo família (2026-06-17, workflow 7 agentes):** descobriu que o fosso família **já está construído** ponta-a-ponta — ROADMAP estava errado marcando 2.1/2.2/2.3/2.4 como `[ ]`. Status real reconciliado no ROADMAP (2.2 quase-pronto, 2.1/2.3 parcial, 2.4 não-começado). Os gaps reais eram **buracos de segurança**, não features.
+**Achados novos catalogados no ROADMAP (intake), gerados testando o fluxo ao vivo:**
+- 🟠 P1 — pagamento com comprovante + aprovação do credor (hoje só o credor age; devedor não tem ação nenhuma). Reaproveitar arquitetura da 2.4 (aprovação de despesa). **Próxima spec a escrever.**
+- 🟡 P2 — Empréstimo ↔ Conta/Transacao real (mesma questão crítica não resolvida do §16.5 de `familia/visao.md`, agora em 2 features).
+- 🟡 P2 — parcelamento do empréstimo + extrato embutido no detalhe.
+- ⚪ P3 — agrupar/unificar empréstimos por pessoa (depende dos 2 P2 acima).
+- ⚪ P3 — gesto "toque duplo na traseira" (achado no concorrente the-box-app) — **ressalva técnica:** é recurso nativo do iOS via Atalhos, não dá pra implementar direto num PWA.
 
-**Lote 1 fechado** (1.1 filtros ✅ · 1.2 privacy ✅ · 1.3 variação% ✅ · 1.4 orçamento no Dashboard ✅). Segurança (auth) toda fechada.
+**Sobre o `MeuCenarioSeeder.cs` (arquivo local, gitignored):** criado com placeholders — Gustavo edita com dados reais dele + da pessoa pra quem empresta (nome/e-mail/limite de cartão/valor do empréstimo) antes de rodar. Popula os 2 usuários já **vinculados** (pula o convite). Nunca vai pro Git — é por isso que não aparece em `git status`.
 
-> **1.4 decisão:** em vez do "salário+meta" do ROADMAP (modelo rígido), reaproveitamos o `Orcamento` por-categoria que já existe (suporta orçamento geral) num card "safe-to-spend" no Dashboard. Alinhado ao mercado (Monarch/YNAB), zero migration.
-
-> **Frente de segurança (código) ESGOTADA:** C1/C2/C3 + A1/A2 + reset/rate-limit/política + re-auth/CSP + A3 + rotação dev + refresh-token-hash + 403×401 + CSP-SPA — tudo fechado e mergeado. Falta só deploy-config (prod) ou decisão/pesquisa.
+> ⚠️ **Lição registrada 2026-07-17, reforçada agora:** este arquivo tinha ficado ~1 mês sem atualizar antes. Setar o hábito de passar pela seção 9 do `PROMPT_NOVA_SESSAO.md` ao encerrar qualquer sessão — inclusive quando a sessão "não termina" de vez (compactação de contexto) precisa desse registro pra não se perder.
 
 ## Próxima ação concreta
 
-**Follow-ups da auditoria família — todos resolvidos (catalogados no ROADMAP):**
-- ✅ **P2 🟡** `FamiliasPage` `ehProprio` — corrigido, PR #223.
-- ✅ **P3 ⚪** **2.4 aprovação de despesa** — back PR #224, front PR #225.
-- ✅ **P3 ⚪** **2.3 papéis com enum + enforcement** — back PR #228. **Front ainda pendente** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — é a próxima ação concreta real de Lote 2.
+1. Responder as 2 perguntas em aberto (limpar dado de teste? push+PR agora?).
+2. Commitar `.gitignore`/`Program.cs`/`ROADMAP.md`/`LoginPage.*` soltos.
+3. Push + PR de `feature/emprestimo-compartilhado`.
+4. Escrever spec do fluxo **pagamento com comprovante + aprovação do credor** (P1 do intake acima) — reaproveitando o padrão de `Familia.LimiteAprovacao`/`Transacao.StatusAprovacao` (2.4). Spec antes de codar, mesmo padrão desta sessão.
+5. Depois: 2.3-frontend (papéis/permissões) continua pendente de sessões anteriores, sem prioridade nova — ver "Depois" abaixo.
 
 **Depois — escolha de direção** (decidir com o Gustavo):
-- **Lote 2 (fosso de produto):** família real — rateio "quem paga o quê" + settle-up. **Spec própria antes de codar** (`docs/features/familia/`). É o maior diferencial; pede planejamento + decisões.
+- **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
 - **Lote 3 (aquisição/SEO):** tela de Assinaturas, ferramentas grátis, referral.
-- **Conformidade:** LGPD #126 (pesquisa leve + decisão legal).
-- **Polish:** replicar variação% em /reports; UI de orçamento geral mais explícita na /limites.
-- **Conformidade — pesquisa LEVE** (§8.6, não desperdiçar orçamento): **LGPD #126** (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
-- **P2 restante:** dropar regras de composição da senha (NIST) — **decisão de UX do Gustavo** (afrouxa a senha).
+- **Conformidade — pesquisa LEVE** (§8.6): LGPD #126 (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.
+- **P2 restante:** dropar regras de composição da senha (NIST) — decisão de UX do Gustavo (afrouxa a senha).
 - **Deploy (futuro):** rotacionar segredos de prod; ajustar `connect-src` do CSP + baseURL hardcoded do axios pro domínio real.
 
 ---
+
+## Entregue (2026-07-20)
+
+- **Empréstimo compartilhado — vínculo bilateral (spec + backend + frontend)** ✅ — spec em `docs/features/emprestimo-compartilhado/spec.md` (validada contra OWASP API1:2023/BOLA, Pix Automático do Bacen, e Splitwise antes de codar). Backend: migration `AddVinculoEmprestimo`, fluxo de convite por e-mail com token hasheado (`OpaqueTokenHasher`, mesmo padrão do reset/refresh), autorização assimétrica de confirmação por `Tipo` (credor do registro específico, não só `CriadoPor`), soft-delete (bug do EF `defaultValue: false` corrigido antes de aplicar — teria apagado empréstimos existentes), `FinancialEventLog`, idempotência. Frontend: badge de vínculo + gate de pagamento/quitar por `souCredor`, modal de vincular com link pra copiar (sem envio de e-mail automático — projeto não tem SMTP real), seção de convites pendentes in-app (aceite sem token, por e-mail autenticado), landing pública `/convite/emprestimo/:token`. Back 323/323, front 317/317, 0 warning. **Verificado end-to-end no browser real com 2 contas** (não só teste automatizado): perspectiva invertida certa nos dois lados, gate de autorização confirmado (devedora não vê botão de pagamento).
+- **Doc reconciliation** (início da sessão, antes do empréstimo) — PRs #232/#233/#234 mergeados: `STATE.md`/`ROADMAP.md` reconciliados contra `gh pr list` (1 mês sem review), exemplos MUI trocados por Pontes em `CLAUDE.md`/`STANDARDS.md`, item 2.2 corrigido (marcado "falta" já resolvido há semanas). Branch `claude/shared-loan-feature-d4327e` (nome não-conforme, criada pelo harness) apagada; convenção `feature/<slug>` retomada.
+- **Seeder pessoal de dogfooding** — `Data/MeuCenarioSeeder.cs` (gitignored) + wiring via reflection em `Program.cs` (compila com ou sem o arquivo — CI/outros checkouts não quebram). Resolve o pedido de testar com cenário real sem colocar dado financeiro real ou de terceiro no Git.
+- **Painel DEV do login virou lista** — 3 contas fictícias do seeder + extensível via `.env` local (`VITE_DEV_LOGIN_EXTRA`, gitignored).
 
 ## Entregue (2026-06-22)
 

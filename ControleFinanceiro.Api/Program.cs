@@ -352,6 +352,19 @@ using (var scope = app.Services.CreateScope())
     // Só em Development e idempotente (não roda se o usuário dev já existir).
     if (app.Environment.IsDevelopment())
         await DevDataSeeder.SeedAsync(context);
+
+    // Seeder pessoal de dogfooding — Data/MeuCenarioSeeder.cs é gitignored (cada
+    // dev cria o seu, com dados reais que nunca vão pro Git). Carregado via
+    // reflection pra Program.cs compilar igual em qualquer checkout, com ou
+    // sem o arquivo (CI, outro worktree, clone novo — nenhum deles tem essa
+    // classe, e não deveriam precisar).
+    if (app.Environment.IsDevelopment())
+    {
+        var meuCenarioSeedAsync = Type.GetType("ControleFinanceiro.Api.Data.MeuCenarioSeeder")
+            ?.GetMethod("SeedAsync");
+        if (meuCenarioSeedAsync != null)
+            await (Task)meuCenarioSeedAsync.Invoke(null, new object[] { context })!;
+    }
 }
 
 if (app.Environment.IsDevelopment())

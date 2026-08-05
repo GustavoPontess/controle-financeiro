@@ -5,6 +5,29 @@ import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo } from 
 import { useAuth } from '../../hooks/useAuth'
 import styles from './LoginPage.module.css'
 
+const DEV_SENHA = 'Dev@123456'
+
+// Contas fictícias do DevDataSeeder (sempre existem em dev, sem risco — nada real).
+const DEV_ACCOUNTS_BASE: { email: string; label: string }[] = [
+  { email: 'dev@controle.test', label: 'Dev (casal)' },
+  { email: 'conjuge@controle.test', label: 'Cônjuge do Dev' },
+  { email: 'solo@controle.test', label: 'Solo (sem família)' },
+]
+
+// Contas locais extras (ex: seu cenário real do MeuCenarioSeeder) — vêm de um
+// .env do frontend (gitignored, nunca commitado). Formato:
+// VITE_DEV_LOGIN_EXTRA="email1:Rótulo 1,email2:Rótulo 2"
+function contasExtras(): { email: string; label: string }[] {
+  const raw = import.meta.env.VITE_DEV_LOGIN_EXTRA as string | undefined
+  if (!raw) return []
+  return raw.split(',').map((par) => {
+    const [email, label] = par.split(':')
+    return { email: (email ?? '').trim(), label: (label ?? email ?? '').trim() }
+  }).filter((c) => c.email)
+}
+
+const DEV_ACCOUNTS = [...DEV_ACCOUNTS_BASE, ...contasExtras()]
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
@@ -190,23 +213,26 @@ export default function LoginPage() {
 
       {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção) */}
       {import.meta.env.DEV && (
-        <button
-          type="button"
-          className={styles.devHint}
-          onClick={() => {
-            setEmail('dev@controle.test')
-            setPassword('Dev@123456')
-            setErrors({})
-            setError('')
-          }}
-          title="Clique para preencher o login de teste"
-        >
-          <span className={styles.devHintTag}>DEV</span>
-          <span className={styles.devHintCol}>
-            <span className={styles.devHintLabel}>login de teste · clique p/ preencher</span>
-            <span className={styles.devHintCreds}>dev@controle.test · Dev@123456</span>
-          </span>
-        </button>
+        <div className={styles.devHintPanel}>
+          <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
+          {DEV_ACCOUNTS.map((conta) => (
+            <button
+              key={conta.email}
+              type="button"
+              className={styles.devHintRow}
+              onClick={() => {
+                setEmail(conta.email)
+                setPassword(DEV_SENHA)
+                setErrors({})
+                setError('')
+              }}
+              title={`Preencher login de ${conta.label}`}
+            >
+              <span className={styles.devHintLabel}>{conta.label}</span>
+              <span className={styles.devHintCreds}>{conta.email}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

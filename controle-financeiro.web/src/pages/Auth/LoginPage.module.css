@@ -55,22 +55,26 @@
 .footerMuted { color: var(--pontes-text-muted); }
 
 /* Atalho de DEV — canto inferior direito (só em desenvolvimento) */
-.devHint {
+.devHintPanel {
   position: fixed; right: 16px; bottom: 16px; z-index: 50;
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; border-radius: 10px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 8px; border-radius: 10px; max-width: 260px;
   background: var(--pontes-surface); border: 1px solid var(--pontes-border);
   box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
-  font-family: var(--pontes-font); cursor: pointer; text-align: left;
-  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  font-family: var(--pontes-font);
 }
-.devHint:hover { border-color: var(--pontes-primary); transform: translateY(-1px); }
 .devHintTag {
   font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
   color: var(--pontes-primary); background: var(--pontes-primary-soft);
-  padding: 3px 7px; border-radius: 6px; flex-shrink: 0;
+  padding: 3px 7px; border-radius: 6px; align-self: flex-start; margin-bottom: 2px;
 }
-.devHintCol { display: flex; flex-direction: column; gap: 1px; }
+.devHintRow {
+  display: flex; flex-direction: column; gap: 1px; text-align: left;
+  padding: 5px 8px; border-radius: 8px; cursor: pointer;
+  background: transparent; border: none; width: 100%;
+  transition: background-color .12s ease;
+}
+.devHintRow:hover { background: var(--pontes-bg); }
 .devHintLabel { font-size: 10px; color: var(--pontes-text-muted); }
 .devHintCreds { font-size: 12px; font-weight: 600; color: var(--pontes-text); }
-@media (max-width: 480px) { .devHint { left: 16px; right: 16px; justify-content: center; } }
+@media (max-width: 480px) { .devHintPanel { left: 16px; right: 16px; } }

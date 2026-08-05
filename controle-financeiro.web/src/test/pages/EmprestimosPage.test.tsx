@@ -32,6 +32,14 @@ vi.mock("../../services/emprestimoService", () => ({
   aceitarVinculoEmprestimoPorId: (...a: unknown[]) => aceitarVinculoEmprestimoPorId(...a),
   recusarVinculoEmprestimoPorId: (...a: unknown[]) => recusarVinculoEmprestimoPorId(...a),
 }))
+const getContas = vi.fn()
+const getCategories = vi.fn()
+vi.mock("../../services/contaService", () => ({
+  getContas: (...a: unknown[]) => getContas(...a),
+}))
+vi.mock("../../services/categoryService", () => ({
+  getCategories: (...a: unknown[]) => getCategories(...a),
+}))
 const paged = <T,>(items: T[]) => ({
   items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
 })
@@ -66,6 +74,8 @@ describe("EmprestimosPage (#152)", () => {
     vincularEmprestimo.mockReset()
     aceitarVinculoEmprestimoPorId.mockReset().mockResolvedValue(undefined)
     recusarVinculoEmprestimoPorId.mockReset().mockResolvedValue(undefined)
+    getContas.mockReset().mockResolvedValue([])
+    getCategories.mockReset().mockResolvedValue([])
   })
 
   it("lista empréstimos + stats", async () => {
