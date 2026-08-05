@@ -20,6 +20,10 @@ import {
   StatusVinculoEmprestimo,
   type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente,
 } from "../../types/Emprestimo"
+import { getContas } from "../../services/contaService"
+import { getCategories } from "../../services/categoryService"
+import type { Conta } from "../../types/Conta"
+import type { Category } from "../../types/Category"
 import styles from "./EmprestimosPage.module.css"
 
 const errorMessage = (err: unknown, fallback: string): string =>
@@ -51,12 +55,16 @@ type FormState = {
   dataInicio: string
   dataVencimento: string
   observacao: string
+  lancarTransacao: boolean
+  contaId: string
+  categoriaId: string
 }
 const emptyForm: FormState = {
   descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
   dataInicio: today(), dataVencimento: "", observacao: "",
+  lancarTransacao: false, contaId: "", categoriaId: "",
 }
-type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal", string>>
+type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId", string>>
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -81,6 +89,8 @@ export default function EmprestimosPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<Errors>({})
   const [idemKey, setIdemKey] = useState<string>("")
+  const [contas, setContas] = useState<Conta[]>([])
+  const [categorias, setCategorias] = useState<Category[]>([])
 
   // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md)
   const [pendentes, setPendentes] = useState<EmprestimoConvitePendente[]>([])
@@ -93,15 +103,19 @@ export default function EmprestimosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult] = await Promise.all([
         listEmprestimosPage(page, pageSize),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
+        getContas(),
+        getCategories(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
       setStats(statsResult)
       setPendentes(pendentesResult)
+      setContas(contasResult)
+      setCategorias(categoriasResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -149,6 +163,8 @@ export default function EmprestimosPage() {
     if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
     if (form.valorTotal == null) e.valorTotal = "Informe o valor"
     else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
+    if (form.lancarTransacao && !form.contaId) e.contaId = "Escolha a conta"
+    if (form.lancarTransacao && !form.categoriaId) e.categoriaId = "Escolha a categoria"
     setErrors(e)
     if (Object.keys(e).length) return
 
@@ -163,6 +179,8 @@ export default function EmprestimosPage() {
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
         idempotencyKey: idemKey,
+        contaId: form.lancarTransacao ? form.contaId : undefined,
+        categoriaId: form.lancarTransacao ? form.categoriaId : undefined,
       }
       await createEmprestimo(payload)
       notify({ open: true, message: "Empréstimo criado", severity: "success" })
@@ -449,6 +467,38 @@ export default function EmprestimosPage() {
               rows={2}
             />
           </PontesField>
+
+          <label className={styles.lancarToggle}>
+            <input
+              type="checkbox"
+              checked={form.lancarTransacao}
+              onChange={(e) => setF("lancarTransacao", e.target.checked)}
+            />
+            Esse dinheiro já saiu/entrou de verdade e ainda não foi lançado — lançar agora
+          </label>
+
+          {form.lancarTransacao && (
+            <div className={styles.grid2}>
+              <PontesField label="Conta" required error={errors.contaId}>
+                <PontesSelect
+                  value={form.contaId}
+                  onChange={(v) => { setF("contaId", v); clearErr("contaId") }}
+                  options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+              <PontesField label="Categoria" required error={errors.categoriaId}>
+                <PontesSelect
+                  value={form.categoriaId}
+                  onChange={(v) => { setF("categoriaId", v); clearErr("categoriaId") }}
+                  options={categorias
+                    .filter((c) => c.finalidade === 3 || (form.tipo === "1" ? c.finalidade === 1 : c.finalidade === 2))
+                    .map((c) => ({ value: c.id, label: c.descricao }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+            </div>
+          )}
         </form>
       </PontesModal>
 

@@ -12,4 +12,9 @@ public class CriarEmprestimoDto
     public DateTime? DataVencimento { get; set; }
     public string? Observacao { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
+
+    /// <summary>Se informado (junto com <see cref="CategoriaId"/>), cria também o lançamento
+    /// real da saída/entrada (ex.: o Pix que já foi feito mas ainda não tinha sido lançado).</summary>
+    public Guid? ContaId { get; set; }
+    public Guid? CategoriaId { get; set; }
 }

@@ -236,6 +236,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Agencia")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<Guid?>("BancoId")
                         .HasColumnType("uuid");
 
@@ -409,6 +413,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("TransacaoId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("ValorPago")
                         .HasColumnType("numeric");
 
@@ -423,6 +430,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ContraparteUsuarioId");
 
                     b.HasIndex("ConviteTokenHash");
+
+                    b.HasIndex("TransacaoId");
 
                     b.ToTable("Emprestimos");
                 });
@@ -1420,7 +1429,14 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("ContraparteUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "Transacao")
+                        .WithMany()
+                        .HasForeignKey("TransacaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("ContraparteUsuario");
+
+                    b.Navigation("Transacao");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>

@@ -19,6 +19,12 @@ public class Emprestimo
     /// <summary>Soft delete — nunca _context.Remove() (CLAUDE.md).</summary>
     public bool Ativo { get; set; } = true;
 
+    /// <summary>Vincula ao lançamento (Transacao) que representa a saída/entrada real do
+    /// dinheiro — ex.: o Pix que originou o empréstimo. Opcional: setado só quando o
+    /// empréstimo é criado junto com um lançamento (o dinheiro já saiu/entrou de fato).</summary>
+    public Guid? TransacaoId { get; set; }
+    public Transacao? Transacao { get; set; }
+
     // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md).
     // Só setado no aceite explícito — antes disso é null, mesmo padrão de MembroFamilia.UsuarioId.
     public Guid? ContraparteUsuarioId { get; set; }

@@ -25,6 +25,8 @@ export interface Emprestimo {
   contraparteNome?: string
   /** Só quem é credor confirma pagamento/quitação — nunca o devedor, mesmo vinculado. */
   souCredor: boolean
+  /** Lançamento (Transacao) vinculado — só existe se criado junto com o empréstimo. */
+  transacaoId?: string
 }
 
 export interface CriarEmprestimo {
@@ -36,6 +38,9 @@ export interface CriarEmprestimo {
   dataVencimento?: string
   observacao?: string
   idempotencyKey: string
+  /** Se informado (junto com categoriaId), cria também o lançamento real da saída/entrada. */
+  contaId?: string
+  categoriaId?: string
 }
 
 export interface EmprestimoConviteResultado {

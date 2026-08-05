@@ -12,11 +12,13 @@ namespace ControleFinanceiro.Api.Services;
 public class EmprestimoService(
     AppDbContext context,
     NotificacaoService notificacaoService,
-    FinancialEventLogService eventLog)
+    FinancialEventLogService eventLog,
+    TransacaoService transacaoService)
 {
     private readonly AppDbContext _context = context;
     private readonly NotificacaoService _notificacaoService = notificacaoService;
     private readonly FinancialEventLogService _eventLog = eventLog;
+    private readonly TransacaoService _transacaoService = transacaoService;
 
     public async Task<PagedResult<EmprestimoDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
     {
@@ -99,6 +101,25 @@ public class EmprestimoService(
                 return await ToDtoAsync(anterior, usuarioId);
         }
 
+        Guid? transacaoId = null;
+        if (dto.ContaId.HasValue)
+        {
+            if (!dto.CategoriaId.HasValue)
+                throw new ArgumentException("Informe a categoria do lançamento junto com a conta.");
+
+            var transacao = await _transacaoService.CriarTransacaoAsync(new Domain.Entities.Transacao
+            {
+                Id = Guid.NewGuid(),
+                Descricao = $"Empréstimo: {dto.Descricao}",
+                Valor = dto.ValorTotal,
+                Tipo = dto.Tipo == TipoEmprestimo.Emprestei ? Domain.Enums.TipoTransacao.Despesa : Domain.Enums.TipoTransacao.Receita,
+                ContaId = dto.ContaId,
+                CategoriaId = dto.CategoriaId,
+                Data = dto.DataInicio.ToUniversalTime(),
+            }, usuarioId);
+            transacaoId = transacao.Id;
+        }
+
         var emprestimo = new Emprestimo
         {
             Id = Guid.NewGuid(),
@@ -112,6 +133,7 @@ public class EmprestimoService(
             Quitado = false,
             Observacao = dto.Observacao,
             CriadoPor = usuarioId,
+            TransacaoId = transacaoId,
         };
 
         _context.Emprestimos.Add(emprestimo);
@@ -513,6 +535,7 @@ public class EmprestimoService(
             StatusVinculo = (int)e.StatusVinculo,
             ContraparteNome = contraparteNome,
             SouCredor = souCredor,
+            TransacaoId = e.TransacaoId,
         };
     }
 

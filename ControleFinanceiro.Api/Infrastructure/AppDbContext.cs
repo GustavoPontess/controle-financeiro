@@ -399,6 +399,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Emprestimo>()
             .HasIndex(e => e.ConviteTokenHash);
 
+        // Emprestimo → Transacao (SetNull: a Transacao nunca é hard-deletada — soft delete
+        // via Ativo — mas se algum dia for, o empréstimo não some junto, só perde o vínculo).
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.Transacao)
+            .WithMany()
+            .HasForeignKey(e => e.TransacaoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // ── Issue #86 Metas ──
 
         // Meta → Usuario (Cascade: metas somem com o usuário)

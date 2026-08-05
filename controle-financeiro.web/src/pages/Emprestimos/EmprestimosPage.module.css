@@ -53,3 +53,6 @@
 .pendenteDesc { font-size: 13px; color: var(--pontes-text); }
 
 .vincularLinkBox { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 12px; word-break: break-all; }
+
+.lancarToggle { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--pontes-text); cursor: pointer; line-height: 1.4; }
+.lancarToggle input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }

@@ -23,4 +23,7 @@ public class EmprestimoDto
 
     /// <summary>Relativo a quem pediu — não ao CriadoPor. Só quem é SouCredor confirma pagamento/quita.</summary>
     public bool SouCredor { get; set; }
+
+    /// <summary>Lançamento (Transacao) vinculado — só existe se criado junto com o empréstimo.</summary>
+    public Guid? TransacaoId { get; set; }
 }
