@@ -436,6 +436,50 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Emprestimos");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AprovadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("AprovadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("EmprestimoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SolicitadoPor")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("StatusAprovacao")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TransacaoComprovanteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransacaoRecebimentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmprestimoId");
+
+                    b.HasIndex("TransacaoComprovanteId");
+
+                    b.HasIndex("TransacaoRecebimentoId");
+
+                    b.ToTable("EmprestimoPagamentoSolicitacoes");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1437,6 +1481,32 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("ContraparteUsuario");
 
                     b.Navigation("Transacao");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "Emprestimo")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoComprovante")
+                        .WithMany()
+                        .HasForeignKey("TransacaoComprovanteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoRecebimento")
+                        .WithMany()
+                        .HasForeignKey("TransacaoRecebimentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Emprestimo");
+
+                    b.Navigation("TransacaoComprovante");
+
+                    b.Navigation("TransacaoRecebimento");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>

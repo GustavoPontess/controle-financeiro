@@ -126,6 +126,57 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         await _service.RecusarVinculoPorIdAsync(id, UserId);
         return NoContent();
     }
+
+    // ── Pagamento com comprovante + aprovação ──────────────────────────────────
+
+    /// <summary>Devedor solicita pagamento anexando comprovante (cria a Transacao real junto).</summary>
+    [HttpPost("{id:guid}/solicitar-pagamento")]
+    [ProducesResponseType(typeof(EmprestimoPagamentoSolicitacaoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SolicitarPagamento(Guid id, [FromBody] SolicitarPagamentoEmprestimoDto dto)
+    {
+        var resultado = await _service.SolicitarPagamentoAsync(id, dto, UserId);
+        return Ok(resultado);
+    }
+
+    /// <summary>Histórico de solicitações de pagamento de um empréstimo.</summary>
+    [HttpGet("{id:guid}/solicitacoes")]
+    [ProducesResponseType(typeof(List<EmprestimoPagamentoSolicitacaoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarSolicitacoes(Guid id)
+    {
+        var lista = await _service.ListarSolicitacoesAsync(id, UserId);
+        return Ok(lista);
+    }
+
+    /// <summary>Solicitações de pagamento pendentes onde eu sou o credor.</summary>
+    [HttpGet("solicitacoes-pendentes")]
+    [ProducesResponseType(typeof(List<EmprestimoPagamentoSolicitacaoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarSolicitacoesPendentes()
+    {
+        var lista = await _service.ListarSolicitacoesPendentesAsync(UserId);
+        return Ok(lista);
+    }
+
+    [HttpPost("solicitacoes/{solicitacaoId:guid}/aprovar")]
+    public async Task<IActionResult> AprovarPagamento(Guid solicitacaoId, [FromBody] AprovarPagamentoEmprestimoDto dto)
+    {
+        var ok = await _service.AprovarPagamentoSolicitacaoAsync(solicitacaoId, dto, UserId);
+        return ok ? NoContent() : NotFound();
+    }
+
+    [HttpPost("solicitacoes/{solicitacaoId:guid}/rejeitar")]
+    public async Task<IActionResult> RejeitarPagamento(Guid solicitacaoId)
+    {
+        var ok = await _service.RejeitarPagamentoSolicitacaoAsync(solicitacaoId, UserId);
+        return ok ? NoContent() : NotFound();
+    }
+
+    /// <summary>Devedor reenvia uma solicitação rejeitada — volta pra Pendente.</summary>
+    [HttpPost("solicitacoes/{solicitacaoId:guid}/reenviar")]
+    public async Task<IActionResult> ReenviarPagamento(Guid solicitacaoId)
+    {
+        var ok = await _service.ReenviarPagamentoSolicitacaoAsync(solicitacaoId, UserId);
+        return ok ? NoContent() : NotFound();
+    }
 }
 
 public record PagamentoDto(decimal Valor);

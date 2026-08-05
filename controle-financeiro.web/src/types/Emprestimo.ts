@@ -41,6 +41,8 @@ export interface CriarEmprestimo {
   /** Se informado (junto com categoriaId), cria também o lançamento real da saída/entrada. */
   contaId?: string
   categoriaId?: string
+  /** Se informado, vincula um lançamento já existente em vez de criar outro. */
+  transacaoExistenteId?: string
 }
 
 export interface EmprestimoConviteResultado {
@@ -53,4 +55,45 @@ export interface EmprestimoConvitePendente {
   valorTotal: number
   credorOuDevedorNome: string
   tipoDescricao: string
+}
+
+/** Status de aprovação de uma solicitação de pagamento — docs/features/emprestimo-compartilhado/pagamento-aprovacao.md. */
+export const StatusAprovacaoPagamentoEmprestimo = {
+  Pendente: 1,
+  Aprovada: 2,
+  Rejeitada: 3,
+} as const
+
+export interface SolicitarPagamentoEmprestimo {
+  valor: number
+  contaId?: string
+  categoriaId?: string
+  data: string
+  /** Se informado, vincula essa despesa já lançada em vez de criar uma nova (evita duplicar a saída). */
+  transacaoExistenteId?: string
+  idempotencyKey: string
+}
+
+export interface AprovarPagamentoEmprestimo {
+  contaId?: string
+  categoriaId?: string
+}
+
+export interface EmprestimoPagamentoSolicitacao {
+  id: string
+  emprestimoId: string
+  valor: number
+  statusAprovacao: number
+  statusAprovacaoDescricao: string
+  solicitadoPor: string
+  solicitadoPorNome: string
+  criadoEm: string
+  aprovadoEm?: string
+  transacaoRecebimentoId?: string
+  /** Data real do lançamento de saída (comprovante) — pro histórico ler como extrato. */
+  comprovanteData: string
+  comprovanteContaNome?: string
+  /** Só preenchido quando o credor informou conta ao aprovar (criou a entrada de verdade). */
+  recebimentoData?: string
+  recebimentoContaNome?: string
 }

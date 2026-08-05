@@ -49,4 +49,9 @@ public enum FinancialEventType
     EmprestimoQuitado = 72,
     EmprestimoVinculado = 73,
     EmprestimoVinculoRecusado = 74,
+
+    // Empréstimo — pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
+    EmprestimoPagamentoSolicitado = 75,
+    EmprestimoPagamentoAprovado = 76,
+    EmprestimoPagamentoRejeitado = 77,
 }

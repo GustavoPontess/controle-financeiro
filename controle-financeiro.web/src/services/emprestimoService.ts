@@ -1,6 +1,7 @@
 import { api } from "../api/axiosConfig"
 import type {
   Emprestimo, CriarEmprestimo, EmprestimoConviteResultado, EmprestimoConvitePendente,
+  SolicitarPagamentoEmprestimo, AprovarPagamentoEmprestimo, EmprestimoPagamentoSolicitacao,
 } from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
@@ -85,4 +86,40 @@ export const aceitarVinculoEmprestimoPorId = async (id: string): Promise<void> =
 
 export const recusarVinculoEmprestimoPorId = async (id: string): Promise<void> => {
   await api.post(`/emprestimos/${id}/recusar-vinculo`)
+}
+
+/** Devedor solicita pagamento anexando comprovante (cria a Transacao real junto). */
+export const solicitarPagamentoEmprestimo = async (
+  id: string, dto: SolicitarPagamentoEmprestimo,
+): Promise<EmprestimoPagamentoSolicitacao> => {
+  const res = await api.post(`/emprestimos/${id}/solicitar-pagamento`, dto)
+  return res.data
+}
+
+/** Histórico de solicitações de pagamento de um empréstimo — visível pros dois participantes. */
+export const listSolicitacoesPagamento = async (id: string): Promise<EmprestimoPagamentoSolicitacao[]> => {
+  const res = await api.get(`/emprestimos/${id}/solicitacoes`)
+  return res.data
+}
+
+/** Solicitações de pagamento pendentes onde eu sou o credor. */
+export const listSolicitacoesPagamentoPendentes = async (): Promise<EmprestimoPagamentoSolicitacao[]> => {
+  const res = await api.get("/emprestimos/solicitacoes-pendentes")
+  return res.data
+}
+
+/** Credor aprova. contaId/categoriaId opcionais — se já registrou a entrada por fora, aprova sem informar. */
+export const aprovarPagamentoEmprestimo = async (
+  solicitacaoId: string, dto: AprovarPagamentoEmprestimo,
+): Promise<void> => {
+  await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/aprovar`, dto)
+}
+
+export const rejeitarPagamentoEmprestimo = async (solicitacaoId: string): Promise<void> => {
+  await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/rejeitar`)
+}
+
+/** Devedor reenvia uma solicitação rejeitada — volta pra pendente. */
+export const reenviarPagamentoEmprestimo = async (solicitacaoId: string): Promise<void> => {
+  await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/reenviar`)
 }

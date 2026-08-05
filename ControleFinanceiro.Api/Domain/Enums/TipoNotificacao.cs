@@ -11,5 +11,7 @@ public enum TipoNotificacao
     DespesaAprovada = 7,
     DespesaRejeitada = 8,
     EmprestimoVinculo = 9,
+    EmprestimoPagamentoSolicitado = 10,
+    EmprestimoPagamentoAvaliado = 11,
     Outro = 99,
 }

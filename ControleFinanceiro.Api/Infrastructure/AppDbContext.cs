@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
     public DbSet<Recorrente> Recorrentes => Set<Recorrente>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
+    public DbSet<EmprestimoPagamentoSolicitacao> EmprestimoPagamentoSolicitacoes => Set<EmprestimoPagamentoSolicitacao>();
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
 
@@ -406,6 +407,25 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.TransacaoId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.Emprestimo)
+            .WithMany()
+            .HasForeignKey(s => s.EmprestimoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.TransacaoComprovante)
+            .WithMany()
+            .HasForeignKey(s => s.TransacaoComprovanteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.TransacaoRecebimento)
+            .WithMany()
+            .HasForeignKey(s => s.TransacaoRecebimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ── Issue #86 Metas ──
 

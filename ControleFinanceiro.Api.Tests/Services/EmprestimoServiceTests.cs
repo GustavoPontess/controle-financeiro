@@ -30,6 +30,59 @@ public class EmprestimoServiceTests
         return u.Id;
     }
 
+    private static (Guid contaId, Guid categoriaId) SeedContaECategoria(AppDbContext ctx, Guid usuarioId)
+    {
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
+        var categoria = new Categoria { Id = Guid.NewGuid(), Descricao = "Outros", Finalidade = Finalidade.Despesa };
+        ctx.Contas.Add(conta);
+        ctx.Categorias.Add(categoria);
+        ctx.SaveChanges();
+        return (conta.Id, categoria.Id);
+    }
+
+    /// <summary>Conta + categoria de Receita — pra aprovar pagamento (Tipo=Receita) na conta do credor.</summary>
+    private static (Guid contaId, Guid categoriaId) SeedContaECategoriaReceita(AppDbContext ctx, Guid usuarioId)
+    {
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
+        var categoria = new Categoria { Id = Guid.NewGuid(), Descricao = "Outros", Finalidade = Finalidade.Receita };
+        ctx.Contas.Add(conta);
+        ctx.Categorias.Add(categoria);
+        ctx.SaveChanges();
+        return (conta.Id, categoria.Id);
+    }
+
+    private static SolicitarPagamentoEmprestimoDto SolicitarDtoValido(Guid contaId, Guid categoriaId, string? key = null) => new()
+    {
+        Valor = 100,
+        ContaId = contaId,
+        CategoriaId = categoriaId,
+        Data = DateTime.UtcNow,
+        IdempotencyKey = key ?? Guid.NewGuid().ToString(),
+    };
+
+    /// <summary>Empréstimo vinculado (Emprestei, credorId=criador) pronto pra testar pagamento/aprovação.</summary>
+    private static async Task<(Guid emprestimoId, Guid credorId, Guid devedorId)> CriarVinculadoAsync(
+        AppDbContext ctx, EmprestimoService svc, TipoEmprestimo tipo = TipoEmprestimo.Emprestei)
+    {
+        var credorId = tipo == TipoEmprestimo.Emprestei ? SeedUsuario(ctx, $"credor-{Guid.NewGuid()}@x.com") : Guid.Empty;
+        var devedorId = tipo == TipoEmprestimo.Emprestei ? SeedUsuario(ctx, $"devedor-{Guid.NewGuid()}@x.com") : Guid.Empty;
+
+        // Pra PeguiEmprestado, quem cria é o devedor e a contraparte vinculada é o credor real.
+        var criadorId = tipo == TipoEmprestimo.Emprestei ? credorId : SeedUsuario(ctx, $"criador-{Guid.NewGuid()}@x.com");
+        var contraparteId = tipo == TipoEmprestimo.Emprestei ? devedorId : SeedUsuario(ctx, $"contraparte-{Guid.NewGuid()}@x.com");
+
+        var dto = DtoValido();
+        dto.Tipo = tipo;
+        var criado = await svc.CriarAsync(dto, criadorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto(
+            (await ctx.Usuarios.FindAsync(contraparteId))!.Email), criadorId);
+        await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), contraparteId);
+
+        return tipo == TipoEmprestimo.Emprestei
+            ? (criado.Id, criadorId, contraparteId)
+            : (criado.Id, contraparteId, criadorId); // PeguiEmprestado: contraparte vinculada é a credora
+    }
+
     private static CriarEmprestimoDto DtoValido(string? key = null) => new()
     {
         Descricao = "Empréstimo para João",
@@ -140,6 +193,63 @@ public class EmprestimoServiceTests
         var log = await ctx.FinancialEventLogs.FirstOrDefaultAsync(l => l.EntidadeId == criado.Id
             && l.Tipo == FinancialEventType.EmprestimoCriado);
         Assert.NotNull(log);
+    }
+
+    [Fact]
+    public async Task CriarAsync_VinculaTransacaoExistente_NaoCriaNova()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var (contaId, _) = SeedContaECategoria(ctx, usuarioId);
+        var despesa = SeedDespesaExistente(ctx, usuarioId, contaId, 500);
+        var totalAntes = await ctx.Transacoes.CountAsync();
+
+        var dto = DtoValido(); // Tipo = Emprestei → espera Despesa
+        dto.TransacaoExistenteId = despesa.Id;
+        var criado = await svc.CriarAsync(dto, usuarioId);
+
+        Assert.Equal(despesa.Id, criado.TransacaoId);
+        Assert.Equal(totalAntes, await ctx.Transacoes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_TransacaoExistenteTipoErrado_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var (contaId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, usuarioId);
+        var receita = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
+            ContaId = contaId, CategoriaId = categoriaReceitaId, Data = DateTime.UtcNow, CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(receita);
+        await ctx.SaveChangesAsync();
+
+        var dto = DtoValido(); // Tipo = Emprestei → espera Despesa, não Receita
+        dto.TransacaoExistenteId = receita.Id;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, usuarioId));
+    }
+
+    [Fact]
+    public async Task CriarAsync_TransacaoJaVinculadaOutroEmprestimo_LancaInvalidOperationException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var (contaId, _) = SeedContaECategoria(ctx, usuarioId);
+        var despesa = SeedDespesaExistente(ctx, usuarioId, contaId);
+
+        var dto1 = DtoValido();
+        dto1.TransacaoExistenteId = despesa.Id;
+        await svc.CriarAsync(dto1, usuarioId);
+
+        var dto2 = DtoValido("outra-chave");
+        dto2.TransacaoExistenteId = despesa.Id;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CriarAsync(dto2, usuarioId));
     }
 
     // ── Pagamento / Quitação ─────────────────────────────────────────────────
@@ -680,6 +790,464 @@ public class EmprestimoServiceTests
 
         Assert.Equal(500m, statsDevedor.TotalAPagar);
         Assert.Equal(0m, statsDevedor.TotalAReceber);
+    }
+
+    // ── Pagamento com comprovante + aprovação ───────────────────────────────────
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_Devedor_CriaSolicitacaoPendente_NaoMexeValorPago()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        Assert.Equal(1, resultado.StatusAprovacao); // Pendente
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(0, emprestimo!.ValorPago);
+
+        var solicitacao = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(resultado.Id);
+        Assert.NotEqual(Guid.Empty, solicitacao!.TransacaoComprovanteId);
+        var transacao = await ctx.Transacoes.FindAsync(solicitacao.TransacaoComprovanteId);
+        Assert.NotNull(transacao);
+        Assert.Equal(TipoTransacao.Despesa, transacao!.Tipo);
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_Credor_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, _) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, credorId);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), credorId));
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_SemVinculo_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = SeedUsuario(ctx, "solo@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, usuarioId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), usuarioId));
+    }
+
+    /// <summary>Simula uma despesa que o devedor já lançou por fora (ex.: viu o Pix sair e
+    /// registrou na hora), antes de ir marcar o empréstimo como pago.</summary>
+    private static Transacao SeedDespesaExistente(AppDbContext ctx, Guid usuarioId, Guid contaId, decimal valor = 150)
+    {
+        var t = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            Descricao = "Despesa já lançada",
+            Valor = valor,
+            Tipo = TipoTransacao.Despesa,
+            ContaId = contaId,
+            Data = DateTime.UtcNow,
+            CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(t);
+        ctx.SaveChanges();
+        return t;
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_VinculaTransacaoExistente_UsaValorDaTransacao_NaoCriaNova()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, _) = SeedContaECategoria(ctx, devedorId);
+        var despesa = SeedDespesaExistente(ctx, devedorId, contaId, 150);
+        var totalTransacoesAntes = await ctx.Transacoes.CountAsync();
+
+        var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            TransacaoExistenteId = despesa.Id,
+            Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        Assert.Equal(150, resultado.Valor);
+        Assert.Equal(totalTransacoesAntes, await ctx.Transacoes.CountAsync()); // nenhuma nova criada
+        var solicitacao = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(resultado.Id);
+        Assert.Equal(despesa.Id, solicitacao!.TransacaoComprovanteId);
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_TransacaoExistenteDeOutroUsuario_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaCredorId, _) = SeedContaECategoria(ctx, credorId);
+        var despesaDoCredor = SeedDespesaExistente(ctx, credorId, contaCredorId);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+            {
+                TransacaoExistenteId = despesaDoCredor.Id,
+                Data = DateTime.UtcNow,
+                IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId));
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_TransacaoExistenteTipoReceita_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, _) = SeedContaECategoria(ctx, devedorId);
+        var receita = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
+            ContaId = contaId, Data = DateTime.UtcNow, CriadoPor = devedorId,
+        };
+        ctx.Transacoes.Add(receita);
+        await ctx.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+            {
+                TransacaoExistenteId = receita.Id,
+                Data = DateTime.UtcNow,
+                IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId));
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_TransacaoJaVinculadaPendente_LancaInvalidOperationException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, _) = SeedContaECategoria(ctx, devedorId);
+        var despesa = SeedDespesaExistente(ctx, devedorId, contaId);
+
+        await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+            {
+                TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId));
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_TransacaoDeSolicitacaoRejeitada_PodeSerReaproveitada()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, _) = SeedContaECategoria(ctx, devedorId);
+        var despesa = SeedDespesaExistente(ctx, devedorId, contaId);
+
+        var primeira = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(primeira.Id, credorId);
+
+        var segunda = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        Assert.Equal(despesa.Id, (await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(segunda.Id))!.TransacaoComprovanteId);
+    }
+
+    private static AprovarPagamentoEmprestimoDto AprovarDtoValido(Guid contaId, Guid categoriaId) => new()
+    {
+        ContaId = contaId,
+        CategoriaId = categoriaId,
+    };
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_Credor_AvancaValorPago_CriaTransacaoRecebimento()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaDevedorId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaDevedorId, categoriaId), devedorId);
+
+        var ok = await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        Assert.True(ok);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(100, emprestimo!.ValorPago);
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal(StatusAprovacaoPagamentoEmprestimo.Aprovada, linha!.StatusAprovacao);
+        Assert.Equal(credorId, linha.AprovadoPorUsuarioId);
+        Assert.NotNull(linha.TransacaoRecebimentoId);
+        var transacaoRecebimento = await ctx.Transacoes.FindAsync(linha.TransacaoRecebimentoId);
+        Assert.Equal(TipoTransacao.Receita, transacaoRecebimento!.Tipo);
+        Assert.Equal(contaCredorId, transacaoRecebimento.ContaId);
+    }
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_SemContaNemTransacaoExistente_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        // Aprovar sem registrar nada não é permitido — credor sempre tem que vincular ou criar.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, new AprovarPagamentoEmprestimoDto(), credorId));
+    }
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_VinculaTransacaoExistente_NaoCriaNova()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaDevedorId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaDevedorId, categoriaId), devedorId);
+        var receitaExistente = SeedDespesaExistente(ctx, credorId, contaCredorId, 100);
+        receitaExistente.Tipo = TipoTransacao.Receita;
+        receitaExistente.CategoriaId = categoriaReceitaId;
+        await ctx.SaveChangesAsync();
+        var totalAntes = await ctx.Transacoes.CountAsync();
+
+        var ok = await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id,
+            new AprovarPagamentoEmprestimoDto { TransacaoExistenteId = receitaExistente.Id }, credorId);
+
+        Assert.True(ok);
+        Assert.Equal(totalAntes, await ctx.Transacoes.CountAsync()); // nenhuma nova criada
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(100, emprestimo!.ValorPago);
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal(receitaExistente.Id, linha!.TransacaoRecebimentoId);
+    }
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_TransacaoExistenteTipoErrado_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaDevedorId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaDevedorId, categoriaId), devedorId);
+        var (contaCredorId, _) = SeedContaECategoria(ctx, credorId);
+        var despesaDoCredor = SeedDespesaExistente(ctx, credorId, contaCredorId); // Despesa, não Receita
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id,
+                new AprovarPagamentoEmprestimoDto { TransacaoExistenteId = despesaDoCredor.Id }, credorId));
+    }
+
+    [Fact]
+    public async Task RejeitarPagamentoSolicitacaoAsync_Credor_NaoMexeValorPago()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        var ok = await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+
+        Assert.True(ok);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(0, emprestimo!.ValorPago);
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal(StatusAprovacaoPagamentoEmprestimo.Rejeitada, linha!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task AvaliarPagamento_Devedor_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, new AprovarPagamentoEmprestimoDto(), devedorId));
+    }
+
+    [Fact]
+    public async Task AvaliarPagamento_Estranho_RetornaFalse()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        var estranhoId = SeedUsuario(ctx, "estranho@x.com");
+
+        var ok = await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, new AprovarPagamentoEmprestimoDto(), estranhoId);
+
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public async Task AvaliarPagamento_JaAvaliada_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+        await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId));
+    }
+
+    [Theory]
+    [InlineData(TipoEmprestimo.Emprestei)]
+    [InlineData(TipoEmprestimo.PeguiEmprestado)]
+    public async Task SolicitarEAprovar_FuncionaParaOsDoisTipos(TipoEmprestimo tipo)
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc, tipo);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+        var ok = await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        Assert.True(ok);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(100, emprestimo!.ValorPago);
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_Idempotencia_NaoDuplica()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var dto = SolicitarDtoValido(contaId, categoriaId, "chave-fixa-pagamento");
+
+        var r1 = await svc.SolicitarPagamentoAsync(emprestimoId, dto, devedorId);
+        var r2 = await svc.SolicitarPagamentoAsync(emprestimoId, dto, devedorId);
+
+        Assert.Equal(r1.Id, r2.Id);
+        Assert.Equal(1, await ctx.EmprestimoPagamentoSolicitacoes.CountAsync());
+    }
+
+    [Fact]
+    public async Task ListarSolicitacoesAsync_VisivelParaOsDoisParticipantes()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        var paraCredor = await svc.ListarSolicitacoesAsync(emprestimoId, credorId);
+        var paraDevedor = await svc.ListarSolicitacoesAsync(emprestimoId, devedorId);
+
+        Assert.Single(paraCredor);
+        Assert.Single(paraDevedor);
+    }
+
+    [Fact]
+    public async Task ListarSolicitacoesPendentesAsync_SoParaOCredor()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        var pendentesCredor = await svc.ListarSolicitacoesPendentesAsync(credorId);
+        var pendentesDevedor = await svc.ListarSolicitacoesPendentesAsync(devedorId);
+
+        Assert.Single(pendentesCredor);
+        Assert.Empty(pendentesDevedor);
+    }
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_GravaFinancialEventLog()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        var logSolicitado = await ctx.FinancialEventLogs.FirstOrDefaultAsync(l =>
+            l.EntidadeId == solicitacao.Id && l.Tipo == FinancialEventType.EmprestimoPagamentoSolicitado);
+        var logAprovado = await ctx.FinancialEventLogs.FirstOrDefaultAsync(l =>
+            l.EntidadeId == solicitacao.Id && l.Tipo == FinancialEventType.EmprestimoPagamentoAprovado);
+        Assert.NotNull(logSolicitado);
+        Assert.NotNull(logAprovado);
+    }
+
+    // ── Reenviar após rejeição ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ReenviarPagamentoSolicitacaoAsync_Devedor_VoltaPendente()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+
+        var ok = await svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, devedorId);
+
+        Assert.True(ok);
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal(StatusAprovacaoPagamentoEmprestimo.Pendente, linha!.StatusAprovacao);
+        Assert.Null(linha.AprovadoPorUsuarioId);
+        Assert.Null(linha.AprovadoEm);
+    }
+
+    [Fact]
+    public async Task ReenviarPagamentoSolicitacaoAsync_NaoRejeitada_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, devedorId));
+    }
+
+    [Fact]
+    public async Task ReenviarPagamentoSolicitacaoAsync_NaoSolicitante_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, credorId));
     }
 
     // ── helpers de teste ─────────────────────────────────────────────────────

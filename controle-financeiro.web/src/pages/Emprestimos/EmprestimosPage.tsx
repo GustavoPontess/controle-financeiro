@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
+import { useAuth } from "../../hooks/useAuth"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign, Link2, Copy, Check, X,
+  Receipt, History, RotateCcw,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
@@ -14,16 +16,20 @@ import {
   listEmprestimosPage, getEmprestimoStats, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
   vincularEmprestimo, listConvitesPendentesEmprestimo,
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
+  solicitarPagamentoEmprestimo, listSolicitacoesPagamento, listSolicitacoesPagamentoPendentes,
+  aprovarPagamentoEmprestimo, rejeitarPagamentoEmprestimo, reenviarPagamentoEmprestimo,
 } from "../../services/emprestimoService"
 import type { EmprestimoStats } from "../../services/emprestimoService"
 import {
-  StatusVinculoEmprestimo,
-  type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente,
+  StatusVinculoEmprestimo, StatusAprovacaoPagamentoEmprestimo,
+  type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente, type EmprestimoPagamentoSolicitacao,
 } from "../../types/Emprestimo"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
+import { listTransactionsPage } from "../../services/transactionService"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
+import type { Transaction } from "../../types/Transaction"
 import styles from "./EmprestimosPage.module.css"
 
 const errorMessage = (err: unknown, fallback: string): string =>
@@ -47,6 +53,10 @@ const TIPOS = [
   { value: "2", label: "Peguei emprestado (vou pagar)" },
 ]
 
+/** Escolha explícita — nunca padrão silencioso, evita duplicar lançamento (Gustavo 2026-08-05). */
+type EscolhaMovimentacao = "" | "nao" | "existente" | "novo"
+type EscolhaComprovante = "" | "existente" | "novo"
+
 type FormState = {
   descricao: string
   pessoa: string
@@ -55,22 +65,36 @@ type FormState = {
   dataInicio: string
   dataVencimento: string
   observacao: string
-  lancarTransacao: boolean
+  movimentacao: EscolhaMovimentacao
   contaId: string
   categoriaId: string
+  transacaoExistenteId: string
 }
 const emptyForm: FormState = {
   descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
   dataInicio: today(), dataVencimento: "", observacao: "",
-  lancarTransacao: false, contaId: "", categoriaId: "",
+  movimentacao: "", contaId: "", categoriaId: "", transacaoExistenteId: "",
 }
-type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId", string>>
+type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId", string>>
+
+/** Rádio de escolha explícita — usado nos 3 pontos com risco de duplicar lançamento. */
+function GateOption({ name, value, current, onChange, children }: {
+  name: string; value: string; current: string; onChange: (v: string) => void; children: React.ReactNode
+}) {
+  return (
+    <label className={styles.gateOption} data-selected={current === value ? "" : undefined}>
+      <input type="radio" name={name} checked={current === value} onChange={() => onChange(value)} />
+      {children}
+    </label>
+  )
+}
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 export default function EmprestimosPage() {
   const { notify } = useOutletContext<OutletContextType>()
+  const { currentUser } = useAuth()
   // Página visível (server-side) + KPIs exatos via /stats endpoint dedicado (#179).
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
   const [stats, setStats] = useState<EmprestimoStats>({
@@ -91,6 +115,32 @@ export default function EmprestimosPage() {
   const [idemKey, setIdemKey] = useState<string>("")
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
+  const [despesasRecentes, setDespesasRecentes] = useState<Transaction[]>([])
+  const [despesasLoading, setDespesasLoading] = useState(false)
+  const [receitasRecentes, setReceitasRecentes] = useState<Transaction[]>([])
+  const [receitasLoading, setReceitasLoading] = useState(false)
+
+  const carregarDespesasRecentes = useCallback(async () => {
+    if (despesasRecentes.length > 0) return
+    setDespesasLoading(true)
+    try {
+      const res = await listTransactionsPage(1, 50, { tipo: 1, ordenacao: "data_desc" })
+      setDespesasRecentes(res.items)
+    } catch {
+      notify({ open: true, message: "Erro ao carregar suas despesas recentes", severity: "error" })
+    } finally { setDespesasLoading(false) }
+  }, [despesasRecentes.length, notify])
+
+  const carregarReceitasRecentes = useCallback(async () => {
+    if (receitasRecentes.length > 0) return
+    setReceitasLoading(true)
+    try {
+      const res = await listTransactionsPage(1, 50, { tipo: 2, ordenacao: "data_desc" })
+      setReceitasRecentes(res.items)
+    } catch {
+      notify({ open: true, message: "Erro ao carregar suas receitas recentes", severity: "error" })
+    } finally { setReceitasLoading(false) }
+  }, [receitasRecentes.length, notify])
 
   // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md)
   const [pendentes, setPendentes] = useState<EmprestimoConvitePendente[]>([])
@@ -101,14 +151,35 @@ export default function EmprestimosPage() {
   const [vincularLink, setVincularLink] = useState<string | null>(null)
   const [vincularLoading, setVincularLoading] = useState(false)
 
+  // Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
+  const [pagamentosPendentes, setPagamentosPendentes] = useState<EmprestimoPagamentoSolicitacao[]>([])
+  const [avaliandoId, setAvaliandoId] = useState<string | null>(null)
+  const [solicitarFor, setSolicitarFor] = useState<string | null>(null)
+  const [solicitarForm, setSolicitarForm] = useState<{ valor?: number; contaId: string; categoriaId: string }>({ valor: undefined, contaId: "", categoriaId: "" })
+  const [solicitarErrors, setSolicitarErrors] = useState<{ valor?: string; contaId?: string; categoriaId?: string; escolha?: string; transacaoExistenteId?: string }>({})
+  const [solicitarIdemKey, setSolicitarIdemKey] = useState("")
+  // Escolha explícita: vincular despesa já lançada, ou criar agora — nunca padrão silencioso (Gustavo 2026-08-05)
+  const [solicitarEscolha, setSolicitarEscolha] = useState<EscolhaComprovante>("")
+  const [solicitarTransacaoExistenteId, setSolicitarTransacaoExistenteId] = useState("")
+  const [aprovarFor, setAprovarFor] = useState<string | null>(null)
+  const [aprovarForm, setAprovarForm] = useState<{ contaId: string; categoriaId: string }>({ contaId: "", categoriaId: "" })
+  const [aprovarErrors, setAprovarErrors] = useState<{ escolha?: string; contaId?: string; categoriaId?: string; transacaoExistenteId?: string }>({})
+  // Aprovar sempre registra a entrada — vincular ou criar, nunca "não registrar" (Gustavo 2026-08-05)
+  const [aprovarEscolha, setAprovarEscolha] = useState<EscolhaComprovante>("")
+  const [aprovarTransacaoExistenteId, setAprovarTransacaoExistenteId] = useState("")
+  const [historicoFor, setHistoricoFor] = useState<string | null>(null)
+  const [historico, setHistorico] = useState<EmprestimoPagamentoSolicitacao[]>([])
+  const [historicoLoading, setHistoricoLoading] = useState(false)
+
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, pagamentosPendentesResult] = await Promise.all([
         listEmprestimosPage(page, pageSize),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
         getCategories(),
+        listSolicitacoesPagamentoPendentes(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
@@ -116,6 +187,7 @@ export default function EmprestimosPage() {
       setPendentes(pendentesResult)
       setContas(contasResult)
       setCategorias(categoriasResult)
+      setPagamentosPendentes(pagamentosPendentesResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -157,14 +229,22 @@ export default function EmprestimosPage() {
     }
   }
 
+  const handleMovimentacaoChange = (v: string) => {
+    setF("movimentacao", v as EscolhaMovimentacao)
+    clearErr("movimentacao")
+    if (v === "existente") void (form.tipo === "1" ? carregarDespesasRecentes() : carregarReceitasRecentes())
+  }
+
   const handleSalvar = async () => {
     const e: Errors = {}
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
     if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
     if (form.valorTotal == null) e.valorTotal = "Informe o valor"
     else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
-    if (form.lancarTransacao && !form.contaId) e.contaId = "Escolha a conta"
-    if (form.lancarTransacao && !form.categoriaId) e.categoriaId = "Escolha a categoria"
+    if (!form.movimentacao) e.movimentacao = "Escolha uma opção"
+    if (form.movimentacao === "novo" && !form.contaId) e.contaId = "Escolha a conta"
+    if (form.movimentacao === "novo" && !form.categoriaId) e.categoriaId = "Escolha a categoria"
+    if (form.movimentacao === "existente" && !form.transacaoExistenteId) e.transacaoExistenteId = "Escolha o lançamento"
     setErrors(e)
     if (Object.keys(e).length) return
 
@@ -179,15 +259,16 @@ export default function EmprestimosPage() {
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
         idempotencyKey: idemKey,
-        contaId: form.lancarTransacao ? form.contaId : undefined,
-        categoriaId: form.lancarTransacao ? form.categoriaId : undefined,
+        contaId: form.movimentacao === "novo" ? form.contaId : undefined,
+        categoriaId: form.movimentacao === "novo" ? form.categoriaId : undefined,
+        transacaoExistenteId: form.movimentacao === "existente" ? form.transacaoExistenteId : undefined,
       }
       await createEmprestimo(payload)
       notify({ open: true, message: "Empréstimo criado", severity: "success" })
       setDialogOpen(false)
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao criar empréstimo", severity: "error" })
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao criar empréstimo"), severity: "error" })
     } finally { setLoading(false) }
   }
 
@@ -257,6 +338,165 @@ export default function EmprestimosPage() {
     } finally { setDelId(null) }
   }
 
+  // ── Pagamento com comprovante + aprovação ───────────────────────────────────
+
+  const openSolicitar = (emprestimoId: string) => {
+    setSolicitarFor(emprestimoId)
+    setSolicitarForm({ valor: undefined, contaId: "", categoriaId: "" })
+    setSolicitarErrors({})
+    setSolicitarIdemKey(crypto.randomUUID())
+    setSolicitarEscolha("")
+    setSolicitarTransacaoExistenteId("")
+  }
+
+  const handleSolicitarEscolhaChange = (v: string) => {
+    setSolicitarEscolha(v as EscolhaComprovante)
+    setSolicitarErrors((p) => ({ ...p, escolha: undefined }))
+    if (v === "existente") void carregarDespesasRecentes()
+  }
+
+  const handleSolicitar = async () => {
+    if (!solicitarFor) return
+
+    if (!solicitarEscolha) {
+      setSolicitarErrors({ escolha: "Escolha uma opção" })
+      return
+    }
+
+    if (solicitarEscolha === "existente") {
+      if (!solicitarTransacaoExistenteId) {
+        setSolicitarErrors({ transacaoExistenteId: "Escolha a despesa que já lançou" })
+        return
+      }
+      setLoading(true)
+      try {
+        await solicitarPagamentoEmprestimo(solicitarFor, {
+          valor: 0,
+          data: new Date().toISOString(),
+          transacaoExistenteId: solicitarTransacaoExistenteId,
+          idempotencyKey: solicitarIdemKey,
+        })
+        notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
+        setSolicitarFor(null)
+        await loadData()
+      } catch (err) {
+        notify({ open: true, message: errorMessage(err, "Erro ao marcar pagamento"), severity: "error" })
+      } finally { setLoading(false) }
+      return
+    }
+
+    const errs: { valor?: string; contaId?: string; categoriaId?: string } = {}
+    if (solicitarForm.valor == null || solicitarForm.valor <= 0) errs.valor = "Informe um valor maior que zero"
+    if (!solicitarForm.contaId) errs.contaId = "Escolha a conta"
+    if (!solicitarForm.categoriaId) errs.categoriaId = "Escolha a categoria"
+    setSolicitarErrors(errs)
+    if (Object.keys(errs).length) return
+
+    setLoading(true)
+    try {
+      await solicitarPagamentoEmprestimo(solicitarFor, {
+        valor: solicitarForm.valor!,
+        contaId: solicitarForm.contaId,
+        categoriaId: solicitarForm.categoriaId,
+        data: new Date().toISOString(),
+        idempotencyKey: solicitarIdemKey,
+      })
+      notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
+      setSolicitarFor(null)
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao marcar pagamento"), severity: "error" })
+    } finally { setLoading(false) }
+  }
+
+  const openAprovar = (solicitacaoId: string) => {
+    setAprovarFor(solicitacaoId)
+    setAprovarForm({ contaId: "", categoriaId: "" })
+    setAprovarErrors({})
+    setAprovarEscolha("")
+    setAprovarTransacaoExistenteId("")
+  }
+
+  const handleAprovarEscolhaChange = (v: string) => {
+    setAprovarEscolha(v as EscolhaComprovante)
+    setAprovarErrors((p) => ({ ...p, escolha: undefined }))
+    if (v === "existente") void carregarReceitasRecentes()
+  }
+
+  const handleAprovar = async () => {
+    if (!aprovarFor) return
+
+    if (!aprovarEscolha) {
+      setAprovarErrors({ escolha: "Escolha uma opção" })
+      return
+    }
+    if (aprovarEscolha === "existente" && !aprovarTransacaoExistenteId) {
+      setAprovarErrors({ transacaoExistenteId: "Escolha a receita que já lançou" })
+      return
+    }
+    if (aprovarEscolha === "novo" && !aprovarForm.contaId) {
+      setAprovarErrors({ contaId: "Escolha a conta" })
+      return
+    }
+    if (aprovarEscolha === "novo" && !aprovarForm.categoriaId) {
+      setAprovarErrors({ categoriaId: "Escolha a categoria" })
+      return
+    }
+
+    setAvaliandoId(aprovarFor)
+    try {
+      await aprovarPagamentoEmprestimo(aprovarFor, {
+        contaId: aprovarEscolha === "novo" ? aprovarForm.contaId : undefined,
+        categoriaId: aprovarEscolha === "novo" ? aprovarForm.categoriaId : undefined,
+        transacaoExistenteId: aprovarEscolha === "existente" ? aprovarTransacaoExistenteId : undefined,
+      })
+      notify({ open: true, message: "Pagamento aprovado", severity: "success" })
+      setAprovarFor(null)
+      await loadData()
+      if (historicoFor) await carregarHistorico(historicoFor)
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao aprovar pagamento"), severity: "error" })
+    } finally { setAvaliandoId(null) }
+  }
+
+  const handleRejeitar = async (solicitacaoId: string) => {
+    setAvaliandoId(solicitacaoId)
+    try {
+      await rejeitarPagamentoEmprestimo(solicitacaoId)
+      notify({ open: true, message: "Pagamento rejeitado", severity: "success" })
+      await loadData()
+      if (historicoFor) await carregarHistorico(historicoFor)
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao rejeitar pagamento"), severity: "error" })
+    } finally { setAvaliandoId(null) }
+  }
+
+  const handleReenviar = async (solicitacaoId: string) => {
+    setAvaliandoId(solicitacaoId)
+    try {
+      await reenviarPagamentoEmprestimo(solicitacaoId)
+      notify({ open: true, message: "Pagamento reenviado pra aprovação", severity: "success" })
+      await loadData()
+      if (historicoFor) await carregarHistorico(historicoFor)
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao reenviar pagamento"), severity: "error" })
+    } finally { setAvaliandoId(null) }
+  }
+
+  const carregarHistorico = async (emprestimoId: string) => {
+    setHistoricoLoading(true)
+    try {
+      setHistorico(await listSolicitacoesPagamento(emprestimoId))
+    } catch {
+      notify({ open: true, message: "Erro ao carregar histórico de pagamentos", severity: "error" })
+    } finally { setHistoricoLoading(false) }
+  }
+
+  const openHistorico = (emprestimoId: string) => {
+    setHistoricoFor(emprestimoId)
+    void carregarHistorico(emprestimoId)
+  }
+
   const { totalAReceber, totalAPagar, ativos: qtdAtivos } = stats
 
   return (
@@ -291,6 +531,35 @@ export default function EmprestimosPage() {
                   <PontesIconButton size={32} variant="ghost" aria-label="Recusar convite"
                     disabled={respondendoId === p.emprestimoId}
                     onClick={() => handleRecusarConvite(p.emprestimoId)}>
+                    <X size={14} />
+                  </PontesIconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </PontesCard>
+      )}
+
+      {pagamentosPendentes.length > 0 && (
+        <PontesCard padding={16} radius={16} className={styles.pendentesCard}>
+          <div className={styles.listHeadTitle}>
+            {pagamentosPendentes.length === 1 ? "1 pagamento aguardando sua aprovação" : `${pagamentosPendentes.length} pagamentos aguardando sua aprovação`}
+          </div>
+          <ul className={styles.pendentesList}>
+            {pagamentosPendentes.map((p) => (
+              <li key={p.id} className={styles.pendenteItem}>
+                <span className={styles.pendenteDesc}>
+                  <strong>{p.solicitadoPorNome}</strong> marcou {formatMoney(p.valor)} como pago
+                </span>
+                <div className={styles.actions}>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
+                    disabled={avaliandoId === p.id}
+                    onClick={() => openAprovar(p.id)}>
+                    <Check size={14} />
+                  </PontesIconButton>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
+                    disabled={avaliandoId === p.id}
+                    onClick={() => handleRejeitar(p.id)}>
                     <X size={14} />
                   </PontesIconButton>
                 </div>
@@ -378,6 +647,18 @@ export default function EmprestimosPage() {
                             <Handshake size={14} />
                           </PontesIconButton>
                         </>
+                      )}
+                      {!e.quitado && !e.souCredor && e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Marcar como pago"
+                          onClick={() => openSolicitar(e.id)}>
+                          <Receipt size={14} />
+                        </PontesIconButton>
+                      )}
+                      {e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Ver histórico de pagamentos"
+                          onClick={() => openHistorico(e.id)}>
+                          <History size={14} />
+                        </PontesIconButton>
                       )}
                       {(e.statusVinculo === StatusVinculoEmprestimo.SemVinculo
                         || e.statusVinculo === StatusVinculoEmprestimo.Recusado) && (
@@ -468,16 +749,36 @@ export default function EmprestimosPage() {
             />
           </PontesField>
 
-          <label className={styles.lancarToggle}>
-            <input
-              type="checkbox"
-              checked={form.lancarTransacao}
-              onChange={(e) => setF("lancarTransacao", e.target.checked)}
-            />
-            Esse dinheiro já saiu/entrou de verdade e ainda não foi lançado — lançar agora
-          </label>
+          <PontesField label="Esse dinheiro já saiu/entrou de verdade?" required error={errors.movimentacao}>
+            <div className={styles.gateGroup}>
+              <GateOption name="movimentacao" value="nao" current={form.movimentacao} onChange={handleMovimentacaoChange}>
+                Ainda não — é só o combinado, nada pra lançar agora
+              </GateOption>
+              <GateOption name="movimentacao" value="existente" current={form.movimentacao} onChange={handleMovimentacaoChange}>
+                Já lancei isso em outro lugar — quero vincular
+              </GateOption>
+              <GateOption name="movimentacao" value="novo" current={form.movimentacao} onChange={handleMovimentacaoChange}>
+                Já movimentou e ainda não lancei — lançar agora
+              </GateOption>
+            </div>
+          </PontesField>
 
-          {form.lancarTransacao && (
+          {form.movimentacao === "existente" && (
+            <PontesField label={form.tipo === "1" ? "Despesa já lançada" : "Receita já lançada"} required
+              error={errors.transacaoExistenteId} helper={despesasLoading || receitasLoading ? "Carregando…" : undefined}>
+              <PontesSelect
+                value={form.transacaoExistenteId}
+                onChange={(v) => { setF("transacaoExistenteId", v); clearErr("transacaoExistenteId") }}
+                options={(form.tipo === "1" ? despesasRecentes : receitasRecentes).map((t) => ({
+                  value: t.id,
+                  label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
+                }))}
+                placeholder="Selecione o lançamento"
+              />
+            </PontesField>
+          )}
+
+          {form.movimentacao === "novo" && (
             <div className={styles.grid2}>
               <PontesField label="Conta" required error={errors.contaId}>
                 <PontesSelect
@@ -591,6 +892,188 @@ export default function EmprestimosPage() {
                 Copiar link
               </PontesButton>
             </>
+          )}
+        </div>
+      </PontesModal>
+
+      {/* Modal: Marcar como pago (devedor solicita, anexa comprovante) */}
+      <PontesModal
+        open={solicitarFor !== null}
+        title="Marcar como pago"
+        onClose={() => setSolicitarFor(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setSolicitarFor(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSolicitar} loading={loading} disabled={loading}>Enviar pra aprovação</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <p className={styles.itemSub}>
+            Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele
+            confirmar é que o valor pago do empréstimo avança.
+          </p>
+
+          <PontesField label="Como comprovar esse pagamento?" required error={solicitarErrors.escolha}>
+            <div className={styles.gateGroup}>
+              <GateOption name="solicitar-escolha" value="existente" current={solicitarEscolha} onChange={handleSolicitarEscolhaChange}>
+                Já lancei essa saída em outro lugar — quero vincular
+              </GateOption>
+              <GateOption name="solicitar-escolha" value="novo" current={solicitarEscolha} onChange={handleSolicitarEscolhaChange}>
+                Ainda não lancei — lançar agora
+              </GateOption>
+            </div>
+          </PontesField>
+
+          {solicitarEscolha === "existente" && (
+            <PontesField label="Despesa já lançada" required error={solicitarErrors.transacaoExistenteId}
+              helper={despesasLoading ? "Carregando…" : undefined}>
+              <PontesSelect
+                value={solicitarTransacaoExistenteId}
+                onChange={(v) => { setSolicitarTransacaoExistenteId(v); setSolicitarErrors((p) => ({ ...p, transacaoExistenteId: undefined })) }}
+                options={despesasRecentes.map((t) => ({
+                  value: t.id,
+                  label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
+                }))}
+                placeholder="Selecione a despesa"
+              />
+            </PontesField>
+          )}
+
+          {solicitarEscolha === "novo" && (
+            <>
+              <PontesField label="Valor pago" required error={solicitarErrors.valor}>
+                <PontesInput
+                  iconStart="R$"
+                  value={fmtMoney(solicitarForm.valor)}
+                  onChange={(e) => { setSolicitarForm((f) => ({ ...f, valor: parseMoney(e.target.value) })); setSolicitarErrors((p) => ({ ...p, valor: undefined })) }}
+                  invalid={!!solicitarErrors.valor}
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  autoFocus
+                />
+              </PontesField>
+              <PontesField label="Conta (de onde saiu)" required error={solicitarErrors.contaId}>
+                <PontesSelect
+                  value={solicitarForm.contaId}
+                  onChange={(v) => { setSolicitarForm((f) => ({ ...f, contaId: v })); setSolicitarErrors((p) => ({ ...p, contaId: undefined })) }}
+                  options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+              <PontesField label="Categoria" required error={solicitarErrors.categoriaId}>
+                <PontesSelect
+                  value={solicitarForm.categoriaId}
+                  onChange={(v) => { setSolicitarForm((f) => ({ ...f, categoriaId: v })); setSolicitarErrors((p) => ({ ...p, categoriaId: undefined })) }}
+                  options={categorias.filter((c) => c.finalidade === 1 || c.finalidade === 3).map((c) => ({ value: c.id, label: c.descricao }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+            </>
+          )}
+        </div>
+      </PontesModal>
+
+      {/* Modal: Aprovar pagamento (credor confirma — sempre registra a entrada, vincular ou criar) */}
+      <PontesModal
+        open={aprovarFor !== null}
+        title="Aprovar pagamento"
+        onClose={() => setAprovarFor(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setAprovarFor(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleAprovar} loading={avaliandoId === aprovarFor} disabled={avaliandoId === aprovarFor}>Confirmar recebimento</PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="Como registrar essa entrada?" required error={aprovarErrors.escolha}>
+            <div className={styles.gateGroup}>
+              <GateOption name="aprovar-escolha" value="existente" current={aprovarEscolha} onChange={handleAprovarEscolhaChange}>
+                Já registrei essa entrada em outro lugar — quero vincular
+              </GateOption>
+              <GateOption name="aprovar-escolha" value="novo" current={aprovarEscolha} onChange={handleAprovarEscolhaChange}>
+                Ainda não registrei — registrar agora
+              </GateOption>
+            </div>
+          </PontesField>
+
+          {aprovarEscolha === "existente" && (
+            <PontesField label="Receita já lançada" required error={aprovarErrors.transacaoExistenteId}
+              helper={receitasLoading ? "Carregando…" : undefined}>
+              <PontesSelect
+                value={aprovarTransacaoExistenteId}
+                onChange={(v) => { setAprovarTransacaoExistenteId(v); setAprovarErrors((p) => ({ ...p, transacaoExistenteId: undefined })) }}
+                options={receitasRecentes.map((t) => ({
+                  value: t.id,
+                  label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
+                }))}
+                placeholder="Selecione a receita"
+              />
+            </PontesField>
+          )}
+
+          {aprovarEscolha === "novo" && (
+            <>
+              <PontesField label="Conta (pra onde foi)" required error={aprovarErrors.contaId}>
+                <PontesSelect
+                  value={aprovarForm.contaId}
+                  onChange={(v) => { setAprovarForm((f) => ({ ...f, contaId: v })); setAprovarErrors((p) => ({ ...p, contaId: undefined })) }}
+                  options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+              <PontesField label="Categoria" required error={aprovarErrors.categoriaId}>
+                <PontesSelect
+                  value={aprovarForm.categoriaId}
+                  onChange={(v) => { setAprovarForm((f) => ({ ...f, categoriaId: v })); setAprovarErrors((p) => ({ ...p, categoriaId: undefined })) }}
+                  options={categorias.filter((c) => c.finalidade === 2 || c.finalidade === 3).map((c) => ({ value: c.id, label: c.descricao }))}
+                  placeholder="Selecione"
+                />
+              </PontesField>
+            </>
+          )}
+        </div>
+      </PontesModal>
+
+      {/* Modal: Histórico de pagamentos do empréstimo */}
+      <PontesModal
+        open={historicoFor !== null}
+        title="Histórico de pagamentos"
+        onClose={() => setHistoricoFor(null)}
+        footer={<PontesButton onClick={() => setHistoricoFor(null)}>Fechar</PontesButton>}
+      >
+        <div className={styles.formCol}>
+          {historicoLoading ? (
+            <span className={styles.itemSub}>Carregando…</span>
+          ) : historico.length === 0 ? (
+            <span className={styles.itemSub}>Nenhum pagamento solicitado ainda.</span>
+          ) : (
+            <ul className={styles.pendentesList}>
+              {historico.map((h) => (
+                <li key={h.id} className={styles.pendenteItem}>
+                  <span className={styles.pendenteDesc}>
+                    <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}
+                    {" "}
+                    <PontesBadge
+                      size="sm"
+                      tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
+                        : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
+                    >
+                      {h.statusAprovacaoDescricao}
+                    </PontesBadge>
+                    <br />
+                    <span className={styles.itemSub}>
+                      Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
+                      {h.recebimentoData && ` · Entrada: ${formatDate(h.recebimentoData)}${h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}`}
+                    </span>
+                  </span>
+                  {h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada && h.solicitadoPor === currentUser?.id && (
+                    <PontesIconButton size={32} variant="ghost" aria-label="Reenviar pagamento"
+                      disabled={avaliandoId === h.id}
+                      onClick={() => handleReenviar(h.id)}>
+                      <RotateCcw size={14} />
+                    </PontesIconButton>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </PontesModal>

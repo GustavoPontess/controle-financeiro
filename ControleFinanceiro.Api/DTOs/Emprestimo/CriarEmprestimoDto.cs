@@ -17,4 +17,9 @@ public class CriarEmprestimoDto
     /// real da saída/entrada (ex.: o Pix que já foi feito mas ainda não tinha sido lançado).</summary>
     public Guid? ContaId { get; set; }
     public Guid? CategoriaId { get; set; }
+
+    /// <summary>Se informado, vincula um lançamento já existente em vez de criar outro (evita
+    /// duplicar quando a pessoa já registrou essa saída/entrada por fora). Ignora
+    /// ContaId/CategoriaId quando presente.</summary>
+    public Guid? TransacaoExistenteId { get; set; }
 }

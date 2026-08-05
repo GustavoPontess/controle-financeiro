@@ -101,8 +101,31 @@ public class EmprestimoService(
                 return await ToDtoAsync(anterior, usuarioId);
         }
 
+        var tipoTransacaoEsperado = dto.Tipo == TipoEmprestimo.Emprestei
+            ? Domain.Enums.TipoTransacao.Despesa
+            : Domain.Enums.TipoTransacao.Receita;
+
         Guid? transacaoId = null;
-        if (dto.ContaId.HasValue)
+        if (dto.TransacaoExistenteId.HasValue)
+        {
+            // Já lançou esse dinheiro por fora (viu o Pix sair/entrar e registrou na hora) —
+            // vincula em vez de criar outro (mesma trava anti-duplicação do resto da feature).
+            var existente = await _context.Transacoes
+                .FirstOrDefaultAsync(t => t.Id == dto.TransacaoExistenteId.Value && t.CriadoPor == usuarioId)
+                ?? throw new KeyNotFoundException("Transação não encontrada.");
+
+            if (existente.Tipo != tipoTransacaoEsperado)
+                throw new ArgumentException(dto.Tipo == TipoEmprestimo.Emprestei
+                    ? "A transação vinculada precisa ser uma despesa."
+                    : "A transação vinculada precisa ser uma receita.");
+
+            var jaVinculada = await _context.Emprestimos.AnyAsync(e => e.TransacaoId == existente.Id && e.Ativo);
+            if (jaVinculada)
+                throw new InvalidOperationException("Essa transação já está vinculada a outro empréstimo.");
+
+            transacaoId = existente.Id;
+        }
+        else if (dto.ContaId.HasValue)
         {
             if (!dto.CategoriaId.HasValue)
                 throw new ArgumentException("Informe a categoria do lançamento junto com a conta.");
@@ -112,7 +135,7 @@ public class EmprestimoService(
                 Id = Guid.NewGuid(),
                 Descricao = $"Empréstimo: {dto.Descricao}",
                 Valor = dto.ValorTotal,
-                Tipo = dto.Tipo == TipoEmprestimo.Emprestei ? Domain.Enums.TipoTransacao.Despesa : Domain.Enums.TipoTransacao.Receita,
+                Tipo = tipoTransacaoEsperado,
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
                 Data = dto.DataInicio.ToUniversalTime(),
@@ -413,6 +436,315 @@ public class EmprestimoService(
         await _context.SaveChangesAsync();
     }
 
+    // ── Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md) ──
+
+    /// <summary>Devedor solicita pagamento anexando comprovante (Transacao real criada junto, na
+    /// conta do próprio devedor). Não mexe em ValorPago ainda — só a aprovação do credor avança.</summary>
+    public async Task<EmprestimoPagamentoSolicitacaoDto> SolicitarPagamentoAsync(
+        Guid emprestimoId, SolicitarPagamentoEmprestimoDto dto, Guid usuarioId)
+    {
+        if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
+            throw new ArgumentException("idempotencyKey é obrigatório.");
+
+        var replay = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);
+        if (replay != null && replay.Tipo == FinancialEventType.EmprestimoPagamentoSolicitado)
+        {
+            var anterior = await _context.EmprestimoPagamentoSolicitacoes
+                .FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
+            if (anterior != null) return await ToSolicitacaoDtoAsync(anterior);
+        }
+
+        var emprestimo = await _context.Emprestimos.FirstOrDefaultAsync(e => e.Id == emprestimoId && e.Ativo
+            && (e.CriadoPor == usuarioId || e.ContraparteUsuarioId == usuarioId))
+            ?? throw new KeyNotFoundException("Empréstimo não encontrado.");
+
+        if (emprestimo.StatusVinculo != StatusVinculoEmprestimo.Vinculado)
+            throw new InvalidOperationException("Só é possível solicitar pagamento em empréstimo vinculado.");
+
+        if (EhCredor(emprestimo, usuarioId))
+            throw new ForbiddenAccessException("Só o devedor solicita pagamento — o credor confirma.");
+
+        Transacao transacao;
+        decimal valor;
+
+        if (dto.TransacaoExistenteId.HasValue)
+        {
+            // Devedor já lançou essa saída por fora (ex.: registrou o Pix na hora) — vincula em
+            // vez de criar outra, mesmo raciocínio de não-duplicar do lado do credor na aprovação.
+            transacao = await _context.Transacoes
+                .FirstOrDefaultAsync(t => t.Id == dto.TransacaoExistenteId.Value && t.CriadoPor == usuarioId)
+                ?? throw new KeyNotFoundException("Transação não encontrada.");
+
+            if (transacao.Tipo != TipoTransacao.Despesa)
+                throw new ArgumentException("A transação vinculada precisa ser uma despesa.");
+
+            var jaVinculada = await _context.EmprestimoPagamentoSolicitacoes.AnyAsync(s =>
+                s.TransacaoComprovanteId == transacao.Id
+                && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada);
+            if (jaVinculada)
+                throw new InvalidOperationException("Essa transação já está vinculada a outra solicitação de pagamento.");
+
+            valor = transacao.Valor;
+        }
+        else
+        {
+            if (dto.Valor <= 0)
+                throw new ArgumentException("Valor do pagamento deve ser positivo.");
+            if (!dto.ContaId.HasValue || !dto.CategoriaId.HasValue)
+                throw new ArgumentException("Informe conta e categoria, ou vincule uma transação já lançada.");
+
+            transacao = await _transacaoService.CriarTransacaoAsync(new Transacao
+            {
+                Id = Guid.NewGuid(),
+                Descricao = $"Pagamento empréstimo: {emprestimo.Descricao}",
+                Valor = dto.Valor,
+                Tipo = TipoTransacao.Despesa, // é o devedor pagando — sai da conta dele
+                ContaId = dto.ContaId,
+                CategoriaId = dto.CategoriaId,
+                Data = dto.Data.ToUniversalTime(),
+            }, usuarioId);
+            valor = dto.Valor;
+        }
+
+        var solicitacao = new EmprestimoPagamentoSolicitacao
+        {
+            Id = Guid.NewGuid(),
+            EmprestimoId = emprestimo.Id,
+            Valor = valor,
+            TransacaoComprovanteId = transacao.Id,
+            SolicitadoPor = usuarioId,
+            StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente,
+        };
+        _context.EmprestimoPagamentoSolicitacoes.Add(solicitacao);
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoPagamentoSolicitado,
+            entidade: "EmprestimoPagamentoSolicitacao",
+            entidadeId: solicitacao.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            valorDepois: solicitacao.Valor,
+            payload: new { idempotencyKey = dto.IdempotencyKey, solicitacao.Id, emprestimoId });
+
+        await _context.SaveChangesAsync();
+
+        var solicitante = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+        await _notificacaoService.CriarAsync(
+            CredorUsuarioId(emprestimo),
+            TipoNotificacao.EmprestimoPagamentoSolicitado,
+            "Pagamento aguardando aprovação",
+            $"{solicitante?.Nome ?? "Alguém"} marcou {solicitacao.Valor:C} como pago em \"{emprestimo.Descricao}\" — confirme o recebimento.",
+            "/emprestimos");
+
+        return await ToSolicitacaoDtoAsync(solicitacao);
+    }
+
+    /// <summary>Histórico de solicitações de um empréstimo — visível pros dois participantes.</summary>
+    public async Task<List<EmprestimoPagamentoSolicitacaoDto>> ListarSolicitacoesAsync(Guid emprestimoId, Guid usuarioId)
+    {
+        var emprestimo = await _context.Emprestimos.FirstOrDefaultAsync(e => e.Id == emprestimoId && e.Ativo
+            && (e.CriadoPor == usuarioId || e.ContraparteUsuarioId == usuarioId))
+            ?? throw new KeyNotFoundException("Empréstimo não encontrado.");
+
+        var solicitacoes = await _context.EmprestimoPagamentoSolicitacoes
+            .Where(s => s.EmprestimoId == emprestimo.Id)
+            .OrderByDescending(s => s.CriadoEm)
+            .ToListAsync();
+
+        return await ToSolicitacaoDtosAsync(solicitacoes);
+    }
+
+    /// <summary>Solicitações pendentes onde eu sou o credor (pra badge/lista, igual convites-pendentes).</summary>
+    public async Task<List<EmprestimoPagamentoSolicitacaoDto>> ListarSolicitacoesPendentesAsync(Guid usuarioId)
+    {
+        var pendentes = await _context.EmprestimoPagamentoSolicitacoes
+            .Include(s => s.Emprestimo)
+            .Where(s => s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente
+                && s.Emprestimo.Ativo
+                && ((s.Emprestimo.Tipo == TipoEmprestimo.Emprestei && s.Emprestimo.CriadoPor == usuarioId)
+                 || (s.Emprestimo.Tipo == TipoEmprestimo.PeguiEmprestado && s.Emprestimo.ContraparteUsuarioId == usuarioId)))
+            .OrderBy(s => s.CriadoEm)
+            .ToListAsync();
+
+        return await ToSolicitacaoDtosAsync(pendentes);
+    }
+
+    /// <summary>Credor aprova, informando pra qual conta dele foi o recebimento — cria a Transacao
+    /// real de entrada (Receita) na conta do credor, depois avança ValorPago (mesmo clamp/Quitado
+    /// de RegistrarPagamentoAsync). As duas pontas do dinheiro ficam registradas: saída no devedor
+    /// (já criada na solicitação) + entrada no credor (aqui).</summary>
+    public async Task<bool> AprovarPagamentoSolicitacaoAsync(Guid solicitacaoId, AprovarPagamentoEmprestimoDto dto, Guid usuarioId)
+    {
+        var solicitacao = await CarregarSolicitacaoParaAvaliarAsync(solicitacaoId, usuarioId);
+        if (solicitacao is null) return false;
+
+        var emprestimo = solicitacao.Emprestimo;
+
+        // Aprovar sempre registra a entrada de verdade — vincular uma já lançada ou criar uma
+        // nova, nunca pular (dinheiro recebido tem que aparecer na conta do credor também).
+        if (dto.TransacaoExistenteId.HasValue)
+        {
+            var existente = await _context.Transacoes
+                .FirstOrDefaultAsync(t => t.Id == dto.TransacaoExistenteId.Value && t.CriadoPor == usuarioId)
+                ?? throw new KeyNotFoundException("Transação não encontrada.");
+
+            if (existente.Tipo != TipoTransacao.Receita)
+                throw new ArgumentException("A transação vinculada precisa ser uma receita.");
+
+            var jaVinculada = await _context.EmprestimoPagamentoSolicitacoes
+                .AnyAsync(s => s.TransacaoRecebimentoId == existente.Id);
+            if (jaVinculada)
+                throw new InvalidOperationException("Essa transação já está vinculada a outra solicitação de pagamento.");
+
+            solicitacao.TransacaoRecebimentoId = existente.Id;
+        }
+        else if (dto.ContaId.HasValue)
+        {
+            if (!dto.CategoriaId.HasValue)
+                throw new ArgumentException("Informe a categoria do lançamento junto com a conta.");
+
+            var transacaoRecebimento = await _transacaoService.CriarTransacaoAsync(new Transacao
+            {
+                Id = Guid.NewGuid(),
+                Descricao = $"Recebimento empréstimo: {emprestimo.Descricao}",
+                Valor = solicitacao.Valor,
+                Tipo = TipoTransacao.Receita, // credor recebendo — entra na conta dele
+                ContaId = dto.ContaId,
+                CategoriaId = dto.CategoriaId,
+                Data = DateTime.UtcNow,
+            }, usuarioId);
+            solicitacao.TransacaoRecebimentoId = transacaoRecebimento.Id;
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Informe uma transação já lançada pra vincular, ou conta+categoria pra criar uma nova entrada.");
+        }
+
+        solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
+        solicitacao.AprovadoPorUsuarioId = usuarioId;
+        solicitacao.AprovadoEm = DateTime.UtcNow;
+
+        emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + solicitacao.Valor, emprestimo.ValorTotal);
+        if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoPagamentoAprovado,
+            entidade: "EmprestimoPagamentoSolicitacao",
+            entidadeId: solicitacao.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            valorDepois: emprestimo.ValorPago,
+            payload: new { solicitacao.Id, emprestimoId = emprestimo.Id });
+
+        await _context.SaveChangesAsync();
+
+        await _notificacaoService.CriarAsync(
+            solicitacao.SolicitadoPor,
+            TipoNotificacao.EmprestimoPagamentoAvaliado,
+            "Pagamento aprovado",
+            $"Seu pagamento de {solicitacao.Valor:C} em \"{emprestimo.Descricao}\" foi confirmado.",
+            "/emprestimos");
+
+        return true;
+    }
+
+    /// <summary>Credor rejeita — nenhuma Transacao é criada, ValorPago não muda, solicitação fica
+    /// no histórico como rejeitada.</summary>
+    public async Task<bool> RejeitarPagamentoSolicitacaoAsync(Guid solicitacaoId, Guid usuarioId)
+    {
+        var solicitacao = await CarregarSolicitacaoParaAvaliarAsync(solicitacaoId, usuarioId);
+        if (solicitacao is null) return false;
+
+        solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Rejeitada;
+        solicitacao.AprovadoPorUsuarioId = usuarioId;
+        solicitacao.AprovadoEm = DateTime.UtcNow;
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoPagamentoRejeitado,
+            entidade: "EmprestimoPagamentoSolicitacao",
+            entidadeId: solicitacao.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            payload: new { solicitacao.Id, emprestimoId = solicitacao.EmprestimoId });
+
+        await _context.SaveChangesAsync();
+
+        await _notificacaoService.CriarAsync(
+            solicitacao.SolicitadoPor,
+            TipoNotificacao.EmprestimoPagamentoAvaliado,
+            "Pagamento rejeitado",
+            $"Seu pagamento de {solicitacao.Valor:C} em \"{solicitacao.Emprestimo.Descricao}\" foi rejeitado.",
+            "/emprestimos");
+
+        return true;
+    }
+
+    /// <summary>Devedor reenvia uma solicitação rejeitada — volta pra Pendente, mesma Transacao
+    /// comprovante (não cria outra), credor notificado de novo. Cobre rejeição por engano ou
+    /// desentendimento resolvido fora do app.</summary>
+    public async Task<bool> ReenviarPagamentoSolicitacaoAsync(Guid solicitacaoId, Guid usuarioId)
+    {
+        var solicitacao = await _context.EmprestimoPagamentoSolicitacoes
+            .Include(s => s.Emprestimo)
+            .FirstOrDefaultAsync(s => s.Id == solicitacaoId);
+        if (solicitacao is null) return false;
+
+        var emprestimo = solicitacao.Emprestimo;
+        if (emprestimo.CriadoPor != usuarioId && emprestimo.ContraparteUsuarioId != usuarioId)
+            return false; // estranho ao registro — 404, não confirma existência
+
+        if (solicitacao.SolicitadoPor != usuarioId)
+            throw new ForbiddenAccessException("Só quem solicitou pode reenviar.");
+
+        if (solicitacao.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada)
+            throw new InvalidOperationException("Só solicitações rejeitadas podem ser reenviadas.");
+
+        solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente;
+        solicitacao.AprovadoPorUsuarioId = null;
+        solicitacao.AprovadoEm = null;
+
+        await _context.SaveChangesAsync();
+
+        var solicitante = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+        await _notificacaoService.CriarAsync(
+            CredorUsuarioId(emprestimo),
+            TipoNotificacao.EmprestimoPagamentoSolicitado,
+            "Pagamento reenviado pra aprovação",
+            $"{solicitante?.Nome ?? "Alguém"} reenviou {solicitacao.Valor:C} em \"{emprestimo.Descricao}\" — reavalie.",
+            "/emprestimos");
+
+        return true;
+    }
+
+    /// <summary>Carrega + valida autorização pra aprovar/rejeitar (BOLA-safe: estranho ao registro
+    /// recebe null → 404; participante que não é credor recebe 403 com o motivo).</summary>
+    private async Task<EmprestimoPagamentoSolicitacao?> CarregarSolicitacaoParaAvaliarAsync(Guid solicitacaoId, Guid usuarioId)
+    {
+        var solicitacao = await _context.EmprestimoPagamentoSolicitacoes
+            .Include(s => s.Emprestimo)
+            .FirstOrDefaultAsync(s => s.Id == solicitacaoId);
+        if (solicitacao is null) return null;
+
+        var emprestimo = solicitacao.Emprestimo;
+        if (emprestimo.CriadoPor != usuarioId && emprestimo.ContraparteUsuarioId != usuarioId)
+            return null; // estranho ao registro — 404, não confirma existência
+
+        if (!EhCredor(emprestimo, usuarioId))
+            throw new ForbiddenAccessException("Só o credor pode aprovar ou rejeitar solicitações de pagamento.");
+
+        if (solicitacao.SolicitadoPor == usuarioId)
+            throw new ForbiddenAccessException("Você não pode avaliar a própria solicitação.");
+
+        if (solicitacao.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Pendente)
+            throw new InvalidOperationException("Só solicitações pendentes podem ser avaliadas.");
+
+        return solicitacao;
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private IQueryable<Emprestimo> VisivelPara(Guid usuarioId) => _context.Emprestimos
@@ -444,6 +776,60 @@ public class EmprestimoService(
         return e.Tipo == TipoEmprestimo.Emprestei
             ? usuarioId == e.CriadoPor
             : usuarioId == e.ContraparteUsuarioId;
+    }
+
+    /// <summary>Id do usuário credor — só chamar quando Vinculado (ContraparteUsuarioId garantido).</summary>
+    private static Guid CredorUsuarioId(Emprestimo e) =>
+        e.Tipo == TipoEmprestimo.Emprestei ? e.CriadoPor : e.ContraparteUsuarioId!.Value;
+
+    private async Task<EmprestimoPagamentoSolicitacaoDto> ToSolicitacaoDtoAsync(EmprestimoPagamentoSolicitacao s)
+        => (await ToSolicitacaoDtosAsync([s]))[0];
+
+    private async Task<List<EmprestimoPagamentoSolicitacaoDto>> ToSolicitacaoDtosAsync(List<EmprestimoPagamentoSolicitacao> items)
+    {
+        var solicitanteIds = items.Select(s => s.SolicitadoPor).Distinct().ToList();
+        var nomes = await _context.Usuarios.Where(u => solicitanteIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nome);
+
+        var transacaoIds = items.Select(s => s.TransacaoComprovanteId)
+            .Concat(items.Where(s => s.TransacaoRecebimentoId.HasValue).Select(s => s.TransacaoRecebimentoId!.Value))
+            .Distinct()
+            .ToList();
+        var transacoes = await _context.Transacoes
+            .Include(t => t.Conta)
+            .Where(t => transacaoIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t);
+
+        return items.Select(s =>
+        {
+            var comprovante = transacoes.GetValueOrDefault(s.TransacaoComprovanteId);
+            var recebimento = s.TransacaoRecebimentoId.HasValue
+                ? transacoes.GetValueOrDefault(s.TransacaoRecebimentoId.Value)
+                : null;
+
+            return new EmprestimoPagamentoSolicitacaoDto
+            {
+                Id = s.Id,
+                EmprestimoId = s.EmprestimoId,
+                Valor = s.Valor,
+                StatusAprovacao = (int)s.StatusAprovacao,
+                StatusAprovacaoDescricao = s.StatusAprovacao switch
+                {
+                    StatusAprovacaoPagamentoEmprestimo.Pendente => "Pendente",
+                    StatusAprovacaoPagamentoEmprestimo.Aprovada => "Aprovada",
+                    StatusAprovacaoPagamentoEmprestimo.Rejeitada => "Rejeitada",
+                    _ => s.StatusAprovacao.ToString(),
+                },
+                SolicitadoPor = s.SolicitadoPor,
+                SolicitadoPorNome = nomes.GetValueOrDefault(s.SolicitadoPor, "—"),
+                CriadoEm = s.CriadoEm,
+                AprovadoEm = s.AprovadoEm,
+                TransacaoRecebimentoId = s.TransacaoRecebimentoId,
+                ComprovanteData = comprovante?.Data ?? s.CriadoEm,
+                ComprovanteContaNome = comprovante?.Conta?.Nome,
+                RecebimentoData = recebimento?.Data,
+                RecebimentoContaNome = recebimento?.Conta?.Nome,
+            };
+        }).ToList();
     }
 
     private async Task<Emprestimo> BuscarPorTokenAsync(string token)

@@ -56,3 +56,10 @@
 
 .lancarToggle { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--pontes-text); cursor: pointer; line-height: 1.4; }
 .lancarToggle input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }
+
+/* Escolha explícita (rádio) — nunca padrão pré-selecionado, evita duplicar lançamento por engano. */
+.gateGroup { display: flex; flex-direction: column; gap: 8px; }
+.gateOption { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--pontes-text); cursor: pointer; line-height: 1.4; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pontes-border); }
+.gateOption input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }
+.gateOption[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }
+.gateError { font-size: 12px; color: var(--pontes-danger); }

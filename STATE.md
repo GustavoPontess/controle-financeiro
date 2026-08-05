@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-07-20
+last_reviewed: 2026-08-05
 status: EM_PROGRESSO
-foco: 'Empréstimo compartilhado pronto (back+front), branch aberta sem PR ainda. Próximo: decidir cleanup + push, depois spec do fluxo pagamento-com-comprovante.'
+foco: 'Empréstimo: pagamento com comprovante + aprovação do credor — verificado end-to-end no browser real, + trava de escolha explícita (vincular lançamento existente vs criar novo) nos 3 pontos de risco de duplicar (criar empréstimo, devedor marca pago, credor aprova — aprovar não tem mais opção de pular). Back 359/359, front 322/322, tsc+lint limpos. NADA commitado ainda. Spec nova de parcelamento/agrupamento escrita à parte (zero código). Próximo: decidir com o Gustavo o que commitar primeiro.'
 ---
 
 # STATE — onde parei
@@ -15,38 +15,118 @@ foco: 'Empréstimo compartilhado pronto (back+front), branch aberta sem PR ainda
 
 ## Em execução
 
-**Empréstimo compartilhado (vínculo bilateral)** — spec em `docs/features/emprestimo-compartilhado/spec.md`, **backend + frontend completos e testados**, mas **branch `feature/emprestimo-compartilhado` ainda não pushada, sem PR**. 3 commits locais: spec, backend, frontend. Verificado end-to-end no browser real (criar → vincular → copiar link → 2ª conta aceita → gate de autorização confirmado).
+**Empréstimo — pagamento com comprovante + aprovação do credor** — spec em
+`docs/features/emprestimo-compartilhado/pagamento-aprovacao.md` (extensão da spec original de
+vínculo bilateral). **Backend + frontend completos e testados, mas 100% NÃO commitados** — tudo
+solto no working tree da branch `feature/emprestimo-compartilhado` (que já está pushada até o
+commit anterior, `8dc0b7e`).
 
-**Working tree tem mudanças NÃO commitadas agora** (feitas depois do commit de frontend, em cima da mesma branch):
-- `.gitignore` + `ControleFinanceiro.Api/Program.cs` — wiring via reflection do `MeuCenarioSeeder.cs` (novo arquivo, **gitignored de propósito**, não aparece no `git status`). Compilação testada com e sem o arquivo presente.
-- `ROADMAP.md` — 5 achados novos catalogados no intake (ver seção própria abaixo).
-- `controle-financeiro.web/src/pages/Auth/LoginPage.tsx` + `.module.css` — painel DEV do login virou lista (3 contas fictícias do seeder + extensível via `.env` local `VITE_DEV_LOGIN_EXTRA`, gitignored).
-- `docs/concorrentes/the-box-app/` — prints novos, untracked, seguro comitar (só UI de concorrente).
+**O que a feature faz:** devedor marca "paguei" anexando comprovante (cria `Transacao` real de
+saída na própria conta) → vira `Pendente`. Só o credor aprova (opcionalmente informando pra qual
+conta foi — cria `Transacao` de entrada; **se já registrou por fora, aprova sem conta, não
+duplica**) ou rejeita (não mexe na `Transacao` do devedor, que fica valendo — o dinheiro saiu de
+verdade independente do credor confirmar). Devedor pode **reenviar** uma rejeitada (volta pra
+`Pendente`, mesma transação comprovante, sem duplicar). Entidade nova
+`EmprestimoPagamentoSolicitacao`, migration `AddPagamentoAprovacaoEmprestimo` já aplicada no banco
+de dev local (não commitada — só na branch local + banco).
+
+**3 decisões de design corrigidas ao vivo pelo Gustavo durante a implementação** (registradas na
+spec):
+1. Aprovação do credor precisa gerar entrada real na conta dele, não só avançar `ValorPago` (gap
+   que eu tinha deixado passar na primeira versão).
+2. Conta/categoria no aprovar viram **opcionais** — evita duplicar se o credor já lançou a entrada
+   por fora antes de ver a solicitação pendente.
+3. Reenviar após rejeição — sem isso, uma rejeição por engano trava o fluxo pra sempre.
+
+**Verificação end-to-end no browser retomada e concluída** (sessão seguinte à interrupção
+"para em ponto seguro"): logado como Gustavo (seed real) + Ana Paula (seed real, cookie de sessão
+compartilhado entre abas — trocar de conta exige logar de novo em cada aba, não é sessão isolada por
+aba). Fluxo completo testado ao vivo: criar empréstimo → vincular Ana Paula → aceitar convite →
+Ana solicita pagamento (comprovante real criado na conta dela) → Gustavo aprova informando conta
+(entrada real criada na conta dele) → `ValorPago` bateu o total → `Quitado=true` → histórico mostra
+extrato dos dois lados (data+conta da saída e da entrada). Confirmado direto no Postgres de dev, não
+só na UI.
+
+**Achado ao vivo durante o teste (Gustavo, 2 mensagens seguidas) — corrigido antes de continuar:**
+o mesmo risco de duplicar dinheiro que já tinha sido resolvido do lado do credor (aprovar
+"opcional") **também existia do lado do devedor** — "marcar como pago" sempre criava uma `Transacao`
+nova, então se o devedor já tinha lançado a saída por fora antes de vir marcar o empréstimo,
+duplicava. Corrigido: `SolicitarPagamentoEmprestimoDto` ganhou `TransacaoExistenteId` opcional — se
+informado, **vincula** a despesa já lançada (valor vem dela, não do que o usuário digitou) em vez de
+criar outra; bloqueado se a transação já é comprovante de outra solicitação não-rejeitada
+(`InvalidOperationException`), liberado de novo se aquela foi rejeitada. Frontend ganhou toggle "Já
+lancei essa saída em outro lugar" no modal, que troca pra um picker de despesas recentes
+(`PontesSelect` sobre `listTransactionsPage(tipo=Despesa)`, sem endpoint novo). Histórico também
+ganhou data+conta de cada lançamento (comprovante e recebimento), não só o status — pedido do
+Gustavo pra ler como extrato. +5 testes back (63 no arquivo), suite completa 354 back / 321 front,
+tsc+lint limpos. Spec atualizada (`pagamento-aprovacao.md`).
+
+**Depois disso, mais uma rodada de correção ao vivo** (Gustavo: "tudo que faz de um lado faz do
+outro... quero uma trava"): a mesma trava anti-duplicata virou **escolha explícita obrigatória**
+(rádio, nunca checkbox desmarcado por padrão) nos 3 pontos de risco — criar empréstimo (3 opções:
+ainda não movimentou / já lancei / lançar agora), devedor marca pago (2 opções, comprovante sempre
+obrigatório), credor aprova (2 opções — **removida a opção de "não registrar nada"**, decisão do
+Gustavo: dinheiro recebido tem que aparecer na conta do credor, sempre, vinculado ou criado).
+Backend: `TransacaoExistenteId` espelhado em `CriarEmprestimoDto` e `AprovarPagamentoEmprestimoDto`
+(mesmo padrão do `SolicitarPagamentoEmprestimoDto`), com a mesma trava de "já vinculada a outro
+registro" nos 3 pontos. Frontend: componente local `GateOption` (rádio estilizado, `data-selected`)
+reaproveitado nos 3 modais. Back 359/359 (+9 testes novos), front 322/322 (3 testes reescritos pro
+novo fluxo), tsc+lint limpos.
+
+**Gate reverificado ao vivo no browser** (sessão seguinte): logado como Gustavo (seed real),
+modal "Novo Empréstimo" — confirmado que submeter sem escolher opção bloqueia ("Escolha uma opção"
+em vermelho no grupo), e que marcar "Já movimentou e ainda não lancei — lançar agora" libera o
+submit e revela Conta/Categoria. Só o ponto "Criar" foi testado manualmente — Solicitar/Aprovar
+usam o mesmo componente `GateOption` e a mesma validação, já cobertos pelos testes automatizados
+reescritos, não repetidos ao vivo por economia de tempo/orçamento.
+
+**Ainda 100% NÃO commitado** — feature inteira (fluxo original + vincular-existente + a trava de
+escolha explícita) solta no working tree, branch `feature/emprestimo-compartilhado` pushada só até
+`8dc0b7e`.
+
+**Depois de resolver esse achado, Gustavo escalou dois problemas maiores** (mesma sessão de teste,
+"a gente ta batendo cabeça de mais com essa aba... acho melhor documentar o que temos e especificar
+todo o resto"): (1) hoje não existe forma de pagamento combinada pro empréstimo — parcelado? juros?
+multa por atraso? — só um valor total com pagamentos avulsos; (2) 2+ empréstimos com a mesma pessoa
+aparecem soltos, sem visão consolidada, sem opção de agrupar/unificar. **Especificado em vez de
+codado** (pedido explícito — parar de iterar ao vivo, documentar primeiro): spec nova completa em
+`docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md`, incluindo decisão de
+**não reaproveitar** `Parcelamento`/`ParcelaTransacao` (acoplados a cartão/fatura, não servem pra
+empréstimo pessoa-a-pessoa) e 3 perguntas em aberto pro Gustavo antes de implementar (percentual de
+multa, juros sobre saldo vs sobre parcela, prioridade real P1/P2/P3). Zero código ainda.
 
 **Pendências reais, na ordem:**
-1. Decidir: limpar dado de teste do banco de dev (empréstimo "Ajuda com aluguel atrasado" em `dev@controle.test` + conta `terceira.pessoa@teste.com`, ambos criados durante a verificação manual) — Gustavo ainda não respondeu.
-2. Commitar as mudanças soltas acima (provavelmente 1-2 commits pequenos na mesma branch).
-3. Push + abrir PR de `feature/emprestimo-compartilhado`.
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — **estavam no ar** no fim da sessão; confirmar se ainda estão ou se precisam subir de novo (`docker compose up -d postgres`, `dotnet run`, `npm run dev`).
+1. Decidir com o Gustavo: commitar a feature de pagamento-com-aprovação (pronta, testada,
+   verificada) agora, ou junto com mais alguma coisa?
+2. Responder as 3 perguntas em aberto de `parcelamento-e-agrupamento.md` antes de começar a
+   implementar essa próxima feature.
+3. Push + decidir sobre abrir PR.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — **estavam no ar** no fim da sessão.
 
-**Achados novos catalogados no ROADMAP (intake), gerados testando o fluxo ao vivo:**
-- 🟠 P1 — pagamento com comprovante + aprovação do credor (hoje só o credor age; devedor não tem ação nenhuma). Reaproveitar arquitetura da 2.4 (aprovação de despesa). **Próxima spec a escrever.**
-- 🟡 P2 — Empréstimo ↔ Conta/Transacao real (mesma questão crítica não resolvida do §16.5 de `familia/visao.md`, agora em 2 features).
-- 🟡 P2 — parcelamento do empréstimo + extrato embutido no detalhe.
-- ⚪ P3 — agrupar/unificar empréstimos por pessoa (depende dos 2 P2 acima).
-- ⚪ P3 — gesto "toque duplo na traseira" (achado no concorrente the-box-app) — **ressalva técnica:** é recurso nativo do iOS via Atalhos, não dá pra implementar direto num PWA.
+**Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
+- 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
+  e pagamento com aprovação já vinculam transação real dos dois lados). A "QUESTÃO CRÍTICA" de
+  `familia/visao.md` §16.5 (despesa compartilhada × saldo real) continua em aberto — decisão de
+  modelagem diferente, não coberta por isso.
+- 🟡 P2 — forma de pagamento (parcelas/juros/multa) + parcelas expansíveis — spec pronta (ver acima).
+- ⚪ P3 — agrupar/unificar empréstimos por pessoa — spec pronta (ver acima), depende do P2 acima.
+- ⚪ P3 — gesto "toque duplo na traseira" (ressalva técnica: recurso nativo iOS, não dá pra PWA).
+- 🟡 P1 catalogado em sessão anterior (fora do fluxo do empréstimo) — spec
+  `docs/features/conferencia-caixa/spec.md` escrita, **não implementada ainda**: saldo declarado ×
+  calculado, dois modos (achar lançamento faltante × aceitar ajuste automático).
 
-**Sobre o `MeuCenarioSeeder.cs` (arquivo local, gitignored):** criado com placeholders — Gustavo edita com dados reais dele + da pessoa pra quem empresta (nome/e-mail/limite de cartão/valor do empréstimo) antes de rodar. Popula os 2 usuários já **vinculados** (pula o convite). Nunca vai pro Git — é por isso que não aparece em `git status`.
-
-> ⚠️ **Lição registrada 2026-07-17, reforçada agora:** este arquivo tinha ficado ~1 mês sem atualizar antes. Setar o hábito de passar pela seção 9 do `PROMPT_NOVA_SESSAO.md` ao encerrar qualquer sessão — inclusive quando a sessão "não termina" de vez (compactação de contexto) precisa desse registro pra não se perder.
+> ⚠️ **Lição reforçada de novo:** contexto ficou grande outra vez nesta sessão (já passou por 1
+> compactação hoje). Antes de compactar de novo, sempre atualizar este arquivo — é o que evita
+> perder o fio.
 
 ## Próxima ação concreta
 
-1. Responder as 2 perguntas em aberto (limpar dado de teste? push+PR agora?).
-2. Commitar `.gitignore`/`Program.cs`/`ROADMAP.md`/`LoginPage.*` soltos.
-3. Push + PR de `feature/emprestimo-compartilhado`.
-4. Escrever spec do fluxo **pagamento com comprovante + aprovação do credor** (P1 do intake acima) — reaproveitando o padrão de `Familia.LimiteAprovacao`/`Transacao.StatusAprovacao` (2.4). Spec antes de codar, mesmo padrão desta sessão.
-5. Depois: 2.3-frontend (papéis/permissões) continua pendente de sessões anteriores, sem prioridade nova — ver "Depois" abaixo.
+1. Decidir com o Gustavo: commitar a feature de pagamento-com-aprovação agora (arquivos do
+   `git status` — todos dela, nada misturado)?
+2. Push (branch já tem histórico remoto de `8dc0b7e` pra frente).
+3. Responder as 3 perguntas em aberto de `parcelamento-e-agrupamento.md` — só depois começar a
+   implementar.
+4. Alternativa: atacar `conferência de caixa` (P1, spec pronta, zero código) antes.
 
 **Depois — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.

@@ -2,11 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import EmprestimosPage from "../../pages/Emprestimos/EmprestimosPage"
-import { StatusVinculoEmprestimo, type Emprestimo, type EmprestimoConvitePendente } from "../../types/Emprestimo"
+import {
+  StatusVinculoEmprestimo, StatusAprovacaoPagamentoEmprestimo,
+  type Emprestimo, type EmprestimoConvitePendente, type EmprestimoPagamentoSolicitacao,
+} from "../../types/Emprestimo"
 
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
   useOutletContext: () => ({ notify: vi.fn() }),
+}))
+
+vi.mock("../../hooks/useAuth", () => ({
+  useAuth: () => ({ currentUser: { id: "me-1", nome: "Gustavo" } }),
 }))
 
 const listEmprestimosPage = vi.fn()
@@ -19,6 +26,12 @@ const vincularEmprestimo = vi.fn()
 const listConvitesPendentesEmprestimo = vi.fn()
 const aceitarVinculoEmprestimoPorId = vi.fn()
 const recusarVinculoEmprestimoPorId = vi.fn()
+const solicitarPagamentoEmprestimo = vi.fn()
+const listSolicitacoesPagamento = vi.fn()
+const listSolicitacoesPagamentoPendentes = vi.fn()
+const aprovarPagamentoEmprestimo = vi.fn()
+const rejeitarPagamentoEmprestimo = vi.fn()
+const reenviarPagamentoEmprestimo = vi.fn()
 vi.mock("../../services/emprestimoService", () => ({
   listEmprestimosPage: (...a: unknown[]) => listEmprestimosPage(...a),
   getEmprestimoStats: (...a: unknown[]) => getEmprestimoStats(...a),
@@ -31,6 +44,12 @@ vi.mock("../../services/emprestimoService", () => ({
   listConvitesPendentesEmprestimo: (...a: unknown[]) => listConvitesPendentesEmprestimo(...a),
   aceitarVinculoEmprestimoPorId: (...a: unknown[]) => aceitarVinculoEmprestimoPorId(...a),
   recusarVinculoEmprestimoPorId: (...a: unknown[]) => recusarVinculoEmprestimoPorId(...a),
+  solicitarPagamentoEmprestimo: (...a: unknown[]) => solicitarPagamentoEmprestimo(...a),
+  listSolicitacoesPagamento: (...a: unknown[]) => listSolicitacoesPagamento(...a),
+  listSolicitacoesPagamentoPendentes: (...a: unknown[]) => listSolicitacoesPagamentoPendentes(...a),
+  aprovarPagamentoEmprestimo: (...a: unknown[]) => aprovarPagamentoEmprestimo(...a),
+  rejeitarPagamentoEmprestimo: (...a: unknown[]) => rejeitarPagamentoEmprestimo(...a),
+  reenviarPagamentoEmprestimo: (...a: unknown[]) => reenviarPagamentoEmprestimo(...a),
 }))
 const getContas = vi.fn()
 const getCategories = vi.fn()
@@ -39,6 +58,10 @@ vi.mock("../../services/contaService", () => ({
 }))
 vi.mock("../../services/categoryService", () => ({
   getCategories: (...a: unknown[]) => getCategories(...a),
+}))
+const listTransactionsPage = vi.fn()
+vi.mock("../../services/transactionService", () => ({
+  listTransactionsPage: (...a: unknown[]) => listTransactionsPage(...a),
 }))
 const paged = <T,>(items: T[]) => ({
   items, total: items.length, page: 1, pageSize: 100, totalPages: 1,
@@ -76,6 +99,13 @@ describe("EmprestimosPage (#152)", () => {
     recusarVinculoEmprestimoPorId.mockReset().mockResolvedValue(undefined)
     getContas.mockReset().mockResolvedValue([])
     getCategories.mockReset().mockResolvedValue([])
+    listTransactionsPage.mockReset().mockResolvedValue(paged([]))
+    solicitarPagamentoEmprestimo.mockReset()
+    listSolicitacoesPagamento.mockReset().mockResolvedValue([])
+    listSolicitacoesPagamentoPendentes.mockReset().mockResolvedValue([])
+    aprovarPagamentoEmprestimo.mockReset()
+    rejeitarPagamentoEmprestimo.mockReset()
+    reenviarPagamentoEmprestimo.mockReset()
   })
 
   it("lista empréstimos + stats", async () => {
@@ -111,6 +141,7 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.change(screen.getByPlaceholderText("Ex: Empréstimo para viagem"), { target: { value: "Teste" } })
     fireEvent.change(screen.getByPlaceholderText("Nome da pessoa"), { target: { value: "Fulano" } })
     fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "10000" } })
+    fireEvent.click(screen.getByText("Ainda não — é só o combinado, nada pra lançar agora"))
     fireEvent.click(screen.getByText("Criar empréstimo"))
     await screen.findByText("Viagem")
     expect(createEmprestimo).toHaveBeenCalledWith(
@@ -174,6 +205,83 @@ describe("EmprestimosPage (#152)", () => {
     renderPage()
     await screen.findByText("Aluguel")
     expect(screen.queryByLabelText("Vincular a uma pessoa")).not.toBeInTheDocument()
+  })
+
+  it("devedor vinculado vê 'Marcar como pago' e bloqueia sem escolher opção", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoDevedor]))
+    renderPage()
+    await screen.findByText("Aluguel")
+    fireEvent.click(screen.getByLabelText("Marcar como pago"))
+    await screen.findByText("Marcar como pago")
+
+    fireEvent.click(screen.getByText("Enviar pra aprovação"))
+    expect(await screen.findByText("Escolha uma opção")).toBeInTheDocument()
+    expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
+  })
+
+  it("devedor escolhe 'lançar agora' e valida conta faltando", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoDevedor]))
+    renderPage()
+    await screen.findByText("Aluguel")
+    fireEvent.click(screen.getByLabelText("Marcar como pago"))
+    await screen.findByText("Marcar como pago")
+
+    fireEvent.click(screen.getByText("Ainda não lancei — lançar agora"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "5000" } })
+    fireEvent.click(screen.getByText("Enviar pra aprovação"))
+    expect(await screen.findByText("Escolha a conta")).toBeInTheDocument()
+    expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
+  })
+
+  it("credor vê pagamentos pendentes, bloqueia sem escolher opção e aprova criando entrada", async () => {
+    const pendente: EmprestimoPagamentoSolicitacao = {
+      id: "sol1", emprestimoId: "e1", valor: 150,
+      statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
+      solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
+      comprovanteData: "2026-07-01T00:00:00Z",
+    }
+    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
+    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
+    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 3 }])
+    renderPage()
+
+    expect(await screen.findByText("1 pagamento aguardando sua aprovação")).toBeInTheDocument()
+    expect(screen.getByText(/Ana/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
+    await screen.findByText("Aprovar pagamento")
+
+    fireEvent.click(screen.getByText("Confirmar recebimento"))
+    expect(await screen.findByText("Escolha uma opção")).toBeInTheDocument()
+    expect(aprovarPagamentoEmprestimo).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText("Ainda não registrei — registrar agora"))
+    fireEvent.click(screen.getAllByText("Selecione")[0])
+    fireEvent.click(await screen.findByText("Carteira"))
+    fireEvent.click(screen.getByText("Selecione"))
+    fireEvent.click(await screen.findByText("Outros"))
+    fireEvent.click(screen.getByText("Confirmar recebimento"))
+
+    expect(aprovarPagamentoEmprestimo).toHaveBeenCalledWith("sol1", {
+      contaId: "c1", categoriaId: "cat1", transacaoExistenteId: undefined,
+    })
+  })
+
+  it("credor rejeita pagamento pendente direto da lista", async () => {
+    const pendente: EmprestimoPagamentoSolicitacao = {
+      id: "sol1", emprestimoId: "e1", valor: 150,
+      statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
+      solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
+    }
+    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
+    renderPage()
+
+    await screen.findByText("1 pagamento aguardando sua aprovação")
+    fireEvent.click(screen.getByLabelText("Rejeitar pagamento"))
+
+    expect(rejeitarPagamentoEmprestimo).toHaveBeenCalledWith("sol1")
   })
 
   it("lista convites pendentes e aceita", async () => {
