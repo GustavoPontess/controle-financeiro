@@ -20,7 +20,8 @@ vi.mock("../../services/cartaoCreditoService", () => ({
   deleteCartao: (...a: unknown[]) => deleteCartao(...a),
 }))
 vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve(contas) }))
-vi.mock("../../services/bancoService", () => ({ getBancos: () => Promise.resolve([]) }))
+const getBancos = vi.fn()
+vi.mock("../../services/bancoService", () => ({ getBancos: (...a: unknown[]) => getBancos(...a) }))
 
 const getFaturasByCartao = vi.fn()
 const getFaturaDetalhe = vi.fn()
@@ -38,6 +39,7 @@ const cartao = {
   contaNome: "Conta Corrente", ultimosDigitos: "4218",
 } as unknown as CartaoCredito
 const contas = [{ id: "a1", nome: "Conta Corrente", isCarteira: false }] as unknown as Conta[]
+const bancos = [{ id: "b1", nome: "Banco Teste" }]
 const fatura = {
   id: "f1", dataInicio: "2026-05-20", dataFechamento: "2026-06-20", dataVencimento: "2026-06-28",
   estadoCiclo: 0, estadoPagamento: 0, valorTotal: 150, valorPago: 0, valorRestante: 150, vencida: false,
@@ -71,6 +73,8 @@ describe("CreditCardsPage (#84)", () => {
     getFaturasByCartao.mockReset().mockResolvedValue([fatura])
     getFaturaDetalhe.mockReset().mockResolvedValue(detalhe)
     pagarFatura.mockReset().mockResolvedValue(undefined)
+    getBancos.mockReset().mockResolvedValue(bancos)
+    createCartao.mockReset().mockResolvedValue(cartao)
   })
 
   afterEach(() => {
@@ -123,6 +127,27 @@ describe("CreditCardsPage (#84)", () => {
     const input = screen.getByPlaceholderText("0000") as HTMLInputElement
     fireEvent.change(input, { target: { value: "ab12cd34xy" } })
     expect(input.value).toBe("1234")
+  })
+
+  it("escolhe bandeira por chip (Elo) e cadastra com os últimos 4 dígitos", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Novo Cartão"))
+    await screen.findByText("Novo cartão")
+
+    // Modalidade "Somente Débito" evita ter que preencher limite/dias (fora do escopo deste teste).
+    fireEvent.click(screen.getByText("Crédito e Débito"))
+    fireEvent.click(await screen.findByText("Somente Débito"))
+
+    fireEvent.change(screen.getByPlaceholderText("Ex: Nubank Roxinho"), { target: { value: "Meu Elo" } })
+    fireEvent.click(screen.getByTitle("Elo"))
+    fireEvent.change(screen.getByPlaceholderText("0000"), { target: { value: "1234" } })
+    fireEvent.click(await screen.findByText("Quem emitiu o cartão"))
+    fireEvent.click(await screen.findByText("Banco Teste"))
+    fireEvent.click(screen.getByText("Cadastrar"))
+
+    await waitFor(() => expect(createCartao).toHaveBeenCalledTimes(1))
+    const payload = createCartao.mock.calls[0][0]
+    expect(payload).toMatchObject({ ultimosDigitos: "1234", bandeira: 3 }) // Elo
   })
 
   it("paga fatura: chama pagarFatura com conta e valor", async () => {

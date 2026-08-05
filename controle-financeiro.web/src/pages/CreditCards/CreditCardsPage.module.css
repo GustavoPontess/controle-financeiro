@@ -156,3 +156,13 @@
 /* Modais */
 .modalCol { display: flex; flex-direction: column; gap: 16px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.bandeiraGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bandeiraChip {
+  display: flex; align-items: center; justify-content: center;
+  height: 48px; border-radius: 10px; border: 2px solid var(--pontes-border);
+  background: var(--pontes-surface); cursor: pointer; padding: 0 8px; overflow: hidden;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.bandeiraChip:hover { transform: translateY(-1px); border-color: var(--pontes-primary); }
+.bandeiraChip[data-selected="true"] { border-color: var(--pontes-primary); box-shadow: 0 0 0 3px var(--pontes-primary-soft); }
