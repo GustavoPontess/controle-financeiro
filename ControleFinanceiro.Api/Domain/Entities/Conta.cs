@@ -14,6 +14,9 @@ public class Conta
     [MaxLength(50)]
     public string? NumeroConta { get; set; }
 
+    [MaxLength(10)]
+    public string? Agencia { get; set; }
+
     [Required]
     public TipoConta Tipo { get; set; }
 

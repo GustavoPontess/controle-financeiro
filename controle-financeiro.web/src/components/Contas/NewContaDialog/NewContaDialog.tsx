@@ -5,6 +5,9 @@ import { createConta, updateConta } from "../../../services/contaService"
 import type { Conta } from "../../../types/Conta"
 import type { Banco } from "../../../types/Banco"
 
+const errorMessage = (err: unknown, fallback: string): string =>
+  (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback
+
 type Notification = {
   open: boolean
   message: string
@@ -34,8 +37,8 @@ export default function NewContaDialog({ open, onClose, onSaved, notify, bancos,
       }
       await onSaved()
       onClose()
-    } catch {
-      notify({ open: true, message: "Erro ao salvar conta", severity: "error" })
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao salvar conta"), severity: "error" })
     }
   }
 

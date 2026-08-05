@@ -2,6 +2,7 @@ export interface Conta {
   id: string
   nome: string
   numeroConta?: string
+  agencia?: string
   tipo: number
   tipoDescricao: string
   tipoCartao?: number

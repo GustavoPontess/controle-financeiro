@@ -11,6 +11,9 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         [MaxLength(50)]
         public string? NumeroConta { get; set; }
 
+        [MaxLength(10)]
+        public string? Agencia { get; set; }
+
         [Required]
         public int Tipo { get; set; }
 

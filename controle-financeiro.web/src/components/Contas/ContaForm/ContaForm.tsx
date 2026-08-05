@@ -22,6 +22,15 @@ const parseMoney = (masked: string): number | undefined => {
 const fmtMoney = (n?: number): string =>
   n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 
+// Agência — só dígitos, sem dígito verificador na maioria dos bancos BR.
+const maskAgencia = (raw: string): string => raw.replace(/\D/g, "").slice(0, 5)
+
+// Número da conta — dígitos com dígito verificador separado por hífen conforme digita (ex: 91205195-5).
+const maskNumeroConta = (raw: string): string => {
+  const digits = raw.replace(/\D/g, "").slice(0, 21)
+  return digits.length > 1 ? `${digits.slice(0, -1)}-${digits.slice(-1)}` : digits
+}
+
 interface Props {
   bancos: Banco[]
   preSelectedBancoId?: string
@@ -35,6 +44,7 @@ export type { ContaFormData, CriarContaPayload }
 type FormState = {
   bancoId: string
   nome: string
+  agencia: string
   numeroConta: string
   tipo: string
   saldoInicial?: number
@@ -46,6 +56,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
   const [form, setForm] = useState<FormState>({
     bancoId: editingConta?.bancoId ?? preSelectedBancoId ?? "",
     nome: editingConta?.nome ?? "",
+    agencia: editingConta?.agencia ?? "",
     numeroConta: editingConta?.numeroConta ?? "",
     tipo: editingConta?.tipo ? String(editingConta.tipo) : "",
     saldoInicial: undefined,
@@ -64,6 +75,7 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
 
     onSubmit({
       nome: form.nome.trim(),
+      agencia: form.agencia.trim() || undefined,
       numeroConta: form.numeroConta.trim() || undefined,
       tipo: Number(form.tipo),
       saldoInicial: !editingConta ? form.saldoInicial ?? 0 : undefined,
@@ -96,14 +108,25 @@ export default function ContaForm({ bancos, preSelectedBancoId, onSubmit, editin
         />
       </PontesField>
 
-      <PontesField label="Número da conta" helper="Opcional — usado para exibição">
-        <PontesInput
-          value={form.numeroConta}
-          onChange={(e) => setF("numeroConta", e.target.value)}
-          maxLength={50}
-          placeholder="Ex: 1234-5"
-        />
-      </PontesField>
+      <div className={styles.row2}>
+        <PontesField label="Agência" helper="Opcional — só números">
+          <PontesInput
+            value={form.agencia}
+            onChange={(e) => setF("agencia", maskAgencia(e.target.value))}
+            inputMode="numeric"
+            placeholder="Ex: 0001"
+          />
+        </PontesField>
+
+        <PontesField label="Número da conta" helper="Opcional — usado para exibição">
+          <PontesInput
+            value={form.numeroConta}
+            onChange={(e) => setF("numeroConta", maskNumeroConta(e.target.value))}
+            inputMode="numeric"
+            placeholder="Ex: 91205195-5"
+          />
+        </PontesField>
+      </div>
 
       <PontesField label="Tipo" required error={errors.tipo}>
         <PontesSelect
