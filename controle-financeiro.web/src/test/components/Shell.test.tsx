@@ -34,7 +34,7 @@ describe("Shell interno (#118)", () => {
 
   it("Sidebar lista os itens de navegação", () => {
     withProviders(<Sidebar open drawerWidth={248} railWidth={72} />)
-    for (const item of ["Dashboard", "Transações", "Cartões de Crédito", "Contas", "Categorias", "Famílias"]) {
+    for (const item of ["Dashboard", "Transações", "Cartões de Crédito", "Bancos", "Categorias", "Famílias"]) {
       expect(screen.getByText(item)).toBeInTheDocument()
     }
   })

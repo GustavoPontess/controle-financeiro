@@ -28,7 +28,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={19} strokeWidth={2} /> },
       { to: "/reports", label: "Relatórios", icon: <BarChart3 size={19} strokeWidth={2} /> },
       { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={19} strokeWidth={2} /> },
-      { to: "/assinaturas", label: "Assinaturas", icon: <Repeat size={19} strokeWidth={2} /> },
+      { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={19} strokeWidth={2} /> },
       { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={19} strokeWidth={2} /> },
       { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
       { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
@@ -37,7 +37,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Gerenciamento",
     items: [
-      { to: "/accounts", label: "Contas", icon: <Landmark size={19} strokeWidth={2} /> },
+      { to: "/accounts", label: "Bancos", icon: <Landmark size={19} strokeWidth={2} /> },
       { to: "/categories", label: "Categorias", icon: <Tags size={19} strokeWidth={2} /> },
       { to: "/familias", label: "Famílias", icon: <Users size={19} strokeWidth={2} /> },
       { to: "/metas", label: "Metas", icon: <Target size={19} strokeWidth={2} /> },

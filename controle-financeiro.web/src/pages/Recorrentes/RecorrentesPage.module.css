@@ -105,6 +105,10 @@
   padding: 48px 0;
 }
 
+.emptyWrap {
+  padding: 32px 20px;
+}
+
 /* ── Cards de assinatura ─────────────────────────────────────────────────── */
 
 .cards { display: flex; flex-direction: column; }

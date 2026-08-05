@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import { Plus, Wallet } from "lucide-react"
+import { Plus, Wallet, Landmark } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge,
   PontesStatCard, PontesEmptyState, PontesLoadingDots, PontesDialog,
@@ -26,8 +26,8 @@ import { formatMoney as fmt } from "@/utils/money"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const TIPO_TONE: Record<number, "primary" | "success" | "accent" | "neutral" | "warning"> = {
-  1: "primary",   // Corrente
+const TIPO_TONE: Record<number, "soft" | "success" | "accent" | "neutral" | "warning"> = {
+  1: "soft",      // Corrente
   2: "success",   // Poupança
   4: "accent",    // Investimento
   5: "warning",   // Outro
@@ -98,9 +98,9 @@ export default function AccountsPage() {
       {/* Header */}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Contas</h1>
+          <h1 className={styles.title}>Bancos</h1>
           <p className={styles.subtitle}>
-            Cartões, contas correntes e a carteira automática do sistema.
+            Contas correntes, poupança e a carteira automática do sistema.
           </p>
         </div>
         <PontesButton
@@ -143,6 +143,7 @@ export default function AccountsPage() {
       {/* Contas bancárias */}
       {contasBancarias.length === 0 ? (
         <PontesEmptyState
+          icon={<Landmark size={28} />}
           title="Nenhuma conta bancária cadastrada"
           description="Crie uma conta corrente, poupança ou investimento para organizar suas finanças."
           actions={
@@ -190,10 +191,12 @@ export default function AccountsPage() {
                       {fmt(conta.saldoAtual)}
                     </div>
                   </div>
-                  {conta.numeroConta && (
+                  {(conta.agencia || conta.numeroConta) && (
                     <div className={styles.cardNumeroConta}>
-                      <div className={styles.numeroLabel}>Número</div>
-                      <div className={styles.numeroValue}>{conta.numeroConta}</div>
+                      <div className={styles.numeroLabel}>{conta.agencia ? "Agência / Conta" : "Número"}</div>
+                      <div className={styles.numeroValue}>
+                        {conta.agencia ? `${conta.agencia} / ${conta.numeroConta ?? "—"}` : conta.numeroConta}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -202,6 +205,7 @@ export default function AccountsPage() {
                 <div className={styles.cardFoot}>
                   <PontesIconButton
                     size={32}
+                    variant="ghost"
                     title="Editar"
                     onClick={() => { setEditingConta(conta); setOpenDialog(true) }}
                   >
@@ -209,8 +213,8 @@ export default function AccountsPage() {
                   </PontesIconButton>
                   <PontesIconButton
                     size={32}
+                    variant="ghost"
                     title="Excluir"
-                    style={{ color: "var(--pontes-danger, #ef4444)" }}
                     onClick={() => setDeleteTarget(conta)}
                   >
                     <Trash2 size={14} />
