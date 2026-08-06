@@ -235,6 +235,16 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("75%")).toBeInTheDocument()
   })
 
+  it("PontesProgress com segments renderiza cada fatia, sem percentual único", () => {
+    render(<PontesProgress p={p} font={font} label="Empréstimo" segments={[
+      { value: 40, color: "#0a0", label: "Confirmado" },
+      { value: 20, color: "#a00", label: "Recusado" },
+    ]} />)
+    expect(screen.getByText("Empréstimo")).toBeInTheDocument()
+    expect(screen.getByTitle("Confirmado")).toBeInTheDocument()
+    expect(screen.getByTitle("Recusado")).toBeInTheDocument()
+  })
+
   it("PontesStatCard mostra label/value/trend", () => {
     render(<PontesStatCard p={p} font={font} label="Saldo" value="R$ 1.000" trend="+5%" trendUp />)
     expect(screen.getByText("Saldo")).toBeInTheDocument()

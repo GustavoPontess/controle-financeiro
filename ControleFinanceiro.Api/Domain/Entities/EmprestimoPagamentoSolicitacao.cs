@@ -26,6 +26,10 @@ public class EmprestimoPagamentoSolicitacao
     public Guid? AprovadoPorUsuarioId { get; set; }
     public DateTime? AprovadoEm { get; set; }
 
+    /// <summary>Texto livre opcional que o credor escreve ao rejeitar — entra na notificação
+    /// pro devedor e fica visível no histórico (decisão do Gustavo, 2026-08-06).</summary>
+    public string? MotivoRejeicao { get; set; }
+
     /// <summary>Entrada real na conta do credor — só setado quando aprovado. O credor escolhe
     /// pra qual conta foi (dinheiro/Pix/etc) na hora de aprovar.</summary>
     public Guid? TransacaoRecebimentoId { get; set; }

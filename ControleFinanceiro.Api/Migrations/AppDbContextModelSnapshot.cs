@@ -465,6 +465,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("EmprestimoId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("MotivoRejeicao")
+                        .HasColumnType("text");
+
                     b.Property<Guid?>("ParcelaId")
                         .HasColumnType("uuid");
 

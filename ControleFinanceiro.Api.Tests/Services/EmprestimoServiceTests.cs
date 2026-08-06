@@ -795,6 +795,26 @@ public class EmprestimoServiceTests
     // ── Pagamento com comprovante + aprovação ───────────────────────────────────
 
     [Fact]
+    public async Task BuscarPorIdAsync_ValorPendenteERecusado_RefletemSolicitacoesSemAlterarValorPago()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        // Uma solicitação fica Pendente, outra é rejeitada.
+        var pendente = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId, "chave-pendente"), devedorId);
+        var rejeitada = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId, "chave-rejeitada"), devedorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(rejeitada.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
+
+        var dto = await svc.BuscarPorIdAsync(emprestimoId, credorId);
+
+        Assert.Equal(pendente.Valor, dto!.ValorPendente);
+        Assert.Equal(rejeitada.Valor, dto.ValorRecusado);
+        Assert.Equal(0, dto.ValorPago); // nenhuma das duas confirmada — saldo real intacto
+    }
+
+    [Fact]
     public async Task SolicitarPagamentoAsync_Devedor_CriaSolicitacaoPendente_NaoMexeValorPago()
     {
         var ctx = CreateContext();
@@ -958,7 +978,7 @@ public class EmprestimoServiceTests
         {
             TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
-        await svc.RejeitarPagamentoSolicitacaoAsync(primeira.Id, credorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(primeira.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
 
         var segunda = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
@@ -1063,13 +1083,47 @@ public class EmprestimoServiceTests
         var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
         var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
 
-        var ok = await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+        var ok = await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
 
         Assert.True(ok);
         var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
         Assert.Equal(0, emprestimo!.ValorPago);
         var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
         Assert.Equal(StatusAprovacaoPagamentoEmprestimo.Rejeitada, linha!.StatusAprovacao);
+    }
+
+    [Fact]
+    public async Task RejeitarPagamentoSolicitacaoAsync_ComMotivo_GravaEDevolveNoHistorico()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id,
+            new RejeitarPagamentoEmprestimoDto { Motivo = "Valor não bateu com o combinado" }, credorId);
+
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal("Valor não bateu com o combinado", linha!.MotivoRejeicao);
+
+        var historico = await svc.ListarSolicitacoesAsync(emprestimoId, devedorId);
+        Assert.Equal("Valor não bateu com o combinado", historico.Single().MotivoRejeicao);
+    }
+
+    [Fact]
+    public async Task RejeitarPagamentoSolicitacaoAsync_SemMotivo_FicaNulo()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
+
+        var linha = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Null(linha!.MotivoRejeicao);
     }
 
     [Fact]
@@ -1112,7 +1166,7 @@ public class EmprestimoServiceTests
         await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId));
+            svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId));
     }
 
     [Theory]
@@ -1212,7 +1266,7 @@ public class EmprestimoServiceTests
         var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
         var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
         var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
-        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
 
         var ok = await svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, devedorId);
 
@@ -1244,7 +1298,7 @@ public class EmprestimoServiceTests
         var (emprestimoId, credorId, devedorId) = await CriarVinculadoAsync(ctx, svc);
         var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
         var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), devedorId);
-        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, credorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, credorId));

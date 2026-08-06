@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-06
 status: EM_PROGRESSO
-foco: 'Empréstimo: forma de pagamento (parcelas/juros/multa) COMMITADA (74fa438) e PUSHADA. EmprestimoParcela nova, migration AddParcelamentoEmprestimo aplicada no banco de dev, endpoint GET /emprestimos/{id}/parcelas, frontend com form de parcelado + expandir parcelas + picker de parcela ao marcar como pago. Back 373/373, front 325/325, tsc+lint limpos. Verificado ao vivo no browser. Achado e corrigido bug real de exibição de data (formatDate sem fuso fixo) no arquivo mexido; catalogado no ROADMAP pra os outros 8 arquivos com o mesmo padrão — próximo a atacar. Branch feature/emprestimo-compartilhado tem 2 commits não abertos em PR ainda (a9586a5, 74fa438).'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Parcelamento (74fa438) e bug de data (fc25168) commitados+pushados. Motivo de rejeição + barra de progresso 3 cores (confirmado/pendente/recusado) + banners de pendência trocados pra PontesAlert (padrão da lib) — tudo implementado e verificado ao vivo, AINDA NÃO COMMITADO. PontesProgress ganhou suporte a `segments` (extensão de lib, com demo+smoke test). Autorização documentada por completo em pagamento-aprovacao.md. Próximo: especificar e implementar "unificar/consolidar" (credor propõe juntar N empréstimos da mesma pessoa num plano novo, devedor precisa aceitar) — última peça pro módulo fechar por completo. Back 376/376, front 327/327, tsc+lint limpos.'
 ---
 
 # STATE — onde parei
@@ -141,12 +141,65 @@ falso-positivo (`NotificationBell.tsx` formata timestamp real, fuso local é o c
 string do backend). Os 6 reais corrigidos com `timeZone: "UTC"` (`EmprestimosPage`,
 `TransferenciasPage`, `FamiliaDetalhe`, `ImportacaoPage`, `RecorrentesPage`, `Parcelamentos/[id]`,
 `CreditCardsPage` — que tinha 1 ocorrência esquecida do padrão que o resto do arquivo já usava).
-tsc+lint limpos, 325/325 front. **Ainda NÃO commitado** essa rodada da correção.
+tsc+lint limpos, 325/325 front. **Commitado e pushado** (`fc25168`).
+
+**Regra nova do Gustavo, registrada em memória:** projeto solo sempre termina o módulo aberto por
+completo antes de trocar de frente, mesmo que o próximo item do módulo seja P3 e outra frente do
+ROADMAP seja P1. Empréstimos continua sendo a frente até esgotar tudo mapeado nele.
+
+**Gustavo levantou 2 pontos reais faltando no módulo (2026-08-06):**
+1. **Rejeição sem motivo não fecha o ciclo** — credor rejeita, devedor via notificação genérica
+   "foi rejeitado" sem saber por quê. Pedido: "sistema tipo arquivo/ticket" — toda ação registrada
+   e visível pra quem precisa saber. **Implementado e verificado ao vivo nesta sessão** (motivo
+   opcional, decisão do Gustavo): `MotivoRejeicao` (string?) na `EmprestimoPagamentoSolicitacao`,
+   migration `AddMotivoRejeicaoEmprestimo` aplicada; `RejeitarPagamentoEmprestimoDto { Motivo? }`;
+   notificação vira "...foi rejeitado. Motivo: X" só se preenchido; histórico mostra "Motivo: X"
+   abaixo do badge Rejeitada. Frontend: botão "Rejeitar pagamento" agora abre modal com
+   `PontesTextarea` opcional (era ação direta sem confirmação antes). **Verificado end-to-end no
+   browser real** (Ana solicita → Gustavo rejeita com motivo → notificação da Ana mostra o motivo
+   → histórico mostra o motivo → botão reenviar aparece pra Ana). Back 375/375 (+3 testes), front
+   326/326. Doc atualizada (`pagamento-aprovacao.md` ganhou seção "Autorização" completa: tabela
+   de quem dispara cada ação, unilateral × bilateral, tabela de notificações). **Ainda NÃO
+   commitado.**
+2. **Agrupamento é decisão do credor, e é mais que visual — é "unificar/consolidar"** — Gustavo
+   corrigiu o entendimento original (`parcelamento-e-agrupamento.md` §3 tinha isso como fora de
+   escopo v1): ele quer, como credor, poder juntar N empréstimos ativos da mesma pessoa vinculada
+   num plano novo renegociado (soma o que falta, redefine parcelas). **Confirmado com o Gustavo: o
+   devedor precisa aceitar as novas condições antes de valer** (mesmo padrão do vínculo bilateral
+   — não é o credor definindo sozinho e já valendo). **Ainda não especificado em detalhe nem
+   codado** — é a próxima peça. A spec previa isso como "decisão delicada, precisa mais conversa"
+   — a conversa aconteceu, falta escrever a spec técnica (nova entidade tipo
+   `EmprestimoUnificacaoProposta`? o que acontece com os empréstimos originais — viram `Quitado`
+   com nota "consolidado em X"?) antes de implementar.
+
+**Mais 2 achados de UI ao vivo (mesma sessão, 2026-08-06), já resolvidos:**
+3. **Banner de pendência fora do padrão** — "tá fora dos nossos padrões, tá feia". Os cards de
+   "N convites pendentes"/"N pagamentos aguardando aprovação" usavam CSS ad-hoc
+   (`.pendentesCard`) em vez de componente da lib. Trocado por `PontesAlert tone="warning"` (já
+   existia na lib, só não estava sendo usado aqui). Detalhe: a prop `title` do Alert acrescenta
+   ": " automático — usei `children` pro título pra não quebrar (e pra não ganhar um ":" indevido).
+4. **Barra de progresso precisa de 3 cores** — "não pode simplesmente pq o cara recusou alterar na
+   conta da outra pessoa... deve ficar o registro mostrando que ela falou que foi pago e que a
+   pessoa recusou". A barra só mostrava `ValorPago` confirmado. Agora mostra 3 fatias: verde
+   (confirmado/aprovado), laranja (pendente, aguardando aprovação), vermelho (recusado) — sem
+   alterar `ValorPago`/saldo real de ninguém, só uma leitura visual do que está "em trânsito".
+   Backend: `EmprestimoDto.ValorPendente`/`ValorRecusado` (soma de solicitações Pendente/Rejeitada
+   por empréstimo, query em lote pra não gerar N+1 na listagem). Frontend: `PontesProgress`
+   (biblioteca) ganhou suporte a `segments` (barra empilhada com N cores) — extensão de componente
+   existente, com demo no `/design-system` e smoke test, antes de usar em Empréstimos (regra do
+   `PROMPT_NOVA_SESSAO.md` §5). Verificado ao vivo (rejeitado R$50 aparece vermelho, pendente R$40
+   aparece laranja, sobre um total de R$150). Back 376/376 (+1 teste), front 327/327 (+1 teste).
+   **Ambos ainda NÃO commitados**, junto com o motivo de rejeição (item 1).
 
 **Pendências reais, na ordem:**
-1. Commitar a correção do `formatDate` (pronta, testada).
-2. Decidir se abre PR (`a9586a5` + `74fa438` + o que for commitado agora) ou continua acumulando.
-3. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
+1. Commitar motivo de rejeição + barra 3 cores + banners PontesAlert (tudo pronto, testado,
+   verificado ao vivo — um commit ou dividido, tanto faz).
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+   **antes** de codar, mesmo padrão do resto da sessão.
+3. Implementar unificar/consolidar — última peça do módulo Empréstimos.
+4. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
+   é a candidata mais provável, mas só depois do módulo fechado).
+5. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
@@ -166,13 +219,13 @@ tsc+lint limpos, 325/325 front. **Ainda NÃO commitado** essa rodada da correç�
 
 ## Próxima ação concreta
 
-1. Decidir com o Gustavo: commitar a feature de parcelamento agora (pronta, testada, verificada)?
-2. Corrigir o `formatDate`/fuso nos outros 8 arquivos catalogados, ou deixar pra sessão dedicada.
-3. Decidir se abre PR.
-4. Alternativa de direção: atacar `conferência de caixa` (P1, spec pronta, zero código) ou
-   "agrupar por pessoa" (P3, depende do que foi feito agora).
+1. Commitar o motivo de rejeição (pronto, testado, verificado ao vivo).
+2. Escrever a spec técnica de "unificar/consolidar" (nova seção em
+   `parcelamento-e-agrupamento.md` §3) — devedor precisa aceitar, decidido com o Gustavo.
+3. Implementar unificar/consolidar — última peça mapeada do módulo Empréstimos.
+4. Só depois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo primeiro).
 
-**Depois — escolha de direção** (decidir com o Gustavo):
+**Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
 - **Lote 3 (aquisição/SEO):** tela de Assinaturas, ferramentas grátis, referral.
 - **Conformidade — pesquisa LEVE** (§8.6): LGPD #126 (base legal, direitos do titular, minimização, DPO/RIPD; e se BACEN/Open Finance se aplica). Tem componente legal/decisão.

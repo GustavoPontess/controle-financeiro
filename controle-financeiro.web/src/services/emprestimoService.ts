@@ -116,8 +116,8 @@ export const aprovarPagamentoEmprestimo = async (
   await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/aprovar`, dto)
 }
 
-export const rejeitarPagamentoEmprestimo = async (solicitacaoId: string): Promise<void> => {
-  await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/rejeitar`)
+export const rejeitarPagamentoEmprestimo = async (solicitacaoId: string, motivo?: string): Promise<void> => {
+  await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/rejeitar`, { motivo: motivo || undefined })
 }
 
 /** Devedor reenvia uma solicitação rejeitada — volta pra pendente. */

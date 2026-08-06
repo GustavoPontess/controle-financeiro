@@ -591,6 +591,14 @@ function DataSection({ p }: { p: Palette }) {
           <PontesProgress label="Meta de viagem" value={45} />
           <PontesProgress label="Limite usado" value={78} color={p.accent} />
           <PontesProgress label="Reserva de emergência" value={92} color={semantic.success} />
+          <PontesProgress
+            label="Empréstimo — confirmado/pendente/recusado"
+            segments={[
+              { value: 40, color: semantic.success, label: "Confirmado" },
+              { value: 15, color: semantic.warning, label: "Pendente" },
+              { value: 10, color: semantic.danger, label: "Recusado" },
+            ]}
+          />
         </div>
       </Group>
 

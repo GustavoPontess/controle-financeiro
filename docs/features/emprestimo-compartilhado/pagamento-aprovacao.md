@@ -93,6 +93,8 @@ Família — mesmo padrão, enum próprio, domínios diferentes):
 - `AprovadoPorUsuarioId` (Guid?), `AprovadoEm` (DateTime?)
 - `TransacaoRecebimentoId` (Guid?, FK → `Transacao`) — entrada real na conta do credor, só setado
   na aprovação
+- `MotivoRejeicao` (string?, opcional) — texto livre que o credor pode escrever ao rejeitar;
+  entra na notificação pro devedor e fica visível no histórico (decisão de 2026-08-06)
 - `CriadoEm` (DateTime)
 
 Migration: `AddPagamentoAprovacaoEmprestimo`.
@@ -110,7 +112,7 @@ Migration: `AddPagamentoAprovacaoEmprestimo`.
 | `POST` | `/emprestimos/{id}/solicitar-pagamento` | devedor do registro (souCredor=false, Vinculado) | cria solicitação `Pendente`, cria `Transacao` comprovante |
 | `GET` | `/emprestimos/{id}/solicitacoes` | qualquer participante (credor ou devedor) | lista histórico de solicitações, com data+conta de cada lançamento vinculado (comprovante e, se houver, recebimento) — leitura tipo extrato, não só status |
 | `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/aprovar` | credor do registro | body `{ contaId?, categoriaId? }` → se informados, cria `Transacao` de entrada; sempre `Aprovada` + avança `ValorPago` |
-| `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/rejeitar` | credor do registro | `Rejeitada`, `ValorPago` intacto |
+| `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/rejeitar` | credor do registro | body `{ motivo? }` opcional → `Rejeitada`, `ValorPago` intacto, motivo (se informado) vai na notificação e fica no histórico |
 | `GET` | `/emprestimos/solicitacoes-pendentes` | usuário logado | solicitações pendentes onde eu sou credor (pra badge/lista, mesmo padrão de `convites-pendentes`) |
 | `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/reenviar` | quem solicitou originalmente, só se `Rejeitada` | volta pra `Pendente`, mesma `Transacao` comprovante, notifica credor de novo |
 
@@ -118,15 +120,101 @@ Migration: `AddPagamentoAprovacaoEmprestimo`.
 
 ## Autorização (o ponto que mais importa, igual na spec original)
 
-| ação | quem pode |
-|---|---|
-| Solicitar pagamento | só o devedor do registro (inverso de quem é credor, mesma tabela da spec original) |
-| Aprovar/Rejeitar | só o credor do registro |
-| Ver histórico de solicitações | qualquer um dos dois participantes |
+**Pedido do Gustavo em 2026-08-06:** documentar por completo — essa feature tem regra pra tudo
+quanto é lado, e é fácil confundir "quem pode disparar a ação" com "quem precisa concordar pra ela
+valer". As duas coisas são diferentes e a tabela abaixo separa isso.
+
+### Quem pode disparar cada ação
+
+| ação | quem pode | efeito |
+|---|---|---|
+| Solicitar pagamento | só o devedor do registro | cria solicitação `Pendente` — **não muda nada sozinho**, só registra |
+| Aprovar solicitação | só o credor do registro | `ValorPago` avança de verdade, `Transacao` de entrada criada/vinculada |
+| Rejeitar solicitação | só o credor do registro | nada muda no `Emprestimo`; comprovante do devedor continua valendo |
+| Reenviar solicitação rejeitada | só quem solicitou originalmente (o devedor) | volta pra `Pendente`, credor notificado de novo |
+| Ver histórico de solicitações | qualquer um dos dois participantes | só leitura |
+| Registrar pagamento direto / Quitar (fluxo antigo, sem solicitação) | só o credor do registro | avança `ValorPago`/`Quitado` na hora |
+| Vincular (convite de vínculo) | só o `CriadoPor` do empréstimo | dispara convite — **não vincula sozinho**, ver abaixo |
+| Aceitar/Recusar convite de vínculo | só quem recebeu o convite (e-mail bate) | só aqui o vínculo passa a valer |
 
 Reaproveita `EhCredor(Emprestimo, usuarioId)` já existente no `EmprestimoService` — devedor é
 "não-credor" entre os dois participantes de um registro `Vinculado`. Testar os dois `Tipo`
 explicitamente (mesmo aviso da spec original: é fácil inverter essa regra por engano).
+
+### Ações unilaterais × ações que precisam da outra parte concordar
+
+**Unilateral (efeito imediato, a outra parte só fica sabendo depois, via notificação):**
+Aprovar, Rejeitar, Registrar pagamento direto, Quitar. Nenhuma dessas espera confirmação de
+ninguém — quem tem a permissão age e o registro muda na hora. A `EhCredor` check garante que só
+quem devia ter esse poder o exerce; a outra parte não tem voz sobre acontecer ou não.
+
+**Bilateral (a ação de uma parte só produz efeito real depois que a outra confirma):**
+- **Vincular** — o convite (`VincularAsync`) não vincula nada sozinho, só cria
+  `StatusVinculo = PendenteAceite`. Só `AceitarVinculoAsync`/`AceitarVinculoPorIdAsync` (disparado
+  pelo CONVIDADO, não por quem convidou) muda pra `Vinculado`. Até lá, o empréstimo se comporta como
+  se não tivesse segunda parte nenhuma.
+- **Solicitar pagamento** é, na prática, também bilateral mesmo sem ter esse nome: o devedor
+  "propõe" que pagou (`Pendente`), mas **nada no saldo muda até o credor aprovar**. A diferença pro
+  vínculo é que aqui existe um terceiro estado explícito (`Rejeitada`) que não invalida o que o
+  devedor fez fora do app (a `Transacao` comprovante continua valendo) — só significa "o credor não
+  confirma que bateu, mas o dinheiro que você gastou/mandou continua registrado do seu lado".
+
+### Toda ação que muda algo fica registrada (o "sistema de arquivo" pedido pelo Gustavo)
+
+Todo ponto que já muda estado ou dinheiro grava `FinancialEventLog` (auditoria — nunca só UI) **e**
+dispara `Notificacao` pra quem precisa saber:
+
+| evento | quem é notificado | mensagem |
+|---|---|---|
+| Devedor solicita pagamento | credor | "Fulano marcou R$X como pago em 'Y' — confirme o recebimento." |
+| Credor aprova | devedor | "Seu pagamento de R$X em 'Y' foi confirmado." |
+| Credor rejeita | devedor | "Seu pagamento de R$X em 'Y' foi rejeitado." + motivo, se o credor escreveu um (ver abaixo) |
+| Devedor reenvia após rejeição | credor | "Fulano reenviou R$X em 'Y' — reavalie." |
+| Credor propõe vínculo | contraparte (se já tem conta) | "Fulano quer vincular um empréstimo com você." |
+| Contraparte aceita vínculo | credor | "Fulano aceitou o vínculo do empréstimo 'Y'." |
+
+Nenhuma dessas notificações é opcional/silenciosa — é o mecanismo que garante que "rejeitei"
+sempre chega pra quem mandou, mesmo que a pessoa não esteja olhando a tela na hora.
+
+### Motivo da rejeição (decidido 2026-08-06)
+
+`RejeitarPagamentoSolicitacaoAsync` ganha `Motivo` opcional (texto livre, sem tamanho mínimo —
+credor pode rejeitar seco, sem digitar nada, se quiser rapidez). Quando informado, entra na
+notificação (`"...foi rejeitado: {motivo}"`) e fica gravado na solicitação
+(`EmprestimoPagamentoSolicitacao.MotivoRejeicao`), visível no histórico junto do badge
+"Rejeitada" — assim o devedor sempre vê o porquê antes de decidir se reenvia (e o reenvio já
+existe, `ReenviarPagamentoSolicitacaoAsync`, sem mudança).
+
+### Barra de progresso com 3 cores (decidido 2026-08-06)
+
+Pedido do Gustavo: a barra de progresso do empréstimo não pode só mostrar `ValorPago` confirmado —
+precisa deixar visível que existe dinheiro "em trânsito" (solicitado, aguardando aprovação) e
+dinheiro que já foi recusado, **sem que isso altere o saldo real de ninguém** ("ninguém pode
+alterar nada na conta de ninguém só porque recusou — deve ficar o registro mostrando pra ela que
+ela falou que foi pago e que a pessoa recusou").
+
+`EmprestimoDto` ganhou dois campos agregados, só informativos (não entram em `ValorPago`/
+`PercentualPago`, que continuam só refletindo aprovações reais):
+- `ValorPendente` — soma das solicitações `Pendente` do empréstimo.
+- `ValorRecusado` — soma das solicitações `Rejeitada`.
+
+Frontend: a barra usa `PontesProgress` (biblioteca Pontes, componente estendido pra suportar
+`segments` — barra empilhada com N cores, ver `docs/DESIGN_SYSTEM.md`/showroom `/design-system`)
+com 3 fatias: verde (`var(--pontes-success)`, confirmado), laranja (`var(--pontes-warning)`,
+pendente), vermelho (`var(--pontes-danger)`, recusado). Cada fatia tem `title` com o valor, visível
+no hover. Antes disso a barra usava `data-tone={isEmprestei ? "success" : "danger"}` (cor por
+direção do empréstimo, não por status) — trocado porque status de confirmação é a informação mais
+importante aqui; direção continua visível pelo ícone/valor do item.
+
+### Banners de pendência viraram `PontesAlert` (achado UI, 2026-08-06)
+
+Os banners "N convites pendentes" e "N pagamentos aguardando aprovação" usavam um `PontesCard`
+com CSS ad-hoc (`.pendentesCard`) fora do padrão da biblioteca — Gustavo apontou que "tá fora dos
+nossos padrões, tá feia". Trocado por `PontesAlert tone="warning"` (componente já existente na
+lib, usado em outras telas pra banner inline com ícone+borda+cor semântica). O título vai como
+`children` (um `<div className={styles.listHeadTitle}>`), não na prop `title` do Alert — essa prop
+acrescenta ": " automático no texto (`<strong>{title}: </strong>`), o que quebrava o texto exato
+esperado nos testes e não fazia sentido pra um título de banner (não é "rótulo: valor").
 
 ## Casos extremos
 

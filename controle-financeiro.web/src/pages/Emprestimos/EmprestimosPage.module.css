@@ -32,10 +32,6 @@
 .progressWrap { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; max-width: 320px; }
 .progressMeta { display: flex; justify-content: space-between; font-size: 11px; color: var(--pontes-text-muted); }
 .progressPct { font-weight: 700; color: var(--pontes-text); }
-.bar { height: 5px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
-.barFill { height: 100%; border-radius: 99px; transition: width .3s ease; }
-.barFill[data-tone="success"] { background: var(--pontes-success); }
-.barFill[data-tone="danger"] { background: var(--pontes-danger); }
 
 .itemRight { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .itemValue { font-size: 15px; font-weight: 800; white-space: nowrap; }
@@ -47,8 +43,7 @@
 .formCol { display: flex; flex-direction: column; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.pendentesCard { border: 1px solid var(--pontes-warning); background: var(--pontes-warning-soft, color-mix(in srgb, var(--pontes-warning) 10%, transparent)); }
-.pendentesList { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pendentesList { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .pendenteItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .pendenteDesc { font-size: 13px; color: var(--pontes-text); }
 

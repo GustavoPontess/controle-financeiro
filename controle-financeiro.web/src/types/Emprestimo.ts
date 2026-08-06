@@ -14,6 +14,10 @@ export interface Emprestimo {
   valorPago: number
   valorRestante: number
   percentualPago: number
+  /** Soma das solicitações Pendentes — informativo, não conta no saldo real. */
+  valorPendente: number
+  /** Soma das solicitações Rejeitadas — só histórico visual. */
+  valorRecusado: number
   tipo: number
   tipoDescricao: string
   dataInicio: string
@@ -144,4 +148,6 @@ export interface EmprestimoPagamentoSolicitacao {
   /** Só preenchido quando o credor informou conta ao aprovar (criou a entrada de verdade). */
   recebimentoData?: string
   recebimentoContaNome?: string
+  /** Texto livre que o credor escreveu ao rejeitar — opcional. */
+  motivoRejeicao?: string
 }

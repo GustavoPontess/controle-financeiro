@@ -37,10 +37,11 @@ public class EmprestimoService(
             .ToListAsync();
 
         var nomes = await ObterNomesAsync(items);
+        var agregados = await ObterAgregadosSolicitacaoAsync(items.Select(e => e.Id).ToList());
 
         return new PagedResult<EmprestimoDto>
         {
-            Items = items.Select(e => ToDto(e, usuarioId, nomes)),
+            Items = items.Select(e => ToDto(e, usuarioId, nomes, agregados)),
             Total = total,
             Page = page,
             PageSize = pageSize,
@@ -725,14 +726,17 @@ public class EmprestimoService(
 
     /// <summary>Credor rejeita — nenhuma Transacao é criada, ValorPago não muda, solicitação fica
     /// no histórico como rejeitada.</summary>
-    public async Task<bool> RejeitarPagamentoSolicitacaoAsync(Guid solicitacaoId, Guid usuarioId)
+    public async Task<bool> RejeitarPagamentoSolicitacaoAsync(Guid solicitacaoId, RejeitarPagamentoEmprestimoDto dto, Guid usuarioId)
     {
         var solicitacao = await CarregarSolicitacaoParaAvaliarAsync(solicitacaoId, usuarioId);
         if (solicitacao is null) return false;
 
+        var motivo = string.IsNullOrWhiteSpace(dto.Motivo) ? null : dto.Motivo.Trim();
+
         solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Rejeitada;
         solicitacao.AprovadoPorUsuarioId = usuarioId;
         solicitacao.AprovadoEm = DateTime.UtcNow;
+        solicitacao.MotivoRejeicao = motivo;
 
         _eventLog.Registrar(
             usuarioId: usuarioId,
@@ -741,15 +745,17 @@ public class EmprestimoService(
             entidadeId: solicitacao.Id,
             correlationId: Guid.NewGuid(),
             origemAcao: "API",
-            payload: new { solicitacao.Id, emprestimoId = solicitacao.EmprestimoId });
+            payload: new { solicitacao.Id, emprestimoId = solicitacao.EmprestimoId, motivo });
 
         await _context.SaveChangesAsync();
 
+        var mensagem = $"Seu pagamento de {solicitacao.Valor:C} em \"{solicitacao.Emprestimo.Descricao}\" foi rejeitado."
+            + (motivo != null ? $" Motivo: {motivo}" : "");
         await _notificacaoService.CriarAsync(
             solicitacao.SolicitadoPor,
             TipoNotificacao.EmprestimoPagamentoAvaliado,
             "Pagamento rejeitado",
-            $"Seu pagamento de {solicitacao.Valor:C} em \"{solicitacao.Emprestimo.Descricao}\" foi rejeitado.",
+            mensagem,
             "/emprestimos");
 
         return true;
@@ -901,6 +907,7 @@ public class EmprestimoService(
                 ComprovanteContaNome = comprovante?.Conta?.Nome,
                 RecebimentoData = recebimento?.Data,
                 RecebimentoContaNome = recebimento?.Conta?.Nome,
+                MotivoRejeicao = s.MotivoRejeicao,
             };
         }).ToList();
     }
@@ -936,7 +943,8 @@ public class EmprestimoService(
     private async Task<EmprestimoDto> ToDtoAsync(Emprestimo e, Guid usuarioId)
     {
         var nomes = await ObterNomesAsync([e]);
-        return ToDto(e, usuarioId, nomes);
+        var agregados = await ObterAgregadosSolicitacaoAsync([e.Id]);
+        return ToDto(e, usuarioId, nomes, agregados);
     }
 
     private async Task<Dictionary<Guid, string>> ObterNomesAsync(List<Emprestimo> items)
@@ -951,9 +959,35 @@ public class EmprestimoService(
             .ToDictionaryAsync(u => u.Id, u => u.Nome);
     }
 
+    /// <summary>Soma de solicitações Pendentes e Rejeitadas por empréstimo — informativo pro front
+    /// (barra de progresso com 3 cores), nunca conta em ValorPago/PercentualPago. Só a aprovação
+    /// muda o saldo real (nenhuma ação de uma parte altera o registro por conta própria).</summary>
+    private async Task<Dictionary<Guid, (decimal Pendente, decimal Recusado)>> ObterAgregadosSolicitacaoAsync(List<Guid> emprestimoIds)
+    {
+        var grupos = await _context.EmprestimoPagamentoSolicitacoes
+            .Where(s => emprestimoIds.Contains(s.EmprestimoId)
+                && (s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente
+                 || s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Rejeitada))
+            .GroupBy(s => new { s.EmprestimoId, s.StatusAprovacao })
+            .Select(g => new { g.Key.EmprestimoId, g.Key.StatusAprovacao, Total = g.Sum(x => x.Valor) })
+            .ToListAsync();
+
+        var resultado = emprestimoIds.ToDictionary(id => id, _ => (Pendente: 0m, Recusado: 0m));
+        foreach (var g in grupos)
+        {
+            var atual = resultado[g.EmprestimoId];
+            resultado[g.EmprestimoId] = g.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente
+                ? (g.Total, atual.Recusado)
+                : (atual.Pendente, g.Total);
+        }
+        return resultado;
+    }
+
     /// <summary>Tudo relativo a quem está olhando (usuarioId), não ao CriadoPor — quem vê como
     /// contraparte enxerga Tipo/credor invertidos.</summary>
-    private static EmprestimoDto ToDto(Emprestimo e, Guid usuarioId, IReadOnlyDictionary<Guid, string> nomes)
+    private static EmprestimoDto ToDto(
+        Emprestimo e, Guid usuarioId, IReadOnlyDictionary<Guid, string> nomes,
+        IReadOnlyDictionary<Guid, (decimal Pendente, decimal Recusado)> agregados)
     {
         var restante = e.ValorTotal - e.ValorPago;
         var percentual = e.ValorTotal > 0 ? Math.Round(e.ValorPago / e.ValorTotal * 100, 1) : 0;
@@ -975,6 +1009,8 @@ public class EmprestimoService(
             ? (vinculado ? nomes.GetValueOrDefault(e.ContraparteUsuarioId ?? Guid.Empty) : e.Pessoa)
             : nomes.GetValueOrDefault(e.CriadoPor);
 
+        var (valorPendente, valorRecusado) = agregados.TryGetValue(e.Id, out var agg) ? agg : (0m, 0m);
+
         return new EmprestimoDto
         {
             Id = e.Id,
@@ -984,6 +1020,8 @@ public class EmprestimoService(
             ValorPago = e.ValorPago,
             ValorRestante = restante,
             PercentualPago = percentual,
+            ValorPendente = valorPendente,
+            ValorRecusado = valorRecusado,
             Tipo = (int)tipoEfetivo,
             TipoDescricao = tipoEfetivo == TipoEmprestimo.Emprestei ? "Emprestei" : "Peguei emprestado",
             DataInicio = e.DataInicio,

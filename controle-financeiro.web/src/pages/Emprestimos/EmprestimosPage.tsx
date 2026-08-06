@@ -7,9 +7,9 @@ import {
   Receipt, History, RotateCcw, ChevronDown,
 } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
+  PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard, PontesAlert,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesTextarea, PontesEmptyState,
+  PontesTextarea, PontesEmptyState, PontesProgress,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
@@ -189,6 +189,8 @@ export default function EmprestimosPage() {
   // Aprovar sempre registra a entrada — vincular ou criar, nunca "não registrar" (Gustavo 2026-08-05)
   const [aprovarEscolha, setAprovarEscolha] = useState<EscolhaComprovante>("")
   const [aprovarTransacaoExistenteId, setAprovarTransacaoExistenteId] = useState("")
+  const [rejeitarFor, setRejeitarFor] = useState<string | null>(null)
+  const [rejeitarMotivo, setRejeitarMotivo] = useState("")
   const [historicoFor, setHistoricoFor] = useState<string | null>(null)
   const [historico, setHistorico] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [historicoLoading, setHistoricoLoading] = useState(false)
@@ -539,11 +541,18 @@ export default function EmprestimosPage() {
     } finally { setAvaliandoId(null) }
   }
 
-  const handleRejeitar = async (solicitacaoId: string) => {
-    setAvaliandoId(solicitacaoId)
+  const openRejeitar = (solicitacaoId: string) => {
+    setRejeitarFor(solicitacaoId)
+    setRejeitarMotivo("")
+  }
+
+  const handleRejeitar = async () => {
+    if (!rejeitarFor) return
+    setAvaliandoId(rejeitarFor)
     try {
-      await rejeitarPagamentoEmprestimo(solicitacaoId)
+      await rejeitarPagamentoEmprestimo(rejeitarFor, rejeitarMotivo.trim() || undefined)
       notify({ open: true, message: "Pagamento rejeitado", severity: "success" })
+      setRejeitarFor(null)
       await loadData()
       if (historicoFor) await carregarHistorico(historicoFor)
     } catch (err) {
@@ -594,7 +603,7 @@ export default function EmprestimosPage() {
       </div>
 
       {pendentes.length > 0 && (
-        <PontesCard padding={16} radius={16} className={styles.pendentesCard}>
+        <PontesAlert tone="warning">
           <div className={styles.listHeadTitle}>
             {pendentes.length === 1 ? "1 convite de empréstimo pendente" : `${pendentes.length} convites de empréstimo pendentes`}
           </div>
@@ -619,11 +628,11 @@ export default function EmprestimosPage() {
               </li>
             ))}
           </ul>
-        </PontesCard>
+        </PontesAlert>
       )}
 
       {pagamentosPendentes.length > 0 && (
-        <PontesCard padding={16} radius={16} className={styles.pendentesCard}>
+        <PontesAlert tone="warning">
           <div className={styles.listHeadTitle}>
             {pagamentosPendentes.length === 1 ? "1 pagamento aguardando sua aprovação" : `${pagamentosPendentes.length} pagamentos aguardando sua aprovação`}
           </div>
@@ -641,14 +650,14 @@ export default function EmprestimosPage() {
                   </PontesIconButton>
                   <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
                     disabled={avaliandoId === p.id}
-                    onClick={() => handleRejeitar(p.id)}>
+                    onClick={() => openRejeitar(p.id)}>
                     <X size={14} />
                   </PontesIconButton>
                 </div>
               </li>
             ))}
           </ul>
-        </PontesCard>
+        </PontesAlert>
       )}
 
       <div className={styles.statsGrid}>
@@ -707,9 +716,27 @@ export default function EmprestimosPage() {
                             <span>{formatMoney(e.valorPago)} pago de {formatMoney(e.valorTotal)}</span>
                             <span className={styles.progressPct}>{e.percentualPago}%</span>
                           </div>
-                          <div className={styles.bar}>
-                            <div className={styles.barFill} data-tone={isEmprestei ? "success" : "danger"} style={{ width: `${e.percentualPago}%` }} />
-                          </div>
+                          <PontesProgress
+                            showValue={false}
+                            height={6}
+                            segments={[
+                              {
+                                value: e.percentualPago,
+                                color: "var(--pontes-success)",
+                                label: `Confirmado: ${formatMoney(e.valorPago)}`,
+                              },
+                              {
+                                value: e.valorTotal > 0 ? (e.valorPendente / e.valorTotal) * 100 : 0,
+                                color: "var(--pontes-warning)",
+                                label: e.valorPendente > 0 ? `Aguardando aprovação: ${formatMoney(e.valorPendente)}` : undefined,
+                              },
+                              {
+                                value: e.valorTotal > 0 ? (e.valorRecusado / e.valorTotal) * 100 : 0,
+                                color: "var(--pontes-danger)",
+                                label: e.valorRecusado > 0 ? `Recusado: ${formatMoney(e.valorRecusado)}` : undefined,
+                              },
+                            ]}
+                          />
                         </div>
                       )}
                     </div>
@@ -1212,6 +1239,31 @@ export default function EmprestimosPage() {
         </div>
       </PontesModal>
 
+      {/* Modal: Rejeitar pagamento (motivo opcional — sempre chega pro devedor via notificação) */}
+      <PontesModal
+        open={rejeitarFor !== null}
+        title="Rejeitar pagamento"
+        onClose={() => setRejeitarFor(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setRejeitarFor(null)}>Cancelar</PontesButton>
+          <PontesButton variant="danger" onClick={handleRejeitar} loading={avaliandoId === rejeitarFor} disabled={avaliandoId === rejeitarFor}>
+            Rejeitar
+          </PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="Motivo" helper="Opcional — o devedor vê isso na notificação e no histórico">
+            <PontesTextarea
+              value={rejeitarMotivo}
+              onChange={(e) => setRejeitarMotivo(e.target.value)}
+              rows={3}
+              placeholder="Ex: valor não bate com o combinado"
+              autoFocus
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
       {/* Modal: Histórico de pagamentos do empréstimo */}
       <PontesModal
         open={historicoFor !== null}
@@ -1243,6 +1295,12 @@ export default function EmprestimosPage() {
                       Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
                       {h.recebimentoData && ` · Entrada: ${formatDate(h.recebimentoData)}${h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}`}
                     </span>
+                    {h.motivoRejeicao && (
+                      <>
+                        <br />
+                        <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
+                      </>
+                    )}
                   </span>
                   {h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada && h.solicitadoPor === currentUser?.id && (
                     <PontesIconButton size={32} variant="ghost" aria-label="Reenviar pagamento"

@@ -9,6 +9,14 @@ public class EmprestimoDto
     public decimal ValorPago { get; set; }
     public decimal ValorRestante { get; set; }
     public decimal PercentualPago { get; set; }
+
+    /// <summary>Soma das solicitações de pagamento Pendentes (ainda não avaliadas) — informativo,
+    /// não conta em ValorPago/PercentualPago. Pro front mostrar "dinheiro reportado como pago,
+    /// aguardando confirmação" sem alterar o saldo real de ninguém.</summary>
+    public decimal ValorPendente { get; set; }
+
+    /// <summary>Soma das solicitações Rejeitadas — só histórico visual, não afeta ValorPago.</summary>
+    public decimal ValorRecusado { get; set; }
     public int Tipo { get; set; }
     public string TipoDescricao { get; set; } = string.Empty;
     public DateTime DataInicio { get; set; }

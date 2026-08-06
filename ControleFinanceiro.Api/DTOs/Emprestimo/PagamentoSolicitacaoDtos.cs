@@ -30,6 +30,12 @@ public class AprovarPagamentoEmprestimoDto
     public Guid? TransacaoExistenteId { get; set; }
 }
 
+/// <summary>Credor rejeita — Motivo é opcional, texto livre, sem tamanho mínimo.</summary>
+public class RejeitarPagamentoEmprestimoDto
+{
+    public string? Motivo { get; set; }
+}
+
 public class EmprestimoPagamentoSolicitacaoDto
 {
     public Guid Id { get; set; }
@@ -42,6 +48,7 @@ public class EmprestimoPagamentoSolicitacaoDto
     public DateTime CriadoEm { get; set; }
     public DateTime? AprovadoEm { get; set; }
     public Guid? TransacaoRecebimentoId { get; set; }
+    public string? MotivoRejeicao { get; set; }
 
     /// <summary>Data real do lançamento de saída (comprovante) — pro histórico ler como extrato.</summary>
     public DateTime ComprovanteData { get; set; }

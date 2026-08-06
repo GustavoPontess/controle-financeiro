@@ -71,7 +71,8 @@ const paged = <T,>(items: T[]) => ({
 
 const emp = {
   id: "e1", descricao: "Viagem", pessoa: "João", valorTotal: 1000, valorPago: 200,
-  valorRestante: 800, percentualPago: 20, tipo: 1, quitado: false, vencido: false,
+  valorRestante: 800, percentualPago: 20, valorPendente: 0, valorRecusado: 0,
+  tipo: 1, quitado: false, vencido: false,
   dataInicio: "2026-04-01T00:00:00Z", dataVencimento: "2026-08-01T00:00:00Z",
   statusVinculo: StatusVinculoEmprestimo.SemVinculo, souCredor: true,
 } as unknown as Emprestimo
@@ -279,7 +280,7 @@ describe("EmprestimosPage (#152)", () => {
     })
   })
 
-  it("credor rejeita pagamento pendente direto da lista", async () => {
+  it("credor rejeita pagamento pendente sem motivo", async () => {
     const pendente: EmprestimoPagamentoSolicitacao = {
       id: "sol1", emprestimoId: "e1", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
@@ -291,8 +292,31 @@ describe("EmprestimosPage (#152)", () => {
 
     await screen.findByText("1 pagamento aguardando sua aprovação")
     fireEvent.click(screen.getByLabelText("Rejeitar pagamento"))
+    await screen.findByText("Rejeitar pagamento")
+    fireEvent.click(screen.getByText("Rejeitar"))
 
-    expect(rejeitarPagamentoEmprestimo).toHaveBeenCalledWith("sol1")
+    expect(rejeitarPagamentoEmprestimo).toHaveBeenCalledWith("sol1", undefined)
+  })
+
+  it("credor rejeita pagamento pendente informando motivo", async () => {
+    const pendente: EmprestimoPagamentoSolicitacao = {
+      id: "sol1", emprestimoId: "e1", valor: 150,
+      statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
+      solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
+    }
+    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
+    renderPage()
+
+    await screen.findByText("1 pagamento aguardando sua aprovação")
+    fireEvent.click(screen.getByLabelText("Rejeitar pagamento"))
+    await screen.findByText("Rejeitar pagamento")
+    fireEvent.change(screen.getByPlaceholderText("Ex: valor não bate com o combinado"), {
+      target: { value: "Valor errado" },
+    })
+    fireEvent.click(screen.getByText("Rejeitar"))
+
+    expect(rejeitarPagamentoEmprestimo).toHaveBeenCalledWith("sol1", "Valor errado")
   })
 
   it("lista convites pendentes e aceita", async () => {

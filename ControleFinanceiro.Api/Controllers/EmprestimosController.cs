@@ -173,9 +173,9 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     }
 
     [HttpPost("solicitacoes/{solicitacaoId:guid}/rejeitar")]
-    public async Task<IActionResult> RejeitarPagamento(Guid solicitacaoId)
+    public async Task<IActionResult> RejeitarPagamento(Guid solicitacaoId, [FromBody] RejeitarPagamentoEmprestimoDto? dto)
     {
-        var ok = await _service.RejeitarPagamentoSolicitacaoAsync(solicitacaoId, UserId);
+        var ok = await _service.RejeitarPagamentoSolicitacaoAsync(solicitacaoId, dto ?? new RejeitarPagamentoEmprestimoDto(), UserId);
         return ok ? NoContent() : NotFound();
     }
 
