@@ -27,6 +27,41 @@ export interface Emprestimo {
   souCredor: boolean
   /** Lançamento (Transacao) vinculado — só existe se criado junto com o empréstimo. */
   transacaoId?: string
+
+  // Forma de pagamento (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+  formaPagamento: number
+  taxaJuroMensal?: number
+  percentualMultaAtraso?: number
+  /** Só preenchido se formaPagamento === Parcelado. */
+  quantidadeParcelas?: number
+}
+
+/** Forma de pagamento combinada de um empréstimo. */
+export const FormaPagamentoEmprestimo = {
+  AVista: 1,
+  Parcelado: 2,
+} as const
+
+/** Status de uma parcela — "Atrasada" vem calculado (statusDescricao/atrasada), não é um valor deste enum. */
+export const StatusParcelaEmprestimo = {
+  Pendente: 1,
+  Paga: 2,
+  Cancelada: 3,
+} as const
+
+export interface EmprestimoParcela {
+  id: string
+  emprestimoId: string
+  numero: number
+  quantidadeTotal: number
+  dataVencimento: string
+  valor: number
+  valorComJuros?: number
+  valorComMulta?: number
+  status: number
+  statusDescricao: string
+  atrasada: boolean
+  solicitacaoPagamentoId?: string
 }
 
 export interface CriarEmprestimo {
@@ -43,6 +78,17 @@ export interface CriarEmprestimo {
   categoriaId?: string
   /** Se informado, vincula um lançamento já existente em vez de criar outro. */
   transacaoExistenteId?: string
+
+  // Forma de pagamento — default AVista quando omitido (comportamento igual ao de antes).
+  formaPagamento?: number
+  /** Obrigatório se formaPagamento === Parcelado. Range 2-36. */
+  quantidadeParcelas?: number
+  /** Obrigatório se formaPagamento === Parcelado — vencimento da parcela 1. */
+  primeiroVencimento?: string
+  /** Opcional, só usado se Parcelado. % mensal sobre o valor de cada parcela. */
+  taxaJuroMensal?: number
+  /** Opcional, só usado se Parcelado. % livre (sem teto/mínimo) sobre a parcela quando atrasa. */
+  percentualMultaAtraso?: number
 }
 
 export interface EmprestimoConviteResultado {
@@ -72,6 +118,8 @@ export interface SolicitarPagamentoEmprestimo {
   /** Se informado, vincula essa despesa já lançada em vez de criar uma nova (evita duplicar a saída). */
   transacaoExistenteId?: string
   idempotencyKey: string
+  /** Se o empréstimo é Parcelado, qual EmprestimoParcela esse pagamento quita. */
+  parcelaId?: string
 }
 
 export interface AprovarPagamentoEmprestimo {

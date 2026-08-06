@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Recorrente> Recorrentes => Set<Recorrente>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
     public DbSet<EmprestimoPagamentoSolicitacao> EmprestimoPagamentoSolicitacoes => Set<EmprestimoPagamentoSolicitacao>();
+    public DbSet<EmprestimoParcela> EmprestimoParcelas => Set<EmprestimoParcela>();
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
 
@@ -425,6 +426,36 @@ public class AppDbContext : DbContext
             .HasOne(s => s.TransacaoRecebimento)
             .WithMany()
             .HasForeignKey(s => s.TransacaoRecebimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Forma de pagamento + parcelas (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.TaxaJuroMensal)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.PercentualMultaAtraso)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasOne(p => p.Emprestimo)
+            .WithMany(e => e.Parcelas)
+            .HasForeignKey(p => p.EmprestimoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasOne(p => p.SolicitacaoPagamento)
+            .WithMany()
+            .HasForeignKey(p => p.SolicitacaoPagamentoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasIndex(p => new { p.EmprestimoId, p.Numero });
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.Parcela)
+            .WithMany()
+            .HasForeignKey(s => s.ParcelaId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // ── Issue #86 Metas ──

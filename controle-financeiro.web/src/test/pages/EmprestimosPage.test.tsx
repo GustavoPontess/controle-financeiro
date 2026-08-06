@@ -32,6 +32,7 @@ const listSolicitacoesPagamentoPendentes = vi.fn()
 const aprovarPagamentoEmprestimo = vi.fn()
 const rejeitarPagamentoEmprestimo = vi.fn()
 const reenviarPagamentoEmprestimo = vi.fn()
+const listParcelasEmprestimo = vi.fn()
 vi.mock("../../services/emprestimoService", () => ({
   listEmprestimosPage: (...a: unknown[]) => listEmprestimosPage(...a),
   getEmprestimoStats: (...a: unknown[]) => getEmprestimoStats(...a),
@@ -50,6 +51,7 @@ vi.mock("../../services/emprestimoService", () => ({
   aprovarPagamentoEmprestimo: (...a: unknown[]) => aprovarPagamentoEmprestimo(...a),
   rejeitarPagamentoEmprestimo: (...a: unknown[]) => rejeitarPagamentoEmprestimo(...a),
   reenviarPagamentoEmprestimo: (...a: unknown[]) => reenviarPagamentoEmprestimo(...a),
+  listParcelasEmprestimo: (...a: unknown[]) => listParcelasEmprestimo(...a),
 }))
 const getContas = vi.fn()
 const getCategories = vi.fn()
@@ -79,6 +81,14 @@ const empVinculadoComoDevedor = {
   souCredor: false, contraparteNome: "Gustavo",
 } as unknown as Emprestimo
 
+const empParcelado = {
+  ...emp, id: "e3", descricao: "Carro", formaPagamento: 2, quantidadeParcelas: 3,
+} as unknown as Emprestimo
+
+const empParceladoDevedor = {
+  ...empVinculadoComoDevedor, id: "e4", descricao: "Financiamento", formaPagamento: 2, quantidadeParcelas: 2,
+} as unknown as Emprestimo
+
 function renderPage() {
   return render(<PontesThemeProvider><EmprestimosPage /></PontesThemeProvider>)
 }
@@ -106,6 +116,7 @@ describe("EmprestimosPage (#152)", () => {
     aprovarPagamentoEmprestimo.mockReset()
     rejeitarPagamentoEmprestimo.mockReset()
     reenviarPagamentoEmprestimo.mockReset()
+    listParcelasEmprestimo.mockReset().mockResolvedValue([])
   })
 
   it("lista empréstimos + stats", async () => {
@@ -310,5 +321,58 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.click(screen.getByLabelText("Recusar convite"))
     await screen.findByText("Viagem")
     expect(recusarVinculoEmprestimoPorId).toHaveBeenCalledWith("p1")
+  })
+
+  // ── Forma de pagamento — parcelas (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md) ──
+
+  it("valida quantidade de parcelas e vencimento quando parcelado", async () => {
+    renderPage()
+    await screen.findByText("Viagem")
+    fireEvent.click(screen.getByText("Novo Empréstimo"))
+    await screen.findByText("Novo empréstimo")
+
+    fireEvent.click(screen.getByText("À vista"))
+    fireEvent.click(await screen.findByText("Parcelado"))
+
+    fireEvent.click(screen.getByText("Criar empréstimo"))
+    expect(await screen.findByText("Entre 2 e 36 parcelas")).toBeInTheDocument()
+    expect(screen.getByText("Informe o vencimento da 1ª parcela")).toBeInTheDocument()
+    expect(createEmprestimo).not.toHaveBeenCalled()
+  })
+
+  it("expande empréstimo parcelado e mostra as parcelas", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    listParcelasEmprestimo.mockResolvedValue([{
+      id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+      status: 1, statusDescricao: "Pendente", atrasada: false,
+    }])
+    renderPage()
+    await screen.findByText("Carro")
+    expect(screen.getByText("Parcelado 3x")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    expect(await screen.findByText("1/3")).toBeInTheDocument()
+    expect(listParcelasEmprestimo).toHaveBeenCalledWith("e3")
+  })
+
+  it("devedor de empréstimo parcelado escolhe a parcela antes de marcar como pago", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
+    listParcelasEmprestimo.mockResolvedValue([{
+      id: "pa1", emprestimoId: "e4", numero: 1, quantidadeTotal: 2,
+      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+      status: 1, statusDescricao: "Pendente", atrasada: false,
+    }])
+    renderPage()
+    await screen.findByText("Financiamento")
+
+    fireEvent.click(screen.getByLabelText("Marcar como pago"))
+    await screen.findByText("Marcar como pago")
+    expect(await screen.findByText("Qual parcela isso quita?")).toBeInTheDocument()
+    expect(listParcelasEmprestimo).toHaveBeenCalledWith("e4")
+
+    fireEvent.click(screen.getByText("Enviar pra aprovação"))
+    expect(await screen.findByText("Escolha a parcela")).toBeInTheDocument()
+    expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
   })
 })

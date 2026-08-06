@@ -31,5 +31,11 @@ public class EmprestimoPagamentoSolicitacao
     public Guid? TransacaoRecebimentoId { get; set; }
     public Transacao? TransacaoRecebimento { get; set; }
 
+    /// <summary>Se o empréstimo é Parcelado, qual EmprestimoParcela este pagamento quita.
+    /// Null pra empréstimo à vista. A parcela só vira Paga na aprovação, não na solicitação —
+    /// se rejeitada, a parcela permanece Pendente e pode receber outra solicitação.</summary>
+    public Guid? ParcelaId { get; set; }
+    public EmprestimoParcela? Parcela { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

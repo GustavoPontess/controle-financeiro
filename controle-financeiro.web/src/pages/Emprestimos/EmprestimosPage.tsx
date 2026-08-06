@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign, Link2, Copy, Check, X,
-  Receipt, History, RotateCcw,
+  Receipt, History, RotateCcw, ChevronDown,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
@@ -18,11 +18,13 @@ import {
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
   solicitarPagamentoEmprestimo, listSolicitacoesPagamento, listSolicitacoesPagamentoPendentes,
   aprovarPagamentoEmprestimo, rejeitarPagamentoEmprestimo, reenviarPagamentoEmprestimo,
+  listParcelasEmprestimo,
 } from "../../services/emprestimoService"
 import type { EmprestimoStats } from "../../services/emprestimoService"
 import {
-  StatusVinculoEmprestimo, StatusAprovacaoPagamentoEmprestimo,
+  StatusVinculoEmprestimo, StatusAprovacaoPagamentoEmprestimo, FormaPagamentoEmprestimo, StatusParcelaEmprestimo,
   type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente, type EmprestimoPagamentoSolicitacao,
+  type EmprestimoParcela,
 } from "../../types/Emprestimo"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
@@ -36,8 +38,10 @@ const errorMessage = (err: unknown, fallback: string): string =>
   (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback
 
 
+// Formata em UTC — datas do backend (vencimento, comprovante) são "dia calendário", não instante
+// exato; formatar em fuso local desloca 1 dia pra trás em qualquer fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString("pt-BR") : "—"
+  d ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(d)) : "—"
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -53,9 +57,15 @@ const TIPOS = [
   { value: "2", label: "Peguei emprestado (vou pagar)" },
 ]
 
+const FORMAS_PAGAMENTO = [
+  { value: "avista", label: "À vista" },
+  { value: "parcelado", label: "Parcelado" },
+]
+
 /** Escolha explícita — nunca padrão silencioso, evita duplicar lançamento (Gustavo 2026-08-05). */
 type EscolhaMovimentacao = "" | "nao" | "existente" | "novo"
 type EscolhaComprovante = "" | "existente" | "novo"
+type EscolhaFormaPagamento = "avista" | "parcelado"
 
 type FormState = {
   descricao: string
@@ -69,13 +79,22 @@ type FormState = {
   contaId: string
   categoriaId: string
   transacaoExistenteId: string
+  formaPagamento: EscolhaFormaPagamento
+  quantidadeParcelas?: number
+  primeiroVencimento: string
+  taxaJuroMensal?: number
+  percentualMultaAtraso?: number
 }
 const emptyForm: FormState = {
   descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
   dataInicio: today(), dataVencimento: "", observacao: "",
   movimentacao: "", contaId: "", categoriaId: "", transacaoExistenteId: "",
+  formaPagamento: "avista", quantidadeParcelas: undefined, primeiroVencimento: "",
+  taxaJuroMensal: undefined, percentualMultaAtraso: undefined,
 }
-type Errors = Partial<Record<"descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId", string>>
+type Errors = Partial<Record<
+  "descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId"
+  | "quantidadeParcelas" | "primeiroVencimento", string>>
 
 /** Rádio de escolha explícita — usado nos 3 pontos com risco de duplicar lançamento. */
 function GateOption({ name, value, current, onChange, children }: {
@@ -156,11 +175,14 @@ export default function EmprestimosPage() {
   const [avaliandoId, setAvaliandoId] = useState<string | null>(null)
   const [solicitarFor, setSolicitarFor] = useState<string | null>(null)
   const [solicitarForm, setSolicitarForm] = useState<{ valor?: number; contaId: string; categoriaId: string }>({ valor: undefined, contaId: "", categoriaId: "" })
-  const [solicitarErrors, setSolicitarErrors] = useState<{ valor?: string; contaId?: string; categoriaId?: string; escolha?: string; transacaoExistenteId?: string }>({})
+  const [solicitarErrors, setSolicitarErrors] = useState<{ valor?: string; contaId?: string; categoriaId?: string; escolha?: string; transacaoExistenteId?: string; parcela?: string }>({})
   const [solicitarIdemKey, setSolicitarIdemKey] = useState("")
   // Escolha explícita: vincular despesa já lançada, ou criar agora — nunca padrão silencioso (Gustavo 2026-08-05)
   const [solicitarEscolha, setSolicitarEscolha] = useState<EscolhaComprovante>("")
   const [solicitarTransacaoExistenteId, setSolicitarTransacaoExistenteId] = useState("")
+  // Empréstimo Parcelado — qual parcela esse pagamento quita (docs/.../parcelamento-e-agrupamento.md)
+  const [solicitarParcelas, setSolicitarParcelas] = useState<EmprestimoParcela[]>([])
+  const [solicitarParcelaId, setSolicitarParcelaId] = useState("")
   const [aprovarFor, setAprovarFor] = useState<string | null>(null)
   const [aprovarForm, setAprovarForm] = useState<{ contaId: string; categoriaId: string }>({ contaId: "", categoriaId: "" })
   const [aprovarErrors, setAprovarErrors] = useState<{ escolha?: string; contaId?: string; categoriaId?: string; transacaoExistenteId?: string }>({})
@@ -170,6 +192,24 @@ export default function EmprestimosPage() {
   const [historicoFor, setHistoricoFor] = useState<string | null>(null)
   const [historico, setHistorico] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [historicoLoading, setHistoricoLoading] = useState(false)
+
+  // Forma de pagamento — parcelas expansíveis por empréstimo (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [parcelasPorEmprestimo, setParcelasPorEmprestimo] = useState<Record<string, EmprestimoParcela[]>>({})
+  const [parcelasLoadingId, setParcelasLoadingId] = useState<string | null>(null)
+
+  const toggleExpand = async (id: string) => {
+    if (expandedId === id) { setExpandedId(null); return }
+    setExpandedId(id)
+    if (parcelasPorEmprestimo[id]) return
+    setParcelasLoadingId(id)
+    try {
+      const lista = await listParcelasEmprestimo(id)
+      setParcelasPorEmprestimo((p) => ({ ...p, [id]: lista }))
+    } catch {
+      notify({ open: true, message: "Erro ao carregar parcelas", severity: "error" })
+    } finally { setParcelasLoadingId(null) }
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -245,11 +285,17 @@ export default function EmprestimosPage() {
     if (form.movimentacao === "novo" && !form.contaId) e.contaId = "Escolha a conta"
     if (form.movimentacao === "novo" && !form.categoriaId) e.categoriaId = "Escolha a categoria"
     if (form.movimentacao === "existente" && !form.transacaoExistenteId) e.transacaoExistenteId = "Escolha o lançamento"
+    if (form.formaPagamento === "parcelado") {
+      if (!form.quantidadeParcelas || form.quantidadeParcelas < 2 || form.quantidadeParcelas > 36)
+        e.quantidadeParcelas = "Entre 2 e 36 parcelas"
+      if (!form.primeiroVencimento) e.primeiroVencimento = "Informe o vencimento da 1ª parcela"
+    }
     setErrors(e)
     if (Object.keys(e).length) return
 
     setLoading(true)
     try {
+      const parcelado = form.formaPagamento === "parcelado"
       const payload: CriarEmprestimo = {
         descricao: form.descricao.trim(),
         pessoa: form.pessoa.trim(),
@@ -262,6 +308,11 @@ export default function EmprestimosPage() {
         contaId: form.movimentacao === "novo" ? form.contaId : undefined,
         categoriaId: form.movimentacao === "novo" ? form.categoriaId : undefined,
         transacaoExistenteId: form.movimentacao === "existente" ? form.transacaoExistenteId : undefined,
+        formaPagamento: parcelado ? FormaPagamentoEmprestimo.Parcelado : FormaPagamentoEmprestimo.AVista,
+        quantidadeParcelas: parcelado ? form.quantidadeParcelas : undefined,
+        primeiroVencimento: parcelado ? new Date(form.primeiroVencimento).toISOString() : undefined,
+        taxaJuroMensal: parcelado ? form.taxaJuroMensal : undefined,
+        percentualMultaAtraso: parcelado ? form.percentualMultaAtraso : undefined,
       }
       await createEmprestimo(payload)
       notify({ open: true, message: "Empréstimo criado", severity: "success" })
@@ -347,6 +398,27 @@ export default function EmprestimosPage() {
     setSolicitarIdemKey(crypto.randomUUID())
     setSolicitarEscolha("")
     setSolicitarTransacaoExistenteId("")
+    setSolicitarParcelaId("")
+    setSolicitarParcelas([])
+
+    const emprestimo = emprestimos.find((x) => x.id === emprestimoId)
+    if (emprestimo?.formaPagamento === FormaPagamentoEmprestimo.Parcelado) {
+      void (async () => {
+        try {
+          const lista = await listParcelasEmprestimo(emprestimoId)
+          setSolicitarParcelas(lista.filter((p) => p.status === StatusParcelaEmprestimo.Pendente))
+        } catch {
+          notify({ open: true, message: "Erro ao carregar parcelas", severity: "error" })
+        }
+      })()
+    }
+  }
+
+  const handleSolicitarParcelaChange = (v: string) => {
+    setSolicitarParcelaId(v)
+    setSolicitarErrors((p) => ({ ...p, parcela: undefined }))
+    const parcela = solicitarParcelas.find((p) => p.id === v)
+    if (parcela) setSolicitarForm((f) => ({ ...f, valor: parcela.valorComMulta ?? parcela.valorComJuros ?? parcela.valor }))
   }
 
   const handleSolicitarEscolhaChange = (v: string) => {
@@ -357,6 +429,12 @@ export default function EmprestimosPage() {
 
   const handleSolicitar = async () => {
     if (!solicitarFor) return
+
+    const isParcelado = emprestimos.find((x) => x.id === solicitarFor)?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+    if (isParcelado && !solicitarParcelaId) {
+      setSolicitarErrors({ parcela: "Escolha a parcela" })
+      return
+    }
 
     if (!solicitarEscolha) {
       setSolicitarErrors({ escolha: "Escolha uma opção" })
@@ -375,6 +453,7 @@ export default function EmprestimosPage() {
           data: new Date().toISOString(),
           transacaoExistenteId: solicitarTransacaoExistenteId,
           idempotencyKey: solicitarIdemKey,
+          parcelaId: isParcelado ? solicitarParcelaId : undefined,
         })
         notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
         setSolicitarFor(null)
@@ -400,6 +479,7 @@ export default function EmprestimosPage() {
         categoriaId: solicitarForm.categoriaId,
         data: new Date().toISOString(),
         idempotencyKey: solicitarIdemKey,
+        parcelaId: isParcelado ? solicitarParcelaId : undefined,
       })
       notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
       setSolicitarFor(null)
@@ -498,6 +578,8 @@ export default function EmprestimosPage() {
   }
 
   const { totalAReceber, totalAPagar, ativos: qtdAtivos } = stats
+  const solicitarEmprestimoAtual = emprestimos.find((x) => x.id === solicitarFor)
+  const isParceladoSolicitar = solicitarEmprestimoAtual?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
 
   return (
     <div className={styles.root}>
@@ -593,8 +675,10 @@ export default function EmprestimosPage() {
           <ul className={styles.list}>
             {emprestimos.map((e) => {
               const isEmprestei = e.tipo === 1
+              const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
               return (
-                <li key={e.id} className={styles.item} data-quitado={e.quitado ? "true" : undefined}>
+              <React.Fragment key={e.id}>
+                <li className={styles.item} data-quitado={e.quitado ? "true" : undefined}>
                   <div className={styles.itemLeft}>
                     <div className={styles.itemIcon} data-tone={isEmprestei ? "success" : "danger"}>
                       {isEmprestei ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
@@ -610,6 +694,7 @@ export default function EmprestimosPage() {
                         {e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite && (
                           <PontesBadge tone="warning" size="sm">Convite pendente</PontesBadge>
                         )}
+                        {isParcelado && <PontesBadge tone="neutral" size="sm">Parcelado {e.quantidadeParcelas}x</PontesBadge>}
                       </div>
                       <span className={styles.itemSub}>
                         {isEmprestei ? "Para: " : "De: "}
@@ -636,6 +721,12 @@ export default function EmprestimosPage() {
                     </span>
                     <span className={styles.itemValueLabel}>restante</span>
                     <div className={styles.actions}>
+                      {isParcelado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label={expandedId === e.id ? "Recolher parcelas" : "Ver parcelas"}
+                          onClick={() => void toggleExpand(e.id)}>
+                          <ChevronDown size={14} className={styles.expandBtn} data-open={expandedId === e.id ? "" : undefined} />
+                        </PontesIconButton>
+                      )}
                       {!e.quitado && e.souCredor && (
                         <>
                           <PontesIconButton size={32} variant="ghost" aria-label="Registrar pagamento"
@@ -674,6 +765,31 @@ export default function EmprestimosPage() {
                     </div>
                   </div>
                 </li>
+                {isParcelado && expandedId === e.id && (
+                  <li className={styles.parcelasWrap}>
+                    {parcelasLoadingId === e.id ? (
+                      <span className={styles.itemSub}>Carregando…</span>
+                    ) : (parcelasPorEmprestimo[e.id] ?? []).map((parc) => (
+                      <div key={parc.id} className={styles.parcelaItem}>
+                        <span className={styles.parcelaNumero}>{parc.numero}/{parc.quantidadeTotal}</span>
+                        <span className={styles.parcelaVencimento}>vence {formatDate(parc.dataVencimento)}</span>
+                        <span className={styles.parcelaValor}>
+                          {parc.valorComMulta != null && (
+                            <span className={styles.parcelaValorOriginal}>{formatMoney(parc.valor)}</span>
+                          )}
+                          {formatMoney(parc.valorComMulta ?? parc.valorComJuros ?? parc.valor)}
+                        </span>
+                        <PontesBadge size="sm" tone={
+                          parc.status === StatusParcelaEmprestimo.Paga ? "success"
+                            : parc.atrasada ? "danger" : "neutral"
+                        }>
+                          {parc.statusDescricao}
+                        </PontesBadge>
+                      </div>
+                    ))}
+                  </li>
+                )}
+              </React.Fragment>
               )
             })}
           </ul>
@@ -748,6 +864,56 @@ export default function EmprestimosPage() {
               rows={2}
             />
           </PontesField>
+
+          <PontesField label="Forma de pagamento">
+            <PontesSelect
+              value={form.formaPagamento}
+              onChange={(v) => setF("formaPagamento", v as EscolhaFormaPagamento)}
+              options={FORMAS_PAGAMENTO}
+            />
+          </PontesField>
+
+          {form.formaPagamento === "parcelado" && (
+            <>
+              <div className={styles.grid2}>
+                <PontesField label="Quantidade de parcelas" required error={errors.quantidadeParcelas}>
+                  <PontesInput
+                    value={form.quantidadeParcelas ?? ""}
+                    onChange={(e) => { setF("quantidadeParcelas", e.target.value ? Number(e.target.value) : undefined); clearErr("quantidadeParcelas") }}
+                    invalid={!!errors.quantidadeParcelas}
+                    inputMode="numeric"
+                    placeholder="Ex: 12"
+                  />
+                </PontesField>
+                <PontesField label="Vencimento da 1ª parcela" required error={errors.primeiroVencimento}>
+                  <PontesDateInput
+                    value={form.primeiroVencimento}
+                    onChange={(v) => { setF("primeiroVencimento", v); clearErr("primeiroVencimento") }}
+                  />
+                </PontesField>
+              </div>
+              <div className={styles.grid2}>
+                <PontesField label="Juros ao mês" helper="Opcional, sobre o valor da parcela">
+                  <PontesInput
+                    value={form.taxaJuroMensal ?? ""}
+                    onChange={(e) => setF("taxaJuroMensal", e.target.value ? Number(e.target.value) : undefined)}
+                    inputMode="decimal"
+                    iconEnd="%"
+                    placeholder="0"
+                  />
+                </PontesField>
+                <PontesField label="Multa por atraso" helper="Opcional, sobre a parcela">
+                  <PontesInput
+                    value={form.percentualMultaAtraso ?? ""}
+                    onChange={(e) => setF("percentualMultaAtraso", e.target.value ? Number(e.target.value) : undefined)}
+                    inputMode="decimal"
+                    iconEnd="%"
+                    placeholder="0"
+                  />
+                </PontesField>
+              </div>
+            </>
+          )}
 
           <PontesField label="Esse dinheiro já saiu/entrou de verdade?" required error={errors.movimentacao}>
             <div className={styles.gateGroup}>
@@ -911,6 +1077,20 @@ export default function EmprestimosPage() {
             Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele
             confirmar é que o valor pago do empréstimo avança.
           </p>
+
+          {isParceladoSolicitar && (
+            <PontesField label="Qual parcela isso quita?" required error={solicitarErrors.parcela}>
+              <PontesSelect
+                value={solicitarParcelaId}
+                onChange={handleSolicitarParcelaChange}
+                options={solicitarParcelas.map((p) => ({
+                  value: p.id,
+                  label: `Parcela ${p.numero}/${p.quantidadeTotal} — vence ${formatDate(p.dataVencimento)} — ${formatMoney(p.valorComMulta ?? p.valorComJuros ?? p.valor)}`,
+                }))}
+                placeholder="Selecione a parcela"
+              />
+            </PontesField>
+          )}
 
           <PontesField label="Como comprovar esse pagamento?" required error={solicitarErrors.escolha}>
             <div className={styles.gateGroup}>

@@ -26,4 +26,13 @@ public class EmprestimoDto
 
     /// <summary>Lançamento (Transacao) vinculado — só existe se criado junto com o empréstimo.</summary>
     public Guid? TransacaoId { get; set; }
+
+    // Forma de pagamento (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+    public int FormaPagamento { get; set; }
+    public decimal? TaxaJuroMensal { get; set; }
+    public decimal? PercentualMultaAtraso { get; set; }
+
+    /// <summary>Só preenchido se FormaPagamento == Parcelado — pra lista decidir se mostra o
+    /// chevron de expandir sem precisar buscar as parcelas.</summary>
+    public int? QuantidadeParcelas { get; set; }
 }

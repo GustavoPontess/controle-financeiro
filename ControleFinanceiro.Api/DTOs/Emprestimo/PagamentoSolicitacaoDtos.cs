@@ -13,6 +13,10 @@ public class SolicitarPagamentoEmprestimoDto
     /// uma nova — Valor/ContaId/CategoriaId/Data são ignorados (o valor real vem da transação).</summary>
     public Guid? TransacaoExistenteId { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
+
+    /// <summary>Se o empréstimo é Parcelado, informe qual EmprestimoParcela esse pagamento quita.
+    /// Ignorado (empréstimo à vista continua abatendo do total "cego").</summary>
+    public Guid? ParcelaId { get; set; }
 }
 
 /// <summary>Credor aprova — sempre registra a entrada de verdade, dois caminhos possíveis (mesma

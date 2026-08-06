@@ -2,6 +2,7 @@ import { api } from "../api/axiosConfig"
 import type {
   Emprestimo, CriarEmprestimo, EmprestimoConviteResultado, EmprestimoConvitePendente,
   SolicitarPagamentoEmprestimo, AprovarPagamentoEmprestimo, EmprestimoPagamentoSolicitacao,
+  EmprestimoParcela,
 } from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
@@ -122,4 +123,10 @@ export const rejeitarPagamentoEmprestimo = async (solicitacaoId: string): Promis
 /** Devedor reenvia uma solicitação rejeitada — volta pra pendente. */
 export const reenviarPagamentoEmprestimo = async (solicitacaoId: string): Promise<void> => {
   await api.post(`/emprestimos/solicitacoes/${solicitacaoId}/reenviar`)
+}
+
+/** Parcelas de um empréstimo Parcelado (vazio se À vista). */
+export const listParcelasEmprestimo = async (id: string): Promise<EmprestimoParcela[]> => {
+  const res = await api.get(`/emprestimos/${id}/parcelas`)
+  return res.data
 }

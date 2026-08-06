@@ -127,6 +127,15 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Parcelas de um empréstimo Parcelado (vazio se AVista).</summary>
+    [HttpGet("{id:guid}/parcelas")]
+    [ProducesResponseType(typeof(List<EmprestimoParcelaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarParcelas(Guid id)
+    {
+        var lista = await _service.ListarParcelasAsync(id, UserId);
+        return Ok(lista);
+    }
+
     // ── Pagamento com comprovante + aprovação ──────────────────────────────────
 
     /// <summary>Devedor solicita pagamento anexando comprovante (cria a Transacao real junto).</summary>

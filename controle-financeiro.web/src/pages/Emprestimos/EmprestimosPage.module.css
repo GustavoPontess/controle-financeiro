@@ -63,3 +63,14 @@
 .gateOption input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }
 .gateOption[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }
 .gateError { font-size: 12px; color: var(--pontes-danger); }
+
+/* Parcelas — expandir item de empréstimo Parcelado. */
+.expandBtn { transition: transform .15s ease; }
+.expandBtn[data-open] { transform: rotate(180deg); }
+
+.parcelasWrap { padding: 0 20px 16px 68px; display: flex; flex-direction: column; gap: 6px; }
+.parcelaItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; background: var(--pontes-bg); font-size: 12px; }
+.parcelaNumero { color: var(--pontes-text-muted); min-width: 46px; }
+.parcelaVencimento { color: var(--pontes-text); flex: 1; }
+.parcelaValor { font-weight: 700; color: var(--pontes-text); white-space: nowrap; }
+.parcelaValorOriginal { text-decoration: line-through; color: var(--pontes-text-muted); font-weight: 400; margin-right: 4px; }

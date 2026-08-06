@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-05
+last_reviewed: 2026-08-06
 status: EM_PROGRESSO
-foco: 'Empréstimo: pagamento com comprovante + aprovação do credor — verificado end-to-end no browser real, + trava de escolha explícita (vincular lançamento existente vs criar novo) nos 3 pontos de risco de duplicar (criar empréstimo, devedor marca pago, credor aprova — aprovar não tem mais opção de pular). Back 359/359, front 322/322, tsc+lint limpos. NADA commitado ainda. Spec nova de parcelamento/agrupamento escrita à parte (zero código). Próximo: decidir com o Gustavo o que commitar primeiro.'
+foco: 'Empréstimo: forma de pagamento (parcelas/juros/multa) IMPLEMENTADA — EmprestimoParcela nova, migration AddParcelamentoEmprestimo aplicada no banco de dev, endpoint GET /emprestimos/{id}/parcelas, frontend com form de parcelado + expandir parcelas + picker de parcela ao marcar como pago. Back 373/373, front 325/325, tsc+lint limpos. Verificado ao vivo no browser (criou parcelado 4x com juros, valores batendo). Achado e corrigido bug real de exibição de data (formatDate sem fuso fixo) no arquivo mexido; catalogado no ROADMAP pra os outros 8 arquivos com o mesmo padrão. NADA commitado ainda desta rodada (a feature anterior de pagamento-com-aprovação já está commitada em a9586a5). Próximo: decidir com o Gustavo se commita agora.'
 ---
 
 # STATE — onde parei
@@ -80,9 +80,9 @@ submit e revela Conta/Categoria. Só o ponto "Criar" foi testado manualmente —
 usam o mesmo componente `GateOption` e a mesma validação, já cobertos pelos testes automatizados
 reescritos, não repetidos ao vivo por economia de tempo/orçamento.
 
-**Ainda 100% NÃO commitado** — feature inteira (fluxo original + vincular-existente + a trava de
-escolha explícita) solta no working tree, branch `feature/emprestimo-compartilhado` pushada só até
-`8dc0b7e`.
+**Commitado e pushado** — feature inteira (fluxo original + vincular-existente + a trava de
+escolha explícita) em `a9586a5`, branch `feature/emprestimo-compartilhado` pushada até esse commit.
+PR ainda não aberto.
 
 **Depois de resolver esse achado, Gustavo escalou dois problemas maiores** (mesma sessão de teste,
 "a gente ta batendo cabeça de mais com essa aba... acho melhor documentar o que temos e especificar
@@ -95,13 +95,51 @@ codado** (pedido explícito — parar de iterar ao vivo, documentar primeiro): s
 empréstimo pessoa-a-pessoa) e 3 perguntas em aberto pro Gustavo antes de implementar (percentual de
 multa, juros sobre saldo vs sobre parcela, prioridade real P1/P2/P3). Zero código ainda.
 
+**Gustavo respondeu as 3 perguntas em aberto na sessão seguinte** (2026-08-05, mesmo dia): multa
+livre sem teto ("deixa a pessoa colocar"), juros sobre o valor da parcela (não saldo devedor,
+"mais simples"), e prioridade **P1** ("da prioridade pra parcelamento a gente ja ta editando um
+monte de coisa nela"). Doc `parcelamento-e-agrupamento.md` atualizado com as respostas antes de
+codar.
+
+**Implementado na sequência — forma de pagamento + parcelas** (seções 1 e 2 da spec; agrupar por
+pessoa, seção 3, ficou de fora, continua P3/spec-only): backend — enums `FormaPagamentoEmprestimo`
+(AVista/Parcelado) e `StatusParcelaEmprestimo` (Pendente/Paga/Cancelada); `Emprestimo` ganhou
+`FormaPagamento`/`TaxaJuroMensal`/`PercentualMultaAtraso`; entidade nova `EmprestimoParcela`
+(Numero, DataVencimento, Valor, ValorComJuros, ValorComMulta, Status, SolicitacaoPagamentoId),
+migration `AddParcelamentoEmprestimo` aplicada no banco de dev. `CriarAsync` gera as N parcelas
+(2-36, ajuste de centavos na última) quando `Parcelado`, com `ValorComJuros = Valor * (1 + Taxa/100)`
+por parcela (decisão do Gustavo — sem cascata entre parcelas). `EmprestimoPagamentoSolicitacao`
+ganhou `ParcelaId?` — **desvio consciente do rascunho da spec**: o vínculo é pela solicitação (não
+pela parcela), a parcela só vira `Paga` **na aprovação**, não na solicitação (senão uma rejeição
+deixaria a parcela num limbo); trava equivalente via "já existe solicitação não-rejeitada pra essa
+parcela". Multa (`ValorComMulta`) calculada e persistida (snapshot, não recalculada) na primeira
+leitura de `GET /emprestimos/{id}/parcelas` após o vencimento — sem job novo, como a spec previu.
+Frontend: forma de pagamento no form de criar (com quantidade/vencimento/juros/multa condicionais),
+badge "Parcelado Nx" + chevron expandindo as parcelas na lista, picker de parcela obrigatório no
+"Marcar como pago" quando parcelado (pré-preenche o valor com multa/juros já aplicados). Back
+373/373 (+14 testes), front 325/325 (+3 testes), tsc+lint limpos. Detalhe completo em
+`docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md` → seção "Implementação".
+
+**Verificado ao vivo no browser** (não só automatizado): logado como Gustavo, criou empréstimo
+"Carro parcelado" R$1.200 em 4x com 2% de juros — as 4 parcelas apareceram certas (R$306,00 cada,
+vencimento mensal) ao expandir. **Achado e corrigido no processo:** `formatDate` da página usava
+`toLocaleDateString("pt-BR")` sem fixar fuso — em fuso negativo (Brasil, UTC-3) qualquer
+data-calendário de meia-noite UTC exibia o dia anterior (vencimento 10/08 aparecia como 09/08; dado
+no banco estava certo, só a exibição errada). Corrigido nesta página
+(`Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" })`); **mesmo padrão ainda existe em 8 outros
+arquivos** do front (`CreditCardsPage`, `RecorrentesPage`, `FamiliaDetalhe`, `TransferenciasPage`,
+`ImportacaoPage`, `Parcelamentos/[id]`, `components/pontes/form/DateInput`,
+`components/Notificacoes/NotificationBell`) — catalogado no ROADMAP como achado 🟠 P1 separado, não
+corrigido nesta sessão (fora do escopo desta feature).
+
+**Ainda NÃO commitado** — tudo desta rodada (parcelamento) solto no working tree, em cima do
+commit `a9586a5` já pushado da feature anterior.
+
 **Pendências reais, na ordem:**
-1. Decidir com o Gustavo: commitar a feature de pagamento-com-aprovação (pronta, testada,
-   verificada) agora, ou junto com mais alguma coisa?
-2. Responder as 3 perguntas em aberto de `parcelamento-e-agrupamento.md` antes de começar a
-   implementar essa próxima feature.
-3. Push + decidir sobre abrir PR.
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — **estavam no ar** no fim da sessão.
+1. Decidir com o Gustavo: commitar a feature de parcelamento agora?
+2. Corrigir o achado sistêmico de `formatDate` nos outros 8 arquivos (P1, catalogado, não atacado).
+3. Decidir se abre PR (`a9586a5` + o que for commitado agora) ou continua acumulando na branch.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
@@ -121,12 +159,11 @@ multa, juros sobre saldo vs sobre parcela, prioridade real P1/P2/P3). Zero códi
 
 ## Próxima ação concreta
 
-1. Decidir com o Gustavo: commitar a feature de pagamento-com-aprovação agora (arquivos do
-   `git status` — todos dela, nada misturado)?
-2. Push (branch já tem histórico remoto de `8dc0b7e` pra frente).
-3. Responder as 3 perguntas em aberto de `parcelamento-e-agrupamento.md` — só depois começar a
-   implementar.
-4. Alternativa: atacar `conferência de caixa` (P1, spec pronta, zero código) antes.
+1. Decidir com o Gustavo: commitar a feature de parcelamento agora (pronta, testada, verificada)?
+2. Corrigir o `formatDate`/fuso nos outros 8 arquivos catalogados, ou deixar pra sessão dedicada.
+3. Decidir se abre PR.
+4. Alternativa de direção: atacar `conferência de caixa` (P1, spec pronta, zero código) ou
+   "agrupar por pessoa" (P3, depende do que foi feito agora).
 
 **Depois — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.

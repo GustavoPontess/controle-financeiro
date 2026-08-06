@@ -34,4 +34,17 @@ public class Emprestimo
     public string? ConviteTokenHash { get; set; }
     public DateTime? ConviteExpiraEm { get; set; }
     public DateTime? VinculoRespondidoEm { get; set; }
+
+    // Forma de pagamento (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md).
+    public FormaPagamentoEmprestimo FormaPagamento { get; set; } = FormaPagamentoEmprestimo.AVista;
+
+    /// <summary>% mensal, aplicado sobre o valor de cada parcela (não sobre saldo devedor, não
+    /// composto). Só usado se FormaPagamento == Parcelado.</summary>
+    public decimal? TaxaJuroMensal { get; set; }
+
+    /// <summary>% livre (sem teto/mínimo), aplicado uma vez sobre o valor da parcela quando ela
+    /// atrasa. Só usado se FormaPagamento == Parcelado.</summary>
+    public decimal? PercentualMultaAtraso { get; set; }
+
+    public ICollection<EmprestimoParcela> Parcelas { get; set; } = new List<EmprestimoParcela>();
 }

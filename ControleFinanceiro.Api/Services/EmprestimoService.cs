@@ -93,10 +93,20 @@ public class EmprestimoService(
         if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
             throw new ArgumentException("idempotencyKey é obrigatório.");
 
+        if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+        {
+            if (!dto.QuantidadeParcelas.HasValue || dto.QuantidadeParcelas.Value < 2 || dto.QuantidadeParcelas.Value > 36)
+                throw new ArgumentException("Quantidade de parcelas deve ser entre 2 e 36.");
+            if (!dto.PrimeiroVencimento.HasValue)
+                throw new ArgumentException("Informe o vencimento da primeira parcela.");
+        }
+
         var replay = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);
         if (replay != null && replay.Tipo == FinancialEventType.EmprestimoCriado)
         {
-            var anterior = await _context.Emprestimos.FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
+            var anterior = await _context.Emprestimos
+                .Include(e => e.Parcelas)
+                .FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
             if (anterior != null)
                 return await ToDtoAsync(anterior, usuarioId);
         }
@@ -157,7 +167,18 @@ public class EmprestimoService(
             Observacao = dto.Observacao,
             CriadoPor = usuarioId,
             TransacaoId = transacaoId,
+            FormaPagamento = dto.FormaPagamento,
+            TaxaJuroMensal = dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado ? dto.TaxaJuroMensal : null,
+            PercentualMultaAtraso = dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado ? dto.PercentualMultaAtraso : null,
         };
+
+        if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+        {
+            foreach (var parcela in GerarParcelas(
+                emprestimo.Id, dto.ValorTotal, dto.QuantidadeParcelas!.Value,
+                dto.PrimeiroVencimento!.Value, dto.TaxaJuroMensal))
+                emprestimo.Parcelas.Add(parcela);
+        }
 
         _context.Emprestimos.Add(emprestimo);
 
@@ -464,6 +485,22 @@ public class EmprestimoService(
         if (EhCredor(emprestimo, usuarioId))
             throw new ForbiddenAccessException("Só o devedor solicita pagamento — o credor confirma.");
 
+        EmprestimoParcela? parcela = null;
+        if (dto.ParcelaId.HasValue)
+        {
+            parcela = await _context.EmprestimoParcelas
+                .FirstOrDefaultAsync(p => p.Id == dto.ParcelaId.Value && p.EmprestimoId == emprestimo.Id)
+                ?? throw new KeyNotFoundException("Parcela não encontrada.");
+
+            if (parcela.Status != StatusParcelaEmprestimo.Pendente)
+                throw new InvalidOperationException("Essa parcela já foi paga ou cancelada.");
+
+            var jaSolicitadaParcela = await _context.EmprestimoPagamentoSolicitacoes.AnyAsync(s =>
+                s.ParcelaId == parcela.Id && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada);
+            if (jaSolicitadaParcela)
+                throw new InvalidOperationException("Já existe uma solicitação de pagamento pendente ou aprovada pra essa parcela.");
+        }
+
         Transacao transacao;
         decimal valor;
 
@@ -514,6 +551,7 @@ public class EmprestimoService(
             TransacaoComprovanteId = transacao.Id,
             SolicitadoPor = usuarioId,
             StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente,
+            ParcelaId = parcela?.Id,
         };
         _context.EmprestimoPagamentoSolicitacoes.Add(solicitacao);
 
@@ -553,6 +591,29 @@ public class EmprestimoService(
             .ToListAsync();
 
         return await ToSolicitacaoDtosAsync(solicitacoes);
+    }
+
+    /// <summary>Parcelas de um empréstimo Parcelado — visível pros dois participantes. Recalcula
+    /// (e persiste) ValorComMulta de qualquer parcela recém-atrasada antes de retornar — snapshot
+    /// congelado na primeira leitura após o vencimento, sem precisar de job novo.</summary>
+    public async Task<List<EmprestimoParcelaDto>> ListarParcelasAsync(Guid emprestimoId, Guid usuarioId)
+    {
+        var emprestimo = await _context.Emprestimos.FirstOrDefaultAsync(e => e.Id == emprestimoId && e.Ativo
+            && (e.CriadoPor == usuarioId || e.ContraparteUsuarioId == usuarioId))
+            ?? throw new KeyNotFoundException("Empréstimo não encontrado.");
+
+        var parcelas = await _context.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimo.Id)
+            .OrderBy(p => p.Numero)
+            .ToListAsync();
+
+        var alterou = false;
+        foreach (var p in parcelas)
+            alterou |= AplicarMultaSeAtrasada(p, emprestimo);
+        if (alterou)
+            await _context.SaveChangesAsync();
+
+        return parcelas.Select(ToParcelaDto).ToList();
     }
 
     /// <summary>Solicitações pendentes onde eu sou o credor (pra badge/lista, igual convites-pendentes).</summary>
@@ -625,6 +686,17 @@ public class EmprestimoService(
         solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
         solicitacao.AprovadoPorUsuarioId = usuarioId;
         solicitacao.AprovadoEm = DateTime.UtcNow;
+
+        if (solicitacao.ParcelaId.HasValue)
+        {
+            var parcela = await _context.EmprestimoParcelas
+                .FirstOrDefaultAsync(p => p.Id == solicitacao.ParcelaId.Value);
+            if (parcela != null)
+            {
+                parcela.Status = StatusParcelaEmprestimo.Paga;
+                parcela.SolicitacaoPagamentoId = solicitacao.Id;
+            }
+        }
 
         emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + solicitacao.Valor, emprestimo.ValorTotal);
         if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
@@ -748,6 +820,7 @@ public class EmprestimoService(
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private IQueryable<Emprestimo> VisivelPara(Guid usuarioId) => _context.Emprestimos
+        .Include(e => e.Parcelas)
         .Where(e => e.Ativo && (e.CriadoPor == usuarioId
             || (e.ContraparteUsuarioId == usuarioId && e.StatusVinculo == StatusVinculoEmprestimo.Vinculado)));
 
@@ -922,6 +995,85 @@ public class EmprestimoService(
             ContraparteNome = contraparteNome,
             SouCredor = souCredor,
             TransacaoId = e.TransacaoId,
+            FormaPagamento = (int)e.FormaPagamento,
+            TaxaJuroMensal = e.TaxaJuroMensal,
+            PercentualMultaAtraso = e.PercentualMultaAtraso,
+            QuantidadeParcelas = e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado && e.Parcelas.Count > 0
+                ? e.Parcelas.Count
+                : null,
+        };
+    }
+
+    /// <summary>Gera as N parcelas na criação — valor igual dividido, ajuste de centavos na
+    /// última (mesmo padrão do Parcelamento de cartão), vencimento mensal fixo a partir da
+    /// primeira. ValorComJuros calculado por parcela se a taxa foi informada.</summary>
+    private static List<EmprestimoParcela> GerarParcelas(
+        Guid emprestimoId, decimal valorTotal, int quantidade, DateTime primeiroVencimento,
+        decimal? taxaJuroMensal)
+    {
+        var valorParcela = Math.Round(valorTotal / quantidade, 2, MidpointRounding.ToEven);
+        var parcelas = new List<EmprestimoParcela>();
+        var somaParcelas = 0m;
+
+        for (var i = 1; i <= quantidade; i++)
+        {
+            var valor = i == quantidade ? valorTotal - somaParcelas : valorParcela;
+            somaParcelas += valor;
+
+            parcelas.Add(new EmprestimoParcela
+            {
+                Id = Guid.NewGuid(),
+                EmprestimoId = emprestimoId,
+                Numero = i,
+                QuantidadeTotal = quantidade,
+                DataVencimento = primeiroVencimento.AddMonths(i - 1).ToUniversalTime(),
+                Valor = valor,
+                ValorComJuros = taxaJuroMensal.HasValue
+                    ? Math.Round(valor * (1 + taxaJuroMensal.Value / 100), 2)
+                    : null,
+                Status = StatusParcelaEmprestimo.Pendente,
+            });
+        }
+
+        return parcelas;
+    }
+
+    /// <summary>Snapshot único de multa na primeira leitura após o vencimento — não recalcula
+    /// depois. Retorna true se alterou (pra saber se precisa SaveChanges).</summary>
+    private static bool AplicarMultaSeAtrasada(EmprestimoParcela p, Emprestimo emprestimo)
+    {
+        if (p.Status != StatusParcelaEmprestimo.Pendente) return false;
+        if (p.DataVencimento.Date >= DateTime.UtcNow.Date) return false;
+        if (p.ValorComMulta.HasValue) return false;
+        if (!emprestimo.PercentualMultaAtraso.HasValue) return false;
+
+        p.ValorComMulta = Math.Round(p.Valor * (1 + emprestimo.PercentualMultaAtraso.Value / 100), 2);
+        return true;
+    }
+
+    private static EmprestimoParcelaDto ToParcelaDto(EmprestimoParcela p)
+    {
+        var atrasada = p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < DateTime.UtcNow.Date;
+        return new EmprestimoParcelaDto
+        {
+            Id = p.Id,
+            EmprestimoId = p.EmprestimoId,
+            Numero = p.Numero,
+            QuantidadeTotal = p.QuantidadeTotal,
+            DataVencimento = p.DataVencimento,
+            Valor = p.Valor,
+            ValorComJuros = p.ValorComJuros,
+            ValorComMulta = p.ValorComMulta,
+            Status = (int)p.Status,
+            StatusDescricao = p.Status switch
+            {
+                StatusParcelaEmprestimo.Pendente => atrasada ? "Atrasada" : "Pendente",
+                StatusParcelaEmprestimo.Paga => "Paga",
+                StatusParcelaEmprestimo.Cancelada => "Cancelada",
+                _ => p.Status.ToString(),
+            },
+            Atrasada = atrasada,
+            SolicitacaoPagamentoId = p.SolicitacaoPagamentoId,
         };
     }
 

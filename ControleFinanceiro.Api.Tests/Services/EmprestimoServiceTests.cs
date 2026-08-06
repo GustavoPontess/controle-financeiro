@@ -1250,6 +1250,256 @@ public class EmprestimoServiceTests
             svc.ReenviarPagamentoSolicitacaoAsync(solicitacao.Id, credorId));
     }
 
+    // ── Forma de pagamento — parcelas (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md) ──
+
+    [Fact]
+    public async Task CriarAsync_Parcelado_GeraParcelas_ValorSomaBateComTotal()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var dto = DtoValido();
+        dto.ValorTotal = 100;
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 3;
+        dto.PrimeiroVencimento = new DateTime(2026, 9, 1);
+
+        var criado = await svc.CriarAsync(dto, Guid.NewGuid());
+
+        var parcelas = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == criado.Id).OrderBy(p => p.Numero).ToListAsync();
+        Assert.Equal(3, parcelas.Count);
+        Assert.Equal(100, parcelas.Sum(p => p.Valor)); // ajuste de centavos na última, sem sobra nem falta
+        Assert.Equal(1, parcelas[0].Numero);
+        Assert.Equal(3, parcelas[0].QuantidadeTotal);
+        Assert.Equal(parcelas[0].DataVencimento.AddMonths(1), parcelas[1].DataVencimento);
+        Assert.Equal(3, criado.QuantidadeParcelas);
+        Assert.Equal((int)FormaPagamentoEmprestimo.Parcelado, criado.FormaPagamento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_Parcelado_ComJuros_CalculaValorComJurosSobreValorDaParcela()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var dto = DtoValido();
+        dto.ValorTotal = 200;
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 2;
+        dto.PrimeiroVencimento = DateTime.UtcNow;
+        dto.TaxaJuroMensal = 10; // 10% sobre o valor de cada parcela (decisão do Gustavo, não sobre saldo devedor)
+
+        var criado = await svc.CriarAsync(dto, Guid.NewGuid());
+
+        var parcelas = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == criado.Id).OrderBy(p => p.Numero).ToListAsync();
+        Assert.Equal(100, parcelas[0].Valor);
+        Assert.Equal(110, parcelas[0].ValorComJuros);
+        Assert.Equal(110, parcelas[1].ValorComJuros); // simples por parcela, sem efeito cascata
+    }
+
+    [Fact]
+    public async Task CriarAsync_Parcelado_SemQuantidade_LancaArgumentException()
+    {
+        var svc = NewSvc(CreateContext());
+        var dto = DtoValido();
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.PrimeiroVencimento = DateTime.UtcNow;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task CriarAsync_Parcelado_SemPrimeiroVencimento_LancaArgumentException()
+    {
+        var svc = NewSvc(CreateContext());
+        var dto = DtoValido();
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 3;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(37)]
+    public async Task CriarAsync_Parcelado_QuantidadeForaDoRange_LancaArgumentException(int quantidade)
+    {
+        var svc = NewSvc(CreateContext());
+        var dto = DtoValido();
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = quantidade;
+        dto.PrimeiroVencimento = DateTime.UtcNow;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task CriarAsync_AVista_NaoGeraParcelas()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var criado = await svc.CriarAsync(DtoValido(), Guid.NewGuid());
+
+        Assert.Equal(0, await ctx.EmprestimoParcelas.CountAsync(p => p.EmprestimoId == criado.Id));
+        Assert.Null(criado.QuantidadeParcelas);
+        Assert.Equal((int)FormaPagamentoEmprestimo.AVista, criado.FormaPagamento);
+    }
+
+    /// <summary>Empréstimo Parcelado, vinculado, pronto pra testar solicitar/aprovar por parcela.</summary>
+    private static async Task<(Guid emprestimoId, Guid credorId, Guid devedorId)> CriarVinculadoParceladoAsync(
+        AppDbContext ctx, EmprestimoService svc, int quantidade = 2,
+        DateTime? primeiroVencimento = null, decimal? percentualMultaAtraso = null)
+    {
+        var credorId = SeedUsuario(ctx, $"credor-{Guid.NewGuid()}@x.com");
+        var devedorId = SeedUsuario(ctx, $"devedor-{Guid.NewGuid()}@x.com");
+        var dto = DtoValido();
+        dto.ValorTotal = 200;
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = quantidade;
+        dto.PrimeiroVencimento = primeiroVencimento ?? DateTime.UtcNow.AddDays(30);
+        dto.PercentualMultaAtraso = percentualMultaAtraso;
+
+        var criado = await svc.CriarAsync(dto, credorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto(
+            (await ctx.Usuarios.FindAsync(devedorId))!.Email), credorId);
+        await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), devedorId);
+
+        return (criado.Id, credorId, devedorId);
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_ComParcelaId_LigaParcela_NaoMarcaPagaAinda()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var parcela = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = parcela.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            ParcelaId = parcela.Id, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        var solicitacao = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(resultado.Id);
+        Assert.Equal(parcela.Id, solicitacao!.ParcelaId);
+        var parcelaDepois = await ctx.EmprestimoParcelas.FindAsync(parcela.Id);
+        Assert.Equal(StatusParcelaEmprestimo.Pendente, parcelaDepois!.Status); // só vira Paga na aprovação
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_ParcelaComSolicitacaoPendente_LancaInvalidOperationException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var parcela = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = parcela.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            ParcelaId = parcela.Id, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+            {
+                Valor = parcela.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+                ParcelaId = parcela.Id, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId));
+    }
+
+    [Fact]
+    public async Task SolicitarPagamentoAsync_ParcelaDeOutroEmprestimo_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId1, _, devedorId1) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var (emprestimoId2, _, _) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var parcelaDoOutro = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId2).OrderBy(p => p.Numero).FirstAsync();
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId1);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId1, new SolicitarPagamentoEmprestimoDto
+            {
+                Valor = 100, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+                ParcelaId = parcelaDoOutro.Id, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId1));
+    }
+
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_ComParcela_MarcaParcelaPaga()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var parcela = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        var (contaDevedorId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = parcela.Valor, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            ParcelaId = parcela.Id, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        var parcelaDepois = await ctx.EmprestimoParcelas.FindAsync(parcela.Id);
+        Assert.Equal(StatusParcelaEmprestimo.Paga, parcelaDepois!.Status);
+        Assert.Equal(solicitacao.Id, parcelaDepois.SolicitacaoPagamentoId);
+    }
+
+    [Fact]
+    public async Task ListarParcelasAsync_RetornaOrdenadoENumeroBate()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, _) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 3);
+
+        var parcelas = await svc.ListarParcelasAsync(emprestimoId, credorId);
+
+        Assert.Equal(3, parcelas.Count);
+        Assert.Equal(new[] { 1, 2, 3 }, parcelas.Select(p => p.Numero).ToArray());
+    }
+
+    [Fact]
+    public async Task ListarParcelasAsync_Estranho_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, _) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var estranhoId = SeedUsuario(ctx, "estranho@x.com");
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.ListarParcelasAsync(emprestimoId, estranhoId));
+    }
+
+    [Fact]
+    public async Task ListarParcelasAsync_ParcelaAtrasadaComMulta_CalculaESnapshotaValor()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, _) = await CriarVinculadoParceladoAsync(
+            ctx, svc, quantidade: 2, primeiroVencimento: DateTime.UtcNow.AddDays(-10), percentualMultaAtraso: 5);
+
+        var primeira = await svc.ListarParcelasAsync(emprestimoId, credorId);
+        var atrasada = primeira.First(p => p.Numero == 1);
+        Assert.True(atrasada.Atrasada);
+        Assert.NotNull(atrasada.ValorComMulta);
+        Assert.Equal(Math.Round(atrasada.Valor * 1.05m, 2), atrasada.ValorComMulta);
+        Assert.False(primeira.First(p => p.Numero == 2).Atrasada); // vencimento no futuro
+
+        // Segunda leitura não recalcula — snapshot congelado na primeira detecção.
+        var segunda = await svc.ListarParcelasAsync(emprestimoId, credorId);
+        Assert.Equal(atrasada.ValorComMulta, segunda.First(p => p.Numero == 1).ValorComMulta);
+    }
+
     // ── helpers de teste ─────────────────────────────────────────────────────
 
     private static CriarEmprestimoDto NovoDto(string descricao, string pessoa, decimal valor, TipoEmprestimo tipo) => new()
