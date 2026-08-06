@@ -205,14 +205,14 @@ NÃO COMMITADOS:**
 6. **Empréstimo À Vista não mostrava forma de pagamento nenhuma** — "esse empréstimo aí, por que
    tá assim, ele não foi parcelado, eu preciso saber a forma de pagamento combinada". Só
    `Parcelado` ganhava badge; agora todo item mostra `Parcelado Nx` ou `À vista`.
-   Back 376/376 (sem mudança de contrato), front 329/329 (+2 testes).
+   Back 376/376 (sem mudança de contrato), front 329/329 (+2 testes). **Commitado e pushado**
+   (`d600602`).
 
 **Pendências reais, na ordem:**
-1. Commitar os 2 achados acima (Aprovar/Rejeitar no histórico + gotcha de z-index + badge "À vista").
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.
-3. Implementar unificar/consolidar — última peça do módulo Empréstimos.
-4. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
+2. Implementar unificar/consolidar — última peça do módulo Empréstimos.
+3. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
    é a candidata mais provável, mas só depois do módulo fechado).
 5. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
