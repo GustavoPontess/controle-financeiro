@@ -189,15 +189,13 @@ ROADMAP seja P1. Empréstimos continua sendo a frente até esgotar tudo mapeado 
    existente, com demo no `/design-system` e smoke test, antes de usar em Empréstimos (regra do
    `PROMPT_NOVA_SESSAO.md` §5). Verificado ao vivo (rejeitado R$50 aparece vermelho, pendente R$40
    aparece laranja, sobre um total de R$150). Back 376/376 (+1 teste), front 327/327 (+1 teste).
-   **Ambos ainda NÃO commitados**, junto com o motivo de rejeição (item 1).
+   **Commitado e pushado** (`60c4168`), junto com o motivo de rejeição.
 
 **Pendências reais, na ordem:**
-1. Commitar motivo de rejeição + barra 3 cores + banners PontesAlert (tudo pronto, testado,
-   verificado ao vivo — um commit ou dividido, tanto faz).
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.
-3. Implementar unificar/consolidar — última peça do módulo Empréstimos.
-4. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
+2. Implementar unificar/consolidar — última peça do módulo Empréstimos.
+3. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
    é a candidata mais provável, mas só depois do módulo fechado).
 5. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
