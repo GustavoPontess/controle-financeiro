@@ -589,6 +589,7 @@ export default function EmprestimosPage() {
   const { totalAReceber, totalAPagar, ativos: qtdAtivos } = stats
   const solicitarEmprestimoAtual = emprestimos.find((x) => x.id === solicitarFor)
   const isParceladoSolicitar = solicitarEmprestimoAtual?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+  const historicoEmprestimo = emprestimos.find((x) => x.id === historicoFor)
 
   return (
     <div className={styles.root}>
@@ -703,7 +704,9 @@ export default function EmprestimosPage() {
                         {e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite && (
                           <PontesBadge tone="warning" size="sm">Convite pendente</PontesBadge>
                         )}
-                        {isParcelado && <PontesBadge tone="neutral" size="sm">Parcelado {e.quantidadeParcelas}x</PontesBadge>}
+                        {isParcelado
+                          ? <PontesBadge tone="neutral" size="sm">Parcelado {e.quantidadeParcelas}x</PontesBadge>
+                          : <PontesBadge tone="neutral" size="sm">À vista</PontesBadge>}
                       </div>
                       <span className={styles.itemSub}>
                         {isEmprestei ? "Para: " : "De: "}
@@ -1179,6 +1182,74 @@ export default function EmprestimosPage() {
         </div>
       </PontesModal>
 
+      {/* Modal: Histórico de pagamentos do empréstimo — antes de Aprovar/Rejeitar na árvore, pra
+          esses dois (abertos a partir de dentro do histórico) empilharem por cima (mesmo z-index
+          fixo no overlay — quem vem depois no DOM pinta em cima). */}
+      <PontesModal
+        open={historicoFor !== null}
+        title="Histórico de pagamentos"
+        onClose={() => setHistoricoFor(null)}
+        footer={<PontesButton onClick={() => setHistoricoFor(null)}>Fechar</PontesButton>}
+      >
+        <div className={styles.formCol}>
+          {historicoLoading ? (
+            <span className={styles.itemSub}>Carregando…</span>
+          ) : historico.length === 0 ? (
+            <span className={styles.itemSub}>Nenhum pagamento solicitado ainda.</span>
+          ) : (
+            <ul className={styles.pendentesList}>
+              {historico.map((h) => (
+                <li key={h.id} className={styles.pendenteItem}>
+                  <span className={styles.pendenteDesc}>
+                    <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}
+                    {" "}
+                    <PontesBadge
+                      size="sm"
+                      tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
+                        : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
+                    >
+                      {h.statusAprovacaoDescricao}
+                    </PontesBadge>
+                    <br />
+                    <span className={styles.itemSub}>
+                      Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
+                      {h.recebimentoData && ` · Entrada: ${formatDate(h.recebimentoData)}${h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}`}
+                    </span>
+                    {h.motivoRejeicao && (
+                      <>
+                        <br />
+                        <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
+                      </>
+                    )}
+                  </span>
+                  {h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Pendente && historicoEmprestimo?.souCredor && (
+                    <div className={styles.actions}>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
+                        disabled={avaliandoId === h.id}
+                        onClick={() => openAprovar(h.id)}>
+                        <Check size={14} />
+                      </PontesIconButton>
+                      <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
+                        disabled={avaliandoId === h.id}
+                        onClick={() => openRejeitar(h.id)}>
+                        <X size={14} />
+                      </PontesIconButton>
+                    </div>
+                  )}
+                  {h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada && h.solicitadoPor === currentUser?.id && (
+                    <PontesIconButton size={32} variant="ghost" aria-label="Reenviar pagamento"
+                      disabled={avaliandoId === h.id}
+                      onClick={() => handleReenviar(h.id)}>
+                      <RotateCcw size={14} />
+                    </PontesIconButton>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PontesModal>
+
       {/* Modal: Aprovar pagamento (credor confirma — sempre registra a entrada, vincular ou criar) */}
       <PontesModal
         open={aprovarFor !== null}
@@ -1264,57 +1335,6 @@ export default function EmprestimosPage() {
         </div>
       </PontesModal>
 
-      {/* Modal: Histórico de pagamentos do empréstimo */}
-      <PontesModal
-        open={historicoFor !== null}
-        title="Histórico de pagamentos"
-        onClose={() => setHistoricoFor(null)}
-        footer={<PontesButton onClick={() => setHistoricoFor(null)}>Fechar</PontesButton>}
-      >
-        <div className={styles.formCol}>
-          {historicoLoading ? (
-            <span className={styles.itemSub}>Carregando…</span>
-          ) : historico.length === 0 ? (
-            <span className={styles.itemSub}>Nenhum pagamento solicitado ainda.</span>
-          ) : (
-            <ul className={styles.pendentesList}>
-              {historico.map((h) => (
-                <li key={h.id} className={styles.pendenteItem}>
-                  <span className={styles.pendenteDesc}>
-                    <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}
-                    {" "}
-                    <PontesBadge
-                      size="sm"
-                      tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
-                        : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
-                    >
-                      {h.statusAprovacaoDescricao}
-                    </PontesBadge>
-                    <br />
-                    <span className={styles.itemSub}>
-                      Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
-                      {h.recebimentoData && ` · Entrada: ${formatDate(h.recebimentoData)}${h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}`}
-                    </span>
-                    {h.motivoRejeicao && (
-                      <>
-                        <br />
-                        <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
-                      </>
-                    )}
-                  </span>
-                  {h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada && h.solicitadoPor === currentUser?.id && (
-                    <PontesIconButton size={32} variant="ghost" aria-label="Reenviar pagamento"
-                      disabled={avaliandoId === h.id}
-                      onClick={() => handleReenviar(h.id)}>
-                      <RotateCcw size={14} />
-                    </PontesIconButton>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </PontesModal>
     </div>
   )
 }

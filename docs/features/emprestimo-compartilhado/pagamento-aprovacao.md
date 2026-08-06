@@ -216,6 +216,27 @@ lib, usado em outras telas pra banner inline com ícone+borda+cor semântica). O
 acrescenta ": " automático no texto (`<strong>{title}: </strong>`), o que quebrava o texto exato
 esperado nos testes e não fazia sentido pra um título de banner (não é "rótulo: valor").
 
+### Aprovar/Rejeitar também dentro do histórico do empréstimo (achado UI, 2026-08-06)
+
+Gustavo: "isso é um dado que tem que ter registro por empréstimo" — antes, Aprovar/Rejeitar só
+existiam no banner global do topo (`solicitacoes-pendentes`), que some assim que a pessoa age;
+"Reenviar" já vivia certo, preso ao histórico por empréstimo (`GET .../solicitacoes`), então a
+inconsistência ficava óbvia. Corrigido: o modal de histórico agora também mostra Aprovar/Rejeitar
+em cada item `Pendente` quando `historicoEmprestimo.souCredor` — mesmo fluxo/modais reaproveitados
+(`openAprovar`/`openRejeitar`), sem endpoint novo.
+
+**Gotcha de implementação:** `PontesModal` usa `z-index` fixo (9999) no overlay pra todo mundo —
+sem stacking dinâmico por ordem de abertura. Abrir "Aprovar" (ou "Rejeitar") de dentro do
+"Histórico" só empilha visualmente por cima se o modal de Histórico estiver **antes** dele na
+árvore JSX (elemento posterior no DOM pinta por cima com mesmo z-index). Resolvido reordenando o
+bloco do modal de Histórico pra antes dos blocos de Aprovar/Rejeitar no `EmprestimosPage.tsx`.
+Vale de lição pra qualquer modal que abre outro modal por cima: checar a ordem no JSX, não só o
+`open=`.
+
+Também corrigido no mesmo achado: empréstimo `AVista` não mostrava forma de pagamento nenhuma na
+lista (só `Parcelado` ganhava badge) — "preciso saber a forma de pagamento combinada do
+empréstimo". Agora todo item mostra o badge — `Parcelado Nx` ou `À vista`.
+
 ## Casos extremos
 
 - **Credor já registrou a entrada por fora, antes de ver a solicitação pendente** — vincula via

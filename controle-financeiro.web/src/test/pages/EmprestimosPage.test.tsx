@@ -90,6 +90,11 @@ const empParceladoDevedor = {
   ...empVinculadoComoDevedor, id: "e4", descricao: "Financiamento", formaPagamento: 2, quantidadeParcelas: 2,
 } as unknown as Emprestimo
 
+const empVinculadoComoCredor = {
+  ...emp, id: "e5", descricao: "Casa", statusVinculo: StatusVinculoEmprestimo.Vinculado,
+  souCredor: true, contraparteNome: "Ana",
+} as unknown as Emprestimo
+
 function renderPage() {
   return render(<PontesThemeProvider><EmprestimosPage /></PontesThemeProvider>)
 }
@@ -355,7 +360,7 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.click(screen.getByText("Novo Empréstimo"))
     await screen.findByText("Novo empréstimo")
 
-    fireEvent.click(screen.getByText("À vista"))
+    fireEvent.click(screen.getByRole("button", { name: "À vista" }))
     fireEvent.click(await screen.findByText("Parcelado"))
 
     fireEvent.click(screen.getByText("Criar empréstimo"))
@@ -398,5 +403,45 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.click(screen.getByText("Enviar pra aprovação"))
     expect(await screen.findByText("Escolha a parcela")).toBeInTheDocument()
     expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
+  })
+
+  // ── Ação por dentro do histórico (Gustavo 2026-08-06: aprovar/rejeitar não pode viver só no banner solto) ──
+
+  it("credor aprova pagamento pendente a partir do histórico do empréstimo", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
+    const pendenteHistorico: EmprestimoPagamentoSolicitacao = {
+      id: "sol-hist", emprestimoId: "e5", valor: 90,
+      statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
+      solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-08-01T00:00:00Z",
+      comprovanteData: "2026-08-01T00:00:00Z",
+    }
+    listSolicitacoesPagamento.mockResolvedValue([pendenteHistorico])
+    aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
+    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
+    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 3 }])
+    renderPage()
+    await screen.findByText("Casa")
+
+    fireEvent.click(screen.getByLabelText("Ver histórico de pagamentos"))
+    await screen.findByText("Histórico de pagamentos")
+    expect(await screen.findByLabelText("Aprovar pagamento")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
+    await screen.findByText("Aprovar pagamento")
+    fireEvent.click(screen.getByText("Ainda não registrei — registrar agora"))
+    fireEvent.click(screen.getAllByText("Selecione")[0])
+    fireEvent.click(await screen.findByText("Carteira"))
+    fireEvent.click(screen.getByText("Selecione"))
+    fireEvent.click(await screen.findByText("Outros"))
+    fireEvent.click(screen.getByText("Confirmar recebimento"))
+
+    expect(aprovarPagamentoEmprestimo).toHaveBeenCalledWith("sol-hist", {
+      contaId: "c1", categoriaId: "cat1", transacaoExistenteId: undefined,
+    })
+  })
+
+  it("empréstimo à vista mostra badge 'À vista'", async () => {
+    renderPage()
+    expect(await screen.findByText("À vista")).toBeInTheDocument()
   })
 })

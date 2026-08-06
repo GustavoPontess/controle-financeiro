@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-06
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Parcelamento (74fa438) e bug de data (fc25168) commitados+pushados. Motivo de rejeição + barra de progresso 3 cores (confirmado/pendente/recusado) + banners de pendência trocados pra PontesAlert (padrão da lib) — tudo implementado e verificado ao vivo, AINDA NÃO COMMITADO. PontesProgress ganhou suporte a `segments` (extensão de lib, com demo+smoke test). Autorização documentada por completo em pagamento-aprovacao.md. Próximo: especificar e implementar "unificar/consolidar" (credor propõe juntar N empréstimos da mesma pessoa num plano novo, devedor precisa aceitar) — última peça pro módulo fechar por completo. Back 376/376, front 327/327, tsc+lint limpos.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Commitados+pushados: parcelamento (74fa438), bug de data (fc25168), motivo de rejeição+barra 3 cores+banners PontesAlert (60c4168, ef567c9). Última rodada (AINDA NÃO COMMITADA): Aprovar/Rejeitar também dentro do histórico por empréstimo (antes só existia no banner global que some ao agir — inconsistente com Reenviar, que já vivia no histórico); corrigido gotcha de z-index fixo do PontesModal (ordem no JSX importa quando um modal abre outro por cima); badge "À vista" pros empréstimos não-parcelados (só Parcelado tinha indicador antes). Verificado ao vivo. Próximo: especificar e implementar "unificar/consolidar" (credor propõe juntar N empréstimos da mesma pessoa num plano novo, devedor precisa aceitar) — última peça pro módulo fechar por completo. Back 376/376, front 329/329, tsc+lint limpos.'
 ---
 
 # STATE — onde parei
@@ -191,11 +191,28 @@ ROADMAP seja P1. Empréstimos continua sendo a frente até esgotar tudo mapeado 
    aparece laranja, sobre um total de R$150). Back 376/376 (+1 teste), front 327/327 (+1 teste).
    **Commitado e pushado** (`60c4168`), junto com o motivo de rejeição.
 
+**Mais 2 achados ao vivo na mesma sessão (Gustavo revisando o resultado), já resolvidos — AINDA
+NÃO COMMITADOS:**
+5. **Aprovar/Rejeitar preso só no banner global, inconsistente com Reenviar** — "isso é um dado
+   que tem que ter registro por empréstimo... onde fica o botão pra reenviar pra pessoa". O
+   Reenviar já vivia certo dentro do histórico por empréstimo; Aprovar/Rejeitar só existiam no
+   banner do topo (some assim que age nele). Corrigido: histórico agora também mostra
+   Aprovar/Rejeitar em cada item `Pendente` quando `souCredor`, mesmos modais reaproveitados.
+   **Gotcha achado no processo:** `PontesModal` tem `z-index` fixo (9999) sem stacking dinâmico —
+   abrir um modal de dentro de outro só empilha por cima se vier depois dele na árvore JSX.
+   Corrigido reordenando o bloco do modal de Histórico pra antes de Aprovar/Rejeitar no arquivo.
+   Vale de lição geral pra qualquer modal-sobre-modal no projeto.
+6. **Empréstimo À Vista não mostrava forma de pagamento nenhuma** — "esse empréstimo aí, por que
+   tá assim, ele não foi parcelado, eu preciso saber a forma de pagamento combinada". Só
+   `Parcelado` ganhava badge; agora todo item mostra `Parcelado Nx` ou `À vista`.
+   Back 376/376 (sem mudança de contrato), front 329/329 (+2 testes).
+
 **Pendências reais, na ordem:**
-1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+1. Commitar os 2 achados acima (Aprovar/Rejeitar no histórico + gotcha de z-index + badge "À vista").
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.
-2. Implementar unificar/consolidar — última peça do módulo Empréstimos.
-3. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
+3. Implementar unificar/consolidar — última peça do módulo Empréstimos.
+4. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
    é a candidata mais provável, mas só depois do módulo fechado).
 5. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
