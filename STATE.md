@@ -216,7 +216,7 @@ tinha ido pro histórico (achado 5), o banner virou puro redundante. Removido po
 barra + item Pendente no histórico (nenhuma perda de informação, só menos redundância). **Banner
 de convites de vínculo mantido** — não é redundante, é o único lugar onde dá pra aceitar/recusar
 (registro nem aparece na lista principal do convidado antes do aceite). Front 328/328 (-1, teste
-duplicado removido no processo). **Ainda NÃO commitado.**
+duplicado removido no processo). **Commitado e pushado** (`1a3f6f7`).
 
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
