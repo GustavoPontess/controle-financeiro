@@ -16,7 +16,7 @@ import {
   listEmprestimosPage, getEmprestimoStats, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
   vincularEmprestimo, listConvitesPendentesEmprestimo,
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
-  solicitarPagamentoEmprestimo, listSolicitacoesPagamento, listSolicitacoesPagamentoPendentes,
+  solicitarPagamentoEmprestimo, listSolicitacoesPagamento,
   aprovarPagamentoEmprestimo, rejeitarPagamentoEmprestimo, reenviarPagamentoEmprestimo,
   listParcelasEmprestimo,
 } from "../../services/emprestimoService"
@@ -171,7 +171,6 @@ export default function EmprestimosPage() {
   const [vincularLoading, setVincularLoading] = useState(false)
 
   // Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
-  const [pagamentosPendentes, setPagamentosPendentes] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [avaliandoId, setAvaliandoId] = useState<string | null>(null)
   const [solicitarFor, setSolicitarFor] = useState<string | null>(null)
   const [solicitarForm, setSolicitarForm] = useState<{ valor?: number; contaId: string; categoriaId: string }>({ valor: undefined, contaId: "", categoriaId: "" })
@@ -215,13 +214,12 @@ export default function EmprestimosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, pagamentosPendentesResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult] = await Promise.all([
         listEmprestimosPage(page, pageSize),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
         getCategories(),
-        listSolicitacoesPagamentoPendentes(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
@@ -229,7 +227,6 @@ export default function EmprestimosPage() {
       setPendentes(pendentesResult)
       setContas(contasResult)
       setCategorias(categoriasResult)
-      setPagamentosPendentes(pagamentosPendentesResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -623,35 +620,6 @@ export default function EmprestimosPage() {
                   <PontesIconButton size={32} variant="ghost" aria-label="Recusar convite"
                     disabled={respondendoId === p.emprestimoId}
                     onClick={() => handleRecusarConvite(p.emprestimoId)}>
-                    <X size={14} />
-                  </PontesIconButton>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </PontesAlert>
-      )}
-
-      {pagamentosPendentes.length > 0 && (
-        <PontesAlert tone="warning">
-          <div className={styles.listHeadTitle}>
-            {pagamentosPendentes.length === 1 ? "1 pagamento aguardando sua aprovação" : `${pagamentosPendentes.length} pagamentos aguardando sua aprovação`}
-          </div>
-          <ul className={styles.pendentesList}>
-            {pagamentosPendentes.map((p) => (
-              <li key={p.id} className={styles.pendenteItem}>
-                <span className={styles.pendenteDesc}>
-                  <strong>{p.solicitadoPorNome}</strong> marcou {formatMoney(p.valor)} como pago
-                </span>
-                <div className={styles.actions}>
-                  <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
-                    disabled={avaliandoId === p.id}
-                    onClick={() => openAprovar(p.id)}>
-                    <Check size={14} />
-                  </PontesIconButton>
-                  <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
-                    disabled={avaliandoId === p.id}
-                    onClick={() => openRejeitar(p.id)}>
                     <X size={14} />
                   </PontesIconButton>
                 </div>

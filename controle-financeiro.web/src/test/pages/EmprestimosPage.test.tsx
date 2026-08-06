@@ -28,7 +28,6 @@ const aceitarVinculoEmprestimoPorId = vi.fn()
 const recusarVinculoEmprestimoPorId = vi.fn()
 const solicitarPagamentoEmprestimo = vi.fn()
 const listSolicitacoesPagamento = vi.fn()
-const listSolicitacoesPagamentoPendentes = vi.fn()
 const aprovarPagamentoEmprestimo = vi.fn()
 const rejeitarPagamentoEmprestimo = vi.fn()
 const reenviarPagamentoEmprestimo = vi.fn()
@@ -47,7 +46,6 @@ vi.mock("../../services/emprestimoService", () => ({
   recusarVinculoEmprestimoPorId: (...a: unknown[]) => recusarVinculoEmprestimoPorId(...a),
   solicitarPagamentoEmprestimo: (...a: unknown[]) => solicitarPagamentoEmprestimo(...a),
   listSolicitacoesPagamento: (...a: unknown[]) => listSolicitacoesPagamento(...a),
-  listSolicitacoesPagamentoPendentes: (...a: unknown[]) => listSolicitacoesPagamentoPendentes(...a),
   aprovarPagamentoEmprestimo: (...a: unknown[]) => aprovarPagamentoEmprestimo(...a),
   rejeitarPagamentoEmprestimo: (...a: unknown[]) => rejeitarPagamentoEmprestimo(...a),
   reenviarPagamentoEmprestimo: (...a: unknown[]) => reenviarPagamentoEmprestimo(...a),
@@ -118,7 +116,6 @@ describe("EmprestimosPage (#152)", () => {
     listTransactionsPage.mockReset().mockResolvedValue(paged([]))
     solicitarPagamentoEmprestimo.mockReset()
     listSolicitacoesPagamento.mockReset().mockResolvedValue([])
-    listSolicitacoesPagamentoPendentes.mockReset().mockResolvedValue([])
     aprovarPagamentoEmprestimo.mockReset()
     rejeitarPagamentoEmprestimo.mockReset()
     reenviarPagamentoEmprestimo.mockReset()
@@ -250,21 +247,23 @@ describe("EmprestimosPage (#152)", () => {
     expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
   })
 
-  it("credor vê pagamentos pendentes, bloqueia sem escolher opção e aprova criando entrada", async () => {
+  it("credor abre histórico, bloqueia aprovação sem escolher opção e aprova criando entrada", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
     const pendente: EmprestimoPagamentoSolicitacao = {
-      id: "sol1", emprestimoId: "e1", valor: 150,
+      id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
       comprovanteData: "2026-07-01T00:00:00Z",
     }
-    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    listSolicitacoesPagamento.mockResolvedValue([pendente])
     aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
     getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
     getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 3 }])
     renderPage()
+    await screen.findByText("Casa")
 
-    expect(await screen.findByText("1 pagamento aguardando sua aprovação")).toBeInTheDocument()
-    expect(screen.getByText(/Ana/)).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Ver histórico de pagamentos"))
+    await screen.findByText("Histórico de pagamentos")
 
     fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
     await screen.findByText("Aprovar pagamento")
@@ -285,17 +284,20 @@ describe("EmprestimosPage (#152)", () => {
     })
   })
 
-  it("credor rejeita pagamento pendente sem motivo", async () => {
+  it("credor rejeita pagamento pendente sem motivo, a partir do histórico", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
     const pendente: EmprestimoPagamentoSolicitacao = {
-      id: "sol1", emprestimoId: "e1", valor: 150,
+      id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
     }
-    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    listSolicitacoesPagamento.mockResolvedValue([pendente])
     rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
     renderPage()
+    await screen.findByText("Casa")
 
-    await screen.findByText("1 pagamento aguardando sua aprovação")
+    fireEvent.click(screen.getByLabelText("Ver histórico de pagamentos"))
+    await screen.findByText("Histórico de pagamentos")
     fireEvent.click(screen.getByLabelText("Rejeitar pagamento"))
     await screen.findByText("Rejeitar pagamento")
     fireEvent.click(screen.getByText("Rejeitar"))
@@ -303,17 +305,20 @@ describe("EmprestimosPage (#152)", () => {
     expect(rejeitarPagamentoEmprestimo).toHaveBeenCalledWith("sol1", undefined)
   })
 
-  it("credor rejeita pagamento pendente informando motivo", async () => {
+  it("credor rejeita pagamento pendente informando motivo, a partir do histórico", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
     const pendente: EmprestimoPagamentoSolicitacao = {
-      id: "sol1", emprestimoId: "e1", valor: 150,
+      id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
     }
-    listSolicitacoesPagamentoPendentes.mockResolvedValue([pendente])
+    listSolicitacoesPagamento.mockResolvedValue([pendente])
     rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
     renderPage()
+    await screen.findByText("Casa")
 
-    await screen.findByText("1 pagamento aguardando sua aprovação")
+    fireEvent.click(screen.getByLabelText("Ver histórico de pagamentos"))
+    await screen.findByText("Histórico de pagamentos")
     fireEvent.click(screen.getByLabelText("Rejeitar pagamento"))
     await screen.findByText("Rejeitar pagamento")
     fireEvent.change(screen.getByPlaceholderText("Ex: valor não bate com o combinado"), {
@@ -403,41 +408,6 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.click(screen.getByText("Enviar pra aprovação"))
     expect(await screen.findByText("Escolha a parcela")).toBeInTheDocument()
     expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
-  })
-
-  // ── Ação por dentro do histórico (Gustavo 2026-08-06: aprovar/rejeitar não pode viver só no banner solto) ──
-
-  it("credor aprova pagamento pendente a partir do histórico do empréstimo", async () => {
-    listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
-    const pendenteHistorico: EmprestimoPagamentoSolicitacao = {
-      id: "sol-hist", emprestimoId: "e5", valor: 90,
-      statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
-      solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-08-01T00:00:00Z",
-      comprovanteData: "2026-08-01T00:00:00Z",
-    }
-    listSolicitacoesPagamento.mockResolvedValue([pendenteHistorico])
-    aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
-    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
-    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 3 }])
-    renderPage()
-    await screen.findByText("Casa")
-
-    fireEvent.click(screen.getByLabelText("Ver histórico de pagamentos"))
-    await screen.findByText("Histórico de pagamentos")
-    expect(await screen.findByLabelText("Aprovar pagamento")).toBeInTheDocument()
-
-    fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
-    await screen.findByText("Aprovar pagamento")
-    fireEvent.click(screen.getByText("Ainda não registrei — registrar agora"))
-    fireEvent.click(screen.getAllByText("Selecione")[0])
-    fireEvent.click(await screen.findByText("Carteira"))
-    fireEvent.click(screen.getByText("Selecione"))
-    fireEvent.click(await screen.findByText("Outros"))
-    fireEvent.click(screen.getByText("Confirmar recebimento"))
-
-    expect(aprovarPagamentoEmprestimo).toHaveBeenCalledWith("sol-hist", {
-      contaId: "c1", categoriaId: "cat1", transacaoExistenteId: undefined,
-    })
   })
 
   it("empréstimo à vista mostra badge 'À vista'", async () => {

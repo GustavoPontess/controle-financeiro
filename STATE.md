@@ -208,6 +208,16 @@ NÃO COMMITADOS:**
    Back 376/376 (sem mudança de contrato), front 329/329 (+2 testes). **Commitado e pushado**
    (`d600602`).
 
+**Mais 1 achado ao vivo, na mesma rodada — banner de pagamento removido de vez:** Gustavo viu o
+banner de novo e foi direto — "não quero que tenha esse banner aí não". Como Aprovar/Rejeitar já
+tinha ido pro histórico (achado 5), o banner virou puro redundante. Removido por completo:
+`pagamentosPendentes` state, chamada a `listSolicitacoesPagamentoPendentes` em `loadData`, bloco
+`PontesAlert` no JSX, mocks mortos nos testes. Pendência continua visível via segmento laranja da
+barra + item Pendente no histórico (nenhuma perda de informação, só menos redundância). **Banner
+de convites de vínculo mantido** — não é redundante, é o único lugar onde dá pra aceitar/recusar
+(registro nem aparece na lista principal do convidado antes do aceite). Front 328/328 (-1, teste
+duplicado removido no processo). **Ainda NÃO commitado.**
+
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.

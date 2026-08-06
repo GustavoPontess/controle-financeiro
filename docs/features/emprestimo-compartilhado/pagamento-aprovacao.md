@@ -237,6 +237,20 @@ Também corrigido no mesmo achado: empréstimo `AVista` não mostrava forma de p
 lista (só `Parcelado` ganhava badge) — "preciso saber a forma de pagamento combinada do
 empréstimo". Agora todo item mostra o badge — `Parcelado Nx` ou `À vista`.
 
+### Banner de "pagamentos aguardando aprovação" removido (achado UI, 2026-08-06)
+
+Depois do ponto acima (Aprovar/Rejeitar também no histórico por empréstimo), o banner global no
+topo virou puro redundante — Gustavo: "não quero que tenha esse banner aí não". Removido por
+completo: `pagamentosPendentes` (state), a chamada a `listSolicitacoesPagamentoPendentes` em
+`loadData`, e o bloco `PontesAlert` correspondente. A pendência de aprovação continua visível de
+duas formas, ambas presas ao registro do empréstimo (não a um feed solto): o segmento laranja na
+barra de progresso (`ValorPendente`) e o item `Pendente` dentro do histórico, com Aprovar/Rejeitar
+ali mesmo.
+
+**O banner de "convites de empréstimo pendentes" foi mantido** — não é redundante como o de
+pagamento: aceitar/recusar vínculo só existe ali, não há ainda um lugar por-registro pra isso (o
+`Emprestimo` nem aparece na lista principal do usuário convidado antes do aceite).
+
 ## Casos extremos
 
 - **Credor já registrou a entrada por fora, antes de ver a solicitação pendente** — vincula via
