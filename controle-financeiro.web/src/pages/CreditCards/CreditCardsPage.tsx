@@ -518,7 +518,7 @@ export default function CreditCardsPage() {
             <div className={styles.txMain}>
               <span className={styles.txDesc}>{l.t.descricao}</span>
               <span className={styles.txMeta}>
-                {new Date(l.t.data).toLocaleDateString("pt-BR")} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(l.t.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 {l.t.categoriaDescricao ? ` · ${l.t.categoriaDescricao}` : ""}
               </span>
             </div>

@@ -29,8 +29,10 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString("pt-BR") : "—"
+  d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
 const today = () => new Date().toISOString().slice(0, 10)
 

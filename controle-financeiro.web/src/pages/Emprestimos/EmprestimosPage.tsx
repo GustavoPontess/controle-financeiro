@@ -41,7 +41,7 @@ const errorMessage = (err: unknown, fallback: string): string =>
 // Formata em UTC — datas do backend (vencimento, comprovante) são "dia calendário", não instante
 // exato; formatar em fuso local desloca 1 dia pra trás em qualquer fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
-  d ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(d)) : "—"
+  d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
 const today = () => new Date().toISOString().slice(0, 10)
 

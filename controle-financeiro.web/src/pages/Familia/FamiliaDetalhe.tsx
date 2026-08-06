@@ -62,7 +62,9 @@ type ConfirmState = {
 
 type TabId = "despesas" | "dependentes" | "acertos"
 
-const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
+const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
 
 export type FamiliaDetalheProps = {
   familiaId: string

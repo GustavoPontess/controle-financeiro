@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-06
 status: EM_PROGRESSO
-foco: 'Empréstimo: forma de pagamento (parcelas/juros/multa) IMPLEMENTADA — EmprestimoParcela nova, migration AddParcelamentoEmprestimo aplicada no banco de dev, endpoint GET /emprestimos/{id}/parcelas, frontend com form de parcelado + expandir parcelas + picker de parcela ao marcar como pago. Back 373/373, front 325/325, tsc+lint limpos. Verificado ao vivo no browser (criou parcelado 4x com juros, valores batendo). Achado e corrigido bug real de exibição de data (formatDate sem fuso fixo) no arquivo mexido; catalogado no ROADMAP pra os outros 8 arquivos com o mesmo padrão. NADA commitado ainda desta rodada (a feature anterior de pagamento-com-aprovação já está commitada em a9586a5). Próximo: decidir com o Gustavo se commita agora.'
+foco: 'Empréstimo: forma de pagamento (parcelas/juros/multa) COMMITADA (74fa438) e PUSHADA. EmprestimoParcela nova, migration AddParcelamentoEmprestimo aplicada no banco de dev, endpoint GET /emprestimos/{id}/parcelas, frontend com form de parcelado + expandir parcelas + picker de parcela ao marcar como pago. Back 373/373, front 325/325, tsc+lint limpos. Verificado ao vivo no browser. Achado e corrigido bug real de exibição de data (formatDate sem fuso fixo) no arquivo mexido; catalogado no ROADMAP pra os outros 8 arquivos com o mesmo padrão — próximo a atacar. Branch feature/emprestimo-compartilhado tem 2 commits não abertos em PR ainda (a9586a5, 74fa438).'
 ---
 
 # STATE — onde parei
@@ -132,14 +132,21 @@ arquivos** do front (`CreditCardsPage`, `RecorrentesPage`, `FamiliaDetalhe`, `Tr
 `components/Notificacoes/NotificationBell`) — catalogado no ROADMAP como achado 🟠 P1 separado, não
 corrigido nesta sessão (fora do escopo desta feature).
 
-**Ainda NÃO commitado** — tudo desta rodada (parcelamento) solto no working tree, em cima do
-commit `a9586a5` já pushado da feature anterior.
+**Commitado e pushado** — feature de parcelamento em `74fa438`, em cima do `a9586a5` já pushado da
+feature anterior. Branch `feature/emprestimo-compartilhado` com 2 commits, PR ainda não aberto.
+
+**Achado do `formatDate` resolvido (2026-08-06)** — dos 8 arquivos catalogados, 2 eram
+falso-positivo (`NotificationBell.tsx` formata timestamp real, fuso local é o certo;
+`components/pontes/form/DateInput.tsx` faz round-trip só com componentes locais, nunca toca
+string do backend). Os 6 reais corrigidos com `timeZone: "UTC"` (`EmprestimosPage`,
+`TransferenciasPage`, `FamiliaDetalhe`, `ImportacaoPage`, `RecorrentesPage`, `Parcelamentos/[id]`,
+`CreditCardsPage` — que tinha 1 ocorrência esquecida do padrão que o resto do arquivo já usava).
+tsc+lint limpos, 325/325 front. **Ainda NÃO commitado** essa rodada da correção.
 
 **Pendências reais, na ordem:**
-1. Decidir com o Gustavo: commitar a feature de parcelamento agora?
-2. Corrigir o achado sistêmico de `formatDate` nos outros 8 arquivos (P1, catalogado, não atacado).
-3. Decidir se abre PR (`a9586a5` + o que for commitado agora) ou continua acumulando na branch.
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
+1. Commitar a correção do `formatDate` (pronta, testada).
+2. Decidir se abre PR (`a9586a5` + `74fa438` + o que for commitado agora) ou continua acumulando.
+3. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
