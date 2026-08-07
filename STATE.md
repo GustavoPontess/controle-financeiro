@@ -224,7 +224,7 @@ duplicado removido no processo). **Commitado e pushado** (`1a3f6f7`).
 2. Implementar unificar/consolidar — última peça do módulo Empréstimos.
 3. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
    é a candidata mais provável, mas só depois do módulo fechado).
-5. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
@@ -244,11 +244,10 @@ duplicado removido no processo). **Commitado e pushado** (`1a3f6f7`).
 
 ## Próxima ação concreta
 
-1. Commitar o motivo de rejeição (pronto, testado, verificado ao vivo).
-2. Escrever a spec técnica de "unificar/consolidar" (nova seção em
+1. Escrever a spec técnica de "unificar/consolidar" (nova seção em
    `parcelamento-e-agrupamento.md` §3) — devedor precisa aceitar, decidido com o Gustavo.
-3. Implementar unificar/consolidar — última peça mapeada do módulo Empréstimos.
-4. Só depois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo primeiro).
+2. Implementar unificar/consolidar — última peça mapeada do módulo Empréstimos.
+3. Só depois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
