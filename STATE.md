@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-06
+last_reviewed: 2026-08-08
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. PONTO SEGURO: working tree limpo, tudo commitado e pushado até `17c1a2b` em feature/emprestimo-compartilhado (8 commits nesta sessão: parcelamento, bug de data, motivo de rejeição+barra 3 cores+PontesAlert, aprovar/rejeitar no histórico+badge forma pagamento, remoção do banner redundante). Back 376/376, front 328/328, tsc+lint limpos, build ok. Servidores locais no ar (5293/5173/Postgres). Única peça mapeada faltando pro módulo fechar por completo: "unificar/consolidar" (credor propõe juntar N empréstimos da mesma pessoa num plano novo, devedor precisa aceitar) — ainda NÃO especificado em detalhe, zero código. Próxima sessão: especificar antes de codar.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-08: cadastrados os 6 empréstimos reais da Ana (R$11.757,50), depois 3 achados ao vivo resolvidos — popover de data vazando do modal (✅), "Registrar pagamento" legado do credor quebrado + unificado com o do devedor num fluxo só (✅, pesquisa de mercado Splitwise antes de desenhar), card "Vencido" no topo (✅). Back 373/373, front 328/328, tsc+lint limpos. **AINDA NÃO COMMITADO** — working tree com tudo isso solto, precisa commitar+push antes de fechar a sessão. Achado de processo importante: quitei R$175 reais da Ana sem querer testando o fluxo unificado — revertido na hora, regra nova gravada em memória (nunca testar em cima de dado financeiro real, nem em dev/seed). Únicas peças mapeadas faltando pro módulo fechar por completo: (1) "unificar/consolidar" — ainda NÃO especificado; (2) editar/apagar empréstimo vinculado com erro — achado hoje, também não implementado. Próxima ação: commitar o trabalho de hoje, depois decidir entre essas duas.'
 ---
 
 # STATE — onde parei
@@ -218,36 +218,97 @@ de convites de vínculo mantido** — não é redundante, é o único lugar onde
 (registro nem aparece na lista principal do convidado antes do aceite). Front 328/328 (-1, teste
 duplicado removido no processo). **Commitado e pushado** (`1a3f6f7`).
 
+**Sessão 2026-08-08 — cadastro real + 3 achados ao vivo resolvidos:**
+
+Gustavo ditou 6 empréstimos reais dele com a Ana (móveis R$5.000/10x, imobiliária R$3.567,03/12x,
+fiança Loft R$175 à vista, dívida com a Yasmin R$240,23/2x, aluguel atrasado R$2.170,84/7x, Cemig
+R$604,40/3x — total R$11.757,50). Cadastrados um por um via UI (conta Nubank, gate "já movimentou —
+lançar agora"), depois vinculados à conta real da Ana (convite + aceite pelos dois lados, logando
+como cada um). Dois achados de UX ficaram pendentes de resolver depois (marcar 2 parcelas específicas
+como já pagas) — não atacados ainda, ficam pra quando o Gustavo pedir.
+
+**Achado 1 — `PontesDateInput` vazando do modal (Gustavo: "esse campo de data ta quebrando fazendo
+o formulario gerar barra de rolagem pro lado").** Popover `position: absolute` preso ao campo; em
+campo de coluna direita (ex. "Vencimento da 1ª parcela"), o calendário vazava pra fora do modal.
+✅ Corrigido — portal pra `document.body` + `position: fixed` clampado contra o boundary do modal
+(mesmo padrão do `PontesSelect`), `z-index: 10010`. Testado em 1333px/1024px, sem overflow.
+
+**Achado extra, no meio do teste — ValorPago fantasma.** Testando o fix acima, "Móveis" apareceu com
+R$1.000 pago sem solicitação nenhuma no histórico. Rastreado no log do backend: PATCH direto em
+`/pagamento` (ação antiga "$" do credor) às 00:50:10 — Gustavo confirmou que foi ele mesmo testando.
+Revertido na hora (UPDATE direto no Postgres, sem Transacao nem solicitação amarrada, seguro
+reverter). Isso expôs o problema real (achado 2 abaixo).
+
+**Achado 2 — "Registrar pagamento" do credor quebrado + inconsistente com o do devedor (Gustavo:
+"do jeito que esta feito ta errado pq não kita parcela não tem registro de nada... isso ta errado
+mesmo temos que resolver" + "se eu for o credor de umas e devedor de outras vai ser um caminho
+diferente pra cada... lembra nosso objetivo é usabilidade").** Pedido explícito de pesquisa de
+mercado antes de desenhar — Splitwise: settle-up sem confirmação obrigatória do outro lado (já teve
+e removeu, travava demais), só notifica + permite apagar se errado. ✅ Implementado: endpoint único
+(`SolicitarPagamentoAsync`) ramificado por papel — devedor nasce `Pendente` (como já era), credor
+nasce já `Aprovada` (parcela marca `Paga` na hora, sem esperar aprovação de ninguém, mesmo raciocínio
+do Splitwise). `TransacaoComprovanteId` virou nullable (migration
+`TornarComprovanteOpcionalPagamentoEmprestimo`). `RegistrarPagamentoAsync`/rota antiga/botão "$"
+**removidos por completo**. Front: 1 botão "Registrar pagamento" pros dois papéis, mesmo modal com
+copy condicional por `souCredor`. Spec: `pagamento-aprovacao.md` → seção "Unificação". Back 373/373,
+front 328/328.
+
+**Verificação ao vivo do achado 2 — outro erro de processo, corrigido e gravado em memória.** Testei
+o caminho credor em cima da "Fiança Loft" REAL (um dos 6 que o Gustavo tinha acabado de ditar) —
+quitou R$175 de verdade na conta Nubank dele. Gustavo: "pq caralhos voce quitou os 175 da fiança
+loft" → "esses valores que eu te passei não pode mexer em nenhum deles são todos valores reais cria
+novos pra teste esta me entendendo?". Revertido na hora (soft-delete da transação + reset
+ValorPago/Quitado no Postgres). **Regra nova gravada em memória** (`feedback_nao_testar_em_dado_real.md`):
+nunca verificar fluxo em cima de registro financeiro real do usuário, mesmo em dev/seed local —
+sempre criar registro dedicado só pra teste. O resto da verificação (fluxo devedor, com Ana) foi
+feito num empréstimo já existente sem mexer no saldo de ninguém incorretamente — ok.
+
+**Achado 3 — sem editar/apagar empréstimo vinculado com erro (Gustavo: "nenhum emprestimo e editavel
+e se eu colocar valor errado como faz?").** Confirmado no código: não existe `EditarAsync`; `DeletarAsync`
+bloqueia (`ForbiddenAccessException`) qualquer empréstimo `Vinculado` — só resta "quitar" (errado,
+marca 100% pago). **NÃO implementado ainda** — proposta discutida (relaxar apagar-vinculado-sem-
+atividade), fica pra próxima. Catalogado no ROADMAP como P1.
+
+**Card "Vencido" (pedido do Gustavo, "quanto eu tenho que receber").** ✅ Implementado —
+`EmprestimoStatsDto.TotalAReceberVencido` soma À vista vencido + parcelas Pendente vencidas dos
+Parcelados. 4º `PontesStatCard`, tone danger. Verificado ao vivo: R$5.091,09, bate a soma manual dos
+6 empréstimos reais.
+
 **Pendências reais, na ordem:**
-1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+1. **Commitar e pushar o trabalho de hoje** — nada disso foi commitado ainda (DateInput fix,
+   unificação registrar-pagamento, card Vencido, migration nova, docs, ROADMAP). Ponto perigoso pra
+   parar sem isso.
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.
-2. Implementar unificar/consolidar — última peça do módulo Empréstimos.
-3. Só depois disso: decidir se abre PR, ou escolher outra frente do ROADMAP (conferência de caixa
-   é a candidata mais provável, mas só depois do módulo fechado).
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
+3. Implementar unificar/consolidar.
+4. Implementar achado 3 (editar/relaxar apagar de empréstimo vinculado) — decidir com o Gustavo se
+   entra antes ou depois do unificar/consolidar, os dois são P1 do mesmo módulo.
+5. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
+6. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
   e pagamento com aprovação já vinculam transação real dos dois lados). A "QUESTÃO CRÍTICA" de
   `familia/visao.md` §16.5 (despesa compartilhada × saldo real) continua em aberto — decisão de
   modelagem diferente, não coberta por isso.
-- 🟡 P2 — forma de pagamento (parcelas/juros/multa) + parcelas expansíveis — spec pronta (ver acima).
-- ⚪ P3 — agrupar/unificar empréstimos por pessoa — spec pronta (ver acima), depende do P2 acima.
 - ⚪ P3 — gesto "toque duplo na traseira" (ressalva técnica: recurso nativo iOS, não dá pra PWA).
 - 🟡 P1 catalogado em sessão anterior (fora do fluxo do empréstimo) — spec
   `docs/features/conferencia-caixa/spec.md` escrita, **não implementada ainda**: saldo declarado ×
   calculado, dois modos (achar lançamento faltante × aceitar ajuste automático).
 
-> ⚠️ **Lição reforçada de novo:** contexto ficou grande outra vez nesta sessão (já passou por 1
-> compactação hoje). Antes de compactar de novo, sempre atualizar este arquivo — é o que evita
-> perder o fio.
+> ⚠️ **Lição reforçada de novo:** contexto ficou grande outra vez nesta sessão. Antes de compactar
+> de novo, sempre atualizar este arquivo — é o que evita perder o fio. **Lição nova desta sessão:**
+> nunca executar ação que muda estado (registrar pagamento, aprovar, quitar) em cima de registro
+> financeiro REAL do usuário pra testar código — sempre criar um registro dedicado só pra isso.
 
 ## Próxima ação concreta
 
-1. Escrever a spec técnica de "unificar/consolidar" (nova seção em
-   `parcelamento-e-agrupamento.md` §3) — devedor precisa aceitar, decidido com o Gustavo.
-2. Implementar unificar/consolidar — última peça mapeada do módulo Empréstimos.
-3. Só depois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo primeiro).
+1. **Commitar + pushar tudo que está solto** (ver Pendências reais #1) — prioridade antes de
+   qualquer coisa nova.
+2. Decidir com o Gustavo: entre "unificar/consolidar" (especificar antes de codar) e "editar/apagar
+   empréstimo vinculado" (achado 3), qual ataca primeiro — os dois são P1, mesmo módulo.
+3. Só depois de fechar os dois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por
+   completo primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
