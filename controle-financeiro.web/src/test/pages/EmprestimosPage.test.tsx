@@ -19,7 +19,6 @@ vi.mock("../../hooks/useAuth", () => ({
 const listEmprestimosPage = vi.fn()
 const getEmprestimoStats = vi.fn()
 const createEmprestimo = vi.fn()
-const registrarPagamento = vi.fn()
 const quitarEmprestimo = vi.fn()
 const deleteEmprestimo = vi.fn()
 const vincularEmprestimo = vi.fn()
@@ -37,7 +36,6 @@ vi.mock("../../services/emprestimoService", () => ({
   getEmprestimoStats: (...a: unknown[]) => getEmprestimoStats(...a),
   getEmprestimos: () => Promise.resolve([]),
   createEmprestimo: (...a: unknown[]) => createEmprestimo(...a),
-  registrarPagamento: (...a: unknown[]) => registrarPagamento(...a),
   quitarEmprestimo: (...a: unknown[]) => quitarEmprestimo(...a),
   deleteEmprestimo: (...a: unknown[]) => deleteEmprestimo(...a),
   vincularEmprestimo: (...a: unknown[]) => vincularEmprestimo(...a),
@@ -101,11 +99,10 @@ describe("EmprestimosPage (#152)", () => {
   beforeEach(() => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([emp]))
     getEmprestimoStats.mockReset().mockResolvedValue({
-      totalAReceber: 800, totalAPagar: 0, ativos: 1, qtdTotal: 1,
+      totalAReceber: 800, totalAPagar: 0, ativos: 1, qtdTotal: 1, totalAReceberVencido: 0,
     })
     listConvitesPendentesEmprestimo.mockReset().mockResolvedValue([])
     createEmprestimo.mockReset().mockResolvedValue(undefined)
-    registrarPagamento.mockReset().mockResolvedValue(undefined)
     quitarEmprestimo.mockReset().mockResolvedValue(undefined)
     deleteEmprestimo.mockReset().mockResolvedValue(undefined)
     vincularEmprestimo.mockReset()
@@ -165,21 +162,21 @@ describe("EmprestimosPage (#152)", () => {
     expect(key.length).toBeGreaterThan(10)
   })
 
-  it("valida pagamento sem valor", async () => {
+  it("registrar pagamento sem escolher opção bloqueia (credor)", async () => {
     renderPage()
     await screen.findByText("Viagem")
     fireEvent.click(screen.getByLabelText("Registrar pagamento"))
-    await screen.findByText("Registrar pagamento")
-    fireEvent.click(screen.getByText("Confirmar"))
-    expect(await screen.findByText("Informe um valor maior que zero")).toBeInTheDocument()
-    expect(registrarPagamento).not.toHaveBeenCalled()
+    await screen.findByText("Como registrar esse recebimento?")
+    fireEvent.click(screen.getByText("Confirmar recebimento"))
+    expect(await screen.findByText("Escolha uma opção")).toBeInTheDocument()
+    expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
   })
 
-  it("esconde pagamento/quitar quando não sou credor (devedor vinculado)", async () => {
+  it("devedor vinculado vê Registrar pagamento (unificado) mas não Marcar como quitado", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoDevedor]))
     renderPage()
     await screen.findByText("Aluguel")
-    expect(screen.queryByLabelText("Registrar pagamento")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Registrar pagamento")).toBeInTheDocument()
     expect(screen.queryByLabelText("Marcar como quitado")).not.toBeInTheDocument()
     expect(screen.getByText("Vinculado")).toBeInTheDocument()
     expect(screen.getByText("Gustavo")).toBeInTheDocument() // contraparteNome, não o texto livre
@@ -221,12 +218,12 @@ describe("EmprestimosPage (#152)", () => {
     expect(screen.queryByLabelText("Vincular a uma pessoa")).not.toBeInTheDocument()
   })
 
-  it("devedor vinculado vê 'Marcar como pago' e bloqueia sem escolher opção", async () => {
+  it("devedor vinculado bloqueia registrar pagamento sem escolher opção", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoDevedor]))
     renderPage()
     await screen.findByText("Aluguel")
-    fireEvent.click(screen.getByLabelText("Marcar como pago"))
-    await screen.findByText("Marcar como pago")
+    fireEvent.click(screen.getByLabelText("Registrar pagamento"))
+    await screen.findByText("Como comprovar esse pagamento?")
 
     fireEvent.click(screen.getByText("Enviar pra aprovação"))
     expect(await screen.findByText("Escolha uma opção")).toBeInTheDocument()
@@ -237,8 +234,8 @@ describe("EmprestimosPage (#152)", () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoDevedor]))
     renderPage()
     await screen.findByText("Aluguel")
-    fireEvent.click(screen.getByLabelText("Marcar como pago"))
-    await screen.findByText("Marcar como pago")
+    fireEvent.click(screen.getByLabelText("Registrar pagamento"))
+    await screen.findByText("Como comprovar esse pagamento?")
 
     fireEvent.click(screen.getByText("Ainda não lancei — lançar agora"))
     fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "5000" } })
@@ -253,7 +250,7 @@ describe("EmprestimosPage (#152)", () => {
       id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
-      comprovanteData: "2026-07-01T00:00:00Z",
+      comprovanteData: "2026-07-01T00:00:00Z", registradoPeloCredor: false,
     }
     listSolicitacoesPagamento.mockResolvedValue([pendente])
     aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
@@ -290,6 +287,7 @@ describe("EmprestimosPage (#152)", () => {
       id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
+      comprovanteData: "2026-07-01T00:00:00Z", registradoPeloCredor: false,
     }
     listSolicitacoesPagamento.mockResolvedValue([pendente])
     rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
@@ -311,6 +309,7 @@ describe("EmprestimosPage (#152)", () => {
       id: "sol1", emprestimoId: "e5", valor: 150,
       statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Pendente, statusAprovacaoDescricao: "Pendente",
       solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-07-01T00:00:00Z",
+      comprovanteData: "2026-07-01T00:00:00Z", registradoPeloCredor: false,
     }
     listSolicitacoesPagamento.mockResolvedValue([pendente])
     rejeitarPagamentoEmprestimo.mockResolvedValue(undefined)
@@ -400,8 +399,7 @@ describe("EmprestimosPage (#152)", () => {
     renderPage()
     await screen.findByText("Financiamento")
 
-    fireEvent.click(screen.getByLabelText("Marcar como pago"))
-    await screen.findByText("Marcar como pago")
+    fireEvent.click(screen.getByLabelText("Registrar pagamento"))
     expect(await screen.findByText("Qual parcela isso quita?")).toBeInTheDocument()
     expect(listParcelasEmprestimo).toHaveBeenCalledWith("e4")
 

@@ -47,13 +47,6 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         return CreatedAtAction(nameof(Buscar), new { id = result.Id }, result);
     }
 
-    [HttpPatch("{id:guid}/pagamento")]
-    public async Task<IActionResult> RegistrarPagamento(Guid id, [FromBody] PagamentoDto dto)
-    {
-        var ok = await _service.RegistrarPagamentoAsync(id, dto.Valor, UserId);
-        return ok ? NoContent() : NotFound();
-    }
-
     [HttpPatch("{id:guid}/quitar")]
     public async Task<IActionResult> Quitar(Guid id)
     {
@@ -138,7 +131,8 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
 
     // ── Pagamento com comprovante + aprovação ──────────────────────────────────
 
-    /// <summary>Devedor solicita pagamento anexando comprovante (cria a Transacao real junto).</summary>
+    /// <summary>Registra pagamento — devedor ou credor, mesmo endpoint (cria a Transacao real
+    /// junto). Devedor: nasce Pendente. Credor: nasce já Aprovada.</summary>
     [HttpPost("{id:guid}/solicitar-pagamento")]
     [ProducesResponseType(typeof(EmprestimoPagamentoSolicitacaoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SolicitarPagamento(Guid id, [FromBody] SolicitarPagamentoEmprestimoDto dto)
@@ -188,4 +182,3 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     }
 }
 
-public record PagamentoDto(decimal Valor);

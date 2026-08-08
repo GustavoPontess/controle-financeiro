@@ -150,4 +150,6 @@ export interface EmprestimoPagamentoSolicitacao {
   recebimentoContaNome?: string
   /** Texto livre que o credor escreveu ao rejeitar — opcional. */
   motivoRejeicao?: string
+  /** True quando foi o credor quem registrou (nasceu já aprovada, sem comprovante de saída). */
+  registradoPeloCredor: boolean
 }

@@ -85,9 +85,12 @@ Família — mesmo padrão, enum próprio, domínios diferentes):
 - `Id` (Guid)
 - `EmprestimoId` (Guid, FK → `Emprestimo`)
 - `Valor` (decimal)
-- `TransacaoComprovanteId` (Guid, FK → `Transacao`, **obrigatório** — diferente da criação de
-  empréstimo onde o vínculo a transação é opcional; aqui não existe "solicitar sem comprovante")
-- `SolicitadoPor` (Guid — sempre o devedor no momento da solicitação)
+- `TransacaoComprovanteId` (Guid**?**, FK → `Transacao`) — obrigatório quando quem registra é o
+  **devedor** (não existe solicitação dele sem comprovante); **null** quando é o **credor** que
+  registra o próprio recebimento (nullable desde 2026-08-08, migration
+  `TornarComprovanteOpcionalPagamentoEmprestimo` — antes era obrigatório sempre, quebrava o caminho
+  do credor por não ter "saída do devedor" nenhuma pra referenciar)
+- `SolicitadoPor` (Guid — quem registrou; devedor OU credor desde a unificação)
 - `StatusAprovacao` (enum novo `StatusAprovacaoPagamentoEmprestimo`: `Pendente=1`, `Aprovada=2`,
   `Rejeitada=3`)
 - `AprovadoPorUsuarioId` (Guid?), `AprovadoEm` (DateTime?)
@@ -96,6 +99,11 @@ Família — mesmo padrão, enum próprio, domínios diferentes):
 - `MotivoRejeicao` (string?, opcional) — texto livre que o credor pode escrever ao rejeitar;
   entra na notificação pro devedor e fica visível no histórico (decisão de 2026-08-06)
 - `CriadoEm` (DateTime)
+
+`EmprestimoPagamentoSolicitacaoDto` (resposta da API) ganhou `RegistradoPeloCredor` (bool,
+2026-08-08) — `true` quando `AprovadoPorUsuarioId == SolicitadoPor` (só acontece no caminho
+credor-registra-e-já-aprova; o fluxo normal devedor→credor proíbe autoaprovação). Front usa isso
+pra não mostrar "Saída: ..." no histórico quando não existe comprovante de saída nesse caminho.
 
 Migration: `AddPagamentoAprovacaoEmprestimo`.
 
@@ -109,7 +117,7 @@ Migration: `AddPagamentoAprovacaoEmprestimo`.
 
 | método | rota | quem | efeito |
 |---|---|---|---|
-| `POST` | `/emprestimos/{id}/solicitar-pagamento` | devedor do registro (souCredor=false, Vinculado) | cria solicitação `Pendente`, cria `Transacao` comprovante |
+| `POST` | `/emprestimos/{id}/solicitar-pagamento` | devedor OU credor do registro (unificado 2026-08-08, ver seção própria abaixo) | devedor: cria `Pendente` + comprovante (Despesa). Credor: cria já `Aprovada` + recebimento (Receita), avança `ValorPago` na hora |
 | `GET` | `/emprestimos/{id}/solicitacoes` | qualquer participante (credor ou devedor) | lista histórico de solicitações, com data+conta de cada lançamento vinculado (comprovante e, se houver, recebimento) — leitura tipo extrato, não só status |
 | `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/aprovar` | credor do registro | body `{ contaId?, categoriaId? }` → se informados, cria `Transacao` de entrada; sempre `Aprovada` + avança `ValorPago` |
 | `POST` | `/emprestimos/solicitacoes/{solicitacaoId}/rejeitar` | credor do registro | body `{ motivo? }` opcional → `Rejeitada`, `ValorPago` intacto, motivo (se informado) vai na notificação e fica no histórico |
@@ -128,12 +136,12 @@ valer". As duas coisas são diferentes e a tabela abaixo separa isso.
 
 | ação | quem pode | efeito |
 |---|---|---|
-| Solicitar pagamento | só o devedor do registro | cria solicitação `Pendente` — **não muda nada sozinho**, só registra |
-| Aprovar solicitação | só o credor do registro | `ValorPago` avança de verdade, `Transacao` de entrada criada/vinculada |
-| Rejeitar solicitação | só o credor do registro | nada muda no `Emprestimo`; comprovante do devedor continua valendo |
+| Registrar pagamento (devedor OU credor, mesmo endpoint — ver seção própria) | qualquer um dos dois participantes | devedor: `Pendente`, **não muda nada sozinho**. Credor: já `Aprovada`, `ValorPago` avança na hora |
+| Aprovar solicitação `Pendente` de um devedor | só o credor do registro | `ValorPago` avança de verdade, `Transacao` de entrada criada/vinculada |
+| Rejeitar solicitação `Pendente` de um devedor | só o credor do registro | nada muda no `Emprestimo`; comprovante do devedor continua valendo |
 | Reenviar solicitação rejeitada | só quem solicitou originalmente (o devedor) | volta pra `Pendente`, credor notificado de novo |
 | Ver histórico de solicitações | qualquer um dos dois participantes | só leitura |
-| Registrar pagamento direto / Quitar (fluxo antigo, sem solicitação) | só o credor do registro | avança `ValorPago`/`Quitado` na hora |
+| Quitar (marca 100% pago de uma vez, sem passar por parcela/solicitação) | só o credor do registro | avança `ValorPago`/`Quitado` na hora |
 | Vincular (convite de vínculo) | só o `CriadoPor` do empréstimo | dispara convite — **não vincula sozinho**, ver abaixo |
 | Aceitar/Recusar convite de vínculo | só quem recebeu o convite (e-mail bate) | só aqui o vínculo passa a valer |
 
@@ -251,6 +259,77 @@ ali mesmo.
 pagamento: aceitar/recusar vínculo só existe ali, não há ainda um lugar por-registro pra isso (o
 `Emprestimo` nem aparece na lista principal do usuário convidado antes do aceite).
 
+### Unificação: registrar pagamento pra credor E devedor, mesmo fluxo (2026-08-08)
+
+**3 achados encadeados, ao vivo, testando os 6 empréstimos reais que o Gustavo ditou pra cadastrar:**
+
+1. **`RegistrarPagamentoAsync` (ação antiga "$" do credor) estava quebrada de verdade.** Bumpava
+   `Emprestimo.ValorPago` direto, sem passar pela parcela nem pela `EmprestimoPagamentoSolicitacao`
+   — pra um empréstimo `Parcelado`, registrar R$10 não sabia dizer *qual* parcela isso quitava (nem
+   marcava nenhuma como `Paga`), e não deixava rastro nenhum visível pro devedor (só um
+   `FinancialEventLog` genérico). Gustavo confirmou ao vivo que foi ele mesmo quem clicou o botão
+   testando — e mesmo assim: "do jeito que esta feito ta errado pq não kita parcela não tem
+   registro de nada... isso ta errado mesmo temos que resolver".
+2. **UX inconsistente por papel.** O devedor tinha "Marcar como pago" (ícone `Receipt`, fluxo
+   completo com parcela+comprovante+aprovação) e o credor tinha "Registrar pagamento" (ícone
+   `DollarSign`, um valor solto sem nada em volta) — **dois botões, dois ícones, dois modais**
+   pro mesmo conceito. Gustavo: "e se eu for o credor de umas e devedor de outras vai ser um
+   caminho diferente pra cada pra registrar pagamento não pode ser assim... lembra nosso objetivo é
+   usabilidade".
+3. **Pesquisa de mercado antes de desenhar a correção** (pedido explícito do Gustavo): Splitwise já
+   passou por essa decisão — tinha confirmação obrigatória do outro lado pro "settle up" e
+   **removeu**, porque travava demais o uso; hoje é "wiki-style": qualquer um registra, o outro só é
+   **notificado**, pode apagar/disputar se achar errado. Isso valida o desenho: o fluxo
+   devedor→credor (mais rígido, pede aprovação) já é mais forte que o padrão de mercado — fazia
+   sentido manter; o que faltava era o credor ter o **mesmo rigor** (parcela+audit) que o devedor já
+   tinha, só sem precisar aprovar a si mesmo.
+
+**Desenho final — um botão só, um endpoint só, `SolicitarPagamentoAsync` decide por papel:**
+
+`POST /emprestimos/{id}/solicitar-pagamento` deixou de checar `EhCredor` como bloqueio (`if
+(EhCredor(...)) throw Forbidden` — removido) e passou a ramificar pelo papel de quem chama
+(`souCredor = EhCredor(emprestimo, usuarioId)`):
+
+| | Devedor registra | Credor registra |
+|---|---|---|
+| Transação criada/vinculada | `Despesa` (saída da conta dele) | `Receita` (entrada na conta dele) |
+| Campo preenchido na solicitação | `TransacaoComprovanteId` | `TransacaoRecebimentoId` |
+| `StatusAprovacao` ao nascer | `Pendente` | `Aprovada` (auto — ver justificativa de mercado acima) |
+| Efeito imediato em `ValorPago`/parcela | nenhum, espera aprovação | avança na hora, parcela vira `Paga` na hora |
+| Quem é notificado | credor ("aguardando aprovação") | devedor ("pagamento confirmado") — só se `Vinculado` |
+| `FinancialEventType` gravado | `EmprestimoPagamentoSolicitado` | `EmprestimoPagamentoAprovado` |
+
+Front: um único botão **"Registrar pagamento"** (ícone `Receipt`), visível pra qualquer papel em
+qualquer empréstimo não-quitado, abrindo o mesmo `PontesModal` — só o texto/labels mudam por
+`e.souCredor` (copy explicando saída vs. entrada, "Como comprovar esse pagamento?" vs. "Como
+registrar esse recebimento?", "Conta (de onde saiu)" vs. "Conta (pra onde foi)", filtro de
+categoria Despesa vs. Receita, footer "Enviar pra aprovação" vs. "Confirmar recebimento"). O modal
+antigo "Registrar pagamento" (valor solto, sem parcela) foi **apagado** — `handlePagamento`,
+`pagamentoFor`/`valorPagamento`/`pagamentoErr`, o serviço `registrarPagamento`, a rota
+`PATCH /emprestimos/{id}/pagamento` (`RegistrarPagamento` no controller) e
+`EmprestimoService.RegistrarPagamentoAsync` inteiros removidos — sem substituto direto, o novo
+fluxo unificado cobre o mesmo caso de uso com mais rigor.
+
+**Empréstimo sem vínculo (registro solo, sem contraparte) continua funcionando** — o guard
+`StatusVinculo != Vinculado → throw` foi removido do `SolicitarPagamentoAsync` porque, sem vínculo,
+`ContraparteUsuarioId` é sempre `null` (só é setado em `AceitarInternoAsync`), então só o `CriadoPor`
+consegue carregar o registro, e `EhCredor` sempre retorna `true` pra ele nesse caso — ou seja,
+`souCredor` é sempre `true` quando não tem vínculo, o caminho devedor é fisicamente inalcançável.
+A notificação pro devedor fica atrás de `if (StatusVinculo == Vinculado)` pra não tentar notificar
+um `ContraparteUsuarioId` nulo.
+
+**Verificado ao vivo nos dois papéis** (com um empréstimo de teste dedicado, não nos 6 reais — ver
+lição abaixo): credor registrando "Fiança Loft" (À vista) quitou na hora, sem esperar ninguém;
+devedor (Ana) registrando parcela 1/10 de "Móveis" ficou `Pendente`, `ValorPago` não mudou até
+aprovar do lado do Gustavo — os dois caminhos batem com a tabela acima.
+
+**Lição gravada em memória:** durante essa verificação, o primeiro teste do caminho credor foi feito
+sem querer em cima da "Fiança Loft" real (um dos 6 empréstimos que o Gustavo tinha acabado de
+ditar), quitando R$175 de verdade na conta Nubank dele antes de perceber o erro. Revertido na hora
+(soft-delete da transação + reset de `ValorPago`/`Quitado`), mas a regra ficou clara: **nunca
+verificar fluxo em cima de registro financeiro real do usuário, mesmo em dev/seed local — sempre
+criar um registro dedicado só pra teste.**
+
 ## Casos extremos
 
 - **Credor já registrou a entrada por fora, antes de ver a solicitação pendente** — vincula via
@@ -282,11 +361,16 @@ pagamento: aceitar/recusar vínculo só existe ali, não há ainda um lugar por-
 
 - Devedor solicita pagamento → cria solicitação `Pendente` + `Transacao` vinculada; `ValorPago` do
   Emprestimo **não muda ainda**.
-- Credor tenta solicitar (é ele quem deveria aprovar, não solicitar) → 403.
-- Devedor tenta aprovar a própria solicitação → 403.
-- Credor aprova → `ValorPago` avança, `Quitado` se bateu o total, `FinancialEventLog` gravado.
+- Credor registra pagamento (unificado 2026-08-08) → cria solicitação já `Aprovada` + `Transacao`
+  de recebimento (`Receita`); `ValorPago` avança na hora, parcela (se informada) vira `Paga`.
+- Credor registra em empréstimo `Parcelado` com `ParcelaId` → marca a parcela certa como `Paga` na
+  hora (sem esperar aprovação).
+- Empréstimo `SemVinculo` (registro solo) → credor registra normalmente, sem notificar ninguém
+  (não existe contraparte).
+- Devedor tenta aprovar a própria solicitação (via `AprovarPagamentoSolicitacaoAsync`) → 403.
+- Credor aprova solicitação `Pendente` de um devedor → `ValorPago` avança, `Quitado` se bateu o
+  total, `FinancialEventLog` gravado.
 - Credor rejeita → `ValorPago` intacto, `FinancialEventLog` gravado.
-- Solicitar pagamento em empréstimo `SemVinculo`/`Recusado` → erro (não existe "devedor" sem vínculo).
 - Testar os dois `Tipo` (`Emprestei`/`PegueiEmprestado`) explicitamente pra autorização de
   solicitar/aprovar.
 - Idempotência: replay do `POST solicitar-pagamento` com mesma chave não duplica.

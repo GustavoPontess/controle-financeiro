@@ -3,9 +3,11 @@ using ControleFinanceiro.Api.Domain.Enums;
 namespace ControleFinanceiro.Api.Domain.Entities;
 
 /// <summary>
-/// Solicitação de pagamento feita pelo devedor de um empréstimo vinculado, com comprovante
-/// (Transacao real) anexado. Só o credor aprova/rejeita — aprovação é o que avança
-/// Emprestimo.ValorPago. Spec: docs/features/emprestimo-compartilhado/pagamento-aprovacao.md.
+/// Registro de pagamento de um empréstimo vinculado — devedor ou credor pode registrar, pelo
+/// mesmo formulário (unificado em 2026-08-08). Devedor registrando: nasce Pendente, precisa do
+/// credor aprovar. Credor registrando: nasce já Aprovada (confirmando o próprio recebimento não
+/// precisa de autoaprovação) — mesmo padrão do Splitwise (settle-up sem confirmação obrigatória
+/// do outro lado, só notifica). Spec: docs/features/emprestimo-compartilhado/pagamento-aprovacao.md.
 /// </summary>
 public class EmprestimoPagamentoSolicitacao
 {
@@ -15,10 +17,11 @@ public class EmprestimoPagamentoSolicitacao
 
     public decimal Valor { get; set; }
 
-    /// <summary>Comprovante — a Transacao real (Pix/saída) que o devedor lançou. Obrigatório
-    /// (diferente do vínculo opcional na criação do Emprestimo): não existe solicitação sem prova.</summary>
-    public Guid TransacaoComprovanteId { get; set; }
-    public Transacao TransacaoComprovante { get; set; } = null!;
+    /// <summary>Comprovante — a Transacao real (Pix/saída) que o devedor lançou. Obrigatório quando
+    /// quem registra é o devedor (não existe solicitação dele sem prova); null quando é o credor
+    /// que registra o próprio recebimento (nesse caso a prova é a TransacaoRecebimentoId).</summary>
+    public Guid? TransacaoComprovanteId { get; set; }
+    public Transacao? TransacaoComprovante { get; set; }
 
     public Guid SolicitadoPor { get; set; }
     public StatusAprovacaoPagamentoEmprestimo StatusAprovacao { get; set; } = StatusAprovacaoPagamentoEmprestimo.Pendente;

@@ -252,87 +252,7 @@ public class EmprestimoServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CriarAsync(dto2, usuarioId));
     }
 
-    // ── Pagamento / Quitação ─────────────────────────────────────────────────
-
-    [Fact]
-    public async Task RegistrarPagamentoAsync_ValorZero_LancaException()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var usuarioId = Guid.NewGuid();
-        var resultado = await svc.CriarAsync(DtoValido(), usuarioId);
-
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarPagamentoAsync(resultado.Id, 0, usuarioId));
-        Assert.Contains("positivo", ex.Message);
-    }
-
-    [Fact]
-    public async Task RegistrarPagamentoAsync_ValorNegativo_LancaException()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var usuarioId = Guid.NewGuid();
-        var resultado = await svc.CriarAsync(DtoValido(), usuarioId);
-
-        await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarPagamentoAsync(resultado.Id, -50, usuarioId));
-    }
-
-    [Fact]
-    public async Task RegistrarPagamentoAsync_ValorParcial_AtualizaValorPago()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var usuarioId = Guid.NewGuid();
-        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
-
-        await svc.RegistrarPagamentoAsync(criado.Id, 200, usuarioId);
-
-        var emprestimo = await ctx.Emprestimos.FindAsync(criado.Id);
-        Assert.Equal(200, emprestimo!.ValorPago);
-        Assert.False(emprestimo.Quitado);
-    }
-
-    [Fact]
-    public async Task RegistrarPagamentoAsync_ValorTotal_QuitaEmprestimo()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var usuarioId = Guid.NewGuid();
-        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
-
-        await svc.RegistrarPagamentoAsync(criado.Id, 500, usuarioId);
-
-        var emprestimo = await ctx.Emprestimos.FindAsync(criado.Id);
-        Assert.True(emprestimo!.Quitado);
-        Assert.Equal(500, emprestimo.ValorPago);
-    }
-
-    [Fact]
-    public async Task RegistrarPagamentoAsync_Estranho_RetornaFalse()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var criado = await svc.CriarAsync(DtoValido(), Guid.NewGuid());
-
-        var ok = await svc.RegistrarPagamentoAsync(criado.Id, 100, Guid.NewGuid());
-
-        Assert.False(ok); // não existe pra esse usuário — 404, não confirma existência
-    }
-
-    [Fact]
-    public async Task Pagamento_GravaFinancialEventLog()
-    {
-        var ctx = CreateContext();
-        var svc = NewSvc(ctx);
-        var usuarioId = Guid.NewGuid();
-        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
-
-        await svc.RegistrarPagamentoAsync(criado.Id, 100, usuarioId);
-
-        var log = await ctx.FinancialEventLogs.FirstOrDefaultAsync(l => l.EntidadeId == criado.Id
-            && l.Tipo == FinancialEventType.EmprestimoPagamentoRegistrado);
-        Assert.NotNull(log);
-    }
+    // ── Quitação ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Quitar_GravaFinancialEventLog()
@@ -633,7 +553,7 @@ public class EmprestimoServiceTests
     // ── Autorização assimétrica de confirmação (o ponto mais fácil de inverter) ─
 
     [Fact]
-    public async Task RegistrarPagamento_TipoEmprestei_SoCredorCriadorConfirma()
+    public async Task Quitar_TipoEmprestei_SoCredorCriadorConfirma()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
@@ -647,15 +567,15 @@ public class EmprestimoServiceTests
 
         // Devedor (contraparte) tentando confirmar -> 403.
         await Assert.ThrowsAsync<ForbiddenAccessException>(
-            () => svc.RegistrarPagamentoAsync(criado.Id, 100, devedorId));
+            () => svc.QuitarAsync(criado.Id, devedorId));
 
         // Credor (criador) confirma normalmente.
-        var ok = await svc.RegistrarPagamentoAsync(criado.Id, 100, credorId);
+        var ok = await svc.QuitarAsync(criado.Id, credorId);
         Assert.True(ok);
     }
 
     [Fact]
-    public async Task RegistrarPagamento_TipoPeguiEmprestado_SoCredorContraparteConfirma()
+    public async Task Quitar_TipoPeguiEmprestado_SoCredorContraparteConfirma()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
@@ -677,7 +597,7 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
-    public async Task RegistrarPagamento_AntesDeVincular_SoCriadorConfirma()
+    public async Task Quitar_AntesDeVincular_SoCriadorConfirma()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
@@ -685,7 +605,7 @@ public class EmprestimoServiceTests
         var criado = await svc.CriarAsync(DtoValido(), criadorId);
 
         // Comportamento preservado: sem vínculo, só o criador existe no registro.
-        var ok = await svc.RegistrarPagamentoAsync(criado.Id, 100, criadorId);
+        var ok = await svc.QuitarAsync(criado.Id, criadorId);
         Assert.True(ok);
     }
 
@@ -774,6 +694,47 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
+    public async Task ObterStatsAsync_AVistaVencido_SomaSoOAtrasadoEmTotalAReceberVencido()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = Guid.NewGuid();
+
+        var vencido = NovoDto("Vencido", "X", 300, TipoEmprestimo.Emprestei);
+        vencido.DataInicio = DateTime.UtcNow.AddDays(-10);
+        vencido.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        await svc.CriarAsync(vencido, uid);
+
+        var futuro = NovoDto("Futuro", "Y", 200, TipoEmprestimo.Emprestei);
+        futuro.DataVencimento = DateTime.UtcNow.AddDays(5);
+        await svc.CriarAsync(futuro, uid);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(300m, stats.TotalAReceberVencido);
+        Assert.Equal(500m, stats.TotalAReceber);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_ParceladoComParcelaAtrasada_SomaValorDaParcelaVencida()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = Guid.NewGuid();
+
+        var dto = NovoDto("Parcelado", "X", 1000, TipoEmprestimo.Emprestei);
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 2;
+        dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
+        await svc.CriarAsync(dto, uid);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(500m, stats.TotalAReceberVencido); // só a 1ª parcela (500 de 1000/2)
+        Assert.Equal(1000m, stats.TotalAReceber); // total inclui as duas parcelas
+    }
+
+    [Fact]
     public async Task ObterStatsAsync_InverteTipoParaContraparte()
     {
         var ctx = CreateContext();
@@ -835,29 +796,82 @@ public class EmprestimoServiceTests
         Assert.Equal(TipoTransacao.Despesa, transacao!.Tipo);
     }
 
+    /// <summary>Credor registrando o próprio recebimento (unificado com o fluxo do devedor em
+    /// 2026-08-08, achado do Gustavo: dois caminhos diferentes pro mesmo conceito quebrava
+    /// usabilidade) — nasce já Aprovada, cria Receita (não Despesa), avança ValorPago na hora,
+    /// sem precisar de autoaprovação.</summary>
     [Fact]
-    public async Task SolicitarPagamentoAsync_Credor_LancaForbidden()
+    public async Task SolicitarPagamentoAsync_Credor_CriaSolicitacaoJaAprovada_AvancaValorPagoNaHora()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
         var (emprestimoId, credorId, _) = await CriarVinculadoAsync(ctx, svc);
-        var (contaId, categoriaId) = SeedContaECategoria(ctx, credorId);
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, credorId);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            svc.SolicitarPagamentoAsync(emprestimoId, SolicitarDtoValido(contaId, categoriaId), credorId));
+        var resultado = await svc.SolicitarPagamentoAsync(
+            emprestimoId, SolicitarDtoValido(contaId, categoriaId), credorId);
+
+        Assert.Equal(2, resultado.StatusAprovacao); // Aprovada
+        Assert.True(resultado.RegistradoPeloCredor);
+
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(100, emprestimo!.ValorPago); // já avançou, sem esperar aprovação de ninguém
+
+        var solicitacao = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(resultado.Id);
+        Assert.Null(solicitacao!.TransacaoComprovanteId); // não existe "saída do devedor" nesse caminho
+        Assert.NotNull(solicitacao.TransacaoRecebimentoId);
+        var transacao = await ctx.Transacoes.FindAsync(solicitacao.TransacaoRecebimentoId!.Value);
+        Assert.Equal(TipoTransacao.Receita, transacao!.Tipo);
     }
 
     [Fact]
-    public async Task SolicitarPagamentoAsync_SemVinculo_LancaException()
+    public async Task SolicitarPagamentoAsync_CredorComParcela_MarcaParcelaPagaNaHora()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var dto = DtoValido();
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 2;
+        dto.PrimeiroVencimento = DateTime.UtcNow;
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(dto, credorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), devedorId);
+        var parcelas = await svc.ListarParcelasAsync(criado.Id, credorId);
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        await svc.SolicitarPagamentoAsync(criado.Id, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = parcelas[0].Valor,
+            ContaId = contaId,
+            CategoriaId = categoriaId,
+            Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            ParcelaId = parcelas[0].Id,
+        }, credorId);
+
+        var parcela = await ctx.EmprestimoParcelas.FindAsync(parcelas[0].Id);
+        Assert.Equal(StatusParcelaEmprestimo.Paga, parcela!.Status);
+    }
+
+    /// <summary>Empréstimo sem vínculo (registro solo, sem contraparte) — o criador é sempre
+    /// "credor" (EhCredor), então registra normalmente, já aprovado, sem tentar notificar
+    /// ninguém (não existe devedor real pra avisar).</summary>
+    [Fact]
+    public async Task SolicitarPagamentoAsync_SemVinculo_RegistraComoCredorSemNotificar()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
         var usuarioId = SeedUsuario(ctx, "solo@x.com");
         var criado = await svc.CriarAsync(DtoValido(), usuarioId);
-        var (contaId, categoriaId) = SeedContaECategoria(ctx, usuarioId);
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, usuarioId);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), usuarioId));
+        var resultado = await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), usuarioId);
+
+        Assert.Equal(2, resultado.StatusAprovacao); // Aprovada
+        var emprestimo = await ctx.Emprestimos.FindAsync(criado.Id);
+        Assert.Equal(100, emprestimo!.ValorPago);
     }
 
     /// <summary>Simula uma despesa que o devedor já lançou por fora (ex.: viu o Pix sair e

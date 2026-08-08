@@ -20,6 +20,7 @@ export type EmprestimoStats = {
   totalAPagar: number
   ativos: number
   qtdTotal: number
+  totalAReceberVencido: number
 }
 
 /** KPIs agregados — a receber, a pagar, ativos, total. */
@@ -37,10 +38,6 @@ export const getEmprestimos = async (): Promise<Emprestimo[]> => {
 export const createEmprestimo = async (dto: CriarEmprestimo): Promise<Emprestimo> => {
   const res = await api.post("/emprestimos", dto)
   return res.data
-}
-
-export const registrarPagamento = async (id: string, valor: number): Promise<void> => {
-  await api.patch(`/emprestimos/${id}/pagamento`, { valor })
 }
 
 export const quitarEmprestimo = async (id: string): Promise<void> => {
@@ -89,7 +86,8 @@ export const recusarVinculoEmprestimoPorId = async (id: string): Promise<void> =
   await api.post(`/emprestimos/${id}/recusar-vinculo`)
 }
 
-/** Devedor solicita pagamento anexando comprovante (cria a Transacao real junto). */
+/** Registra pagamento — devedor ou credor, mesmo endpoint (cria a Transacao real junto).
+ * Devedor: nasce Pendente, aguarda aprovação. Credor: nasce já Aprovada. */
 export const solicitarPagamentoEmprestimo = async (
   id: string, dto: SolicitarPagamentoEmprestimo,
 ): Promise<EmprestimoPagamentoSolicitacao> => {

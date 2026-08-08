@@ -477,7 +477,7 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("StatusAprovacao")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("TransacaoComprovanteId")
+                    b.Property<Guid?>("TransacaoComprovanteId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("TransacaoRecebimentoId")
@@ -1563,8 +1563,7 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoComprovante")
                         .WithMany()
                         .HasForeignKey("TransacaoComprovanteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoRecebimento")
                         .WithMany()

@@ -1,8 +1,10 @@
 namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 
-/// <summary>Devedor solicita pagamento anexando comprovante. Duas formas de comprovar: (1) informar
-/// Conta+Categoria+Valor+Data pra criar a Transacao de saída na hora, ou (2) informar
-/// TransacaoExistenteId pra vincular uma despesa que já lançou por fora (evita duplicar a saída).</summary>
+/// <summary>Registra pagamento — devedor OU credor podem chamar (unificado, mesmo formulário pros
+/// dois papéis). Duas formas de comprovar: (1) informar Conta+Categoria+Valor+Data pra criar a
+/// Transacao na hora, ou (2) informar TransacaoExistenteId pra vincular uma já lançada por fora
+/// (evita duplicar). Devedor: cria Despesa, solicitação nasce Pendente. Credor: cria Receita,
+/// solicitação nasce já Aprovada (confirmando o próprio recebimento).</summary>
 public class SolicitarPagamentoEmprestimoDto
 {
     public decimal Valor { get; set; }
@@ -49,6 +51,10 @@ public class EmprestimoPagamentoSolicitacaoDto
     public DateTime? AprovadoEm { get; set; }
     public Guid? TransacaoRecebimentoId { get; set; }
     public string? MotivoRejeicao { get; set; }
+
+    /// <summary>True quando foi o credor quem registrou (nasceu já aprovada). Front usa isso pra
+    /// não mostrar "Saída:" no histórico (não existe comprovante de saída nesse caso).</summary>
+    public bool RegistradoPeloCredor { get; set; }
 
     /// <summary>Data real do lançamento de saída (comprovante) — pro histórico ler como extrato.</summary>
     public DateTime ComprovanteData { get; set; }

@@ -3,7 +3,7 @@ import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
-  Plus, Trash2, Handshake, TrendingUp, TrendingDown, DollarSign, Link2, Copy, Check, X,
+  Plus, Trash2, Handshake, TrendingUp, TrendingDown, Link2, Copy, Check, X,
   Receipt, History, RotateCcw, ChevronDown,
 } from "lucide-react"
 import {
@@ -13,7 +13,7 @@ import {
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
-  listEmprestimosPage, getEmprestimoStats, createEmprestimo, registrarPagamento, quitarEmprestimo, deleteEmprestimo,
+  listEmprestimosPage, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
   vincularEmprestimo, listConvitesPendentesEmprestimo,
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
   solicitarPagamentoEmprestimo, listSolicitacoesPagamento,
@@ -117,15 +117,12 @@ export default function EmprestimosPage() {
   // Página visível (server-side) + KPIs exatos via /stats endpoint dedicado (#179).
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
   const [stats, setStats] = useState<EmprestimoStats>({
-    totalAReceber: 0, totalAPagar: 0, ativos: 0, qtdTotal: 0,
+    totalAReceber: 0, totalAPagar: 0, ativos: 0, qtdTotal: 0, totalAReceberVencido: 0,
   })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [pagamentoFor, setPagamentoFor] = useState<string | null>(null)
-  const [valorPagamento, setValorPagamento] = useState<number | undefined>(undefined)
-  const [pagamentoErr, setPagamentoErr] = useState<string | undefined>(undefined)
   const [quitarId, setQuitarId] = useState<string | null>(null)
   const [delId, setDelId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -349,23 +346,6 @@ export default function EmprestimosPage() {
     notify({ open: true, message: "Link copiado", severity: "success" })
   }
 
-  const handlePagamento = async () => {
-    if (!pagamentoFor) return
-    if (valorPagamento == null || valorPagamento <= 0) {
-      setPagamentoErr("Informe um valor maior que zero")
-      return
-    }
-    setLoading(true)
-    try {
-      await registrarPagamento(pagamentoFor, valorPagamento)
-      notify({ open: true, message: "Pagamento registrado", severity: "success" })
-      setPagamentoFor(null); setValorPagamento(undefined); setPagamentoErr(undefined)
-      await loadData()
-    } catch (err) {
-      notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
-    } finally { setLoading(false) }
-  }
-
   const handleQuitar = async () => {
     if (!quitarId) return
     try {
@@ -423,13 +403,18 @@ export default function EmprestimosPage() {
   const handleSolicitarEscolhaChange = (v: string) => {
     setSolicitarEscolha(v as EscolhaComprovante)
     setSolicitarErrors((p) => ({ ...p, escolha: undefined }))
-    if (v === "existente") void carregarDespesasRecentes()
+    const souCredor = emprestimos.find((x) => x.id === solicitarFor)?.souCredor
+    if (v === "existente") void (souCredor ? carregarReceitasRecentes() : carregarDespesasRecentes())
   }
 
   const handleSolicitar = async () => {
     if (!solicitarFor) return
 
-    const isParcelado = emprestimos.find((x) => x.id === solicitarFor)?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+    const emprestimoAlvo = emprestimos.find((x) => x.id === solicitarFor)
+    const isParcelado = emprestimoAlvo?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+    const souCredor = emprestimoAlvo?.souCredor ?? false
+    const mensagemSucesso = souCredor ? "Pagamento registrado" : "Pagamento marcado — aguardando aprovação do credor"
+
     if (isParcelado && !solicitarParcelaId) {
       setSolicitarErrors({ parcela: "Escolha a parcela" })
       return
@@ -442,7 +427,7 @@ export default function EmprestimosPage() {
 
     if (solicitarEscolha === "existente") {
       if (!solicitarTransacaoExistenteId) {
-        setSolicitarErrors({ transacaoExistenteId: "Escolha a despesa que já lançou" })
+        setSolicitarErrors({ transacaoExistenteId: souCredor ? "Escolha a receita que já lançou" : "Escolha a despesa que já lançou" })
         return
       }
       setLoading(true)
@@ -454,11 +439,11 @@ export default function EmprestimosPage() {
           idempotencyKey: solicitarIdemKey,
           parcelaId: isParcelado ? solicitarParcelaId : undefined,
         })
-        notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
+        notify({ open: true, message: mensagemSucesso, severity: "success" })
         setSolicitarFor(null)
         await loadData()
       } catch (err) {
-        notify({ open: true, message: errorMessage(err, "Erro ao marcar pagamento"), severity: "error" })
+        notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
       } finally { setLoading(false) }
       return
     }
@@ -480,11 +465,11 @@ export default function EmprestimosPage() {
         idempotencyKey: solicitarIdemKey,
         parcelaId: isParcelado ? solicitarParcelaId : undefined,
       })
-      notify({ open: true, message: "Pagamento marcado — aguardando aprovação do credor", severity: "success" })
+      notify({ open: true, message: mensagemSucesso, severity: "success" })
       setSolicitarFor(null)
       await loadData()
     } catch (err) {
-      notify({ open: true, message: errorMessage(err, "Erro ao marcar pagamento"), severity: "error" })
+      notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
     } finally { setLoading(false) }
   }
 
@@ -583,9 +568,10 @@ export default function EmprestimosPage() {
     void carregarHistorico(emprestimoId)
   }
 
-  const { totalAReceber, totalAPagar, ativos: qtdAtivos } = stats
+  const { totalAReceber, totalAPagar, ativos: qtdAtivos, totalAReceberVencido } = stats
   const solicitarEmprestimoAtual = emprestimos.find((x) => x.id === solicitarFor)
   const isParceladoSolicitar = solicitarEmprestimoAtual?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+  const souCredorSolicitar = solicitarEmprestimoAtual?.souCredor ?? false
   const historicoEmprestimo = emprestimos.find((x) => x.id === historicoFor)
 
   return (
@@ -632,6 +618,7 @@ export default function EmprestimosPage() {
       <div className={styles.statsGrid}>
         <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
         <PontesStatCard label="A pagar" value={formatMoney(totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
+        <PontesStatCard label="Vencido" value={formatMoney(totalAReceberVencido)} hint="atrasado, ainda não recebido" tone="danger" />
         <PontesStatCard label="Ativos" value={String(qtdAtivos)} hint="empréstimos em andamento" />
       </div>
 
@@ -725,22 +712,16 @@ export default function EmprestimosPage() {
                           <ChevronDown size={14} className={styles.expandBtn} data-open={expandedId === e.id ? "" : undefined} />
                         </PontesIconButton>
                       )}
-                      {!e.quitado && e.souCredor && (
-                        <>
-                          <PontesIconButton size={32} variant="ghost" aria-label="Registrar pagamento"
-                            onClick={() => { setPagamentoFor(e.id); setValorPagamento(undefined); setPagamentoErr(undefined) }}>
-                            <DollarSign size={14} />
-                          </PontesIconButton>
-                          <PontesIconButton size={32} variant="ghost" aria-label="Marcar como quitado"
-                            onClick={() => setQuitarId(e.id)}>
-                            <Handshake size={14} />
-                          </PontesIconButton>
-                        </>
-                      )}
-                      {!e.quitado && !e.souCredor && e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
-                        <PontesIconButton size={32} variant="ghost" aria-label="Marcar como pago"
+                      {!e.quitado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Registrar pagamento"
                           onClick={() => openSolicitar(e.id)}>
                           <Receipt size={14} />
+                        </PontesIconButton>
+                      )}
+                      {!e.quitado && e.souCredor && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Marcar como quitado"
+                          onClick={() => setQuitarId(e.id)}>
+                          <Handshake size={14} />
                         </PontesIconButton>
                       )}
                       {e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
@@ -967,31 +948,6 @@ export default function EmprestimosPage() {
         </form>
       </PontesModal>
 
-      {/* Modal: Registrar pagamento */}
-      <PontesModal
-        open={pagamentoFor !== null}
-        title="Registrar pagamento"
-        onClose={() => { setPagamentoFor(null); setPagamentoErr(undefined) }}
-        footer={<>
-          <PontesButton variant="outline" onClick={() => { setPagamentoFor(null); setPagamentoErr(undefined) }}>Cancelar</PontesButton>
-          <PontesButton onClick={handlePagamento} loading={loading} disabled={loading}>Confirmar</PontesButton>
-        </>}
-      >
-        <div className={styles.formCol}>
-          <PontesField label="Valor pago" required error={pagamentoErr}>
-            <PontesInput
-              iconStart="R$"
-              value={fmtMoney(valorPagamento)}
-              onChange={(e) => { setValorPagamento(parseMoney(e.target.value)); setPagamentoErr(undefined) }}
-              invalid={!!pagamentoErr}
-              inputMode="decimal"
-              placeholder="0,00"
-              autoFocus
-            />
-          </PontesField>
-        </div>
-      </PontesModal>
-
       <PontesDialog
         open={quitarId !== null}
         title="Marcar como quitado?"
@@ -1060,20 +1016,26 @@ export default function EmprestimosPage() {
         </div>
       </PontesModal>
 
-      {/* Modal: Marcar como pago (devedor solicita, anexa comprovante) */}
+      {/* Modal: Registrar pagamento — devedor ou credor, mesmo formulário pros dois papéis
+          (unificado 2026-08-08: dois caminhos diferentes pro mesmo conceito quebrava usabilidade
+          quando a pessoa é credora numas dívidas e devedora em outras). Devedor: lança saída,
+          fica Pendente até o credor aprovar. Credor: lança entrada, já confirma na hora. */}
       <PontesModal
         open={solicitarFor !== null}
-        title="Marcar como pago"
+        title="Registrar pagamento"
         onClose={() => setSolicitarFor(null)}
         footer={<>
           <PontesButton variant="outline" onClick={() => setSolicitarFor(null)}>Cancelar</PontesButton>
-          <PontesButton onClick={handleSolicitar} loading={loading} disabled={loading}>Enviar pra aprovação</PontesButton>
+          <PontesButton onClick={handleSolicitar} loading={loading} disabled={loading}>
+            {souCredorSolicitar ? "Confirmar recebimento" : "Enviar pra aprovação"}
+          </PontesButton>
         </>}
       >
         <div className={styles.formCol}>
           <p className={styles.itemSub}>
-            Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele
-            confirmar é que o valor pago do empréstimo avança.
+            {souCredorSolicitar
+              ? "Isso lança a entrada de verdade na sua conta e já confirma o pagamento — a outra pessoa é avisada."
+              : "Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele confirmar é que o valor pago do empréstimo avança."}
           </p>
 
           {isParceladoSolicitar && (
@@ -1090,28 +1052,28 @@ export default function EmprestimosPage() {
             </PontesField>
           )}
 
-          <PontesField label="Como comprovar esse pagamento?" required error={solicitarErrors.escolha}>
+          <PontesField label={souCredorSolicitar ? "Como registrar esse recebimento?" : "Como comprovar esse pagamento?"} required error={solicitarErrors.escolha}>
             <div className={styles.gateGroup}>
               <GateOption name="solicitar-escolha" value="existente" current={solicitarEscolha} onChange={handleSolicitarEscolhaChange}>
-                Já lancei essa saída em outro lugar — quero vincular
+                {souCredorSolicitar ? "Já registrei essa entrada em outro lugar — quero vincular" : "Já lancei essa saída em outro lugar — quero vincular"}
               </GateOption>
               <GateOption name="solicitar-escolha" value="novo" current={solicitarEscolha} onChange={handleSolicitarEscolhaChange}>
-                Ainda não lancei — lançar agora
+                {souCredorSolicitar ? "Ainda não registrei — registrar agora" : "Ainda não lancei — lançar agora"}
               </GateOption>
             </div>
           </PontesField>
 
           {solicitarEscolha === "existente" && (
-            <PontesField label="Despesa já lançada" required error={solicitarErrors.transacaoExistenteId}
-              helper={despesasLoading ? "Carregando…" : undefined}>
+            <PontesField label={souCredorSolicitar ? "Receita já lançada" : "Despesa já lançada"} required error={solicitarErrors.transacaoExistenteId}
+              helper={(souCredorSolicitar ? receitasLoading : despesasLoading) ? "Carregando…" : undefined}>
               <PontesSelect
                 value={solicitarTransacaoExistenteId}
                 onChange={(v) => { setSolicitarTransacaoExistenteId(v); setSolicitarErrors((p) => ({ ...p, transacaoExistenteId: undefined })) }}
-                options={despesasRecentes.map((t) => ({
+                options={(souCredorSolicitar ? receitasRecentes : despesasRecentes).map((t) => ({
                   value: t.id,
                   label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
                 }))}
-                placeholder="Selecione a despesa"
+                placeholder={souCredorSolicitar ? "Selecione a receita" : "Selecione a despesa"}
               />
             </PontesField>
           )}
@@ -1129,7 +1091,7 @@ export default function EmprestimosPage() {
                   autoFocus
                 />
               </PontesField>
-              <PontesField label="Conta (de onde saiu)" required error={solicitarErrors.contaId}>
+              <PontesField label={souCredorSolicitar ? "Conta (pra onde foi)" : "Conta (de onde saiu)"} required error={solicitarErrors.contaId}>
                 <PontesSelect
                   value={solicitarForm.contaId}
                   onChange={(v) => { setSolicitarForm((f) => ({ ...f, contaId: v })); setSolicitarErrors((p) => ({ ...p, contaId: undefined })) }}
@@ -1141,7 +1103,9 @@ export default function EmprestimosPage() {
                 <PontesSelect
                   value={solicitarForm.categoriaId}
                   onChange={(v) => { setSolicitarForm((f) => ({ ...f, categoriaId: v })); setSolicitarErrors((p) => ({ ...p, categoriaId: undefined })) }}
-                  options={categorias.filter((c) => c.finalidade === 1 || c.finalidade === 3).map((c) => ({ value: c.id, label: c.descricao }))}
+                  options={categorias
+                    .filter((c) => (souCredorSolicitar ? c.finalidade === 2 : c.finalidade === 1) || c.finalidade === 3)
+                    .map((c) => ({ value: c.id, label: c.descricao }))}
                   placeholder="Selecione"
                 />
               </PontesField>
@@ -1180,8 +1144,12 @@ export default function EmprestimosPage() {
                     </PontesBadge>
                     <br />
                     <span className={styles.itemSub}>
-                      Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
-                      {h.recebimentoData && ` · Entrada: ${formatDate(h.recebimentoData)}${h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}`}
+                      {!h.registradoPeloCredor && (
+                        <>Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}</>
+                      )}
+                      {h.recebimentoData && (
+                        <>{!h.registradoPeloCredor && " · "}Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>
+                      )}
                     </span>
                     {h.motivoRejeicao && (
                       <>
