@@ -40,6 +40,14 @@ public class EmprestimoDto
     public decimal? TaxaJuroMensal { get; set; }
     public decimal? PercentualMultaAtraso { get; set; }
 
+    /// <summary>Só preenchido se FormaPagamento == AVista e TaxaJuroMensal informada —
+    /// ValorTotal já com o markup de juros aplicado (calculado uma vez na criação).</summary>
+    public decimal? ValorComJuros { get; set; }
+
+    /// <summary>Só preenchido se FormaPagamento == AVista, PercentualMultaAtraso informada, e
+    /// venceu — snapshot da 1ª leitura após o vencimento, não recalcula depois.</summary>
+    public decimal? ValorComMulta { get; set; }
+
     /// <summary>Só preenchido se FormaPagamento == Parcelado — pra lista decidir se mostra o
     /// chevron de expandir sem precisar buscar as parcelas.</summary>
     public int? QuantidadeParcelas { get; set; }

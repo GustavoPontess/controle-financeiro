@@ -38,6 +38,10 @@ export interface Emprestimo {
   percentualMultaAtraso?: number
   /** Só preenchido se formaPagamento === Parcelado. */
   quantidadeParcelas?: number
+  /** Só preenchido se formaPagamento === AVista e taxaJuroMensal informada. */
+  valorComJuros?: number
+  /** Só preenchido se formaPagamento === AVista, percentualMultaAtraso informada, e venceu. */
+  valorComMulta?: number
 }
 
 /** Forma de pagamento combinada de um empréstimo. */
@@ -89,9 +93,9 @@ export interface CriarEmprestimo {
   quantidadeParcelas?: number
   /** Obrigatório se formaPagamento === Parcelado — vencimento da parcela 1. */
   primeiroVencimento?: string
-  /** Opcional, só usado se Parcelado. % mensal sobre o valor de cada parcela. */
+  /** Opcional. Parcelado: % mensal sobre o valor de cada parcela. À vista: % sobre o total. */
   taxaJuroMensal?: number
-  /** Opcional, só usado se Parcelado. % livre (sem teto/mínimo) sobre a parcela quando atrasa. */
+  /** Opcional. % livre (sem teto/mínimo) sobre o valor (parcela ou total) quando atrasa. */
   percentualMultaAtraso?: number
 }
 

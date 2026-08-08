@@ -39,6 +39,12 @@ public class EmprestimoService(
         var nomes = await ObterNomesAsync(items);
         var agregados = await ObterAgregadosSolicitacaoAsync(items.Select(e => e.Id).ToList());
 
+        var alterouMulta = false;
+        foreach (var e in items)
+            alterouMulta |= AplicarMultaAVistaSeAtrasada(e);
+        if (alterouMulta)
+            await _context.SaveChangesAsync();
+
         return new PagedResult<EmprestimoDto>
         {
             Items = items.Select(e => ToDto(e, usuarioId, nomes, agregados)),
@@ -78,7 +84,9 @@ public class EmprestimoService(
         var totalAReceberVencido = aReceberAtivos.Sum(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado
             ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < hoje)
                 .Sum(p => p.ValorComMulta ?? p.ValorComJuros ?? p.Valor)
-            : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje ? e.ValorTotal - e.ValorPago : 0m));
+            : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje
+                ? (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago
+                : 0m));
 
         return new EmprestimoStatsDto
         {
@@ -93,7 +101,9 @@ public class EmprestimoService(
     public async Task<EmprestimoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
     {
         var e = await VisivelPara(usuarioId).FirstOrDefaultAsync(x => x.Id == id);
-        return e is null ? null : await ToDtoAsync(e, usuarioId);
+        if (e is null) return null;
+        if (AplicarMultaAVistaSeAtrasada(e)) await _context.SaveChangesAsync();
+        return await ToDtoAsync(e, usuarioId);
     }
 
     public async Task<EmprestimoDto> CriarAsync(CriarEmprestimoDto dto, Guid usuarioId)
@@ -182,8 +192,8 @@ public class EmprestimoService(
             CriadoPor = usuarioId,
             TransacaoId = transacaoId,
             FormaPagamento = dto.FormaPagamento,
-            TaxaJuroMensal = dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado ? dto.TaxaJuroMensal : null,
-            PercentualMultaAtraso = dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado ? dto.PercentualMultaAtraso : null,
+            TaxaJuroMensal = dto.TaxaJuroMensal,
+            PercentualMultaAtraso = dto.PercentualMultaAtraso,
         };
 
         if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
@@ -192,6 +202,12 @@ public class EmprestimoService(
                 emprestimo.Id, dto.ValorTotal, dto.QuantidadeParcelas!.Value,
                 dto.PrimeiroVencimento!.Value, dto.TaxaJuroMensal))
                 emprestimo.Parcelas.Add(parcela);
+        }
+        else if (dto.TaxaJuroMensal.HasValue)
+        {
+            // À vista com juros — markup fixo uma vez sobre o total, mesma regra "sem compor"
+            // já decidida pra parcela (Gustavo, 2026-08-08: "mesma regra do Parcelado").
+            emprestimo.ValorComJuros = Math.Round(dto.ValorTotal * (1 + dto.TaxaJuroMensal.Value / 100), 2);
         }
 
         _context.Emprestimos.Add(emprestimo);
@@ -1082,6 +1098,8 @@ public class EmprestimoService(
             FormaPagamento = (int)e.FormaPagamento,
             TaxaJuroMensal = e.TaxaJuroMensal,
             PercentualMultaAtraso = e.PercentualMultaAtraso,
+            ValorComJuros = e.ValorComJuros,
+            ValorComMulta = e.ValorComMulta,
             QuantidadeParcelas = e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado && e.Parcelas.Count > 0
                 ? e.Parcelas.Count
                 : null,
@@ -1132,6 +1150,20 @@ public class EmprestimoService(
         if (!emprestimo.PercentualMultaAtraso.HasValue) return false;
 
         p.ValorComMulta = Math.Round(p.Valor * (1 + emprestimo.PercentualMultaAtraso.Value / 100), 2);
+        return true;
+    }
+
+    /// <summary>Mesmo snapshot-único-na-1ª-leitura do AplicarMultaSeAtrasada, só que pro
+    /// Emprestimo À vista direto (não tem parcela pra pendurar isso).</summary>
+    private static bool AplicarMultaAVistaSeAtrasada(Emprestimo e)
+    {
+        if (e.FormaPagamento != FormaPagamentoEmprestimo.AVista) return false;
+        if (e.Quitado) return false;
+        if (e.ValorComMulta.HasValue) return false;
+        if (!e.PercentualMultaAtraso.HasValue) return false;
+        if (!e.DataVencimento.HasValue || e.DataVencimento.Value.Date >= DateTime.UtcNow.Date) return false;
+
+        e.ValorComMulta = Math.Round(e.ValorTotal * (1 + e.PercentualMultaAtraso.Value / 100), 2);
         return true;
     }
 

@@ -172,6 +172,29 @@ de escopo em relação ao rascunho original da API:
 - Back 373/373 (+14 testes), front 325/325 (+3 testes). Verificado ao vivo no browser: criar
   empréstimo parcelado com juros, expandir e ver as 4 parcelas com valor e vencimento corretos.
 
+### Juros/multa também pro À vista (2026-08-08)
+
+Achado do Gustavo cadastrando empréstimos reais: "juros ao mes e multa por atraso tambem deve ter
+pra forma de pagamento a vista" — até então os campos só apareciam pra `Parcelado`. Implementado com
+a **mesma regra flat** já decidida (markup fixo uma vez, sem compor), só que sobre `ValorTotal`
+inteiro em vez de por parcela — não cria `EmprestimoParcela` nenhuma pro À vista, os campos vivem
+direto no `Emprestimo`:
+
+- `Emprestimo.ValorComJuros` (decimal?) — `ValorTotal * (1 + TaxaJuroMensal/100)`, calculado uma vez
+  em `CriarAsync` quando `FormaPagamento == AVista` e juros informado.
+- `Emprestimo.ValorComMulta` (decimal?) — `ValorTotal * (1 + PercentualMultaAtraso/100)`, snapshot na
+  1ª leitura após `DataVencimento` passar (mesmo padrão `AplicarMultaSeAtrasada` da parcela, função
+  irmã `AplicarMultaAVistaSeAtrasada`, chamada em `ListarAsync`/`BuscarPorIdAsync`).
+
+Migration `AddJurosMultaAVistaEmprestimo`. `TaxaJuroMensal`/`PercentualMultaAtraso` no `Emprestimo`
+deixaram de ser nulados quando não-Parcelado (`CriarAsync` salvava só se `Parcelado` antes). O card
+"Vencido" (`TotalAReceberVencido`) também passou a usar `ValorComMulta ?? ValorComJuros ?? ValorTotal`
+pro À vista, mesma lógica de fallback já usada pra parcela. Frontend: campos Juros/Multa saíram do
+bloco condicional `formaPagamento === "parcelado"` (agora sempre visíveis, helper muda de "sobre a
+parcela" pra "sobre o total"); item da lista mostra "Com juros: RX" / "Com multa por atraso: RX"
+quando aplicável. Back +8 testes (378/378), front sem novo teste de UI (reaproveita padrão já
+coberto). Verificado ao vivo com empréstimo de teste dedicado (não nos empréstimos reais).
+
 ## Referências
 
 - `docs/features/emprestimo-compartilhado/spec.md` — vínculo bilateral (base).

@@ -427,6 +427,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("TransacaoId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("ValorComJuros")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorComMulta")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("ValorPago")
                         .HasColumnType("numeric");
 

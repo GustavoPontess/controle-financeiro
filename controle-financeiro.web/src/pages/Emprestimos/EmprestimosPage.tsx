@@ -307,8 +307,8 @@ export default function EmprestimosPage() {
         formaPagamento: parcelado ? FormaPagamentoEmprestimo.Parcelado : FormaPagamentoEmprestimo.AVista,
         quantidadeParcelas: parcelado ? form.quantidadeParcelas : undefined,
         primeiroVencimento: parcelado ? new Date(form.primeiroVencimento).toISOString() : undefined,
-        taxaJuroMensal: parcelado ? form.taxaJuroMensal : undefined,
-        percentualMultaAtraso: parcelado ? form.percentualMultaAtraso : undefined,
+        taxaJuroMensal: form.taxaJuroMensal,
+        percentualMultaAtraso: form.percentualMultaAtraso,
       }
       await createEmprestimo(payload)
       notify({ open: true, message: "Empréstimo criado", severity: "success" })
@@ -668,6 +668,13 @@ export default function EmprestimosPage() {
                         <strong>{e.contraparteNome ?? e.pessoa}</strong>
                         {e.dataVencimento && ` · vence ${formatDate(e.dataVencimento)}`}
                       </span>
+                      {!isParcelado && (e.valorComMulta != null || e.valorComJuros != null) && (
+                        <span className={styles.itemSub}>
+                          {e.valorComMulta != null
+                            ? <>Com multa por atraso: <strong>{formatMoney(e.valorComMulta)}</strong></>
+                            : <>Com juros: <strong>{formatMoney(e.valorComJuros!)}</strong></>}
+                        </span>
+                      )}
                       {!e.quitado && (
                         <div className={styles.progressWrap}>
                           <div className={styles.progressMeta}>
@@ -853,46 +860,45 @@ export default function EmprestimosPage() {
           </PontesField>
 
           {form.formaPagamento === "parcelado" && (
-            <>
-              <div className={styles.grid2}>
-                <PontesField label="Quantidade de parcelas" required error={errors.quantidadeParcelas}>
-                  <PontesInput
-                    value={form.quantidadeParcelas ?? ""}
-                    onChange={(e) => { setF("quantidadeParcelas", e.target.value ? Number(e.target.value) : undefined); clearErr("quantidadeParcelas") }}
-                    invalid={!!errors.quantidadeParcelas}
-                    inputMode="numeric"
-                    placeholder="Ex: 12"
-                  />
-                </PontesField>
-                <PontesField label="Vencimento da 1ª parcela" required error={errors.primeiroVencimento}>
-                  <PontesDateInput
-                    value={form.primeiroVencimento}
-                    onChange={(v) => { setF("primeiroVencimento", v); clearErr("primeiroVencimento") }}
-                  />
-                </PontesField>
-              </div>
-              <div className={styles.grid2}>
-                <PontesField label="Juros ao mês" helper="Opcional, sobre o valor da parcela">
-                  <PontesInput
-                    value={form.taxaJuroMensal ?? ""}
-                    onChange={(e) => setF("taxaJuroMensal", e.target.value ? Number(e.target.value) : undefined)}
-                    inputMode="decimal"
-                    iconEnd="%"
-                    placeholder="0"
-                  />
-                </PontesField>
-                <PontesField label="Multa por atraso" helper="Opcional, sobre a parcela">
-                  <PontesInput
-                    value={form.percentualMultaAtraso ?? ""}
-                    onChange={(e) => setF("percentualMultaAtraso", e.target.value ? Number(e.target.value) : undefined)}
-                    inputMode="decimal"
-                    iconEnd="%"
-                    placeholder="0"
-                  />
-                </PontesField>
-              </div>
-            </>
+            <div className={styles.grid2}>
+              <PontesField label="Quantidade de parcelas" required error={errors.quantidadeParcelas}>
+                <PontesInput
+                  value={form.quantidadeParcelas ?? ""}
+                  onChange={(e) => { setF("quantidadeParcelas", e.target.value ? Number(e.target.value) : undefined); clearErr("quantidadeParcelas") }}
+                  invalid={!!errors.quantidadeParcelas}
+                  inputMode="numeric"
+                  placeholder="Ex: 12"
+                />
+              </PontesField>
+              <PontesField label="Vencimento da 1ª parcela" required error={errors.primeiroVencimento}>
+                <PontesDateInput
+                  value={form.primeiroVencimento}
+                  onChange={(v) => { setF("primeiroVencimento", v); clearErr("primeiroVencimento") }}
+                />
+              </PontesField>
+            </div>
           )}
+
+          <div className={styles.grid2}>
+            <PontesField label="Juros ao mês" helper={form.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
+              <PontesInput
+                value={form.taxaJuroMensal ?? ""}
+                onChange={(e) => setF("taxaJuroMensal", e.target.value ? Number(e.target.value) : undefined)}
+                inputMode="decimal"
+                iconEnd="%"
+                placeholder="0"
+              />
+            </PontesField>
+            <PontesField label="Multa por atraso" helper={form.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
+              <PontesInput
+                value={form.percentualMultaAtraso ?? ""}
+                onChange={(e) => setF("percentualMultaAtraso", e.target.value ? Number(e.target.value) : undefined)}
+                inputMode="decimal"
+                iconEnd="%"
+                placeholder="0"
+              />
+            </PontesField>
+          </div>
 
           <PontesField label="Esse dinheiro já saiu/entrou de verdade?" required error={errors.movimentacao}>
             <div className={styles.gateGroup}>

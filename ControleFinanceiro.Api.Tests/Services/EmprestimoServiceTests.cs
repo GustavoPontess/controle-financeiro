@@ -716,6 +716,25 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
+    public async Task ObterStatsAsync_AVistaVencidoComMulta_SomaValorComMultaNoTotalVencido()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = Guid.NewGuid();
+        var dto = DtoValido();
+        dto.ValorTotal = 200;
+        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
+        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        dto.PercentualMultaAtraso = 20;
+        await svc.CriarAsync(dto, uid);
+        await svc.ListarAsync(uid); // dispara o snapshot da multa
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(240m, stats.TotalAReceberVencido); // 200 * 1.20, não só o principal
+    }
+
+    [Fact]
     public async Task ObterStatsAsync_ParceladoComParcelaAtrasada_SomaValorDaParcelaVencida()
     {
         var ctx = CreateContext();
@@ -1363,6 +1382,76 @@ public class EmprestimoServiceTests
         Assert.Equal(100, parcelas[0].Valor);
         Assert.Equal(110, parcelas[0].ValorComJuros);
         Assert.Equal(110, parcelas[1].ValorComJuros); // simples por parcela, sem efeito cascata
+    }
+
+    /// <summary>À vista com juros também suportado (achado do Gustavo, 2026-08-08: "juros ao mes
+    /// e multa por atraso tambem deve ter pra forma de pagamento a vista") — mesma regra flat do
+    /// Parcelado, só que sobre o total inteiro em vez de por parcela.</summary>
+    [Fact]
+    public async Task CriarAsync_AVista_ComJuros_CalculaValorComJurosSobreOTotal()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var dto = DtoValido();
+        dto.ValorTotal = 200;
+        dto.TaxaJuroMensal = 10; // 10% sobre o total, uma vez, sem compor
+
+        var criado = await svc.CriarAsync(dto, Guid.NewGuid());
+
+        Assert.Equal(220, criado.ValorComJuros);
+        Assert.Null(criado.ValorComMulta); // ainda não venceu
+    }
+
+    [Fact]
+    public async Task CriarAsync_AVista_SemJuros_ValorComJurosFicaNull()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+
+        var criado = await svc.CriarAsync(DtoValido(), Guid.NewGuid());
+
+        Assert.Null(criado.ValorComJuros);
+    }
+
+    [Fact]
+    public async Task ListarAsync_AVistaVencidoComMulta_SnapshotaValorComMultaUmaVez()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = Guid.NewGuid();
+        var dto = DtoValido();
+        dto.ValorTotal = 200;
+        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
+        dto.DataVencimento = DateTime.UtcNow.AddDays(-5); // já vencido
+        dto.PercentualMultaAtraso = 20;
+        await svc.CriarAsync(dto, uid);
+
+        var pagina1 = await svc.ListarAsync(uid);
+        Assert.Equal(240, pagina1.Items.Single().ValorComMulta); // 200 * 1.20
+
+        // Muda a multa configurada depois — não deveria alterar o snapshot já feito.
+        var emprestimo = await ctx.Emprestimos.FirstAsync();
+        emprestimo.PercentualMultaAtraso = 50;
+        await ctx.SaveChangesAsync();
+
+        var pagina2 = await svc.ListarAsync(uid);
+        Assert.Equal(240, pagina2.Items.Single().ValorComMulta); // continua o mesmo snapshot
+    }
+
+    [Fact]
+    public async Task ListarAsync_AVistaAindaNaoVencido_NaoAplicaMulta()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = Guid.NewGuid();
+        var dto = DtoValido();
+        dto.DataVencimento = DateTime.UtcNow.AddDays(5); // ainda não venceu
+        dto.PercentualMultaAtraso = 20;
+        await svc.CriarAsync(dto, uid);
+
+        var pagina = await svc.ListarAsync(uid);
+
+        Assert.Null(pagina.Items.Single().ValorComMulta);
     }
 
     [Fact]

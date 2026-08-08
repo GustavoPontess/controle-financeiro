@@ -38,13 +38,23 @@ public class Emprestimo
     // Forma de pagamento (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md).
     public FormaPagamentoEmprestimo FormaPagamento { get; set; } = FormaPagamentoEmprestimo.AVista;
 
-    /// <summary>% mensal, aplicado sobre o valor de cada parcela (não sobre saldo devedor, não
-    /// composto). Só usado se FormaPagamento == Parcelado.</summary>
+    /// <summary>% mensal. Parcelado: aplicado sobre o valor de cada parcela (ver
+    /// EmprestimoParcela.ValorComJuros). À vista: aplicado uma vez sobre ValorTotal na criação
+    /// (ver ValorComJuros abaixo) — mesma regra "flat, não composto" dos dois casos.</summary>
     public decimal? TaxaJuroMensal { get; set; }
 
-    /// <summary>% livre (sem teto/mínimo), aplicado uma vez sobre o valor da parcela quando ela
-    /// atrasa. Só usado se FormaPagamento == Parcelado.</summary>
+    /// <summary>% livre (sem teto/mínimo), aplicado uma vez quando atrasa. Parcelado: sobre o
+    /// valor de cada parcela. À vista: sobre ValorTotal (ver ValorComMulta abaixo).</summary>
     public decimal? PercentualMultaAtraso { get; set; }
+
+    /// <summary>À vista com TaxaJuroMensal: ValorTotal*(1+Taxa/100), calculado uma vez na
+    /// criação. Null se Parcelado (ali o juro é por parcela) ou sem taxa informada.</summary>
+    public decimal? ValorComJuros { get; set; }
+
+    /// <summary>À vista vencido com PercentualMultaAtraso: ValorTotal*(1+Multa/100), snapshot na
+    /// 1ª leitura após o vencimento (não recalcula depois — mesmo padrão da parcela). Null se
+    /// Parcelado, sem multa configurada, ou ainda não venceu.</summary>
+    public decimal? ValorComMulta { get; set; }
 
     public ICollection<EmprestimoParcela> Parcelas { get; set; } = new List<EmprestimoParcela>();
 }
