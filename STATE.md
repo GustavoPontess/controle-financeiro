@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-08
+last_reviewed: 2026-08-11
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-08: cadastrados os 6 empréstimos reais da Ana (R$11.757,50), depois 4 achados ao vivo resolvidos — popover de data vazando do modal (✅), "Registrar pagamento" legado do credor quebrado + unificado com o do devedor num fluxo só (✅, pesquisa de mercado Splitwise antes de desenhar), card "Vencido" no topo (✅), juros/multa habilitado também pro À vista (✅, só existia pra Parcelado). Commitado e pushado até `c2551c1` (3 commits) + mais trabalho de juros/multa À vista ainda solto no working tree. Back 378/378, front 328/328, tsc+lint limpos. Achado de processo importante: quitei R$175 reais da Ana sem querer testando o fluxo unificado — revertido na hora, regra nova gravada em memória (nunca testar em cima de dado financeiro real, nem em dev/seed) — respeitada no resto da sessão (juros/multa verificado com empréstimo de teste dedicado, apagado depois). Únicas peças mapeadas faltando pro módulo fechar por completo: (1) "unificar/consolidar" — ainda NÃO especificado; (2) editar/apagar empréstimo vinculado com erro — achado hoje, também não implementado. Próxima ação: commitar o trabalho de juros/multa À vista, depois decidir entre as duas peças que faltam.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-08 (parou em 2026-08-11): cadastrados os 6 empréstimos reais da Ana (R$11.757,50), depois 4 achados ao vivo resolvidos — popover de data vazando do modal (✅), "Registrar pagamento" legado do credor quebrado + unificado com o do devedor num fluxo só (✅, pesquisa de mercado Splitwise antes de desenhar), card "Vencido" no topo (✅), juros/multa habilitado também pro À vista (✅, só existia pra Parcelado). **PONTO SEGURO: tudo commitado e pushado até `972e03d`** (4 commits: popover, unificação+vencido, docs, juros/multa à vista). Back 378/378, front 328/328, tsc+lint limpos. Achado de processo importante: quitei R$175 reais da Ana sem querer testando o fluxo unificado — revertido na hora, regra nova gravada em memória (nunca testar em cima de dado financeiro real, nem em dev/seed) — respeitada no resto da sessão (juros/multa verificado com empréstimo de teste dedicado, apagado depois). Únicas peças mapeadas faltando pro módulo fechar por completo: (1) "unificar/consolidar" — ainda NÃO especificado; (2) editar/apagar empréstimo vinculado com erro — achado 2026-08-08, também não implementado. Próxima sessão: decidir entre as duas.'
 ---
 
 # STATE — onde parei
@@ -274,17 +274,30 @@ atividade), fica pra próxima. Catalogado no ROADMAP como P1.
 Parcelados. 4º `PontesStatCard`, tone danger. Verificado ao vivo: R$5.091,09, bate a soma manual dos
 6 empréstimos reais.
 
+**Achado 4 — juros/multa só existia pra Parcelado (Gustavo: "juros ao mes e multa por atraso
+tambem deve ter pra forma de pagamento a vista").** ✅ Implementado — mesma regra flat já decidida
+pro Parcelado (markup fixo uma vez, sem compor — confirmado com o Gustavo antes de codar), aplicada
+sobre `ValorTotal` inteiro em vez de por parcela. `Emprestimo.ValorComJuros`/`ValorComMulta` novos
+(migration `AddJurosMultaAVistaEmprestimo`), multa com snapshot na 1ª leitura após vencer
+(`AplicarMultaAVistaSeAtrasada`, mesmo padrão da parcela). Card "Vencido" atualizado pra considerar
+isso também. Frontend: campos saem do bloco condicional "parcelado", ficam sempre visíveis. Back
+378/378 (+8), front 328/328. **Verificado ao vivo com empréstimo de teste dedicado** (criado, juros
+conferido "Com juros: R$110,00" pra R$100+10%, depois apagado) — regra de não mexer nos reais
+respeitada.
+
+**Todo o trabalho da sessão commitado e pushado** até `972e03d` (4 commits: popover do DateInput,
+unificação registrar-pagamento + card Vencido, sync de docs, juros/multa À vista). Working tree
+limpo. Ponto seguro confirmado.
+
 **Pendências reais, na ordem:**
-1. **Commitar e pushar o trabalho de hoje** — nada disso foi commitado ainda (DateInput fix,
-   unificação registrar-pagamento, card Vencido, migration nova, docs, ROADMAP). Ponto perigoso pra
-   parar sem isso.
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão.
-3. Implementar unificar/consolidar.
-4. Implementar achado 3 (editar/relaxar apagar de empréstimo vinculado) — decidir com o Gustavo se
+2. Implementar unificar/consolidar.
+3. Implementar achado 3 (editar/relaxar apagar de empréstimo vinculado) — decidir com o Gustavo se
    entra antes ou depois do unificar/consolidar, os dois são P1 do mesmo módulo.
-5. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
-6. Servidores locais (backend 5293, frontend 5173, Postgres) — **no ar** no fim da sessão.
+4. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
+5. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
+   próxima sessão (podem ter caído entre sessões, já aconteceu antes).
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
@@ -303,11 +316,9 @@ Parcelados. 4º `PontesStatCard`, tone danger. Verificado ao vivo: R$5.091,09, b
 
 ## Próxima ação concreta
 
-1. **Commitar + pushar tudo que está solto** (ver Pendências reais #1) — prioridade antes de
-   qualquer coisa nova.
-2. Decidir com o Gustavo: entre "unificar/consolidar" (especificar antes de codar) e "editar/apagar
+1. Decidir com o Gustavo: entre "unificar/consolidar" (especificar antes de codar) e "editar/apagar
    empréstimo vinculado" (achado 3), qual ataca primeiro — os dois são P1, mesmo módulo.
-3. Só depois de fechar os dois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por
+2. Só depois de fechar os dois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por
    completo primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
