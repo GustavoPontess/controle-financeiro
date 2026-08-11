@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-11
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-08 (parou em 2026-08-11): cadastrados os 6 empréstimos reais da Ana (R$11.757,50), depois 4 achados ao vivo resolvidos — popover de data vazando do modal (✅), "Registrar pagamento" legado do credor quebrado + unificado com o do devedor num fluxo só (✅, pesquisa de mercado Splitwise antes de desenhar), card "Vencido" no topo (✅), juros/multa habilitado também pro À vista (✅, só existia pra Parcelado). **PONTO SEGURO: tudo commitado e pushado até `972e03d`** (4 commits: popover, unificação+vencido, docs, juros/multa à vista). Back 378/378, front 328/328, tsc+lint limpos. Achado de processo importante: quitei R$175 reais da Ana sem querer testando o fluxo unificado — revertido na hora, regra nova gravada em memória (nunca testar em cima de dado financeiro real, nem em dev/seed) — respeitada no resto da sessão (juros/multa verificado com empréstimo de teste dedicado, apagado depois). Únicas peças mapeadas faltando pro módulo fechar por completo: (1) "unificar/consolidar" — ainda NÃO especificado; (2) editar/apagar empréstimo vinculado com erro — achado 2026-08-08, também não implementado. Próxima sessão: decidir entre as duas.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: escolhido "editar/apagar empréstimo vinculado" (achado 3) como próxima peça — escopo confirmado com o Gustavo, só a parte "apagar sem atividade" (editar campos fica fora de escopo, decisão futura). ✅ Implementado: `DeletarAsync` só bloqueia `Vinculado` se já tem atividade real (`ValorPago>0`, parcela `Paga`, ou qualquer solicitação — mesmo rejeitada). Back 380/380 (+2), front lint limpo. Verificado ao vivo com empréstimo de teste dedicado (criado, vinculado à Ana, aceito, apagado — sucesso), 6 empréstimos reais intactos. **PONTO SEGURO: tudo commitado e pushado até `972e03d` + esta sessão pronta pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
 ---
 
 # STATE — onde parei
@@ -285,19 +285,51 @@ isso também. Frontend: campos saem do bloco condicional "parcelado", ficam semp
 conferido "Com juros: R$110,00" pra R$100+10%, depois apagado) — regra de não mexer nos reais
 respeitada.
 
-**Todo o trabalho da sessão commitado e pushado** até `972e03d` (4 commits: popover do DateInput,
-unificação registrar-pagamento + card Vencido, sync de docs, juros/multa À vista). Working tree
-limpo. Ponto seguro confirmado.
+**Todo o trabalho da sessão 2026-08-08 commitado e pushado** até `972e03d` (4 commits: popover do
+DateInput, unificação registrar-pagamento + card Vencido, sync de docs, juros/multa À vista).
+
+**Sessão 2026-08-11 — achado 3 (apagar empréstimo vinculado sem atividade), resolvido:**
+
+Servidores caídos no início (reboot do PC entre sessões) — Postgres, backend e frontend
+resubidos sem incidente. Confirmado estado real no browser logado como Gustavo: os 6 empréstimos
+reais intactos, card Vencido batendo R$5.091,09, tudo como o STATE.md descrevia.
+
+Perguntado ao Gustavo qual dos 2 P1 abertos atacar — escolheu achado 3. Escopo do achado tinha
+2 partes (editar campos × apagar vinculado); perguntado de novo qual das duas — Gustavo escolheu
+só **"apagar vinculado sem atividade"**, confirmando a proposta que já estava registrada no
+ROADMAP. Editar campos (valor/parcelas/data) de um empréstimo já vinculado fica **fora de escopo**,
+decisão futura mais delicada.
+
+**Implementado:** `EmprestimoService.DeletarAsync` — antes bloqueava (`ForbiddenAccessException`)
+*qualquer* empréstimo `Vinculado`, sem exceção. Agora só bloqueia se **já tem atividade real**:
+`ValorPago > 0`, alguma `EmprestimoParcela` `Paga`, ou qualquer `EmprestimoPagamentoSolicitacao`
+vinculada — **mesmo rejeitada** (decisão: a contraparte já viu/interagiu com o registro, apagar
+apagaria o rastro dela também, mesmo raciocínio de auditoria do resto do módulo). Sem nenhuma das
+três, apagar segue liberado — resolve "coloquei o valor errado ao criar, quero começar de novo"
+sem precisar de um fluxo de edição inteiro. Frontend: só copy do dialog de confirmação atualizada
+(botão "Remover" já existia sem condição de `statusVinculo`, chamava o endpoint direto — não
+precisou de mudança de lógica, só a mensagem que citava a regra antiga).
+
+Back 380/380 (+2 testes novos: vinculado-sem-atividade permite, vinculado-com-solicitação-rejeitada
+ainda bloqueia — mantido o teste antigo de vinculado-com-solicitação-pendente também bloqueia),
+front lint limpo (mudança só de copy, sem novo teste — regra do PROMPT_NOVA_SESSAO §7, copy pura
+não precisa). **Verificado ao vivo, seguindo a regra de nunca testar em cima de dado real:** criado
+empréstimo de teste dedicado "TESTE apagar vinculado sem atividade" (R$10, à vista), vinculado à
+Ana Paula (seed real), aceito por ela, depois apagado como Gustavo — sucesso ("Empréstimo
+removido"), sumiu da lista, contadores voltaram ao normal (Ativos 7→6, A receber R$11.767,50→
+R$11.757,50). Os 6 empréstimos reais não foram tocados em nenhum momento.
+
+Doc atualizada: `pagamento-aprovacao.md` ganhou seção "Apagar empréstimo vinculado sem atividade
+(2026-08-11)" + 3 linhas novas em "Testes (backend)".
 
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
-   **antes** de codar, mesmo padrão do resto da sessão.
+   **antes** de codar, mesmo padrão do resto da sessão. Única peça que falta pro módulo Empréstimos
+   fechar por completo.
 2. Implementar unificar/consolidar.
-3. Implementar achado 3 (editar/relaxar apagar de empréstimo vinculado) — decidir com o Gustavo se
-   entra antes ou depois do unificar/consolidar, os dois são P1 do mesmo módulo.
-4. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
-5. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
-   próxima sessão (podem ter caído entre sessões, já aconteceu antes).
+3. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — confirmados no ar nesta sessão, mas
+   o PC pode reiniciar de novo entre sessões (já aconteceu 2x).
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
@@ -316,10 +348,10 @@ limpo. Ponto seguro confirmado.
 
 ## Próxima ação concreta
 
-1. Decidir com o Gustavo: entre "unificar/consolidar" (especificar antes de codar) e "editar/apagar
-   empréstimo vinculado" (achado 3), qual ataca primeiro — os dois são P1, mesmo módulo.
-2. Só depois de fechar os dois: decidir PR, ou trocar de frente (regra do Gustavo — módulo por
-   completo primeiro).
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
+   de codar — última peça mapeada faltando pro módulo Empréstimos fechar por completo.
+2. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
+   primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.

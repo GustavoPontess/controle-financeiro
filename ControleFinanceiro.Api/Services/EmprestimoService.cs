@@ -250,17 +250,27 @@ public class EmprestimoService(
         return true;
     }
 
-    /// <summary>Soft delete — nunca hard-delete (CLAUDE.md). Bloqueado se já vinculado:
-    /// ninguém apaga sozinho um registro que a outra parte já confirmou fazer parte.</summary>
+    /// <summary>Soft delete — nunca hard-delete (CLAUDE.md). Vinculado só bloqueia se já tem
+    /// atividade real (pagamento registrado por qualquer lado, aprovado ou não) — a outra parte
+    /// já viu/interagiu com esse registro, apagar apagaria o rastro dela também. Sem atividade
+    /// (aceite bilateral, mas ninguém pagou nada ainda) pode apagar — achado do Gustavo: "e se eu
+    /// colocar valor errado como faz?" (2026-08-08).</summary>
     public async Task<bool> DeletarAsync(Guid id, Guid usuarioId)
     {
         var e = await _context.Emprestimos
+            .Include(x => x.Parcelas)
             .FirstOrDefaultAsync(x => x.Id == id && x.CriadoPor == usuarioId && x.Ativo);
         if (e is null) return false;
 
         if (e.StatusVinculo == StatusVinculoEmprestimo.Vinculado)
-            throw new ForbiddenAccessException(
-                "Não é possível apagar um empréstimo vinculado — quite-o em vez disso.");
+        {
+            var temAtividade = e.ValorPago > 0
+                || e.Parcelas.Any(p => p.Status == StatusParcelaEmprestimo.Paga)
+                || await _context.EmprestimoPagamentoSolicitacoes.AnyAsync(s => s.EmprestimoId == e.Id);
+            if (temAtividade)
+                throw new ForbiddenAccessException(
+                    "Não é possível apagar um empréstimo vinculado com pagamento registrado — quite-o em vez disso.");
+        }
 
         e.Ativo = false;
         await _context.SaveChangesAsync();

@@ -288,7 +288,7 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
-    public async Task DeletarAsync_Vinculado_LancaForbidden()
+    public async Task DeletarAsync_VinculadoSemAtividade_SoftDeletaNaoRemove()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
@@ -300,6 +300,51 @@ public class EmprestimoServiceTests
         var token = link.LinkConvite.Split('/').Last();
         await svc.AceitarVinculoAsync(token, devedorId);
 
+        var ok = await svc.DeletarAsync(criado.Id, credorId);
+
+        Assert.True(ok);
+        var linha = await ctx.Emprestimos.FirstOrDefaultAsync(e => e.Id == criado.Id);
+        Assert.NotNull(linha);
+        Assert.False(linha!.Ativo);
+    }
+
+    [Fact]
+    public async Task DeletarAsync_VinculadoComSolicitacaoPendente_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        var token = link.LinkConvite.Split('/').Last();
+        await svc.AceitarVinculoAsync(token, devedorId);
+
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), devedorId);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => svc.DeletarAsync(criado.Id, credorId));
+    }
+
+    [Fact]
+    public async Task DeletarAsync_VinculadoComSolicitacaoRejeitada_LancaForbidden()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var criado = await svc.CriarAsync(DtoValido(), credorId);
+
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        var token = link.LinkConvite.Split('/').Last();
+        await svc.AceitarVinculoAsync(token, devedorId);
+
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var solicitacao = await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), devedorId);
+        await svc.RejeitarPagamentoSolicitacaoAsync(solicitacao.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
+
+        // mesmo rejeitada, a solicitação é rastro real que o devedor viu — continua bloqueando.
         await Assert.ThrowsAsync<ForbiddenAccessException>(() => svc.DeletarAsync(criado.Id, credorId));
     }
 

@@ -966,7 +966,7 @@ export default function EmprestimosPage() {
       <PontesDialog
         open={delId !== null}
         title="Remover empréstimo?"
-        description="O registro sai da sua lista. Se já estiver vinculado a outra pessoa, não é possível remover — quite-o em vez disso."
+        description="O registro sai da sua lista. Se já tiver pagamento registrado (por qualquer lado), não é possível remover — quite-o em vez disso."
         confirmLabel="Remover"
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}

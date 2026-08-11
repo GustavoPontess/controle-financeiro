@@ -350,6 +350,27 @@ criar um registro dedicado só pra teste.**
   prática (recusa de vínculo só antes de aceitar, e sem vínculo não existe devedor pra solicitar) —
   não é um caso alcançável pelo fluxo normal.
 
+### Apagar empréstimo vinculado sem atividade (2026-08-11)
+
+**Achado (Gustavo, 2026-08-08): "nenhum emprestimo e editavel e se eu colocar valor errado como
+faz?"** `DeletarAsync` bloqueava (`ForbiddenAccessException`) qualquer `Emprestimo` `Vinculado`,
+sem exceção — só restava `Quitar` (errado: marca 100% pago, não corrige nada). Editar campos
+(valor/data/descrição) de um empréstimo já vinculado é um problema maior (o que fazer com parcelas
+já geradas, `TransacaoId`, se a contraparte precisa reaprovar a mudança) e ficou **fora de escopo
+por decisão explícita** — só a parte "apagar sem atividade" foi implementada agora.
+
+**Regra nova:** `Vinculado` só bloqueia apagar se já **tem atividade real** — `ValorPago > 0`, ou
+alguma `EmprestimoParcela` `Paga`, ou **qualquer** `EmprestimoPagamentoSolicitacao` vinculada ao
+empréstimo, **mesmo rejeitada**. Rejeitada ainda conta como atividade porque a contraparte já viu e
+interagiu com o registro — apagar apagaria o rastro dela também, mesmo raciocínio de auditoria do
+resto do módulo. Sem nenhuma dessas três coisas (aceite bilateral existe, mas ninguém tentou pagar
+nada ainda), apagar segue liberado — resolve "coloquei o valor errado ao criar, quero começar de
+novo" sem precisar de um fluxo de edição inteiro.
+
+Verificado ao vivo com empréstimo de teste dedicado (criado, vinculado à Ana, aceito por ela,
+depois apagado como Gustavo — sucesso, sumiu da lista dos dois lados) — os 6 empréstimos reais não
+foram tocados.
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).
@@ -374,6 +395,9 @@ criar um registro dedicado só pra teste.**
 - Testar os dois `Tipo` (`Emprestei`/`PegueiEmprestado`) explicitamente pra autorização de
   solicitar/aprovar.
 - Idempotência: replay do `POST solicitar-pagamento` com mesma chave não duplica.
+- `DeletarAsync` de empréstimo `Vinculado` sem atividade → soft-delete permitido.
+- `DeletarAsync` de empréstimo `Vinculado` com solicitação `Pendente` → 403.
+- `DeletarAsync` de empréstimo `Vinculado` com solicitação `Rejeitada` → 403 (rastro conta como atividade).
 
 ## Referências
 
