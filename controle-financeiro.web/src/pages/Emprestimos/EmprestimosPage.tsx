@@ -825,14 +825,17 @@ export default function EmprestimosPage() {
                             ) : (
                               historicoInlineLista.map((h) => (
                                 <div key={h.id} className={styles.parcelaHistoricoItem}>
-                                  <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}{" "}
-                                  <PontesBadge
-                                    size="sm"
-                                    tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
-                                      : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
-                                  >
-                                    {h.statusAprovacaoDescricao}
-                                  </PontesBadge>
+                                  <div className={styles.parcelaHistoricoHead}>
+                                    <strong>{h.solicitadoPorNome}</strong>
+                                    <span>{formatMoney(h.valor)}</span>
+                                    <PontesBadge
+                                      size="sm"
+                                      tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
+                                        : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
+                                    >
+                                      {h.statusAprovacaoDescricao}
+                                    </PontesBadge>
+                                  </div>
                                   <span className={styles.itemSub}>
                                     {!h.registradoPeloCredor && (
                                       <>Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}</>
