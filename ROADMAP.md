@@ -132,7 +132,7 @@ status: ATIVO
 
 - [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
 - [ ] Segredos rotacionados
-- [ ] Pesquisa de conformidade completa (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126`
+- [ ] Pesquisa de conformidade completa (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126`. **Achado concreto pra revisar quando essa pesquisa acontecer (2026-08-12, pergunta direta do Gustavo vendo o histórico de pagamento de empréstimo):** o histórico de pagamento mostra pro credor o nome da conta de onde o devedor pagou (`ComprovanteContaNome`, ex. "Carteira") — checado ao vivo (WebFetch em `lgpd-brasil.info`, texto do Art. 7): tem base legal (**Art. 7º-V, execução de contrato do qual o titular é parte, a pedido do titular** — o devedor escolhe a conta e envia o comprovante voluntariamente; mais o consentimento já dado no aceite do vínculo bilateral) e o dado em si não é sensível (Art. 5º-II não cobre nome de conta/carteira). **Não é ilegalidade, mas falta transparência explícita** — a tela não avisa o devedor, no momento de escolher a conta, que o nome dela vai aparecer pro credor. Melhoria de UX/conformidade catalogada aqui pra não perder: adicionar aviso inline no formulário de "Registrar pagamento" (algo como "o credor vai ver o nome dessa conta"). Nível: ⚪ P3 — não bloqueia, mas fechar junto da pesquisa de conformidade #126.
 - [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
 
 ---

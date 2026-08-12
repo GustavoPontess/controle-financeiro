@@ -443,6 +443,19 @@ abriu o histórico dela inline embaixo da própria linha (não modal) com a soli
 listada. Back 381/381 (+2 testes no total do redesenho), front 331/331 (+2 testes: comportamento
 inline da parcela + variantes novas da lib).
 
+**Bug real achado logo na verificação seguinte:** Gustavo aprovou de verdade pela linha da parcela
+("registrei entrada mas o status continua como aguardando aprovação") — conferido no Postgres (só
+leitura) que o backend tinha aprovado certo (`StatusAprovacao=2`, `AprovadoEm` preenchido), mas a
+tela continuava mostrando "Aguardando aprovação". Causa: `parcelasPorEmprestimo` (cache de parcelas
+por empréstimo expandido) só é buscado uma vez ao expandir — `handleAprovar`/`handleRejeitar`/
+`handleReenviar` chamavam `loadData()` (recarrega a lista de empréstimos + stats) mas nunca
+re-buscavam as parcelas nem o histórico inline aberto. Corrigido com `refreshParcelasEHistoricoInline`
+— depois de aprovar/rejeitar/reenviar, se tem empréstimo expandido, rebusca `listParcelasEmprestimo`
+pra ele e, se tem histórico inline de parcela aberto, rebusca e refiltra também. Front +1 teste
+(mocka duas respostas diferentes de `listParcelasEmprestimo`, confirma que a badge some depois de
+aprovar). Verificado ao vivo de novo: aprovou a parcela real de teste, badge sumiu, progresso foi
+pra 50%, sem precisar recarregar a página manualmente.
+
 **Achado colateral, no meio da investigação:** ao checar por que o R$500 do Móveis (empréstimo real)
 não mostrava mais o badge, uma consulta só-leitura no Postgres revelou que a solicitação real já
 tinha sido rejeitada minutos antes por conta própria do Gustavo (fora da sessão do Claude, provável

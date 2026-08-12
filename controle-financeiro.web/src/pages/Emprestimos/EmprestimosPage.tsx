@@ -525,9 +525,28 @@ export default function EmprestimosPage() {
       setAprovarFor(null)
       await loadData()
       if (historicoFor) await carregarHistorico(historicoFor)
+      await refreshParcelasEHistoricoInline()
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao aprovar pagamento"), severity: "error" })
     } finally { setAvaliandoId(null) }
+  }
+
+  // Aprovar/rejeitar/reenviar mexe numa parcela específica, mas o cache de parcelas do empréstimo
+  // expandido (parcelasPorEmprestimo) só é buscado uma vez ao abrir — sem isso, a linha continua
+  // mostrando "Aguardando aprovação" mesmo depois de aprovado de verdade (achado do Gustavo,
+  // 2026-08-12: "registrei entrada mas o status continua como aguardando aprovação").
+  const refreshParcelasEHistoricoInline = async () => {
+    if (!expandedId) return
+    try {
+      const lista = await listParcelasEmprestimo(expandedId)
+      setParcelasPorEmprestimo((p) => ({ ...p, [expandedId]: lista }))
+    } catch { /* refresh silencioso, não crítico */ }
+    if (historicoInlineParcelaId) {
+      try {
+        const historicoLista = await listSolicitacoesPagamento(expandedId)
+        setHistoricoInlineLista(historicoLista.filter((h) => h.parcelaId === historicoInlineParcelaId))
+      } catch { /* refresh silencioso, não crítico */ }
+    }
   }
 
   const openRejeitar = (solicitacaoId: string) => {
@@ -544,6 +563,7 @@ export default function EmprestimosPage() {
       setRejeitarFor(null)
       await loadData()
       if (historicoFor) await carregarHistorico(historicoFor)
+      await refreshParcelasEHistoricoInline()
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao rejeitar pagamento"), severity: "error" })
     } finally { setAvaliandoId(null) }
@@ -556,6 +576,7 @@ export default function EmprestimosPage() {
       notify({ open: true, message: "Pagamento reenviado pra aprovação", severity: "success" })
       await loadData()
       if (historicoFor) await carregarHistorico(historicoFor)
+      await refreshParcelasEHistoricoInline()
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao reenviar pagamento"), severity: "error" })
     } finally { setAvaliandoId(null) }

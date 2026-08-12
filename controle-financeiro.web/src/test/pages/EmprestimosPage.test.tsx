@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import EmprestimosPage from "../../pages/Emprestimos/EmprestimosPage"
 import {
@@ -405,6 +405,43 @@ describe("EmprestimosPage (#152)", () => {
 
     fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
     expect(await screen.findByText("Como registrar essa entrada?")).toBeInTheDocument()
+  })
+
+  it("aprovar pela parcela recarrega a lista — badge 'Aguardando aprovação' some (achado: ficava preso)", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    listParcelasEmprestimo
+      .mockResolvedValueOnce([{
+        id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+        dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+        status: 1, statusDescricao: "Pendente", atrasada: false,
+        solicitacaoPendenteId: "sol-1",
+      }])
+      .mockResolvedValueOnce([{
+        id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+        dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+        status: 2, statusDescricao: "Paga", atrasada: false,
+      }])
+    aprovarPagamentoEmprestimo.mockResolvedValue(undefined)
+    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
+    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 3 }])
+    renderPage()
+    await screen.findByText("Carro")
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    await screen.findByText("Aguardando aprovação")
+
+    fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
+    await screen.findByText("Como registrar essa entrada?")
+    fireEvent.click(screen.getByText("Ainda não registrei — registrar agora"))
+    fireEvent.click(screen.getAllByText("Selecione")[0])
+    fireEvent.click(await screen.findByText("Carteira"))
+    fireEvent.click(screen.getByText("Selecione"))
+    fireEvent.click(await screen.findByText("Outros"))
+    fireEvent.click(screen.getByText("Confirmar recebimento"))
+
+    await waitFor(() => expect(listParcelasEmprestimo).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText("Paga")).toBeInTheDocument()
+    expect(screen.queryByText("Aguardando aprovação")).not.toBeInTheDocument()
   })
 
   it("clicar na parcela abre o histórico dela inline, embaixo da própria linha (não modal)", async () => {
