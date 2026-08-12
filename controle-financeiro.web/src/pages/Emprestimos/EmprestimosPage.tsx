@@ -783,13 +783,11 @@ export default function EmprestimosPage() {
                           </span>
                           {podeAprovar && (
                             <div className={styles.parcelaActions} onClick={(ev) => ev.stopPropagation()}>
-                              <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
-                                className={styles.aprovarBtn}
+                              <PontesIconButton size={32} variant="success" aria-label="Aprovar pagamento"
                                 onClick={() => openAprovar(parc.solicitacaoPendenteId!)}>
                                 <Check size={14} />
                               </PontesIconButton>
-                              <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
-                                className={styles.rejeitarBtn}
+                              <PontesIconButton size={32} variant="danger" aria-label="Rejeitar pagamento"
                                 onClick={() => openRejeitar(parc.solicitacaoPendenteId!)}>
                                 <X size={14} />
                               </PontesIconButton>

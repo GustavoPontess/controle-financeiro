@@ -72,5 +72,3 @@
 .parcelaValor { font-weight: 700; color: var(--pontes-text); white-space: nowrap; }
 .parcelaValorOriginal { text-decoration: line-through; color: var(--pontes-text-muted); font-weight: 400; margin-right: 4px; }
 .parcelaActions { display: flex; gap: 2px; flex-shrink: 0; }
-[data-variant="ghost"].aprovarBtn { color: var(--pontes-success); }
-[data-variant="ghost"].rejeitarBtn { color: var(--pontes-danger); }

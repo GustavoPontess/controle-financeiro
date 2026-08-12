@@ -59,6 +59,17 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("3")).toBeInTheDocument()
   })
 
+  it("PontesButton e PontesIconButton aceitam variant success/danger preenchidos", () => {
+    render(<>
+      <PontesButton p={p} variant="success">Sucesso</PontesButton>
+      <PontesIconButton p={p} variant="success" aria-label="Aprovar">✓</PontesIconButton>
+      <PontesIconButton p={p} variant="danger" aria-label="Rejeitar">✗</PontesIconButton>
+    </>)
+    expect(screen.getByText("Sucesso")).toHaveAttribute("data-variant", "success")
+    expect(screen.getByLabelText("Aprovar")).toHaveAttribute("data-variant", "success")
+    expect(screen.getByLabelText("Rejeitar")).toHaveAttribute("data-variant", "danger")
+  })
+
   it("PontesField mostra label, required asterisk e erro", () => {
     render(
       <PontesField p={p} font={font} label="E-mail" required error="Inválido">

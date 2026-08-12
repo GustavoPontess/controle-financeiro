@@ -20,6 +20,7 @@ import styles from "./Button.module.css"
 export type PontesButtonVariant =
   | "primary" | "accent" | "outline" | "ghost" | "soft"
   | "danger" | "danger-outline"
+  | "success" | "success-outline"
   | "outline-light" | "ghost-light"
 
 export type PontesButtonSize = "xs" | "sm" | "md" | "lg" | "xl"
@@ -70,7 +71,7 @@ export type PontesIconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>
   p?: Palette
   font?: string
   size?: 32 | 40 | 48
-  variant?: "primary" | "soft" | "outline" | "ghost"
+  variant?: "primary" | "soft" | "outline" | "ghost" | "danger" | "success"
   badge?: number | string
   type?: "button" | "submit"
 }
