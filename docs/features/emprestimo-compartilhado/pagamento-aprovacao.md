@@ -389,14 +389,26 @@ na parcela e abre em baixo pra mim e na parcela aparece um icone de alerta".
    do valor. Chamam os mesmos modais já existentes (`openAprovar`/`openRejeitar`), só mudou de onde
    são disparados — sem etapa intermediária.
 
-**Primeira versão tinha um painel amarelo que abria ao clicar na parcela — trocado no mesmo dia.**
-Gustavo: "não sei pq não gostei desse trem de clicar na parcela e aparecer esse trem amarelo ai de
-aprovação grandão". Pedido explícito de redesenho: "coloca na mema linha depois do preço... um botão
-de aprovar e um de recusar em verde e em vermelho, clicar na parcela abre o historico dela quando foi
-paga se atrasou ou não tudo que for possivel". Resultado: botões sempre visíveis na própria linha
-(sem clique intermediário) + **clicar na parcela (em qualquer parcela, paga ou não) abre o histórico
-filtrado só daquela parcela** — mesmo modal "Histórico de pagamentos" de sempre, título vira
-"Histórico da parcela N/Total", lista filtrada client-side por `parcelaId`.
+**Primeira versão tinha um painel amarelo que abria ao clicar na parcela — trocado no mesmo dia, em
+duas rodadas de redesign.** Gustavo: "não sei pq não gostei desse trem de clicar na parcela e
+aparecer esse trem amarelo ai de aprovação grandão". Pedido explícito de redesenho: "coloca na mema
+linha depois do preço... um botão de aprovar e um de recusar em verde e em vermelho, clicar na
+parcela abre o historico dela quando foi paga se atrasou ou não tudo que for possivel".
+
+**Rodada 1 do redesign:** botões sempre visíveis na própria linha (sem clique intermediário) +
+clicar na parcela abrindo o modal "Histórico de pagamentos" já existente, filtrado por `parcelaId`.
+
+**Rodada 2, minutos depois:** "não quero que esse historico de parcela abra assim nem a pau, quero
+que abra em baixo" — o modal em si (por cima de tudo, com overlay) não servia, mesmo filtrado.
+**Trocado por painel 100% inline**, embaixo da própria linha da parcela (mesmo padrão de
+show/collapse do `expandedId` do empréstimo, agora por parcela): `historicoInlineParcelaId` guarda
+qual parcela está com o histórico aberto, busca via `listSolicitacoesPagamento` + filtro client-side
+por `parcelaId`, sem tocar no modal "Histórico de pagamentos" original (que continua intacto pro
+botão de nível do empréstimo). Clicar de novo na mesma parcela recolhe. Também nessa rodada: botões
+diminuídos de 32px pra 24px (tamanho novo na lib, `PontesIconButton size={24}`) com mais espaço
+entre eles (`gap` de 2px pra 8px), e o badge da parcela pendente deixou de mostrar o genérico
+"Pendente" — vira "Aguardando aprovação" (tone warning) quando há solicitação esperando avaliação,
+pra o status por si só já indicar o que fazer, não só os botões.
 
 **Backend:** `EmprestimoParcelaDto` ganhou `SolicitacaoPendenteId` (`Guid?`), populado em
 `ListarParcelasAsync` via uma query em lote (`EmprestimoPagamentoSolicitacoes` com `ParcelaId` numa
@@ -417,11 +429,19 @@ do fluxo de histórico — é sinal adicional pro front, a fonte da verdade cont
    ao vivo (histórico da parcela voltava vazio mesmo com solicitação real registrada), corrigido
    adicionando `ParcelaId = s.ParcelaId` no mapeamento + o campo na classe DTO.
 
+**Componentes novos foram pra biblioteca Pontes, não pra página** (regra do `PROMPT_NOVA_SESSAO.md`
+§5): `PontesButton` ganhou `variant="success"`/`"success-outline"` (espelha `danger`/`danger-outline`
+que já existia) e `PontesIconButton` ganhou `variant="success"`/`"danger"` (preenchidos, só tinha
+`primary/soft/outline/ghost`) + tamanho `24` novo (só tinha `32/40/48`) — todos com demo em
+`/design-system` e smoke test em `pontes.test.tsx` antes de usar em Empréstimos.
+
 **Verificado ao vivo** com empréstimo de teste dedicado (nunca nos 6 reais): "TESTE aprovar parcela
 inline" (Parcelado 2x), vinculado à Ana, ela solicitou pagamento da parcela 1 — do lado do Gustavo,
-os botões verde/vermelho apareceram direto na linha, "Aprovar pagamento" abriu o modal certo sem
-clique intermediário, e clicar na parcela abriu "Histórico da parcela 1/2" com a solicitação real da
-Ana listada. Back 381/381 (+2 testes no total do redesenho), front 330/330 (+1 teste).
+os botões verde/vermelho (preenchidos, 24px) apareceram direto na linha, badge mudou pra "Aguardando
+aprovação", "Aprovar pagamento" abriu o modal certo sem clique intermediário, e clicar na parcela
+abriu o histórico dela inline embaixo da própria linha (não modal) com a solicitação real da Ana
+listada. Back 381/381 (+2 testes no total do redesenho), front 331/331 (+2 testes: comportamento
+inline da parcela + variantes novas da lib).
 
 **Achado colateral, no meio da investigação:** ao checar por que o R$500 do Móveis (empréstimo real)
 não mostrava mais o badge, uma consulta só-leitura no Postgres revelou que a solicitação real já

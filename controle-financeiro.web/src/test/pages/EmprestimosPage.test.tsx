@@ -407,7 +407,7 @@ describe("EmprestimosPage (#152)", () => {
     expect(await screen.findByText("Como registrar essa entrada?")).toBeInTheDocument()
   })
 
-  it("clicar na parcela abre o histórico filtrado só dela", async () => {
+  it("clicar na parcela abre o histórico dela inline, embaixo da própria linha (não modal)", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
     listParcelasEmprestimo.mockResolvedValue([{
       id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
@@ -431,10 +431,18 @@ describe("EmprestimosPage (#152)", () => {
 
     fireEvent.click(screen.getByLabelText("Ver parcelas"))
     await screen.findByText("1/3")
+    expect(screen.queryByText("Histórico de pagamentos")).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByText("1/3"))
 
-    expect(await screen.findByText("Histórico da parcela 1/3")).toBeInTheDocument()
-    expect(screen.getByText("Ana", { exact: false })).toBeInTheDocument()
+    expect(await screen.findByText("Ana", { exact: false })).toBeInTheDocument()
+    // não é modal — não tem título "Histórico de pagamentos" nem botão Fechar
+    expect(screen.queryByText("Histórico de pagamentos")).not.toBeInTheDocument()
+    expect(screen.queryByText("Fechar")).not.toBeInTheDocument()
+
+    // clicar de novo recolhe
+    fireEvent.click(screen.getByText("1/3"))
+    expect(screen.queryByText("Ana", { exact: false })).not.toBeInTheDocument()
   })
 
   it("devedor de empréstimo parcelado escolhe a parcela antes de marcar como pago", async () => {

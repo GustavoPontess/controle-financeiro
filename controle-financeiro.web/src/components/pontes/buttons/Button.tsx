@@ -70,7 +70,7 @@ export function PontesButton({
 export type PontesIconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   p?: Palette
   font?: string
-  size?: 32 | 40 | 48
+  size?: 24 | 32 | 40 | 48
   variant?: "primary" | "soft" | "outline" | "ghost" | "danger" | "success"
   badge?: number | string
   type?: "button" | "submit"

@@ -190,9 +190,12 @@ export default function EmprestimosPage() {
   const [historicoFor, setHistoricoFor] = useState<string | null>(null)
   const [historico, setHistorico] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [historicoLoading, setHistoricoLoading] = useState(false)
-  // Quando aberto a partir de uma parcela específica, filtra o histórico só pra ela (achado do
-  // Gustavo, 2026-08-12: "clicar na parcela abre o historico dela").
-  const [historicoParcelaFiltro, setHistoricoParcelaFiltro] = useState<{ id: string; numero: number; quantidadeTotal: number } | null>(null)
+  // Histórico de uma parcela específica, inline embaixo dela mesma — não modal (achado do
+  // Gustavo, 2026-08-12: "não quero que esse historico de parcela abra assim nem a pau, quero
+  // que abra em baixo").
+  const [historicoInlineParcelaId, setHistoricoInlineParcelaId] = useState<string | null>(null)
+  const [historicoInlineLista, setHistoricoInlineLista] = useState<EmprestimoPagamentoSolicitacao[]>([])
+  const [historicoInlineLoading, setHistoricoInlineLoading] = useState(false)
 
   // Forma de pagamento — parcelas expansíveis por empréstimo (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -200,6 +203,7 @@ export default function EmprestimosPage() {
   const [parcelasLoadingId, setParcelasLoadingId] = useState<string | null>(null)
 
   const toggleExpand = async (id: string) => {
+    setHistoricoInlineParcelaId(null)
     if (expandedId === id) { setExpandedId(null); return }
     setExpandedId(id)
     if (parcelasPorEmprestimo[id]) return
@@ -566,10 +570,21 @@ export default function EmprestimosPage() {
     } finally { setHistoricoLoading(false) }
   }
 
-  const openHistorico = (emprestimoId: string, parcela?: EmprestimoParcela) => {
+  const openHistorico = (emprestimoId: string) => {
     setHistoricoFor(emprestimoId)
-    setHistoricoParcelaFiltro(parcela ? { id: parcela.id, numero: parcela.numero, quantidadeTotal: parcela.quantidadeTotal } : null)
     void carregarHistorico(emprestimoId)
+  }
+
+  const toggleHistoricoParcela = async (emprestimoId: string, parcelaId: string) => {
+    if (historicoInlineParcelaId === parcelaId) { setHistoricoInlineParcelaId(null); return }
+    setHistoricoInlineParcelaId(parcelaId)
+    setHistoricoInlineLoading(true)
+    try {
+      const lista = await listSolicitacoesPagamento(emprestimoId)
+      setHistoricoInlineLista(lista.filter((h) => h.parcelaId === parcelaId))
+    } catch {
+      notify({ open: true, message: "Erro ao carregar histórico da parcela", severity: "error" })
+    } finally { setHistoricoInlineLoading(false) }
   }
 
   const { totalAReceber, totalAPagar, ativos: qtdAtivos, totalAReceberVencido } = stats
@@ -771,7 +786,7 @@ export default function EmprestimosPage() {
                         <div
                           className={styles.parcelaRow}
                           data-clickable=""
-                          onClick={() => openHistorico(e.id, parc)}
+                          onClick={() => void toggleHistoricoParcela(e.id, parc.id)}
                         >
                           <span className={styles.parcelaNumero}>{parc.numero}/{parc.quantidadeTotal}</span>
                           <span className={styles.parcelaVencimento}>vence {formatDate(parc.dataVencimento)}</span>
@@ -783,23 +798,57 @@ export default function EmprestimosPage() {
                           </span>
                           {podeAprovar && (
                             <div className={styles.parcelaActions} onClick={(ev) => ev.stopPropagation()}>
-                              <PontesIconButton size={32} variant="success" aria-label="Aprovar pagamento"
+                              <PontesIconButton size={24} variant="success" aria-label="Aprovar pagamento"
                                 onClick={() => openAprovar(parc.solicitacaoPendenteId!)}>
-                                <Check size={14} />
+                                <Check size={12} />
                               </PontesIconButton>
-                              <PontesIconButton size={32} variant="danger" aria-label="Rejeitar pagamento"
+                              <PontesIconButton size={24} variant="danger" aria-label="Rejeitar pagamento"
                                 onClick={() => openRejeitar(parc.solicitacaoPendenteId!)}>
-                                <X size={14} />
+                                <X size={12} />
                               </PontesIconButton>
                             </div>
                           )}
                           <PontesBadge size="sm" tone={
-                            parc.status === StatusParcelaEmprestimo.Paga ? "success"
+                            podeAprovar ? "warning"
+                              : parc.status === StatusParcelaEmprestimo.Paga ? "success"
                               : parc.atrasada ? "danger" : "neutral"
                           }>
-                            {parc.statusDescricao}
+                            {podeAprovar ? "Aguardando aprovação" : parc.statusDescricao}
                           </PontesBadge>
                         </div>
+                        {historicoInlineParcelaId === parc.id && (
+                          <div className={styles.parcelaHistorico}>
+                            {historicoInlineLoading ? (
+                              <span className={styles.itemSub}>Carregando…</span>
+                            ) : historicoInlineLista.length === 0 ? (
+                              <span className={styles.itemSub}>Nenhum pagamento solicitado ainda pra essa parcela.</span>
+                            ) : (
+                              historicoInlineLista.map((h) => (
+                                <div key={h.id} className={styles.parcelaHistoricoItem}>
+                                  <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}{" "}
+                                  <PontesBadge
+                                    size="sm"
+                                    tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
+                                      : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
+                                  >
+                                    {h.statusAprovacaoDescricao}
+                                  </PontesBadge>
+                                  <span className={styles.itemSub}>
+                                    {!h.registradoPeloCredor && (
+                                      <>Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}</>
+                                    )}
+                                    {h.recebimentoData && (
+                                      <>{!h.registradoPeloCredor && " · "}Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>
+                                    )}
+                                  </span>
+                                  {h.motivoRejeicao && (
+                                    <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                       )
                     })}
@@ -1155,22 +1204,18 @@ export default function EmprestimosPage() {
           fixo no overlay — quem vem depois no DOM pinta em cima). */}
       <PontesModal
         open={historicoFor !== null}
-        title={historicoParcelaFiltro
-          ? `Histórico da parcela ${historicoParcelaFiltro.numero}/${historicoParcelaFiltro.quantidadeTotal}`
-          : "Histórico de pagamentos"}
-        onClose={() => { setHistoricoFor(null); setHistoricoParcelaFiltro(null) }}
-        footer={<PontesButton onClick={() => { setHistoricoFor(null); setHistoricoParcelaFiltro(null) }}>Fechar</PontesButton>}
+        title="Histórico de pagamentos"
+        onClose={() => setHistoricoFor(null)}
+        footer={<PontesButton onClick={() => setHistoricoFor(null)}>Fechar</PontesButton>}
       >
         <div className={styles.formCol}>
           {historicoLoading ? (
             <span className={styles.itemSub}>Carregando…</span>
-          ) : (historicoParcelaFiltro ? historico.filter((h) => h.parcelaId === historicoParcelaFiltro.id) : historico).length === 0 ? (
-            <span className={styles.itemSub}>
-              {historicoParcelaFiltro ? "Nenhum pagamento solicitado ainda pra essa parcela." : "Nenhum pagamento solicitado ainda."}
-            </span>
+          ) : historico.length === 0 ? (
+            <span className={styles.itemSub}>Nenhum pagamento solicitado ainda.</span>
           ) : (
             <ul className={styles.pendentesList}>
-              {(historicoParcelaFiltro ? historico.filter((h) => h.parcelaId === historicoParcelaFiltro.id) : historico).map((h) => (
+              {historico.map((h) => (
                 <li key={h.id} className={styles.pendenteItem}>
                   <span className={styles.pendenteDesc}>
                     <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}

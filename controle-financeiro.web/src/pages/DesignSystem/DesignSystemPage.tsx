@@ -255,14 +255,15 @@ function ButtonsSection() {
 
       <Group title="Icon-only + FAB + Badge">
         <div className={styles.rowGap10}>
+          <PontesIconButton size={24}><Plus size={14} strokeWidth={3} /></PontesIconButton>
           <PontesIconButton size={32}><Plus size={18} strokeWidth={3} /></PontesIconButton>
           <PontesIconButton size={40}><Plus size={20} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={48}><Plus size={22} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={40} variant="soft"><Settings size={18} strokeWidth={2} /></PontesIconButton>
           <PontesIconButton size={40} variant="outline"><MoreHorizontal size={18} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={40} variant="outline" badge={3}><Bell size={18} strokeWidth={2} /></PontesIconButton>
-          <PontesIconButton size={32} variant="success" aria-label="Aprovar"><Check size={16} strokeWidth={3} /></PontesIconButton>
-          <PontesIconButton size={32} variant="danger" aria-label="Rejeitar"><X size={16} strokeWidth={3} /></PontesIconButton>
+          <PontesIconButton size={24} variant="success" aria-label="Aprovar"><Check size={12} strokeWidth={3} /></PontesIconButton>
+          <PontesIconButton size={24} variant="danger" aria-label="Rejeitar"><X size={12} strokeWidth={3} /></PontesIconButton>
           <PontesFab><Plus size={26} strokeWidth={2.5} /></PontesFab>
         </div>
       </Group>

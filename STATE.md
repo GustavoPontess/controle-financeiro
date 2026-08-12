@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-12
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". Primeira versão (badge + painel amarelo expansível na parcela) não agradou ("nao sei pq nao gostei desse trem... aparecer esse trem amarelo ai de aprovação grandão") — redesenhado no mesmo dia a pedido explícito: botões Aprovar/Rejeitar verde/vermelho sempre visíveis na própria linha da parcela, clicar na parcela abre histórico filtrado só dela. Pegou 2 bugs reais nos testes: `Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado, e `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId` (dívida antiga escondida). Back 381/381, front 330/330. Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". 3 rodadas de redesign no mesmo dia, cada uma a pedido explícito do Gustavo: (1) badge + painel amarelo expansível → não agradou; (2) botões verde/vermelho na linha + clique abre modal filtrado → "não quero que abra assim nem a pau, quero que abra em baixo"; (3) final: botões preenchidos 24px espaçados + badge "Aguardando aprovação" + histórico 100% inline embaixo da parcela (sem modal nenhum). No caminho: 2 bugs reais pegos nos testes (`Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado; `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId`), e biblioteca Pontes ganhou `variant="success"`/`"danger"` preenchidos + tamanho `24` (Button/IconButton, com demo+teste, regra do projeto). Back 381/381, front 331/331, tsc+lint limpos. Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
 ---
 
 # STATE — onde parei
@@ -395,6 +395,33 @@ comportamento + 1 novo pro histórico filtrado). tsc+lint limpos. **Verificado a
 o redesign: botões coloridos aparecem na linha, clicar na parcela abre "Histórico da parcela 1/2"
 com a solicitação real da Ana listada (antes do fix do `ParcelaId` aparecia vazio por engano — bug
 pego justamente nessa verificação).
+
+**Gustavo pediu botão mais evidente:** "queria que fosse um botao mais evidente todo verde e todo
+vermelho saca temos algo assim no nosso DS?" — não tinha. Só `PontesButton` tinha `danger`
+preenchido; `PontesIconButton` não tinha nada preenchido (só primary/soft/outline/ghost). Adicionado
+na **biblioteca** (não na página — regra do `PROMPT_NOVA_SESSAO.md` §5): `variant="success"`/
+`"success-outline"` no `PontesButton` (espelha `danger`/`danger-outline`), `variant="success"`/
+`"danger"` preenchidos no `PontesIconButton`, com demo em `/design-system` e smoke test antes de
+trocar o uso na tela de Empréstimos.
+
+**Rodada 3, minutos depois:** Gustavo, olhando o resultado: "os botoes estão muito grandes muito
+proximos e o pendente não mudou pra aguardando aprovação o que nessa parcela ai mostra pro usuario
+que tem algo pra ele fazer a não ser os botoes". Três ajustes: (1) tamanho `24` novo no
+`PontesIconButton` (só tinha 32/40/48, com demo+teste); (2) `gap` dos botões de 2px pra 8px; (3) o
+badge da parcela pendente deixou de mostrar "Pendente" genérico — vira "Aguardando aprovação" (tone
+warning) quando `podeAprovar`, pra o status por si só explicar o que fazer.
+
+**Rodada 4, na sequência:** "não quero que esse historico de parcela abra assim nem a pau, quero que
+abra em baixo" — o modal "Histórico da parcela N/Total" da rodada anterior (mesmo filtrado) não
+servia, ele queria inline de verdade. Removido o uso do modal pro clique-na-parcela por completo;
+criado painel 100% inline (`historicoInlineParcelaId` + fetch com filtro client-side por
+`parcelaId`), embaixo da própria linha, clique de novo recolhe — modal "Histórico de pagamentos"
+original ficou intacto só pro botão de nível do empréstimo (inalterado).
+
+Front 331/331 (+2: variantes novas da lib + comportamento inline reescrito), tsc+lint limpos.
+**Verificado ao vivo de novo**, versão final: botões 24px verde/vermelho espaçados, badge
+"Aguardando aprovação", clicar na parcela abre o histórico dela embaixo da própria linha (sem modal,
+sem overlay) — recolhe clicando de novo.
 
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
