@@ -43,6 +43,11 @@ const errorMessage = (err: unknown, fallback: string): string =>
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
+// Timestamp real (instante exato — CriadoEm/AprovadoEm de solicitação), não dia calendário —
+// fuso local aqui é o certo (oposto do formatDate acima), mesmo padrão do NotificationBell.
+const formatDateTime = (d?: string) =>
+  d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
+
 const today = () => new Date().toISOString().slice(0, 10)
 
 const parseMoney = (masked: string): number | undefined => {
@@ -856,7 +861,7 @@ export default function EmprestimosPage() {
                                         <span>{formatMoney(h.valor)}</span>
                                       </div>
                                       <span className={styles.itemSub}>
-                                        {formatDate(h.criadoEm)}
+                                        {formatDateTime(h.criadoEm)}
                                         {h.recebimentoData && <> · Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>}
                                       </span>
                                     </div>
@@ -868,7 +873,7 @@ export default function EmprestimosPage() {
                                         <span>{formatMoney(h.valor)}</span>
                                       </div>
                                       <span className={styles.itemSub}>
-                                        {formatDate(h.criadoEm)} · Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
+                                        {formatDateTime(h.criadoEm)} · Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
                                       </span>
                                     </div>
                                   )}
@@ -879,7 +884,7 @@ export default function EmprestimosPage() {
                                         <span>{h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "aprovou" : "rejeitou"}</span>
                                       </div>
                                       <span className={styles.itemSub}>
-                                        {h.aprovadoEm && formatDate(h.aprovadoEm)}
+                                        {h.aprovadoEm && formatDateTime(h.aprovadoEm)}
                                         {h.recebimentoData && <> · Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>}
                                       </span>
                                       {h.motivoRejeicao && (
