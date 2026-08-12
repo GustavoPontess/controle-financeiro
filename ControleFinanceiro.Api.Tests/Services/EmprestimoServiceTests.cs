@@ -1587,6 +1587,7 @@ public class EmprestimoServiceTests
 
         var solicitacao = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(resultado.Id);
         Assert.Equal(parcela.Id, solicitacao!.ParcelaId);
+        Assert.Equal(parcela.Id, resultado.ParcelaId); // DTO expõe ParcelaId — front filtra histórico por parcela
         var parcelaDepois = await ctx.EmprestimoParcelas.FindAsync(parcela.Id);
         Assert.Equal(StatusParcelaEmprestimo.Pendente, parcelaDepois!.Status); // só vira Paga na aprovação
     }

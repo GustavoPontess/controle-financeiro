@@ -384,31 +384,47 @@ na parcela e abre em baixo pra mim e na parcela aparece um icone de alerta".
    empréstimo (À vista ou Parcelado) com `souCredor && valorPendente > 0`. Zero custo de API —
    `valorPendente` já vinha no `EmprestimoDto`, só faltava um badge visível (antes só existia como
    segmento fino laranja na barra de progresso, fácil de não perceber).
-2. **Alerta na parcela certa (só Parcelado)** — a parcela específica com solicitação `Pendente`
-   ganha ícone (`AlertCircle`) e vira clicável; clicar expande um painel inline **embaixo da própria
-   parcela** (não em outro lugar) com "Aguardando sua aprovação" + Aprovar/Rejeitar — reaproveita os
-   mesmos modais já existentes (`openAprovar`/`openRejeitar`), só muda de onde são disparados.
+2. **Botões Aprovar/Rejeitar direto na linha da parcela (só Parcelado)** — a parcela específica com
+   solicitação `Pendente` ganha dois ícones inline, verde (✓ Aprovar) e vermelho (✗ Rejeitar), depois
+   do valor. Chamam os mesmos modais já existentes (`openAprovar`/`openRejeitar`), só mudou de onde
+   são disparados — sem etapa intermediária.
+
+**Primeira versão tinha um painel amarelo que abria ao clicar na parcela — trocado no mesmo dia.**
+Gustavo: "não sei pq não gostei desse trem de clicar na parcela e aparecer esse trem amarelo ai de
+aprovação grandão". Pedido explícito de redesenho: "coloca na mema linha depois do preço... um botão
+de aprovar e um de recusar em verde e em vermelho, clicar na parcela abre o historico dela quando foi
+paga se atrasou ou não tudo que for possivel". Resultado: botões sempre visíveis na própria linha
+(sem clique intermediário) + **clicar na parcela (em qualquer parcela, paga ou não) abre o histórico
+filtrado só daquela parcela** — mesmo modal "Histórico de pagamentos" de sempre, título vira
+"Histórico da parcela N/Total", lista filtrada client-side por `parcelaId`.
 
 **Backend:** `EmprestimoParcelaDto` ganhou `SolicitacaoPendenteId` (`Guid?`), populado em
 `ListarParcelasAsync` via uma query em lote (`EmprestimoPagamentoSolicitacoes` com `ParcelaId` numa
 lista + `StatusAprovacao == Pendente`, agrupado num dicionário parcela→solicitação). Não muda nada
 do fluxo de histórico — é sinal adicional pro front, a fonte da verdade continua a mesma tabela.
 
-**Bug pego pelo teste antes de ir pro ar:** `Dictionary<Guid,Guid>.GetValueOrDefault(chaveAusente)`
-devolve `Guid.Empty` (`00000000-...`), não `null` — ao atribuir isso a um parâmetro `Guid?`, C#
-embrulha o Guid zerado num `Guid?` **com valor**, não `null`. Resultado: toda parcela sem solicitação
-pendente aparecia como se tivesse uma (id zerado). Corrigido com `TryGetValue` + operador ternário
-explícito pra `null`. Fica de lição geral: `Dictionary<TKey, TValue>.GetValueOrDefault` com `TValue`
-struct nunca é seguro pra distinguir "ausente" de "valor default" — só funciona limpo quando o
-`TValue` já é nullable.
+**Dois bugs reais pegos pelos testes antes de ir pro ar:**
+1. `Dictionary<Guid,Guid>.GetValueOrDefault(chaveAusente)` devolve `Guid.Empty` (`00000000-...`), não
+   `null` — ao atribuir isso a um parâmetro `Guid?`, C# embrulha o Guid zerado num `Guid?` **com
+   valor**, não `null`. Resultado: toda parcela sem solicitação pendente aparecia como se tivesse uma
+   (id zerado). Corrigido com `TryGetValue`. Lição: `GetValueOrDefault` com `TValue` struct nunca é
+   seguro pra distinguir "ausente" de "valor default" — só funciona limpo quando `TValue` já é
+   nullable.
+2. **`EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId`** — campo existia na entidade
+   (`EmprestimoPagamentoSolicitacao.ParcelaId`) e no tipo do front, mas o mapeamento em
+   `ToSolicitacaoDtosAsync` nunca copiava esse campo pro DTO de saída. Passou despercebido até agora
+   porque nada dependia dele — o filtro "histórico da parcela" foi a primeira coisa a precisar. Achado
+   ao vivo (histórico da parcela voltava vazio mesmo com solicitação real registrada), corrigido
+   adicionando `ParcelaId = s.ParcelaId` no mapeamento + o campo na classe DTO.
 
-**Verificado ao vivo** com empréstimo de teste dedicado (nunca nos 6 reais): criado "TESTE aprovar
-parcela inline" (Parcelado 2x), vinculado à Ana, ela solicitou pagamento da parcela 1 — do lado do
-Gustavo, o alerta apareceu na parcela certa, clicar nela expandiu o painel inline, e "Aprovar
-pagamento" abriu o modal certo direto dali. Back 381/381 (+1 teste), front 329/329 (+1 teste).
+**Verificado ao vivo** com empréstimo de teste dedicado (nunca nos 6 reais): "TESTE aprovar parcela
+inline" (Parcelado 2x), vinculado à Ana, ela solicitou pagamento da parcela 1 — do lado do Gustavo,
+os botões verde/vermelho apareceram direto na linha, "Aprovar pagamento" abriu o modal certo sem
+clique intermediário, e clicar na parcela abriu "Histórico da parcela 1/2" com a solicitação real da
+Ana listada. Back 381/381 (+2 testes no total do redesenho), front 330/330 (+1 teste).
 
 **Achado colateral, no meio da investigação:** ao checar por que o R$500 do Móveis (empréstimo real)
-não mostrava mais o alerta, uma consulta só-leitura no Postgres revelou que a solicitação real já
+não mostrava mais o badge, uma consulta só-leitura no Postgres revelou que a solicitação real já
 tinha sido rejeitada minutos antes por conta própria do Gustavo (fora da sessão do Claude, provável
 outra aba) — não foi ação minha. Serviu de confirmação indireta de que o badge reage certo ao status
 real (sumiu do card assim que deixou de ser `Pendente`).
@@ -441,6 +457,7 @@ real (sumiu do card assim que deixou de ser `Pendente`).
 - `DeletarAsync` de empréstimo `Vinculado` com solicitação `Pendente` → 403.
 - `DeletarAsync` de empréstimo `Vinculado` com solicitação `Rejeitada` → 403 (rastro conta como atividade).
 - `ListarParcelasAsync` com solicitação `Pendente` numa parcela → `SolicitacaoPendenteId` bate só na parcela certa, `null` nas outras.
+- `SolicitarPagamentoAsync` com `ParcelaId` → DTO retornado expõe `ParcelaId` (pegou o bug do mapeamento faltando).
 
 ## Referências
 

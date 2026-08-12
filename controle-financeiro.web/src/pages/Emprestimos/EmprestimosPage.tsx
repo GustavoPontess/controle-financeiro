@@ -190,17 +190,16 @@ export default function EmprestimosPage() {
   const [historicoFor, setHistoricoFor] = useState<string | null>(null)
   const [historico, setHistorico] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [historicoLoading, setHistoricoLoading] = useState(false)
+  // Quando aberto a partir de uma parcela específica, filtra o histórico só pra ela (achado do
+  // Gustavo, 2026-08-12: "clicar na parcela abre o historico dela").
+  const [historicoParcelaFiltro, setHistoricoParcelaFiltro] = useState<{ id: string; numero: number; quantidadeTotal: number } | null>(null)
 
   // Forma de pagamento — parcelas expansíveis por empréstimo (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [parcelasPorEmprestimo, setParcelasPorEmprestimo] = useState<Record<string, EmprestimoParcela[]>>({})
   const [parcelasLoadingId, setParcelasLoadingId] = useState<string | null>(null)
-  // Aprovar/rejeitar direto na parcela pendente, sem precisar abrir o histórico do empréstimo pra
-  // achar (achado do Gustavo, 2026-08-12: "pq não coloca junto com a parcela?").
-  const [expandedParcelaId, setExpandedParcelaId] = useState<string | null>(null)
 
   const toggleExpand = async (id: string) => {
-    setExpandedParcelaId(null)
     if (expandedId === id) { setExpandedId(null); return }
     setExpandedId(id)
     if (parcelasPorEmprestimo[id]) return
@@ -567,8 +566,9 @@ export default function EmprestimosPage() {
     } finally { setHistoricoLoading(false) }
   }
 
-  const openHistorico = (emprestimoId: string) => {
+  const openHistorico = (emprestimoId: string, parcela?: EmprestimoParcela) => {
     setHistoricoFor(emprestimoId)
+    setHistoricoParcelaFiltro(parcela ? { id: parcela.id, numero: parcela.numero, quantidadeTotal: parcela.quantidadeTotal } : null)
     void carregarHistorico(emprestimoId)
   }
 
@@ -770,10 +770,8 @@ export default function EmprestimosPage() {
                       <div key={parc.id} className={styles.parcelaItem}>
                         <div
                           className={styles.parcelaRow}
-                          data-clickable={podeAprovar ? "" : undefined}
-                          onClick={podeAprovar ? () => setExpandedParcelaId(
-                            expandedParcelaId === parc.id ? null : parc.id
-                          ) : undefined}
+                          data-clickable=""
+                          onClick={() => openHistorico(e.id, parc)}
                         >
                           <span className={styles.parcelaNumero}>{parc.numero}/{parc.quantidadeTotal}</span>
                           <span className={styles.parcelaVencimento}>vence {formatDate(parc.dataVencimento)}</span>
@@ -783,11 +781,20 @@ export default function EmprestimosPage() {
                             )}
                             {formatMoney(parc.valorComMulta ?? parc.valorComJuros ?? parc.valor)}
                           </span>
-                          <span className={styles.parcelaAlertaSlot}>
-                            {podeAprovar && (
-                              <AlertCircle size={14} className={styles.parcelaAlerta} aria-label="Aguardando sua aprovação" />
-                            )}
-                          </span>
+                          {podeAprovar && (
+                            <div className={styles.parcelaActions} onClick={(ev) => ev.stopPropagation()}>
+                              <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
+                                className={styles.aprovarBtn}
+                                onClick={() => openAprovar(parc.solicitacaoPendenteId!)}>
+                                <Check size={14} />
+                              </PontesIconButton>
+                              <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
+                                className={styles.rejeitarBtn}
+                                onClick={() => openRejeitar(parc.solicitacaoPendenteId!)}>
+                                <X size={14} />
+                              </PontesIconButton>
+                            </div>
+                          )}
                           <PontesBadge size="sm" tone={
                             parc.status === StatusParcelaEmprestimo.Paga ? "success"
                               : parc.atrasada ? "danger" : "neutral"
@@ -795,21 +802,6 @@ export default function EmprestimosPage() {
                             {parc.statusDescricao}
                           </PontesBadge>
                         </div>
-                        {podeAprovar && expandedParcelaId === parc.id && (
-                          <div className={styles.parcelaAprovacao}>
-                            <span>Aguardando sua aprovação</span>
-                            <div className={styles.actions}>
-                              <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
-                                onClick={() => openAprovar(parc.solicitacaoPendenteId!)}>
-                                <Check size={14} />
-                              </PontesIconButton>
-                              <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
-                                onClick={() => openRejeitar(parc.solicitacaoPendenteId!)}>
-                                <X size={14} />
-                              </PontesIconButton>
-                            </div>
-                          </div>
-                        )}
                       </div>
                       )
                     })}
@@ -1165,18 +1157,22 @@ export default function EmprestimosPage() {
           fixo no overlay — quem vem depois no DOM pinta em cima). */}
       <PontesModal
         open={historicoFor !== null}
-        title="Histórico de pagamentos"
-        onClose={() => setHistoricoFor(null)}
-        footer={<PontesButton onClick={() => setHistoricoFor(null)}>Fechar</PontesButton>}
+        title={historicoParcelaFiltro
+          ? `Histórico da parcela ${historicoParcelaFiltro.numero}/${historicoParcelaFiltro.quantidadeTotal}`
+          : "Histórico de pagamentos"}
+        onClose={() => { setHistoricoFor(null); setHistoricoParcelaFiltro(null) }}
+        footer={<PontesButton onClick={() => { setHistoricoFor(null); setHistoricoParcelaFiltro(null) }}>Fechar</PontesButton>}
       >
         <div className={styles.formCol}>
           {historicoLoading ? (
             <span className={styles.itemSub}>Carregando…</span>
-          ) : historico.length === 0 ? (
-            <span className={styles.itemSub}>Nenhum pagamento solicitado ainda.</span>
+          ) : (historicoParcelaFiltro ? historico.filter((h) => h.parcelaId === historicoParcelaFiltro.id) : historico).length === 0 ? (
+            <span className={styles.itemSub}>
+              {historicoParcelaFiltro ? "Nenhum pagamento solicitado ainda pra essa parcela." : "Nenhum pagamento solicitado ainda."}
+            </span>
           ) : (
             <ul className={styles.pendentesList}>
-              {historico.map((h) => (
+              {(historicoParcelaFiltro ? historico.filter((h) => h.parcelaId === historicoParcelaFiltro.id) : historico).map((h) => (
                 <li key={h.id} className={styles.pendenteItem}>
                   <span className={styles.pendenteDesc}>
                     <strong>{h.solicitadoPorNome}</strong> — {formatMoney(h.valor)}

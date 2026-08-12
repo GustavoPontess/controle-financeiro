@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-12
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo novo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico", Gustavo achou ruim de UX ("clico na parcela e abre em baixo, ícone de alerta"). ✅ Implementado: badge "Aguardando sua aprovação" no card + alerta clicável na parcela certa que expande painel inline com Aprovar/Rejeitar. Back 381/381 (+1, pegou bug real de `GetValueOrDefault` com Guid), front 329/329 (+1). Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". Primeira versão (badge + painel amarelo expansível na parcela) não agradou ("nao sei pq nao gostei desse trem... aparecer esse trem amarelo ai de aprovação grandão") — redesenhado no mesmo dia a pedido explícito: botões Aprovar/Rejeitar verde/vermelho sempre visíveis na própria linha da parcela, clicar na parcela abre histórico filtrado só dela. Pegou 2 bugs reais nos testes: `Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado, e `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId` (dívida antiga escondida). Back 381/381, front 330/330. Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
 ---
 
 # STATE — onde parei
@@ -362,6 +362,39 @@ clicar expandiu o painel, "Aprovar pagamento" abriu o modal certo direto dali (f
 confirmar — Gustavo pediu pra deixar o teste no ar, sem precisar limpar). Os 6 empréstimos reais
 não foram tocados (só consulta SQL de leitura no Móveis). Doc atualizada: `pagamento-aprovacao.md`
 ganhou seção "Aprovar/rejeitar direto na parcela, sem abrir o histórico (2026-08-12)".
+
+**Ainda na mesma sessão, também corrigido a pedido do Gustavo:** colunas das parcelas desalinhavam
+entre linhas (o ícone de alerta só existia numa, empurrando valor/badge) — corrigido reservando slot
+fixo de 14px pro ícone. Depois, `parcelasWrap` tinha padding esquerdo (68px) bem maior que o direito
+(20px) e top/bottom diferentes — Gustavo pediu simetria explícita, virou `padding: 12px 20px`
+(igual nos 4 lados).
+
+**Redesign no mesmo dia — o painel amarelo não agradou:** depois de tudo funcionando, Gustavo:
+"não sei pq não gostei desse trem de clicar na parcela e aparecer esse trem amarelo ai de aprovação
+grandão". Perguntado o que incomodava especificamente e o que ele queria no lugar — resposta direta:
+"coloca na mema linha depois do preço... um botão de aprovar e um de recusar em verde e em vermelho,
+clicar na parcela abre o historico dela quando foi paga se atrasou ou não tudo que for possivel".
+
+**Redesenhado:** painel amarelo expansível removido por completo. Agora: (1) botões ✓/✗ (verde
+`var(--pontes-success)` / vermelho `var(--pontes-danger)`) sempre visíveis na própria linha, sem
+clique intermediário — precisou de seletor CSS `[data-variant="ghost"].aprovarBtn` pra vencer a
+especificidade do `data-variant` do `PontesIconButton`, classe simples não bastava; (2) clicar em
+**qualquer** parcela (paga ou não, não só a pendente) abre o modal "Histórico de pagamentos"
+existente, mas filtrado só pra ela (`historico.filter(h => h.parcelaId === parcela.id)`), título
+vira "Histórico da parcela N/Total".
+
+**Segundo bug real pego no processo:** o histórico filtrado voltava sempre vazio mesmo com
+solicitação real registrada — `EmprestimoPagamentoSolicitacaoDto.ParcelaId` nunca tinha sido
+adicionado nem à classe DTO nem ao mapeamento (`ToSolicitacaoDtosAsync`), apesar do campo existir na
+entidade e já estar declarado no tipo do front havia tempo. Dívida antiga que só apareceu porque
+essa foi a primeira vez que algo dependeu do campo. Corrigido nos dois lugares.
+
+Back 381/381 (2 testes cobrindo o redesenho: assert de `resultado.ParcelaId` no teste de solicitar
+pagamento existente, + o de `SolicitacaoPendenteId`), front 330/330 (teste reescrito pro novo
+comportamento + 1 novo pro histórico filtrado). tsc+lint limpos. **Verificado ao vivo de novo** após
+o redesign: botões coloridos aparecem na linha, clicar na parcela abre "Histórico da parcela 1/2"
+com a solicitação real da Ana listada (antes do fix do `ParcelaId` aparecia vazio por engano — bug
+pego justamente nessa verificação).
 
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —

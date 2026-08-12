@@ -966,6 +966,7 @@ public class EmprestimoService(
             {
                 Id = s.Id,
                 EmprestimoId = s.EmprestimoId,
+                ParcelaId = s.ParcelaId,
                 Valor = s.Valor,
                 StatusAprovacao = (int)s.StatusAprovacao,
                 StatusAprovacaoDescricao = s.StatusAprovacao switch

@@ -42,6 +42,10 @@ public class EmprestimoPagamentoSolicitacaoDto
 {
     public Guid Id { get; set; }
     public Guid EmprestimoId { get; set; }
+
+    /// <summary>Se o empréstimo é Parcelado, qual EmprestimoParcela essa solicitação mira. Permite
+    /// o front filtrar o histórico por parcela específica (achado do Gustavo, 2026-08-12).</summary>
+    public Guid? ParcelaId { get; set; }
     public decimal Valor { get; set; }
     public int StatusAprovacao { get; set; }
     public string StatusAprovacaoDescricao { get; set; } = string.Empty;

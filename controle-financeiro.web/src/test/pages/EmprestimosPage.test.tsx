@@ -389,7 +389,7 @@ describe("EmprestimosPage (#152)", () => {
     expect(listParcelasEmprestimo).toHaveBeenCalledWith("e3")
   })
 
-  it("parcela com solicitação pendente mostra alerta e aprova/rejeita direto, sem abrir histórico", async () => {
+  it("parcela com solicitação pendente mostra aprovar/rejeitar direto na linha, sem precisar expandir", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
     listParcelasEmprestimo.mockResolvedValue([{
       id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
@@ -402,13 +402,39 @@ describe("EmprestimosPage (#152)", () => {
 
     fireEvent.click(screen.getByLabelText("Ver parcelas"))
     await screen.findByText("1/3")
-    expect(screen.getByLabelText("Aguardando sua aprovação")).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText("1/3"))
-    expect(await screen.findByText("Aguardando sua aprovação")).toBeInTheDocument()
 
     fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
     expect(await screen.findByText("Como registrar essa entrada?")).toBeInTheDocument()
+  })
+
+  it("clicar na parcela abre o histórico filtrado só dela", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    listParcelasEmprestimo.mockResolvedValue([{
+      id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+      status: 2, statusDescricao: "Paga", atrasada: false,
+    }, {
+      id: "pa2", emprestimoId: "e3", numero: 2, quantidadeTotal: 3,
+      dataVencimento: "2026-10-01T00:00:00Z", valor: 100,
+      status: 1, statusDescricao: "Pendente", atrasada: false,
+    }])
+    listSolicitacoesPagamento.mockResolvedValue([
+      {
+        id: "sol-pa1", emprestimoId: "e3", valor: 100, parcelaId: "pa1",
+        statusAprovacao: StatusAprovacaoPagamentoEmprestimo.Aprovada, statusAprovacaoDescricao: "Aprovada",
+        solicitadoPor: "outro-1", solicitadoPorNome: "Ana", criadoEm: "2026-08-01T00:00:00Z",
+        comprovanteData: "2026-08-01T00:00:00Z", registradoPeloCredor: false,
+      } satisfies EmprestimoPagamentoSolicitacao,
+    ])
+    renderPage()
+    await screen.findByText("Carro")
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    await screen.findByText("1/3")
+    fireEvent.click(screen.getByText("1/3"))
+
+    expect(await screen.findByText("Histórico da parcela 1/3")).toBeInTheDocument()
+    expect(screen.getByText("Ana", { exact: false })).toBeInTheDocument()
   })
 
   it("devedor de empréstimo parcelado escolhe a parcela antes de marcar como pago", async () => {
