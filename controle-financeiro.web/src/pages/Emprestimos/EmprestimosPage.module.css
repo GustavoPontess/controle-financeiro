@@ -63,14 +63,15 @@
 .expandBtn { transition: transform .15s ease; }
 .expandBtn[data-open] { transform: rotate(180deg); }
 
-.parcelasWrap { padding: 0 20px 16px 68px; display: flex; flex-direction: column; gap: 6px; }
+.parcelasWrap { padding: 8px 20px 16px 68px; display: flex; flex-direction: column; gap: 6px; }
 .parcelaItem { border-radius: 10px; background: var(--pontes-bg); font-size: 12px; overflow: hidden; }
-.parcelaRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; }
+.parcelaRow { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
 .parcelaRow[data-clickable] { cursor: pointer; }
 .parcelaNumero { color: var(--pontes-text-muted); min-width: 46px; }
 .parcelaVencimento { color: var(--pontes-text); flex: 1; }
 .parcelaValor { font-weight: 700; color: var(--pontes-text); white-space: nowrap; }
 .parcelaValorOriginal { text-decoration: line-through; color: var(--pontes-text-muted); font-weight: 400; margin-right: 4px; }
+.parcelaAlertaSlot { width: 14px; flex-shrink: 0; display: flex; justify-content: center; }
 .parcelaAlerta { color: var(--pontes-warning); flex-shrink: 0; }
 .parcelaAprovacao {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;

@@ -783,9 +783,11 @@ export default function EmprestimosPage() {
                             )}
                             {formatMoney(parc.valorComMulta ?? parc.valorComJuros ?? parc.valor)}
                           </span>
-                          {podeAprovar && (
-                            <AlertCircle size={14} className={styles.parcelaAlerta} aria-label="Aguardando sua aprovação" />
-                          )}
+                          <span className={styles.parcelaAlertaSlot}>
+                            {podeAprovar && (
+                              <AlertCircle size={14} className={styles.parcelaAlerta} aria-label="Aguardando sua aprovação" />
+                            )}
+                          </span>
                           <PontesBadge size="sm" tone={
                             parc.status === StatusParcelaEmprestimo.Paga ? "success"
                               : parc.atrasada ? "danger" : "neutral"
