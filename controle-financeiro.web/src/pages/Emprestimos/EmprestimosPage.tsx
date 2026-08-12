@@ -844,32 +844,59 @@ export default function EmprestimosPage() {
                             ) : historicoInlineLista.length === 0 ? (
                               <span className={styles.itemSub}>Nenhum pagamento solicitado ainda pra essa parcela.</span>
                             ) : (
-                              historicoInlineLista.map((h) => (
+                              historicoInlineLista.map((h) => {
+                                const quemResolveu = e.souCredor ? "Você" : (e.contraparteNome ?? e.pessoa)
+                                return (
                                 <div key={h.id} className={styles.parcelaHistoricoItem}>
-                                  <div className={styles.parcelaHistoricoHead}>
-                                    <strong>{h.solicitadoPorNome}</strong>
-                                    <span>{formatMoney(h.valor)}</span>
-                                    <PontesBadge
-                                      size="sm"
-                                      tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
-                                        : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
-                                    >
-                                      {h.statusAprovacaoDescricao}
-                                    </PontesBadge>
-                                  </div>
-                                  <span className={styles.itemSub}>
-                                    {!h.registradoPeloCredor && (
-                                      <>Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}</>
-                                    )}
-                                    {h.recebimentoData && (
-                                      <>{!h.registradoPeloCredor && " · "}Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>
-                                    )}
-                                  </span>
-                                  {h.motivoRejeicao && (
-                                    <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
+                                  {h.registradoPeloCredor ? (
+                                    <div className={styles.parcelaHistoricoEvento}>
+                                      <div className={styles.parcelaHistoricoHead}>
+                                        <strong>{h.solicitadoPorNome}</strong>
+                                        <span>registrou o recebimento</span>
+                                        <span>{formatMoney(h.valor)}</span>
+                                      </div>
+                                      <span className={styles.itemSub}>
+                                        {formatDate(h.criadoEm)}
+                                        {h.recebimentoData && <> · Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className={styles.parcelaHistoricoEvento}>
+                                      <div className={styles.parcelaHistoricoHead}>
+                                        <strong>{h.solicitadoPorNome}</strong>
+                                        <span>solicitou pagamento</span>
+                                        <span>{formatMoney(h.valor)}</span>
+                                      </div>
+                                      <span className={styles.itemSub}>
+                                        {formatDate(h.criadoEm)} · Saída: {formatDate(h.comprovanteData)}{h.comprovanteContaNome && ` · ${h.comprovanteContaNome}`}
+                                      </span>
+                                    </div>
                                   )}
+                                  {!h.registradoPeloCredor && h.statusAprovacao !== StatusAprovacaoPagamentoEmprestimo.Pendente && (
+                                    <div className={styles.parcelaHistoricoEvento}>
+                                      <div className={styles.parcelaHistoricoHead}>
+                                        <strong>{quemResolveu}</strong>
+                                        <span>{h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "aprovou" : "rejeitou"}</span>
+                                      </div>
+                                      <span className={styles.itemSub}>
+                                        {h.aprovadoEm && formatDate(h.aprovadoEm)}
+                                        {h.recebimentoData && <> · Entrada: {formatDate(h.recebimentoData)}{h.recebimentoContaNome ? ` · ${h.recebimentoContaNome}` : ""}</>}
+                                      </span>
+                                      {h.motivoRejeicao && (
+                                        <span className={styles.itemSub}>Motivo: {h.motivoRejeicao}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <PontesBadge
+                                    size="sm"
+                                    tone={h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Aprovada ? "success"
+                                      : h.statusAprovacao === StatusAprovacaoPagamentoEmprestimo.Rejeitada ? "danger" : "warning"}
+                                  >
+                                    {h.statusAprovacaoDescricao}
+                                  </PontesBadge>
                                 </div>
-                              ))
+                                )
+                              })
                             )}
                           </div>
                         )}
