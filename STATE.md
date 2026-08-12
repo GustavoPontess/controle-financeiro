@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-11
+last_reviewed: 2026-08-12
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: escolhido "editar/apagar empréstimo vinculado" (achado 3) como próxima peça — escopo confirmado com o Gustavo, só a parte "apagar sem atividade" (editar campos fica fora de escopo, decisão futura). ✅ Implementado: `DeletarAsync` só bloqueia `Vinculado` se já tem atividade real (`ValorPago>0`, parcela `Paga`, ou qualquer solicitação — mesmo rejeitada). Back 380/380 (+2), front lint limpo. Verificado ao vivo com empréstimo de teste dedicado (criado, vinculado à Ana, aceito, apagado — sucesso), 6 empréstimos reais intactos. **PONTO SEGURO: tudo commitado e pushado até `972e03d` + esta sessão pronta pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo novo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico", Gustavo achou ruim de UX ("clico na parcela e abre em baixo, ícone de alerta"). ✅ Implementado: badge "Aguardando sua aprovação" no card + alerta clicável na parcela certa que expande painel inline com Aprovar/Rejeitar. Back 381/381 (+1, pegou bug real de `GetValueOrDefault` com Guid), front 329/329 (+1). Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
 ---
 
 # STATE — onde parei
@@ -322,14 +322,56 @@ R$11.757,50). Os 6 empréstimos reais não foram tocados em nenhum momento.
 Doc atualizada: `pagamento-aprovacao.md` ganhou seção "Apagar empréstimo vinculado sem atividade
 (2026-08-11)" + 3 linhas novas em "Testes (backend)".
 
+**Sessão 2026-08-12 — achado ao vivo: aprovar/rejeitar preso no "Histórico", resolvido:**
+
+PC reiniciou de novo entre sessões (2ª vez) — Docker Desktop nem tinha aberto ainda, precisou
+`Start-Process` manual antes de `docker compose up -d postgres`. Backend e frontend resubidos sem
+incidente depois disso.
+
+Gustavo notou "R$500 aguardando aprovação" no card do Móveis (empréstimo real) e perguntou onde
+aprovar/recusar. Só existia dentro do modal "Histórico de pagamentos" (nada no card, nada na
+parcela sinalizava) — mostrado a ele, reação: "não pode ser ai vei caralho... lembra do ui/ux... pq
+não coloca junto com a parcela? eu clico na parcela e abre em baixo pra mim e na parcela aparece um
+icone de alerta". Direção clara, implementado como pedido.
+
+**Implementado:** (1) badge `⚠ Aguardando sua aprovação` no cabeçalho do card, qualquer forma de
+pagamento, calculado no front sem custo de API novo (`souCredor && valorPendente > 0`, campo que já
+existia); (2) pra `Parcelado`, a parcela com solicitação `Pendente` ganha ícone de alerta + fica
+clicável, expandindo um painel inline **na própria parcela** com Aprovar/Rejeitar (reaproveita os
+modais já existentes). Backend: `EmprestimoParcelaDto.SolicitacaoPendenteId` novo, populado em
+`ListarParcelasAsync` via query em lote.
+
+**Bug real pego pelo teste antes de subir:** `Dictionary<Guid,Guid>.GetValueOrDefault` devolve Guid
+zerado (não `null`) pra chave ausente — toda parcela sem pendência aparecia como se tivesse uma.
+Corrigido com `TryGetValue`. Lição registrada na spec.
+
+**Achado colateral no meio da investigação:** rastreando por que o R$500 do Móveis (real) some,
+uma consulta só-leitura no Postgres revelou que a solicitação já tinha sido rejeitada minutos antes
+por conta própria do Gustavo (fora da sessão do Claude — provável outra aba dele). Não fui eu.
+Serviu de confirmação que o badge reage certo ao status real.
+
+**Durante o trabalho, Gustavo reportou (via elemento selecionado na própria UI real dele, fora do
+Claude Browser) que o hover que eu tinha colocado na parcela clicável estava escurecendo "de um
+jeito feio" — removido na hora (`.parcelaRow[data-clickable]:hover` tirado do CSS, ficou só o
+`cursor: pointer`).**
+
+Back 381/381 (+1, cobre o bug do Dictionary), front 329/329 (+1). **Verificado ao vivo** com
+empréstimo de teste dedicado "TESTE aprovar parcela inline" (Parcelado 2x) — criado, vinculado à
+Ana, ela solicitou pagamento da parcela 1, do lado do Gustavo o alerta apareceu na parcela certa,
+clicar expandiu o painel, "Aprovar pagamento" abriu o modal certo direto dali (fechado sem
+confirmar — Gustavo pediu pra deixar o teste no ar, sem precisar limpar). Os 6 empréstimos reais
+não foram tocados (só consulta SQL de leitura no Móveis). Doc atualizada: `pagamento-aprovacao.md`
+ganhou seção "Aprovar/rejeitar direto na parcela, sem abrir o histórico (2026-08-12)".
+
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão. Única peça que falta pro módulo Empréstimos
    fechar por completo.
 2. Implementar unificar/consolidar.
 3. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — confirmados no ar nesta sessão, mas
-   o PC pode reiniciar de novo entre sessões (já aconteceu 2x).
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
+   próxima sessão (2 reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
+   sozinho, precisa `Start-Process` manual às vezes).
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação

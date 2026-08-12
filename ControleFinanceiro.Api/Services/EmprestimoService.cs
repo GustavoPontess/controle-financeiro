@@ -677,7 +677,15 @@ public class EmprestimoService(
         if (alterou)
             await _context.SaveChangesAsync();
 
-        return parcelas.Select(ToParcelaDto).ToList();
+        var parcelaIds = parcelas.Select(p => p.Id).ToList();
+        var pendentesPorParcela = await _context.EmprestimoPagamentoSolicitacoes
+            .Where(s => s.ParcelaId.HasValue && parcelaIds.Contains(s.ParcelaId.Value)
+                && s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente)
+            .ToDictionaryAsync(s => s.ParcelaId!.Value, s => s.Id);
+
+        return parcelas
+            .Select(p => ToParcelaDto(p, pendentesPorParcela.TryGetValue(p.Id, out var solId) ? solId : null))
+            .ToList();
     }
 
     /// <summary>Solicitações pendentes onde eu sou o credor (pra badge/lista, igual convites-pendentes).</summary>
@@ -1177,7 +1185,7 @@ public class EmprestimoService(
         return true;
     }
 
-    private static EmprestimoParcelaDto ToParcelaDto(EmprestimoParcela p)
+    private static EmprestimoParcelaDto ToParcelaDto(EmprestimoParcela p, Guid? solicitacaoPendenteId = null)
     {
         var atrasada = p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < DateTime.UtcNow.Date;
         return new EmprestimoParcelaDto
@@ -1200,6 +1208,7 @@ public class EmprestimoService(
             },
             Atrasada = atrasada,
             SolicitacaoPagamentoId = p.SolicitacaoPagamentoId,
+            SolicitacaoPendenteId = solicitacaoPendenteId,
         };
     }
 

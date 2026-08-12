@@ -389,6 +389,28 @@ describe("EmprestimosPage (#152)", () => {
     expect(listParcelasEmprestimo).toHaveBeenCalledWith("e3")
   })
 
+  it("parcela com solicitação pendente mostra alerta e aprova/rejeita direto, sem abrir histórico", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    listParcelasEmprestimo.mockResolvedValue([{
+      id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+      status: 1, statusDescricao: "Pendente", atrasada: false,
+      solicitacaoPendenteId: "sol-1",
+    }])
+    renderPage()
+    await screen.findByText("Carro")
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    await screen.findByText("1/3")
+    expect(screen.getByLabelText("Aguardando sua aprovação")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("1/3"))
+    expect(await screen.findByText("Aguardando sua aprovação")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Aprovar pagamento"))
+    expect(await screen.findByText("Como registrar essa entrada?")).toBeInTheDocument()
+  })
+
   it("devedor de empréstimo parcelado escolhe a parcela antes de marcar como pago", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
     listParcelasEmprestimo.mockResolvedValue([{

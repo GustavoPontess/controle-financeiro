@@ -371,6 +371,48 @@ Verificado ao vivo com empréstimo de teste dedicado (criado, vinculado à Ana, 
 depois apagado como Gustavo — sucesso, sumiu da lista dos dois lados) — os 6 empréstimos reais não
 foram tocados.
 
+### Aprovar/rejeitar direto na parcela, sem abrir o histórico (2026-08-12)
+
+**Achado ao vivo (Gustavo viu "R$500,00 aguardando aprovação" no card do Móveis):** "onde que eu
+aprovo ou recuso isso?" O único lugar era o modal "Histórico de pagamentos" — nada no card, nada na
+parcela sinalizava. Depois de eu apontar o caminho (histórico → item Pendente → ✓/✕), reação
+imediata: "não pode ser ai vei... lembra do ui/ux... pq não coloca junto com a parcela? sla eu clico
+na parcela e abre em baixo pra mim e na parcela aparece um icone de alerta".
+
+**Dois sinais novos, sem precisar abrir nada:**
+1. **Badge no card** — `⚠ Aguardando sua aprovação` (tone warning) no cabeçalho de qualquer
+   empréstimo (À vista ou Parcelado) com `souCredor && valorPendente > 0`. Zero custo de API —
+   `valorPendente` já vinha no `EmprestimoDto`, só faltava um badge visível (antes só existia como
+   segmento fino laranja na barra de progresso, fácil de não perceber).
+2. **Alerta na parcela certa (só Parcelado)** — a parcela específica com solicitação `Pendente`
+   ganha ícone (`AlertCircle`) e vira clicável; clicar expande um painel inline **embaixo da própria
+   parcela** (não em outro lugar) com "Aguardando sua aprovação" + Aprovar/Rejeitar — reaproveita os
+   mesmos modais já existentes (`openAprovar`/`openRejeitar`), só muda de onde são disparados.
+
+**Backend:** `EmprestimoParcelaDto` ganhou `SolicitacaoPendenteId` (`Guid?`), populado em
+`ListarParcelasAsync` via uma query em lote (`EmprestimoPagamentoSolicitacoes` com `ParcelaId` numa
+lista + `StatusAprovacao == Pendente`, agrupado num dicionário parcela→solicitação). Não muda nada
+do fluxo de histórico — é sinal adicional pro front, a fonte da verdade continua a mesma tabela.
+
+**Bug pego pelo teste antes de ir pro ar:** `Dictionary<Guid,Guid>.GetValueOrDefault(chaveAusente)`
+devolve `Guid.Empty` (`00000000-...`), não `null` — ao atribuir isso a um parâmetro `Guid?`, C#
+embrulha o Guid zerado num `Guid?` **com valor**, não `null`. Resultado: toda parcela sem solicitação
+pendente aparecia como se tivesse uma (id zerado). Corrigido com `TryGetValue` + operador ternário
+explícito pra `null`. Fica de lição geral: `Dictionary<TKey, TValue>.GetValueOrDefault` com `TValue`
+struct nunca é seguro pra distinguir "ausente" de "valor default" — só funciona limpo quando o
+`TValue` já é nullable.
+
+**Verificado ao vivo** com empréstimo de teste dedicado (nunca nos 6 reais): criado "TESTE aprovar
+parcela inline" (Parcelado 2x), vinculado à Ana, ela solicitou pagamento da parcela 1 — do lado do
+Gustavo, o alerta apareceu na parcela certa, clicar nela expandiu o painel inline, e "Aprovar
+pagamento" abriu o modal certo direto dali. Back 381/381 (+1 teste), front 329/329 (+1 teste).
+
+**Achado colateral, no meio da investigação:** ao checar por que o R$500 do Móveis (empréstimo real)
+não mostrava mais o alerta, uma consulta só-leitura no Postgres revelou que a solicitação real já
+tinha sido rejeitada minutos antes por conta própria do Gustavo (fora da sessão do Claude, provável
+outra aba) — não foi ação minha. Serviu de confirmação indireta de que o badge reage certo ao status
+real (sumiu do card assim que deixou de ser `Pendente`).
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).
@@ -398,6 +440,7 @@ foram tocados.
 - `DeletarAsync` de empréstimo `Vinculado` sem atividade → soft-delete permitido.
 - `DeletarAsync` de empréstimo `Vinculado` com solicitação `Pendente` → 403.
 - `DeletarAsync` de empréstimo `Vinculado` com solicitação `Rejeitada` → 403 (rastro conta como atividade).
+- `ListarParcelasAsync` com solicitação `Pendente` numa parcela → `SolicitacaoPendenteId` bate só na parcela certa, `null` nas outras.
 
 ## Referências
 

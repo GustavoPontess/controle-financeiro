@@ -18,4 +18,9 @@ public class EmprestimoParcelaDto
     public bool Atrasada { get; set; }
 
     public Guid? SolicitacaoPagamentoId { get; set; }
+
+    /// <summary>Solicitação Pendente (aguardando aprovação de quem lê) ligada a essa parcela, se
+    /// houver. Permite o front mostrar alerta + aprovar/rejeitar direto na parcela, sem precisar
+    /// abrir o histórico do empréstimo pra achar (achado do Gustavo, 2026-08-12).</summary>
+    public Guid? SolicitacaoPendenteId { get; set; }
 }

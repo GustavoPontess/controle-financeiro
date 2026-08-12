@@ -1672,6 +1672,31 @@ public class EmprestimoServiceTests
     }
 
     [Fact]
+    public async Task ListarParcelasAsync_ComSolicitacaoPendente_ExpoeSolicitacaoPendenteIdSoNaParcelaCerta()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 2);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var parcelasAntes = await svc.ListarParcelasAsync(emprestimoId, devedorId);
+        var parcela1 = parcelasAntes.First(p => p.Numero == 1);
+
+        var solicitacao = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            ContaId = contaId,
+            CategoriaId = categoriaId,
+            Valor = parcela1.Valor,
+            ParcelaId = parcela1.Id,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId);
+
+        var parcelasDepois = await svc.ListarParcelasAsync(emprestimoId, credorId);
+        Assert.Equal(solicitacao.Id, parcelasDepois.First(p => p.Numero == 1).SolicitacaoPendenteId);
+        Assert.Null(parcelasDepois.First(p => p.Numero == 2).SolicitacaoPendenteId);
+    }
+
+    [Fact]
     public async Task ListarParcelasAsync_Estranho_LancaKeyNotFound()
     {
         var ctx = CreateContext();

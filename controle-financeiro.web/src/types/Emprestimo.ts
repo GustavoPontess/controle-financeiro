@@ -70,6 +70,8 @@ export interface EmprestimoParcela {
   statusDescricao: string
   atrasada: boolean
   solicitacaoPagamentoId?: string
+  /** Solicitação Pendente (aguardando aprovação) ligada a essa parcela, se houver. */
+  solicitacaoPendenteId?: string
 }
 
 export interface CriarEmprestimo {

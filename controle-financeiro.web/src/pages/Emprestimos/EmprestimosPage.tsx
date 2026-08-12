@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, Link2, Copy, Check, X,
-  Receipt, History, RotateCcw, ChevronDown,
+  Receipt, History, RotateCcw, ChevronDown, AlertCircle,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard, PontesAlert,
@@ -195,8 +195,12 @@ export default function EmprestimosPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [parcelasPorEmprestimo, setParcelasPorEmprestimo] = useState<Record<string, EmprestimoParcela[]>>({})
   const [parcelasLoadingId, setParcelasLoadingId] = useState<string | null>(null)
+  // Aprovar/rejeitar direto na parcela pendente, sem precisar abrir o histórico do empréstimo pra
+  // achar (achado do Gustavo, 2026-08-12: "pq não coloca junto com a parcela?").
+  const [expandedParcelaId, setExpandedParcelaId] = useState<string | null>(null)
 
   const toggleExpand = async (id: string) => {
+    setExpandedParcelaId(null)
     if (expandedId === id) { setExpandedId(null); return }
     setExpandedId(id)
     if (parcelasPorEmprestimo[id]) return
@@ -659,6 +663,11 @@ export default function EmprestimosPage() {
                         {e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite && (
                           <PontesBadge tone="warning" size="sm">Convite pendente</PontesBadge>
                         )}
+                        {e.souCredor && e.valorPendente > 0 && (
+                          <PontesBadge tone="warning" size="sm">
+                            <AlertCircle size={12} /> Aguardando sua aprovação
+                          </PontesBadge>
+                        )}
                         {isParcelado
                           ? <PontesBadge tone="neutral" size="sm">Parcelado {e.quantidadeParcelas}x</PontesBadge>
                           : <PontesBadge tone="neutral" size="sm">À vista</PontesBadge>}
@@ -755,24 +764,53 @@ export default function EmprestimosPage() {
                   <li className={styles.parcelasWrap}>
                     {parcelasLoadingId === e.id ? (
                       <span className={styles.itemSub}>Carregando…</span>
-                    ) : (parcelasPorEmprestimo[e.id] ?? []).map((parc) => (
+                    ) : (parcelasPorEmprestimo[e.id] ?? []).map((parc) => {
+                      const podeAprovar = e.souCredor && !!parc.solicitacaoPendenteId
+                      return (
                       <div key={parc.id} className={styles.parcelaItem}>
-                        <span className={styles.parcelaNumero}>{parc.numero}/{parc.quantidadeTotal}</span>
-                        <span className={styles.parcelaVencimento}>vence {formatDate(parc.dataVencimento)}</span>
-                        <span className={styles.parcelaValor}>
-                          {parc.valorComMulta != null && (
-                            <span className={styles.parcelaValorOriginal}>{formatMoney(parc.valor)}</span>
+                        <div
+                          className={styles.parcelaRow}
+                          data-clickable={podeAprovar ? "" : undefined}
+                          onClick={podeAprovar ? () => setExpandedParcelaId(
+                            expandedParcelaId === parc.id ? null : parc.id
+                          ) : undefined}
+                        >
+                          <span className={styles.parcelaNumero}>{parc.numero}/{parc.quantidadeTotal}</span>
+                          <span className={styles.parcelaVencimento}>vence {formatDate(parc.dataVencimento)}</span>
+                          <span className={styles.parcelaValor}>
+                            {parc.valorComMulta != null && (
+                              <span className={styles.parcelaValorOriginal}>{formatMoney(parc.valor)}</span>
+                            )}
+                            {formatMoney(parc.valorComMulta ?? parc.valorComJuros ?? parc.valor)}
+                          </span>
+                          {podeAprovar && (
+                            <AlertCircle size={14} className={styles.parcelaAlerta} aria-label="Aguardando sua aprovação" />
                           )}
-                          {formatMoney(parc.valorComMulta ?? parc.valorComJuros ?? parc.valor)}
-                        </span>
-                        <PontesBadge size="sm" tone={
-                          parc.status === StatusParcelaEmprestimo.Paga ? "success"
-                            : parc.atrasada ? "danger" : "neutral"
-                        }>
-                          {parc.statusDescricao}
-                        </PontesBadge>
+                          <PontesBadge size="sm" tone={
+                            parc.status === StatusParcelaEmprestimo.Paga ? "success"
+                              : parc.atrasada ? "danger" : "neutral"
+                          }>
+                            {parc.statusDescricao}
+                          </PontesBadge>
+                        </div>
+                        {podeAprovar && expandedParcelaId === parc.id && (
+                          <div className={styles.parcelaAprovacao}>
+                            <span>Aguardando sua aprovação</span>
+                            <div className={styles.actions}>
+                              <PontesIconButton size={32} variant="ghost" aria-label="Aprovar pagamento"
+                                onClick={() => openAprovar(parc.solicitacaoPendenteId!)}>
+                                <Check size={14} />
+                              </PontesIconButton>
+                              <PontesIconButton size={32} variant="ghost" aria-label="Rejeitar pagamento"
+                                onClick={() => openRejeitar(parc.solicitacaoPendenteId!)}>
+                                <X size={14} />
+                              </PontesIconButton>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      )
+                    })}
                   </li>
                 )}
               </React.Fragment>
