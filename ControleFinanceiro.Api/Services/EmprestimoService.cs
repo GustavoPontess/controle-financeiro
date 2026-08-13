@@ -246,7 +246,42 @@ public class EmprestimoService(
             valorDepois: e.ValorTotal,
             payload: new { e.Id });
 
+        // Quitar na marra passa por cima de qualquer solicitação Pendente esquecida — sem isso,
+        // ela fica presa pra sempre (badge "Aguardando aprovação" num empréstimo que já acabou,
+        // achado do Gustavo: "isso que a gente excluiu... tem que sumir"). Rejeita automaticamente,
+        // com motivo explícito, e avisa quem tinha solicitado.
+        var pendentes = await _context.EmprestimoPagamentoSolicitacoes
+            .Where(s => s.EmprestimoId == e.Id && s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente)
+            .ToListAsync();
+        foreach (var sol in pendentes)
+        {
+            sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Rejeitada;
+            sol.AprovadoPorUsuarioId = usuarioId;
+            sol.AprovadoEm = DateTime.UtcNow;
+            sol.MotivoRejeicao = "Empréstimo quitado diretamente antes da aprovação.";
+
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.EmprestimoPagamentoRejeitado,
+                entidade: "EmprestimoPagamentoSolicitacao",
+                entidadeId: sol.Id,
+                correlationId: Guid.NewGuid(),
+                origemAcao: "API",
+                payload: new { sol.Id, emprestimoId = e.Id, motivo = sol.MotivoRejeicao });
+        }
+
         await _context.SaveChangesAsync();
+
+        foreach (var sol in pendentes)
+        {
+            await _notificacaoService.CriarAsync(
+                sol.SolicitadoPor,
+                TipoNotificacao.EmprestimoPagamentoAvaliado,
+                "Pagamento rejeitado",
+                $"\"{e.Descricao}\" foi quitado diretamente — sua solicitação de {sol.Valor:C} não foi aprovada.",
+                "/emprestimos");
+        }
+
         return true;
     }
 

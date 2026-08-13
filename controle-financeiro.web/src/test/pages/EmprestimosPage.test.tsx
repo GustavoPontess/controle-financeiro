@@ -273,6 +273,18 @@ describe("EmprestimosPage (#152)", () => {
     await waitFor(() => expect(screen.queryByText("Como comprovar esse pagamento?")).not.toBeInTheDocument())
   })
 
+  it("empréstimo quitado não mostra 'Aguardando sua aprovação' mesmo com valorPendente > 0 (solicitação esquecida)", async () => {
+    const empQuitadoComPendente = {
+      ...emp, id: "e6", descricao: "Fiança", quitado: true, valorPendente: 40,
+    } as unknown as Emprestimo
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empQuitadoComPendente]))
+    renderPage()
+    await screen.findByText("Fiança")
+
+    expect(screen.getByText("Quitado")).toBeInTheDocument()
+    expect(screen.queryByText("Aguardando sua aprovação")).not.toBeInTheDocument()
+  })
+
   it("registrar pagamento recarrega as parcelas expandidas (achado: ficava com valor antigo)", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
     listParcelasEmprestimo

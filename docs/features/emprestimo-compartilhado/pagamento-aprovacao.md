@@ -590,6 +590,25 @@ parcela expandida, confirma `listParcelasEmprestimo` chamado de novo e a badge n
 335/335, tsc+lint limpos. Verificado ao vivo: badge foi de "R$35,05 de R$50,00 pago" pra "R$40,05 de
 R$50,00 pago" na hora, sem reload manual.
 
+### Empréstimo quitado na marra deixava solicitação Pendente presa pra sempre (2026-08-13)
+
+**Achado real, via elemento selecionado na UI:** Gustavo apontou um empréstimo `Quitado` mostrando
+"Aguardando sua aprovação" — parecia soft-delete vazando na lista ("esses que a gente excluiu são
+softdelete... tem que sumir no front"). Investigado: **não era isso** — `VisivelPara` já filtra
+`Ativo` corretamente, nenhum empréstimo apagado aparece na listagem. O bug real era outro:
+`QuitarAsync` ("Marcar como quitado") força `ValorPago = ValorTotal` sem nunca resolver
+`EmprestimoPagamentoSolicitacao` que ainda estivessem `Pendente` — uma solicitação esquecida de
+antes do "quitar na marra" ficava presa pra sempre, badge incluída, mesmo o empréstimo já tendo
+acabado.
+
+**Corrigido nos dois lados:** backend — `QuitarAsync` agora rejeita automaticamente qualquer
+solicitação `Pendente` do empréstimo (motivo `"Empréstimo quitado diretamente antes da aprovação."`,
+notifica quem tinha solicitado, mesmo `FinancialEventLog` do rejeitar normal). Frontend — badge
+"Aguardando sua aprovação" no card ganhou `!e.quitado` na condição (defesa em profundidade: mesmo
+que uma solicitação antiga já quitada não seja limpa retroativamente, não aparece mais). Back
+389/389 (+1), front 336/336 (+1). Verificado ao vivo: "Teste vincular existente" (quitado, com
+solicitação de R$40 esquecida no banco) parou de mostrar a badge.
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).

@@ -269,6 +269,30 @@ public class EmprestimoServiceTests
         Assert.NotNull(log);
     }
 
+    /// <summary>Achado do Gustavo (2026-08-13): empréstimo quitado na marra continuava mostrando
+    /// "Aguardando sua aprovação" — solicitação Pendente esquecida nunca era resolvida. Quitar agora
+    /// rejeita automaticamente qualquer solicitação Pendente, com motivo explícito.</summary>
+    [Fact]
+    public async Task Quitar_RejeitaAutomaticamenteSolicitacoesPendentesEsquecidas()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var solicitacao = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = 50, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId)).Single();
+
+        await svc.QuitarAsync(emprestimoId, credorId);
+
+        var solicitacaoDepois = await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(solicitacao.Id);
+        Assert.Equal(StatusAprovacaoPagamentoEmprestimo.Rejeitada, solicitacaoDepois!.StatusAprovacao);
+        Assert.NotNull(solicitacaoDepois.MotivoRejeicao);
+    }
+
     // ── Soft delete ──────────────────────────────────────────────────────────
 
     [Fact]

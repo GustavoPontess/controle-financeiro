@@ -678,7 +678,7 @@ export default function EmprestimosPage() {
                         {e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite && (
                           <PontesBadge tone="warning" size="sm">Convite pendente</PontesBadge>
                         )}
-                        {e.souCredor && e.valorPendente > 0 && (
+                        {e.souCredor && !e.quitado && e.valorPendente > 0 && (
                           <PontesBadge tone="warning" size="sm">
                             <AlertCircle size={12} /> Aguardando sua aprovação
                           </PontesBadge>

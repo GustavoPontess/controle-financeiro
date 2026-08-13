@@ -521,6 +521,13 @@ valor certo). Mesmo bug de cache já corrigido em 2026-08-12 pra aprovar/rejeita
 chamava `loadData()`. Corrigido nos dois branches. Front 335/335 (+1). Verificado ao vivo: badge
 atualizou na hora, sem reload manual.
 
+**Mais um achado, via elemento selecionado:** empréstimo `Quitado` mostrando "Aguardando sua
+aprovação" — Gustavo suspeitou de soft-delete vazando na lista. Não era isso (`VisivelPara` já
+filtra `Ativo` certo). Bug real: `QuitarAsync` nunca resolvia solicitação `Pendente` esquecida antes
+do quitar na marra, ficava presa pra sempre. Corrigido nos dois lados: backend rejeita
+automaticamente ao quitar (motivo explícito, notifica), frontend esconde a badge pra quitado (defesa
+em profundidade). Back 389/389 (+1), front 336/336 (+1). Verificado ao vivo.
+
 **Módulo Empréstimos: única peça mapeada ainda faltando é "unificar/consolidar".**
 
 **Pendências reais, na ordem:**
