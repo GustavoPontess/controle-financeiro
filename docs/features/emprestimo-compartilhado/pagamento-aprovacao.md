@@ -462,6 +462,62 @@ tinha sido rejeitada minutos antes por conta própria do Gustavo (fora da sessã
 outra aba) — não foi ação minha. Serviu de confirmação indireta de que o badge reage certo ao status
 real (sumiu do card assim que deixou de ser `Pendente`).
 
+### Valor sem parcela: aplica em sequência nas parcelas pendentes (2026-08-12)
+
+**Achado real, ao vivo:** Gustavo tinha registrado uma entrada de R$200 numa parcela de R$50 (via
+"vincular transação existente") — a solicitação ficou com `Valor=200` amarrada numa parcela que
+valia R$50, e não dava pra usar os R$150 restantes em outra parcela nenhuma. "a gente fez uma
+associação de uma entrada de 200 numa parcela de 50 e não deu pra colocar outra sendo que esse 200
+dava pra pagar tudo... tem que fazer essa conta também validar se o valor associado a parcela não é
+maior do que o empréstimo ou parcela em cima". Nenhuma validação comparava o valor da solicitação
+com o valor devido da parcela escolhida.
+
+**Decisão do redesenho (depois de pesquisa leve de mercado, a pedido do Gustavo — "faz um estudo
+disso e me traz todas as opções"):** financiamento bancário real no Brasil já resolve isso —
+excedente de um pagamento abate as parcelas seguintes automaticamente (fonte: pesquisa sobre
+amortização de financiamento). Splitwise nem tem parcela fixa (só saldo corrente, sem "escolher
+qual parcela"), então não dava pra copiar sem jogar fora vencimento/juros/multa por parcela que já
+existiam. Escolhido: **"Auto-aplica em sequência" (como banco faz)** — o usuário não escolhe mais
+uma parcela específica, só informa o valor pago; o sistema cobre as parcelas pendentes mais antigas,
+em ordem, quantas o valor fechar por completo. Sobra que não fecha uma parcela inteira não aplica
+agora (fica pro próximo pagamento — não quebra nada, não gera solicitação com valor errado).
+
+**Backend — mudança de contrato:** `SolicitarPagamentoEmprestimoDto.ParcelaId` removido por
+completo (não existe mais escolha manual). `EmprestimoService.SolicitarPagamentoAsync` mudou de
+retornar `EmprestimoPagamentoSolicitacaoDto` (um item) pra `List<EmprestimoPagamentoSolicitacaoDto>`
+— uma chamada pode gerar N solicitações agora (uma por parcela coberta), todas amarradas na mesma
+`Transacao` de comprovante/recebimento. Algoritmo: busca parcelas `Pendente` do empréstimo **sem
+solicitação ativa** (`StatusAprovacao != Rejeitada`) já ligada — uma parcela `Pendente` pode já ter
+uma solicitação do devedor esperando aprovação do credor, então não pode receber uma segunda — em
+ordem por `Numero`; pra cada uma, se o valor restante cobre o `ValorComMulta ?? ValorComJuros ??
+Valor` dela, cria uma solicitação (mesma lógica de sempre: devedor nasce `Pendente`, credor nasce já
+`Aprovada`) e desconta o valor aplicado; para na primeira que não fecha inteira. Se zero parcela foi
+coberta, `ArgumentException` ("esse valor não cobre nenhuma parcela pendente por completo") — nunca
+falha silenciosamente. Notificação e `FinancialEventLog` viram um por solicitação criada, mas a
+mensagem de notificação é consolidada (ex.: "confirmou o recebimento de R$200,00 (4 parcelas)") em
+vez de uma notificação por parcela. `À vista` não muda nada — nunca teve `ParcelaId`, sempre foi uma
+solicitação só.
+
+**Frontend:** o seletor "Qual parcela isso quita?" saiu do modal "Registrar pagamento" — pra
+Parcelado, só aparece um aviso ("se o valor cobrir mais de uma parcela, todas são quitadas em
+sequência, da mais antiga pra mais nova"). O serviço `solicitarPagamentoEmprestimo` retorna array
+agora; a mensagem de sucesso do toast reflete a quantidade (`"(N parcelas)"` quando `N>1`).
+
+**Cobertura de teste do redesenho:** back ganhou os testes centrais do achado —
+`ValorCobreVariasParcelas_CriaUmaSolicitacaoPorParcelaEmSequencia` (R$200 numa emprestimo de 4x50 →
+4 solicitações, uma por parcela, em ordem), `ValorCobreParcialmenteAProximaParcela_NaoAplicaOResto`
+(R$120 em 4x50 → só 2 solicitações, R$100 aplicado, R$20 não vira nada), e a versão do lado credor
+(`CredorComValorMaiorQueParcela_MarcaVariasParcelasPagasNaHora`, auto-aprovada na hora). Testes
+antigos que dependiam de escolher `ParcelaId` explicitamente foram reescritos ou removidos (o cenário
+"parcela de outro empréstimo" deixou de fazer sentido — não existe mais como apontar pra uma parcela
+específica de jeito nenhum, muito menos de outro empréstimo). Back 384/384 (+9 no total desde o
+início da sessão), front 333/333 (+2: sem seletor de parcela + mensagem de sucesso com quantidade).
+
+**Verificado ao vivo:** criado empréstimo de teste dedicado "TESTE emprestimo grande 10x" (Parcelado
+10x, R$1.000 = R$100/parcela) a pedido do Gustavo ("esse e pequeno de mais, cria um de 10 parcelas"),
+vinculado à Ana — deixado no ar sem terminar o fluxo completo de pagamento (sessão encerrada em
+ponto seguro antes disso), mas back+front já com toda a cobertura automatizada passando.
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).
@@ -475,8 +531,16 @@ real (sumiu do card assim que deixou de ser `Pendente`).
   Emprestimo **não muda ainda**.
 - Credor registra pagamento (unificado 2026-08-08) → cria solicitação já `Aprovada` + `Transacao`
   de recebimento (`Receita`); `ValorPago` avança na hora, parcela (se informada) vira `Paga`.
-- Credor registra em empréstimo `Parcelado` com `ParcelaId` → marca a parcela certa como `Paga` na
-  hora (sem esperar aprovação).
+- Credor registra em empréstimo `Parcelado` → marca a parcela mais antiga como `Paga` na hora (sem
+  esperar aprovação).
+- Valor cobre várias parcelas de uma vez (2026-08-12) → cria uma solicitação por parcela coberta, em
+  sequência, mais antiga primeiro (`SolicitarPagamentoAsync_ValorCobreVariasParcelas_...`).
+- Valor cobre parcialmente a próxima parcela → só aplica nas que fecham inteiras, resto não vira
+  solicitação nenhuma (`..._ValorCobreParcialmenteAProximaParcela_NaoAplicaOResto`).
+- Nenhuma parcela pendente-sem-solicitação-ativa é coberta → `ArgumentException`, nunca falha
+  silenciosamente (`..._ValorNaoCobreNenhumaParcelaPendente_LancaArgumentException`).
+- Parcela já tem solicitação ativa → próximo pagamento pula pra próxima pendente em vez de travar
+  (`..._ParcelaJaTemSolicitacaoAtiva_PulaPraProximaPendente`).
 - Empréstimo `SemVinculo` (registro solo) → credor registra normalmente, sem notificar ninguém
   (não existe contraparte).
 - Devedor tenta aprovar a própria solicitação (via `AprovarPagamentoSolicitacaoAsync`) → 403.

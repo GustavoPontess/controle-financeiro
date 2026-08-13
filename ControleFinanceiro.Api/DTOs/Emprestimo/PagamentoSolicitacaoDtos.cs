@@ -4,7 +4,13 @@ namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 /// dois papéis). Duas formas de comprovar: (1) informar Conta+Categoria+Valor+Data pra criar a
 /// Transacao na hora, ou (2) informar TransacaoExistenteId pra vincular uma já lançada por fora
 /// (evita duplicar). Devedor: cria Despesa, solicitação nasce Pendente. Credor: cria Receita,
-/// solicitação nasce já Aprovada (confirmando o próprio recebimento).</summary>
+/// solicitação nasce já Aprovada (confirmando o próprio recebimento).
+///
+/// Sem escolha de parcela (2026-08-12, achado do Gustavo: vincular um valor maior que a parcela
+/// escolhida travava dinheiro sem dar pra usar em outra parcela) — pra empréstimo Parcelado, o
+/// valor é aplicado automaticamente em sequência nas parcelas pendentes mais antigas, quantas
+/// cobrir por completo (mesmo princípio de amortização de financiamento bancário real: excedente
+/// abate as parcelas seguintes). Sobra que não fecha uma parcela inteira não aplica agora.</summary>
 public class SolicitarPagamentoEmprestimoDto
 {
     public decimal Valor { get; set; }
@@ -15,10 +21,6 @@ public class SolicitarPagamentoEmprestimoDto
     /// uma nova — Valor/ContaId/CategoriaId/Data são ignorados (o valor real vem da transação).</summary>
     public Guid? TransacaoExistenteId { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
-
-    /// <summary>Se o empréstimo é Parcelado, informe qual EmprestimoParcela esse pagamento quita.
-    /// Ignorado (empréstimo à vista continua abatendo do total "cego").</summary>
-    public Guid? ParcelaId { get; set; }
 }
 
 /// <summary>Credor aprova — sempre registra a entrada de verdade, dois caminhos possíveis (mesma

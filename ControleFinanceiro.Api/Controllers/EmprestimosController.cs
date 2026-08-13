@@ -132,9 +132,11 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     // ── Pagamento com comprovante + aprovação ──────────────────────────────────
 
     /// <summary>Registra pagamento — devedor ou credor, mesmo endpoint (cria a Transacao real
-    /// junto). Devedor: nasce Pendente. Credor: nasce já Aprovada.</summary>
+    /// junto). Devedor: nasce Pendente. Credor: nasce já Aprovada. Pra empréstimo Parcelado, o
+    /// valor é aplicado em sequência nas parcelas pendentes mais antigas (quantas cobrir por
+    /// completo) — pode gerar mais de uma solicitação numa chamada só.</summary>
     [HttpPost("{id:guid}/solicitar-pagamento")]
-    [ProducesResponseType(typeof(EmprestimoPagamentoSolicitacaoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<EmprestimoPagamentoSolicitacaoDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SolicitarPagamento(Guid id, [FromBody] SolicitarPagamentoEmprestimoDto dto)
     {
         var resultado = await _service.SolicitarPagamentoAsync(id, dto, UserId);

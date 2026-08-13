@@ -176,14 +176,12 @@ export default function EmprestimosPage() {
   const [avaliandoId, setAvaliandoId] = useState<string | null>(null)
   const [solicitarFor, setSolicitarFor] = useState<string | null>(null)
   const [solicitarForm, setSolicitarForm] = useState<{ valor?: number; contaId: string; categoriaId: string }>({ valor: undefined, contaId: "", categoriaId: "" })
-  const [solicitarErrors, setSolicitarErrors] = useState<{ valor?: string; contaId?: string; categoriaId?: string; escolha?: string; transacaoExistenteId?: string; parcela?: string }>({})
+  const [solicitarErrors, setSolicitarErrors] = useState<{ valor?: string; contaId?: string; categoriaId?: string; escolha?: string; transacaoExistenteId?: string }>({})
   const [solicitarIdemKey, setSolicitarIdemKey] = useState("")
   // Escolha explícita: vincular despesa já lançada, ou criar agora — nunca padrão silencioso (Gustavo 2026-08-05)
   const [solicitarEscolha, setSolicitarEscolha] = useState<EscolhaComprovante>("")
   const [solicitarTransacaoExistenteId, setSolicitarTransacaoExistenteId] = useState("")
   // Empréstimo Parcelado — qual parcela esse pagamento quita (docs/.../parcelamento-e-agrupamento.md)
-  const [solicitarParcelas, setSolicitarParcelas] = useState<EmprestimoParcela[]>([])
-  const [solicitarParcelaId, setSolicitarParcelaId] = useState("")
   const [aprovarFor, setAprovarFor] = useState<string | null>(null)
   const [aprovarForm, setAprovarForm] = useState<{ contaId: string; categoriaId: string }>({ contaId: "", categoriaId: "" })
   const [aprovarErrors, setAprovarErrors] = useState<{ escolha?: string; contaId?: string; categoriaId?: string; transacaoExistenteId?: string }>({})
@@ -389,27 +387,6 @@ export default function EmprestimosPage() {
     setSolicitarIdemKey(crypto.randomUUID())
     setSolicitarEscolha("")
     setSolicitarTransacaoExistenteId("")
-    setSolicitarParcelaId("")
-    setSolicitarParcelas([])
-
-    const emprestimo = emprestimos.find((x) => x.id === emprestimoId)
-    if (emprestimo?.formaPagamento === FormaPagamentoEmprestimo.Parcelado) {
-      void (async () => {
-        try {
-          const lista = await listParcelasEmprestimo(emprestimoId)
-          setSolicitarParcelas(lista.filter((p) => p.status === StatusParcelaEmprestimo.Pendente))
-        } catch {
-          notify({ open: true, message: "Erro ao carregar parcelas", severity: "error" })
-        }
-      })()
-    }
-  }
-
-  const handleSolicitarParcelaChange = (v: string) => {
-    setSolicitarParcelaId(v)
-    setSolicitarErrors((p) => ({ ...p, parcela: undefined }))
-    const parcela = solicitarParcelas.find((p) => p.id === v)
-    if (parcela) setSolicitarForm((f) => ({ ...f, valor: parcela.valorComMulta ?? parcela.valorComJuros ?? parcela.valor }))
   }
 
   const handleSolicitarEscolhaChange = (v: string) => {
@@ -423,13 +400,10 @@ export default function EmprestimosPage() {
     if (!solicitarFor) return
 
     const emprestimoAlvo = emprestimos.find((x) => x.id === solicitarFor)
-    const isParcelado = emprestimoAlvo?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
     const souCredor = emprestimoAlvo?.souCredor ?? false
-    const mensagemSucesso = souCredor ? "Pagamento registrado" : "Pagamento marcado — aguardando aprovação do credor"
-
-    if (isParcelado && !solicitarParcelaId) {
-      setSolicitarErrors({ parcela: "Escolha a parcela" })
-      return
+    const mensagemSucesso = (qtdParcelas: number) => {
+      const base = souCredor ? "Pagamento registrado" : "Pagamento marcado — aguardando aprovação do credor"
+      return qtdParcelas > 1 ? `${base} (${qtdParcelas} parcelas)` : base
     }
 
     if (!solicitarEscolha) {
@@ -444,14 +418,13 @@ export default function EmprestimosPage() {
       }
       setLoading(true)
       try {
-        await solicitarPagamentoEmprestimo(solicitarFor, {
+        const resultado = await solicitarPagamentoEmprestimo(solicitarFor, {
           valor: 0,
           data: new Date().toISOString(),
           transacaoExistenteId: solicitarTransacaoExistenteId,
           idempotencyKey: solicitarIdemKey,
-          parcelaId: isParcelado ? solicitarParcelaId : undefined,
         })
-        notify({ open: true, message: mensagemSucesso, severity: "success" })
+        notify({ open: true, message: mensagemSucesso(resultado.length), severity: "success" })
         setSolicitarFor(null)
         await loadData()
       } catch (err) {
@@ -469,15 +442,14 @@ export default function EmprestimosPage() {
 
     setLoading(true)
     try {
-      await solicitarPagamentoEmprestimo(solicitarFor, {
+      const resultado = await solicitarPagamentoEmprestimo(solicitarFor, {
         valor: solicitarForm.valor!,
         contaId: solicitarForm.contaId,
         categoriaId: solicitarForm.categoriaId,
         data: new Date().toISOString(),
         idempotencyKey: solicitarIdemKey,
-        parcelaId: isParcelado ? solicitarParcelaId : undefined,
       })
-      notify({ open: true, message: mensagemSucesso, severity: "success" })
+      notify({ open: true, message: mensagemSucesso(resultado.length), severity: "success" })
       setSolicitarFor(null)
       await loadData()
     } catch (err) {
@@ -1177,21 +1149,8 @@ export default function EmprestimosPage() {
             {souCredorSolicitar
               ? "Isso lança a entrada de verdade na sua conta e já confirma o pagamento — a outra pessoa é avisada."
               : "Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele confirmar é que o valor pago do empréstimo avança."}
+            {isParceladoSolicitar && " Se o valor cobrir mais de uma parcela, todas são quitadas em sequência, da mais antiga pra mais nova."}
           </p>
-
-          {isParceladoSolicitar && (
-            <PontesField label="Qual parcela isso quita?" required error={solicitarErrors.parcela}>
-              <PontesSelect
-                value={solicitarParcelaId}
-                onChange={handleSolicitarParcelaChange}
-                options={solicitarParcelas.map((p) => ({
-                  value: p.id,
-                  label: `Parcela ${p.numero}/${p.quantidadeTotal} — vence ${formatDate(p.dataVencimento)} — ${formatMoney(p.valorComMulta ?? p.valorComJuros ?? p.valor)}`,
-                }))}
-                placeholder="Selecione a parcela"
-              />
-            </PontesField>
-          )}
 
           <PontesField label={souCredorSolicitar ? "Como registrar esse recebimento?" : "Como comprovar esse pagamento?"} required error={solicitarErrors.escolha}>
             <div className={styles.gateGroup}>

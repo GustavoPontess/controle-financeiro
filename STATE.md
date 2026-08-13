@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-12
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". 3 rodadas de redesign no mesmo dia, cada uma a pedido explícito do Gustavo: (1) badge + painel amarelo expansível → não agradou; (2) botões verde/vermelho na linha + clique abre modal filtrado → "não quero que abra assim nem a pau, quero que abra em baixo"; (3) final: botões preenchidos 24px espaçados + badge "Aguardando aprovação" + histórico 100% inline embaixo da parcela (sem modal nenhum). No caminho: 2 bugs reais pegos nos testes (`Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado; `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId`), e biblioteca Pontes ganhou `variant="success"`/`"danger"` preenchidos + tamanho `24` (Button/IconButton, com demo+teste, regra do projeto). Back 381/381, front 331/331, tsc+lint limpos. **Depois disso, mais um bug real achado na verificação:** Gustavo aprovou pela linha da parcela e a tela continuou mostrando "Aguardando aprovação" mesmo o backend tendo aprovado certo (conferido no Postgres) — cache de parcelas/histórico inline não recarregava após aprovar/rejeitar/reenviar. Corrigido (`refreshParcelasEHistoricoInline`), front 332/332 (+1). Também respondidas 2 perguntas de conformidade do Gustavo sobre o histórico de pagamento (nome de conta do devedor aparecendo pro credor tem base legal — LGPD Art. 7º-V, execução de contrato a pedido do titular — mas falta transparência explícita, catalogado P3 junto do #126; e confirmado que "aprovar sem registrar entrada" já foi decidido e fechado de propósito em 2026-08-05, ligado ao bug do "Móveis" que motivou o módulo). Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Pronto pra commit.** Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: especificar e implementar, ou decidir PR/trocar de frente.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". 3 rodadas de redesign no mesmo dia, cada uma a pedido explícito do Gustavo: (1) badge + painel amarelo expansível → não agradou; (2) botões verde/vermelho na linha + clique abre modal filtrado → "não quero que abra assim nem a pau, quero que abra em baixo"; (3) final: botões preenchidos 24px espaçados + badge "Aguardando aprovação" + histórico 100% inline embaixo da parcela (sem modal nenhum). No caminho: 2 bugs reais pegos nos testes (`Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado; `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId`), e biblioteca Pontes ganhou `variant="success"`/`"danger"` preenchidos + tamanho `24` (Button/IconButton, com demo+teste, regra do projeto). Back 381/381, front 331/331, tsc+lint limpos. **Depois disso, mais um bug real achado na verificação:** Gustavo aprovou pela linha da parcela e a tela continuou mostrando "Aguardando aprovação" mesmo o backend tendo aprovado certo (conferido no Postgres) — cache de parcelas/histórico inline não recarregava após aprovar/rejeitar/reenviar. Corrigido (`refreshParcelasEHistoricoInline`), front 332/332 (+1). Também respondidas 2 perguntas de conformidade do Gustavo sobre o histórico de pagamento (nome de conta do devedor aparecendo pro credor tem base legal — LGPD Art. 7º-V, execução de contrato a pedido do titular — mas falta transparência explícita, catalogado P3 junto do #126; e confirmado que "aprovar sem registrar entrada" já foi decidido e fechado de propósito em 2026-08-05, ligado ao bug do "Móveis" que motivou o módulo). Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Depois disso, achado maior: valor de pagamento vinculado a uma parcela sem validar contra o valor dela** ("associação de uma entrada de 200 numa parcela de 50 e não deu pra colocar outra sendo que esse 200 dava pra pagar tudo"). Pesquisa leve de mercado a pedido do Gustavo ("faz um estudo disso e me traz todas as opções") confirmou: financiamento bancário real abate parcelas seguintes automaticamente com o excedente — escolhido "auto-aplica em sequência" (não escolhe mais parcela, só o valor; sistema cobre as pendentes mais antigas, quantas fechar por completo). Redesenho grande: `SolicitarPagamentoEmprestimoDto.ParcelaId` removido, `SolicitarPagamentoAsync` passou a devolver `List<...>` (pode gerar N solicitações numa chamada). Seletor de parcela saiu do front. Back 384/384 (+9 no total da sessão), front 333/333. Catalogado achado novo de UI (navbar com contraste quebrado em `/convite/emprestimo/:token`, P2). **Pronto pra commit — sessão longa, parada a pedido do Gustavo antes de terminar a verificação ao vivo do empréstimo de 10 parcelas** (criado e vinculado à Ana, convite aceito ainda não confirmado na sessão). Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: confirmar o teste ao vivo do pagamento em lote se quiser, especificar e implementar unificar/consolidar, ou decidir PR/trocar de frente.'
 ---
 
 # STATE — onde parei
@@ -423,6 +423,56 @@ Front 331/331 (+2: variantes novas da lib + comportamento inline reescrito), tsc
 "Aguardando aprovação", clicar na parcela abre o histórico dela embaixo da própria linha (sem modal,
 sem overlay) — recolhe clicando de novo.
 
+**Ainda na mesma sessão, respondidas 2 perguntas do Gustavo sobre conformidade** (vendo o histórico
+de pagamento real): (1) mostrar pro credor o nome da conta de onde o devedor pagou fere LGPD? —
+checado na fonte (Art. 7º, `lgpd-brasil.info`): tem base legal (inciso V, execução de contrato a
+pedido do titular — o devedor escolhe a conta e envia por vontade própria) e não é dado sensível
+(Art. 5º-II não cobre nome de conta); achado real mas de transparência, não ilegalidade — catalogado
+P3 junto do #126 (avisar no formulário que o credor vai ver o nome da conta); (2) dá pra aprovar sem
+registrar entrada? — não, decisão já fechada em 2026-08-05, ligada ao próprio bug que motivou
+reescrever o módulo (ghost-payment do "Móveis").
+
+**Depois disso, achado maior — validação de valor faltando:** Gustavo tinha vinculado uma entrada de
+R$200 a uma parcela de R$50 (sem erro nenhum) e não conseguia usar o resto em outra parcela: "tem
+que fazer essa conta também validar se o valor associado a parcela não é maior que... a parcela".
+Perguntado o comportamento desejado, ele pediu **pesquisa antes de decidir** ("faz um estudo disso e
+me traz todas as opções"). Pesquisa leve (WebSearch): financiamento bancário real no Brasil já
+resolve isso — pagamento maior que a parcela abate as parcelas seguintes automaticamente (fonte:
+Serasa/Ailos sobre amortização). Splitwise nem tem parcela fixa (só saldo corrente). Escolhido:
+**"auto-aplica em sequência" (como banco faz)** — sem escolher parcela, só o valor; sistema cobre as
+parcelas pendentes mais antigas, quantas fecharem por completo; sobra que não fecha uma inteira não
+aplica agora.
+
+**Redesenho grande implementado:** `SolicitarPagamentoEmprestimoDto.ParcelaId` removido por completo
+(não existe mais escolha manual de parcela). `EmprestimoService.SolicitarPagamentoAsync` mudou de
+retornar um DTO só pra `List<EmprestimoPagamentoSolicitacaoDto>` — uma chamada agora pode gerar N
+solicitações (uma por parcela coberta), cada uma amarrada na mesma `Transacao` de comprovante/
+recebimento. Notificação vira consolidada ("R$200,00 (4 parcelas)") em vez de uma por parcela. Front:
+seletor "Qual parcela isso quita?" saiu do modal "Registrar pagamento" — pra Parcelado, só um aviso
+explicando que o valor cobre em sequência.
+
+**Blast radius grande nos testes** (mudança de contrato quebrou ~49 erros de compilação nos testes
+de backend): reescritos sistematicamente — a maioria virou `(await ...).Single()` já que continuam
+gerando 1 solicitação só; testes que dependiam de `ParcelaId` explícito foram removidos (não faz mais
+sentido, ex. "parcela de outro empréstimo" nem é mais possível de expressar) ou reescritos pro novo
+comportamento (`ParcelaJaTemSolicitacaoAtiva_PulaPraProximaPendente` no lugar do antigo
+"LancaInvalidOperationException"). Adicionados os testes centrais do achado real: valor cobrindo 4
+parcelas de uma vez gera 4 solicitações em sequência, valor cobrindo parcialmente não aplica o resto,
+valor que não cobre nada lança erro alto (nunca falha silencioso). Back 384/384 (+9 no total da
+sessão), front 333/333 (+2), tsc+lint limpos.
+
+**Achado de UI catalogado, não corrigido:** Gustavo apontou direto no elemento que a `PontesNavbar`
+fica com contraste quebrado (texto quase ilegível) na página pública de convite de empréstimo
+(`/convite/emprestimo/:token`) num estado "rolado" — parece transição de scroll que não resolve
+direito numa página sem hero de verdade. Não investigado, catalogado no ROADMAP como P2.
+
+**Sessão parada aqui a pedido explícito do Gustavo** ("acabar ai anota tudo e para em ponto verde")
+antes de terminar a verificação ao vivo completa do pagamento em lote — criado e vinculado à Ana um
+empréstimo de teste maior ("TESTE emprestimo grande 10x", Parcelado 10x, R$1.000 = R$100/parcela,
+pedido dele: "esse e pequeno de mais, cria um de 10 parcelas"), convite enviado, aceite não
+confirmado na sessão. Toda a lógica já está coberta por teste automatizado passando — só falta a
+confirmação visual ao vivo de "pagar R$200 de uma vez, ver 4 parcelas virarem Paga".
+
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
    **antes** de codar, mesmo padrão do resto da sessão. Única peça que falta pro módulo Empréstimos
@@ -450,9 +500,12 @@ sem overlay) — recolhe clicando de novo.
 
 ## Próxima ação concreta
 
-1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
+1. (Opcional) Terminar a verificação ao vivo do pagamento em lote — aceitar o convite do "TESTE
+   emprestimo grande 10x" como Ana, registrar um pagamento de R$200+ e confirmar visualmente que
+   várias parcelas viram `Paga` numa tacada só. Lógica já 100% coberta por teste automatizado.
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
    de codar — última peça mapeada faltando pro módulo Empréstimos fechar por completo.
-2. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
+3. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
    primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):

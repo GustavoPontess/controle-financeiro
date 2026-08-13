@@ -111,7 +111,7 @@ describe("EmprestimosPage (#152)", () => {
     getContas.mockReset().mockResolvedValue([])
     getCategories.mockReset().mockResolvedValue([])
     listTransactionsPage.mockReset().mockResolvedValue(paged([]))
-    solicitarPagamentoEmprestimo.mockReset()
+    solicitarPagamentoEmprestimo.mockReset().mockResolvedValue([])
     listSolicitacoesPagamento.mockReset().mockResolvedValue([])
     aprovarPagamentoEmprestimo.mockReset()
     rejeitarPagamentoEmprestimo.mockReset()
@@ -242,6 +242,35 @@ describe("EmprestimosPage (#152)", () => {
     fireEvent.click(screen.getByText("Enviar pra aprovação"))
     expect(await screen.findByText("Escolha a conta")).toBeInTheDocument()
     expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
+  })
+
+  it("registrar pagamento de parcelado cobrindo várias parcelas — mensagem reflete a quantidade", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
+    solicitarPagamentoEmprestimo.mockResolvedValue([
+      { id: "s1", emprestimoId: "e4", valor: 100, statusAprovacao: 1, statusAprovacaoDescricao: "Pendente", solicitadoPor: "u1", solicitadoPorNome: "Eu", criadoEm: "2026-08-12T00:00:00Z", comprovanteData: "2026-08-12T00:00:00Z", registradoPeloCredor: false, parcelaId: "pa1" },
+      { id: "s2", emprestimoId: "e4", valor: 100, statusAprovacao: 1, statusAprovacaoDescricao: "Pendente", solicitadoPor: "u1", solicitadoPorNome: "Eu", criadoEm: "2026-08-12T00:00:00Z", comprovanteData: "2026-08-12T00:00:00Z", registradoPeloCredor: false, parcelaId: "pa2" },
+    ] satisfies EmprestimoPagamentoSolicitacao[])
+    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
+    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 1 }])
+    renderPage()
+    await screen.findByText("Financiamento")
+    fireEvent.click(screen.getByLabelText("Registrar pagamento"))
+    await screen.findByText("Como comprovar esse pagamento?")
+
+    fireEvent.click(screen.getByText("Ainda não lancei — lançar agora"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "20000" } })
+    fireEvent.click(screen.getAllByText("Selecione")[0]) // conta
+    fireEvent.click(await screen.findByText("Carteira"))
+    fireEvent.click(screen.getByText("Selecione")) // categoria
+    fireEvent.click(await screen.findByText("Outros"))
+    fireEvent.click(screen.getByText("Enviar pra aprovação"))
+
+    await waitFor(() => expect(solicitarPagamentoEmprestimo).toHaveBeenCalled())
+    const [, payload] = solicitarPagamentoEmprestimo.mock.calls[0]
+    expect(payload).not.toHaveProperty("parcelaId")
+    expect(payload).toMatchObject({ valor: 200 })
+    // modal fecha só depois do sucesso (loadData é chamado em seguida)
+    await waitFor(() => expect(screen.queryByText("Como comprovar esse pagamento?")).not.toBeInTheDocument())
   })
 
   it("credor abre histórico, bloqueia aprovação sem escolher opção e aprova criando entrada", async () => {
@@ -482,22 +511,18 @@ describe("EmprestimosPage (#152)", () => {
     expect(screen.queryByText("Ana", { exact: false })).not.toBeInTheDocument()
   })
 
-  it("devedor de empréstimo parcelado escolhe a parcela antes de marcar como pago", async () => {
+  it("registrar pagamento de parcelado não pede pra escolher parcela — valor aplica em sequência", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
-    listParcelasEmprestimo.mockResolvedValue([{
-      id: "pa1", emprestimoId: "e4", numero: 1, quantidadeTotal: 2,
-      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
-      status: 1, statusDescricao: "Pendente", atrasada: false,
-    }])
     renderPage()
     await screen.findByText("Financiamento")
 
     fireEvent.click(screen.getByLabelText("Registrar pagamento"))
-    expect(await screen.findByText("Qual parcela isso quita?")).toBeInTheDocument()
-    expect(listParcelasEmprestimo).toHaveBeenCalledWith("e4")
+    await screen.findByText("Como comprovar esse pagamento?")
+    expect(screen.queryByText("Qual parcela isso quita?")).not.toBeInTheDocument()
+    expect(screen.getByText(/cobrir mais de uma parcela/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText("Enviar pra aprovação"))
-    expect(await screen.findByText("Escolha a parcela")).toBeInTheDocument()
+    expect(await screen.findByText("Escolha uma opção")).toBeInTheDocument()
     expect(solicitarPagamentoEmprestimo).not.toHaveBeenCalled()
   })
 

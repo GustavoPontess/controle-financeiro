@@ -482,7 +482,7 @@ public class EmprestimoService(
     /// (Despesa), nasce Pendente, credor aprova depois. Credor: cria recebimento (Receita), nasce
     /// já Aprovada — confirmando o que ele mesmo recebeu não precisa de autoaprovação (mesmo
     /// padrão do Splitwise: settle-up sem confirmação obrigatória do outro lado, só notifica).</summary>
-    public async Task<EmprestimoPagamentoSolicitacaoDto> SolicitarPagamentoAsync(
+    public async Task<List<EmprestimoPagamentoSolicitacaoDto>> SolicitarPagamentoAsync(
         Guid emprestimoId, SolicitarPagamentoEmprestimoDto dto, Guid usuarioId)
     {
         if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
@@ -494,7 +494,7 @@ public class EmprestimoService(
         {
             var anterior = await _context.EmprestimoPagamentoSolicitacoes
                 .FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
-            if (anterior != null) return await ToSolicitacaoDtoAsync(anterior);
+            if (anterior != null) return [await ToSolicitacaoDtoAsync(anterior)];
         }
 
         var emprestimo = await _context.Emprestimos.FirstOrDefaultAsync(e => e.Id == emprestimoId && e.Ativo
@@ -505,22 +505,6 @@ public class EmprestimoService(
         // só existe depois de aceito) — logo souCredor é sempre true nesse caso, mesmo raciocínio
         // de "registro solo, sem contraparte pra avisar" já usado no resto do módulo.
         var souCredor = EhCredor(emprestimo, usuarioId);
-
-        EmprestimoParcela? parcela = null;
-        if (dto.ParcelaId.HasValue)
-        {
-            parcela = await _context.EmprestimoParcelas
-                .FirstOrDefaultAsync(p => p.Id == dto.ParcelaId.Value && p.EmprestimoId == emprestimo.Id)
-                ?? throw new KeyNotFoundException("Parcela não encontrada.");
-
-            if (parcela.Status != StatusParcelaEmprestimo.Pendente)
-                throw new InvalidOperationException("Essa parcela já foi paga ou cancelada.");
-
-            var jaSolicitadaParcela = await _context.EmprestimoPagamentoSolicitacoes.AnyAsync(s =>
-                s.ParcelaId == parcela.Id && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada);
-            if (jaSolicitadaParcela)
-                throw new InvalidOperationException("Já existe uma solicitação de pagamento pendente ou aprovada pra essa parcela.");
-        }
 
         Transacao transacao;
         decimal valor;
@@ -570,51 +554,106 @@ public class EmprestimoService(
             valor = dto.Valor;
         }
 
-        var solicitacao = new EmprestimoPagamentoSolicitacao
-        {
-            Id = Guid.NewGuid(),
-            EmprestimoId = emprestimo.Id,
-            Valor = valor,
-            SolicitadoPor = usuarioId,
-            ParcelaId = parcela?.Id,
-        };
+        var solicitacoesCriadas = new List<EmprestimoPagamentoSolicitacao>();
 
-        if (souCredor)
+        if (emprestimo.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
         {
-            solicitacao.TransacaoRecebimentoId = transacao.Id;
-            solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
-            solicitacao.AprovadoPorUsuarioId = usuarioId;
-            solicitacao.AprovadoEm = DateTime.UtcNow;
+            // Sem escolha manual de parcela — aplica o valor em sequência nas parcelas pendentes
+            // mais antigas, quantas cobrir por completo (mesmo princípio de amortização bancária:
+            // excedente abate as parcelas seguintes). Exclui parcela que já tem solicitação ativa
+            // (Pendente ou Aprovada) — Status só vira Paga na aprovação, então uma parcela Pendente
+            // pode já ter solicitação de devedor esperando confirmação do credor.
+            var parcelaIdsComSolicitacaoAtiva = await _context.EmprestimoPagamentoSolicitacoes
+                .Where(s => s.EmprestimoId == emprestimo.Id && s.ParcelaId.HasValue
+                    && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada)
+                .Select(s => s.ParcelaId!.Value)
+                .ToListAsync();
 
-            if (parcela != null)
+            var parcelasPendentes = await _context.EmprestimoParcelas
+                .Where(p => p.EmprestimoId == emprestimo.Id && p.Status == StatusParcelaEmprestimo.Pendente
+                    && !parcelaIdsComSolicitacaoAtiva.Contains(p.Id))
+                .OrderBy(p => p.Numero)
+                .ToListAsync();
+
+            var restante = valor;
+            foreach (var p in parcelasPendentes)
             {
-                parcela.Status = StatusParcelaEmprestimo.Paga;
-                parcela.SolicitacaoPagamentoId = solicitacao.Id;
+                var valorDevido = p.ValorComMulta ?? p.ValorComJuros ?? p.Valor;
+                if (restante < valorDevido) break;
+
+                var sol = new EmprestimoPagamentoSolicitacao
+                {
+                    Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valorDevido,
+                    SolicitadoPor = usuarioId, ParcelaId = p.Id,
+                };
+                if (souCredor)
+                {
+                    sol.TransacaoRecebimentoId = transacao.Id;
+                    sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
+                    sol.AprovadoPorUsuarioId = usuarioId;
+                    sol.AprovadoEm = DateTime.UtcNow;
+                    p.Status = StatusParcelaEmprestimo.Paga;
+                    p.SolicitacaoPagamentoId = sol.Id;
+                    emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valorDevido, emprestimo.ValorTotal);
+                }
+                else
+                {
+                    sol.TransacaoComprovanteId = transacao.Id;
+                    sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente;
+                }
+                _context.EmprestimoPagamentoSolicitacoes.Add(sol);
+                solicitacoesCriadas.Add(sol);
+                restante -= valorDevido;
             }
-            emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valor, emprestimo.ValorTotal);
+
+            if (solicitacoesCriadas.Count == 0)
+                throw new ArgumentException("Esse valor não cobre nenhuma parcela pendente por completo.");
+
             if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
         }
         else
         {
-            solicitacao.TransacaoComprovanteId = transacao.Id;
-            solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente;
+            var sol = new EmprestimoPagamentoSolicitacao
+            {
+                Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valor, SolicitadoPor = usuarioId,
+            };
+            if (souCredor)
+            {
+                sol.TransacaoRecebimentoId = transacao.Id;
+                sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
+                sol.AprovadoPorUsuarioId = usuarioId;
+                sol.AprovadoEm = DateTime.UtcNow;
+                emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valor, emprestimo.ValorTotal);
+                if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
+            }
+            else
+            {
+                sol.TransacaoComprovanteId = transacao.Id;
+                sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente;
+            }
+            _context.EmprestimoPagamentoSolicitacoes.Add(sol);
+            solicitacoesCriadas.Add(sol);
         }
 
-        _context.EmprestimoPagamentoSolicitacoes.Add(solicitacao);
-
-        _eventLog.Registrar(
-            usuarioId: usuarioId,
-            tipo: souCredor ? FinancialEventType.EmprestimoPagamentoAprovado : FinancialEventType.EmprestimoPagamentoSolicitado,
-            entidade: "EmprestimoPagamentoSolicitacao",
-            entidadeId: solicitacao.Id,
-            correlationId: Guid.NewGuid(),
-            origemAcao: "API",
-            valorDepois: souCredor ? emprestimo.ValorPago : solicitacao.Valor,
-            payload: new { idempotencyKey = dto.IdempotencyKey, solicitacao.Id, emprestimoId });
+        foreach (var sol in solicitacoesCriadas)
+        {
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: souCredor ? FinancialEventType.EmprestimoPagamentoAprovado : FinancialEventType.EmprestimoPagamentoSolicitado,
+                entidade: "EmprestimoPagamentoSolicitacao",
+                entidadeId: sol.Id,
+                correlationId: Guid.NewGuid(),
+                origemAcao: "API",
+                valorDepois: souCredor ? emprestimo.ValorPago : sol.Valor,
+                payload: new { idempotencyKey = dto.IdempotencyKey, sol.Id, emprestimoId });
+        }
 
         await _context.SaveChangesAsync();
 
         var solicitante = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+        var valorTotalAplicado = solicitacoesCriadas.Sum(s => s.Valor);
+        var quantasParcelas = solicitacoesCriadas.Count(s => s.ParcelaId.HasValue);
+        var sufixoParcelas = quantasParcelas > 1 ? $" ({quantasParcelas} parcelas)" : "";
         if (souCredor)
         {
             // Só notifica se tiver alguém do outro lado — registro solo (sem vínculo ou convite
@@ -625,7 +664,7 @@ public class EmprestimoService(
                     DevedorUsuarioId(emprestimo),
                     TipoNotificacao.EmprestimoPagamentoAvaliado,
                     "Pagamento registrado",
-                    $"{solicitante?.Nome ?? "Alguém"} confirmou o recebimento de {solicitacao.Valor:C} em \"{emprestimo.Descricao}\".",
+                    $"{solicitante?.Nome ?? "Alguém"} confirmou o recebimento de {valorTotalAplicado:C}{sufixoParcelas} em \"{emprestimo.Descricao}\".",
                     "/emprestimos");
             }
         }
@@ -635,11 +674,11 @@ public class EmprestimoService(
                 CredorUsuarioId(emprestimo),
                 TipoNotificacao.EmprestimoPagamentoSolicitado,
                 "Pagamento aguardando aprovação",
-                $"{solicitante?.Nome ?? "Alguém"} marcou {solicitacao.Valor:C} como pago em \"{emprestimo.Descricao}\" — confirme o recebimento.",
+                $"{solicitante?.Nome ?? "Alguém"} marcou {valorTotalAplicado:C}{sufixoParcelas} como pago em \"{emprestimo.Descricao}\" — confirme o recebimento.",
                 "/emprestimos");
         }
 
-        return await ToSolicitacaoDtoAsync(solicitacao);
+        return await ToSolicitacaoDtosAsync(solicitacoesCriadas);
     }
 
     /// <summary>Histórico de solicitações de um empréstimo — visível pros dois participantes.</summary>

@@ -120,6 +120,8 @@ export const StatusAprovacaoPagamentoEmprestimo = {
   Rejeitada: 3,
 } as const
 
+/** Sem escolha de parcela (2026-08-12) — pra empréstimo Parcelado, o valor é aplicado
+ * automaticamente em sequência nas parcelas pendentes mais antigas, quantas cobrir por completo. */
 export interface SolicitarPagamentoEmprestimo {
   valor: number
   contaId?: string
@@ -128,8 +130,6 @@ export interface SolicitarPagamentoEmprestimo {
   /** Se informado, vincula essa despesa já lançada em vez de criar uma nova (evita duplicar a saída). */
   transacaoExistenteId?: string
   idempotencyKey: string
-  /** Se o empréstimo é Parcelado, qual EmprestimoParcela esse pagamento quita. */
-  parcelaId?: string
 }
 
 export interface AprovarPagamentoEmprestimo {

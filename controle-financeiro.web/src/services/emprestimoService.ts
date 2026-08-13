@@ -87,10 +87,12 @@ export const recusarVinculoEmprestimoPorId = async (id: string): Promise<void> =
 }
 
 /** Registra pagamento — devedor ou credor, mesmo endpoint (cria a Transacao real junto).
- * Devedor: nasce Pendente, aguarda aprovação. Credor: nasce já Aprovada. */
+ * Devedor: nasce Pendente, aguarda aprovação. Credor: nasce já Aprovada. Sem escolha de parcela
+ * (2026-08-12) — pra empréstimo Parcelado, o valor é aplicado em sequência nas parcelas pendentes
+ * mais antigas, quantas cobrir por completo — pode voltar mais de uma solicitação. */
 export const solicitarPagamentoEmprestimo = async (
   id: string, dto: SolicitarPagamentoEmprestimo,
-): Promise<EmprestimoPagamentoSolicitacao> => {
+): Promise<EmprestimoPagamentoSolicitacao[]> => {
   const res = await api.post(`/emprestimos/${id}/solicitar-pagamento`, dto)
   return res.data
 }
