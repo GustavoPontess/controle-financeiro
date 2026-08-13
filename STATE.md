@@ -528,15 +528,33 @@ do quitar na marra, ficava presa pra sempre. Corrigido nos dois lados: backend r
 automaticamente ao quitar (motivo explícito, notifica), frontend esconde a badge pra quitado (defesa
 em profundidade). Back 389/389 (+1), front 336/336 (+1). Verificado ao vivo.
 
-**Módulo Empréstimos: única peça mapeada ainda faltando é "unificar/consolidar".**
+**Mais 2 achados de limpeza de teste, resolvidos manualmente:** dois empréstimos de teste já
+quitados ("Teste vincular existente", "Teste pagamento aprovacao") pareciam soft-deletados mas
+`Ativo=true` no banco — Gustavo tinha tentado apagar e o botão bloqueou (regra de 2026-08-11: quitado
+sempre tem atividade real, apagar fica travado de propósito), sem ele perceber o erro. Como eram
+puro dado de teste, marcados `Ativo=false` direto no Postgres — sumiram da lista (10→9→8
+registrados), nenhum empréstimo real tocado.
 
-**Pendências reais, na ordem:**
-1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
-   **antes** de codar, mesmo padrão do resto da sessão. Única peça que falta pro módulo Empréstimos
-   fechar por completo.
-2. Implementar unificar/consolidar.
-3. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
-4. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
+**Achado maior na sequência, só especificado (não codado):** Gustavo perguntou por que não dá pra
+apagar um quitado. Confirmado: é a trava de 2026-08-11 funcionando como decidido (protege histórico
+que a Ana também vê). Opção de relaxar a trava rejeitada pelo próprio Gustavo (mesmo risco de sempre).
+**Escolhido: arquivar/ocultar em vez de apagar** — esconde da lista principal sem apagar nada, os
+dois lados continuam vendo num canto tipo "Ver arquivados". Design esboçado (per-usuário —
+`ArquivadoPorCriador`/`ArquivadoPorContraparte`, só permitido pra `Quitado`, endpoints
+arquivar/desarquivar, toggle "Mostrar arquivados" no front) — catalogado em detalhe no ROADMAP.
+**Zero código escrito ainda** — sessão parada aqui a pedido do Gustavo ("e vamo dormir").
+
+**Módulo Empréstimos: 2 peças mapeadas faltando — "unificar/consolidar" e "arquivar/ocultar
+quitado".**
+
+**Pendências reais, na ordem (Gustavo decide qual primeiro na próxima sessão):**
+1. Implementar "arquivar/ocultar quitado" — já especificado, é só codar (backend: campo +
+   endpoints + filtro na listagem; frontend: botão + toggle). Achado mais recente, ainda fresco.
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+   **antes** de codar. A peça mais antiga do módulo ainda em aberto.
+3. Implementar unificar/consolidar.
+4. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
+5. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
    próxima sessão (reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
    sozinho, precisa `Start-Process` manual às vezes).
 
