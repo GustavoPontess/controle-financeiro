@@ -4,16 +4,17 @@ import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, Link2, Copy, Check, X,
-  Receipt, History, RotateCcw, ChevronDown, AlertCircle,
+  Receipt, History, RotateCcw, ChevronDown, AlertCircle, Archive, ArchiveRestore,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard, PontesAlert,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesTextarea, PontesEmptyState, PontesProgress,
+  PontesTextarea, PontesEmptyState, PontesProgress, PontesCheckbox,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
   listEmprestimosPage, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
+  arquivarEmprestimo, desarquivarEmprestimo,
   vincularEmprestimo, listConvitesPendentesEmprestimo,
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
   solicitarPagamentoEmprestimo, listSolicitacoesPagamento,
@@ -130,6 +131,8 @@ export default function EmprestimosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [quitarId, setQuitarId] = useState<string | null>(null)
   const [delId, setDelId] = useState<string | null>(null)
+  const [arquivandoId, setArquivandoId] = useState<string | null>(null)
+  const [mostrarArquivados, setMostrarArquivados] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<Errors>({})
@@ -222,7 +225,7 @@ export default function EmprestimosPage() {
   const loadData = useCallback(async () => {
     try {
       const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult] = await Promise.all([
-        listEmprestimosPage(page, pageSize),
+        listEmprestimosPage(page, pageSize, mostrarArquivados),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
@@ -237,7 +240,7 @@ export default function EmprestimosPage() {
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify, page, pageSize])
+  }, [notify, page, pageSize, mostrarArquivados])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -376,6 +379,30 @@ export default function EmprestimosPage() {
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao remover empréstimo"), severity: "error" })
     } finally { setDelId(null) }
+  }
+
+  // Arquivar decisão pessoal de organização (não apaga nada, não afeta a contraparte) — resolve a
+  // clareira entre "quitado bloqueia apagar de propósito" e "empréstimo antigo poluindo a lista".
+  const handleArquivar = async (id: string) => {
+    setArquivandoId(id)
+    try {
+      await arquivarEmprestimo(id)
+      notify({ open: true, message: "Empréstimo arquivado", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao arquivar empréstimo"), severity: "error" })
+    } finally { setArquivandoId(null) }
+  }
+
+  const handleDesarquivar = async (id: string) => {
+    setArquivandoId(id)
+    try {
+      await desarquivarEmprestimo(id)
+      notify({ open: true, message: "Empréstimo desarquivado", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao desarquivar empréstimo"), severity: "error" })
+    } finally { setArquivandoId(null) }
   }
 
   // ── Pagamento com comprovante + aprovação ───────────────────────────────────
@@ -643,7 +670,14 @@ export default function EmprestimosPage() {
 
       <PontesCard padding={0} radius={16}>
         <div className={styles.listHead}>
-          <span className={styles.listHeadTitle}>Seus empréstimos</span>
+          <div className={styles.listHeadLeft}>
+            <span className={styles.listHeadTitle}>Seus empréstimos</span>
+            <PontesCheckbox
+              checked={mostrarArquivados}
+              onChange={(v) => { setMostrarArquivados(v); setPage(1) }}
+              label="Mostrar arquivados"
+            />
+          </div>
           <span className={styles.listHeadMeta}>{total} {total === 1 ? "registrado" : "registrados"}</span>
         </div>
 
@@ -766,6 +800,18 @@ export default function EmprestimosPage() {
                         <PontesIconButton size={32} variant="ghost" aria-label="Vincular a uma pessoa"
                           onClick={() => openVincular(e.id)}>
                           <Link2 size={14} />
+                        </PontesIconButton>
+                      )}
+                      {e.quitado && !e.arquivado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Arquivar"
+                          onClick={() => void handleArquivar(e.id)} disabled={arquivandoId === e.id}>
+                          <Archive size={14} />
+                        </PontesIconButton>
+                      )}
+                      {e.quitado && e.arquivado && (
+                        <PontesIconButton size={32} variant="ghost" aria-label="Desarquivar"
+                          onClick={() => void handleDesarquivar(e.id)} disabled={arquivandoId === e.id}>
+                          <ArchiveRestore size={14} />
                         </PontesIconButton>
                       )}
                       <PontesIconButton size={32} variant="ghost" aria-label="Remover"

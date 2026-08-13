@@ -293,6 +293,70 @@ public class EmprestimoServiceTests
         Assert.NotNull(solicitacaoDepois.MotivoRejeicao);
     }
 
+    // ── Arquivar ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Arquivar_NaoQuitado_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.ArquivarAsync(criado.Id, usuarioId));
+    }
+
+    [Fact]
+    public async Task Arquivar_EsondeDaListagemSoDoLadoDeQuemArquivou()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 2);
+        await svc.QuitarAsync(emprestimoId, credorId);
+
+        var ok = await svc.ArquivarAsync(emprestimoId, credorId);
+        Assert.True(ok);
+
+        var listaCredor = await svc.ListarAsync(credorId);
+        Assert.DoesNotContain(listaCredor.Items, e => e.Id == emprestimoId);
+
+        var listaCredorComArquivados = await svc.ListarAsync(credorId, incluirArquivados: true);
+        Assert.Contains(listaCredorComArquivados.Items, e => e.Id == emprestimoId && e.Arquivado);
+
+        var listaDevedor = await svc.ListarAsync(devedorId);
+        Assert.Contains(listaDevedor.Items, e => e.Id == emprestimoId && !e.Arquivado); // lado dela intacto
+    }
+
+    [Fact]
+    public async Task Desarquivar_VoltaAAparecerNaListagemPrincipal()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
+        await svc.QuitarAsync(criado.Id, usuarioId);
+        await svc.ArquivarAsync(criado.Id, usuarioId);
+
+        var ok = await svc.DesarquivarAsync(criado.Id, usuarioId);
+        Assert.True(ok);
+
+        var lista = await svc.ListarAsync(usuarioId);
+        Assert.Contains(lista.Items, e => e.Id == criado.Id);
+    }
+
+    [Fact]
+    public async Task Arquivar_EstranhoAoRegistro_RetornaFalse()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var criado = await svc.CriarAsync(DtoValido(), usuarioId);
+        await svc.QuitarAsync(criado.Id, usuarioId);
+
+        var ok = await svc.ArquivarAsync(criado.Id, Guid.NewGuid());
+        Assert.False(ok);
+    }
+
     // ── Soft delete ──────────────────────────────────────────────────────────
 
     [Fact]

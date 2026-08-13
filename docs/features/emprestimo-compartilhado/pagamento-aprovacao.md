@@ -590,6 +590,38 @@ parcela expandida, confirma `listParcelasEmprestimo` chamado de novo e a badge n
 335/335, tsc+lint limpos. Verificado ao vivo: badge foi de "R$35,05 de R$50,00 pago" pra "R$40,05 de
 R$50,00 pago" na hora, sem reload manual.
 
+### Arquivar/ocultar empréstimo quitado (2026-08-13/14)
+
+**Achado real:** Gustavo — "quando eu quito um empréstimo ele fica apagado como um blur mas não
+consigo excluir, remover dá erro". Investigado: `Remover` bloqueia de propósito (regra de
+2026-08-11) qualquer `Vinculado` com atividade real, e quitado sempre tem `ValorPago > 0` — então
+todo quitado fica permanentemente bloqueado pra apagar, acumulando na lista com `opacity: 0.55`
+(visual "meio apagado" que gerou a confusão inicial com soft-delete, que na verdade já funcionava
+certo). Gustavo rejeitou relaxar essa trava (mesmo risco de sempre — apagar um quitado real também
+sumiria o rastro do lado da Ana). **Escolhido: arquivar/ocultar em vez de apagar.**
+
+**Implementado:** `Emprestimo` ganha `ArquivadoPorCriador`/`ArquivadoPorContraparte` (bool,
+migration `AddArquivarEmprestimo`) — **por-usuário**, arquivar é decisão pessoal de organização, não
+estado compartilhado; cada lado esconde da própria lista sem afetar a visão do outro nem apagar
+nada. Só permitido pra empréstimo `Quitado` (`ArgumentException` senão). `ListarAsync` ganha
+`incluirArquivados` (default `false`) — filtra o lado de quem pediu. Endpoints
+`PATCH /emprestimos/{id}/arquivar` e `/desarquivar`, idempotentes. `EmprestimoDto.Arquivado`
+relativo a quem pediu (`souCriador ? ArquivadoPorCriador : ArquivadoPorContraparte`).
+
+**Frontend:** itens `Quitado` ganham botão `Arquivar` (ícone `Archive`) no lugar certo da barra de
+ações; depois de arquivado vira `Desarquivar` (`ArchiveRestore`). Checkbox "Mostrar arquivados" no
+cabeçalho da lista (`PontesCheckbox`, já existia na lib, só nunca tinha sido usado nesta tela) —
+liga/desliga `incluirArquivados` na busca.
+
+Back 393/393 (+4: não-quitado lança erro, esconde só do lado de quem arquivou mantendo a visão da
+contraparte intacta, desarquivar volta a aparecer, estranho ao registro retorna false), front
+340/340 (+4: botão aparece/some conforme quitado+arquivado, clique chama o service e recarrega,
+toggle passa `incluirArquivados=true`). tsc+lint limpos.
+
+**Verificado ao vivo:** "TESTE emprestimo grande 10x" (test loan, ficou quitado nesse meio tempo) —
+arquivado sumiu da lista (8→7 registros), toggle "Mostrar arquivados" trouxe de volta com botão
+"Desarquivar", desarquivado voltou ao normal. Nenhum empréstimo real tocado.
+
 ### Empréstimo quitado na marra deixava solicitação Pendente presa pra sempre (2026-08-13)
 
 **Achado real, via elemento selecionado na UI:** Gustavo apontou um empréstimo `Quitado` mostrando

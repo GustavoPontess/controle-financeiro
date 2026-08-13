@@ -57,4 +57,12 @@ public class Emprestimo
     public decimal? ValorComMulta { get; set; }
 
     public ICollection<EmprestimoParcela> Parcelas { get; set; } = new List<EmprestimoParcela>();
+
+    /// <summary>Arquivar é decisão pessoal de organização, não estado compartilhado — cada lado
+    /// esconde da própria lista principal sem afetar a visão do outro nem apagar nada. Só permitido
+    /// quando Quitado (achado do Gustavo, 2026-08-13: "quando eu quito ele fica meio apagado mas
+    /// não consigo excluir" — apagar quitado fica travado de propósito, protege histórico
+    /// compartilhado; arquivar resolve a poluição visual sem esse risco).</summary>
+    public bool ArquivadoPorCriador { get; set; } = false;
+    public bool ArquivadoPorContraparte { get; set; } = false;
 }

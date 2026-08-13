@@ -18,9 +18,10 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<EmprestimoDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    public async Task<IActionResult> Listar(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] bool incluirArquivados = false)
     {
-        var result = await _service.ListarAsync(UserId, page, pageSize);
+        var result = await _service.ListarAsync(UserId, page, pageSize, incluirArquivados);
         return Ok(result);
     }
 
@@ -58,6 +59,23 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     public async Task<IActionResult> Deletar(Guid id)
     {
         var ok = await _service.DeletarAsync(id, UserId);
+        return ok ? NoContent() : NotFound();
+    }
+
+    /// <summary>Esconde da lista principal do lado de quem chama — só pra empréstimo Quitado
+    /// (arquivar decisão pessoal, não apaga nada, não afeta a visão da outra parte).</summary>
+    [HttpPatch("{id:guid}/arquivar")]
+    public async Task<IActionResult> Arquivar(Guid id)
+    {
+        var ok = await _service.ArquivarAsync(id, UserId);
+        return ok ? NoContent() : NotFound();
+    }
+
+    /// <summary>Reverte o arquivar — volta a aparecer na lista principal de quem chama.</summary>
+    [HttpPatch("{id:guid}/desarquivar")]
+    public async Task<IActionResult> Desarquivar(Guid id)
+    {
+        var ok = await _service.DesarquivarAsync(id, UserId);
         return ok ? NoContent() : NotFound();
     }
 

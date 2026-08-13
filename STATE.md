@@ -544,17 +544,23 @@ dois lados continuam vendo num canto tipo "Ver arquivados". Design esboçado (pe
 arquivar/desarquivar, toggle "Mostrar arquivados" no front) — catalogado em detalhe no ROADMAP.
 **Zero código escrito ainda** — sessão parada aqui a pedido do Gustavo ("e vamo dormir").
 
-**Módulo Empréstimos: 2 peças mapeadas faltando — "unificar/consolidar" e "arquivar/ocultar
-quitado".**
+**Sessão 2026-08-14 — "arquivar/ocultar quitado" implementado por completo:** backend
+(`ArquivadoPorCriador`/`ArquivadoPorContraparte` per-usuário, migration `AddArquivarEmprestimo`,
+`ArquivarAsync`/`DesarquivarAsync`, `ListarAsync` com `incluirArquivados`) + frontend (botão
+Arquivar/Desarquivar nos itens quitados, checkbox "Mostrar arquivados"). Back 393/393 (+4), front
+340/340 (+4), tsc+lint limpos. Verificado ao vivo com empréstimo de teste, ciclo completo (arquivar
+→ some → toggle revela → desarquivar → volta ao normal). Nenhum empréstimo real tocado. Detalhe:
+`docs/features/emprestimo-compartilhado/pagamento-aprovacao.md` → seção "Arquivar/ocultar
+empréstimo quitado".
 
-**Pendências reais, na ordem (Gustavo decide qual primeiro na próxima sessão):**
-1. Implementar "arquivar/ocultar quitado" — já especificado, é só codar (backend: campo +
-   endpoints + filtro na listagem; frontend: botão + toggle). Achado mais recente, ainda fresco.
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
-   **antes** de codar. A peça mais antiga do módulo ainda em aberto.
-3. Implementar unificar/consolidar.
-4. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
-5. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
+**Módulo Empréstimos: única peça mapeada ainda faltando é "unificar/consolidar".**
+
+**Pendências reais, na ordem:**
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
+   **antes** de codar. Única peça que falta pro módulo Empréstimos fechar por completo.
+2. Implementar unificar/consolidar.
+3. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
+4. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
    próxima sessão (reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
    sozinho, precisa `Start-Process` manual às vezes).
 

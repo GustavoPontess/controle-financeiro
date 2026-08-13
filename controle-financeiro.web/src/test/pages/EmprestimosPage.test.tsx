@@ -21,6 +21,8 @@ const getEmprestimoStats = vi.fn()
 const createEmprestimo = vi.fn()
 const quitarEmprestimo = vi.fn()
 const deleteEmprestimo = vi.fn()
+const arquivarEmprestimo = vi.fn()
+const desarquivarEmprestimo = vi.fn()
 const vincularEmprestimo = vi.fn()
 const listConvitesPendentesEmprestimo = vi.fn()
 const aceitarVinculoEmprestimoPorId = vi.fn()
@@ -38,6 +40,8 @@ vi.mock("../../services/emprestimoService", () => ({
   createEmprestimo: (...a: unknown[]) => createEmprestimo(...a),
   quitarEmprestimo: (...a: unknown[]) => quitarEmprestimo(...a),
   deleteEmprestimo: (...a: unknown[]) => deleteEmprestimo(...a),
+  arquivarEmprestimo: (...a: unknown[]) => arquivarEmprestimo(...a),
+  desarquivarEmprestimo: (...a: unknown[]) => desarquivarEmprestimo(...a),
   vincularEmprestimo: (...a: unknown[]) => vincularEmprestimo(...a),
   listConvitesPendentesEmprestimo: (...a: unknown[]) => listConvitesPendentesEmprestimo(...a),
   aceitarVinculoEmprestimoPorId: (...a: unknown[]) => aceitarVinculoEmprestimoPorId(...a),
@@ -91,6 +95,11 @@ const empVinculadoComoCredor = {
   souCredor: true, contraparteNome: "Ana",
 } as unknown as Emprestimo
 
+const empQuitado = {
+  ...emp, id: "e7", descricao: "Fiança", quitado: true, valorRestante: 0, percentualPago: 100,
+  arquivado: false,
+} as unknown as Emprestimo
+
 function renderPage() {
   return render(<PontesThemeProvider><EmprestimosPage /></PontesThemeProvider>)
 }
@@ -105,6 +114,8 @@ describe("EmprestimosPage (#152)", () => {
     createEmprestimo.mockReset().mockResolvedValue(undefined)
     quitarEmprestimo.mockReset().mockResolvedValue(undefined)
     deleteEmprestimo.mockReset().mockResolvedValue(undefined)
+    arquivarEmprestimo.mockReset().mockResolvedValue(undefined)
+    desarquivarEmprestimo.mockReset().mockResolvedValue(undefined)
     vincularEmprestimo.mockReset()
     aceitarVinculoEmprestimoPorId.mockReset().mockResolvedValue(undefined)
     recusarVinculoEmprestimoPorId.mockReset().mockResolvedValue(undefined)
@@ -283,6 +294,48 @@ describe("EmprestimosPage (#152)", () => {
 
     expect(screen.getByText("Quitado")).toBeInTheDocument()
     expect(screen.queryByText("Aguardando sua aprovação")).not.toBeInTheDocument()
+  })
+
+  it("empréstimo quitado mostra botão Arquivar (não quitado, não mostra)", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empQuitado]))
+    renderPage()
+    await screen.findByText("Fiança")
+
+    expect(screen.getByLabelText("Arquivar")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Desarquivar")).not.toBeInTheDocument()
+  })
+
+  it("clicar em Arquivar chama o service e recarrega a lista", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empQuitado]))
+    renderPage()
+    await screen.findByText("Fiança")
+
+    const chamadasAntes = listEmprestimosPage.mock.calls.length
+    fireEvent.click(screen.getByLabelText("Arquivar"))
+    await waitFor(() => expect(arquivarEmprestimo).toHaveBeenCalledWith("e7"))
+    await waitFor(() => expect(listEmprestimosPage.mock.calls.length).toBeGreaterThan(chamadasAntes))
+  })
+
+  it("empréstimo arquivado mostra Desarquivar em vez de Arquivar", async () => {
+    const empArquivado = { ...empQuitado, arquivado: true } as unknown as Emprestimo
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empArquivado]))
+    renderPage()
+    await screen.findByText("Fiança")
+
+    expect(screen.getByLabelText("Desarquivar")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Arquivar")).not.toBeInTheDocument()
+  })
+
+  it("toggle 'Mostrar arquivados' recarrega a lista com incluirArquivados=true", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empQuitado]))
+    renderPage()
+    await screen.findByText("Fiança")
+
+    fireEvent.click(screen.getByText("Mostrar arquivados"))
+    await waitFor(() => {
+      const ultimaChamada = listEmprestimosPage.mock.calls.at(-1)
+      expect(ultimaChamada).toEqual([1, expect.any(Number), true])
+    })
   })
 
   it("registrar pagamento recarrega as parcelas expandidas (achado: ficava com valor antigo)", async () => {

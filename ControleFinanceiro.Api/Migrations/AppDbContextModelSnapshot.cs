@@ -367,6 +367,12 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("ArquivadoPorContraparte")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ArquivadoPorCriador")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("Ativo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

@@ -42,6 +42,9 @@ export interface Emprestimo {
   valorComJuros?: number
   /** Só preenchido se formaPagamento === AVista, percentualMultaAtraso informada, e venceu. */
   valorComMulta?: number
+  /** Relativo a quem pediu — true se EU arquivei, não reflete o lado da contraparte. Só existe
+   * pra empréstimo quitado (arquivar sem apagar nada). */
+  arquivado: boolean
 }
 
 /** Forma de pagamento combinada de um empréstimo. */

@@ -20,12 +20,22 @@ public class EmprestimoService(
     private readonly FinancialEventLogService _eventLog = eventLog;
     private readonly TransacaoService _transacaoService = transacaoService;
 
-    public async Task<PagedResult<EmprestimoDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
+    public async Task<PagedResult<EmprestimoDto>> ListarAsync(
+        Guid usuarioId, int page = 1, int pageSize = 25, bool incluirArquivados = false)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var query = VisivelPara(usuarioId)
+        var query = VisivelPara(usuarioId);
+        if (!incluirArquivados)
+        {
+            // Arquivar é por-usuário — esconde só do lado de quem arquivou, sem afetar a visão
+            // do outro participante nem apagar nada.
+            query = query.Where(e =>
+                !((e.CriadoPor == usuarioId && e.ArquivadoPorCriador)
+                    || (e.ContraparteUsuarioId == usuarioId && e.ArquivadoPorContraparte)));
+        }
+        query = query
             .OrderBy(e => e.Quitado)
             .ThenBy(e => e.DataVencimento)
             .ThenBy(e => e.DataInicio);
@@ -282,6 +292,41 @@ public class EmprestimoService(
                 "/emprestimos");
         }
 
+        return true;
+    }
+
+    /// <summary>Esconde da lista principal do lado de quem chamou, sem apagar nada nem afetar a
+    /// visão do outro participante — decisão pessoal de organização (achado do Gustavo,
+    /// 2026-08-13: "quando eu quito ele fica meio apagado mas não consigo excluir"; apagar quitado
+    /// fica bloqueado de propósito pra proteger o histórico compartilhado, arquivar resolve a
+    /// poluição visual sem esse risco). Só permitido pra empréstimo Quitado — arquivar um em
+    /// andamento não faz sentido. Idempotente (já arquivado → no-op).</summary>
+    public async Task<bool> ArquivarAsync(Guid id, Guid usuarioId)
+    {
+        var e = await VisivelPara(usuarioId).FirstOrDefaultAsync(x => x.Id == id);
+        if (e is null) return false;
+
+        if (!e.Quitado)
+            throw new ArgumentException("Só dá pra arquivar um empréstimo quitado.");
+
+        if (e.CriadoPor == usuarioId) e.ArquivadoPorCriador = true;
+        else e.ArquivadoPorContraparte = true;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Reverte ArquivarAsync — volta a aparecer na lista principal do lado de quem
+    /// chamou. Idempotente.</summary>
+    public async Task<bool> DesarquivarAsync(Guid id, Guid usuarioId)
+    {
+        var e = await VisivelPara(usuarioId).FirstOrDefaultAsync(x => x.Id == id);
+        if (e is null) return false;
+
+        if (e.CriadoPor == usuarioId) e.ArquivadoPorCriador = false;
+        else e.ArquivadoPorContraparte = false;
+
+        await _context.SaveChangesAsync();
         return true;
     }
 
@@ -1211,6 +1256,7 @@ public class EmprestimoService(
             QuantidadeParcelas = e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado && e.Parcelas.Count > 0
                 ? e.Parcelas.Count
                 : null,
+            Arquivado = souCriador ? e.ArquivadoPorCriador : e.ArquivadoPorContraparte,
         };
     }
 

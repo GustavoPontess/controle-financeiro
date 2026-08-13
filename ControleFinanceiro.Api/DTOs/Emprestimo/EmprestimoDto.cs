@@ -51,4 +51,8 @@ public class EmprestimoDto
     /// <summary>Só preenchido se FormaPagamento == Parcelado — pra lista decidir se mostra o
     /// chevron de expandir sem precisar buscar as parcelas.</summary>
     public int? QuantidadeParcelas { get; set; }
+
+    /// <summary>Relativo a quem pediu (usuarioId) — true se ELE arquivou esse empréstimo, não
+    /// reflete o lado da contraparte. Só é true se Quitado (arquivar só existe pra quitado).</summary>
+    public bool Arquivado { get; set; }
 }

@@ -6,12 +6,15 @@ import type {
 } from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
-/** Lista paginada — backend clampa pageSize em 1..100. */
+/** Lista paginada — backend clampa pageSize em 1..100. `incluirArquivados` (default false) mostra
+ * também os que o próprio usuário arquivou — arquivar é por-usuário, não afeta a lista da
+ * contraparte. */
 export const listEmprestimosPage = async (
   page: number,
   pageSize: number,
+  incluirArquivados = false,
 ): Promise<PagedResult<Emprestimo>> => {
-  const res = await api.get("/emprestimos", { params: { page, pageSize } })
+  const res = await api.get("/emprestimos", { params: { page, pageSize, incluirArquivados } })
   return res.data
 }
 
@@ -46,6 +49,16 @@ export const quitarEmprestimo = async (id: string): Promise<void> => {
 
 export const deleteEmprestimo = async (id: string): Promise<void> => {
   await api.delete(`/emprestimos/${id}`)
+}
+
+/** Esconde da lista principal do lado de quem chama — só pra empréstimo Quitado, não apaga nada
+ * nem afeta a visão da contraparte. */
+export const arquivarEmprestimo = async (id: string): Promise<void> => {
+  await api.patch(`/emprestimos/${id}/arquivar`)
+}
+
+export const desarquivarEmprestimo = async (id: string): Promise<void> => {
+  await api.patch(`/emprestimos/${id}/desarquivar`)
 }
 
 /** Propõe vínculo por e-mail. Resposta sempre igual, exista ou não a conta (anti-enumeração) —
