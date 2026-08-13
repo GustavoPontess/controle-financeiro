@@ -326,12 +326,12 @@ describe("EmprestimosPage (#152)", () => {
     expect(screen.queryByLabelText("Arquivar")).not.toBeInTheDocument()
   })
 
-  it("toggle 'Mostrar arquivados' recarrega a lista com incluirArquivados=true", async () => {
+  it("filtro 'Arquivados' recarrega a lista com incluirArquivados=true", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empQuitado]))
     renderPage()
     await screen.findByText("Fiança")
 
-    fireEvent.click(screen.getByText("Mostrar arquivados"))
+    fireEvent.click(screen.getByText("Arquivados"))
     await waitFor(() => {
       const ultimaChamada = listEmprestimosPage.mock.calls.at(-1)
       expect(ultimaChamada).toEqual([1, expect.any(Number), true])

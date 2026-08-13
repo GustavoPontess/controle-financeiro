@@ -9,7 +9,7 @@ import {
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard, PontesAlert,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesTextarea, PontesEmptyState, PontesProgress, PontesCheckbox,
+  PontesTextarea, PontesEmptyState, PontesProgress,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
@@ -672,11 +672,14 @@ export default function EmprestimosPage() {
         <div className={styles.listHead}>
           <div className={styles.listHeadLeft}>
             <span className={styles.listHeadTitle}>Seus empréstimos</span>
-            <PontesCheckbox
-              checked={mostrarArquivados}
-              onChange={(v) => { setMostrarArquivados(v); setPage(1) }}
-              label="Mostrar arquivados"
-            />
+            <PontesButton
+              size="sm"
+              variant={mostrarArquivados ? "primary" : "outline"}
+              iconStart={<Archive size={14} />}
+              onClick={() => { setMostrarArquivados((v) => !v); setPage(1) }}
+            >
+              Arquivados
+            </PontesButton>
           </div>
           <span className={styles.listHeadMeta}>{total} {total === 1 ? "registrado" : "registrados"}</span>
         </div>
