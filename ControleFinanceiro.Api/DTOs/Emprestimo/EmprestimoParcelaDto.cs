@@ -13,6 +13,10 @@ public class EmprestimoParcelaDto
     public int Status { get; set; }
     public string StatusDescricao { get; set; } = string.Empty;
 
+    /// <summary>Soma já aplicada nesta parcela (pode ser parcial, menor que o valor devido, se
+    /// ainda não fechou). Front calcula o restante = valor devido - ValorPago.</summary>
+    public decimal ValorPago { get; set; }
+
     /// <summary>Calculado (vencimento no passado e ainda Pendente) — mesmo padrão do
     /// Emprestimo.Vencido, não persistido.</summary>
     public bool Atrasada { get; set; }

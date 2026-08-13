@@ -83,7 +83,7 @@ public class EmprestimoService(
             .ToListAsync();
         var totalAReceberVencido = aReceberAtivos.Sum(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado
             ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < hoje)
-                .Sum(p => p.ValorComMulta ?? p.ValorComJuros ?? p.Valor)
+                .Sum(p => (p.ValorComMulta ?? p.ValorComJuros ?? p.Valor) - p.ValorPago)
             : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje
                 ? (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago
                 : 0m));
@@ -559,13 +559,16 @@ public class EmprestimoService(
         if (emprestimo.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
         {
             // Sem escolha manual de parcela — aplica o valor em sequência nas parcelas pendentes
-            // mais antigas, quantas cobrir por completo (mesmo princípio de amortização bancária:
-            // excedente abate as parcelas seguintes). Exclui parcela que já tem solicitação ativa
-            // (Pendente ou Aprovada) — Status só vira Paga na aprovação, então uma parcela Pendente
-            // pode já ter solicitação de devedor esperando confirmação do credor.
+            // mais antigas (mesmo princípio de amortização bancária: excedente abate as parcelas
+            // seguintes). Se não fechar uma parcela inteira, aplica como adiantamento parcial nela
+            // (mesma lógica de pagar uma fatura de cartão antes de fechar — abate o que falta, sem
+            // sumir com o resto) em vez de descartar a sobra. Exclui parcela com solicitação ainda
+            // Pendente (não confirmada) — evita reclamar a mesma parcela duas vezes enquanto uma
+            // está esperando o credor decidir; solicitação já Aprovada não bloqueia (parcial já
+            // aplicado, parcela continua Pendente até fechar, pode receber outro pagamento).
             var parcelaIdsComSolicitacaoAtiva = await _context.EmprestimoPagamentoSolicitacoes
                 .Where(s => s.EmprestimoId == emprestimo.Id && s.ParcelaId.HasValue
-                    && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada)
+                    && s.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Pendente)
                 .Select(s => s.ParcelaId!.Value)
                 .ToListAsync();
 
@@ -578,12 +581,15 @@ public class EmprestimoService(
             var restante = valor;
             foreach (var p in parcelasPendentes)
             {
-                var valorDevido = p.ValorComMulta ?? p.ValorComJuros ?? p.Valor;
-                if (restante < valorDevido) break;
+                if (restante <= 0) break;
+
+                var valorTotalDevido = p.ValorComMulta ?? p.ValorComJuros ?? p.Valor;
+                var valorDevido = valorTotalDevido - p.ValorPago;
+                var valorAplicado = Math.Min(restante, valorDevido);
 
                 var sol = new EmprestimoPagamentoSolicitacao
                 {
-                    Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valorDevido,
+                    Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valorAplicado,
                     SolicitadoPor = usuarioId, ParcelaId = p.Id,
                 };
                 if (souCredor)
@@ -592,9 +598,10 @@ public class EmprestimoService(
                     sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
                     sol.AprovadoPorUsuarioId = usuarioId;
                     sol.AprovadoEm = DateTime.UtcNow;
-                    p.Status = StatusParcelaEmprestimo.Paga;
+                    p.ValorPago += valorAplicado;
+                    if (p.ValorPago >= valorTotalDevido) p.Status = StatusParcelaEmprestimo.Paga;
                     p.SolicitacaoPagamentoId = sol.Id;
-                    emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valorDevido, emprestimo.ValorTotal);
+                    emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valorAplicado, emprestimo.ValorTotal);
                 }
                 else
                 {
@@ -603,11 +610,14 @@ public class EmprestimoService(
                 }
                 _context.EmprestimoPagamentoSolicitacoes.Add(sol);
                 solicitacoesCriadas.Add(sol);
-                restante -= valorDevido;
+                restante -= valorAplicado;
             }
 
             if (solicitacoesCriadas.Count == 0)
-                throw new ArgumentException("Esse valor não cobre nenhuma parcela pendente por completo.");
+                throw new ArgumentException("Não há parcela pendente pra aplicar esse pagamento.");
+
+            if (restante > 0)
+                throw new ArgumentException("Esse valor é maior que o total das parcelas pendentes.");
 
             if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
         }
@@ -804,7 +814,12 @@ public class EmprestimoService(
                 .FirstOrDefaultAsync(p => p.Id == solicitacao.ParcelaId.Value);
             if (parcela != null)
             {
-                parcela.Status = StatusParcelaEmprestimo.Paga;
+                // Pode ser adiantamento parcial (valor da solicitação menor que o devido da
+                // parcela) — só fecha (Paga) quando o acumulado cobrir tudo, mesma lógica do
+                // caminho credor em SolicitarPagamentoAsync.
+                parcela.ValorPago += solicitacao.Valor;
+                var valorDevido = parcela.ValorComMulta ?? parcela.ValorComJuros ?? parcela.Valor;
+                if (parcela.ValorPago >= valorDevido) parcela.Status = StatusParcelaEmprestimo.Paga;
                 parcela.SolicitacaoPagamentoId = solicitacao.Id;
             }
         }
@@ -1239,6 +1254,7 @@ public class EmprestimoService(
             ValorComJuros = p.ValorComJuros,
             ValorComMulta = p.ValorComMulta,
             Status = (int)p.Status,
+            ValorPago = p.ValorPago,
             StatusDescricao = p.Status switch
             {
                 StatusParcelaEmprestimo.Pendente => atrasada ? "Atrasada" : "Pendente",

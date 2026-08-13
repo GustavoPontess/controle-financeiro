@@ -436,6 +436,20 @@ describe("EmprestimosPage (#152)", () => {
     expect(await screen.findByText("Como registrar essa entrada?")).toBeInTheDocument()
   })
 
+  it("parcela com adiantamento parcial mostra quanto já foi pago, sem virar Paga", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    listParcelasEmprestimo.mockResolvedValue([{
+      id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
+      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+      status: 1, statusDescricao: "Pendente", atrasada: false, valorPago: 30,
+    }])
+    renderPage()
+    await screen.findByText("Carro")
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    expect(await screen.findByText(/R\$\s?30,00 de R\$\s?100,00 pago/)).toBeInTheDocument()
+  })
+
   it("aprovar pela parcela recarrega a lista — badge 'Aguardando aprovação' some (achado: ficava preso)", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
     listParcelasEmprestimo

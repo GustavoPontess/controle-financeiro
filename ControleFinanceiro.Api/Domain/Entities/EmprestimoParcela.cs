@@ -28,7 +28,13 @@ public class EmprestimoParcela
 
     public StatusParcelaEmprestimo Status { get; set; } = StatusParcelaEmprestimo.Pendente;
 
-    /// <summary>Liga à solicitação de pagamento que quitou esta parcela — null até ser paga.</summary>
+    /// <summary>Soma de todo valor já aplicado (aprovado) nesta parcela — pode ser menor que o
+    /// valor devido enquanto paga aos poucos (adiantamento parcial, tipo abater fatura de cartão
+    /// antes de fechar). Status só vira Paga quando ValorPago cobre o valor devido por completo.</summary>
+    public decimal ValorPago { get; set; }
+
+    /// <summary>Liga à solicitação de pagamento mais recente aplicada nesta parcela — pode não ser
+    /// a única se houve mais de um pagamento parcial.</summary>
     public Guid? SolicitacaoPagamentoId { get; set; }
     public EmprestimoPagamentoSolicitacao? SolicitacaoPagamento { get; set; }
 

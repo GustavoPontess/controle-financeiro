@@ -779,6 +779,9 @@ export default function EmprestimosPage() {
                       <span className={styles.itemSub}>Carregando…</span>
                     ) : (parcelasPorEmprestimo[e.id] ?? []).map((parc) => {
                       const podeAprovar = e.souCredor && !!parc.solicitacaoPendenteId
+                      const valorDevidoParc = parc.valorComMulta ?? parc.valorComJuros ?? parc.valor
+                      const parcialPaga = parc.status === StatusParcelaEmprestimo.Pendente
+                        && parc.valorPago > 0 && parc.valorPago < valorDevidoParc
                       return (
                       <div key={parc.id} className={styles.parcelaItem}>
                         <div
@@ -809,9 +812,12 @@ export default function EmprestimosPage() {
                           <PontesBadge size="sm" tone={
                             podeAprovar ? "warning"
                               : parc.status === StatusParcelaEmprestimo.Paga ? "success"
+                              : parcialPaga ? "accent"
                               : parc.atrasada ? "danger" : "neutral"
                           }>
-                            {podeAprovar ? "Aguardando aprovação" : parc.statusDescricao}
+                            {podeAprovar ? "Aguardando aprovação"
+                              : parcialPaga ? `${formatMoney(parc.valorPago)} de ${formatMoney(valorDevidoParc)} pago`
+                              : parc.statusDescricao}
                           </PontesBadge>
                         </div>
                         {historicoInlineParcelaId === parc.id && (
@@ -1149,7 +1155,7 @@ export default function EmprestimosPage() {
             {souCredorSolicitar
               ? "Isso lança a entrada de verdade na sua conta e já confirma o pagamento — a outra pessoa é avisada."
               : "Isso lança a saída de verdade na sua conta e avisa o credor — só depois que ele confirmar é que o valor pago do empréstimo avança."}
-            {isParceladoSolicitar && " Se o valor cobrir mais de uma parcela, todas são quitadas em sequência, da mais antiga pra mais nova."}
+            {isParceladoSolicitar && " Se o valor cobrir mais de uma parcela, todas são quitadas em sequência, da mais antiga pra mais nova. Se não fechar uma parcela inteira, entra como adiantamento nela — nada se perde."}
           </p>
 
           <PontesField label={souCredorSolicitar ? "Como registrar esse recebimento?" : "Como comprovar esse pagamento?"} required error={solicitarErrors.escolha}>

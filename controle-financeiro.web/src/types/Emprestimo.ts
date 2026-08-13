@@ -68,6 +68,8 @@ export interface EmprestimoParcela {
   valorComMulta?: number
   status: number
   statusDescricao: string
+  /** Soma já aplicada nesta parcela — pode ser parcial (adiantamento), menor que o valor devido. */
+  valorPago: number
   atrasada: boolean
   solicitacaoPagamentoId?: string
   /** Solicitação Pendente (aguardando aprovação) ligada a essa parcela, se houver. */

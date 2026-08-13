@@ -1673,15 +1673,16 @@ public class EmprestimoServiceTests
         Assert.Equal(4, await ctx.EmprestimoPagamentoSolicitacoes.CountAsync());
     }
 
-    /// <summary>Sobra que não fecha uma parcela inteira não aplica agora — fica pro próximo
-    /// pagamento (não quebra nada, não cria solicitação com valor errado).</summary>
+    /// <summary>Sobra que não fecha uma parcela inteira entra como adiantamento parcial nela —
+    /// mesma lógica de pagar uma fatura de cartão antes de fechar (achado do Gustavo, 2026-08-13:
+    /// "ela poderia pagar uma parte da outra parcela com esses 50 poderia não?"). Nada se perde.</summary>
     [Fact]
-    public async Task SolicitarPagamentoAsync_ValorCobreParcialmenteAProximaParcela_NaoAplicaOResto()
+    public async Task SolicitarPagamentoAsync_ValorCobreParcialmenteAProximaParcela_AplicaComoAdiantamento()
     {
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
         var (emprestimoId, _, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 4);
-        // 4 parcelas de 50 — 120 cobre 2 inteiras (100) e sobra 20, que não fecha a 3ª.
+        // 4 parcelas de 50 — 120 cobre 2 inteiras (100) e mais 20 de adiantamento na 3ª.
         var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
 
         var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
@@ -1690,8 +1691,90 @@ public class EmprestimoServiceTests
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
 
-        Assert.Equal(2, resultado.Count);
-        Assert.Equal(100, resultado.Sum(r => r.Valor)); // não os 120 informados — só o que fechou parcela
+        Assert.Equal(3, resultado.Count); // 2 solicitações cheias + 1 parcial
+        Assert.Equal(120, resultado.Sum(r => r.Valor)); // valor todo aplicado, nada descartado
+        Assert.Equal(20, resultado.Last().Valor); // a parcial, na 3ª parcela
+
+        var parcelas = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).ToListAsync();
+        Assert.Equal(0, parcelas[0].ValorPago); // devedor: ValorPago só muda na aprovação
+        Assert.Equal(0, parcelas[2].ValorPago);
+    }
+
+    /// <summary>Pagar mais do que resta em todas as parcelas pendentes falha alto em vez de sumir
+    /// com o excedente.</summary>
+    [Fact]
+    public async Task SolicitarPagamentoAsync_ValorMaiorQueTotalDasParcelasPendentes_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, _, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 2);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+            {
+                Valor = emprestimo!.ValorTotal + 50, ContaId = contaId, CategoriaId = categoriaId,
+                Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, devedorId));
+        Assert.Contains("maior que o total", ex.Message);
+    }
+
+    /// <summary>Credor path: pagamento parcial avança ValorPago da parcela e do empréstimo na hora
+    /// (auto-aprovado), mas não fecha (Status continua Pendente) enquanto não cobrir tudo.</summary>
+    [Fact]
+    public async Task SolicitarPagamentoAsync_CredorPagaParcial_AtualizaValorPagoSemFecharParcela()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, _) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 4);
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        var resultado = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, credorId)).Single();
+
+        var parcela1 = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        Assert.Equal(20, parcela1.ValorPago);
+        Assert.Equal(StatusParcelaEmprestimo.Pendente, parcela1.Status); // 20 de 50, ainda não fechou
+        Assert.Equal(20, resultado.Valor);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(20, emprestimo!.ValorPago);
+    }
+
+    /// <summary>Um segundo adiantamento na mesma parcela (já com Aprovada anterior) completa o que
+    /// falta e fecha — confirma que solicitação Aprovada não bloqueia mais re-mirar a mesma parcela
+    /// (só a Pendente/não-confirmada bloqueia).</summary>
+    [Fact]
+    public async Task SolicitarPagamentoAsync_SegundoAdiantamentoFechaParcelaQueJaTinhaParcial()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, _) = await CriarVinculadoParceladoAsync(ctx, svc, quantidade: 4);
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, credorId);
+
+        await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = 30, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, credorId);
+
+        var parcela1 = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        Assert.Equal(50, parcela1.ValorPago);
+        Assert.Equal(StatusParcelaEmprestimo.Paga, parcela1.Status);
+        var emprestimo = await ctx.Emprestimos.FindAsync(emprestimoId);
+        Assert.Equal(50, emprestimo!.ValorPago);
     }
 
     /// <summary>Mesmo cenário do achado real, mas do lado do credor (souCredor) — auto-aprovado,
@@ -1741,6 +1824,32 @@ public class EmprestimoServiceTests
         var parcelaDepois = await ctx.EmprestimoParcelas.FindAsync(parcela.Id);
         Assert.Equal(StatusParcelaEmprestimo.Paga, parcelaDepois!.Status);
         Assert.Equal(solicitacao.Id, parcelaDepois.SolicitacaoPagamentoId);
+    }
+
+    /// <summary>Aprovar um adiantamento parcial do devedor soma no ValorPago da parcela, mas não
+    /// fecha (Status continua Pendente) enquanto não cobrir tudo.</summary>
+    [Fact]
+    public async Task AprovarPagamentoSolicitacaoAsync_ComParcelaParcial_SomaValorPagoSemFechar()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var (emprestimoId, credorId, devedorId) = await CriarVinculadoParceladoAsync(ctx, svc); // 2x100
+        var parcela = await ctx.EmprestimoParcelas
+            .Where(p => p.EmprestimoId == emprestimoId).OrderBy(p => p.Numero).FirstAsync();
+        var (contaDevedorId, categoriaId) = SeedContaECategoria(ctx, devedorId);
+        var (contaCredorId, categoriaReceitaId) = SeedContaECategoriaReceita(ctx, credorId);
+
+        var solicitacao = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
+        {
+            Valor = 20, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, devedorId)).Single();
+
+        await svc.AprovarPagamentoSolicitacaoAsync(solicitacao.Id, AprovarDtoValido(contaCredorId, categoriaReceitaId), credorId);
+
+        var parcelaDepois = await ctx.EmprestimoParcelas.FindAsync(parcela.Id);
+        Assert.Equal(20, parcelaDepois!.ValorPago);
+        Assert.Equal(StatusParcelaEmprestimo.Pendente, parcelaDepois.Status); // 20 de 100, ainda não fechou
     }
 
     [Fact]

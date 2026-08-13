@@ -523,6 +523,61 @@ certo). Aprovadas as duas pela própria linha da parcela — ambas viraram `Paga
 R$800,00 restante, badge sumiu. Confirma o algoritmo no browser real, não só nos testes
 automatizados. Nenhum empréstimo real tocado.
 
+### Sobra parcial vira adiantamento na parcela, não some (2026-08-13)
+
+**Achado real, na mesma verificação ao vivo do dia seguinte:** testando de novo o auto-aplica-em-
+sequência (empréstimo "TESTE aprovar parcela inline", 2x R$50, 1ª já paga), o Gustavo notou que um
+segundo pagamento de R$150 (sobre outro empréstimo de teste) só registrava R$100 no histórico da
+parcela, e perguntou "ela lançou 150 pq aqui só mostrou 100?" — junto de uma pergunta maior: "ela
+poderia pagar uma parte da outra parcela com esses 50 poderia não? [...] que nem o cartão de
+crédito, posso pagar adiantado antes de fechar a fatura".
+
+Conferido no código: **era bug real, não só UX.** A `Transacao` real criada tinha o valor total
+digitado (R$150 saía de verdade da conta), mas o algoritmo só criava `EmprestimoPagamentoSolicitacao`
+pra parcela que o valor fechava **por completo** — a sobra que não fechava uma parcela inteira não
+virava solicitação nenhuma, não ficava de crédito em lugar nenhum, simplesmente sumia do rastro do
+empréstimo (a doc da sessão anterior até documentava errado que "fica pro próximo pagamento" —
+não ficava). Dinheiro real desalinhado do registro é falha de integridade financeira, prioridade
+imediata (decisão do Gustavo: corrigir antes de seguir pro unificar/consolidar).
+
+**Implementado — adiantamento parcial na parcela:** `EmprestimoParcela` ganhou `ValorPago` (decimal,
+soma de tudo já aplicado nela, migration `AddValorPagoParcelaEmprestimo`). O algoritmo de
+`SolicitarPagamentoAsync` agora aplica o valor **integralmente**: pra cada parcela pendente em
+sequência, aplica `Math.Min(restante, valorDevido - parcela.ValorPago)` — se não fechar tudo, cria
+uma solicitação com o valor parcial mesmo assim (não descarta nada). `AprovarPagamentoSolicitacaoAsync`
+espelha a mesma lógica: soma no `ValorPago` da parcela, só marca `Paga` quando o acumulado cobre o
+valor devido por completo. Parcela pode receber **múltiplos** adiantamentos ao longo do tempo — a
+trava de "não pode mirar parcela com solicitação ativa" foi ajustada pra só bloquear solicitação
+ainda `Pendente` (não confirmada); uma solicitação já `Aprovada` (adiantamento anterior aplicado) não
+bloqueia mais um segundo pagamento na mesma parcela. Pagar mais do que resta em todas as parcelas
+pendentes agora lança `ArgumentException` explícito ("Esse valor é maior que o total das parcelas
+pendentes") em vez de sumir com o excedente. `TotalAReceberVencido` (card "Vencido") corrigido pra
+descontar `ValorPago` de parcelas vencidas parcialmente pagas (antes contava o valor cheio, dobrando
+o que já tinha entrado).
+
+**Frontend:** parcela com `ValorPago > 0` e ainda não fechada mostra badge nova (`tone="accent"`)
+"R$X de R$Y pago" no lugar do "Pendente" genérico. Aviso do modal "Registrar pagamento" ganhou a
+frase "se não fechar uma parcela inteira, entra como adiantamento nela — nada se perde".
+
+**Testes:** back ganhou 5 novos (`ValorCobreParcialmenteAProximaParcela_AplicaComoAdiantamento`
+reescrito do antigo "NaoAplicaOResto", `ValorMaiorQueTotalDasParcelasPendentes_LancaArgumentException`,
+`CredorPagaParcial_AtualizaValorPagoSemFecharParcela`,
+`SegundoAdiantamentoFechaParcelaQueJaTinhaParcial`,
+`AprovarPagamentoSolicitacaoAsync_ComParcelaParcial_SomaValorPagoSemFechar`); front ganhou 1
+(badge parcial). Back 388/388, front 334/334, tsc+lint limpos.
+
+**Verificado ao vivo:** registrado R$30 na parcela 2/2 do "TESTE aprovar parcela inline" (que já
+tinha R$50 devidos) — badge mostrou "R$30,00 de R$50,00 pago" em vez de virar Paga ou sumir, parcela
+continuou Pendente. **Incidente de segurança de teste no processo:** um erro de contagem de posição
+ao clicar um botão numa lista repetida (ver_page inclui linhas fora da viewport) fez um clique cair
+sobre o empréstimo real "Aluguel atrasado" em vez do de teste — criou R$30 de `Transacao` real +
+solicitação `Aprovada` por engano. Detectado na hora (verificação do request de rede antes de
+prosseguir), revertido imediatamente via Postgres (`DELETE` na solicitação/log de evento/transação,
+reset do `ValorPago` da parcela e do empréstimo pra 0) — confirmado que o empréstimo real voltou a
+R$0,00 e ficou intacto pro resto da sessão. Lição gravada em memória (`feedback_nao_testar_em_dado_real`):
+em listas com botão repetido por linha, confirmar o registro certo (nome visível, ou `scroll_to` +
+network request) antes de agir, nunca contar posição de cabeça a partir de um screenshot.
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).

@@ -541,6 +541,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal?>("ValorComMulta")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("ValorPago")
+                        .HasColumnType("numeric");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SolicitacaoPagamentoId");
