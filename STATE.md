@@ -466,12 +466,19 @@ fica com contraste quebrado (texto quase ilegível) na página pública de convi
 (`/convite/emprestimo/:token`) num estado "rolado" — parece transição de scroll que não resolve
 direito numa página sem hero de verdade. Não investigado, catalogado no ROADMAP como P2.
 
-**Sessão parada aqui a pedido explícito do Gustavo** ("acabar ai anota tudo e para em ponto verde")
-antes de terminar a verificação ao vivo completa do pagamento em lote — criado e vinculado à Ana um
-empréstimo de teste maior ("TESTE emprestimo grande 10x", Parcelado 10x, R$1.000 = R$100/parcela,
-pedido dele: "esse e pequeno de mais, cria um de 10 parcelas"), convite enviado, aceite não
-confirmado na sessão. Toda a lógica já está coberta por teste automatizado passando — só falta a
-confirmação visual ao vivo de "pagar R$200 de uma vez, ver 4 parcelas virarem Paga".
+**Sessão 2026-08-12 (continuação) — verificação ao vivo do pagamento em lote, concluída:**
+PC não reiniciou desta vez, servidores (Postgres, backend 5293, frontend 5173) já estavam no ar.
+Logado como Ana Paula (seed real), aceito o convite do "TESTE emprestimo grande 10x", registrado
+pagamento de **R$250,00** (10 parcelas de R$100) sem escolher parcela — toast confirmou "Pagamento
+marcado — aguardando aprovação do credor (2 parcelas)". Logado como Gustavo (credor), badge
+"Aguardando sua aprovação" apareceu certo no card; parcelas 1/10 e 2/10 mostraram botões ✓/✗
+inline com "Aguardando aprovação", 3/10 em diante seguiram "Pendente" (não tocadas — R$50 de sobra
+não fechou a 3ª, comportamento certo). Aprovadas as duas pela linha da parcela (modal "Aprovar
+pagamento" abriu direto, conta Carteira + categoria Renda, sem duplicar) — ambas viraram **Paga**,
+R$200,00 pago (20%), R$800,00 restante, badge de pendência sumiu. Confirma o algoritmo "auto-aplica
+em sequência" ponta a ponta no browser real, não só nos testes automatizados. Nenhum empréstimo
+real tocado (só o de teste dedicado). **Módulo Empréstimos: única peça mapeada ainda faltando é
+"unificar/consolidar".**
 
 **Pendências reais, na ordem:**
 1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) —
@@ -480,7 +487,7 @@ confirmação visual ao vivo de "pagar R$200 de uma vez, ver 4 parcelas virarem 
 2. Implementar unificar/consolidar.
 3. Só depois de tudo isso: decidir se abre PR, ou escolhe outra frente do ROADMAP.
 4. Servidores locais (backend 5293, frontend 5173, Postgres) — checar se ainda estão no ar na
-   próxima sessão (2 reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
+   próxima sessão (reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
    sozinho, precisa `Start-Process` manual às vezes).
 
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
@@ -500,12 +507,9 @@ confirmação visual ao vivo de "pagar R$200 de uma vez, ver 4 parcelas virarem 
 
 ## Próxima ação concreta
 
-1. (Opcional) Terminar a verificação ao vivo do pagamento em lote — aceitar o convite do "TESTE
-   emprestimo grande 10x" como Ana, registrar um pagamento de R$200+ e confirmar visualmente que
-   várias parcelas viram `Paga` numa tacada só. Lógica já 100% coberta por teste automatizado.
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
+1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
    de codar — última peça mapeada faltando pro módulo Empréstimos fechar por completo.
-3. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
+2. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
    primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):

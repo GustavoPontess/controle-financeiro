@@ -513,10 +513,15 @@ antigos que dependiam de escolher `ParcelaId` explicitamente foram reescritos ou
 específica de jeito nenhum, muito menos de outro empréstimo). Back 384/384 (+9 no total desde o
 início da sessão), front 333/333 (+2: sem seletor de parcela + mensagem de sucesso com quantidade).
 
-**Verificado ao vivo:** criado empréstimo de teste dedicado "TESTE emprestimo grande 10x" (Parcelado
-10x, R$1.000 = R$100/parcela) a pedido do Gustavo ("esse e pequeno de mais, cria um de 10 parcelas"),
-vinculado à Ana — deixado no ar sem terminar o fluxo completo de pagamento (sessão encerrada em
-ponto seguro antes disso), mas back+front já com toda a cobertura automatizada passando.
+**Verificado ao vivo, ponta a ponta (2026-08-12):** criado empréstimo de teste dedicado "TESTE
+emprestimo grande 10x" (Parcelado 10x, R$1.000 = R$100/parcela) a pedido do Gustavo ("esse e
+pequeno de mais, cria um de 10 parcelas"), vinculado à Ana. Ana registrou pagamento de R$250,00 sem
+escolher parcela — toast confirmou "aguardando aprovação do credor (2 parcelas)". Logado como
+Gustavo (credor): badge "Aguardando sua aprovação" no card, parcelas 1/10 e 2/10 com botões ✓/✗
+inline (3/10 em diante seguiram `Pendente`, os R$50 de sobra não fecharam a 3ª — comportamento
+certo). Aprovadas as duas pela própria linha da parcela — ambas viraram `Paga`, R$200,00 pago (20%),
+R$800,00 restante, badge sumiu. Confirma o algoritmo no browser real, não só nos testes
+automatizados. Nenhum empréstimo real tocado.
 
 ## Fora de escopo (v1)
 
