@@ -578,6 +578,18 @@ R$0,00 e ficou intacto pro resto da sessão. Lição gravada em memória (`feedb
 em listas com botão repetido por linha, confirmar o registro certo (nome visível, ou `scroll_to` +
 network request) antes de agir, nunca contar posição de cabeça a partir de um screenshot.
 
+**Achado seguinte, mesma sessão — badge da parcela não atualizava após registrar pagamento novo:**
+Gustavo apontou (elemento selecionado na UI) que a badge "R$X de R$Y pago" ficava com o valor antigo
+depois de um novo "Registrar pagamento", mesmo o card no topo já refletindo o valor certo. Mesma
+classe de bug já corrigida em 2026-08-12 pra aprovar/rejeitar/reenviar (`refreshParcelasEHistoricoInline`
+só era chamado nesses três handlers) — faltava cobrir o quarto ponto de mutação, `handleSolicitar`
+(registrar pagamento novo), que só chamava `loadData()` (atualiza os cards) sem recarregar
+`parcelasPorEmprestimo`. Corrigido adicionando a mesma chamada nos dois branches de `handleSolicitar`
+(vincular transação existente e lançar nova). Front +1 teste (regressão: registra pagamento com
+parcela expandida, confirma `listParcelasEmprestimo` chamado de novo e a badge nova aparece). Front
+335/335, tsc+lint limpos. Verificado ao vivo: badge foi de "R$35,05 de R$50,00 pago" pra "R$40,05 de
+R$50,00 pago" na hora, sem reload manual.
+
 ## Fora de escopo (v1)
 
 - Parcelamento formal com vencimento (item separado no ROADMAP).

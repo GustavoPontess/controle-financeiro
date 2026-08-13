@@ -427,6 +427,7 @@ export default function EmprestimosPage() {
         notify({ open: true, message: mensagemSucesso(resultado.length), severity: "success" })
         setSolicitarFor(null)
         await loadData()
+        await refreshParcelasEHistoricoInline()
       } catch (err) {
         notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
       } finally { setLoading(false) }
@@ -452,6 +453,7 @@ export default function EmprestimosPage() {
       notify({ open: true, message: mensagemSucesso(resultado.length), severity: "success" })
       setSolicitarFor(null)
       await loadData()
+      await refreshParcelasEHistoricoInline()
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao registrar pagamento"), severity: "error" })
     } finally { setLoading(false) }

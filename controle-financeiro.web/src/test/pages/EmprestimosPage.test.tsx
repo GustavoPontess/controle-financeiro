@@ -273,6 +273,44 @@ describe("EmprestimosPage (#152)", () => {
     await waitFor(() => expect(screen.queryByText("Como comprovar esse pagamento?")).not.toBeInTheDocument())
   })
 
+  it("registrar pagamento recarrega as parcelas expandidas (achado: ficava com valor antigo)", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParceladoDevedor]))
+    listParcelasEmprestimo
+      .mockResolvedValueOnce([{
+        id: "pa1", emprestimoId: "e4", numero: 1, quantidadeTotal: 2,
+        dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+        status: 1, statusDescricao: "Pendente", atrasada: false, valorPago: 0,
+      }])
+      .mockResolvedValueOnce([{
+        id: "pa1", emprestimoId: "e4", numero: 1, quantidadeTotal: 2,
+        dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
+        status: 1, statusDescricao: "Pendente", atrasada: false, valorPago: 30,
+      }])
+    solicitarPagamentoEmprestimo.mockResolvedValue([
+      { id: "s1", emprestimoId: "e4", valor: 30, statusAprovacao: 1, statusAprovacaoDescricao: "Pendente", solicitadoPor: "u1", solicitadoPorNome: "Eu", criadoEm: "2026-08-13T00:00:00Z", comprovanteData: "2026-08-13T00:00:00Z", registradoPeloCredor: false, parcelaId: "pa1" },
+    ] satisfies EmprestimoPagamentoSolicitacao[])
+    getContas.mockResolvedValue([{ id: "c1", nome: "Carteira" }])
+    getCategories.mockResolvedValue([{ id: "cat1", descricao: "Outros", finalidade: 1 }])
+    renderPage()
+    await screen.findByText("Financiamento")
+
+    fireEvent.click(screen.getByLabelText("Ver parcelas"))
+    await screen.findByText("1/2")
+
+    fireEvent.click(screen.getByLabelText("Registrar pagamento"))
+    await screen.findByText("Como comprovar esse pagamento?")
+    fireEvent.click(screen.getByText("Ainda não lancei — lançar agora"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "3000" } })
+    fireEvent.click(screen.getAllByText("Selecione")[0])
+    fireEvent.click(await screen.findByText("Carteira"))
+    fireEvent.click(screen.getByText("Selecione"))
+    fireEvent.click(await screen.findByText("Outros"))
+    fireEvent.click(screen.getByText("Enviar pra aprovação"))
+
+    await waitFor(() => expect(listParcelasEmprestimo).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText(/R\$\s?30,00 de R\$\s?100,00 pago/)).toBeInTheDocument()
+  })
+
   it("credor abre histórico, bloqueia aprovação sem escolher opção e aprova criando entrada", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empVinculadoComoCredor]))
     const pendente: EmprestimoPagamentoSolicitacao = {

@@ -514,6 +514,13 @@ o resto da sessão. Lição gravada em memória (`feedback_nao_testar_em_dado_re
 repetido por linha, confirmar o registro certo antes de agir (nome visível, `scroll_to`, ou request
 de rede), nunca contar posição de cabeça a partir de screenshot.
 
+**Mais um achado na mesma sessão, resolvido:** Gustavo notou a badge nova de adiantamento parcial
+("R$X de R$Y pago") não atualizando após registrar um pagamento novo (mesmo card já refletindo o
+valor certo). Mesmo bug de cache já corrigido em 2026-08-12 pra aprovar/rejeitar/reenviar
+(`refreshParcelasEHistoricoInline`) — faltava cobrir o quarto handler, `handleSolicitar`, que só
+chamava `loadData()`. Corrigido nos dois branches. Front 335/335 (+1). Verificado ao vivo: badge
+atualizou na hora, sem reload manual.
+
 **Módulo Empréstimos: única peça mapeada ainda faltando é "unificar/consolidar".**
 
 **Pendências reais, na ordem:**
