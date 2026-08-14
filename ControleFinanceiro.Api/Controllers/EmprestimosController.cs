@@ -200,5 +200,61 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         var ok = await _service.ReenviarPagamentoSolicitacaoAsync(solicitacaoId, UserId);
         return ok ? NoContent() : NotFound();
     }
+
+    // ── Unificar/consolidar ─────────────────────────────────────────────────
+
+    /// <summary>Contrapartes com 2+ empréstimos ativos onde eu sou credor — candidatas a
+    /// consolidação (evita seleção manual às cegas pela lista inteira).</summary>
+    [HttpGet("candidatos-consolidacao")]
+    [ProducesResponseType(typeof(List<EmprestimoConsolidacaoCandidatoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarCandidatosConsolidacao()
+    {
+        var lista = await _service.ListarCandidatosConsolidacaoAsync(UserId);
+        return Ok(lista);
+    }
+
+    /// <summary>Propõe juntar 2+ empréstimos ativos da mesma contraparte vinculada num plano novo
+    /// renegociado. Nada muda até o devedor aceitar.</summary>
+    [HttpPost("consolidar")]
+    [ProducesResponseType(typeof(EmprestimoConsolidacaoPropostaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ProporConsolidacao([FromBody] ProporConsolidacaoDto dto)
+    {
+        var resultado = await _service.ProporConsolidacaoAsync(dto, UserId);
+        return Ok(resultado);
+    }
+
+    /// <summary>Consolidações onde sou credor (propus) ou devedor (preciso responder).</summary>
+    [HttpGet("consolidacoes")]
+    [ProducesResponseType(typeof(List<EmprestimoConsolidacaoPropostaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarConsolidacoes()
+    {
+        var lista = await _service.ListarConsolidacoesAsync(UserId);
+        return Ok(lista);
+    }
+
+    /// <summary>Devedor aceita — cria o empréstimo consolidado e fecha os originais.</summary>
+    [HttpPost("consolidacoes/{id:guid}/aceitar")]
+    [ProducesResponseType(typeof(EmprestimoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AceitarConsolidacao(Guid id)
+    {
+        var resultado = await _service.AceitarConsolidacaoAsync(id, UserId);
+        return Ok(resultado);
+    }
+
+    /// <summary>Devedor recusa — nenhum empréstimo original é tocado.</summary>
+    [HttpPost("consolidacoes/{id:guid}/recusar")]
+    public async Task<IActionResult> RecusarConsolidacao(Guid id, [FromBody] RecusarConsolidacaoDto? dto)
+    {
+        await _service.RecusarConsolidacaoAsync(id, dto ?? new RecusarConsolidacaoDto(), UserId);
+        return NoContent();
+    }
+
+    /// <summary>Credor cancela a proposta antes do devedor responder.</summary>
+    [HttpPost("consolidacoes/{id:guid}/cancelar")]
+    public async Task<IActionResult> CancelarConsolidacao(Guid id)
+    {
+        await _service.CancelarConsolidacaoAsync(id, UserId);
+        return NoContent();
+    }
 }
 

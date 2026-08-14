@@ -13,5 +13,7 @@ public enum TipoNotificacao
     EmprestimoVinculo = 9,
     EmprestimoPagamentoSolicitado = 10,
     EmprestimoPagamentoAvaliado = 11,
+    EmprestimoConsolidacaoProposta = 12,
+    EmprestimoConsolidacaoRespondida = 13,
     Outro = 99,
 }

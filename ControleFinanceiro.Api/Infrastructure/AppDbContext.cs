@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
     public DbSet<EmprestimoPagamentoSolicitacao> EmprestimoPagamentoSolicitacoes => Set<EmprestimoPagamentoSolicitacao>();
     public DbSet<EmprestimoParcela> EmprestimoParcelas => Set<EmprestimoParcela>();
+    public DbSet<EmprestimoConsolidacaoProposta> EmprestimoConsolidacaoPropostas => Set<EmprestimoConsolidacaoProposta>();
+    public DbSet<EmprestimoConsolidacaoItem> EmprestimoConsolidacaoItens => Set<EmprestimoConsolidacaoItem>();
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
 
@@ -457,6 +459,57 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(s => s.ParcelaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.ConsolidadoNoEmprestimo)
+            .WithMany()
+            .HasForeignKey(e => e.ConsolidadoNoEmprestimoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.CredorUsuario)
+            .WithMany()
+            .HasForeignKey(p => p.CredorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.DevedorUsuario)
+            .WithMany()
+            .HasForeignKey(p => p.DevedorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.EmprestimoConsolidado)
+            .WithMany()
+            .HasForeignKey(p => p.EmprestimoConsolidadoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .Property(p => p.TaxaJuroMensal)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .Property(p => p.PercentualMultaAtraso)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasOne(i => i.Proposta)
+            .WithMany(p => p.Itens)
+            .HasForeignKey(i => i.PropostaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Restrict (não Cascade): apagar o item de consolidação não pode arrastar o Emprestimo
+        // original — soft delete é o único jeito de "sumir" um empréstimo (CLAUDE.md).
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasOne(i => i.EmprestimoOriginal)
+            .WithMany()
+            .HasForeignKey(i => i.EmprestimoOriginalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasIndex(i => new { i.PropostaId, i.EmprestimoOriginalId })
+            .IsUnique();
 
         // ── Issue #86 Metas ──
 

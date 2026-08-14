@@ -2,7 +2,7 @@ import { api } from "../api/axiosConfig"
 import type {
   Emprestimo, CriarEmprestimo, EmprestimoConviteResultado, EmprestimoConvitePendente,
   SolicitarPagamentoEmprestimo, AprovarPagamentoEmprestimo, EmprestimoPagamentoSolicitacao,
-  EmprestimoParcela,
+  EmprestimoParcela, EmprestimoConsolidacaoCandidato, ProporConsolidacao, EmprestimoConsolidacaoProposta,
 } from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
@@ -142,4 +142,40 @@ export const reenviarPagamentoEmprestimo = async (solicitacaoId: string): Promis
 export const listParcelasEmprestimo = async (id: string): Promise<EmprestimoParcela[]> => {
   const res = await api.get(`/emprestimos/${id}/parcelas`)
   return res.data
+}
+
+// ── Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md) ──
+
+/** Contrapartes com 2+ empréstimos ativos onde eu sou credor — candidatas a consolidação. */
+export const listCandidatosConsolidacao = async (): Promise<EmprestimoConsolidacaoCandidato[]> => {
+  const res = await api.get("/emprestimos/candidatos-consolidacao")
+  return res.data
+}
+
+/** Propõe juntar 2+ empréstimos ativos da mesma contraparte vinculada num plano novo. Nada muda
+ * nos originais até o devedor aceitar. */
+export const proporConsolidacao = async (dto: ProporConsolidacao): Promise<EmprestimoConsolidacaoProposta> => {
+  const res = await api.post("/emprestimos/consolidar", dto)
+  return res.data
+}
+
+/** Consolidações onde sou credor (propus) ou devedor (preciso responder) — mais recente primeiro. */
+export const listConsolidacoes = async (): Promise<EmprestimoConsolidacaoProposta[]> => {
+  const res = await api.get("/emprestimos/consolidacoes")
+  return res.data
+}
+
+/** Devedor aceita — cria o empréstimo consolidado e fecha os originais. Retorna o empréstimo novo. */
+export const aceitarConsolidacao = async (id: string): Promise<Emprestimo> => {
+  const res = await api.post(`/emprestimos/consolidacoes/${id}/aceitar`)
+  return res.data
+}
+
+export const recusarConsolidacao = async (id: string, motivo?: string): Promise<void> => {
+  await api.post(`/emprestimos/consolidacoes/${id}/recusar`, { motivo: motivo || undefined })
+}
+
+/** Credor desiste antes do devedor responder. */
+export const cancelarConsolidacao = async (id: string): Promise<void> => {
+  await api.post(`/emprestimos/consolidacoes/${id}/cancelar`)
 }

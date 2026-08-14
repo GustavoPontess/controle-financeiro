@@ -1003,6 +1003,408 @@ public class EmprestimoService(
         return true;
     }
 
+    // ── Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md § "Unificar/consolidar") ──
+
+    /// <summary>Contrapartes com 2+ empréstimos ativos (vinculados, não quitados) onde o usuário
+    /// logado é o credor — candidatas a consolidação. Front usa isso pra oferecer "Consolidar"
+    /// sem exigir seleção manual às cegas pela lista inteira.</summary>
+    public async Task<List<EmprestimoConsolidacaoCandidatoDto>> ListarCandidatosConsolidacaoAsync(Guid usuarioId)
+    {
+        var elegiveis = await _context.Emprestimos
+            .Where(e => e.Ativo && !e.Quitado && e.StatusVinculo == StatusVinculoEmprestimo.Vinculado
+                && (e.CriadoPor == usuarioId || e.ContraparteUsuarioId == usuarioId))
+            .ToListAsync();
+        elegiveis = elegiveis.Where(e => EhCredor(e, usuarioId)).ToList();
+
+        var grupos = elegiveis
+            .GroupBy(e => e.CriadoPor == usuarioId ? e.ContraparteUsuarioId!.Value : e.CriadoPor)
+            .Where(g => g.Count() >= 2)
+            .ToList();
+
+        var contraparteIds = grupos.Select(g => g.Key).ToList();
+        var nomes = await _context.Usuarios
+            .Where(u => contraparteIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Nome);
+
+        return grupos.Select(g => new EmprestimoConsolidacaoCandidatoDto
+        {
+            ContraparteUsuarioId = g.Key,
+            ContraparteNome = nomes.GetValueOrDefault(g.Key, "—"),
+            Itens = g.Select(e => new EmprestimoConsolidacaoItemDto
+            {
+                EmprestimoOriginalId = e.Id,
+                Descricao = e.Descricao,
+                ValorRestanteSnapshot = e.ValorTotal - e.ValorPago,
+            }).ToList(),
+        }).ToList();
+    }
+
+    /// <summary>Propõe juntar 2+ empréstimos ativos que o credor tem com a mesma contraparte
+    /// vinculada num plano novo renegociado. Nada muda nos originais até o devedor aceitar —
+    /// mesmo padrão do vínculo bilateral (propõe → outro lado decide).</summary>
+    public async Task<EmprestimoConsolidacaoPropostaDto> ProporConsolidacaoAsync(ProporConsolidacaoDto dto, Guid usuarioId)
+    {
+        var ids = dto.EmprestimoIds.Distinct().ToList();
+        if (ids.Count < 2)
+            throw new ArgumentException("Selecione pelo menos 2 empréstimos pra consolidar.");
+
+        if (string.IsNullOrWhiteSpace(dto.Descricao))
+            throw new ArgumentException("Descrição é obrigatória.");
+
+        if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+        {
+            if (!dto.QuantidadeParcelas.HasValue || dto.QuantidadeParcelas.Value < 2 || dto.QuantidadeParcelas.Value > 36)
+                throw new ArgumentException("Quantidade de parcelas deve ser entre 2 e 36.");
+            if (!dto.PrimeiroVencimento.HasValue)
+                throw new ArgumentException("Informe o vencimento da primeira parcela.");
+        }
+
+        var emprestimos = await _context.Emprestimos.Where(e => ids.Contains(e.Id) && e.Ativo).ToListAsync();
+        if (emprestimos.Count != ids.Count)
+            throw new KeyNotFoundException("Um ou mais empréstimos não foram encontrados.");
+
+        foreach (var e in emprestimos)
+        {
+            if (!EhCredor(e, usuarioId))
+                throw new ForbiddenAccessException("Só o credor de um empréstimo pode incluí-lo numa consolidação.");
+            if (e.StatusVinculo != StatusVinculoEmprestimo.Vinculado)
+                throw new ArgumentException("Só empréstimos vinculados (aceitos pelos dois lados) podem ser consolidados.");
+            if (e.Quitado)
+                throw new ArgumentException("Empréstimo já quitado não entra numa consolidação.");
+        }
+
+        var contraparteIds = emprestimos.Select(e => e.CriadoPor == usuarioId ? e.ContraparteUsuarioId!.Value : e.CriadoPor).Distinct().ToList();
+        if (contraparteIds.Count > 1)
+            throw new ArgumentException("Todos os empréstimos precisam ser da mesma pessoa vinculada.");
+        var devedorUsuarioId = contraparteIds[0];
+
+        var jaEmConsolidacaoPendente = await _context.EmprestimoConsolidacaoItens
+            .Where(i => ids.Contains(i.EmprestimoOriginalId) && i.Proposta.Status == StatusConsolidacaoEmprestimo.Pendente)
+            .AnyAsync();
+        if (jaEmConsolidacaoPendente)
+            throw new InvalidOperationException("Já existe uma consolidação pendente envolvendo um desses empréstimos.");
+
+        var proposta = new EmprestimoConsolidacaoProposta
+        {
+            Id = Guid.NewGuid(),
+            CredorUsuarioId = usuarioId,
+            DevedorUsuarioId = devedorUsuarioId,
+            Descricao = dto.Descricao,
+            FormaPagamento = dto.FormaPagamento,
+            QuantidadeParcelas = dto.QuantidadeParcelas,
+            PrimeiroVencimento = dto.PrimeiroVencimento,
+            DataVencimento = dto.DataVencimento,
+            TaxaJuroMensal = dto.TaxaJuroMensal,
+            PercentualMultaAtraso = dto.PercentualMultaAtraso,
+            ValorTotalProposto = emprestimos.Sum(e => e.ValorTotal - e.ValorPago),
+            Status = StatusConsolidacaoEmprestimo.Pendente,
+        };
+        foreach (var e in emprestimos)
+        {
+            proposta.Itens.Add(new EmprestimoConsolidacaoItem
+            {
+                Id = Guid.NewGuid(),
+                PropostaId = proposta.Id,
+                EmprestimoOriginalId = e.Id,
+                ValorRestanteSnapshot = e.ValorTotal - e.ValorPago,
+            });
+        }
+
+        _context.EmprestimoConsolidacaoPropostas.Add(proposta);
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoConsolidacaoProposta,
+            entidade: "EmprestimoConsolidacaoProposta",
+            entidadeId: proposta.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            valorDepois: proposta.ValorTotalProposto,
+            payload: new { proposta.Id, emprestimoIds = ids, proposta.ValorTotalProposto });
+
+        await _context.SaveChangesAsync();
+
+        var credor = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+        await _notificacaoService.CriarAsync(
+            devedorUsuarioId,
+            TipoNotificacao.EmprestimoConsolidacaoProposta,
+            "Proposta de consolidação de empréstimos",
+            $"{credor?.Nome ?? "Alguém"} quer juntar {emprestimos.Count} empréstimos num plano novo de {proposta.ValorTotalProposto:C} — revise e responda.",
+            "/emprestimos");
+
+        return await ToConsolidacaoDtoAsync(proposta, usuarioId);
+    }
+
+    /// <summary>Consolidações onde o usuário logado é credor (propôs) ou devedor (precisa
+    /// responder) — mais recente primeiro.</summary>
+    public async Task<List<EmprestimoConsolidacaoPropostaDto>> ListarConsolidacoesAsync(Guid usuarioId)
+    {
+        var propostas = await _context.EmprestimoConsolidacaoPropostas
+            .Include(p => p.Itens).ThenInclude(i => i.EmprestimoOriginal)
+            .Where(p => p.CredorUsuarioId == usuarioId || p.DevedorUsuarioId == usuarioId)
+            .OrderByDescending(p => p.CriadoEm)
+            .ToListAsync();
+
+        var nomeIds = propostas.Select(p => p.CredorUsuarioId).Concat(propostas.Select(p => p.DevedorUsuarioId)).Distinct().ToList();
+        var nomes = await _context.Usuarios.Where(u => nomeIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nome);
+
+        return propostas.Select(p => ToConsolidacaoDto(p, usuarioId, nomes)).ToList();
+    }
+
+    /// <summary>Devedor aceita — cria o Emprestimo novo (soma o restante real dos originais,
+    /// recalculado agora, não confiado no snapshot da proposta), marca os originais Quitado +
+    /// ConsolidadoNoEmprestimoId + arquivado dos dois lados (registro superado, não precisa mais
+    /// poluir a lista principal de ninguém). Toda a operação sob o mesmo correlationId de
+    /// auditoria — dá pra reconstruir a cadeia completa (proposta → originais fechados → novo
+    /// criado) no FinancialEventLog.</summary>
+    public async Task<EmprestimoDto> AceitarConsolidacaoAsync(Guid id, Guid usuarioId)
+    {
+        var proposta = await CarregarConsolidacaoParaResponderAsync(id, usuarioId, exigirDevedor: true);
+
+        var originais = await _context.Emprestimos
+            .Where(e => proposta.Itens.Select(i => i.EmprestimoOriginalId).Contains(e.Id))
+            .ToListAsync();
+
+        if (originais.Any(e => !e.Ativo || e.Quitado || e.StatusVinculo != StatusVinculoEmprestimo.Vinculado))
+            throw new InvalidOperationException(
+                "Um dos empréstimos incluídos mudou de estado desde a proposta — peça uma nova consolidação.");
+
+        var valorTotal = originais.Sum(e => e.ValorTotal - e.ValorPago);
+        if (valorTotal <= 0)
+            throw new InvalidOperationException("Os empréstimos incluídos já não têm saldo restante pra consolidar.");
+
+        var devedor = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == proposta.DevedorUsuarioId);
+
+        var novo = new Emprestimo
+        {
+            Id = Guid.NewGuid(),
+            Descricao = proposta.Descricao,
+            Pessoa = devedor?.Nome ?? "—",
+            ValorTotal = valorTotal,
+            ValorPago = 0,
+            Tipo = TipoEmprestimo.Emprestei,
+            DataInicio = DateTime.UtcNow,
+            DataVencimento = proposta.DataVencimento?.ToUniversalTime(),
+            Quitado = false,
+            Observacao = $"Consolidação de {originais.Count} empréstimos: "
+                + string.Join(", ", originais.Select(e => e.Descricao)),
+            CriadoPor = proposta.CredorUsuarioId,
+            ContraparteUsuarioId = proposta.DevedorUsuarioId,
+            StatusVinculo = StatusVinculoEmprestimo.Vinculado,
+            VinculoRespondidoEm = DateTime.UtcNow,
+            FormaPagamento = proposta.FormaPagamento,
+            TaxaJuroMensal = proposta.TaxaJuroMensal,
+            PercentualMultaAtraso = proposta.PercentualMultaAtraso,
+        };
+
+        if (proposta.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+        {
+            foreach (var parcela in GerarParcelas(
+                novo.Id, valorTotal, proposta.QuantidadeParcelas!.Value,
+                proposta.PrimeiroVencimento!.Value, proposta.TaxaJuroMensal))
+                novo.Parcelas.Add(parcela);
+        }
+        else if (proposta.TaxaJuroMensal.HasValue)
+        {
+            novo.ValorComJuros = Math.Round(valorTotal * (1 + proposta.TaxaJuroMensal.Value / 100), 2);
+        }
+
+        _context.Emprestimos.Add(novo);
+
+        var correlationId = Guid.NewGuid();
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoConsolidacaoAceita,
+            entidade: "EmprestimoConsolidacaoProposta",
+            entidadeId: proposta.Id,
+            correlationId: correlationId,
+            origemAcao: "API",
+            valorDepois: valorTotal,
+            payload: new { proposta.Id, novoEmprestimoId = novo.Id });
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoCriado,
+            entidade: "Emprestimo",
+            entidadeId: novo.Id,
+            correlationId: correlationId,
+            origemAcao: "API",
+            valorDepois: novo.ValorTotal,
+            payload: new { novo.Id, origem = "Consolidacao", consolidacaoPropostaId = proposta.Id });
+
+        foreach (var original in originais)
+        {
+            var valorAntes = original.ValorPago;
+            original.ValorPago = original.ValorTotal;
+            original.Quitado = true;
+            original.ConsolidadoNoEmprestimoId = novo.Id;
+            original.ArquivadoPorCriador = true;
+            original.ArquivadoPorContraparte = true;
+
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.EmprestimoQuitado,
+                entidade: "Emprestimo",
+                entidadeId: original.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: valorAntes,
+                valorDepois: original.ValorTotal,
+                payload: new { original.Id, motivo = "Consolidacao", novoEmprestimoId = novo.Id });
+        }
+
+        proposta.Status = StatusConsolidacaoEmprestimo.Aceita;
+        proposta.RespondidoEm = DateTime.UtcNow;
+        proposta.EmprestimoConsolidadoId = novo.Id;
+
+        await _context.SaveChangesAsync();
+
+        await _notificacaoService.CriarAsync(
+            proposta.CredorUsuarioId,
+            TipoNotificacao.EmprestimoConsolidacaoRespondida,
+            "Consolidação aceita",
+            $"{devedor?.Nome ?? "Alguém"} aceitou a consolidação — \"{novo.Descricao}\" agora é um empréstimo só, {novo.ValorTotal:C}.",
+            "/emprestimos");
+
+        return await ToDtoAsync(novo, usuarioId);
+    }
+
+    /// <summary>Devedor recusa — nenhum empréstimo original é tocado. Motivo opcional, mesmo
+    /// padrão de RejeitarPagamentoSolicitacaoAsync.</summary>
+    public async Task RecusarConsolidacaoAsync(Guid id, RecusarConsolidacaoDto dto, Guid usuarioId)
+    {
+        var proposta = await CarregarConsolidacaoParaResponderAsync(id, usuarioId, exigirDevedor: true);
+
+        var motivo = string.IsNullOrWhiteSpace(dto.Motivo) ? null : dto.Motivo.Trim();
+
+        proposta.Status = StatusConsolidacaoEmprestimo.Recusada;
+        proposta.RespondidoEm = DateTime.UtcNow;
+        proposta.MotivoRecusa = motivo;
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoConsolidacaoRecusada,
+            entidade: "EmprestimoConsolidacaoProposta",
+            entidadeId: proposta.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            payload: new { proposta.Id, motivo });
+
+        await _context.SaveChangesAsync();
+
+        var devedor = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+        var mensagem = $"{devedor?.Nome ?? "Alguém"} recusou a proposta de consolidação \"{proposta.Descricao}\"."
+            + (motivo != null ? $" Motivo: {motivo}" : "");
+        await _notificacaoService.CriarAsync(
+            proposta.CredorUsuarioId,
+            TipoNotificacao.EmprestimoConsolidacaoRespondida,
+            "Consolidação recusada",
+            mensagem,
+            "/emprestimos");
+    }
+
+    /// <summary>Credor desiste antes do devedor responder.</summary>
+    public async Task CancelarConsolidacaoAsync(Guid id, Guid usuarioId)
+    {
+        var proposta = await CarregarConsolidacaoParaResponderAsync(id, usuarioId, exigirDevedor: false);
+
+        proposta.Status = StatusConsolidacaoEmprestimo.Cancelada;
+        proposta.RespondidoEm = DateTime.UtcNow;
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.EmprestimoConsolidacaoCancelada,
+            entidade: "EmprestimoConsolidacaoProposta",
+            entidadeId: proposta.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            payload: new { proposta.Id });
+
+        await _context.SaveChangesAsync();
+
+        await _notificacaoService.CriarAsync(
+            proposta.DevedorUsuarioId,
+            TipoNotificacao.EmprestimoConsolidacaoRespondida,
+            "Consolidação cancelada",
+            $"A proposta de consolidação \"{proposta.Descricao}\" foi cancelada pelo credor.",
+            "/emprestimos");
+    }
+
+    /// <summary>Carrega + valida autorização pra responder uma consolidação (BOLA-safe: estranho
+    /// ao registro recebe 404; participante no papel errado recebe 403). exigirDevedor=true pra
+    /// aceitar/recusar (só o devedor decide); false pra cancelar (só o credor, quem propôs).</summary>
+    private async Task<EmprestimoConsolidacaoProposta> CarregarConsolidacaoParaResponderAsync(Guid id, Guid usuarioId, bool exigirDevedor)
+    {
+        var proposta = await _context.EmprestimoConsolidacaoPropostas
+            .Include(p => p.Itens)
+            .FirstOrDefaultAsync(p => p.Id == id)
+            ?? throw new KeyNotFoundException("Proposta de consolidação não encontrada.");
+
+        var participante = usuarioId == proposta.CredorUsuarioId || usuarioId == proposta.DevedorUsuarioId;
+        if (!participante)
+            throw new KeyNotFoundException("Proposta de consolidação não encontrada.");
+
+        if (exigirDevedor && usuarioId != proposta.DevedorUsuarioId)
+            throw new ForbiddenAccessException("Só o devedor pode aceitar ou recusar essa consolidação.");
+        if (!exigirDevedor && usuarioId != proposta.CredorUsuarioId)
+            throw new ForbiddenAccessException("Só quem propôs a consolidação pode cancelá-la.");
+
+        if (proposta.Status != StatusConsolidacaoEmprestimo.Pendente)
+            throw new InvalidOperationException("Essa consolidação não está mais pendente.");
+
+        return proposta;
+    }
+
+    private async Task<EmprestimoConsolidacaoPropostaDto> ToConsolidacaoDtoAsync(EmprestimoConsolidacaoProposta p, Guid usuarioId)
+    {
+        await _context.Entry(p).Collection(x => x.Itens).Query().Include(i => i.EmprestimoOriginal).LoadAsync();
+        var nomeIds = new[] { p.CredorUsuarioId, p.DevedorUsuarioId };
+        var nomes = await _context.Usuarios.Where(u => nomeIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nome);
+        return ToConsolidacaoDto(p, usuarioId, nomes);
+    }
+
+    private static EmprestimoConsolidacaoPropostaDto ToConsolidacaoDto(
+        EmprestimoConsolidacaoProposta p, Guid usuarioId, IReadOnlyDictionary<Guid, string> nomes)
+    {
+        return new EmprestimoConsolidacaoPropostaDto
+        {
+            Id = p.Id,
+            CredorUsuarioId = p.CredorUsuarioId,
+            CredorNome = nomes.GetValueOrDefault(p.CredorUsuarioId, "—"),
+            DevedorUsuarioId = p.DevedorUsuarioId,
+            DevedorNome = nomes.GetValueOrDefault(p.DevedorUsuarioId, "—"),
+            Descricao = p.Descricao,
+            FormaPagamento = (int)p.FormaPagamento,
+            QuantidadeParcelas = p.QuantidadeParcelas,
+            PrimeiroVencimento = p.PrimeiroVencimento,
+            DataVencimento = p.DataVencimento,
+            TaxaJuroMensal = p.TaxaJuroMensal,
+            PercentualMultaAtraso = p.PercentualMultaAtraso,
+            ValorTotalProposto = p.ValorTotalProposto,
+            Status = (int)p.Status,
+            StatusDescricao = p.Status switch
+            {
+                StatusConsolidacaoEmprestimo.Pendente => "Pendente",
+                StatusConsolidacaoEmprestimo.Aceita => "Aceita",
+                StatusConsolidacaoEmprestimo.Recusada => "Recusada",
+                StatusConsolidacaoEmprestimo.Cancelada => "Cancelada",
+                _ => p.Status.ToString(),
+            },
+            CriadoEm = p.CriadoEm,
+            RespondidoEm = p.RespondidoEm,
+            MotivoRecusa = p.MotivoRecusa,
+            EmprestimoConsolidadoId = p.EmprestimoConsolidadoId,
+            SouCredor = usuarioId == p.CredorUsuarioId,
+            Itens = p.Itens.Select(i => new EmprestimoConsolidacaoItemDto
+            {
+                EmprestimoOriginalId = i.EmprestimoOriginalId,
+                Descricao = i.EmprestimoOriginal?.Descricao ?? "—",
+                ValorRestanteSnapshot = i.ValorRestanteSnapshot,
+            }).ToList(),
+        };
+    }
+
     /// <summary>Carrega + valida autorização pra aprovar/rejeitar (BOLA-safe: estranho ao registro
     /// recebe null → 404; participante que não é credor recebe 403 com o motivo).</summary>
     private async Task<EmprestimoPagamentoSolicitacao?> CarregarSolicitacaoParaAvaliarAsync(Guid solicitacaoId, Guid usuarioId)
@@ -1257,6 +1659,7 @@ public class EmprestimoService(
                 ? e.Parcelas.Count
                 : null,
             Arquivado = souCriador ? e.ArquivadoPorCriador : e.ArquivadoPorContraparte,
+            ConsolidadoNoEmprestimoId = e.ConsolidadoNoEmprestimoId,
         };
     }
 

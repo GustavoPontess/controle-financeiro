@@ -77,7 +77,7 @@ export default function ConviteEmprestimoPage() {
     return (
       <div className={styles.root}>
         <PontesCard padding={32} radius={20} className={styles.card}>
-          <PontesLogo size={32} variant="mark" />
+          <PontesLogo size={32} />
           <div className={styles.iconBadge}><Handshake size={22} /></div>
           <h1 className={styles.title}>Alguém registrou um empréstimo com você</h1>
           <p className={styles.pitch}>
@@ -102,7 +102,7 @@ export default function ConviteEmprestimoPage() {
   return (
     <div className={styles.root}>
       <PontesCard padding={32} radius={20} className={styles.card}>
-        <PontesLogo size={32} variant="mark" />
+        <PontesLogo size={32} />
 
         {resultado === "aceito" && (
           <>

@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-14
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-14: implementado e polido "arquivar/ocultar quitado" por completo (backend: campos per-usuário `ArquivadoPorCriador`/`ArquivadoPorContraparte`, endpoints arquivar/desarquivar, filtro na listagem; frontend: botão Arquivar/Desarquivar + filtro chip "Arquivados" no cabeçalho, redesenhado 2x a pedido do Gustavo — checkbox→chip, depois mais respiro geral na lista inteira: padding maior, badge de forma de pagamento saiu do amontoado pra linha de baixo, gap maior nos ícones de ação, divisor antes do Remover). Back 393/393, front 340/340, tsc+lint limpos, tudo verificado ao vivo com empréstimo de teste. Commits `740d8ae`..`9a57198`, tudo pushado, working tree limpo. Histórico detalhado das sessões anteriores (2026-08-08 a 2026-08-13) no corpo abaixo. Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado.'
+foco: 'Módulo Empréstimos — FECHADO POR COMPLETO na sessão 2026-08-14 (2ª sessão do dia): implementado "unificar/consolidar" (última peça mapeada), a pedido direto do Gustavo ("Faz a parte de unificar consolidar e tudo tem que ter um log registro auditável"). Credor propõe juntar 2+ empréstimos ativos da mesma contraparte num plano novo — devedor precisa aceitar, nada muda nos originais até lá; aceite cria o novo empréstimo (soma real recalculada, não snapshot) e quita+arquiva os originais dos dois lados. Toda a cadeia auditável via FinancialEventLog (4 tipos novos + correlationId compartilhado entre proposta/criação/quitação). Back 415/415 (+22), front 345/345 (+5). Verificado ao vivo com 2 empréstimos de teste dedicados — os 6 empréstimos reais intocados. No caminho, achado e corrigido: `npm run build` estava quebrado por type-drift pré-existente que `tsc --noEmit` solto nunca pegava (root tsconfig só delega via `references`, que só resolvem com `-b`) — sessões anteriores "verificando tsc limpo" não checavam nada de verdade. Detalhe completo em `docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md` → "Unificar/consolidar — implementação". Próxima decisão: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits acumulados) ou escolher outra frente do ROADMAP. Histórico detalhado das sessões anteriores (2026-08-08 a 2026-08-14 arquivar/ocultar) no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -614,15 +614,84 @@ tree limpo. Detalhe técnico completo: `docs/features/emprestimo-compartilhado/p
 > nunca executar ação que muda estado (registrar pagamento, aprovar, quitar) em cima de registro
 > financeiro REAL do usuário pra testar código — sempre criar um registro dedicado só pra isso.
 
+**Sessão 2026-08-14 (2ª do dia) — "unificar/consolidar" implementado, módulo Empréstimos fecha
+por completo:**
+
+Pedido direto do Gustavo: "Faz a parte de unificar consolidar e tudo tem que ter um log registro
+auditavel em [mensagem cortada, mas a intenção — auditoria completa — ficou clara pelo resto do
+pedido]".
+
+**Implementado exatamente como a spec previa** (decisão já fechada em 2026-08-06: devedor precisa
+aceitar antes de valer): nova entidade `EmprestimoConsolidacaoProposta` + join
+`EmprestimoConsolidacaoItem` (migration `AddConsolidacaoEmprestimo`), `Emprestimo` ganhou
+`ConsolidadoNoEmprestimoId`. Credor propõe (`POST /emprestimos/consolidar`) juntar 2+ empréstimos
+ativos (vinculados, não quitados) da **mesma contraparte** — bloqueia contraparte diferente,
+bloqueia se já existe consolidação pendente envolvendo um dos empréstimos. Devedor aceita
+(`POST .../consolidacoes/{id}/aceitar`) ou recusa (motivo opcional). No aceite: **revalida os
+originais do zero** (protege contra estado mudado desde a proposta — ex. um deles foi quitado por
+fora nesse meio tempo, lança erro explícito pedindo nova proposta em vez de consolidar sujo);
+soma o restante **real**, não o snapshot da proposta; cria o `Emprestimo` novo (já `Vinculado`,
+pula convite — os dois já são vinculados entre si); gera parcelas se `Parcelado`; cada original
+vira `Quitado` + `ConsolidadoNoEmprestimoId` + **auto-arquivado dos dois lados** (decisão de
+design: registro superado não deve poluir a lista principal de ninguém).
+
+**Auditoria — ponto central do pedido do Gustavo:** 4 `FinancialEventType` novos
+(`EmprestimoConsolidacaoProposta/Aceita/Recusada/Cancelada`). No aceite, todos os eventos da
+operação (proposta + `EmprestimoCriado` do novo + `EmprestimoQuitado` de cada original)
+compartilham o **mesmo `correlationId`** — reconstrói a cadeia inteira numa query só. Verificado
+direto no Postgres depois do teste ao vivo: 4 linhas sob o mesmo `CorrelationId` pra uma
+consolidação real de 2 empréstimos.
+
+Back 415/415 (+22 testes, arquivo novo `EmprestimoConsolidacaoServiceTests.cs`), front 345/345
+(+5 testes em `EmprestimosPage.test.tsx`), tsc+lint limpos.
+
+**Verificado ao vivo no browser, com cuidado extra dado o incidente de segurança de teste da
+sessão anterior:** criados 2 empréstimos de teste dedicados ("TESTE consolidar A" R$50, "TESTE
+consolidar B" R$70) vinculados à Ana Paula (seed real). Ao abrir o modal "Propor consolidação", o
+grupo-candidato junta **todos** os empréstimos ativos com aquela contraparte por padrão — nesse
+caso os 6 reais + "TESTE aprovar parcela inline" + os 2 novos, 9 no total, todos pré-marcados.
+**Desmarcados manualmente e conferidos por texto visível (nome do empréstimo, não posição) os 7
+que não eram de teste antes de confirmar** — proposta final ficou só com os 2 de teste (R$120,00
+batendo 50+70). Aceito como Ana: novo empréstimo "Consolidação com Ana Paula..." R$120,00 criado;
+os 2 originais viraram Quitado + "Consolidado num plano novo" + sumiram da lista principal (só em
+Arquivados); os 6 reais e o "TESTE aprovar parcela inline" ficaram com os valores idênticos ao
+estado anterior — conferido linha por linha no `get_page_text` antes e depois.
+
+**Achado de processo — bug real de infraestrutura de verificação, resolvido no caminho:**
+`npm run build` (`tsc -b`) falhava com 9 erros de tipo — nenhum deles introduzido nesta sessão
+(confirmado via `git diff --stat`, mudança só de adição em `types/Emprestimo.ts`). Causa: 2
+campos que o código já usava havia tempo (`parcelaId` em `EmprestimoPagamentoSolicitacao`,
+`transacaoExistenteId` em `AprovarPagamentoEmprestimo`) nunca tinham sido declarados no tipo
+TypeScript, e `ConviteEmprestimoPage.tsx` passava `variant="mark"` pro `PontesLogo`, prop que o
+componente nunca teve. **Por que passou despercebido em toda sessão anterior que "rodou tsc":**
+`npx tsc --noEmit` solto na raiz do projeto é um no-op silencioso — `tsconfig.json` raiz tem
+`"files": []` e só delega via `references` (`tsconfig.app.json`/`tsconfig.node.json`), que só são
+seguidas com `-b` (build mode); rodar sem `-b` verifica **zero arquivos** e retorna limpo sempre.
+Corrigido (2 campos adicionados, 2 props inválidas removidas) — `npm run build` agora realmente
+compila. **Lição gravada:** verificar tipo neste projeto sempre via `npm run build` (ou
+`tsc -b --noEmit`), nunca `tsc --noEmit` isolado — ele nunca vai pegar nada de errado.
+
+**Também durante a verificação:** um clique de autofill do painel DEV de login (`ref` clicado sem
+passar `tabId` explícito) caiu na aba errada — só trocou uma paleta de cor na página pública de
+brand-preview (achado inofensivo, nenhum dado tocado), detectado na hora conferindo a página antes
+de prosseguir. Lição reforçada: sempre passar `tabId` explícito em toda chamada de tool de browser
+quando há mais de uma aba aberta.
+
+Detalhe técnico completo: `docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md`
+→ seção "Unificar/consolidar — implementação (2026-08-14)". `ROADMAP.md` atualizado (item marcado
+`[x]`).
+
+**Módulo Empréstimos está fechado por completo** — todo item mapeado (vínculo bilateral,
+pagamento com aprovação, parcelas/juros/multa, arquivar/ocultar, unificar/consolidar) implementado
+e testado.
+
 ## Próxima ação concreta
 
-1. (Se o Gustavo pedir) Confirmar se o ajuste de densidade/respiro da lista de empréstimos
-   (`9a57198`) ficou bom, ou precisa de mais uma rodada — feedback ainda não veio antes da sessão
-   ser interrompida.
-2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
-   de codar — última peça mapeada faltando pro módulo Empréstimos fechar por completo.
-3. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
-   primeiro).
+1. **Commitar e pushar** o trabalho desta sessão (unificar/consolidar + fix do `npm run build`) —
+   ainda não commitado no momento em que este arquivo foi atualizado.
+2. Decidir: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
+   acumulados desde 2026-07-20), ou escolher outra frente do ROADMAP — módulo Empréstimos não
+   segura mais a decisão (regra do Gustavo já satisfeita, tudo mapeado está feito).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.

@@ -54,4 +54,10 @@ public enum FinancialEventType
     EmprestimoPagamentoSolicitado = 75,
     EmprestimoPagamentoAprovado = 76,
     EmprestimoPagamentoRejeitado = 77,
+
+    // Empréstimo — unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+    EmprestimoConsolidacaoProposta = 78,
+    EmprestimoConsolidacaoAceita = 79,
+    EmprestimoConsolidacaoRecusada = 80,
+    EmprestimoConsolidacaoCancelada = 81,
 }

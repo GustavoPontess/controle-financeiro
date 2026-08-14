@@ -195,6 +195,90 @@ parcela" pra "sobre o total"); item da lista mostra "Com juros: RX" / "Com multa
 quando aplicável. Back +8 testes (378/378), front sem novo teste de UI (reaproveita padrão já
 coberto). Verificado ao vivo com empréstimo de teste dedicado (não nos empréstimos reais).
 
+## Unificar/consolidar — implementação (2026-08-14)
+
+Última peça mapeada do módulo Empréstimos, especificada em detalhe em 2026-08-06/08 (ver
+`ROADMAP.md`) e implementada nesta sessão a pedido direto do Gustavo ("Faz a parte de unificar
+consolidar e tudo tem que ter um log registro auditável"). Fluxo: **credor propõe** juntar 2+
+empréstimos ativos (`Vinculado`, `!Quitado`) que tem com a **mesma contraparte** vinculada num
+plano novo renegociado (nova forma de pagamento, juros, multa) — **nada muda nos originais até o
+devedor aceitar**, mesmo padrão do vínculo bilateral (propõe → outro lado decide).
+
+**Modelo de dados:**
+- `EmprestimoConsolidacaoProposta` (nova entidade) — `CredorUsuarioId`, `DevedorUsuarioId`,
+  descrição/forma de pagamento do plano novo, `ValorTotalProposto` (snapshot só informativo pro
+  devedor avaliar — **recalculado de verdade no aceite**, nunca confiado como fonte da verdade),
+  `Status` (`Pendente|Aceita|Recusada|Cancelada`), `EmprestimoConsolidadoId?` (setado só quando
+  `Aceita`).
+- `EmprestimoConsolidacaoItem` (join table) — um por empréstimo original incluído na proposta,
+  com `ValorRestanteSnapshot` (auditoria/exibição).
+- `Emprestimo.ConsolidadoNoEmprestimoId` (novo) — setado no original quando absorvido por uma
+  consolidação aceita, aponta pro empréstimo novo. Front mostra "Consolidado num plano novo" no
+  item arquivado.
+- Migration `AddConsolidacaoEmprestimo`.
+
+**Regras de negócio:**
+- Só quem é credor do registro (`EhCredor`) pode incluir um empréstimo numa proposta — helper
+  já existente no service, reaproveitado.
+- Todos os empréstimos incluídos precisam ser da **mesma contraparte** (`ArgumentException` senão).
+- Bloqueia proposta nova envolvendo um empréstimo que já está numa consolidação `Pendente`
+  (evita duas propostas concorrentes sobre o mesmo empréstimo).
+- **No aceite, os originais são revalidados do zero** (ainda `Ativo`, `!Quitado`, `Vinculado`) —
+  se algo mudou desde a proposta (ex.: um deles foi quitado por fora nesse meio tempo),
+  `InvalidOperationException` explícito ("peça uma nova consolidação") em vez de consolidar em
+  cima de dado desatualizado.
+- Aceite: cria o `Emprestimo` novo (`ValorTotal` = soma real do restante dos originais,
+  `CriadoPor`=credor, `ContraparteUsuarioId`=devedor, já `Vinculado` — pula o fluxo de
+  convite/aceite, já que os dois já são vinculados entre si); gera parcelas via `GerarParcelas`
+  se `Parcelado` (mesma função já usada em `CriarAsync`). Cada original vira `Quitado=true` +
+  `ConsolidadoNoEmprestimoId` = id do novo — **não é um pagamento de verdade** (o saldo foi
+  transferido, não pago), mesmo raciocínio de "refinanciamento" bancário.
+- **Auto-arquivado dos dois lados** (`ArquivadoPorCriador`/`ArquivadoPorContraparte` = true) —
+  decisão de design: um empréstimo consolidado é um registro superado, não precisa mais poluir a
+  lista principal de nenhum dos dois participantes (mesma UX de "arquivar quitado" já existente,
+  aplicada automaticamente em vez de exigir um clique extra).
+- Recusar (motivo opcional, mesmo padrão de `RejeitarPagamentoSolicitacaoAsync`) e cancelar
+  (só quem propôs, antes do devedor responder) não tocam em nenhum empréstimo original.
+
+**Auditoria — todo passo gera `FinancialEventLog`** (pedido explícito do Gustavo): 4 tipos novos
+(`EmprestimoConsolidacaoProposta=78`, `...Aceita=79`, `...Recusada=80`, `...Cancelada=81`). No
+aceite, a operação inteira (evento da proposta + `EmprestimoCriado` do novo + `EmprestimoQuitado`
+de cada original) compartilha o **mesmo `correlationId`** — dá pra reconstruir a cadeia completa
+(proposta → originais fechados → novo criado) numa consulta só. Verificado ao vivo no Postgres:
+4 linhas (`70`/`72`×2/`79`) sob o mesmo `CorrelationId` pra uma consolidação real de 2 empréstimos.
+
+**API:** `GET /emprestimos/candidatos-consolidacao` (contrapartes com 2+ empréstimos ativos onde
+sou credor — evita seleção manual às cegas pela lista inteira), `POST /emprestimos/consolidar`,
+`GET /emprestimos/consolidacoes`, `POST /emprestimos/consolidacoes/{id}/aceitar|recusar|cancelar`.
+
+**Frontend:** card "Consolidar dívidas" (candidatos + propostas enviadas com botão Cancelar)
+acima da lista; banner de propostas recebidas (mesmo padrão visual do banner de convites
+pendentes) com Aceitar/Recusar; modal "Propor consolidação" com checklist dos empréstimos do
+grupo (todos pré-selecionados, precisa manter 2+) + campos de forma de pagamento (reaproveita os
+mesmos campos do form de criar empréstimo).
+
+Back 415/415 (+22 testes novos), front 345/345 (+5 testes). **Verificado ao vivo no browser**
+com 2 empréstimos de teste dedicados ("TESTE consolidar A" R$50 + "TESTE consolidar B" R$70,
+nunca nos 6 empréstimos reais com a Ana): propor como Gustavo (checklist desmarcando os 7
+empréstimos reais/outros, mantendo só os 2 de teste — conferido visualmente antes de confirmar),
+aceitar como Ana → novo empréstimo "Consolidação com Ana Paula..." R$120,00 criado, os 2
+originais viraram Quitado + "Consolidado num plano novo" + sumiram da lista principal (só
+aparecem em Arquivados), os 6 empréstimos reais e o outro empréstimo de teste ("TESTE aprovar
+parcela inline") permaneceram com os valores exatamente iguais ao estado anterior.
+
+**Achado de processo, resolvido no caminho:** `npm run build` (`tsc -b`) estava quebrado por
+type-drift pré-existente e não pego por sessões anteriores — `types/Emprestimo.ts` não tinha
+`parcelaId` em `EmprestimoPagamentoSolicitacao` nem `transacaoExistenteId` em
+`AprovarPagamentoEmprestimo`, apesar do código já usar os dois campos; `ConviteEmprestimoPage.tsx`
+passava `variant="mark"` pro `PontesLogo`, prop que não existe no componente. **Causa raiz do
+"como isso passou despercebido":** `npx tsc --noEmit` na raiz do projeto é um no-op silencioso —
+`tsconfig.json` raiz tem `"files": []` e só delega via `references` (`tsconfig.app.json`/
+`tsconfig.node.json`), que só são seguidas com `-b` (build mode) ou dentro do próprio `npm run
+build`. Sessões anteriores que "verificaram tsc limpo" com `tsc --noEmit` solto estavam checando
+zero arquivos. Os 3 problemas corrigidos (2 campos de tipo adicionados, 2 props `variant`
+removidas). **Lição registrada:** verificar tipo sempre via `npm run build` (ou
+`tsc -b --noEmit`), nunca `tsc --noEmit` isolado nesse projeto.
+
 ## Referências
 
 - `docs/features/emprestimo-compartilhado/spec.md` — vínculo bilateral (base).

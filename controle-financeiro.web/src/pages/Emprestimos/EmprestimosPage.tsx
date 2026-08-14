@@ -4,12 +4,12 @@ import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
   Plus, Trash2, Handshake, TrendingUp, TrendingDown, Link2, Copy, Check, X,
-  Receipt, History, RotateCcw, ChevronDown, AlertCircle, Archive, ArchiveRestore,
+  Receipt, History, RotateCcw, ChevronDown, AlertCircle, Archive, ArchiveRestore, Layers, Ban,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard, PontesAlert,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesTextarea, PontesEmptyState, PontesProgress,
+  PontesTextarea, PontesEmptyState, PontesProgress, PontesCheckbox,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import {
@@ -20,12 +20,15 @@ import {
   solicitarPagamentoEmprestimo, listSolicitacoesPagamento,
   aprovarPagamentoEmprestimo, rejeitarPagamentoEmprestimo, reenviarPagamentoEmprestimo,
   listParcelasEmprestimo,
+  listCandidatosConsolidacao, proporConsolidacao, listConsolidacoes,
+  aceitarConsolidacao, recusarConsolidacao, cancelarConsolidacao,
 } from "../../services/emprestimoService"
 import type { EmprestimoStats } from "../../services/emprestimoService"
 import {
   StatusVinculoEmprestimo, StatusAprovacaoPagamentoEmprestimo, FormaPagamentoEmprestimo, StatusParcelaEmprestimo,
+  StatusConsolidacaoEmprestimo,
   type Emprestimo, type CriarEmprestimo, type EmprestimoConvitePendente, type EmprestimoPagamentoSolicitacao,
-  type EmprestimoParcela,
+  type EmprestimoParcela, type EmprestimoConsolidacaoCandidato, type EmprestimoConsolidacaoProposta,
 } from "../../types/Emprestimo"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
@@ -203,6 +206,24 @@ export default function EmprestimosPage() {
   const [historicoInlineLista, setHistoricoInlineLista] = useState<EmprestimoPagamentoSolicitacao[]>([])
   const [historicoInlineLoading, setHistoricoInlineLoading] = useState(false)
 
+  // Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md § "Unificar/consolidar")
+  const [candidatosConsolidacao, setCandidatosConsolidacao] = useState<EmprestimoConsolidacaoCandidato[]>([])
+  const [consolidacoes, setConsolidacoes] = useState<EmprestimoConsolidacaoProposta[]>([])
+  const [respondendoConsolidacaoId, setRespondendoConsolidacaoId] = useState<string | null>(null)
+  const [consolidarGrupo, setConsolidarGrupo] = useState<EmprestimoConsolidacaoCandidato | null>(null)
+  const [consolidarSelecionados, setConsolidarSelecionados] = useState<Set<string>>(new Set())
+  const [consolidarForm, setConsolidarForm] = useState<{
+    descricao: string; formaPagamento: EscolhaFormaPagamento
+    quantidadeParcelas?: number; primeiroVencimento: string; dataVencimento: string
+    taxaJuroMensal?: number; percentualMultaAtraso?: number
+  }>({ descricao: "", formaPagamento: "avista", primeiroVencimento: "", dataVencimento: "" })
+  const [consolidarErrors, setConsolidarErrors] = useState<{
+    descricao?: string; selecao?: string; quantidadeParcelas?: string; primeiroVencimento?: string
+  }>({})
+  const [consolidarLoading, setConsolidarLoading] = useState(false)
+  const [recusarConsolidacaoFor, setRecusarConsolidacaoFor] = useState<string | null>(null)
+  const [recusarConsolidacaoMotivo, setRecusarConsolidacaoMotivo] = useState("")
+
   // Forma de pagamento — parcelas expansíveis por empréstimo (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [parcelasPorEmprestimo, setParcelasPorEmprestimo] = useState<Record<string, EmprestimoParcela[]>>({})
@@ -224,12 +245,14 @@ export default function EmprestimosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, candidatosResult, consolidacoesResult] = await Promise.all([
         listEmprestimosPage(page, pageSize, mostrarArquivados),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
         getCategories(),
+        listCandidatosConsolidacao(),
+        listConsolidacoes(),
       ])
       setEmprestimos(pageResult.items)
       setTotal(pageResult.total)
@@ -237,6 +260,8 @@ export default function EmprestimosPage() {
       setPendentes(pendentesResult)
       setContas(contasResult)
       setCategorias(categoriasResult)
+      setCandidatosConsolidacao(candidatosResult)
+      setConsolidacoes(consolidacoesResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
@@ -403,6 +428,102 @@ export default function EmprestimosPage() {
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao desarquivar empréstimo"), severity: "error" })
     } finally { setArquivandoId(null) }
+  }
+
+  // ── Unificar/consolidar ──────────────────────────────────────────────────
+
+  const openConsolidar = (grupo: EmprestimoConsolidacaoCandidato) => {
+    setConsolidarGrupo(grupo)
+    setConsolidarSelecionados(new Set(grupo.itens.map((i) => i.emprestimoOriginalId)))
+    setConsolidarForm({
+      descricao: `Consolidação com ${grupo.contraparteNome}`,
+      formaPagamento: "avista", primeiroVencimento: "", dataVencimento: "",
+      quantidadeParcelas: undefined, taxaJuroMensal: undefined, percentualMultaAtraso: undefined,
+    })
+    setConsolidarErrors({})
+  }
+
+  const toggleConsolidarSelecionado = (id: string) => {
+    setConsolidarSelecionados((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+    setConsolidarErrors((p) => ({ ...p, selecao: undefined }))
+  }
+
+  const handleProporConsolidacao = async () => {
+    if (!consolidarGrupo) return
+    const e: typeof consolidarErrors = {}
+    if (consolidarSelecionados.size < 2) e.selecao = "Selecione pelo menos 2 empréstimos"
+    if (!consolidarForm.descricao.trim()) e.descricao = "Informe a descrição"
+    if (consolidarForm.formaPagamento === "parcelado") {
+      if (!consolidarForm.quantidadeParcelas || consolidarForm.quantidadeParcelas < 2 || consolidarForm.quantidadeParcelas > 36)
+        e.quantidadeParcelas = "Entre 2 e 36 parcelas"
+      if (!consolidarForm.primeiroVencimento) e.primeiroVencimento = "Informe o vencimento da 1ª parcela"
+    }
+    setConsolidarErrors(e)
+    if (Object.keys(e).length) return
+
+    setConsolidarLoading(true)
+    try {
+      const parcelado = consolidarForm.formaPagamento === "parcelado"
+      await proporConsolidacao({
+        emprestimoIds: [...consolidarSelecionados],
+        descricao: consolidarForm.descricao.trim(),
+        formaPagamento: parcelado ? FormaPagamentoEmprestimo.Parcelado : FormaPagamentoEmprestimo.AVista,
+        quantidadeParcelas: parcelado ? consolidarForm.quantidadeParcelas : undefined,
+        primeiroVencimento: parcelado ? new Date(consolidarForm.primeiroVencimento).toISOString() : undefined,
+        dataVencimento: !parcelado && consolidarForm.dataVencimento ? new Date(consolidarForm.dataVencimento).toISOString() : undefined,
+        taxaJuroMensal: consolidarForm.taxaJuroMensal,
+        percentualMultaAtraso: consolidarForm.percentualMultaAtraso,
+      })
+      notify({ open: true, message: "Consolidação proposta — aguardando a outra pessoa aceitar", severity: "success" })
+      setConsolidarGrupo(null)
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao propor consolidação"), severity: "error" })
+    } finally { setConsolidarLoading(false) }
+  }
+
+  const handleAceitarConsolidacao = async (id: string) => {
+    setRespondendoConsolidacaoId(id)
+    try {
+      await aceitarConsolidacao(id)
+      notify({ open: true, message: "Consolidação aceita — os empréstimos viraram um só", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao aceitar consolidação"), severity: "error" })
+    } finally { setRespondendoConsolidacaoId(null) }
+  }
+
+  const openRecusarConsolidacao = (id: string) => {
+    setRecusarConsolidacaoFor(id)
+    setRecusarConsolidacaoMotivo("")
+  }
+
+  const handleRecusarConsolidacao = async () => {
+    if (!recusarConsolidacaoFor) return
+    setRespondendoConsolidacaoId(recusarConsolidacaoFor)
+    try {
+      await recusarConsolidacao(recusarConsolidacaoFor, recusarConsolidacaoMotivo.trim() || undefined)
+      notify({ open: true, message: "Consolidação recusada", severity: "success" })
+      setRecusarConsolidacaoFor(null)
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao recusar consolidação"), severity: "error" })
+    } finally { setRespondendoConsolidacaoId(null) }
+  }
+
+  const handleCancelarConsolidacao = async (id: string) => {
+    setRespondendoConsolidacaoId(id)
+    try {
+      await cancelarConsolidacao(id)
+      notify({ open: true, message: "Consolidação cancelada", severity: "success" })
+      await loadData()
+    } catch (err) {
+      notify({ open: true, message: errorMessage(err, "Erro ao cancelar consolidação"), severity: "error" })
+    } finally { setRespondendoConsolidacaoId(null) }
   }
 
   // ── Pagamento com comprovante + aprovação ───────────────────────────────────
@@ -615,6 +736,8 @@ export default function EmprestimosPage() {
   }
 
   const { totalAReceber, totalAPagar, ativos: qtdAtivos, totalAReceberVencido } = stats
+  const consolidacoesRecebidas = consolidacoes.filter((c) => !c.souCredor && c.status === StatusConsolidacaoEmprestimo.Pendente)
+  const consolidacoesEnviadas = consolidacoes.filter((c) => c.souCredor && c.status === StatusConsolidacaoEmprestimo.Pendente)
   const solicitarEmprestimoAtual = emprestimos.find((x) => x.id === solicitarFor)
   const isParceladoSolicitar = solicitarEmprestimoAtual?.formaPagamento === FormaPagamentoEmprestimo.Parcelado
   const souCredorSolicitar = solicitarEmprestimoAtual?.souCredor ?? false
@@ -659,6 +782,67 @@ export default function EmprestimosPage() {
             ))}
           </ul>
         </PontesAlert>
+      )}
+
+      {consolidacoesRecebidas.length > 0 && (
+        <PontesAlert tone="warning">
+          <div className={styles.listHeadTitle}>
+            {consolidacoesRecebidas.length === 1 ? "1 proposta de consolidação" : `${consolidacoesRecebidas.length} propostas de consolidação`}
+          </div>
+          <ul className={styles.pendentesList}>
+            {consolidacoesRecebidas.map((c) => (
+              <li key={c.id} className={styles.pendenteItem}>
+                <span className={styles.pendenteDesc}>
+                  <strong>{c.credorNome}</strong> quer juntar {c.itens.length} empréstimos
+                  {" "}({c.itens.map((i) => i.descricao).join(", ")}) num plano novo de {formatMoney(c.valorTotalProposto)}.
+                </span>
+                <div className={styles.actions}>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Aceitar consolidação"
+                    disabled={respondendoConsolidacaoId === c.id}
+                    onClick={() => handleAceitarConsolidacao(c.id)}>
+                    <Check size={14} />
+                  </PontesIconButton>
+                  <PontesIconButton size={32} variant="ghost" aria-label="Recusar consolidação"
+                    disabled={respondendoConsolidacaoId === c.id}
+                    onClick={() => openRecusarConsolidacao(c.id)}>
+                    <X size={14} />
+                  </PontesIconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </PontesAlert>
+      )}
+
+      {(candidatosConsolidacao.length > 0 || consolidacoesEnviadas.length > 0) && (
+        <PontesCard padding={16} radius={16}>
+          <div className={styles.listHeadTitle}>Consolidar dívidas</div>
+          <ul className={styles.pendentesList}>
+            {candidatosConsolidacao.map((g) => (
+              <li key={g.contraparteUsuarioId} className={styles.pendenteItem}>
+                <span className={styles.pendenteDesc}>
+                  <strong>{g.contraparteNome}</strong> — {g.itens.length} empréstimos ativos,
+                  {" "}{formatMoney(g.itens.reduce((s, i) => s + i.valorRestanteSnapshot, 0))} no total
+                </span>
+                <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />} onClick={() => openConsolidar(g)}>
+                  Consolidar
+                </PontesButton>
+              </li>
+            ))}
+            {consolidacoesEnviadas.map((c) => (
+              <li key={c.id} className={styles.pendenteItem}>
+                <span className={styles.pendenteDesc}>
+                  Proposta pra <strong>{c.devedorNome}</strong> — {formatMoney(c.valorTotalProposto)}, aguardando resposta
+                </span>
+                <PontesIconButton size={32} variant="ghost" aria-label="Cancelar proposta de consolidação"
+                  disabled={respondendoConsolidacaoId === c.id}
+                  onClick={() => handleCancelarConsolidacao(c.id)}>
+                  <Ban size={14} />
+                </PontesIconButton>
+              </li>
+            ))}
+          </ul>
+        </PontesCard>
       )}
 
       <div className={styles.statsGrid}>
@@ -729,6 +913,9 @@ export default function EmprestimosPage() {
                         {e.dataVencimento && <><span className={styles.itemSubDot}>·</span><span>vence {formatDate(e.dataVencimento)}</span></>}
                         <span className={styles.itemSubDot}>·</span>
                         <span>{isParcelado ? `Parcelado ${e.quantidadeParcelas}x` : "À vista"}</span>
+                        {e.consolidadoNoEmprestimoId && (
+                          <><span className={styles.itemSubDot}>·</span><span>Consolidado num plano novo</span></>
+                        )}
                       </span>
                       {!isParcelado && (e.valorComMulta != null || e.valorComJuros != null) && (
                         <span className={styles.itemSub}>
@@ -1424,6 +1611,133 @@ export default function EmprestimosPage() {
               onChange={(e) => setRejeitarMotivo(e.target.value)}
               rows={3}
               placeholder="Ex: valor não bate com o combinado"
+              autoFocus
+            />
+          </PontesField>
+        </div>
+      </PontesModal>
+
+      {/* Modal: Propor consolidação — credor junta 2+ empréstimos ativos da mesma pessoa vinculada
+          num plano novo renegociado. Nada muda até o devedor aceitar (mesmo padrão do vínculo
+          bilateral). docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md § "Unificar/consolidar". */}
+      <PontesModal
+        open={consolidarGrupo !== null}
+        title="Propor consolidação"
+        onClose={() => setConsolidarGrupo(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setConsolidarGrupo(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleProporConsolidacao} loading={consolidarLoading} disabled={consolidarLoading}>
+            Propor
+          </PontesButton>
+        </>}
+      >
+        {consolidarGrupo && (
+          <form noValidate onSubmit={(e) => { e.preventDefault(); void handleProporConsolidacao() }} className={styles.formCol}>
+            <p className={styles.itemSub}>
+              Junta os empréstimos escolhidos num plano novo com {consolidarGrupo.contraparteNome} — os originais
+              só fecham depois que ela aceitar as novas condições.
+            </p>
+
+            <PontesField label="Quais empréstimos entram?" required error={consolidarErrors.selecao}>
+              <div className={styles.gateGroup}>
+                {consolidarGrupo.itens.map((i) => (
+                  <PontesCheckbox
+                    key={i.emprestimoOriginalId}
+                    checked={consolidarSelecionados.has(i.emprestimoOriginalId)}
+                    onChange={() => toggleConsolidarSelecionado(i.emprestimoOriginalId)}
+                    label={`${i.descricao} — ${formatMoney(i.valorRestanteSnapshot)}`}
+                  />
+                ))}
+              </div>
+            </PontesField>
+
+            <PontesField label="Descrição do plano novo" required error={consolidarErrors.descricao}>
+              <PontesInput
+                value={consolidarForm.descricao}
+                onChange={(e) => { setConsolidarForm((f) => ({ ...f, descricao: e.target.value })); setConsolidarErrors((p) => ({ ...p, descricao: undefined })) }}
+                invalid={!!consolidarErrors.descricao}
+              />
+            </PontesField>
+
+            <PontesField label="Forma de pagamento">
+              <PontesSelect
+                value={consolidarForm.formaPagamento}
+                onChange={(v) => setConsolidarForm((f) => ({ ...f, formaPagamento: v as EscolhaFormaPagamento }))}
+                options={FORMAS_PAGAMENTO}
+              />
+            </PontesField>
+
+            {consolidarForm.formaPagamento === "parcelado" ? (
+              <div className={styles.grid2}>
+                <PontesField label="Quantidade de parcelas" required error={consolidarErrors.quantidadeParcelas}>
+                  <PontesInput
+                    value={consolidarForm.quantidadeParcelas ?? ""}
+                    onChange={(e) => { setConsolidarForm((f) => ({ ...f, quantidadeParcelas: e.target.value ? Number(e.target.value) : undefined })); setConsolidarErrors((p) => ({ ...p, quantidadeParcelas: undefined })) }}
+                    invalid={!!consolidarErrors.quantidadeParcelas}
+                    inputMode="numeric"
+                    placeholder="Ex: 12"
+                  />
+                </PontesField>
+                <PontesField label="Vencimento da 1ª parcela" required error={consolidarErrors.primeiroVencimento}>
+                  <PontesDateInput
+                    value={consolidarForm.primeiroVencimento}
+                    onChange={(v) => { setConsolidarForm((f) => ({ ...f, primeiroVencimento: v })); setConsolidarErrors((p) => ({ ...p, primeiroVencimento: undefined })) }}
+                  />
+                </PontesField>
+              </div>
+            ) : (
+              <PontesField label="Vencimento" helper="Opcional">
+                <PontesDateInput
+                  value={consolidarForm.dataVencimento}
+                  onChange={(v) => setConsolidarForm((f) => ({ ...f, dataVencimento: v }))}
+                />
+              </PontesField>
+            )}
+
+            <div className={styles.grid2}>
+              <PontesField label="Juros ao mês" helper={consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
+                <PontesInput
+                  value={consolidarForm.taxaJuroMensal ?? ""}
+                  onChange={(e) => setConsolidarForm((f) => ({ ...f, taxaJuroMensal: e.target.value ? Number(e.target.value) : undefined }))}
+                  inputMode="decimal"
+                  iconEnd="%"
+                  placeholder="0"
+                />
+              </PontesField>
+              <PontesField label="Multa por atraso" helper={consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
+                <PontesInput
+                  value={consolidarForm.percentualMultaAtraso ?? ""}
+                  onChange={(e) => setConsolidarForm((f) => ({ ...f, percentualMultaAtraso: e.target.value ? Number(e.target.value) : undefined }))}
+                  inputMode="decimal"
+                  iconEnd="%"
+                  placeholder="0"
+                />
+              </PontesField>
+            </div>
+          </form>
+        )}
+      </PontesModal>
+
+      {/* Modal: Recusar consolidação (motivo opcional, mesmo padrão de Rejeitar pagamento) */}
+      <PontesModal
+        open={recusarConsolidacaoFor !== null}
+        title="Recusar consolidação"
+        onClose={() => setRecusarConsolidacaoFor(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => setRecusarConsolidacaoFor(null)}>Cancelar</PontesButton>
+          <PontesButton variant="danger" onClick={handleRecusarConsolidacao}
+            loading={respondendoConsolidacaoId === recusarConsolidacaoFor} disabled={respondendoConsolidacaoId === recusarConsolidacaoFor}>
+            Recusar
+          </PontesButton>
+        </>}
+      >
+        <div className={styles.formCol}>
+          <PontesField label="Motivo" helper="Opcional — quem propôs vê isso na notificação">
+            <PontesTextarea
+              value={recusarConsolidacaoMotivo}
+              onChange={(e) => setRecusarConsolidacaoMotivo(e.target.value)}
+              rows={3}
+              placeholder="Ex: prefiro manter separado"
               autoFocus
             />
           </PontesField>

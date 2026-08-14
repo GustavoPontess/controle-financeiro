@@ -65,4 +65,12 @@ public class Emprestimo
     /// compartilhado; arquivar resolve a poluição visual sem esse risco).</summary>
     public bool ArquivadoPorCriador { get; set; } = false;
     public bool ArquivadoPorContraparte { get; set; } = false;
+
+    /// <summary>Setado quando este empréstimo foi absorvido por uma consolidação aceita — aponta
+    /// pro Emprestimo novo que o substituiu. Empréstimo consolidado também vira Quitado (o saldo
+    /// dele foi transferido pro plano novo, não pago de verdade) e é auto-arquivado dos dois
+    /// lados (registro superado, não precisa mais aparecer na lista principal).
+    /// Spec: docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md § "Unificar/consolidar".</summary>
+    public Guid? ConsolidadoNoEmprestimoId { get; set; }
+    public Emprestimo? ConsolidadoNoEmprestimo { get; set; }
 }

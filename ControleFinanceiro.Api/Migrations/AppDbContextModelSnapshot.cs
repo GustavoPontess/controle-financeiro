@@ -378,6 +378,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<Guid?>("ConsolidadoNoEmprestimoId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ContraparteUsuarioId")
                         .HasColumnType("uuid");
 
@@ -450,6 +453,8 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ConsolidadoNoEmprestimoId");
+
                     b.HasIndex("ContraparteUsuarioId");
 
                     b.HasIndex("ConviteTokenHash");
@@ -457,6 +462,96 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("TransacaoId");
 
                     b.ToTable("Emprestimos");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmprestimoOriginalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PropostaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ValorRestanteSnapshot")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmprestimoOriginalId");
+
+                    b.HasIndex("PropostaId", "EmprestimoOriginalId")
+                        .IsUnique();
+
+                    b.ToTable("EmprestimoConsolidacaoItens");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CredorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DataVencimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DevedorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EmprestimoConsolidadoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("FormaPagamento")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MotivoRecusa")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("PercentualMultaAtraso")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("PrimeiroVencimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("QuantidadeParcelas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RespondidoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("TaxaJuroMensal")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("ValorTotalProposto")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredorUsuarioId");
+
+                    b.HasIndex("DevedorUsuarioId");
+
+                    b.HasIndex("EmprestimoConsolidadoId");
+
+                    b.ToTable("EmprestimoConsolidacaoPropostas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
@@ -1547,6 +1642,11 @@ namespace ControleFinanceiro.Api.Migrations
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "ConsolidadoNoEmprestimo")
+                        .WithMany()
+                        .HasForeignKey("ConsolidadoNoEmprestimoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "ContraparteUsuario")
                         .WithMany()
                         .HasForeignKey("ContraparteUsuarioId")
@@ -1557,9 +1657,56 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("TransacaoId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("ConsolidadoNoEmprestimo");
+
                     b.Navigation("ContraparteUsuario");
 
                     b.Navigation("Transacao");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoItem", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "EmprestimoOriginal")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoOriginalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", "Proposta")
+                        .WithMany("Itens")
+                        .HasForeignKey("PropostaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EmprestimoOriginal");
+
+                    b.Navigation("Proposta");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "CredorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CredorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "DevedorUsuario")
+                        .WithMany()
+                        .HasForeignKey("DevedorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "EmprestimoConsolidado")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoConsolidadoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CredorUsuario");
+
+                    b.Navigation("DevedorUsuario");
+
+                    b.Navigation("EmprestimoConsolidado");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
@@ -1950,6 +2097,11 @@ namespace ControleFinanceiro.Api.Migrations
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
                     b.Navigation("Parcelas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.Navigation("Itens");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>

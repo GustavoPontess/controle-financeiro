@@ -55,4 +55,10 @@ public class EmprestimoDto
     /// <summary>Relativo a quem pediu (usuarioId) — true se ELE arquivou esse empréstimo, não
     /// reflete o lado da contraparte. Só é true se Quitado (arquivar só existe pra quitado).</summary>
     public bool Arquivado { get; set; }
+
+    /// <summary>Setado se este empréstimo foi absorvido por uma consolidação aceita — aponta pro
+    /// Emprestimo novo que o substituiu. Front usa isso pra explicar por que está Quitado sem
+    /// pagamento de verdade ("consolidado em ...").
+    /// Spec: docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md § "Unificar/consolidar".</summary>
+    public Guid? ConsolidadoNoEmprestimoId { get; set; }
 }

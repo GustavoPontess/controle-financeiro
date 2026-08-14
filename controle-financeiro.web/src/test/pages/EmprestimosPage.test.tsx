@@ -33,6 +33,12 @@ const aprovarPagamentoEmprestimo = vi.fn()
 const rejeitarPagamentoEmprestimo = vi.fn()
 const reenviarPagamentoEmprestimo = vi.fn()
 const listParcelasEmprestimo = vi.fn()
+const listCandidatosConsolidacao = vi.fn()
+const proporConsolidacao = vi.fn()
+const listConsolidacoes = vi.fn()
+const aceitarConsolidacao = vi.fn()
+const recusarConsolidacao = vi.fn()
+const cancelarConsolidacao = vi.fn()
 vi.mock("../../services/emprestimoService", () => ({
   listEmprestimosPage: (...a: unknown[]) => listEmprestimosPage(...a),
   getEmprestimoStats: (...a: unknown[]) => getEmprestimoStats(...a),
@@ -52,6 +58,12 @@ vi.mock("../../services/emprestimoService", () => ({
   rejeitarPagamentoEmprestimo: (...a: unknown[]) => rejeitarPagamentoEmprestimo(...a),
   reenviarPagamentoEmprestimo: (...a: unknown[]) => reenviarPagamentoEmprestimo(...a),
   listParcelasEmprestimo: (...a: unknown[]) => listParcelasEmprestimo(...a),
+  listCandidatosConsolidacao: (...a: unknown[]) => listCandidatosConsolidacao(...a),
+  proporConsolidacao: (...a: unknown[]) => proporConsolidacao(...a),
+  listConsolidacoes: (...a: unknown[]) => listConsolidacoes(...a),
+  aceitarConsolidacao: (...a: unknown[]) => aceitarConsolidacao(...a),
+  recusarConsolidacao: (...a: unknown[]) => recusarConsolidacao(...a),
+  cancelarConsolidacao: (...a: unknown[]) => cancelarConsolidacao(...a),
 }))
 const getContas = vi.fn()
 const getCategories = vi.fn()
@@ -126,6 +138,12 @@ describe("EmprestimosPage (#152)", () => {
     listSolicitacoesPagamento.mockReset().mockResolvedValue([])
     aprovarPagamentoEmprestimo.mockReset()
     rejeitarPagamentoEmprestimo.mockReset()
+    listCandidatosConsolidacao.mockReset().mockResolvedValue([])
+    proporConsolidacao.mockReset()
+    listConsolidacoes.mockReset().mockResolvedValue([])
+    aceitarConsolidacao.mockReset()
+    recusarConsolidacao.mockReset()
+    cancelarConsolidacao.mockReset()
     reenviarPagamentoEmprestimo.mockReset()
     listParcelasEmprestimo.mockReset().mockResolvedValue([])
   })
@@ -646,5 +664,105 @@ describe("EmprestimosPage (#152)", () => {
   it("empréstimo à vista mostra badge 'À vista'", async () => {
     renderPage()
     expect(await screen.findByText("À vista")).toBeInTheDocument()
+  })
+
+  // ── Unificar/consolidar ──────────────────────────────────────────────────
+
+  const candidatoConsolidacao = {
+    contraparteUsuarioId: "ana-1",
+    contraparteNome: "Ana",
+    itens: [
+      { emprestimoOriginalId: "e1", descricao: "Móveis", valorRestanteSnapshot: 500 },
+      { emprestimoOriginalId: "e2", descricao: "Aluguel", valorRestanteSnapshot: 300 },
+    ],
+  }
+
+  it("mostra grupo candidato a consolidação e abre modal de propor ao clicar", async () => {
+    listCandidatosConsolidacao.mockReset().mockResolvedValue([candidatoConsolidacao])
+    renderPage()
+    await screen.findByText("Viagem")
+
+    expect(await screen.findByText("Consolidar dívidas")).toBeInTheDocument()
+    expect(screen.getByText("Ana", { exact: false })).toBeInTheDocument()
+    expect(screen.getByText(/2 empréstimos ativos/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("Consolidar"))
+    expect(await screen.findByText("Propor consolidação")).toBeInTheDocument()
+    expect(screen.getByText(/Móveis.*500,00/)).toBeInTheDocument()
+    expect(screen.getByText(/Aluguel.*300,00/)).toBeInTheDocument()
+  })
+
+  it("propor consolidação bloqueia com menos de 2 selecionados e envia com 2+", async () => {
+    listCandidatosConsolidacao.mockReset().mockResolvedValue([candidatoConsolidacao])
+    proporConsolidacao.mockReset().mockResolvedValue({})
+    renderPage()
+    await screen.findByText("Viagem")
+    fireEvent.click(await screen.findByText("Consolidar"))
+    await screen.findByText("Propor consolidação")
+
+    // desmarca um item, sobra só 1 selecionado
+    fireEvent.click(screen.getByText("Aluguel", { exact: false }))
+    fireEvent.click(screen.getByText("Propor"))
+    expect(await screen.findByText("Selecione pelo menos 2 empréstimos")).toBeInTheDocument()
+    expect(proporConsolidacao).not.toHaveBeenCalled()
+
+    // remarca — volta a 2 selecionados, agora envia
+    fireEvent.click(screen.getByText("Aluguel", { exact: false }))
+    fireEvent.click(screen.getByText("Propor"))
+    await waitFor(() => expect(proporConsolidacao).toHaveBeenCalled())
+    const payload = proporConsolidacao.mock.calls[0][0]
+    expect(payload.emprestimoIds).toEqual(expect.arrayContaining(["e1", "e2"]))
+    expect(payload.descricao).toBeTruthy()
+  })
+
+  const consolidacaoRecebida = {
+    id: "c1", credorUsuarioId: "cred-1", credorNome: "Gustavo",
+    devedorUsuarioId: "me-1", devedorNome: "Eu",
+    descricao: "Plano novo", formaPagamento: 1, valorTotalProposto: 800,
+    status: 1, statusDescricao: "Pendente", criadoEm: "2026-08-14T00:00:00Z",
+    souCredor: false,
+    itens: [
+      { emprestimoOriginalId: "e1", descricao: "Móveis", valorRestanteSnapshot: 500 },
+      { emprestimoOriginalId: "e2", descricao: "Aluguel", valorRestanteSnapshot: 300 },
+    ],
+  }
+
+  it("mostra proposta de consolidação recebida e aceita", async () => {
+    listConsolidacoes.mockReset().mockResolvedValue([consolidacaoRecebida])
+    aceitarConsolidacao.mockReset().mockResolvedValue({})
+    renderPage()
+    await screen.findByText("Viagem")
+
+    expect(await screen.findByText("1 proposta de consolidação")).toBeInTheDocument()
+    expect(screen.getByText(/quer juntar 2 empréstimos/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Aceitar consolidação"))
+    await waitFor(() => expect(aceitarConsolidacao).toHaveBeenCalledWith("c1"))
+  })
+
+  it("recusa proposta de consolidação recebida com motivo", async () => {
+    listConsolidacoes.mockReset().mockResolvedValue([consolidacaoRecebida])
+    recusarConsolidacao.mockReset().mockResolvedValue(undefined)
+    renderPage()
+    await screen.findByText("Viagem")
+
+    fireEvent.click(await screen.findByLabelText("Recusar consolidação"))
+    await screen.findByText("Recusar consolidação")
+    fireEvent.change(screen.getByPlaceholderText("Ex: prefiro manter separado"), { target: { value: "Prefiro separado" } })
+    fireEvent.click(screen.getByText("Recusar"))
+    await waitFor(() => expect(recusarConsolidacao).toHaveBeenCalledWith("c1", "Prefiro separado"))
+  })
+
+  it("mostra proposta de consolidação enviada e cancela", async () => {
+    listConsolidacoes.mockReset().mockResolvedValue([{
+      ...consolidacaoRecebida, id: "c2", souCredor: true, devedorNome: "Ana",
+    }])
+    cancelarConsolidacao.mockReset().mockResolvedValue(undefined)
+    renderPage()
+    await screen.findByText("Viagem")
+
+    expect(await screen.findByText(/Proposta pra/)).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Cancelar proposta de consolidação"))
+    await waitFor(() => expect(cancelarConsolidacao).toHaveBeenCalledWith("c2"))
   })
 })

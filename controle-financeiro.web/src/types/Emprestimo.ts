@@ -45,6 +45,9 @@ export interface Emprestimo {
   /** Relativo a quem pediu — true se EU arquivei, não reflete o lado da contraparte. Só existe
    * pra empréstimo quitado (arquivar sem apagar nada). */
   arquivado: boolean
+  /** Setado se este empréstimo foi absorvido por uma consolidação aceita — aponta pro empréstimo
+   * novo que o substituiu (por isso está Quitado sem pagamento de verdade). */
+  consolidadoNoEmprestimoId?: string
 }
 
 /** Forma de pagamento combinada de um empréstimo. */
@@ -140,11 +143,15 @@ export interface SolicitarPagamentoEmprestimo {
 export interface AprovarPagamentoEmprestimo {
   contaId?: string
   categoriaId?: string
+  /** Se informado, vincula essa receita já lançada em vez de criar uma nova. */
+  transacaoExistenteId?: string
 }
 
 export interface EmprestimoPagamentoSolicitacao {
   id: string
   emprestimoId: string
+  /** Se o empréstimo é Parcelado, qual EmprestimoParcela essa solicitação mira. */
+  parcelaId?: string
   valor: number
   statusAprovacao: number
   statusAprovacaoDescricao: string
@@ -163,4 +170,63 @@ export interface EmprestimoPagamentoSolicitacao {
   motivoRejeicao?: string
   /** True quando foi o credor quem registrou (nasceu já aprovada, sem comprovante de saída). */
   registradoPeloCredor: boolean
+}
+
+// ── Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md) ──
+
+export const StatusConsolidacaoEmprestimo = {
+  Pendente: 1,
+  Aceita: 2,
+  Recusada: 3,
+  Cancelada: 4,
+} as const
+
+export interface EmprestimoConsolidacaoItem {
+  emprestimoOriginalId: string
+  descricao: string
+  valorRestanteSnapshot: number
+}
+
+/** Contraparte com 2+ empréstimos ativos onde eu sou credor — candidata a consolidação. */
+export interface EmprestimoConsolidacaoCandidato {
+  contraparteUsuarioId: string
+  contraparteNome: string
+  itens: EmprestimoConsolidacaoItem[]
+}
+
+export interface ProporConsolidacao {
+  emprestimoIds: string[]
+  descricao: string
+  formaPagamento: number
+  quantidadeParcelas?: number
+  primeiroVencimento?: string
+  /** Só usado se formaPagamento === AVista. */
+  dataVencimento?: string
+  taxaJuroMensal?: number
+  percentualMultaAtraso?: number
+}
+
+export interface EmprestimoConsolidacaoProposta {
+  id: string
+  credorUsuarioId: string
+  credorNome: string
+  devedorUsuarioId: string
+  devedorNome: string
+  descricao: string
+  formaPagamento: number
+  quantidadeParcelas?: number
+  primeiroVencimento?: string
+  dataVencimento?: string
+  taxaJuroMensal?: number
+  percentualMultaAtraso?: number
+  valorTotalProposto: number
+  status: number
+  statusDescricao: string
+  criadoEm: string
+  respondidoEm?: string
+  motivoRecusa?: string
+  emprestimoConsolidadoId?: string
+  /** Perspectiva de quem pediu a lista — true se ele propôs, false se precisa responder. */
+  souCredor: boolean
+  itens: EmprestimoConsolidacaoItem[]
 }
