@@ -720,14 +720,15 @@ export default function EmprestimosPage() {
                             <AlertCircle size={12} /> Aguardando sua aprovação
                           </PontesBadge>
                         )}
-                        {isParcelado
-                          ? <PontesBadge tone="neutral" size="sm">Parcelado {e.quantidadeParcelas}x</PontesBadge>
-                          : <PontesBadge tone="neutral" size="sm">À vista</PontesBadge>}
                       </div>
                       <span className={styles.itemSub}>
-                        {isEmprestei ? "Para: " : "De: "}
-                        <strong>{e.contraparteNome ?? e.pessoa}</strong>
-                        {e.dataVencimento && ` · vence ${formatDate(e.dataVencimento)}`}
+                        <span>
+                          {isEmprestei ? "Para: " : "De: "}
+                          <strong>{e.contraparteNome ?? e.pessoa}</strong>
+                        </span>
+                        {e.dataVencimento && <><span className={styles.itemSubDot}>·</span><span>vence {formatDate(e.dataVencimento)}</span></>}
+                        <span className={styles.itemSubDot}>·</span>
+                        <span>{isParcelado ? `Parcelado ${e.quantidadeParcelas}x` : "À vista"}</span>
                       </span>
                       {!isParcelado && (e.valorComMulta != null || e.valorComJuros != null) && (
                         <span className={styles.itemSub}>
@@ -817,6 +818,7 @@ export default function EmprestimosPage() {
                           <ArchiveRestore size={14} />
                         </PontesIconButton>
                       )}
+                      <span className={styles.actionsDivider} aria-hidden />
                       <PontesIconButton size={32} variant="ghost" aria-label="Remover"
                         onClick={() => setDelId(e.id)}>
                         <Trash2 size={14} />
