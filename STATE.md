@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-13
+last_reviewed: 2026-08-14
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-13: verificação ao vivo do pagamento em lote concluída (2 parcelas viraram Paga certo). Gustavo achou gap real na sequência: sobra que não fechava uma parcela inteira sumia do rastro (dinheiro real saía da conta, só parte ficava vinculada ao empréstimo) — pediu correção antes de tudo ("isso é core, dinheiro sumindo é sério"). Implementado adiantamento parcial: `EmprestimoParcela.ValorPago` novo, algoritmo aplica 100% do valor (parcial inclusive) em vez de descartar sobra, badge nova no front. Back 388/388 (+5), front 334/334 (+1). No processo, erro de automação fez um clique cair no empréstimo real "Aluguel atrasado" (R$30 aplicado por engano) — detectado e revertido na hora via Postgres, confirmado R$0,00 de novo, lição gravada em memória. Detalhe completo: `docs/features/emprestimo-compartilhado/pagamento-aprovacao.md` seção "Sobra parcial vira adiantamento". Sessão anterior (2026-08-12): Sessão 2026-08-11: achado 3 (apagar vinculado sem atividade) ✅ implementado e commitado (`a428d2b`). Sessão 2026-08-12: achado ao vivo — aprovar/rejeitar solicitação só existia enterrado no modal "Histórico". 3 rodadas de redesign no mesmo dia, cada uma a pedido explícito do Gustavo: (1) badge + painel amarelo expansível → não agradou; (2) botões verde/vermelho na linha + clique abre modal filtrado → "não quero que abra assim nem a pau, quero que abra em baixo"; (3) final: botões preenchidos 24px espaçados + badge "Aguardando aprovação" + histórico 100% inline embaixo da parcela (sem modal nenhum). No caminho: 2 bugs reais pegos nos testes (`Dictionary.GetValueOrDefault` com Guid não distingue ausente de zerado; `EmprestimoPagamentoSolicitacaoDto` nunca expunha `ParcelaId`), e biblioteca Pontes ganhou `variant="success"`/`"danger"` preenchidos + tamanho `24` (Button/IconButton, com demo+teste, regra do projeto). Back 381/381, front 331/331, tsc+lint limpos. **Depois disso, mais um bug real achado na verificação:** Gustavo aprovou pela linha da parcela e a tela continuou mostrando "Aguardando aprovação" mesmo o backend tendo aprovado certo (conferido no Postgres) — cache de parcelas/histórico inline não recarregava após aprovar/rejeitar/reenviar. Corrigido (`refreshParcelasEHistoricoInline`), front 332/332 (+1). Também respondidas 2 perguntas de conformidade do Gustavo sobre o histórico de pagamento (nome de conta do devedor aparecendo pro credor tem base legal — LGPD Art. 7º-V, execução de contrato a pedido do titular — mas falta transparência explícita, catalogado P3 junto do #126; e confirmado que "aprovar sem registrar entrada" já foi decidido e fechado de propósito em 2026-08-05, ligado ao bug do "Móveis" que motivou o módulo). Verificado ao vivo com empréstimo de teste dedicado, deixado no ar a pedido do Gustavo. **Depois disso, achado maior: valor de pagamento vinculado a uma parcela sem validar contra o valor dela** ("associação de uma entrada de 200 numa parcela de 50 e não deu pra colocar outra sendo que esse 200 dava pra pagar tudo"). Pesquisa leve de mercado a pedido do Gustavo ("faz um estudo disso e me traz todas as opções") confirmou: financiamento bancário real abate parcelas seguintes automaticamente com o excedente — escolhido "auto-aplica em sequência" (não escolhe mais parcela, só o valor; sistema cobre as pendentes mais antigas, quantas fechar por completo). Redesenho grande: `SolicitarPagamentoEmprestimoDto.ParcelaId` removido, `SolicitarPagamentoAsync` passou a devolver `List<...>` (pode gerar N solicitações numa chamada). Seletor de parcela saiu do front. Back 384/384 (+9 no total da sessão), front 333/333. Catalogado achado novo de UI (navbar com contraste quebrado em `/convite/emprestimo/:token`, P2). **Pronto pra commit — sessão longa, parada a pedido do Gustavo antes de terminar a verificação ao vivo do empréstimo de 10 parcelas** (criado e vinculado à Ana, convite aceito ainda não confirmado na sessão). Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado. Próxima sessão: confirmar o teste ao vivo do pagamento em lote se quiser, especificar e implementar unificar/consolidar, ou decidir PR/trocar de frente.'
+foco: 'Módulo Empréstimos — regra do Gustavo (2026-08-06): terminar TUDO mapeado aqui antes de pular pra outra frente do ROADMAP. Sessão 2026-08-14: implementado e polido "arquivar/ocultar quitado" por completo (backend: campos per-usuário `ArquivadoPorCriador`/`ArquivadoPorContraparte`, endpoints arquivar/desarquivar, filtro na listagem; frontend: botão Arquivar/Desarquivar + filtro chip "Arquivados" no cabeçalho, redesenhado 2x a pedido do Gustavo — checkbox→chip, depois mais respiro geral na lista inteira: padding maior, badge de forma de pagamento saiu do amontoado pra linha de baixo, gap maior nos ícones de ação, divisor antes do Remover). Back 393/393, front 340/340, tsc+lint limpos, tudo verificado ao vivo com empréstimo de teste. Commits `740d8ae`..`9a57198`, tudo pushado, working tree limpo. Histórico detalhado das sessões anteriores (2026-08-08 a 2026-08-13) no corpo abaixo. Única peça mapeada ainda faltando pro módulo fechar por completo: "unificar/consolidar" — ainda NÃO especificado.'
 ---
 
 # STATE — onde parei
@@ -564,6 +564,41 @@ empréstimo quitado".
    próxima sessão (reboots já aconteceram entre sessões recentes; Docker Desktop pode não subir
    sozinho, precisa `Start-Process` manual às vezes).
 
+**Sessão 2026-08-14 — "arquivar/ocultar quitado" implementado, testado e polido:**
+
+Servidores caídos no início (reboot entre sessões) — Postgres subiu sozinho, backend e frontend
+resubidos manualmente sem incidente.
+
+Implementado exatamente como especificado na sessão anterior: `Emprestimo` ganhou
+`ArquivadoPorCriador`/`ArquivadoPorContraparte` (bool, migration `AddArquivarEmprestimo`,
+per-usuário — arquivar não afeta a visão da contraparte), só permitido pra `Quitado`
+(`ArgumentException` senão). `ListarAsync` ganhou `incluirArquivados` (default false).
+Endpoints `PATCH /emprestimos/{id}/arquivar` e `/desarquivar`, idempotentes. Frontend: botão
+`Arquivar`/`Desarquivar` nos itens quitados + checkbox "Mostrar arquivados" no cabeçalho. Back
+393/393 (+4), front 340/340 (+4), tsc+lint limpos. Verificado ao vivo com "TESTE emprestimo grande
+10x" (virou quitado nesse meio tempo) — ciclo completo arquivar→some→toggle revela→desarquivar→volta.
+
+**Round 1 de feedback visual:** Gustavo, olhando o checkbox: "não gostei de como ficou esse botão
+feio aí em cima, faz um filtro aí bonitinho". Trocado `PontesCheckbox` pelo padrão de filtro chip
+já usado em `TransactionsPage` (`PontesButton size="sm" variant={ativo?"primary":"outline"}` com
+ícone) — reaproveitou convenção existente em vez de inventar um padrão novo. Verificado ao vivo
+(outline quando inativo, azul preenchido quando ativo).
+
+**Round 2, escopo maior:** "eu não tô gostando da visualização dessa parte de seus empréstimos
+mesmo" — perguntado o que especificamente, resposta: "layout geral/densidade". Ajustes na lista
+inteira (não só o filtro): padding do item 16px→20px/24px, badge de forma de pagamento ("Parcelado
+Nx"/"À vista") saiu do amontoado de badges de status pra virar texto simples na linha de
+contraparte/vencimento (reduz de até 5 badges pra até 4, e tira a mais "decorativa" delas do
+cluster), gap dos ícones de ação 2px→6px (mesma lição já aplicada nos botões da parcela em
+2026-08-12 — cramped demais gera mis-click, como aconteceu literalmente nesta mesma sessão ao
+clicar errado numa lista de botões repetidos), divisor sutil antes do "Remover" (separa ação
+destrutiva do resto). Front 340/340, tsc+lint limpos. Verificado ao vivo — Gustavo ainda não deu
+feedback final sobre esse segundo round quando a sessão foi interrompida pra compactar.
+
+Tudo commitado e pushado: `740d8ae` (feature), `d7b09ec` (chip), `9a57198` (densidade). Working
+tree limpo. Detalhe técnico completo: `docs/features/emprestimo-compartilhado/pagamento-aprovacao.md`
+→ seção "Arquivar/ocultar empréstimo quitado".
+
 **Achados que ainda restam no intake do ROADMAP** (não atacados nesta sessão):
 - 🟡 P2 — Empréstimo ↔ Conta/Transacao real — **resolvido** para os dois fluxos existentes (criação
   e pagamento com aprovação já vinculam transação real dos dois lados). A "QUESTÃO CRÍTICA" de
@@ -581,9 +616,12 @@ empréstimo quitado".
 
 ## Próxima ação concreta
 
-1. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
+1. (Se o Gustavo pedir) Confirmar se o ajuste de densidade/respiro da lista de empréstimos
+   (`9a57198`) ficou bom, ou precisa de mais uma rodada — feedback ainda não veio antes da sessão
+   ser interrompida.
+2. Especificar "unificar/consolidar" em detalhe (nova seção na spec, decisões de modelagem) antes
    de codar — última peça mapeada faltando pro módulo Empréstimos fechar por completo.
-2. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
+3. Depois de implementar: decidir PR, ou trocar de frente (regra do Gustavo — módulo por completo
    primeiro).
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
