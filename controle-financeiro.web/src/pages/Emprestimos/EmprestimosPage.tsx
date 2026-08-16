@@ -814,6 +814,13 @@ export default function EmprestimosPage() {
         </PontesAlert>
       )}
 
+      <div className={styles.statsGrid}>
+        <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
+        <PontesStatCard label="A pagar" value={formatMoney(totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
+        <PontesStatCard label="Vencido" value={formatMoney(totalAReceberVencido)} hint="atrasado, ainda não recebido" tone="danger" />
+        <PontesStatCard label="Ativos" value={String(qtdAtivos)} hint="empréstimos em andamento" />
+      </div>
+
       {(candidatosConsolidacao.length > 0 || consolidacoesEnviadas.length > 0) && (
         <PontesCard padding={16} radius={16}>
           <div className={styles.listHeadTitle}>Consolidar dívidas</div>
@@ -844,13 +851,6 @@ export default function EmprestimosPage() {
           </ul>
         </PontesCard>
       )}
-
-      <div className={styles.statsGrid}>
-        <PontesStatCard label="A receber" value={formatMoney(totalAReceber)} hint="dinheiro que emprestei" tone="success" />
-        <PontesStatCard label="A pagar" value={formatMoney(totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
-        <PontesStatCard label="Vencido" value={formatMoney(totalAReceberVencido)} hint="atrasado, ainda não recebido" tone="danger" />
-        <PontesStatCard label="Ativos" value={String(qtdAtivos)} hint="empréstimos em andamento" />
-      </div>
 
       <PontesCard padding={0} radius={16}>
         <div className={styles.listHead}>
@@ -890,7 +890,7 @@ export default function EmprestimosPage() {
                     </div>
                     <div className={styles.itemMeta}>
                       <div className={styles.itemHead}>
-                        <span className={styles.itemDesc}>{e.descricao}</span>
+                        <span className={styles.itemDesc} title={e.descricao}>{e.descricao}</span>
                         {e.quitado && <PontesBadge tone="success" size="sm">Quitado</PontesBadge>}
                         {e.vencido && !e.quitado && <PontesBadge tone="danger" size="sm">Vencido</PontesBadge>}
                         {e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (

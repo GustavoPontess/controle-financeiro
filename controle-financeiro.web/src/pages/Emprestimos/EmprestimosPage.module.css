@@ -26,7 +26,11 @@
 
 .itemMeta { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .itemHead { display: flex; align-items: center; gap: 8px; row-gap: 6px; flex-wrap: wrap; }
-.itemDesc { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.itemDesc {
+  font-size: 14px; font-weight: 700; color: var(--pontes-text);
+  flex: 0 1 auto; min-width: 0; max-width: 280px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .itemSub { font-size: 12px; color: var(--pontes-text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .itemSub strong { color: var(--pontes-text); font-weight: 700; }
 .itemSubDot { opacity: 0.6; }
@@ -40,7 +44,8 @@
 .itemValue[data-tone="success"] { color: var(--pontes-success); }
 .itemValue[data-tone="danger"] { color: var(--pontes-danger); }
 .itemValueLabel { font-size: 11px; color: var(--pontes-text-muted); }
-.actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; opacity: 0; transition: opacity .12s ease; }
+.item:hover .actions, .item:focus-within .actions { opacity: 1; }
 .actionsDivider { width: 1px; height: 18px; background: var(--pontes-border); margin: 0 2px; }
 
 .formCol { display: flex; flex-direction: column; gap: 14px; }

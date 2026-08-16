@@ -18,6 +18,7 @@ import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import ParcelamentosPage from "../pages/Parcelamentos"
 import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
+import EmprestimosLabPage from "../pages/Emprestimos/EmprestimosLabPage"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import FamiliaDetalhePage from "../pages/Familia/FamiliaDetalhePage"
@@ -88,6 +89,7 @@ export default function AppRoutes() {
           <Route path="/parcelamentos" element={<ParcelamentosPage />} />
           <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
+          <Route path="/emprestimos-lab" element={<EmprestimosLabPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/familias/:id" element={<FamiliaDetalhePage />} />
