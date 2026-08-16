@@ -685,13 +685,64 @@ Detalhe técnico completo: `docs/features/emprestimo-compartilhado/parcelamento-
 pagamento com aprovação, parcelas/juros/multa, arquivar/ocultar, unificar/consolidar) implementado
 e testado.
 
+**Sessão 2026-08-14 (3ª do dia) — UI da tela de Empréstimos incomodando o Gustavo, resolvido via
+bancada de teste funcional (`/emprestimos-lab`):**
+
+Depois do "unificar/consolidar" pronto, Gustavo pediu uma demo ao vivo (2 empréstimos de teste
+"TESTE consolidar A/B", propor → aceitar, igual à verificação automatizada) — funcionou igual.
+Perguntado "e agora o que falta?", respondido: módulo fechado, só falta decidir PR vs próxima
+frente. Ele então: "sem pr da branch ainda essa tela de emprestimos... não gostei de como ta".
+
+**3 ajustes diretos na tela real, nenhum resolveu sozinho (mas ficaram, são melhorias reais):**
+1. Card "Consolidar dívidas" — estava entre título e KPIs (quebrava o fluxo título→KPIs→lista que
+   já existia antes da feature) → movido pra logo antes da lista.
+2. Descrição longa (ex. "Consolidação com Ana Paula Cesar Martins Oliveira") quebrava em 2 linhas
+   e desalinhava a altura das linhas da lista → trunca com ellipsis + `title=` no hover pro nome
+   completo. Bug real que eu mesmo causei no meio do fix: dei `flex-grow:1` no título, ele tomou
+   todo o espaço da linha e empurrou os badges pra quebrar linha — corrigido pra `flex: 0 1 auto`.
+3. Removido e devolvido no mesmo turno: badge "Vinculado" (tirei achando redundante — aparece em
+   100% das linhas — Gustavo mandou voltar: "o bedge de vinculado tem que ter"). Ícones de ação
+   (Registrar pagamento/Quitar/Histórico/Remover) só aparecem no hover da linha agora — reduz
+   ruído visual constante, mantido.
+
+**"não resolveu" de novo → pedido de bancada de teste** ("cria uma pagina teste pra gente ai
+testar novos estilos"): nova rota `/emprestimos-lab` (sem link no menu, só URL direta), 3
+composições lado a lado com o empréstimo ativo real — **A · Extrato** (1 linha, sem card, borda
+colorida em vez de badge), **B · Tabela** (planilha densa, coluna de ações fixa), **C · Agrupado
+por pessoa** (subtotal por contraparte). Gustavo: "o agrupado traz pouca informação... cadê
+vinculado, cadê os botões de ação?" — corrigido: as 3 variantes ganharam o mesmo cluster de
+badges de status e os mesmos ícones de ação da tela real. Depois: "clico nos botões não acontece
+nada, quero telas funcionais" — **os ícones foram religados nos MESMOS serviços da tela
+principal** (`solicitarPagamentoEmprestimo`, `quitarEmprestimo`, `deleteEmprestimo`,
+`listSolicitacoesPagamento`, `listParcelasEmprestimo`), com os mesmos modais/confirmações
+(`PontesDialog` pra quitar/remover, `PontesModal` com o gate existente/novo pra registrar
+pagamento). **Verificado ao vivo:** "Ver histórico" abriu modal real com dado real ("Nenhum
+pagamento solicitado ainda" pra Fiança Loft, correto), "Ver parcelas" buscou parcelas reais da
+API (parcela 1/2 Paga, 2/2 Pendente da "TESTE aprovar parcela inline"). Ainda sem reação final do
+Gustavo sobre qual das 3 composições prefere.
+
+**Também nesta sessão:** renomeada a conta seed real da Ana pra **"Bobe"** a pedido do Gustavo
+("Tudo que tiver o nome da Ana eu preciso trocar pra bobe") — `Usuarios.Nome`/`Email` no Postgres
+(`bobe.seed@local.test`) + label do painel DEV de login (`.env` do frontend, gitignored, Vite
+reiniciado pra recarregar). Confirmado zero linha com "ana" restando em `Usuarios` (nome ou
+e-mail). Campos de texto livre já existentes (Descricao/Pessoa de empréstimos antigos) ficaram
+como estavam — Gustavo não confirmou se quer trocar esses também.
+
+Front 345/345 (sem teste novo pro `/emprestimos-lab` — é bancada de teste explícita, não feature
+shippada, mesmo espírito de exceção de "copy/CSS" do §7), `npm run build` limpo, lint limpo.
+Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
+
 ## Próxima ação concreta
 
-1. **Commitar e pushar** o trabalho desta sessão (unificar/consolidar + fix do `npm run build`) —
-   ainda não commitado no momento em que este arquivo foi atualizado.
-2. Decidir: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
-   acumulados desde 2026-07-20), ou escolher outra frente do ROADMAP — módulo Empréstimos não
-   segura mais a decisão (regra do Gustavo já satisfeita, tudo mapeado está feito).
+1. Gustavo reage à bancada `/emprestimos-lab` — qual das 3 composições (Extrato/Tabela/Agrupado
+   por pessoa) prefere, ou se nenhuma resolve o "misturado" e precisa de uma 4ª direção.
+2. Depois de escolher: portar a composição vencedora pra `EmprestimosPage.tsx` de verdade (a lab
+   é só bancada, não substitui a tela real) — com teste automatizado dessa vez, já que vira
+   feature de verdade.
+3. Decidir: apagar `/emprestimos-lab` depois de usada, ou deixar pra próximas rodadas de design.
+4. Só depois: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
+   acumulados desde 2026-07-20) — módulo Empréstimos já está fechado no backend, só falta a UI
+   assentar.
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
