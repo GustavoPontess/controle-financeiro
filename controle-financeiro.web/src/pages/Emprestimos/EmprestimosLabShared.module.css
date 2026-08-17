@@ -1,0 +1,18 @@
+/* Compartilhado pelas 3 páginas de bancada (lab-a/b/c) — estilo dos modais/formulários, idêntico
+   ao padrão da tela real (EmprestimosPage.module.css), só renomeado pro contexto da bancada. */
+.formCol { display: flex; flex-direction: column; gap: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hintText { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
+
+.pendentesList { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pendenteItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pendenteDesc { font-size: 13px; color: var(--pontes-text); }
+
+.vincularLinkBox { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 12px; word-break: break-all; }
+
+.gateGroup { display: flex; flex-direction: column; gap: 8px; }
+.gateOption { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--pontes-text); cursor: pointer; line-height: 1.4; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pontes-border); }
+.gateOption input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }
+.gateOption[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }
+
+.actions { display: flex; align-items: center; gap: 6px; }

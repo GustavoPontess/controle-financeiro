@@ -1,0 +1,63 @@
+/* Lab C — Agrupado por pessoa: hero dashboard, cards grandes, tudo organizado por contraparte. */
+.root { display: flex; flex-direction: column; gap: 22px; font-family: var(--pontes-font); padding-bottom: 60px; }
+
+.labTag {
+  align-self: flex-start; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--pontes-text-muted); background: var(--pontes-bg); border: 1px solid var(--pontes-border);
+  padding: 3px 10px; border-radius: 999px;
+}
+
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.title { font-family: var(--pontes-font-heading); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 4px; }
+
+/* Hero — 2 números grandes lado a lado + 2 secundários menores */
+.hero { display: grid; grid-template-columns: 1.4fr 1.4fr 1fr; gap: 16px; }
+.heroMain {
+  padding: 20px 22px; border-radius: 18px; background: var(--pontes-bg); border: 1px solid var(--pontes-border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.heroLabel { font-size: 12px; color: var(--pontes-text-muted); font-weight: 600; }
+.heroValue { font-family: var(--pontes-font-heading); font-size: 28px; font-weight: 800; }
+.heroValue[data-tone="success"] { color: var(--pontes-success); }
+.heroValue[data-tone="danger"] { color: var(--pontes-danger); }
+.heroSecondary { display: flex; flex-direction: column; gap: 12px; }
+.heroSmall { padding: 12px 16px; border-radius: 14px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); }
+.heroSmallLabel { font-size: 11px; color: var(--pontes-text-muted); }
+.heroSmallValue { font-size: 16px; font-weight: 700; color: var(--pontes-text); }
+.heroSmallValue[data-tone="danger"] { color: var(--pontes-danger); }
+
+.consolidarStrip { display: flex; flex-direction: column; gap: 8px; }
+.consolidarRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 12px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 13px; }
+
+.grupoWrap { display: flex; flex-direction: column; gap: 18px; }
+.grupoHead { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--pontes-border); gap: 12px; flex-wrap: wrap; }
+.grupoIdentity { display: flex; align-items: center; gap: 10px; }
+.grupoAvatar {
+  width: 34px; height: 34px; border-radius: 999px; background: var(--pontes-primary-soft, color-mix(in srgb, var(--pontes-primary) 16%, transparent));
+  color: var(--pontes-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.grupoNome { font-size: 15px; font-weight: 700; color: var(--pontes-text); }
+.grupoMeta { font-size: 11px; color: var(--pontes-text-muted); }
+.grupoRight { display: flex; align-items: center; gap: 12px; }
+.grupoTotal { font-size: 17px; font-weight: 800; color: var(--pontes-text); }
+.grupoChip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: var(--pontes-warning-soft, #fff8e6); color: var(--pontes-warning, #a16b00); font-weight: 700; }
+
+.grupoList { list-style: none; margin: 0; padding: 4px 0; }
+.grupoItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 20px; font-size: 13px; color: var(--pontes-text); }
+.grupoItem:hover { background: var(--pontes-bg); }
+.grupoItem[data-quitado="true"] { opacity: .55; }
+.grupoItemMain { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.grupoItemHead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.grupoItemHead > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; font-weight: 600; }
+.grupoItemSub { font-size: 11px; color: var(--pontes-text-muted); }
+.grupoItemValor { flex-shrink: 0; font-weight: 700; }
+.grupoItemValor[data-tone="danger"] { color: var(--pontes-danger); }
+
+.parcelasWrap { display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; background: var(--pontes-bg); font-size: 12px; }
+.parcelaRow { display: flex; align-items: center; gap: 14px; }
+.parcelaRow span:nth-child(1) { color: var(--pontes-text-muted); min-width: 40px; }
+.parcelaRow span:nth-child(2) { flex: 1; color: var(--pontes-text); }
+.parcelaRow span:nth-child(3) { font-weight: 700; color: var(--pontes-text); }
+
+.emptyWrap { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
