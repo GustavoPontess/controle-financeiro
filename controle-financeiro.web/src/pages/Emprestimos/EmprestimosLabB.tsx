@@ -12,6 +12,7 @@ import { FormaPagamentoEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
+import EmprestimosLabNav from "./EmprestimosLabNav"
 import styles from "./EmprestimosLabB.module.css"
 
 export default function EmprestimosLabB() {
@@ -29,7 +30,7 @@ export default function EmprestimosLabB() {
 
   return (
     <div className={styles.root}>
-      <span className={styles.labTag}>Bancada · Lab B</span>
+      <EmprestimosLabNav current="b" />
 
       <div className={styles.header}>
         <div>
@@ -43,11 +44,23 @@ export default function EmprestimosLabB() {
         </div>
       </div>
 
-      <div className={styles.pillsRow}>
-        <span className={styles.pill}><span className={styles.pillDot} data-tone="success" />A receber <span className={styles.pillValue}>{formatMoney(l.totalAReceber)}</span></span>
-        <span className={styles.pill}><span className={styles.pillDot} data-tone="danger" />A pagar <span className={styles.pillValue}>{formatMoney(l.totalAPagar)}</span></span>
-        <span className={styles.pill}><span className={styles.pillDot} data-tone="danger" />Vencido <span className={styles.pillValue}>{formatMoney(l.totalAReceberVencido)}</span></span>
-        <span className={styles.pill}><span className={styles.pillDot} data-tone="neutral" />Ativos <span className={styles.pillValue}>{l.qtdAtivos}</span></span>
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>A receber</span>
+          <span className={styles.statValue} data-tone="success">{formatMoney(l.totalAReceber)}</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>A pagar</span>
+          <span className={styles.statValue} data-tone="danger">{formatMoney(l.totalAPagar)}</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Vencido</span>
+          <span className={styles.statValue} data-tone="danger">{formatMoney(l.totalAReceberVencido)}</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Ativos</span>
+          <span className={styles.statValue}>{l.qtdAtivos}</span>
+        </div>
       </div>
 
       {(l.pendentes.length > 0 || l.consolidacoesRecebidas.length > 0) && (

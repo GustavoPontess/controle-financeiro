@@ -10,6 +10,7 @@ import { FormaPagamentoEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
+import EmprestimosLabNav from "./EmprestimosLabNav"
 import styles from "./EmprestimosLabC.module.css"
 
 const iniciais = (nome: string) => nome.trim().slice(0, 2).toUpperCase()
@@ -30,7 +31,7 @@ export default function EmprestimosLabC() {
 
   return (
     <div className={styles.root}>
-      <span className={styles.labTag}>Bancada · Lab C</span>
+      <EmprestimosLabNav current="c" />
 
       <div className={styles.header}>
         <div>
@@ -43,22 +44,28 @@ export default function EmprestimosLabC() {
       </div>
 
       <div className={styles.hero}>
+        <div className={styles.heroBlob} />
         <div className={styles.heroMain}>
-          <span className={styles.heroLabel}>A receber</span>
-          <span className={styles.heroValue} data-tone="success">{formatMoney(l.totalAReceber)}</span>
+          <div className={styles.heroLabel}>A receber</div>
+          <div className={styles.heroValue}>{formatMoney(l.totalAReceber)}</div>
+          <div className={styles.heroSub}>dinheiro que emprestei, ainda não recebido</div>
         </div>
-        <div className={styles.heroMain}>
-          <span className={styles.heroLabel}>A pagar</span>
-          <span className={styles.heroValue} data-tone="danger">{formatMoney(l.totalAPagar)}</span>
-        </div>
-        <div className={styles.heroSecondary}>
-          <div className={styles.heroSmall}>
-            <div className={styles.heroSmallLabel}>Vencido</div>
-            <div className={styles.heroSmallValue} data-tone="danger">{formatMoney(l.totalAReceberVencido)}</div>
-          </div>
-          <div className={styles.heroSmall}>
-            <div className={styles.heroSmallLabel}>Ativos</div>
-            <div className={styles.heroSmallValue}>{l.qtdAtivos}</div>
+        <div className={styles.heroSide}>
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue} data-tone="down">{formatMoney(l.totalAPagar)}</span>
+              <span className={styles.heroStatLabel}>A pagar</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue} data-tone="down">{formatMoney(l.totalAReceberVencido)}</span>
+              <span className={styles.heroStatLabel}>Vencido</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue}>{l.qtdAtivos}</span>
+              <span className={styles.heroStatLabel}>Ativos</span>
+            </div>
           </div>
         </div>
       </div>

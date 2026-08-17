@@ -4,11 +4,12 @@
 import React from "react"
 import { formatMoney } from "@/utils/money"
 import { Plus, Layers, Ban } from "lucide-react"
-import { PontesButton, PontesAlert } from "@/components/pontes"
+import { PontesButton, PontesAlert, PontesStatCard } from "@/components/pontes"
 import { FormaPagamentoEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
+import EmprestimosLabNav from "./EmprestimosLabNav"
 import styles from "./EmprestimosLabA.module.css"
 
 export default function EmprestimosLabA() {
@@ -16,7 +17,7 @@ export default function EmprestimosLabA() {
 
   return (
     <div className={styles.root}>
-      <span className={styles.labTag}>Bancada · Lab A</span>
+      <EmprestimosLabNav current="a" />
 
       <div className={styles.header}>
         <div>
@@ -59,23 +60,11 @@ export default function EmprestimosLabA() {
         </PontesAlert>
       )}
 
-      <div className={styles.kpiStrip}>
-        <div className={styles.kpiItem}>
-          <span className={styles.kpiLabel}>A receber</span>
-          <span className={styles.kpiValue} data-tone="success">{formatMoney(l.totalAReceber)}</span>
-        </div>
-        <div className={styles.kpiItem}>
-          <span className={styles.kpiLabel}>A pagar</span>
-          <span className={styles.kpiValue} data-tone="danger">{formatMoney(l.totalAPagar)}</span>
-        </div>
-        <div className={styles.kpiItem}>
-          <span className={styles.kpiLabel}>Vencido</span>
-          <span className={styles.kpiValue} data-tone="danger">{formatMoney(l.totalAReceberVencido)}</span>
-        </div>
-        <div className={styles.kpiItem}>
-          <span className={styles.kpiLabel}>Ativos</span>
-          <span className={styles.kpiValue}>{l.qtdAtivos}</span>
-        </div>
+      <div className={styles.statsGrid}>
+        <PontesStatCard label="A receber" value={formatMoney(l.totalAReceber)} hint="dinheiro que emprestei" tone="success" />
+        <PontesStatCard label="A pagar" value={formatMoney(l.totalAPagar)} hint="dinheiro que peguei emprestado" tone="danger" />
+        <PontesStatCard label="Vencido" value={formatMoney(l.totalAReceberVencido)} hint="atrasado, ainda não recebido" tone="danger" />
+        <PontesStatCard label="Ativos" value={String(l.qtdAtivos)} hint="empréstimos em andamento" />
       </div>
 
       {(l.candidatosConsolidacao.length > 0 || l.consolidacoesEnviadas.length > 0) && (

@@ -1,31 +1,38 @@
 /* Lab C — Agrupado por pessoa: hero dashboard, cards grandes, tudo organizado por contraparte. */
 .root { display: flex; flex-direction: column; gap: 22px; font-family: var(--pontes-font); padding-bottom: 60px; }
 
-.labTag {
-  align-self: flex-start; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--pontes-text-muted); background: var(--pontes-bg); border: 1px solid var(--pontes-border);
-  padding: 3px 10px; border-radius: 999px;
-}
-
 .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .title { font-family: var(--pontes-font-heading); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
 .subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 4px; }
 
-/* Hero — 2 números grandes lado a lado + 2 secundários menores */
-.hero { display: grid; grid-template-columns: 1.4fr 1.4fr 1fr; gap: 16px; }
-.heroMain {
-  padding: 20px 22px; border-radius: 18px; background: var(--pontes-bg); border: 1px solid var(--pontes-border);
-  display: flex; flex-direction: column; gap: 4px;
+/* Hero — mesmo padrão gradiente da TransactionsPage (referência do Gustavo), adaptado pros
+   KPIs de empréstimo: "A receber" em destaque + A pagar/Vencido/Ativos ao lado. */
+.hero {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg);
+  background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
+  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between;
+  gap: 32px; flex-wrap: wrap;
 }
-.heroLabel { font-size: 12px; color: var(--pontes-text-muted); font-weight: 600; }
-.heroValue { font-family: var(--pontes-font-heading); font-size: 28px; font-weight: 800; }
-.heroValue[data-tone="success"] { color: var(--pontes-success); }
-.heroValue[data-tone="danger"] { color: var(--pontes-danger); }
-.heroSecondary { display: flex; flex-direction: column; gap: 12px; }
-.heroSmall { padding: 12px 16px; border-radius: 14px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); }
-.heroSmallLabel { font-size: 11px; color: var(--pontes-text-muted); }
-.heroSmallValue { font-size: 16px; font-weight: 700; color: var(--pontes-text); }
-.heroSmallValue[data-tone="danger"] { color: var(--pontes-danger); }
+.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+.heroMain { position: relative; min-width: 0; }
+.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+.heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+.heroStats { display: flex; align-items: stretch; gap: 18px; }
+.heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.heroStatValue[data-tone="up"] { color: #4ADE80; }
+.heroStatValue[data-tone="down"] { color: #FB7185; }
+.heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatDivider { width: 1px; background: rgba(255, 255, 255, 0.22); }
+
+@media (max-width: 720px) {
+  .hero { gap: 20px; }
+  .heroSide { align-items: flex-start; width: 100%; }
+  .heroStats { width: 100%; justify-content: space-between; }
+  .heroStat { align-items: flex-start; }
+}
 
 .consolidarStrip { display: flex; flex-direction: column; gap: 8px; }
 .consolidarRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 12px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 13px; }

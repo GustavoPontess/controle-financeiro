@@ -1,0 +1,13 @@
+.row { display: flex; align-items: center; gap: 6px; align-self: flex-start; }
+.tag {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--pontes-text-muted); background: var(--pontes-bg); border: 1px solid var(--pontes-border);
+  padding: 3px 10px; border-radius: 999px;
+}
+.navBtn {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 999px; border: 1px solid var(--pontes-border); background: var(--pontes-surface);
+  color: var(--pontes-text-muted); cursor: pointer; transition: background-color .12s ease, color .12s ease;
+  padding: 0;
+}
+.navBtn:hover { background: var(--pontes-bg); color: var(--pontes-text); }
