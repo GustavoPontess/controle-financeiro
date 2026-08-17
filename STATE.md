@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-14
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde a sessão 2026-08-14 (unificar/consolidar implementado e auditável). Sessão 2026-08-14 (3ª do dia) virou pra polish de UI: Gustavo achou a tela de Empréstimos "misturada" — 3 rodadas de ajuste direto na tela real (moveu card "Consolidar dívidas" pra baixo dos KPIs, truncou descrição longa com ellipsis, tirou e devolveu o badge "Vinculado") não resolveram; ele pediu uma bancada de teste separada (`/emprestimos-lab`, sem link no menu) com 3 composições diferentes (Extrato/Tabela/Agrupado por pessoa) usando dado real — depois pediu que os botões fossem FUNCIONAIS de verdade (mesmos serviços da tela principal: registrar pagamento, quitar, remover, histórico, parcelas), não só visual. Implementado. Também nesta sessão: renomeada a conta seed real da Ana pra "Bobe" (Usuarios.Nome/Email no Postgres + painel DEV do login via `.env` gitignored) a pedido do Gustavo, e a mesma consolidação de teste foi demonstrada ao vivo de novo (2 empréstimos novos "TESTE juncao C/D"). **Working tree com mudança não commitada no momento deste registro** — ver "Próxima ação concreta". Histórico das sessões anteriores (2026-08-08 a 2026-08-14 unificar/consolidar) no corpo abaixo.'
+foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde 2026-08-14 (unificar/consolidar implementado e auditável). UI ainda travada: Gustavo achou a tela "misturada", 3 ajustes diretos não resolveram, virou bancada `/emprestimos-lab` (1 página, 3 composições de LISTA) — ele pediu ações reais nela, feito, mas ainda achou insuficiente ("voce criou so uma parte da tela eu quero mudar a tela inteira"). Sessão seguinte (2026-08-17): refeita como 3 PÁGINAS INTEIRAS separadas e navegáveis (`/emprestimos-lab-a` Extrato minimalista, `/emprestimos-lab-b` Painel administrativo com busca+paginação real, `/emprestimos-lab-c` Agrupado por pessoa hero-dashboard), lógica extraída pra hook compartilhado (`useEmprestimosLogic`) + modais compartilhados, tudo com ações reais, EmprestimosPage.tsx real intocada. **Gustavo viu as 3 e não gostou de nenhuma** ("sla não gostei de nenhum nesse carai vou precisar parar e analisar isso") — parou a iteração por conta própria, sem pedir mais rodada nem direção nova ainda. Commitado (`2020c0d`), não pushado. Também 2026-08-17: renomeada a conta seed real da Ana pra "Bobe" (Postgres + `.env` DEV login). Histórico das sessões anteriores (2026-08-08 a 2026-08-14 unificar/consolidar) no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -734,13 +734,18 @@ Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
 
-1. Gustavo reage à bancada `/emprestimos-lab` — qual das 3 composições (Extrato/Tabela/Agrupado
-   por pessoa) prefere, ou se nenhuma resolve o "misturado" e precisa de uma 4ª direção.
-2. Depois de escolher: portar a composição vencedora pra `EmprestimosPage.tsx` de verdade (a lab
-   é só bancada, não substitui a tela real) — com teste automatizado dessa vez, já que vira
-   feature de verdade.
-3. Decidir: apagar `/emprestimos-lab` depois de usada, ou deixar pra próximas rodadas de design.
-4. Só depois: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
+1. **Gustavo vai analisar por conta própria** (não pediu mais iteração ainda) — próxima sessão
+   começa perguntando se ele já tem direção/referência antes de gerar mais variantes às cegas
+   (2 rodadas de "não gostei" sem referência concreta já gastaram bastante; considerar pedir
+   print/link de referência antes da 3ª rodada, ou uma pergunta mais cirúrgica tipo "o que
+   especificamente incomoda — densidade? cor? hierarquia? organização por pessoa vs por data?").
+2. Bancadas no ar pra ele olhar sozinho: `/emprestimos-lab-a` (extrato), `/emprestimos-lab-b`
+   (painel admin), `/emprestimos-lab-c` (agrupado por pessoa) — todas com ação real.
+3. Depois de escolher (ou pedir 4ª direção): portar a composição vencedora pra
+   `EmprestimosPage.tsx` de verdade — com teste automatizado dessa vez, já que vira feature real.
+   Lógica já está extraída em `useEmprestimosLogic.ts`/`EmprestimosLabModals.tsx`, reaproveitável.
+4. Decidir: apagar as 3 páginas de bancada depois de usadas, ou deixar pra próximas rodadas.
+5. Só depois: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
    acumulados desde 2026-07-20) — módulo Empréstimos já está fechado no backend, só falta a UI
    assentar.
 
