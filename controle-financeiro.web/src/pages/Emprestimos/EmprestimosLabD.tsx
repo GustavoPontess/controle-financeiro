@@ -5,8 +5,8 @@
 import React, { useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { Plus, Layers, Ban, Search } from "lucide-react"
-import { PontesButton, PontesAlert, PontesCard, PontesInput } from "@/components/pontes"
-import { FormaPagamentoEmprestimo } from "../../types/Emprestimo"
+import { PontesButton, PontesAlert, PontesCard, PontesInput, PontesBadge } from "@/components/pontes"
+import { FormaPagamentoEmprestimo, StatusParcelaEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
@@ -193,19 +193,36 @@ export default function EmprestimosLabD() {
                                   <table className={styles.parcelasTable}>
                                     <thead>
                                       <tr>
-                                        <th>Parcela</th><th>Vencimento</th><th className={styles.tRight}>Valor</th>
+                                        <th>Parcela</th><th>Vencimento</th><th>Status</th><th className={styles.tRight}>Valor</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {l.parcelasLoadingId === e.id ? (
-                                        <tr><td colSpan={3}>Carregando…</td></tr>
-                                      ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => (
-                                        <tr key={p.id}>
-                                          <td>{p.numero}/{p.quantidadeTotal}</td>
-                                          <td>vence {new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
-                                          <td className={styles.tRight}>{formatMoney(p.valorComMulta ?? p.valorComJuros ?? p.valor)}</td>
-                                        </tr>
-                                      ))}
+                                        <tr><td colSpan={4}>Carregando…</td></tr>
+                                      ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => {
+                                        const podeAprovar = e.souCredor && !!p.solicitacaoPendenteId
+                                        const valorDevido = p.valorComMulta ?? p.valorComJuros ?? p.valor
+                                        const parcialPaga = p.status === StatusParcelaEmprestimo.Pendente && p.valorPago > 0 && p.valorPago < valorDevido
+                                        return (
+                                          <tr key={p.id}>
+                                            <td>{p.numero}/{p.quantidadeTotal}</td>
+                                            <td>{new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
+                                            <td>
+                                              <PontesBadge size="sm" tone={
+                                                podeAprovar ? "warning"
+                                                  : p.status === StatusParcelaEmprestimo.Paga ? "success"
+                                                  : parcialPaga ? "accent"
+                                                  : p.atrasada ? "danger" : "neutral"
+                                              }>
+                                                {podeAprovar ? "Aguardando aprovação"
+                                                  : parcialPaga ? `${formatMoney(p.valorPago)} de ${formatMoney(valorDevido)} pago`
+                                                  : p.statusDescricao}
+                                              </PontesBadge>
+                                            </td>
+                                            <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
+                                          </tr>
+                                        )
+                                      })}
                                     </tbody>
                                   </table>
                                 </td>
