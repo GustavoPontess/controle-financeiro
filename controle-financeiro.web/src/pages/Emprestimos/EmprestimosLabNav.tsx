@@ -7,9 +7,10 @@ const ORDER = [
   { slug: "a", path: "/emprestimos-lab-a", label: "Bancada · Lab A" },
   { slug: "b", path: "/emprestimos-lab-b", label: "Bancada · Lab B" },
   { slug: "c", path: "/emprestimos-lab-c", label: "Bancada · Lab C" },
+  { slug: "d", path: "/emprestimos-lab-d", label: "Bancada · Lab D" },
 ] as const
 
-export default function EmprestimosLabNav({ current }: { current: "a" | "b" | "c" }) {
+export default function EmprestimosLabNav({ current }: { current: "a" | "b" | "c" | "d" }) {
   const navigate = useNavigate()
   const idx = ORDER.findIndex((o) => o.slug === current)
   const prev = ORDER[(idx - 1 + ORDER.length) % ORDER.length]
