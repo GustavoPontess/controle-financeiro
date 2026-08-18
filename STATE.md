@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-14
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde 2026-08-14 (unificar/consolidar implementado e auditável). UI ainda travada: Gustavo achou a tela "misturada", 3 ajustes diretos não resolveram, virou bancada `/emprestimos-lab` (1 página, 3 composições de LISTA) — ele pediu ações reais nela, feito, mas ainda achou insuficiente ("voce criou so uma parte da tela eu quero mudar a tela inteira"). Sessão seguinte (2026-08-17): refeita como 3 PÁGINAS INTEIRAS separadas e navegáveis (`/emprestimos-lab-a` Extrato minimalista, `/emprestimos-lab-b` Painel administrativo com busca+paginação real, `/emprestimos-lab-c` Agrupado por pessoa hero-dashboard), lógica extraída pra hook compartilhado (`useEmprestimosLogic`) + modais compartilhados, tudo com ações reais, EmprestimosPage.tsx real intocada. **Gustavo viu as 3 e não gostou de nenhuma** ("sla não gostei de nenhum nesse carai vou precisar parar e analisar isso") — parou a iteração por conta própria, sem pedir mais rodada nem direção nova ainda. Commitado (`2020c0d`), não pushado. Também 2026-08-17: renomeada a conta seed real da Ana pra "Bobe" (Postgres + `.env` DEV login). Histórico das sessões anteriores (2026-08-08 a 2026-08-14 unificar/consolidar) no corpo abaixo.'
+foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde 2026-08-14 (unificar/consolidar implementado e auditável). UI em iteração ativa na bancada: depois de rejeitar as 3 primeiras direções (`/emprestimos-lab-a/b/c`, sessão 2026-08-17), Gustavo deu referência CONCRETA (elemento selecionado na própria UI): o `PontesStatCard` padrão da tela real + o hero gradiente da `TransactionsPage`. Sessão 2026-08-17/18: os 3 labs foram redesenhados pra usar esses 2 estilos de card (lab-a: StatCard grid; lab-b: variação compacta do StatCard; lab-c: hero gradiente da TransactionsPage), ganharam navegação ◀▶ entre si (`EmprestimosLabNav`), e nasceu um **lab-d** — junção pedida por ele: tabela densa do lab-b + agrupamento por pessoa do lab-c (cada contraparte vira mini-tabela com subtotal). Lab-d passou por 3 rodadas de refino ao vivo (parcelas viraram tabela de verdade com coluna Status, depois ganharam coluna Pago separada, linha inteira ficou clicável pra expandir em vez de só o ícone). Também: descrições/pessoa antigas com "Ana Paula" (texto livre, não pegava no rename de conta) finalmente trocadas pra "Bobe" em todo o banco, a pedido explícito do Gustavo. Achado à parte: um empréstimo real ("Cemig") foi apagado sem querer durante teste na bancada — recuperado na hora (soft-delete, só virar `Ativo=true` de novo, dado intacto). 4 páginas de bancada seguem no ar (`/emprestimos-lab-a/b/c/d`), Gustavo ainda não escolheu a vencedora. Histórico das sessões anteriores (2026-07-20 a 2026-08-17) no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -734,20 +734,30 @@ Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
 
-1. **Gustavo vai analisar por conta própria** (não pediu mais iteração ainda) — próxima sessão
-   começa perguntando se ele já tem direção/referência antes de gerar mais variantes às cegas
-   (2 rodadas de "não gostei" sem referência concreta já gastaram bastante; considerar pedir
-   print/link de referência antes da 3ª rodada, ou uma pergunta mais cirúrgica tipo "o que
-   especificamente incomoda — densidade? cor? hierarquia? organização por pessoa vs por data?").
-2. Bancadas no ar pra ele olhar sozinho: `/emprestimos-lab-a` (extrato), `/emprestimos-lab-b`
-   (painel admin), `/emprestimos-lab-c` (agrupado por pessoa) — todas com ação real.
-3. Depois de escolher (ou pedir 4ª direção): portar a composição vencedora pra
-   `EmprestimosPage.tsx` de verdade — com teste automatizado dessa vez, já que vira feature real.
-   Lógica já está extraída em `useEmprestimosLogic.ts`/`EmprestimosLabModals.tsx`, reaproveitável.
-4. Decidir: apagar as 3 páginas de bancada depois de usadas, ou deixar pra próximas rodadas.
+1. **Bancada com 4 direções no ar**, Gustavo ainda iterando ativamente (não travado como na
+   sessão anterior — desta vez com referência concreta, progresso real a cada rodada):
+   `/emprestimos-lab-a` (extrato, StatCard grid), `/emprestimos-lab-b` (painel admin, StatCard
+   compacto + busca + paginação real), `/emprestimos-lab-c` (agrupado por pessoa, hero gradiente
+   da TransactionsPage), `/emprestimos-lab-d` (junção B+C: tabela densa agrupada por pessoa —
+   a mais recente, também a mais refinada em detalhe até agora). Nav ◀▶ entre as 4
+   (`EmprestimosLabNav`, ordem a→b→c→d→a).
+2. Continuar refinando o que o Gustavo apontar (padrão da sessão: ele reage a screenshot/elemento
+   selecionado, pede ajuste específico — funcionou bem, manter esse ritmo em vez de gerar
+   variantes novas do zero).
+3. Depois de escolher: portar a composição vencedora pra `EmprestimosPage.tsx` de verdade — com
+   teste automatizado dessa vez, já que vira feature real. Lógica já extraída em
+   `useEmprestimosLogic.ts`/`EmprestimosLabModals.tsx`/`EmprestimosLabItemParts.tsx`, reaproveitável.
+4. Decidir: apagar as páginas de bancada depois de usadas, ou deixar pra próximas rodadas.
 5. Só depois: abrir PR da branch `feature/emprestimo-compartilhado` (nunca aberto, muitos commits
    acumulados desde 2026-07-20) — módulo Empréstimos já está fechado no backend, só falta a UI
    assentar.
+
+**Achado catalogado, não é bug:** free-text `Pessoa`/`Descricao` de empréstimos antigos podem
+divergir do nome oficial do usuário vinculado se ele for renomeado depois (aconteceu com Ana→Bobe,
+corrigido manualmente via SQL duas vezes já). Não há sincronização automática — o campo é
+snapshot no momento da criação. Não catalogado como P-alguma coisa porque é comportamento
+esperado (mesmo texto livre existe pra permitir descrever alguém sem conta), só registrado aqui
+como lição pra próxima vez que um nome de seed mudar.
 
 **Depois de fechar Empréstimos por completo — escolha de direção** (decidir com o Gustavo):
 - **2.3-frontend** (badge de papel, convite com papel, promover/rebaixar, gates de UI) — ainda pendente, sem trabalho nesta sessão.
