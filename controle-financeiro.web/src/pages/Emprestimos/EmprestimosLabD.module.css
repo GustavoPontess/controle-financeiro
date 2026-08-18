@@ -56,10 +56,14 @@
 .tBadges { display: flex; gap: 4px; flex-wrap: wrap; }
 .rowActions { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
 
-.parcelasWrap { display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; background: var(--pontes-bg); font-size: 12px; }
-.parcelaRow { display: flex; align-items: center; gap: 14px; }
-.parcelaRow span:nth-child(1) { color: var(--pontes-text-muted); min-width: 40px; }
-.parcelaRow span:nth-child(2) { flex: 1; color: var(--pontes-text); }
-.parcelaRow span:nth-child(3) { font-weight: 700; color: var(--pontes-text); }
+.parcelasTable { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--pontes-bg); }
+.parcelasTable thead th {
+  text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--pontes-text-muted); font-weight: 700; padding: 6px 20px 6px 40px;
+}
+.parcelasTable thead th:not(:first-child) { padding-left: 16px; }
+.parcelasTable tbody td { padding: 5px 16px; color: var(--pontes-text); }
+.parcelasTable tbody td:first-child { padding-left: 40px; color: var(--pontes-text-muted); }
+.parcelasTable tbody tr:last-child td { padding-bottom: 8px; }
 
 .emptyWrap { padding: 32px 20px; font-size: 13px; color: var(--pontes-text-muted); text-align: center; }

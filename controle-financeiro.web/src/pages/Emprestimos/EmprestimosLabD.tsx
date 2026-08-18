@@ -190,15 +190,24 @@ export default function EmprestimosLabD() {
                             {isParcelado && l.expandedId === e.id && (
                               <tr>
                                 <td colSpan={5} style={{ padding: 0 }}>
-                                  <div className={styles.parcelasWrap}>
-                                    {l.parcelasLoadingId === e.id ? "Carregando…" : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => (
-                                      <div key={p.id} className={styles.parcelaRow}>
-                                        <span>{p.numero}/{p.quantidadeTotal}</span>
-                                        <span>vence {new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
-                                        <span>{formatMoney(p.valorComMulta ?? p.valorComJuros ?? p.valor)}</span>
-                                      </div>
-                                    ))}
-                                  </div>
+                                  <table className={styles.parcelasTable}>
+                                    <thead>
+                                      <tr>
+                                        <th>Parcela</th><th>Vencimento</th><th className={styles.tRight}>Valor</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {l.parcelasLoadingId === e.id ? (
+                                        <tr><td colSpan={3}>Carregando…</td></tr>
+                                      ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => (
+                                        <tr key={p.id}>
+                                          <td>{p.numero}/{p.quantidadeTotal}</td>
+                                          <td>vence {new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
+                                          <td className={styles.tRight}>{formatMoney(p.valorComMulta ?? p.valorComJuros ?? p.valor)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </td>
                               </tr>
                             )}
