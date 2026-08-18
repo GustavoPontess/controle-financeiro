@@ -50,6 +50,7 @@
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: var(--pontes-bg); }
 .table tbody tr[data-quitado="true"] { opacity: .55; }
+.table tbody tr[data-clickable] { cursor: pointer; }
 .tDesc { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .tRight { text-align: right; }
 .tValor[data-tone="danger"] { color: var(--pontes-danger); }

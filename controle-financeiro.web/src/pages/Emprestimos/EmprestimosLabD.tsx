@@ -176,14 +176,18 @@ export default function EmprestimosLabD() {
                         const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
                         return (
                           <React.Fragment key={e.id}>
-                            <tr data-quitado={e.quitado ? "true" : undefined}>
+                            <tr
+                              data-quitado={e.quitado ? "true" : undefined}
+                              data-clickable={isParcelado ? "" : undefined}
+                              onClick={isParcelado ? () => void l.toggleExpand(e.id) : undefined}
+                            >
                               <td className={styles.tDesc} title={e.descricao}>{e.descricao}</td>
                               <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
                               <td><div className={styles.tBadges}><StatusBadges e={e} /></div></td>
                               <td className={styles.tRight}>
                                 <strong data-tone={e.tipo === 1 ? undefined : "danger"} className={styles.tValor}>{formatMoney(e.valorRestante)}</strong>
                               </td>
-                              <td className={styles.tRight}>
+                              <td className={styles.tRight} onClick={(ev) => ev.stopPropagation()}>
                                 <ActionIcons e={e} size={24} logic={l} className={styles.rowActions} />
                               </td>
                             </tr>
@@ -193,12 +197,13 @@ export default function EmprestimosLabD() {
                                   <table className={styles.parcelasTable}>
                                     <thead>
                                       <tr>
-                                        <th>Parcela</th><th>Vencimento</th><th>Status</th><th className={styles.tRight}>Valor</th>
+                                        <th>Parcela</th><th>Vencimento</th><th>Status</th>
+                                        <th className={styles.tRight}>Pago</th><th className={styles.tRight}>Valor</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {l.parcelasLoadingId === e.id ? (
-                                        <tr><td colSpan={4}>Carregando…</td></tr>
+                                        <tr><td colSpan={5}>Carregando…</td></tr>
                                       ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => {
                                         const podeAprovar = e.souCredor && !!p.solicitacaoPendenteId
                                         const valorDevido = p.valorComMulta ?? p.valorComJuros ?? p.valor
@@ -214,11 +219,10 @@ export default function EmprestimosLabD() {
                                                   : parcialPaga ? "accent"
                                                   : p.atrasada ? "danger" : "neutral"
                                               }>
-                                                {podeAprovar ? "Aguardando aprovação"
-                                                  : parcialPaga ? `${formatMoney(p.valorPago)} de ${formatMoney(valorDevido)} pago`
-                                                  : p.statusDescricao}
+                                                {podeAprovar ? "Aguardando aprovação" : p.statusDescricao}
                                               </PontesBadge>
                                             </td>
+                                            <td className={styles.tRight}>{p.valorPago > 0 ? formatMoney(p.valorPago) : "—"}</td>
                                             <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
                                           </tr>
                                         )
