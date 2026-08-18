@@ -178,8 +178,8 @@ export default function EmprestimosLabD() {
                           <React.Fragment key={e.id}>
                             <tr
                               data-quitado={e.quitado ? "true" : undefined}
-                              data-clickable={isParcelado ? "" : undefined}
-                              onClick={isParcelado ? () => void l.toggleExpand(e.id) : undefined}
+                              data-clickable=""
+                              onClick={() => void l.toggleExpand(e.id)}
                             >
                               <td className={styles.tDesc} title={e.descricao}>{e.descricao}</td>
                               <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
@@ -191,42 +191,66 @@ export default function EmprestimosLabD() {
                                 <ActionIcons e={e} size={24} logic={l} className={styles.rowActions} />
                               </td>
                             </tr>
-                            {isParcelado && l.expandedId === e.id && (
+                            {l.expandedId === e.id && (
                               <tr>
                                 <td colSpan={5} style={{ padding: 0 }}>
                                   <table className={styles.parcelasTable}>
                                     <thead>
                                       <tr>
-                                        <th>Parcela</th><th>Vencimento</th><th>Status</th>
+                                        {isParcelado && <th>Parcela</th>}
+                                        <th>Vencimento</th><th>Status</th>
                                         <th className={styles.tRight}>Pago</th><th className={styles.tRight}>Valor</th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {l.parcelasLoadingId === e.id ? (
-                                        <tr><td colSpan={5}>Carregando…</td></tr>
-                                      ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => {
-                                        const podeAprovar = e.souCredor && !!p.solicitacaoPendenteId
-                                        const valorDevido = p.valorComMulta ?? p.valorComJuros ?? p.valor
-                                        const parcialPaga = p.status === StatusParcelaEmprestimo.Pendente && p.valorPago > 0 && p.valorPago < valorDevido
+                                      {isParcelado ? (
+                                        l.parcelasLoadingId === e.id ? (
+                                          <tr><td colSpan={5}>Carregando…</td></tr>
+                                        ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => {
+                                          const podeAprovar = e.souCredor && !!p.solicitacaoPendenteId
+                                          const valorDevido = p.valorComMulta ?? p.valorComJuros ?? p.valor
+                                          const parcialPaga = p.status === StatusParcelaEmprestimo.Pendente && p.valorPago > 0 && p.valorPago < valorDevido
+                                          return (
+                                            <tr key={p.id}>
+                                              <td>{p.numero}/{p.quantidadeTotal}</td>
+                                              <td>{new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
+                                              <td>
+                                                <PontesBadge size="sm" tone={
+                                                  podeAprovar ? "warning"
+                                                    : p.status === StatusParcelaEmprestimo.Paga ? "success"
+                                                    : parcialPaga ? "accent"
+                                                    : p.atrasada ? "danger" : "neutral"
+                                                }>
+                                                  {podeAprovar ? "Aguardando aprovação" : p.statusDescricao}
+                                                </PontesBadge>
+                                              </td>
+                                              <td className={styles.tRight}>{p.valorPago > 0 ? formatMoney(p.valorPago) : "—"}</td>
+                                              <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
+                                            </tr>
+                                          )
+                                        })
+                                      ) : (() => {
+                                        // À vista não tem EmprestimoParcela — mesma forma da tabela, 1 linha só
+                                        // construída direto do empréstimo (sem chamada extra à API).
+                                        const podeAprovar = e.souCredor && e.valorPendente > 0
+                                        const valorDevido = e.valorComMulta ?? e.valorComJuros ?? e.valorTotal
                                         return (
-                                          <tr key={p.id}>
-                                            <td>{p.numero}/{p.quantidadeTotal}</td>
-                                            <td>{new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
+                                          <tr>
+                                            <td>{e.dataVencimento ? new Date(e.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</td>
                                             <td>
                                               <PontesBadge size="sm" tone={
                                                 podeAprovar ? "warning"
-                                                  : p.status === StatusParcelaEmprestimo.Paga ? "success"
-                                                  : parcialPaga ? "accent"
-                                                  : p.atrasada ? "danger" : "neutral"
+                                                  : e.quitado ? "success"
+                                                  : e.vencido ? "danger" : "neutral"
                                               }>
-                                                {podeAprovar ? "Aguardando aprovação" : p.statusDescricao}
+                                                {podeAprovar ? "Aguardando aprovação" : e.quitado ? "Quitado" : e.vencido ? "Vencido" : "Pendente"}
                                               </PontesBadge>
                                             </td>
-                                            <td className={styles.tRight}>{p.valorPago > 0 ? formatMoney(p.valorPago) : "—"}</td>
+                                            <td className={styles.tRight}>{e.valorPago > 0 ? formatMoney(e.valorPago) : "—"}</td>
                                             <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
                                           </tr>
                                         )
-                                      })}
+                                      })()}
                                     </tbody>
                                   </table>
                                 </td>
