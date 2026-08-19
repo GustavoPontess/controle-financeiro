@@ -1,0 +1,30 @@
+# Config do Fly.io pro backend do Pontes (beta). Rodar `fly launch` sobrescreve este arquivo —
+# prefira criar o app primeiro (`fly apps create pontes-api` ou nome equivalente) e depois
+# `fly deploy` usando este arquivo já pronto, ajustando só o `app` abaixo pro nome real escolhido.
+app = "pontes-api"
+primary_region = "gru" # São Paulo — mais perto dos usuários BR
+
+[build]
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  # JWT_SECRET, DATABASE_URL, CORS_ALLOWED_ORIGINS, HANGFIRE_ADMIN_EMAILS, SENTRY_DSN:
+  # NUNCA aqui — via `fly secrets set` (nunca em arquivo versionado).
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # sempre ligado — sem cold start (decisão do Gustavo, 2026-08-18)
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

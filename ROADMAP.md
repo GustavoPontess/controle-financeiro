@@ -138,8 +138,57 @@ status: ATIVO
 
 - [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
 - [ ] Segredos rotacionados
-- [ ] Pesquisa de conformidade completa (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126`. **Achado concreto pra revisar quando essa pesquisa acontecer (2026-08-12, pergunta direta do Gustavo vendo o histórico de pagamento de empréstimo):** o histórico de pagamento mostra pro credor o nome da conta de onde o devedor pagou (`ComprovanteContaNome`, ex. "Carteira") — checado ao vivo (WebFetch em `lgpd-brasil.info`, texto do Art. 7): tem base legal (**Art. 7º-V, execução de contrato do qual o titular é parte, a pedido do titular** — o devedor escolhe a conta e envia o comprovante voluntariamente; mais o consentimento já dado no aceite do vínculo bilateral) e o dado em si não é sensível (Art. 5º-II não cobre nome de conta/carteira). **Não é ilegalidade, mas falta transparência explícita** — a tela não avisa o devedor, no momento de escolher a conta, que o nome dela vai aparecer pro credor. Melhoria de UX/conformidade catalogada aqui pra não perder: adicionar aviso inline no formulário de "Registrar pagamento" (algo como "o credor vai ver o nome dessa conta"). Nível: ⚪ P3 — não bloqueia, mas fechar junto da pesquisa de conformidade #126.
+- [x] **Pesquisa de conformidade completa** (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126` ✅ **fechada em 2026-08-18** (3 agentes de pesquisa, fonte primária). Resumo completo em `docs/CONFORMIDADE_BR.md` → "Status da nossa pesquisa". BACEN/Open Finance: fora do escopo, confiança alta. LGPD: base legal mapeada, DPO dispensado (agente de pequeno porte, Resolução CD/ANPD nº 2/2022), RIPD não obrigatório agora. **Achado concreto de 2026-08-12** (histórico de pagamento mostra nome da conta do devedor pro credor — `ComprovanteContaNome`): tem base legal (Art. 7º-V), não é dado sensível, mas falta transparência explícita — segue como item ⚪ P3 abaixo, não bloqueia.
 - [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
+
+### 🎯 Beta fechado — feito em 2026-08-18 (deploy real, primeira vez saindo do local)
+
+Escopo do **beta** é menor que o gate `1.0.0` inteiro (poucos testadores convidados pessoalmente,
+não lançamento público) — itens abaixo fecharam o suficiente pra ir ao ar com segurança, o resto
+fica catalogado pro público.
+
+- [x] **Limpeza pré-deploy** — worktree órfã `.claude/worktrees/shared-loan-feature-d4327e`
+  removida (`git worktree remove`); `docker-compose.postgres.yml` (override pré-#114, incompatível
+  com o compose atual) apagado; comentário obsoleto de fallback SQLite tirado do
+  `ControleFinanceiro.Api/.env.example`.
+- [x] **6 rotas de demo/dev gateadas** (`/emprestimos-lab-a/b/c/d`, `/design-system`,
+  `/logo-concepts`) — antes públicas/sem gate nenhum (as 2 últimas nem exigiam login), agora atrás
+  de `import.meta.env.DEV` em `AppRoutes.tsx`; confirmado que somem do bundle de produção (tree-shake,
+  `npm run build` + `vite preview` real, JS caiu de 1321kB→1199kB).
+- [x] **Hangfire dashboard** (`/hangfire`) — achado do sweep, não catalogado antes: autorizava
+  **qualquer** usuário autenticado (JWT válido de qualquer testador do beta veria o dashboard).
+  Trocado pra allowlist via env var `HANGFIRE_ADMIN_EMAILS` (fail-closed sem a env var definida).
+  5 testes novos (`HangfireDashboardAuthFilterTests.cs`).
+- [x] **axios baseURL** hardcoded pra `localhost:5293` → `import.meta.env.VITE_API_BASE_URL` com
+  fallback. `.env.example` novo no frontend documentando a var.
+- [x] **Dockerfile do backend** — hardening: usuário não-root (`addgroup`/`adduser`/`USER app`),
+  `/app/logs` criado com owner certo (onde o Serilog file sink escreve); `/app/data` (vestígio do
+  SQLite removido na #114) tirado.
+- [x] **`/privacidade`** — página real (antes só um `<span>` mudo no rodapé do cadastro), conteúdo
+  fundamentado na pesquisa LGPD desta sessão. **Checkbox de aceite real** (não pré-marcado, bloqueia
+  submit) no `RegisterPage`, 3 testes novos. Aviso de minimização no campo "pessoa" do form de
+  empréstimo (dado de terceiro sem conta).
+- [x] **Infra de deploy preparada** (Fly.io + Neon + Vercel, escolhido pelo Gustavo — sempre ligado,
+  sem cold start, ~R$40-55/mês): `ControleFinanceiro.Api/fly.toml` novo (health check em `/health`,
+  `min_machines_running = 1`), `controle-financeiro.web/vercel.json` novo (rewrite SPA + CSP/headers
+  equivalentes ao `nginx.conf`). **Deploy em si (criar conta/cartão, `fly deploy`, conectar domínio)
+  precisa do Gustavo — só ele pode criar conta e inserir pagamento.**
+- [ ] **Segredos de produção** — gerar `JWT_SECRET` novo (nunca reusar o de dev) direto no
+  `fly secrets set` quando o Gustavo fizer o deploy; `DATABASE_URL` do Neon convertido pro formato
+  Npgsql (`Host=...;SSL Mode=Require;Trust Server Certificate=true`); `CORS_ALLOWED_ORIGINS` pro
+  domínio real do Vercel assim que existir. Passo a passo em
+  `docs/features/deploy-beta/` *(a criar se o Gustavo quiser o registro permanente)*.
+
+### Catalogado pro lançamento público (não bloqueia o beta)
+
+- ⚪ P3 — política de exclusão/acesso pra pessoa citada num empréstimo sem ter conta no Pontes
+  (zona cinzenta da LGPD sem resposta fechada em fonte primária — `docs/CONFORMIDADE_BR.md`).
+- ⚪ P3 — endpoint de autoatendimento (exportar/apagar dado) — cumprimento manual por e-mail é
+  suficiente pro beta (Resolução CD/ANPD nº 2/2022 dobra o prazo pra agente de pequeno porte).
+- ⚪ P3 — aviso inline no "Registrar pagamento" sobre o nome da conta aparecer pro credor
+  (achado de 2026-08-12).
+- 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
+  de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
 
 ---
 
