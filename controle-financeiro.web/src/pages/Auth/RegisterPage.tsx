@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import {
-  PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo,
+  PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo, PontesCheckbox,
 } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
@@ -47,7 +47,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
-  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string }>({})
+  const [aceitaPrivacidade, setAceitaPrivacidade] = useState(false)
+  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string; privacidade?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
 
   const clearErr = (k: keyof typeof errors) => setErrors((p) => ({ ...p, [k]: undefined }))
@@ -62,6 +63,7 @@ export default function RegisterPage() {
     else if (getSenhaRequisitos(password).some((r) => !r.ok)) e.password = 'Senha não atende aos requisitos'
     if (!confirmPassword) e.confirmPassword = 'Confirme a senha'
     else if (password !== confirmPassword) e.confirmPassword = 'As senhas não conferem'
+    if (!aceitaPrivacidade) e.privacidade = 'Você precisa aceitar a Política de Privacidade pra continuar'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -253,6 +255,18 @@ export default function RegisterPage() {
               />
             </PontesField>
 
+            <div className={styles.consentRow}>
+              <PontesCheckbox
+                checked={aceitaPrivacidade}
+                onChange={(v) => { setAceitaPrivacidade(v); clearErr('privacidade') }}
+              />
+              <span className={styles.consentText}>
+                Li e aceito a{' '}
+                <Link to="/privacidade" target="_blank" className={styles.link}>Política de Privacidade</Link>.
+              </span>
+            </div>
+            {errors.privacidade && <p className={styles.consentError}>{errors.privacidade}</p>}
+
             <PontesButton
               type="submit"
               variant="primary"
@@ -267,10 +281,8 @@ export default function RegisterPage() {
 
           {/* Footer */}
           <p className={styles.footer}>
-            Ao criar sua conta você concorda com os{' '}
-            <span className={styles.footerMuted}>Termos de Uso</span>
-            {' '}e{' '}
-            <span className={styles.footerMuted}>Política de Privacidade</span>.
+            Ao criar sua conta você também concorda com os{' '}
+            <span className={styles.footerMuted}>Termos de Uso</span>.
           </p>
         </div>
       </div>

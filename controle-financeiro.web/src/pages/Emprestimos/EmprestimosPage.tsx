@@ -1167,7 +1167,12 @@ export default function EmprestimosPage() {
             />
           </PontesField>
 
-          <PontesField label={form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={errors.pessoa}>
+          <PontesField
+            label={form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"}
+            required
+            error={errors.pessoa}
+            helper="Guardamos só o nome e o valor — nada além disso dessa pessoa (ver /privacidade)"
+          >
             <PontesInput
               value={form.pessoa}
               onChange={(e) => { setF("pessoa", e.target.value); clearErr("pessoa") }}

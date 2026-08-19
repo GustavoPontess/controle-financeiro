@@ -105,6 +105,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/onboarding'))
@@ -120,6 +121,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
@@ -133,6 +135,37 @@ describe('RegisterPage', () => {
     expect(screen.getByText('Informe o e-mail')).toBeInTheDocument()
     expect(screen.getByText('Informe a data de nascimento')).toBeInTheDocument()
     expect(screen.getByText('Informe a senha')).toBeInTheDocument()
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+  })
+
+  it('bloqueia submit se não aceitar a Política de Privacidade, mesmo com resto preenchido', () => {
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    expect(mockRegister).not.toHaveBeenCalled()
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+  })
+
+  it('erro do checkbox de privacidade limpa ao marcar', () => {
+    const { container } = renderRegister()
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('[data-checked]')!)
+    expect(screen.queryByText(/precisa aceitar a política de privacidade/i)).not.toBeInTheDocument()
+  })
+
+  it('link da Política de Privacidade aponta pra /privacidade', () => {
+    renderRegister()
+    const link = screen.getByRole('link', { name: /política de privacidade/i })
+    expect(link).toHaveAttribute('href', '/privacidade')
   })
 
   it('exibe botão voltar à página inicial', () => {
@@ -165,6 +198,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)
 
     await waitFor(() =>

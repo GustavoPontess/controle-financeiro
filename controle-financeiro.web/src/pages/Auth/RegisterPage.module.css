@@ -54,3 +54,7 @@
 
 .footer { margin-top: 24px; text-align: center; font-size: 12px; color: var(--pontes-text-muted); }
 .footerMuted { color: var(--pontes-text-muted); }
+
+.consentRow { display: flex; align-items: flex-start; gap: 8px; margin-top: -4px; }
+.consentText { font-size: 13px; color: var(--pontes-text); line-height: 1.4; padding-top: 2px; }
+.consentError { font-size: 12px; color: var(--pontes-danger); margin: -8px 0 0; }
