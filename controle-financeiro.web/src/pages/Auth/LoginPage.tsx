@@ -204,7 +204,7 @@ export default function LoginPage() {
           {/* Footer */}
           <p className={styles.footer}>
             Ao entrar você concorda com os{' '}
-            <span className={styles.footerMuted}>Termos de Uso</span>
+            <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>
             {' '}e{' '}
             <Link to="/privacidade" target="_blank" className={styles.link}>Política de Privacidade</Link>.
           </p>

@@ -282,7 +282,7 @@ export default function RegisterPage() {
           {/* Footer */}
           <p className={styles.footer}>
             Ao criar sua conta você também concorda com os{' '}
-            <span className={styles.footerMuted}>Termos de Uso</span>.
+            <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>.
           </p>
         </div>
       </div>

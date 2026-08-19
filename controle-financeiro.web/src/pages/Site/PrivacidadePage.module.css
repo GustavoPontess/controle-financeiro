@@ -27,3 +27,5 @@
   font-size: 14px; color: var(--pontes-text); line-height: 1.6;
 }
 .contactBox a { color: var(--pontes-primary); font-weight: 600; text-decoration: none; }
+
+.contactBoxLink { color: var(--pontes-primary); font-weight: 600; text-decoration: none; }

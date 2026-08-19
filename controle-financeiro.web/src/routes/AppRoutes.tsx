@@ -36,6 +36,7 @@ import RecursosPage from "../pages/Site/RecursosPage"
 import SobrePage from "../pages/Site/SobrePage"
 import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
 import PrivacidadePage from "../pages/Site/PrivacidadePage"
+import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -56,6 +57,7 @@ export default function AppRoutes() {
           <Route path="/sobre" element={<SobrePage />} />
           <Route path="/convite/emprestimo/:token" element={<ConviteEmprestimoPage />} />
           <Route path="/privacidade" element={<PrivacidadePage />} />
+          <Route path="/termos-de-uso" element={<TermosDeUsoPage />} />
         </Route>
 
         {/* Auth Routes */}

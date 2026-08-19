@@ -62,6 +62,12 @@ describe('LoginPage', () => {
     expect(link).toHaveAttribute('href', '/privacidade')
   })
 
+  it('link dos Termos de Uso aponta pra /termos-de-uso', () => {
+    renderLogin()
+    const link = screen.getByRole('link', { name: /termos de uso/i })
+    expect(link).toHaveAttribute('href', '/termos-de-uso')
+  })
+
   it('navega para home após login bem-sucedido', async () => {
     mockLogin.mockResolvedValueOnce(undefined)
     renderLogin()

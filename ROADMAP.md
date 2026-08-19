@@ -187,6 +187,13 @@ fica catalogado pro público.
 - [x] **Link "Política de Privacidade" faltando no `LoginPage`** — achado ao vivo (2026-08-19,
   Gustavo reparou no rodapé do login). Existia no cadastro (checkbox real), mas no login era só
   texto mudo (`<span>`). Virou link real pra `/privacidade`, teste novo (`LoginPage.test.tsx`).
+- [x] **`/termos-de-uso` — rascunho novo** — Gustavo reparou que o link no rodapé de login/cadastro
+  não apontava pra lugar nenhum (`<span>` mudo, igual o antigo problema da Privacidade). Página
+  criada (`TermosDeUsoPage.tsx`, mesmo estilo da `/privacidade`) com escopo básico pro beta: o que
+  é o serviço (não é instituição financeira, não movimenta dinheiro), responsabilidade da conta,
+  uso aceitável, limite de responsabilidade, cancelamento, lei aplicável (CDC + Marco Civil).
+  **É RASCUNHO — documento contratual, precisa da revisão do Gustavo antes do lançamento público**
+  (diferente da Privacidade, que já veio fundamentada na pesquisa LGPD completa).
 - [x] **Proteção contra força bruta no login** — pedido explícito do Gustavo (achou que faltava
   CAPTCHA/delay). Pesquisa OWASP (Authentication + Credential Stuffing Prevention Cheat Sheets,
   fonte primária) → contador de falha **por conta** (não só IP) + delay progressivo (dobra a cada
@@ -204,6 +211,9 @@ fica catalogado pro público.
   (achado de 2026-08-12).
 - 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
   de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
+- 🟡 P2 — **Revisão jurídica dos Termos de Uso** (`/termos-de-uso`) — página é rascunho escrito
+  pra tirar o link morto do beta, baseado em CDC/Marco Civil, mas não passou por revisão jurídica
+  de verdade. Gustavo precisa revisar/ajustar antes do lançamento público.
 - 🟡 P2 — **CAPTCHA no login** (Cloudflare Turnstile, gratuito, sem puzzle) só depois de N
   tentativas suspeitas, complementando o delay progressivo já implementado. Decisão explícita do
   Gustavo (2026-08-19): não vale o custo de criar conta externa agora pro beta fechado (poucos

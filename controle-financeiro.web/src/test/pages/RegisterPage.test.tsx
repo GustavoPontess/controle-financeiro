@@ -168,6 +168,12 @@ describe('RegisterPage', () => {
     expect(link).toHaveAttribute('href', '/privacidade')
   })
 
+  it('link dos Termos de Uso aponta pra /termos-de-uso', () => {
+    renderRegister()
+    const link = screen.getByRole('link', { name: /termos de uso/i })
+    expect(link).toHaveAttribute('href', '/termos-de-uso')
+  })
+
   it('exibe botão voltar à página inicial', () => {
     renderRegister()
     const backBtn = screen.getByRole('link', { name: /voltar à página inicial/i })
