@@ -26,6 +26,15 @@ public class Usuario
     /// onboarding guiado. Evita reexibir o fluxo de primeiros passos.</summary>
     public bool OnboardingConcluido { get; set; }
 
+    /// <summary>Proteção contra força bruta (OWASP Authentication Cheat Sheet) — contador
+    /// por CONTA, não por IP (rate-limit por IP já existe, mas é contornável trocando IP).
+    /// Zerado no login bem-sucedido e no reset de senha.</summary>
+    public int FalhasLoginConsecutivas { get; set; }
+
+    /// <summary>Timestamp da última falha de login — base do delay progressivo
+    /// (dobra a cada erro, OWASP) calculado em <c>AuthService.LoginAsync</c>.</summary>
+    public DateTime? UltimaFalhaLoginEm { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;

@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-18
+last_reviewed: 2026-08-19
 status: EM_PROGRESSO
 foco: 'PIVOT nesta sessão (2026-08-18): Gustavo pausou a iteração de UI do módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d` seguem no ar, sem vencedora escolhida — retomar quando ele voltar a isso) pra preparar o **primeiro deploy real do Pontes** — beta fechado, sempre ligado (sem cold start), pra testadores convidados colocarem dado financeiro real. Escolhida a stack Fly.io (backend, ~R$40-55/mês) + Neon (Postgres grátis permanente) + Vercel (frontend grátis). Antes do deploy, fechado: (1) **pesquisa de conformidade completa** LGPD + BACEN/Open Finance + regime de agente de pequeno porte da ANPD (3 agentes de pesquisa em paralelo, fonte primária — `docs/CONFORMIDADE_BR.md`), veredito: BACEN/Open Finance fora do escopo (app não custodia/movimenta dinheiro), LGPD com base legal mapeada e DPO dispensado (Resolução CD/ANPD nº 2/2022); (2) **sweep de segurança/código morto** — achou e corrigiu Hangfire dashboard aberto pra qualquer usuário autenticado (virou allowlist), 6 rotas de demo públicas sem gate (viraram DEV-only, confirmado tree-shake no bundle de produção), worktree órfã removida, `docker-compose.postgres.yml` morto apagado, Dockerfile do backend ganhou usuário não-root; (3) **página `/privacidade` real + checkbox de consentimento** no cadastro (antes era só texto mudo no rodapé); (4) **infra de deploy preparada** (`fly.toml`, `vercel.json`, `axiosConfig.ts` com baseURL via env var) — falta só o Gustavo criar as contas/cartão e rodar o deploy (runbook completo em `docs/features/deploy-beta/deploy.md`). Back 420/420, front 348/348, tudo commitado e pushado. Histórico do módulo Empréstimos (2026-07-20 a 2026-08-17) no corpo abaixo.'
 ---
@@ -14,6 +14,27 @@ foco: 'PIVOT nesta sessão (2026-08-18): Gustavo pausou a iteração de UI do m�
 ---
 
 ## Em execução
+
+**(2026-08-19) Revisão ao vivo da preparação do beta — 3 achados corrigidos.** Gustavo revisou o
+que foi entregue em 2026-08-18 (pediu explicação em linguagem simples + mostrar as rotas dev-only
+funcionando) e reparou em 2 coisas soltas que geraram um 3º achado por pedido explícito:
+1. **Barra "🎨 BRAND PREVIEW" sem gate** — Gustavo reparou no screenshot do build de produção.
+   `SiteLayout.tsx` (todo o site público) mostrava a control bar de trocar paleta/fonte pra
+   qualquer visitante. Gateada atrás de `import.meta.env.DEV`, confirmado sumindo do bundle.
+2. **Link de Política de Privacidade faltando no login** — existia no cadastro, não no login
+   (só texto mudo). Virou link real pra `/privacidade`.
+3. **Pedido explícito: pesquisar e aplicar proteção contra força bruta no login** (CAPTCHA +
+   delay). Pesquisa OWASP (fonte primária, Authentication + Credential Stuffing Prevention Cheat
+   Sheets) → implementado contador de falha **por conta** + delay progressivo (dobra a cada erro)
+   + bloqueio permanente após 10 falhas. **CAPTCHA decidido explicitamente NÃO entrar no beta**
+   (exige conta externa do Gustavo, custo não vale pra beta fechado) — catalogado P2 pro público
+   em `ROADMAP.md`. Detalhe em `docs/SEGURANCA_BEST_PRACTICES.md` → "7.".
+
+Back 425/425 (+5), front 349/349 (+1), lint zero, build zero. Migration
+`AddLoginBruteForceProtection` já aplicada no Postgres de dev. **Tudo commitado, push ainda
+pendente** (aguardando Gustavo confirmar).
+
+---
 
 **(2026-08-18) Preparação do primeiro deploy real — beta fechado.** Ver `foco` no frontmatter pro
 resumo completo. Trabalho de código todo commitado/pushado (`8e0db95`, `cbc376a`, `115a5a7` em cima

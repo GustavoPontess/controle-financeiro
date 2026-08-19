@@ -1496,6 +1496,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<int>("FalhasLoginConsecutivas")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1513,6 +1516,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("RelacionamentoId1")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UltimaFalhaLoginEm")
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 

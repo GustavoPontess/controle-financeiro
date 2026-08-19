@@ -16,6 +16,13 @@ public class AuthService
 
     private const int RefreshTokenDays = 7;
 
+    // Proteção contra força bruta por CONTA (OWASP Authentication Cheat Sheet) —
+    // complementa o rate-limit por IP (Program.cs), que sozinho é contornável trocando de IP.
+    private const int FalhasAntesDoDelay = 3;         // primeiras tentativas erradas não atrasam
+    private const int SegundosDelayBase = 1;           // "starts as a very short period (e.g., one second)"
+    private const int SegundosDelayMaximo = 300;        // teto de 5min — depois disso só o bloqueio permanente conta
+    private const int FalhasParaBloqueioPermanente = 10; // "after that permanent account lockout" — exige reset de senha
+
     public AuthService(
         AppDbContext context,
         JwtTokenProvider tokenProvider,
@@ -120,12 +127,36 @@ public class AuthService
         if (usuario == null)
             throw new UnauthorizedAccessException("Email ou senha inválidos");
 
+        // Bloqueio permanente (excedeu o teto de tentativas erradas) — só reset de senha libera.
+        if (usuario.FalhasLoginConsecutivas >= FalhasParaBloqueioPermanente)
+            throw new UnauthorizedAccessException("Muitas tentativas de login. Redefina sua senha pra continuar.");
+
+        // Delay progressivo por conta — dobra a cada erro a partir da 3ª tentativa (OWASP:
+        // "starts as a very short period... but doubles after each failed login attempt").
+        if (usuario.FalhasLoginConsecutivas >= FalhasAntesDoDelay && usuario.UltimaFalhaLoginEm.HasValue)
+        {
+            var expoente = usuario.FalhasLoginConsecutivas - FalhasAntesDoDelay;
+            var delaySegundos = Math.Min(SegundosDelayBase * Math.Pow(2, expoente), SegundosDelayMaximo);
+            var liberaEm = usuario.UltimaFalhaLoginEm.Value.AddSeconds(delaySegundos);
+            if (DateTime.UtcNow < liberaEm)
+                throw new UnauthorizedAccessException("Muitas tentativas. Aguarde alguns instantes e tente novamente.");
+        }
+
         // Verify password
         if (!PasswordHasher.VerifyPassword(dto.Password, usuario.PasswordHash))
+        {
+            usuario.FalhasLoginConsecutivas++;
+            usuario.UltimaFalhaLoginEm = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
             throw new UnauthorizedAccessException("Email ou senha inválidos");
+        }
 
         if (!usuario.Ativo)
             throw new UnauthorizedAccessException("Usuário inativo");
+
+        // Login certo — zera o contador de força bruta.
+        usuario.FalhasLoginConsecutivas = 0;
+        usuario.UltimaFalhaLoginEm = null;
 
         // Rehash transparente: senha legada (PBKDF2 10k/20B) ou Argon2id com parâmetros
         // antigos é regravada com o esquema atual após verificação bem-sucedida — upgrade
@@ -260,6 +291,10 @@ public class AuthService
         // Alterar senha
         prt.Usuario.PasswordHash = PasswordHasher.HashPassword(dto.NovaSenha);
         prt.Usuario.AtualizadoEm = DateTime.UtcNow;
+
+        // Reset de senha também libera o bloqueio por força bruta (outra via de recuperação).
+        prt.Usuario.FalhasLoginConsecutivas = 0;
+        prt.Usuario.UltimaFalhaLoginEm = null;
 
         // Invalidar token
         prt.Usado = true;

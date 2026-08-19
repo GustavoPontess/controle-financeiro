@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-16
+last_reviewed: 2026-08-19
 status: ATIVO
 ---
 
@@ -57,6 +57,31 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - **MFA onde possível** (genérico OWASP — o *como* no .NET ficou 🔶 aberto). _Fonte: OWASP API2:2023._
 - **CORS restritivo:** `WithOrigins(...)` por ambiente, **nunca `AllowAnyOrigin`** (e nunca AllowAnyOrigin+AllowCredentials). _Fonte: MS Learn ASP.NET Core CORS._
 - **Security headers** (HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy) — recomendado, detalhe de implementação 🔶.
+
+## 7. Proteção contra força bruta no login ✅ (2026-08-19)
+
+- **Contador de falha por CONTA, não só por IP.** O rate-limit por IP (`Program.cs`, 5
+  tentativas/5min em prod) sozinho é contornável trocando de IP — OWASP: *"O contador de logins
+  falhos deve ser associado à própria conta, pra evitar que o atacante contorne trocando de IP."*
+- **Delay progressivo:** a partir da 3ª tentativa errada, cada nova tentativa exige esperar um
+  delay que **dobra** a cada erro (1s, 2s, 4s... teto de 5min) — OWASP: *"lockout exponencial...
+  começa curto (ex. 1s), mas dobra a cada tentativa falha."* Aplicado mesmo se a próxima tentativa
+  usar a senha certa (é delay, não é "só bloqueia erro").
+- **Bloqueio permanente após 10 falhas seguidas** — só reset de senha libera (zera o contador).
+  OWASP: *"amount of time to delay after each account lockout (max 2-3, after that permanent
+  account lockout)"*.
+- **Reset de senha também zera o contador** — outra via de recuperação legítima.
+- **CAPTCHA — decisão consciente de NÃO implementar no beta.** OWASP recomenda CAPTCHA só depois
+  de N tentativas suspeitas (não na 1ª tentativa), mas exige serviço externo (ex. Cloudflare
+  Turnstile) e conta própria do Gustavo — adiado pro lançamento público ou se aparecer bot de
+  verdade (`ROADMAP.md` → "Catalogado pro lançamento público"). A defesa mais forte segundo a
+  própria OWASP é **MFA** ("preveniria 99,9% dos comprometimentos"), não CAPTCHA — MFA já está no
+  domínio 🔶 aberto abaixo.
+- `AuthService.LoginAsync`/`ResetSenhaAsync`, migration `AddLoginBruteForceProtection`
+  (`Usuario.FalhasLoginConsecutivas`/`UltimaFalhaLoginEm`). 5 testes novos
+  (`AuthServiceTests.cs`).
+- _Fonte: OWASP Authentication Cheat Sheet ("Account Lockout"/"Automated Threats") + OWASP
+  Credential Stuffing Prevention Cheat Sheet._
 
 ---
 

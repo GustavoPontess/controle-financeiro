@@ -320,4 +320,98 @@ public class AuthServiceTests
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
     }
+
+    // ── Força bruta por conta (OWASP Authentication Cheat Sheet) ────────────────
+
+    [Fact]
+    public async Task Login_senhaErrada_incrementaContadorDeFalhas()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "Errada!123456" }));
+
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.Equal(1, atualizado!.FalhasLoginConsecutivas);
+        Assert.NotNull(atualizado.UltimaFalhaLoginEm);
+    }
+
+    [Fact]
+    public async Task Login_depoisDe3ErrosSeguidos_bloqueiaTentativaImediata_mesmoComSenhaCerta()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        for (var i = 0; i < 3; i++)
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "Errada!123456" }));
+
+        // 4ª tentativa, imediatamente depois — delay progressivo bloqueia mesmo com a senha certa.
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" }));
+        Assert.Contains("Aguarde", ex.Message);
+    }
+
+    [Fact]
+    public async Task Login_depoisDoDelayExpirar_permiteLoginCerto_e_zeraContador()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        u.FalhasLoginConsecutivas = 3;
+        u.UltimaFalhaLoginEm = DateTime.UtcNow.AddSeconds(-2); // já passou do delay de 1s (3 falhas)
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" });
+
+        Assert.False(string.IsNullOrEmpty(resp.Token));
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.Equal(0, atualizado!.FalhasLoginConsecutivas);
+        Assert.Null(atualizado.UltimaFalhaLoginEm);
+    }
+
+    [Fact]
+    public async Task Login_apos10FalhasSeguidas_bloqueiaPermanentemente_ateResetDeSenha()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        u.FalhasLoginConsecutivas = 10;
+        u.UltimaFalhaLoginEm = DateTime.UtcNow.AddMinutes(-10); // delay já expirou, mas o bloqueio permanente independe disso
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        // Nem a senha certa passa — só reset de senha libera.
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" }));
+        Assert.Contains("Redefina sua senha", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResetSenha_zeraContadorDeFalhas_liberandoLoginDeNovo()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        u.FalhasLoginConsecutivas = 10; // bloqueado permanentemente
+        u.UltimaFalhaLoginEm = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
+        var (sender, raw) = SenderCapturandoToken();
+        await new PasswordResetEmailJob(ctx, sender.Object).ExecuteAsync("alvo@test.com");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await auth.ResetSenhaAsync(new DTOs.Auth.ResetPasswordDto
+        {
+            Token = raw()!, NovaSenha = "NovaSenhaForte!2026", ConfirmarNovaSenha = "NovaSenhaForte!2026",
+        });
+
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.Equal(0, atualizado!.FalhasLoginConsecutivas);
+        Assert.Null(atualizado.UltimaFalhaLoginEm);
+
+        // Login com a senha nova funciona normalmente (bloqueio foi limpo).
+        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "NovaSenhaForte!2026" });
+        Assert.False(string.IsNullOrEmpty(resp.Token));
+    }
 }
