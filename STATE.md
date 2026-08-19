@@ -31,8 +31,22 @@ funcionando) e reparou em 2 coisas soltas que geraram um 3º achado por pedido e
    em `ROADMAP.md`. Detalhe em `docs/SEGURANCA_BEST_PRACTICES.md` → "7.".
 
 Back 425/425 (+5), front 349/349 (+1), lint zero, build zero. Migration
-`AddLoginBruteForceProtection` já aplicada no Postgres de dev. **Tudo commitado, push ainda
-pendente** (aguardando Gustavo confirmar).
+`AddLoginBruteForceProtection` já aplicada no Postgres de dev.
+
+**Continuação da mesma revisão** — mais 2 achados ao vivo:
+4. **`/termos-de-uso` não existia** — Gustavo reparou que o link no rodapé de login/cadastro não
+   apontava pra lugar nenhum. Página nova criada (rascunho — precisa de revisão jurídica do
+   Gustavo antes do lançamento público, catalogado em `ROADMAP.md`).
+5. **Navbar ilegível em página sem hero** — `PontesNavbar` troca cor baseado em scroll (pensado pra
+   sentar sobre a hero escura da Home); Privacidade/Termos não têm hero, texto branco ficava
+   invisível. Ganhou prop `forceSolid` (só cor, não posição — 1ª tentativa quebrou a posição da
+   barra, empurrando ela pra cima do banner promocional; corrigido separando as duas coisas).
+   No mesmo lote: e-mail pessoal do Gustavo tirado das páginas legais (pedido explícito dele —
+   "ainda não temos conta da empresa") + mapa de 2 dados fictícios/links mortos no rodapé
+   (`Footer.tsx`, site inteiro) marcados com TODO pra quando existir CNPJ/e-mail de empresa reais.
+
+Front 351/351 (+2), lint zero, build zero. **Tudo commitado, push ainda pendente** (aguardando
+Gustavo confirmar).
 
 ---
 
