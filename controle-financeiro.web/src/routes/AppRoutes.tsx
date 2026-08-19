@@ -35,6 +35,7 @@ import ContadoresPage from "../pages/Site/ContadoresPage"
 import RecursosPage from "../pages/Site/RecursosPage"
 import SobrePage from "../pages/Site/SobrePage"
 import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
+import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
@@ -54,15 +55,21 @@ export default function AppRoutes() {
           <Route path="/recursos" element={<RecursosPage />} />
           <Route path="/sobre" element={<SobrePage />} />
           <Route path="/convite/emprestimo/:token" element={<ConviteEmprestimoPage />} />
+          <Route path="/privacidade" element={<PrivacidadePage />} />
         </Route>
 
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
-        {/* Páginas públicas com chrome próprio */}
-        <Route path="/logo-concepts" element={<LogoConcepts />} />
-        <Route path="/design-system" element={<DesignSystemPage />} />
+        {/* Páginas públicas com chrome próprio — só em DEV, não devem ir pro build de produção
+            (achado do sweep pré-beta, 2026-08-18: eram públicas sem gate nenhum). */}
+        {import.meta.env.DEV && (
+          <>
+            <Route path="/logo-concepts" element={<LogoConcepts />} />
+            <Route path="/design-system" element={<DesignSystemPage />} />
+          </>
+        )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
         <Route
@@ -92,10 +99,15 @@ export default function AppRoutes() {
           <Route path="/parcelamentos" element={<ParcelamentosPage />} />
           <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
-          <Route path="/emprestimos-lab-a" element={<EmprestimosLabA />} />
-          <Route path="/emprestimos-lab-b" element={<EmprestimosLabB />} />
-          <Route path="/emprestimos-lab-c" element={<EmprestimosLabC />} />
-          <Route path="/emprestimos-lab-d" element={<EmprestimosLabD />} />
+          {/* Bancada de comparação de layout — nunca vai pro beta/prod, só DEV local. */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/emprestimos-lab-a" element={<EmprestimosLabA />} />
+              <Route path="/emprestimos-lab-b" element={<EmprestimosLabB />} />
+              <Route path="/emprestimos-lab-c" element={<EmprestimosLabC />} />
+              <Route path="/emprestimos-lab-d" element={<EmprestimosLabD />} />
+            </>
+          )}
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/familias/:id" element={<FamiliaDetalhePage />} />
