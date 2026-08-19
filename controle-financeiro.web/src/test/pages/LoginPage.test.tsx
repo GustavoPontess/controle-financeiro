@@ -56,6 +56,12 @@ describe('LoginPage', () => {
     expect(screen.getByText(/criar conta/i)).toBeInTheDocument()
   })
 
+  it('link da Política de Privacidade aponta pra /privacidade', () => {
+    renderLogin()
+    const link = screen.getByRole('link', { name: /política de privacidade/i })
+    expect(link).toHaveAttribute('href', '/privacidade')
+  })
+
   it('navega para home após login bem-sucedido', async () => {
     mockLogin.mockResolvedValueOnce(undefined)
     renderLogin()

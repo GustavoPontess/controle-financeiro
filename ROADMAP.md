@@ -184,6 +184,15 @@ fica catalogado pro público.
   `import.meta.env.DEV` — diferente das 6 rotas já gateadas, essa aparecia embutida em cima de
   página pública normal. Não vaza dado, mas testador do beta veria um widget de dev estranho na
   home. Gateada atrás de `import.meta.env.DEV`, mesmo padrão das outras.
+- [x] **Link "Política de Privacidade" faltando no `LoginPage`** — achado ao vivo (2026-08-19,
+  Gustavo reparou no rodapé do login). Existia no cadastro (checkbox real), mas no login era só
+  texto mudo (`<span>`). Virou link real pra `/privacidade`, teste novo (`LoginPage.test.tsx`).
+- [x] **Proteção contra força bruta no login** — pedido explícito do Gustavo (achou que faltava
+  CAPTCHA/delay). Pesquisa OWASP (Authentication + Credential Stuffing Prevention Cheat Sheets,
+  fonte primária) → contador de falha **por conta** (não só IP) + delay progressivo (dobra a cada
+  erro, teto 5min) + bloqueio permanente após 10 falhas (só reset de senha libera). Detalhe completo
+  em `docs/SEGURANCA_BEST_PRACTICES.md` → "7. Proteção contra força bruta no login". Migration
+  `AddLoginBruteForceProtection`, 5 testes novos, back 425/425.
 
 ### Catalogado pro lançamento público (não bloqueia o beta)
 
@@ -195,6 +204,12 @@ fica catalogado pro público.
   (achado de 2026-08-12).
 - 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
   de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
+- 🟡 P2 — **CAPTCHA no login** (Cloudflare Turnstile, gratuito, sem puzzle) só depois de N
+  tentativas suspeitas, complementando o delay progressivo já implementado. Decisão explícita do
+  Gustavo (2026-08-19): não vale o custo de criar conta externa agora pro beta fechado (poucos
+  testadores convidados = risco baixo); revisitar se aparecer bot de verdade ou no lançamento
+  público. OWASP: a defesa mais forte de verdade é MFA, não CAPTCHA — considerar MFA primeiro se
+  for investir nisso.
 
 ---
 
