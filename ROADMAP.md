@@ -211,6 +211,20 @@ fica catalogado pro público.
   (achado de 2026-08-12).
 - 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
   de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
+- 🟡 P2 — **Mapa de "onde entram os dados de contato da empresa"** — achado ao vivo (2026-08-19,
+  Gustavo: "não coloca meu email nem nenhum dado verdadeiro meu, ainda não temos contas da
+  empresa"). Removido e-mail pessoal das páginas legais; todos os pontos abaixo têm TODO no código
+  apontando pra este item, pra quando existir e-mail/CNPJ/redes sociais da empresa de verdade:
+  - `PrivacidadePage.tsx` e `TermosDeUsoPage.tsx` — caixa "Fale com a gente" hoje diz "fale com
+    quem te convidou pro beta" (provisório); trocar por `mailto:` da empresa.
+  - `components/pontes/site/Footer.tsx` (rodapé de TODA página pública) — link "Contato" aponta
+    pra `/contato` (rota **não existe**, dead link); "Blog" (`/blog`) e "LGPD" (`/lgpd`) também não
+    existem. **CNPJ placeholder fictício mantido de propósito** (`XX.XXX.XXX/0001-XX`, decisão
+    explícita do Gustavo — não é dado real, então não precisa sumir, só trocar quando existir CNPJ
+    de verdade). TODO marcado em cima da linha no código.
+  - `Footer.tsx` — ícones sociais (X/Twitter, LinkedIn, Instagram) e badges de App Store/Google
+    Play apontam pra `href="#"`/placeholder — mesma raiz (sem conta de empresa ainda), não é
+    "contato" mas é achado relacionado.
 - 🟡 P2 — **Revisão jurídica dos Termos de Uso** (`/termos-de-uso`) — página é rascunho escrito
   pra tirar o link morto do beta, baseado em CDC/Marco Civil, mas não passou por revisão jurídica
   de verdade. Gustavo precisa revisar/ajustar antes do lançamento público.

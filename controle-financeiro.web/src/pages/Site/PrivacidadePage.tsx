@@ -4,6 +4,10 @@
  * Conteúdo fundamentado na pesquisa de conformidade LGPD/BACEN de 2026-08-18
  * (docs/CONFORMIDADE_BR.md). Substitui a chamada solta que a footer do cadastro
  * já fazia — agora com página de verdade e checkbox de aceite real.
+ *
+ * TODO (Gustavo, antes do lançamento público): trocar o "fale com quem te
+ * convidou" por um canal de contato de verdade (e-mail da empresa) — sem CNPJ/
+ * conta de empresa ainda, e-mail pessoal não deve ir pra página pública.
  */
 import styles from "./PrivacidadePage.module.css"
 
@@ -55,7 +59,7 @@ export default function PrivacidadePage() {
           <p className={styles.p}>
             Você pode pedir acesso, correção, exclusão ou exportação dos seus dados a qualquer
             momento — inclusive dados de empréstimo sobre você registrados por outra pessoa, mesmo
-            sem ter conta no Pontes. É só mandar um e-mail (contato abaixo); respondemos dentro do
+            sem ter conta no Pontes. É só falar com a gente (contato abaixo); respondemos dentro do
             prazo legal.
           </p>
         </div>
@@ -82,8 +86,8 @@ export default function PrivacidadePage() {
         <div className={styles.section}>
           <h2 className={styles.h2}>Fale com a gente</h2>
           <div className={styles.contactBox}>
-            Dúvida, pedido de acesso/exclusão de dados, ou qualquer coisa sobre privacidade:{" "}
-            <a href="mailto:gut.n.pontes@gmail.com">gut.n.pontes@gmail.com</a>
+            Dúvida, pedido de acesso/exclusão de dados, ou qualquer coisa sobre privacidade: fale
+            com quem te convidou pro beta.
           </div>
         </div>
       </div>

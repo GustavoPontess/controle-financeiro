@@ -7,6 +7,10 @@
  * docs/CONFORMIDADE_BR.md (fora do BACEN — não movimenta dinheiro). Documento contratual — não é
  * pesquisa de segurança/LGPD como a Política de Privacidade: precisa da revisão do Gustavo antes
  * de virar peça definitiva pro lançamento público.
+ *
+ * TODO (Gustavo, antes do lançamento público): trocar o "fale com quem te
+ * convidou" por um canal de contato de verdade (e-mail da empresa) — sem CNPJ/
+ * conta de empresa ainda, e-mail pessoal não deve ir pra página pública.
  */
 import { Link } from "react-router-dom"
 import styles from "./PrivacidadePage.module.css"
@@ -78,7 +82,7 @@ export default function TermosDeUsoPage() {
           <h2 className={styles.h2}>Cancelamento</h2>
           <p className={styles.p}>
             Você pode parar de usar o Pontes e pedir a exclusão da sua conta e dos seus dados a
-            qualquer momento, sem custo — é só mandar um e-mail (contato abaixo).
+            qualquer momento, sem custo — é só falar com a gente (contato abaixo).
           </p>
         </div>
 
@@ -101,8 +105,8 @@ export default function TermosDeUsoPage() {
         <div className={styles.section}>
           <h2 className={styles.h2}>Fale com a gente</h2>
           <div className={styles.contactBox}>
-            Dúvida sobre estes termos, ou pedido de cancelamento:{" "}
-            <a href="mailto:gut.n.pontes@gmail.com">gut.n.pontes@gmail.com</a>
+            Dúvida sobre estes termos, ou pedido de cancelamento: fale com quem te convidou pro
+            beta.
           </div>
         </div>
       </div>
