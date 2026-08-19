@@ -178,6 +178,12 @@ fica catalogado pro público.
   Npgsql (`Host=...;SSL Mode=Require;Trust Server Certificate=true`); `CORS_ALLOWED_ORIGINS` pro
   domínio real do Vercel assim que existir. Passo a passo em
   `docs/features/deploy-beta/` *(a criar se o Gustavo quiser o registro permanente)*.
+- [x] **Barra "🎨 BRAND PREVIEW" do site público sem gate** — achado ao vivo (2026-08-19, Gustavo
+  reparou no screenshot do build de produção). `SiteLayout.tsx` (usado por Home/Casais/Contadores/
+  Sobre/Recursos) renderizava a control bar de trocar paleta/fonte pra **todo visitante**, sem
+  `import.meta.env.DEV` — diferente das 6 rotas já gateadas, essa aparecia embutida em cima de
+  página pública normal. Não vaza dado, mas testador do beta veria um widget de dev estranho na
+  home. Gateada atrás de `import.meta.env.DEV`, mesmo padrão das outras.
 
 ### Catalogado pro lançamento público (não bloqueia o beta)
 
