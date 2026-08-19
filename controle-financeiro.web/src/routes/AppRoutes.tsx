@@ -37,7 +37,6 @@ import SobrePage from "../pages/Site/SobrePage"
 import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
 import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
-import LogoConcepts from "../pages/Site/LogoConcepts"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
 export default function AppRoutes() {
@@ -67,10 +66,7 @@ export default function AppRoutes() {
         {/* Páginas públicas com chrome próprio — só em DEV, não devem ir pro build de produção
             (achado do sweep pré-beta, 2026-08-18: eram públicas sem gate nenhum). */}
         {import.meta.env.DEV && (
-          <>
-            <Route path="/logo-concepts" element={<LogoConcepts />} />
-            <Route path="/design-system" element={<DesignSystemPage />} />
-          </>
+          <Route path="/design-system" element={<DesignSystemPage />} />
         )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}

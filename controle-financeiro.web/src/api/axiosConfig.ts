@@ -47,7 +47,7 @@ api.interceptors.response.use(
       // Páginas públicas (sem auth): auth, design-system, e verticais do site
       // institucional (URLs limpas, sem prefixo /site).
       const publicPaths = [
-        '/auth/', '/logo-concepts', '/design-system', '/convite',
+        '/auth/', '/design-system', '/convite',
         '/casais', '/contadores', '/recursos', '/sobre', '/precos',
         '/blog', '/contato', '/ajuda', '/status', '/api', '/termos', '/privacidade', '/lgpd',
       ]
