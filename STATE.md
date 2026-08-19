@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-14
+last_reviewed: 2026-08-18
 status: EM_PROGRESSO
-foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde 2026-08-14 (unificar/consolidar implementado e auditável). UI em iteração ativa na bancada: depois de rejeitar as 3 primeiras direções (`/emprestimos-lab-a/b/c`, sessão 2026-08-17), Gustavo deu referência CONCRETA (elemento selecionado na própria UI): o `PontesStatCard` padrão da tela real + o hero gradiente da `TransactionsPage`. Sessão 2026-08-17/18: os 3 labs foram redesenhados pra usar esses 2 estilos de card (lab-a: StatCard grid; lab-b: variação compacta do StatCard; lab-c: hero gradiente da TransactionsPage), ganharam navegação ◀▶ entre si (`EmprestimosLabNav`), e nasceu um **lab-d** — junção pedida por ele: tabela densa do lab-b + agrupamento por pessoa do lab-c (cada contraparte vira mini-tabela com subtotal). Lab-d passou por 3 rodadas de refino ao vivo (parcelas viraram tabela de verdade com coluna Status, depois ganharam coluna Pago separada, linha inteira ficou clicável pra expandir em vez de só o ícone). Também: descrições/pessoa antigas com "Ana Paula" (texto livre, não pegava no rename de conta) finalmente trocadas pra "Bobe" em todo o banco, a pedido explícito do Gustavo. Achado à parte: um empréstimo real ("Cemig") foi apagado sem querer durante teste na bancada — recuperado na hora (soft-delete, só virar `Ativo=true` de novo, dado intacto). 4 páginas de bancada seguem no ar (`/emprestimos-lab-a/b/c/d`), Gustavo ainda não escolheu a vencedora. Histórico das sessões anteriores (2026-07-20 a 2026-08-17) no corpo abaixo.'
+foco: 'PIVOT nesta sessão (2026-08-18): Gustavo pausou a iteração de UI do módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d` seguem no ar, sem vencedora escolhida — retomar quando ele voltar a isso) pra preparar o **primeiro deploy real do Pontes** — beta fechado, sempre ligado (sem cold start), pra testadores convidados colocarem dado financeiro real. Escolhida a stack Fly.io (backend, ~R$40-55/mês) + Neon (Postgres grátis permanente) + Vercel (frontend grátis). Antes do deploy, fechado: (1) **pesquisa de conformidade completa** LGPD + BACEN/Open Finance + regime de agente de pequeno porte da ANPD (3 agentes de pesquisa em paralelo, fonte primária — `docs/CONFORMIDADE_BR.md`), veredito: BACEN/Open Finance fora do escopo (app não custodia/movimenta dinheiro), LGPD com base legal mapeada e DPO dispensado (Resolução CD/ANPD nº 2/2022); (2) **sweep de segurança/código morto** — achou e corrigiu Hangfire dashboard aberto pra qualquer usuário autenticado (virou allowlist), 6 rotas de demo públicas sem gate (viraram DEV-only, confirmado tree-shake no bundle de produção), worktree órfã removida, `docker-compose.postgres.yml` morto apagado, Dockerfile do backend ganhou usuário não-root; (3) **página `/privacidade` real + checkbox de consentimento** no cadastro (antes era só texto mudo no rodapé); (4) **infra de deploy preparada** (`fly.toml`, `vercel.json`, `axiosConfig.ts` com baseURL via env var) — falta só o Gustavo criar as contas/cartão e rodar o deploy (runbook completo em `docs/features/deploy-beta/deploy.md`). Back 420/420, front 348/348, tudo commitado e pushado. Histórico do módulo Empréstimos (2026-07-20 a 2026-08-17) no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -14,6 +14,19 @@ foco: 'Módulo Empréstimos — backend FECHADO POR COMPLETO desde 2026-08-14 (u
 ---
 
 ## Em execução
+
+**(2026-08-18) Preparação do primeiro deploy real — beta fechado.** Ver `foco` no frontmatter pro
+resumo completo. Trabalho de código todo commitado/pushado (`8e0db95`, `cbc376a`, `115a5a7` em cima
+de `3fab930`). **O que falta é 100% ação manual do Gustavo** — criar conta/cartão no Fly.io, conta
+no Neon, conta no Vercel, e rodar os comandos do runbook `docs/features/deploy-beta/deploy.md`.
+Nada de código pendente pra essa frente até ele voltar com o resultado do deploy (ou pedir ajuda
+com um passo específico). Módulo Empréstimos (bancada de UI, `/emprestimos-lab-a/b/c/d`) fica
+pausado exatamente onde estava — ver seção "Módulo Empréstimos — UI (pausado em 2026-08-18)" mais
+abaixo antes do histórico de sessões antigas.
+
+---
+
+*(Bloco abaixo é histórico antigo, mantido como estava — não reflete mais o "em execução" atual.)*
 
 **Empréstimo — pagamento com comprovante + aprovação do credor** — spec em
 `docs/features/emprestimo-compartilhado/pagamento-aprovacao.md` (extensão da spec original de
@@ -733,6 +746,20 @@ shippada, mesmo espírito de exceção de "copy/CSS" do §7), `npm run build` li
 Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
+
+1. **Gustavo executa o deploy** seguindo `docs/features/deploy-beta/deploy.md` (Neon → Fly.io →
+   Vercel → fechar CORS → smoke test) — nenhum passo restante é código, só criar conta/cartão e
+   rodar os comandos do runbook. Se travar em algum passo específico, voltar aqui pra ajuda pontual.
+2. Depois do deploy no ar: convidar os primeiros testadores, coletar feedback.
+3. Quando/se voltar pro módulo Empréstimos (pausado, não abandonado): retomar a bancada
+   `/emprestimos-lab-a/b/c/d` de onde parou — ver seção "Módulo Empréstimos — UI (pausado em
+   2026-08-18)" logo abaixo pro contexto completo.
+4. **Gate `1.0.0` público** (mais adiante, não bloqueia o beta): endpoint de autoatendimento LGPD
+   (exportar/apagar dado), política pra pedido de exclusão de terceiro sem conta em empréstimo,
+   reavaliar porte se a base de usuários crescer — tudo catalogado em `ROADMAP.md` → "Catalogado
+   pro lançamento público".
+
+## Módulo Empréstimos — UI (pausado em 2026-08-18)
 
 1. **Bancada com 4 direções no ar**, Gustavo ainda iterando ativamente (não travado como na
    sessão anterior — desta vez com referência concreta, progresso real a cada rodada):
