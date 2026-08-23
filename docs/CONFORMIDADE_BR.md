@@ -90,3 +90,4 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
 de aceite (não pré-marcado) no cadastro, aviso de minimização no campo "pessoa" do empréstimo.
 **O que falta pro público (não bloqueia o beta):** endpoint de exportar/apagar dado, política pra
 pedido de exclusão de terceiro sem conta, reavaliação de porte se a receita/escala crescer.
+

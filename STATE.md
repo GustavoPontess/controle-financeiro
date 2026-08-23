@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-19
+last_reviewed: 2026-08-23
 status: EM_PROGRESSO
-foco: 'PIVOT nesta sessão (2026-08-18): Gustavo pausou a iteração de UI do módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d` seguem no ar, sem vencedora escolhida — retomar quando ele voltar a isso) pra preparar o **primeiro deploy real do Pontes** — beta fechado, sempre ligado (sem cold start), pra testadores convidados colocarem dado financeiro real. Escolhida a stack Fly.io (backend, ~R$40-55/mês) + Neon (Postgres grátis permanente) + Vercel (frontend grátis). Antes do deploy, fechado: (1) **pesquisa de conformidade completa** LGPD + BACEN/Open Finance + regime de agente de pequeno porte da ANPD (3 agentes de pesquisa em paralelo, fonte primária — `docs/CONFORMIDADE_BR.md`), veredito: BACEN/Open Finance fora do escopo (app não custodia/movimenta dinheiro), LGPD com base legal mapeada e DPO dispensado (Resolução CD/ANPD nº 2/2022); (2) **sweep de segurança/código morto** — achou e corrigiu Hangfire dashboard aberto pra qualquer usuário autenticado (virou allowlist), 6 rotas de demo públicas sem gate (viraram DEV-only, confirmado tree-shake no bundle de produção), worktree órfã removida, `docker-compose.postgres.yml` morto apagado, Dockerfile do backend ganhou usuário não-root; (3) **página `/privacidade` real + checkbox de consentimento** no cadastro (antes era só texto mudo no rodapé); (4) **infra de deploy preparada** (`fly.toml`, `vercel.json`, `axiosConfig.ts` com baseURL via env var) — falta só o Gustavo criar as contas/cartão e rodar o deploy (runbook completo em `docs/features/deploy-beta/deploy.md`). Back 420/420, front 348/348, tudo commitado e pushado. Histórico do módulo Empréstimos (2026-07-20 a 2026-08-17) no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um eventual beta fechado — mas HOSPEDAGEM AINDA NÃO DECIDIDA e NENHUM DEPLOY ACONTECEU. Fly.io/Neon/Vercel foram só uma proposta de sessão anterior que o Gustavo NÃO confirmou; os configs específicos daquela proposta (`fly.toml`, `vercel.json`, `docs/features/deploy-beta/deploy.md`) foram REMOVIDOS em 2026-08-23 pra não parecerem decisão fechada, e comentários/docs foram neutralizados. O que fica no repo é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 446/446, front 341/341. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d`) segue pausado, sem vencedora. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -14,6 +14,26 @@ foco: 'PIVOT nesta sessão (2026-08-18): Gustavo pausou a iteração de UI do m�
 ---
 
 ## Em execução
+
+**(2026-08-23) Hardening de auth + correção de rumo sobre hospedagem.** Sessão longa de segurança:
+- **MFA opt-in (TOTP RFC 6238)** — feature completa (QR, backup codes, login 2-passos, ativar/
+  desativar em `/settings`, secret cifrado AES-256-GCM). Nunca obrigatório. Verificado ponta a ponta.
+- **Pepper de senha** (`PASSWORD_PEPPER`, separado do banco) + **remoção da regra de composição**
+  (NIST SP 800-63B) + **JWT_SECRET local rotacionado**.
+- **Pentest ao vivo** (a pedido do Gustavo) contra a API local: maioria passou (IDOR/JWT/SQLi/CORS/
+  Hangfire/força bruta), 2 achados corrigidos — cookie perdia `Secure` atrás de proxy TLS
+  (`ForwardedHeaders`), cadastro com e-mail em case diferente dava 500 (normalização).
+- **Criptografia de campo em repouso:** Gustavo decidiu NÃO fazer agora, só catalogar (P2, análise
+  pronta no ROADMAP). A peça (`MfaCrypto`) já existe.
+- **Correção de rumo (importante):** Gustavo apontou que EU vinha tratando Fly.io/Neon/Vercel como
+  decisão fechada, o que ele NUNCA confirmou. Removidos `fly.toml`, `vercel.json`,
+  `docs/features/deploy-beta/deploy.md`; comentários em `Program.cs`/`.env.example`/`ROADMAP`/`STATE`
+  neutralizados. **Hospedagem está 100% em aberto. Nenhum deploy aconteceu, nada saiu do local.**
+
+Back 446/446, front 341/341, lint e build limpos. Migrations `AddLoginBruteForceProtection` e
+`AddMfaTotp` aplicadas no Postgres de dev. **Tudo commitado LOCAL, SEM PUSH.**
+
+---
 
 **(2026-08-19) Revisão ao vivo da preparação do beta — 3 achados corrigidos.** Gustavo revisou o
 que foi entregue em 2026-08-18 (pediu explicação em linguagem simples + mostrar as rotas dev-only
@@ -50,14 +70,14 @@ Gustavo confirmar).
 
 ---
 
-**(2026-08-18) Preparação do primeiro deploy real — beta fechado.** Ver `foco` no frontmatter pro
-resumo completo. Trabalho de código todo commitado/pushado (`8e0db95`, `cbc376a`, `115a5a7` em cima
-de `3fab930`). **O que falta é 100% ação manual do Gustavo** — criar conta/cartão no Fly.io, conta
-no Neon, conta no Vercel, e rodar os comandos do runbook `docs/features/deploy-beta/deploy.md`.
-Nada de código pendente pra essa frente até ele voltar com o resultado do deploy (ou pedir ajuda
-com um passo específico). Módulo Empréstimos (bancada de UI, `/emprestimos-lab-a/b/c/d`) fica
-pausado exatamente onde estava — ver seção "Módulo Empréstimos — UI (pausado em 2026-08-18)" mais
-abaixo antes do histórico de sessões antigas.
+**(2026-08-18) Preparação de código pra beta — sweep de segurança/limpeza.** Trabalho de código
+commitado. **Correção retroativa (2026-08-23):** este bloco originalmente dizia que a stack
+Fly.io/Neon/Vercel estava "escolhida" e que só faltava o Gustavo criar contas e dar deploy — isso
+era presunção minha, o Gustavo NUNCA confirmou hospedagem. Aquilo foi neutralizado/removido (ver
+bloco 2026-08-23 acima). O trabalho de segurança/limpeza dessa data segue válido; só a parte de
+"deploy iminente na tal stack" que não. Módulo Empréstimos (bancada de UI,
+`/emprestimos-lab-a/b/c/d`) fica pausado exatamente onde estava — ver seção "Módulo Empréstimos —
+UI (pausado em 2026-08-18)" mais abaixo antes do histórico de sessões antigas.
 
 ---
 
@@ -782,17 +802,20 @@ Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
 
-1. **Gustavo executa o deploy** seguindo `docs/features/deploy-beta/deploy.md` (Neon → Fly.io →
-   Vercel → fechar CORS → smoke test) — nenhum passo restante é código, só criar conta/cartão e
-   rodar os comandos do runbook. Se travar em algum passo específico, voltar aqui pra ajuda pontual.
-2. Depois do deploy no ar: convidar os primeiros testadores, coletar feedback.
+1. **Decidir hospedagem (do Gustavo, sem pressa, nada escolhido ainda).** Quando/se ele quiser
+   avaliar onde hospedar, começar do zero — Fly.io/Neon/Vercel eram só uma proposta antiga já
+   removida. O código está pronto e neutro pra qualquer host de container (Docker + nginx + env
+   vars). Só então: escolher host → gerar secrets de prod (`JWT_SECRET`/`PASSWORD_PEPPER`/
+   `MFA_ENCRYPTION_KEY` novos) → deploy → smoke test.
+2. **Push** — tem bastante commit local sem push (hardening + MFA + neutralização de hospedagem).
+   Quando o Gustavo mandar, `git push` na branch `feature/emprestimo-compartilhado`.
 3. Quando/se voltar pro módulo Empréstimos (pausado, não abandonado): retomar a bancada
    `/emprestimos-lab-a/b/c/d` de onde parou — ver seção "Módulo Empréstimos — UI (pausado em
    2026-08-18)" logo abaixo pro contexto completo.
 4. **Gate `1.0.0` público** (mais adiante, não bloqueia o beta): endpoint de autoatendimento LGPD
    (exportar/apagar dado), política pra pedido de exclusão de terceiro sem conta em empréstimo,
-   reavaliar porte se a base de usuários crescer — tudo catalogado em `ROADMAP.md` → "Catalogado
-   pro lançamento público".
+   reavaliar porte se a base de usuários crescer, criptografia de campo em repouso, upgrade .NET 10
+   (prazo nov/2026) — tudo catalogado em `ROADMAP.md`.
 
 ## Módulo Empréstimos — UI (pausado em 2026-08-18)
 

@@ -344,13 +344,15 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Achado do pentest ao vivo (2026-08-23): atrás de proxy que termina TLS na borda
-// (Fly.io — o container só recebe HTTP puro internamente), `Request.IsHttps` fica
-// sempre false, mesmo o usuário estando em HTTPS de verdade. Isso quebrava o
-// `Secure` do cookie de sessão (AuthController.SetAuthCookies usa Request.IsHttps),
-// confirmado simulando o header X-Forwarded-Proto sem esse middleware. KnownNetworks/
-// KnownProxies limpos de propósito — a rede interna do Fly já isola quem alcança o
-// container (só o proxy deles), não tem IP fixo de proxy pra fixar aqui.
+// Achado do pentest ao vivo (2026-08-23): atrás de qualquer proxy/load balancer que
+// termina TLS na borda (padrão de praticamente todo host gerenciado de container — o
+// container recebe HTTP puro internamente), `Request.IsHttps` fica sempre false, mesmo
+// o usuário estando em HTTPS de verdade. Isso quebrava o `Secure` do cookie de sessão
+// (AuthController.SetAuthCookies usa Request.IsHttps), confirmado simulando o header
+// X-Forwarded-Proto sem esse middleware. KnownNetworks/KnownProxies limpos porque o
+// container só é alcançável pelo proxy do próprio host (rede interna isolada), sem IP
+// fixo de proxy pra fixar. IMPORTANTE: se a hospedagem escolhida NÃO isolar assim a
+// rede do container, restringir KnownProxies ao IP do proxy antes de confiar no header.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

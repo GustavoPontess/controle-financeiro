@@ -138,16 +138,17 @@ status: ATIVO
 
 - [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
 - [~] Segredos rotacionados — **JWT_SECRET local rotacionado (2026-08-23)**; falta a rotação de
-  produção (feita no `fly secrets set` durante o deploy) + a senha do Postgres de prod. Pepper de
-  senha ✅ implementado (env `PASSWORD_PEPPER`, gerar novo em prod).
+  produção (feita no mecanismo de secrets do host quando houver deploy) + a senha do Postgres de
+  prod. Pepper de senha ✅ implementado (env `PASSWORD_PEPPER`, gerar novo em prod).
 - [x] **Pesquisa de conformidade completa** (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126` ✅ **fechada em 2026-08-18** (3 agentes de pesquisa, fonte primária). Resumo completo em `docs/CONFORMIDADE_BR.md` → "Status da nossa pesquisa". BACEN/Open Finance: fora do escopo, confiança alta. LGPD: base legal mapeada, DPO dispensado (agente de pequeno porte, Resolução CD/ANPD nº 2/2022), RIPD não obrigatório agora. **Achado concreto de 2026-08-12** (histórico de pagamento mostra nome da conta do devedor pro credor — `ComprovanteContaNome`): tem base legal (Art. 7º-V), não é dado sensível, mas falta transparência explícita — segue como item ⚪ P3 abaixo, não bloqueia.
 - [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
 
-### 🎯 Beta fechado — feito em 2026-08-18 (deploy real, primeira vez saindo do local)
+### 🎯 Preparação pro beta fechado (código; deploy ainda NÃO aconteceu)
 
 Escopo do **beta** é menor que o gate `1.0.0` inteiro (poucos testadores convidados pessoalmente,
-não lançamento público) — itens abaixo fecharam o suficiente pra ir ao ar com segurança, o resto
-fica catalogado pro público.
+não lançamento público) — itens abaixo são o trabalho de **código/segurança** feito localmente pra
+deixar o app pronto pra um beta. **Nada foi ao ar ainda**: hospedagem não decidida, nenhum deploy
+rodado, nenhum dado saiu do local. O resto fica catalogado pro público.
 
 - [x] **Limpeza pré-deploy** — worktree órfã `.claude/worktrees/shared-loan-feature-d4327e`
   removida (`git worktree remove`); `docker-compose.postgres.yml` (override pré-#114, incompatível
@@ -170,16 +171,18 @@ fica catalogado pro público.
   fundamentado na pesquisa LGPD desta sessão. **Checkbox de aceite real** (não pré-marcado, bloqueia
   submit) no `RegisterPage`, 3 testes novos. Aviso de minimização no campo "pessoa" do form de
   empréstimo (dado de terceiro sem conta).
-- [x] **Infra de deploy preparada** (Fly.io + Neon + Vercel, escolhido pelo Gustavo — sempre ligado,
-  sem cold start, ~R$40-55/mês): `ControleFinanceiro.Api/fly.toml` novo (health check em `/health`,
-  `min_machines_running = 1`), `controle-financeiro.web/vercel.json` novo (rewrite SPA + CSP/headers
-  equivalentes ao `nginx.conf`). **Deploy em si (criar conta/cartão, `fly deploy`, conectar domínio)
-  precisa do Gustavo — só ele pode criar conta e inserir pagamento.**
-- [ ] **Segredos de produção** — gerar `JWT_SECRET` novo (nunca reusar o de dev) direto no
-  `fly secrets set` quando o Gustavo fizer o deploy; `DATABASE_URL` do Neon convertido pro formato
-  Npgsql (`Host=...;SSL Mode=Require;Trust Server Certificate=true`); `CORS_ALLOWED_ORIGINS` pro
-  domínio real do Vercel assim que existir. Passo a passo em
-  `docs/features/deploy-beta/` *(a criar se o Gustavo quiser o registro permanente)*.
+- [ ] **Hospedagem ainda NÃO decidida** — Fly.io/Neon/Vercel foram só uma *proposta* explorada numa
+  sessão anterior; o Gustavo **não confirmou** e a escolha segue 100% em aberto (2026-08-23). Os
+  configs específicos daquela proposta (`fly.toml`, `vercel.json`, `docs/features/deploy-beta/deploy.md`)
+  foram **removidos** pra não parecerem decisão fechada. O que fica no repo é **neutro** e serve pra
+  qualquer host de container: `Dockerfile` (API e web), `nginx.conf` (SPA), health checks `/health`
+  e `/health/ready`, `ForwardedHeaders` (cookie Secure atrás de proxy TLS — ver `Program.cs`), CORS
+  e baseURL por env var. Quando decidir a hospedagem, avaliar do zero.
+- [ ] **Segredos de produção** (quando houver deploy, seja qual for o host) — gerar `JWT_SECRET`,
+  `PASSWORD_PEPPER` e `MFA_ENCRYPTION_KEY` novos (nunca reusar os de dev); `DATABASE_URL` no formato
+  Npgsql com TLS se o banco exigir (`;SSL Mode=Require;Trust Server Certificate=true`);
+  `CORS_ALLOWED_ORIGINS` pro domínio real do front. Guardar via o mecanismo de secrets do host
+  escolhido, nunca em arquivo versionado.
 - [x] **Barra "🎨 BRAND PREVIEW" do site público sem gate** — achado ao vivo (2026-08-19, Gustavo
   reparou no screenshot do build de produção). `SiteLayout.tsx` (usado por Home/Casais/Contadores/
   Sobre/Recursos) renderizava a control bar de trocar paleta/fonte pra **todo visitante**, sem
@@ -210,12 +213,13 @@ fica catalogado pro público.
   `dangerouslySetInnerHTML` no front), rate-limit de registro/reset, vazamento de erro 500,
   duplicidade de conta. **Maioria passou** (auth/IDOR/JWT/SQLi/CORS/Hangfire/força bruta todos
   bloquearam corretamente) — **2 achados reais, os dois já corrigidos**:
-  - 🟠 **Cookie perdia `Secure` atrás do proxy do Fly.io** — `Request.IsHttps` fica sempre `false`
-    quando o TLS termina na borda (container só recebe HTTP puro), confirmado simulando
-    `X-Forwarded-Proto: https` sem o middleware. Corrigido com `ForwardedHeadersOptions`
-    (`Program.cs`) — `KnownNetworks`/`KnownProxies` limpos de propósito (rede interna do Fly já
-    isola quem alcança o container, sem IP fixo de proxy pra fixar). Reconfirmado ao vivo: cookie
-    ganhou `secure` depois do fix. **Bloqueava deploy seguro**, não era cosmético.
+  - 🟠 **Cookie perdia `Secure` atrás de proxy que termina TLS na borda** (padrão de quase todo host
+    de container) — `Request.IsHttps` fica sempre `false` quando o container só recebe HTTP puro,
+    confirmado simulando `X-Forwarded-Proto: https` sem o middleware. Corrigido com
+    `ForwardedHeadersOptions` (`Program.cs`) — `KnownNetworks`/`KnownProxies` limpos porque o
+    container só é alcançável pelo proxy do host (rede interna isolada); se a hospedagem escolhida
+    não isolar assim, restringir `KnownProxies` ao IP do proxy. Reconfirmado ao vivo: cookie ganhou
+    `secure` depois do fix. **Bloquearia deploy seguro**, não era cosmético.
   - 🟡 **Cadastro com e-mail em case diferente do já existente devolvia 500** em vez de "e-mail já
     cadastrado" — checagem de duplicidade comparava sem normalizar (`dto.Email` cru vs. gravado em
     lowercase), banco impedia a duplicata de verdade via constraint única (não vazou dado, não
@@ -234,8 +238,9 @@ fica catalogado pro público.
 - 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
   de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
 - 🟡 P2 — **Criptografia de campo em repouso (PII/financeiro no Postgres)** — decisão do Gustavo
-  (2026-08-23): só catalogar por ora, não bloqueia o beta (Neon já tem criptografia de disco; LGPD
-  não exige técnica específica; poucos testadores conhecidos). A peça de cripto já existe e está
+  (2026-08-23): só catalogar por ora, não bloqueia o beta (a maioria dos Postgres gerenciados já tem
+  criptografia de disco; LGPD não exige técnica específica; poucos testadores conhecidos). A peça de
+  cripto já existe e está
   testada: `MfaCrypto` (AES-256-GCM, chave em env var separada do banco `MFA_ENCRYPTION_KEY`) — feita
   pro secret TOTP. **Pra estender:** (1) generalizar o `MfaCrypto` num helper reutilizável; (2)
   ligar via EF Core `ValueConverter` (cifra ao gravar / decifra ao ler, transparente). **Análise de
@@ -247,7 +252,7 @@ fica catalogado pro público.
     `TransacaoService.cs:167` — cifrar exige refazer a busca ou cifragem determinística mais fraca);
     valores `Transacao.Valor`/`Emprestimo.ValorTotal` (soma e filtro valor-mín/máx — cifrar quebra
     relatório); `Emprestimo.EmailContraparte` (lookup exato no vínculo, `EmprestimoService.cs:422`).
-  - Chave de prod: gerar `openssl rand -base64 32`, guardar no `fly secrets`, NUNCA reusar a de dev.
+  - Chave de prod: gerar `openssl rand -base64 32`, guardar no mecanismo de secrets do host, NUNCA reusar a de dev.
 - 🟡 P2 — **Mapa de "onde entram os dados de contato da empresa"** — achado ao vivo (2026-08-19,
   Gustavo: "não coloca meu email nem nenhum dado verdadeiro meu, ainda não temos contas da
   empresa"). Removido e-mail pessoal das páginas legais; todos os pontos abaixo têm TODO no código
