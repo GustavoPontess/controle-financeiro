@@ -52,16 +52,16 @@ describe('RegisterPage', () => {
     expect(passwordInputs.length).toBe(2)
   })
 
-  it('não exibe indicador de força quando senha está vazia', () => {
+  it('não exibe indicador de requisito quando senha está vazia', () => {
     renderRegister()
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mínimo 15 caracteres')).not.toBeInTheDocument()
   })
 
-  it('exibe indicador de força quando senha é digitada', () => {
+  it('exibe indicador de requisito quando senha é digitada', () => {
     const { container } = renderRegister()
     const [senhaInput] = container.querySelectorAll('input[type="password"]')
     fireEvent.change(senhaInput, { target: { value: 'abc' } })
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.getByText(/Mínimo 15 caracteres/)).toBeInTheDocument()
   })
 
   it('exibe requisito de comprimento com ✓ quando senha tem 15+ chars', () => {

@@ -10,6 +10,13 @@ namespace ControleFinanceiro.Api.Tests.Identity;
 /// versionado (saída 32B, não 20B), compatibilidade com o hash legado PBKDF2 e a detecção
 /// de rehash necessário.
 /// </summary>
+// Testes de pepper mexem na env var PASSWORD_PEPPER (global do processo) — precisa rodar
+// serializado com qualquer outro teste que chame PasswordHasher (AuthServiceTests), senão
+// vira race condition entre threads paralelas do xUnit.
+[CollectionDefinition("PasswordHasherEnv")]
+public class PasswordHasherEnvCollection { }
+
+[Collection("PasswordHasherEnv")]
 public class PasswordHasherTests
 {
     // Reproduz o esquema LEGADO (PBKDF2-HMAC-SHA256, 10k iterações, 20 bytes, salt 16),
@@ -38,12 +45,13 @@ public class PasswordHasherTests
     {
         var hash = PasswordHasher.HashPassword("abc");
         var parts = hash.Split('$');
-        Assert.Equal(6, parts.Length);
+        Assert.Equal(7, parts.Length);
         Assert.Equal("ARGON2ID", parts[0]);
         Assert.Equal("19456", parts[1]); // 19 MiB
         Assert.Equal("2", parts[2]);     // iterations
         Assert.Equal("1", parts[3]);     // parallelism
-        Assert.Equal(32, Convert.FromBase64String(parts[5]).Length); // saída 32B, não 20B
+        Assert.Equal("0", parts[4]);     // pepperFlag — sem PASSWORD_PEPPER setada no teste
+        Assert.Equal(32, Convert.FromBase64String(parts[6]).Length); // saída 32B, não 20B
     }
 
     [Fact]
@@ -71,6 +79,64 @@ public class PasswordHasherTests
         Assert.True(PasswordHasher.NeedsRehash(""));                // vazio/desconhecido
         Assert.True(PasswordHasher.NeedsRehash("lixo-sem-cifrao")); // não reconhecido
         Assert.False(PasswordHasher.NeedsRehash(PasswordHasher.HashPassword("x"))); // atual
+    }
+
+    // ── Pepper (NIST SHOULD) ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void Hash_comPepperLigado_marcaFlagENaoValidaSemPepper()
+    {
+        Environment.SetEnvironmentVariable("PASSWORD_PEPPER", "segredo-so-do-servidor-123");
+        try
+        {
+            var hash = PasswordHasher.HashPassword("S3nh@ComPepper!2026");
+            Assert.Equal("1", hash.Split('$')[4]); // pepperFlag ligado
+
+            // Com o pepper certo, valida normal.
+            Assert.True(PasswordHasher.VerifyPassword("S3nh@ComPepper!2026", hash));
+
+            // Tira o pepper (simula ambiente sem a env var, ou pepper errado) — não valida mais,
+            // é exatamente o ponto do pepper: sem ele, o hash sozinho não abre a senha.
+            Environment.SetEnvironmentVariable("PASSWORD_PEPPER", null);
+            Assert.False(PasswordHasher.VerifyPassword("S3nh@ComPepper!2026", hash));
+
+            Environment.SetEnvironmentVariable("PASSWORD_PEPPER", "pepper-errado-999");
+            Assert.False(PasswordHasher.VerifyPassword("S3nh@ComPepper!2026", hash));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PASSWORD_PEPPER", null);
+        }
+    }
+
+    [Fact]
+    public void Hash_semPepperConfigurado_naoQuebraAmbiente()
+    {
+        // Ambiente sem PASSWORD_PEPPER (ex: dev local) continua funcionando normal.
+        Environment.SetEnvironmentVariable("PASSWORD_PEPPER", null);
+        var hash = PasswordHasher.HashPassword("SemPepperMesmo!2026");
+        Assert.Equal("0", hash.Split('$')[4]);
+        Assert.True(PasswordHasher.VerifyPassword("SemPepperMesmo!2026", hash));
+    }
+
+    [Fact]
+    public void NeedsRehash_quandoPepperLigaDepoisDoHashExistir_pedeRehash()
+    {
+        // Hash criado ANTES do pepper existir (env var desligada) — quando o pepper liga
+        // depois, esse hash antigo precisa regravar pra passar a usar o pepper também.
+        Environment.SetEnvironmentVariable("PASSWORD_PEPPER", null);
+        var hashSemPepper = PasswordHasher.HashPassword("x");
+        try
+        {
+            Assert.False(PasswordHasher.NeedsRehash(hashSemPepper)); // ainda sem pepper ligado
+
+            Environment.SetEnvironmentVariable("PASSWORD_PEPPER", "pepper-novo");
+            Assert.True(PasswordHasher.NeedsRehash(hashSemPepper)); // pepper ligou, esse hash não tem
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PASSWORD_PEPPER", null);
+        }
     }
 
     [Fact]

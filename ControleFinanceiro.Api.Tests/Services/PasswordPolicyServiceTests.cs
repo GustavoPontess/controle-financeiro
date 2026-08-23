@@ -4,8 +4,9 @@ using Xunit;
 namespace ControleFinanceiro.Api.Tests.Services;
 
 /// <summary>
-/// Política de senha — NIST SP 800-63B: mínimo 15 chars (sem MFA), teto 128 (anti-DoS no
-/// Argon2id), e blocklist de senha comum.
+/// Política de senha — NIST SP 800-63B §5.1.1.2: mínimo 15 chars (sem MFA), teto 128 (anti-DoS
+/// no Argon2id), blocklist de senha comum, e SEM regra de composição (maiúscula/número/especial
+/// removida em 2026-08-23 — NIST SHALL NOT impor isso).
 /// </summary>
 public class PasswordPolicyServiceTests
 {
@@ -23,21 +24,18 @@ public class PasswordPolicyServiceTests
     }
 
     [Fact]
+    public void Senha_com15chars_sohMinuscula_passa()
+    {
+        // NIST: sem regra de composição — tamanho é o que importa.
+        Assert.Empty(PasswordPolicyService.Validar("somenteminuscula"));
+    }
+
+    [Fact]
     public void Senha_acimaDe128_falhaMaximo()
     {
         var longa = "Aa1!" + new string('x', 130); // > 128
         var erros = PasswordPolicyService.Validar(longa);
         Assert.Contains(erros, e => e.Contains("Máximo 128"));
-    }
-
-    [Fact]
-    public void Senha_semClasseDeCaractere_eRejeitada()
-    {
-        // 16 chars mas só minúsculas → faltam maiúscula/número/especial.
-        var erros = PasswordPolicyService.Validar("abcdefghijklmnop");
-        Assert.Contains(erros, e => e.Contains("maiúscula"));
-        Assert.Contains(erros, e => e.Contains("número"));
-        Assert.Contains(erros, e => e.Contains("especial"));
     }
 
     [Fact]

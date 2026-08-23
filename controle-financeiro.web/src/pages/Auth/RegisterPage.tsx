@@ -2,28 +2,21 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import {
-  PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo, PontesCheckbox,
+  PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox,
 } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
-import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
+import { getSenhaRequisitos } from '../../utils/passwordPolicy'
 import styles from './RegisterPage.module.css'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
 
+  // NIST SP 800-63B: só tamanho importa (sem regra de composição) — um único critério,
+  // não faz mais sentido barra de progresso de 5 níveis. Indicador simples ok/não-ok.
   const requisitos = getSenhaRequisitos(senha)
-  const forca = getSenhaForca(requisitos)
-  const progresso = (forca / requisitos.length) * 100
-
-  const cor =
-    forca <= 2 ? 'var(--pontes-danger)'
-    : forca <= 3 ? 'var(--pontes-warning)'
-    : forca === 4 ? 'var(--pontes-info)'
-    : 'var(--pontes-success)'
 
   return (
     <div className={styles.strength}>
-      <PontesProgress value={progresso} color={cor} height={3} showValue={false} />
       <div className={styles.reqs}>
         {requisitos.map((r) => (
           <span key={r.label} className={styles.req} data-ok={r.ok}>

@@ -1,87 +1,31 @@
 import { describe, it, expect } from 'vitest'
-import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
+import { getSenhaRequisitos } from '../../utils/passwordPolicy'
 
 describe('getSenhaRequisitos', () => {
-  it('falha no comprimento quando senha tem menos de 15 chars', () => {
+  it('falha quando senha tem menos de 15 chars', () => {
     const r = getSenhaRequisitos('Abcdefgh1!')
     expect(r[0].ok).toBe(false)
   })
 
-  it('passa no comprimento quando senha tem 15+ chars', () => {
+  it('passa quando senha tem 15+ chars', () => {
     const r = getSenhaRequisitos('Abcdefghij12345!')
     expect(r[0].ok).toBe(true)
   })
 
-  it('falha no comprimento quando senha passa de 128 chars', () => {
+  it('falha quando senha passa de 128 chars', () => {
     const r = getSenhaRequisitos('Aa1!'.repeat(40)) // 160 chars
     expect(r[0].ok).toBe(false)
   })
 
-  it('falha em minúscula quando não há letra minúscula', () => {
-    const r = getSenhaRequisitos('ABCDEFGH1!')
-    expect(r[1].ok).toBe(false)
-  })
-
-  it('passa em minúscula quando há letra minúscula', () => {
-    const r = getSenhaRequisitos('abcDEFGH1!')
-    expect(r[1].ok).toBe(true)
-  })
-
-  it('falha em maiúscula quando não há letra maiúscula', () => {
-    const r = getSenhaRequisitos('abcdefgh1!')
-    expect(r[2].ok).toBe(false)
-  })
-
-  it('passa em maiúscula quando há letra maiúscula', () => {
-    const r = getSenhaRequisitos('abcDEFGH1!')
-    expect(r[2].ok).toBe(true)
-  })
-
-  it('falha em número quando não há dígito', () => {
-    const r = getSenhaRequisitos('Abcdefgh!@')
-    expect(r[3].ok).toBe(false)
-  })
-
-  it('passa em número quando há dígito', () => {
-    const r = getSenhaRequisitos('Abcdefg1!@')
-    expect(r[3].ok).toBe(true)
-  })
-
-  it('falha em especial quando não há caractere especial', () => {
-    const r = getSenhaRequisitos('Abcdefgh12')
-    expect(r[4].ok).toBe(false)
-  })
-
-  it('passa em especial quando há caractere especial', () => {
-    const r = getSenhaRequisitos('Abcdefg1!@')
-    expect(r[4].ok).toBe(true)
-  })
-
-  it('todos os requisitos ok com senha forte', () => {
-    const r = getSenhaRequisitos('Tr0ub4dor&3Xyzw')
-    expect(r.every((req) => req.ok)).toBe(true)
-  })
-
-  it('todos os requisitos falham com string vazia', () => {
+  it('falha com string vazia', () => {
     const r = getSenhaRequisitos('')
-    expect(r.every((req) => req.ok)).toBe(false)
-  })
-})
-
-describe('getSenhaForca', () => {
-  it('retorna 0 para senha vazia', () => {
-    const r = getSenhaRequisitos('')
-    expect(getSenhaForca(r)).toBe(0)
+    expect(r[0].ok).toBe(false)
   })
 
-  it('retorna 5 para senha forte', () => {
-    const r = getSenhaRequisitos('Tr0ub4dor&3Xyzw')
-    expect(getSenhaForca(r)).toBe(5)
-  })
-
-  it('retorna valor parcial corretamente', () => {
-    const r = getSenhaRequisitos('abcdefghijklmno')
-    // tem minúscula e comprimento (15), sem maiúscula, número, especial
-    expect(getSenhaForca(r)).toBe(2)
+  // NIST SP 800-63B: sem regra de composição — senha só com minúscula, sem
+  // maiúscula/número/especial, passa se tiver 15+ chars.
+  it('passa mesmo sem maiúscula/número/especial, só com o tamanho certo', () => {
+    const r = getSenhaRequisitos('somenteminuscula')
+    expect(r[0].ok).toBe(true)
   })
 })
