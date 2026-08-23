@@ -233,6 +233,21 @@ fica catalogado pro público.
   (achado de 2026-08-12).
 - 🟡 P2 — reavaliar porte (pequeno → precisa de DPO/RIPD?) se a base de usuários ou receita crescer
   de verdade — Resolução CD/ANPD nº 2/2022, Art. 3º-4º.
+- 🟡 P2 — **Criptografia de campo em repouso (PII/financeiro no Postgres)** — decisão do Gustavo
+  (2026-08-23): só catalogar por ora, não bloqueia o beta (Neon já tem criptografia de disco; LGPD
+  não exige técnica específica; poucos testadores conhecidos). A peça de cripto já existe e está
+  testada: `MfaCrypto` (AES-256-GCM, chave em env var separada do banco `MFA_ENCRYPTION_KEY`) — feita
+  pro secret TOTP. **Pra estender:** (1) generalizar o `MfaCrypto` num helper reutilizável; (2)
+  ligar via EF Core `ValueConverter` (cifra ao gravar / decifra ao ler, transparente). **Análise de
+  quais campos já feita (2026-08-23):**
+  - ✅ **Seguro cifrar** (texto livre sensível, NÃO filtrado/somado no banco): `Emprestimo.Pessoa`
+    (nome de terceiro — o PII que a pesquisa LGPD mandou minimizar), `Emprestimo.Descricao`,
+    `Emprestimo.Observacao`. Zero quebra de funcionalidade.
+  - ⚠️ **Precisa retrabalho** (usados em query no banco): `Transacao.Descricao` (busca `WHERE LIKE`,
+    `TransacaoService.cs:167` — cifrar exige refazer a busca ou cifragem determinística mais fraca);
+    valores `Transacao.Valor`/`Emprestimo.ValorTotal` (soma e filtro valor-mín/máx — cifrar quebra
+    relatório); `Emprestimo.EmailContraparte` (lookup exato no vínculo, `EmprestimoService.cs:422`).
+  - Chave de prod: gerar `openssl rand -base64 32`, guardar no `fly secrets`, NUNCA reusar a de dev.
 - 🟡 P2 — **Mapa de "onde entram os dados de contato da empresa"** — achado ao vivo (2026-08-19,
   Gustavo: "não coloca meu email nem nenhum dado verdadeiro meu, ainda não temos contas da
   empresa"). Removido e-mail pessoal das páginas legais; todos os pontos abaixo têm TODO no código
