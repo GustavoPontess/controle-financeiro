@@ -267,6 +267,18 @@ rodado, nenhum dado saiu do local. O resto fica catalogado pro público.
   - `Footer.tsx` — ícones sociais (X/Twitter, LinkedIn, Instagram) e badges de App Store/Google
     Play apontam pra `href="#"`/placeholder — mesma raiz (sem conta de empresa ainda), não é
     "contato" mas é achado relacionado.
+- 🟡 P2 — **Cobertura de teste das páginas sem teste dedicado** — auditoria de 2026-08-23: 22 das
+  ~29 páginas têm teste de página; faltam 6 reais (o `DesignSystem` é dev-only/gateado, não conta).
+  Fazer teste pra **todas** elas (decisão do Gustavo — "vamos fazer pra todos", mas depois, não
+  agora). Por ordem de risco:
+  - **`Settings`** (⭐ maior valor — é onde mora a UI de MFA feita em 2026-08-23: ativar/QR/confirmar/
+    backup codes/desativar; `MfaSection.tsx`). Mockar `mfaService` + `qrcode`.
+  - **`Transactions`** (página central; os componentes `TransactionForm`/`TransactionTable`/
+    `NewTransactionDialog` já têm teste, falta o container).
+  - **`Importacao`** (parsing de OFX/CSV — área de risco, mexe com arquivo).
+  - **`Onboarding`** (fluxo de primeiros passos).
+  - **`PrivacidadePage`** e **`TermosDeUsoPage`** (conteúdo estático — baixo risco, mas entram no
+    "todos"; testar que renderizam + link cruzado Termos→Privacidade).
 - 🟡 P2 — **Revisão jurídica dos Termos de Uso** (`/termos-de-uso`) — página é rascunho escrito
   pra tirar o link morto do beta, baseado em CDC/Marco Civil, mas não passou por revisão jurídica
   de verdade. Gustavo precisa revisar/ajustar antes do lançamento público.
