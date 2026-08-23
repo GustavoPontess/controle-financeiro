@@ -93,7 +93,7 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 - **Gestão de segredos + rotação sem downtime:** env var vs secret manager (Azure Key Vault / Vault / AWS Secrets Manager); **key rollover da JWT signing key** (múltiplas chaves de validação simultâneas) + rotação da senha do Postgres sem derrubar a API. ⚠️ **Urgente** — ex-colaboradores têm clone com a `Jwt:Key`. _Sem fonte verificada._
 - **Criptografia:** TLS obrigatório; encryption-at-rest do Postgres (disco/TDE) vs criptografia de campos PII/financeiros em EF Core (`ValueConverter` / `EntityFrameworkCore.DataEncryption`); gestão/rotação dessas chaves. _Não confirmado._
 - **Logging/auditoria:** trilha de eventos financeiros; **nunca logar** senha/token/PII/número de conta; mascaramento; retenção. (Já temos `FinancialEventLog`.) _Não confirmado._
-- **Regulatório BR:** obrigações LGPD (base legal, direitos do titular, minimização, DPO, RIPD/DPIA Art.38). **BACEN/Open Finance** se aplica a agregador de finanças pessoais que **não movimenta dinheiro**? _Pergunta-chave SEM resposta confirmada._
+- ~~**Regulatório BR:** obrigações LGPD (base legal, direitos do titular, minimização, DPO, RIPD/DPIA Art.38). **BACEN/Open Finance** se aplica a agregador de finanças pessoais que **não movimenta dinheiro**?~~ **Resolvido em 2026-08-18** — pesquisa completa fonte primária em `docs/CONFORMIDADE_BR.md`. BACEN fora do escopo; LGPD com base legal mapeada, DPO dispensado.
 
 ---
 
@@ -130,3 +130,4 @@ Re-rodar deep-research (quando o servidor não estiver rate-limitando) para: **r
 
 ## Fontes primárias
 OWASP Cheat Sheets: Password Storage · Forgot Password · Authentication · Session Management · CSRF Prevention · HTML5 Security · Secrets Management · Logging. OWASP API Security Top 10 (2023) API2/API4. NIST SP800-63B. RFC 8725 (JWT BCP). Microsoft Learn (ASP.NET Core CORS / Key Vault / EF value conversions). IETF draft-ietf-oauth-browser-based-apps. ANPD (RIPD).
+

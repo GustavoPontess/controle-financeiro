@@ -254,6 +254,19 @@ fica catalogado pro público.
   testadores convidados = risco baixo); revisitar se aparecer bot de verdade ou no lançamento
   público. OWASP: a defesa mais forte de verdade é MFA, não CAPTCHA — considerar MFA primeiro se
   for investir nisso.
+- 🟡 P2 — **MFA opcional (opt-in), nunca obrigatório** — decisão do Gustavo (2026-08-23): usuário
+  escolhe se quer ativar, não é forçado ("tem gente que não gosta"). **Não é exigência legal** —
+  LGPD Art. 46 pede só "medidas de segurança técnicas e administrativas aptas", sem nomear MFA nem
+  nenhuma tecnologia específica (confirmado direto no texto da lei). É recomendação de boas
+  práticas (OWASP/NIST — "preveniria 99,9% dos comprometimentos"), não obrigação. *Como* implementar
+  no .NET 8/10 (TOTP via ASP.NET Identity? passkey/FIDO2?) segue 🔶 aberto em
+  `docs/SEGURANCA_BEST_PRACTICES.md` — pesquisar antes de codar.
+- 🟠 P1 — **Upgrade .NET 8 → .NET 10** — achado ao vivo (2026-08-23, Gustavo perguntou sobre versão
+  do .NET). .NET 8 (o que usamos, LTS) e .NET 9 (STS) **perdem suporte na mesma data: 10/11/2026**
+  (fonte: dotnet.microsoft.com/platform/support/policy, checado hoje). .NET 10 é a LTS atual
+  (lançou nov/2025, suporte até nov/2028) — é o alvo certo, **pula o 9 direto**. Prazo real, não é
+  "quando sobrar tempo": rodar sem suporte depois de nov/2026 significa sem patch de segurança.
+  Mapear esforço de migração antes de outubro/2026.
 
 ---
 
