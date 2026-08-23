@@ -13,8 +13,10 @@ public class AuthService
     private readonly AppDbContext _context;
     private readonly JwtTokenProvider _tokenProvider;
     private readonly IPasswordResetDispatcher _resetDispatcher;
+    private readonly MfaService _mfaService;
 
     private const int RefreshTokenDays = 7;
+    private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
 
     // Proteção contra força bruta por CONTA (OWASP Authentication Cheat Sheet) —
     // complementa o rate-limit por IP (Program.cs), que sozinho é contornável trocando de IP.
@@ -26,11 +28,13 @@ public class AuthService
     public AuthService(
         AppDbContext context,
         JwtTokenProvider tokenProvider,
-        IPasswordResetDispatcher resetDispatcher)
+        IPasswordResetDispatcher resetDispatcher,
+        MfaService mfaService)
     {
         _context = context;
         _tokenProvider = tokenProvider;
         _resetDispatcher = resetDispatcher;
+        _mfaService = mfaService;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -118,7 +122,7 @@ public class AuthService
         };
     }
 
-    public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+    public async Task<LoginResultDto> LoginAsync(LoginDto dto)
     {
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
@@ -162,20 +166,83 @@ public class AuthService
 
         // Rehash transparente: senha legada (PBKDF2 10k/20B) ou Argon2id com parâmetros
         // antigos é regravada com o esquema atual após verificação bem-sucedida — upgrade
-        // gradual sem forçar reset (OWASP). Persistido no SaveChanges abaixo.
+        // gradual sem forçar reset (OWASP). Independe de ter MFA ou não (é sobre o hash da
+        // senha, já provada correta agora). Persistido no SaveChanges abaixo.
         if (PasswordHasher.NeedsRehash(usuario.PasswordHash))
             usuario.PasswordHash = PasswordHasher.HashPassword(dto.Password);
+
+        // MFA ativo — NÃO emite JWT ainda. Cria um desafio de curta duração; só depois de
+        // VerificarMfaLoginAsync confirmar o código é que a sessão de verdade nasce.
+        if (usuario.MfaAtivo)
+        {
+            var challengeBruto = GerarTokenOpaco();
+            _context.MfaLoginChallenges.Add(new MfaLoginChallenge
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = usuario.Id,
+                TokenHash = OpaqueTokenHasher.Hash(challengeBruto),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(MfaChallengeMinutos),
+            });
+            await _context.SaveChangesAsync();
+
+            return new LoginResultDto { MfaRequerido = true, MfaChallengeToken = challengeBruto };
+        }
 
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
         var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
 
+        return new LoginResultDto
+        {
+            MfaRequerido = false,
+            Auth = new AuthResponseDto
+            {
+                UsuarioId = usuario.Id,
+                Email = usuario.Email,
+                Nome = usuario.Nome,
+                Token = token,
+                RefreshToken = refreshBruto,
+                RefreshTokenExpiresAt = rt.ExpiresAt,
+            },
+        };
+    }
+
+    /// <summary>
+    /// Passo 2 do login com MFA — recebe o challenge do passo 1 (senha certa) + o código
+    /// TOTP/backup, e só aí emite a sessão de verdade (JWT + refresh). Challenge é de uso
+    /// único em caso de SUCESSO (deletado); código errado não consome o challenge, permite
+    /// tentar de novo dentro do TTL (rate-limit por IP no endpoint cobre brute-force do código).
+    /// </summary>
+    public async Task<AuthResponseDto> VerificarMfaLoginAsync(string challengeTokenBruto, string codigo)
+    {
+        if (string.IsNullOrWhiteSpace(challengeTokenBruto) || string.IsNullOrWhiteSpace(codigo))
+            throw new ArgumentException("Challenge e código são obrigatórios.");
+
+        var hash = OpaqueTokenHasher.Hash(challengeTokenBruto);
+        var challenge = await _context.MfaLoginChallenges
+            .Include(c => c.Usuario)
+            .FirstOrDefaultAsync(c => c.TokenHash == hash);
+
+        if (challenge == null || challenge.ExpiresAt <= DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Sessão de login expirada. Faça login de novo.");
+
+        if (!await _mfaService.CodigoValidoParaUsuarioAsync(challenge.Usuario, codigo))
+            throw new UnauthorizedAccessException("Código inválido.");
+
+        // Challenge é de uso único — remove assim que confirma, antes de emitir a sessão.
+        _context.MfaLoginChallenges.Remove(challenge);
+
+        var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id);
+        await _context.SaveChangesAsync();
+
+        var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome);
+
         return new AuthResponseDto
         {
-            UsuarioId = usuario.Id,
-            Email = usuario.Email,
-            Nome = usuario.Nome,
+            UsuarioId = challenge.Usuario.Id,
+            Email = challenge.Usuario.Email,
+            Nome = challenge.Usuario.Nome,
             Token = token,
             RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = rt.ExpiresAt,

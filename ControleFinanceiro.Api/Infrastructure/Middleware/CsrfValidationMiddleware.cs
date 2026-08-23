@@ -48,7 +48,11 @@ public class CsrfValidationMiddleware
         return pathValue.Contains("/auth/login", StringComparison.OrdinalIgnoreCase) ||
                pathValue.Contains("/auth/register", StringComparison.OrdinalIgnoreCase) ||
                pathValue.Contains("/auth/forgot-password", StringComparison.OrdinalIgnoreCase) ||
-               pathValue.Contains("/auth/reset-password", StringComparison.OrdinalIgnoreCase);
+               pathValue.Contains("/auth/reset-password", StringComparison.OrdinalIgnoreCase) ||
+               // Passo 2 do login com MFA — ainda não há sessão nem cookie CSRF (o passo 1 não
+               // emite sessão pra quem tem MFA), então é público igual ao /auth/login. Protegido
+               // pelo challenge de uso único + TTL curto + rate-limit por IP (auth-mfa).
+               pathValue.Contains("/auth/mfa/verificar-login", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsUnsafeMethod(string method)

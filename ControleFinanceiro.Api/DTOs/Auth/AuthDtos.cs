@@ -25,6 +25,19 @@ public class AuthResponseDto
     public DateTime RefreshTokenExpiresAt { get; set; }
 }
 
+/// <summary>
+/// Resultado de <c>AuthService.LoginAsync</c> — ou o login já terminou (<see cref="Auth"/>
+/// preenchido) ou o usuário tem MFA ativo e precisa completar o 2º fator antes de ganhar
+/// sessão de verdade (<see cref="MfaChallengeToken"/> preenchido, SEM cookie de sessão
+/// setado ainda — só depois de <c>MfaService.VerificarLoginAsync</c> confirmar o código).
+/// </summary>
+public class LoginResultDto
+{
+    public bool MfaRequerido { get; set; }
+    public string? MfaChallengeToken { get; set; }
+    public AuthResponseDto? Auth { get; set; }
+}
+
 public class UsuarioDto
 {
     public Guid Id { get; set; }

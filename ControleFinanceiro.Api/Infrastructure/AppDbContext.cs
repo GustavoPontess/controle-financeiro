@@ -33,6 +33,8 @@ public class AppDbContext : DbContext
     // ── Issue #5 Autenticação Robusta ──
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+    public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
 
     // ── Issue #10 Orçamento/Metas ──
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
@@ -230,6 +232,24 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PasswordResetToken>()
             .HasIndex(prt => prt.Token)
+            .IsUnique();
+
+        // MfaBackupCode → Usuario (Cascade: códigos somem com o usuário)
+        modelBuilder.Entity<MfaBackupCode>()
+            .HasOne(c => c.Usuario)
+            .WithMany(u => u.MfaBackupCodes)
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MfaLoginChallenge → Usuario (Cascade)
+        modelBuilder.Entity<MfaLoginChallenge>()
+            .HasOne(c => c.Usuario)
+            .WithMany()
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MfaLoginChallenge>()
+            .HasIndex(c => c.TokenHash)
             .IsUnique();
 
         // ── Issue #10 Orçamento/Metas ──

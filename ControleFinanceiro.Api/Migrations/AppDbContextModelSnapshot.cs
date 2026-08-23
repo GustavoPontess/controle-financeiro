@@ -879,6 +879,64 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Metas");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("MfaBackupCodes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaLoginChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("MfaLoginChallenges");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Notificacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1499,6 +1557,18 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("FalhasLoginConsecutivas")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("MfaAtivadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("MfaAtivo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MfaSecretoCriptografado")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MfaSecretoPendenteCriptografado")
+                        .HasColumnType("text");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1831,6 +1901,28 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany("MfaBackupCodes")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaLoginChallenge", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Notificacao", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
@@ -2146,6 +2238,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("CompartilhamentosContas");
 
                     b.Navigation("Contas");
+
+                    b.Navigation("MfaBackupCodes");
 
                     b.Navigation("Relacionamento");
                 });

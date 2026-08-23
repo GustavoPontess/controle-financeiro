@@ -30,7 +30,7 @@ const DEV_ACCOUNTS = [...DEV_ACCOUNTS_BASE, ...contasExtras()]
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, verificarMfaLogin } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,6 +38,11 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Passo 2 (MFA) — preenchido quando o login retorna que o 2º fator é necessário.
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
+  const [mfaCodigo, setMfaCodigo] = useState('')
+  const [mfaErro, setMfaErro] = useState<string | undefined>()
 
   const validate = (): boolean => {
     const e: { email?: string; password?: string } = {}
@@ -54,10 +59,29 @@ export default function LoginPage() {
     if (!validate()) return
     setIsLoading(true)
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      if (result.mfaRequerido) {
+        setMfaChallenge(result.challengeToken) // troca pra tela do código
+        return
+      }
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMfaErro(undefined)
+    if (!mfaCodigo.trim()) { setMfaErro('Informe o código'); return }
+    setIsLoading(true)
+    try {
+      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim())
+      navigate('/')
+    } catch (err) {
+      setMfaErro(err instanceof Error ? err.message : 'Código inválido')
     } finally {
       setIsLoading(false)
     }
@@ -139,14 +163,46 @@ export default function LoginPage() {
 
           {/* Header form */}
           <div className={styles.head}>
-            <h1 className={styles.title}>Bem-vindo de volta</h1>
+            <h1 className={styles.title}>{mfaChallenge ? 'Verificação em duas etapas' : 'Bem-vindo de volta'}</h1>
             <p className={styles.sub}>
-              Não tem conta?{' '}
-              <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link>
+              {mfaChallenge ? (
+                'Digite o código do seu app autenticador (ou um código de recuperação).'
+              ) : (
+                <>Não tem conta?{' '}
+                <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></>
+              )}
             </p>
           </div>
 
-          {/* Form */}
+          {mfaChallenge ? (
+            /* Passo 2 — código MFA */
+            <form onSubmit={handleMfaSubmit} className={styles.formBody} noValidate>
+              <PontesField label="Código" htmlFor="mfa-codigo" required error={mfaErro}>
+                <PontesInput
+                  id="mfa-codigo"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={mfaCodigo}
+                  onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(undefined) }}
+                  invalid={!!mfaErro}
+                  placeholder="000000"
+                />
+              </PontesField>
+
+              <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
+                Verificar
+              </PontesButton>
+              <PontesButton
+                type="button" variant="ghost" size="md" fullWidth
+                onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined) }}
+              >
+                Voltar
+              </PontesButton>
+            </form>
+          ) : (
+          /* Passo 1 — email + senha */
           <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
             {error && (
               <PontesAlert tone="error">{error}</PontesAlert>
@@ -200,6 +256,7 @@ export default function LoginPage() {
               Entrar
             </PontesButton>
           </form>
+          )}
 
           {/* Footer */}
           <p className={styles.footer}>

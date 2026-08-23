@@ -14,14 +14,24 @@ namespace ControleFinanceiro.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly MfaService _mfaService;
     private readonly JwtTokenProvider _tokenProvider;
     private readonly CsrfTokenService _csrfTokenService;
 
-    public AuthController(AuthService authService, JwtTokenProvider tokenProvider, CsrfTokenService csrfTokenService)
+    public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider, CsrfTokenService csrfTokenService)
     {
         _authService = authService;
+        _mfaService = mfaService;
         _tokenProvider = tokenProvider;
         _csrfTokenService = csrfTokenService;
+    }
+
+    private Guid ExigirUsuarioId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (claim == null || !Guid.TryParse(claim.Value, out var usuarioId))
+            throw new UnauthorizedAccessException("Usuário não identificado");
+        return usuarioId;
     }
 
     private void SetAuthCookies(string jwtToken, string refreshToken)
@@ -79,14 +89,43 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Login. Se o usuário tem MFA ativo, NÃO retorna sessão — retorna
+    /// <c>{ mfaRequerido: true, mfaChallengeToken }</c> e o cliente precisa chamar
+    /// <c>POST /mfa/verificar-login</c> com o código do 2º fator pra completar.
+    /// </summary>
     [HttpPost("login")]
     [EnableRateLimiting("auth-login")]
-    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         var result = await _authService.LoginAsync(dto);
-        SetAuthCookies(result.Token, result.RefreshToken);
+
+        if (result.MfaRequerido)
+            return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
+
+        var auth = result.Auth!;
+        SetAuthCookies(auth.Token, auth.RefreshToken);
 
         // Return user info without tokens (tokens are now in httpOnly cookies)
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = auth.UsuarioId,
+            Email = auth.Email,
+            Nome = auth.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = auth.RefreshTokenExpiresAt
+        });
+    }
+
+    /// <summary>Passo 2 do login com MFA — código TOTP ou backup code + o challenge do passo 1.</summary>
+    [HttpPost("mfa/verificar-login")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
+    {
+        var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
+        SetAuthCookies(result.Token, result.RefreshToken);
+
         return Ok(new AuthResponseDto
         {
             UsuarioId = result.UsuarioId,
@@ -102,11 +141,7 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<UsuarioDto>> GetMe()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            throw new UnauthorizedAccessException("Usuário não identificado");
-
-        var usuario = await _authService.GetUsuarioAsync(usuarioId);
+        var usuario = await _authService.GetUsuarioAsync(ExigirUsuarioId());
         if (usuario == null) return NotFound();
 
         return Ok(usuario);
@@ -116,12 +151,39 @@ public class AuthController : ControllerBase
     [HttpPut("profile")]
     public async Task<ActionResult<UsuarioDto>> UpdateProfile([FromBody] UpdateProfileDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            throw new UnauthorizedAccessException("Usuário não identificado");
-
-        var result = await _authService.UpdateProfileAsync(usuarioId, dto.Nome, dto.DataNascimento);
+        var result = await _authService.UpdateProfileAsync(ExigirUsuarioId(), dto.Nome, dto.DataNascimento);
         return Ok(result);
+    }
+
+    // ── MFA (opt-in, nunca obrigatório) ──────────────────────────────────────────
+
+    [Authorize]
+    [HttpGet("mfa/status")]
+    public async Task<ActionResult<MfaStatusDto>> MfaStatus()
+        => Ok(await _mfaService.ObterStatusAsync(ExigirUsuarioId()));
+
+    [Authorize]
+    [HttpPost("mfa/iniciar-ativacao")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<MfaIniciarAtivacaoResponseDto>> MfaIniciarAtivacao()
+        => Ok(await _mfaService.IniciarAtivacaoAsync(ExigirUsuarioId()));
+
+    [Authorize]
+    [HttpPost("mfa/confirmar-ativacao")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<MfaAtivacaoConfirmadaResponseDto>> MfaConfirmarAtivacao([FromBody] MfaConfirmarAtivacaoDto dto)
+    {
+        var backupCodes = await _mfaService.ConfirmarAtivacaoAsync(ExigirUsuarioId(), dto.Codigo);
+        return Ok(new MfaAtivacaoConfirmadaResponseDto { BackupCodes = backupCodes });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/desativar")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<IActionResult> MfaDesativar([FromBody] MfaDesativarDto dto)
+    {
+        await _mfaService.DesativarAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
+        return NoContent();
     }
 
     [Authorize]

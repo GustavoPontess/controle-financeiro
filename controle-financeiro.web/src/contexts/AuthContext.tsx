@@ -18,13 +18,17 @@ export interface StoredAccount {
   nome: string
 }
 
+/** Resultado do passo 1 do login: ou terminou, ou pede o 2º fator (MFA). */
+export type LoginResult = { mfaRequerido: false } | { mfaRequerido: true; challengeToken: string }
+
 export interface AuthContextType {
   currentUser: Usuario | null
   isAuthenticated: boolean
   isLoading: boolean
   accountKey: number
   savedAccounts: StoredAccount[]
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<LoginResult>
+  verificarMfaLogin: (challengeToken: string, codigo: string) => Promise<void>
   register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -94,18 +98,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const carregarSessao = async () => {
+    const usuario = await fetchCurrentUser()
+    if (usuario) {
+      setCurrentUser(usuario)
+      upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+    } else {
+      throw new Error('Falha ao carregar dados do usuário')
+    }
+  }
+
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
-      await api.post('/auth/login', { email, password })
-      const usuario = await fetchCurrentUser()
-      if (usuario) {
-        setCurrentUser(usuario)
-        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
-      } else {
-        throw new Error('Falha ao carregar dados do usuário')
+      const res = await api.post('/auth/login', { email, password })
+      // MFA ativo — backend não emitiu sessão, pede o 2º fator.
+      if (res.data?.mfaRequerido) {
+        return { mfaRequerido: true, challengeToken: res.data.mfaChallengeToken }
       }
+      await carregarSessao()
+      return { mfaRequerido: false }
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao fazer login')
+    }
+  }
+
+  const verificarMfaLogin = async (challengeToken: string, codigo: string) => {
+    try {
+      await api.post('/auth/mfa/verificar-login', { challengeToken, codigo })
+      await carregarSessao()
+    } catch (error) {
+      throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Código inválido')
     }
   }
 
@@ -195,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accountKey,
         savedAccounts,
         login,
+        verificarMfaLogin,
         register,
         logout,
         refreshUser,

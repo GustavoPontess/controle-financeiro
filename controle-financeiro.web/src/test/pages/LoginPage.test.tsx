@@ -5,6 +5,7 @@ import LoginPage from '../../pages/Auth/LoginPage'
 import { PontesThemeProvider } from '../../components/pontes'
 
 const mockLogin = vi.fn()
+const mockVerificarMfaLogin = vi.fn()
 const mockNavigate = vi.fn()
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -13,7 +14,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 })
 
 vi.mock('../../hooks/useAuth', () => ({
-  useAuth: () => ({ login: mockLogin }),
+  useAuth: () => ({ login: mockLogin, verificarMfaLogin: mockVerificarMfaLogin }),
 }))
 
 function renderLogin() {
@@ -69,13 +70,33 @@ describe('LoginPage', () => {
   })
 
   it('navega para home após login bem-sucedido', async () => {
-    mockLogin.mockResolvedValueOnce(undefined)
+    mockLogin.mockResolvedValueOnce({ mfaRequerido: false })
     renderLogin()
 
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
     fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
     fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
 
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
+
+  it('mostra passo do código quando login pede MFA e completa com verificarMfaLogin', async () => {
+    mockLogin.mockResolvedValueOnce({ mfaRequerido: true, challengeToken: 'chal-123' })
+    mockVerificarMfaLogin.mockResolvedValueOnce(undefined)
+    renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
+    fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
+
+    // Trocou pra tela do 2º fator — não navegou ainda.
+    await waitFor(() => expect(screen.getByText(/verificação em duas etapas/i)).toBeInTheDocument())
+    expect(mockNavigate).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText(/código/i), { target: { value: '123456' } })
+    fireEvent.submit(screen.getByRole('button', { name: /verificar/i }).closest('form')!)
+
+    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-123', '123456'))
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
   })
 

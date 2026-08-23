@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 import { palettes, fonts, usePontesTheme } from "@/components/pontes"
+import MfaSection from "./MfaSection"
 import styles from "./SettingsPage.module.css"
 
 /**
@@ -15,9 +16,11 @@ export default function SettingsPage() {
       <header className={styles.header}>
         <h1 className={styles.title}>Configurações</h1>
         <p className={styles.subtitle}>
-          Personalize a aparência do app. As escolhas valem em todas as telas e sobrevivem ao reload.
+          Segurança da conta e aparência do app. As escolhas de tema valem em todas as telas e sobrevivem ao reload.
         </p>
       </header>
+
+      <MfaSection />
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>

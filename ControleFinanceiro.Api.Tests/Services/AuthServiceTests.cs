@@ -14,6 +14,7 @@ namespace ControleFinanceiro.Api.Tests.Services;
 /// (account takeover) e a resposta deve ser idêntica para qualquer e-mail (sem enumeração).
 /// O trabalho real (token + e-mail) acontece fora do caminho da requisição.
 /// </summary>
+[Collection("PasswordHasherEnv")]
 public class AuthServiceTests
 {
     private static AppDbContext CreateContext()
@@ -29,7 +30,15 @@ public class AuthServiceTests
     private static AuthService CreateService(AppDbContext ctx, IPasswordResetDispatcher dispatcher)
     {
         var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
-        return new AuthService(ctx, jwt, dispatcher);
+        return new AuthService(ctx, jwt, dispatcher, new MfaService(ctx));
+    }
+
+    // Login sem MFA sempre retorna Auth preenchido — helper pra não repetir o `.Auth!` em todo teste.
+    private static async Task<DTOs.Auth.AuthResponseDto> LoginSemMfaAsync(AuthService auth, string email, string senha)
+    {
+        var r = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = email, Password = senha });
+        Assert.False(r.MfaRequerido);
+        return r.Auth!;
     }
 
     private static Usuario SeedUsuario(AppDbContext ctx, string email)
@@ -164,7 +173,7 @@ public class AuthServiceTests
         await ctx.SaveChangesAsync();
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "legado@test.com", Password = "Senha@Legada1" });
+        var resp = await LoginSemMfaAsync(auth, "legado@test.com", "Senha@Legada1");
 
         Assert.False(string.IsNullOrEmpty(resp.Token));
         var atualizado = await ctx.Usuarios.FindAsync(u.Id);
@@ -184,7 +193,7 @@ public class AuthServiceTests
         var hashAntes = u.PasswordHash;
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "atual@test.com", Password = "Senha@Atual1" });
+        await LoginSemMfaAsync(auth, "atual@test.com", "Senha@Atual1");
 
         var depois = await ctx.Usuarios.FindAsync(u.Id);
         Assert.Equal(hashAntes, depois!.PasswordHash); // sem rehash desnecessário
@@ -281,7 +290,7 @@ public class AuthServiceTests
         SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+        var resp = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
 
         Assert.False(string.IsNullOrEmpty(resp.RefreshToken));
         var stored = await ctx.RefreshTokens.SingleAsync();
@@ -295,7 +304,7 @@ public class AuthServiceTests
         using var ctx = CreateContext();
         SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
-        var login = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+        var login = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
 
         var novo = await auth.RefreshAsync(login.RefreshToken);
 
@@ -314,7 +323,7 @@ public class AuthServiceTests
         using var ctx = CreateContext();
         SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
-        var login = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "u@test.com", Password = "SenhaForte!2026" });
+        var login = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
 
         await auth.LogoutAsync(login.RefreshToken);
 
@@ -396,7 +405,7 @@ public class AuthServiceTests
         await ctx.SaveChangesAsync();
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" });
+        var resp = await LoginSemMfaAsync(auth, "alvo@test.com", "SenhaForte!2026");
 
         Assert.False(string.IsNullOrEmpty(resp.Token));
         var atualizado = await ctx.Usuarios.FindAsync(u.Id);
@@ -442,7 +451,7 @@ public class AuthServiceTests
         Assert.Null(atualizado.UltimaFalhaLoginEm);
 
         // Login com a senha nova funciona normalmente (bloqueio foi limpo).
-        var resp = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "NovaSenhaForte!2026" });
+        var resp = await LoginSemMfaAsync(auth, "alvo@test.com", "NovaSenhaForte!2026");
         Assert.False(string.IsNullOrEmpty(resp.Token));
     }
 }

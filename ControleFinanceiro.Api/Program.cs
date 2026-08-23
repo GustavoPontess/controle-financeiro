@@ -81,6 +81,7 @@ builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<SubcategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
+builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
@@ -189,6 +190,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 1,
                 Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+            }));
+
+    // Confirmar ativação / verificar login / desativar MFA — código de 6 dígitos, precisa de
+    // limite estrito (OWASP MFA Cheat Sheet: "SHOULD apply strict attempt limits").
+    options.AddPolicy("auth-mfa", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 5,
+                Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0,
             }));
 
