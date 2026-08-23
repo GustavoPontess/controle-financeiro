@@ -321,6 +321,37 @@ public class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
     }
 
+    // ── Register: unicidade de e-mail (achado do pentest ao vivo, 2026-08-23) ──
+
+    [Fact]
+    public async Task Register_emailDuplicado_lancaInvalidOperationException()
+    {
+        using var ctx = CreateContext();
+        SeedUsuario(ctx, "duplicado@test.com");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => auth.RegisterAsync(new DTOs.Auth.RegisterDto
+        {
+            Email = "duplicado@test.com", Nome = "Outro", Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
+        }));
+    }
+
+    [Fact]
+    public async Task Register_emailDuplicado_comCaseDiferente_tambemLancaInvalidOperationException()
+    {
+        // Achado do pentest: checagem comparava dto.Email cru (sem normalizar) contra o
+        // e-mail já gravado em lowercase — deixava passar a checagem e estourava depois
+        // na constraint única do banco com um 500 feio em vez de "e-mail já cadastrado".
+        using var ctx = CreateContext();
+        SeedUsuario(ctx, "duplicado@test.com");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => auth.RegisterAsync(new DTOs.Auth.RegisterDto
+        {
+            Email = "DUPLICADO@TEST.COM", Nome = "Outro", Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
+        }));
+    }
+
     // ── Força bruta por conta (OWASP Authentication Cheat Sheet) ────────────────
 
     [Fact]

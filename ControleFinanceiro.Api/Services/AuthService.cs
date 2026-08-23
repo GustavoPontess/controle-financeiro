@@ -72,8 +72,10 @@ public class AuthService
 
         PasswordPolicyService.ValidarOuLancar(dto.Password);
 
-        // Check if email already exists
-        if (_context.Usuarios.Any(u => u.Email == dto.Email))
+        // Check if email already exists (case-insensitive — email é sempre gravado em
+        // lowercase abaixo; comparar sem normalizar deixava passar duplicata com case
+        // diferente, que quebrava depois na constraint única do banco com um 500 feio).
+        if (_context.Usuarios.Any(u => u.Email == dto.Email.ToLower()))
             throw new InvalidOperationException("Email já cadastrado");
 
         // Create new user

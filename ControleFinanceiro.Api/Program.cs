@@ -12,6 +12,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -331,6 +332,20 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Achado do pentest ao vivo (2026-08-23): atrás de proxy que termina TLS na borda
+// (Fly.io — o container só recebe HTTP puro internamente), `Request.IsHttps` fica
+// sempre false, mesmo o usuário estando em HTTPS de verdade. Isso quebrava o
+// `Secure` do cookie de sessão (AuthController.SetAuthCookies usa Request.IsHttps),
+// confirmado simulando o header X-Forwarded-Proto sem esse middleware. KnownNetworks/
+// KnownProxies limpos de propósito — a rede interna do Fly já isola quem alcança o
+// container (só o proxy deles), não tem IP fixo de proxy pra fixar aqui.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 // Migrations + seeds rodam antes de servir. Ordem importa: BancoSeeder primeiro
@@ -372,6 +387,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Primeiro middleware de todos — precisa rodar antes de qualquer coisa que
+// leia Request.Scheme/IsHttps (cookie Secure, HTTPS redirect, etc).
+app.UseForwardedHeaders();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 

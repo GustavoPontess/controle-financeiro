@@ -200,6 +200,26 @@ fica catalogado pro público.
   erro, teto 5min) + bloqueio permanente após 10 falhas (só reset de senha libera). Detalhe completo
   em `docs/SEGURANCA_BEST_PRACTICES.md` → "7. Proteção contra força bruta no login". Migration
   `AddLoginBruteForceProtection`, 5 testes novos, back 425/425.
+- [x] **Pentest ao vivo (2026-08-23)** — pedido explícito do Gustavo: simular usuário mal
+  intencionado contra a API local (contas de teste descartáveis, sem dado real). Cobertura: acesso
+  sem auth, IDOR (Contas/Transações/Empréstimos — inclusive tentar vincular-se a empréstimo alheio
+  sem convite), adulteração de JWT (payload trocado, `alg:none`), SQL injection, mass assignment,
+  Hangfire dashboard, força bruta, CORS com origem maliciosa, XSS armazenado (sem
+  `dangerouslySetInnerHTML` no front), rate-limit de registro/reset, vazamento de erro 500,
+  duplicidade de conta. **Maioria passou** (auth/IDOR/JWT/SQLi/CORS/Hangfire/força bruta todos
+  bloquearam corretamente) — **2 achados reais, os dois já corrigidos**:
+  - 🟠 **Cookie perdia `Secure` atrás do proxy do Fly.io** — `Request.IsHttps` fica sempre `false`
+    quando o TLS termina na borda (container só recebe HTTP puro), confirmado simulando
+    `X-Forwarded-Proto: https` sem o middleware. Corrigido com `ForwardedHeadersOptions`
+    (`Program.cs`) — `KnownNetworks`/`KnownProxies` limpos de propósito (rede interna do Fly já
+    isola quem alcança o container, sem IP fixo de proxy pra fixar). Reconfirmado ao vivo: cookie
+    ganhou `secure` depois do fix. **Bloqueava deploy seguro**, não era cosmético.
+  - 🟡 **Cadastro com e-mail em case diferente do já existente devolvia 500** em vez de "e-mail já
+    cadastrado" — checagem de duplicidade comparava sem normalizar (`dto.Email` cru vs. gravado em
+    lowercase), banco impedia a duplicata de verdade via constraint única (não vazou dado, não
+    duplicou conta), só devolvia erro feio. Corrigido em `AuthService.RegisterAsync`
+    (`.ToLower()` na checagem). 2 testes de regressão novos.
+  - Back 427/427 (+2).
 
 ### Catalogado pro lançamento público (não bloqueia o beta)
 
@@ -252,3 +272,4 @@ fica catalogado pro público.
 - [x] `chore/reorg-docs-solo` — mergeada via PR #198 (2026-06-16).
 - [x] `feature/familia-papeis-permissoes` — mergeada via PR #228 (2026-06-18) — era o backend da 2.3 (`STATE.md` ainda descrevia como pendente; corrigido).
 - [ ] `polish/relatorios` — nenhum PR encontrado no GitHub e branch não existe local/remoto. Provavelmente abandonada ou nunca chegou a ser pushada de fato. Se o trabalho ainda for necessário, tratar como item novo.
+
