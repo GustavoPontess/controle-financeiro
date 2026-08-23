@@ -279,6 +279,32 @@ rodado, nenhum dado saiu do local. O resto fica catalogado pro público.
   - **`Onboarding`** (fluxo de primeiros passos).
   - **`PrivacidadePage`** e **`TermosDeUsoPage`** (conteúdo estático — baixo risco, mas entram no
     "todos"; testar que renderizam + link cruzado Termos→Privacidade).
+- 🟠 P1 — **Backend: zero teste de integração de controller** — auditoria de 2026-08-23. TODO o
+  backend é testado por **service unitário** (banco InMemory); **não existe nenhum teste HTTP real**
+  (`WebApplicationFactory`). A camada de controller — `[Authorize]`, extração do `UsuarioId` do
+  token, status codes (401/403/404/409), middlewares (CSRF, exceção, forwarded headers) — **só foi
+  validada à mão no pentest de 2026-08-23**, não trava regressão. O `PROMPT_NOVA_SESSAO.md` §7 já
+  pede isso ("endpoint → integração: happy, 400, 401, 404, 403-outro-usuário"). É P1 (acima da
+  cobertura de página do front) porque é a porta de entrada de auth de um app de dinheiro. Fazer
+  suite de integração cobrindo pelo menos: login sem/com MFA, acesso sem token (401), IDOR
+  cross-user (403/404), Hangfire allowlist — os mesmos vetores que o pentest cobriu manualmente.
+- 🟡 P2 — **Backend: 6 services sem teste dedicado** — auditoria de 2026-08-23, por risco:
+  `FaturaService` (fatura de cartão — dinheiro), `FamiliaPermissoes` (permissão por papel — segurança;
+  hoje exercitado só de lado pelos testes dos services de família), `FinancialEventLogService`
+  (auditoria de saldo/limite), `ParcelaTransacaoService` (coberto indireto por Parcelamento + E2E),
+  `BancoService`/`CategoriaService` (CRUD simples, baixo risco).
+- 🟡 P2 — **Cobertura de teste das páginas sem teste dedicado** — auditoria de 2026-08-23: 22 das
+  ~29 páginas têm teste de página; faltam 6 reais (o `DesignSystem` é dev-only/gateado, não conta).
+  Fazer teste pra **todas** elas (decisão do Gustavo — "vamos fazer pra todos", mas depois, não
+  agora). Por ordem de risco:
+  - **`Settings`** (⭐ maior valor — é onde mora a UI de MFA feita em 2026-08-23: ativar/QR/confirmar/
+    backup codes/desativar; `MfaSection.tsx`). Mockar `mfaService` + `qrcode`.
+  - **`Transactions`** (página central; os componentes `TransactionForm`/`TransactionTable`/
+    `NewTransactionDialog` já têm teste, falta o container).
+  - **`Importacao`** (parsing de OFX/CSV — área de risco, mexe com arquivo).
+  - **`Onboarding`** (fluxo de primeiros passos).
+  - **`PrivacidadePage`** e **`TermosDeUsoPage`** (conteúdo estático — baixo risco, mas entram no
+    "todos"; testar que renderizam + link cruzado Termos→Privacidade).
 - 🟡 P2 — **Revisão jurídica dos Termos de Uso** (`/termos-de-uso`) — página é rascunho escrito
   pra tirar o link morto do beta, baseado em CDC/Marco Civil, mas não passou por revisão jurídica
   de verdade. Gustavo precisa revisar/ajustar antes do lançamento público.
