@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-19
+last_reviewed: 2026-08-23
 status: ATIVO
 ---
 
@@ -20,13 +20,13 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - **Formato versionado, auto-descritivo:** `ARGON2ID$<memKiB>$<t>$<p>$<b64salt>$<b64hash>` — permite migrar parâmetros/algoritmo no futuro (NIST: guardar referência ao esquema + custo).
 - **Migração transparente:** `VerifyPassword` aceita o hash legado (PBKDF2 10k/20B, blob base64 sem `$`); `NeedsRehash` detecta hash fora do padrão atual; `LoginAsync` **regrava no esquema atual após login bem-sucedido** — upgrade gradual sem forçar reset (OWASP). `VerifyArgon2` recomputa com os parâmetros gravados no próprio hash, então subir os params no futuro não invalida hashes antigos.
 - **Comparação constant-time** no verify (`FixedTimeEquals`).
-- **Pepper (NIST SHOULD):** segredo server-side aplicado por cima do hash, guardado **separado** (KMS/HSM/env, nunca no banco). Não implementado ainda — depende de gestão/rotação de chave. Ponto de extensão pronto: `Argon2id.KnownSecret`. _Follow-up no ROADMAP, junto da rotação de segredos._
+- **Pepper (NIST SHOULD): ✅ implementado (2026-08-23).** Segredo server-side (`Argon2.KnownSecret`) aplicado por cima do hash, guardado **separado** do banco (env var `PASSWORD_PEPPER`, nunca no Postgres). Opcional/fail-safe: sem a env var, hash/verify seguem sem pepper (não quebra dev local). Formato do hash versionado ganhou um `pepperFlag` — hash antigo sem pepper faz rehash transparente no próximo login quando o pepper liga. `PasswordHasher.cs`, testes cobrindo liga/desliga/rehash.
 - _Fontes: OWASP Password Storage Cheat Sheet; NIST SP 800-63B §3.1.1.2._
 
 ## 2. Política de senha ✅ (mín. 15 aplicado — 2026-06-17)
 
 - **NIST SP800-63B:** mínimo **15 chars sem MFA** (8 com MFA), **máximo ≥64** (permitir passphrase), **sem regra de composição** (não exigir maiúscula/número/símbolo).
-- **Aplicado:** `PasswordPolicyService` subiu de 10 → **15 chars** + teto **128** (anti-DoS no Argon2id); espelhado no front (`utils/passwordPolicy.ts`). _Pendência catalogada: NIST recomenda **remover** as regras de composição (hoje exigimos maiúscula/número/especial) — mudança de UX, P2 no ROADMAP._
+- **Aplicado:** `PasswordPolicyService` subiu de 10 → **15 chars** + teto **128** (anti-DoS no Argon2id); espelhado no front (`utils/passwordPolicy.ts`). **Regra de composição removida (2026-08-23)** — NIST SP 800-63B §5.1.1.2 SHALL NOT impor maiúscula/número/especial (aumenta previsibilidade sem entropia real). Agora só tamanho + blocklist de senha comum.
 - _Fonte: OWASP Authentication Cheat Sheet + NIST SP800-63B-4._
 
 ## 3. Reset de senha ✅ (token hasheado + rate-limit por conta — 2026-06-17)
@@ -83,13 +83,24 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - _Fonte: OWASP Authentication Cheat Sheet ("Account Lockout"/"Automated Threats") + OWASP
   Credential Stuffing Prevention Cheat Sheet._
 
+## 8. MFA (TOTP, opt-in) ✅ (2026-08-23)
+
+- **Opt-in, NUNCA obrigatório** — decisão explícita do Gustavo. LGPD Art. 46 pede só "medidas de segurança aptas", sem nomear MFA; é boa prática OWASP oferecida como opção, não obrigação. O usuário liga/desliga em `/settings`.
+- **TOTP RFC 6238** via `Otp.NET` (SHA1, 6 dígitos, passo 30s, janela ±1 pra clock drift) — compatível com qualquer app autenticador. Não usamos ASP.NET Identity (auth própria).
+- **Secret criptografado em repouso:** AES-256-GCM (`MfaCrypto`), chave `MFA_ENCRYPTION_KEY` (env var, 32 bytes base64) **separada do banco** — vazamento do Postgres sozinho não expõe os secrets. Diferente de hash: o secret precisa ser recuperável pra validar o código, então é cifrado, não hasheado.
+- **Ativação em 2 passos:** setup gera secret pendente (não ativa ainda) → usuário confirma com 1 código certo → só aí vira ativo + gera 10 **backup codes** (hasheados SHA-256, uso único, mostrados 1 vez).
+- **Login em 2 passos:** senha certa NÃO emite sessão pra quem tem MFA — cria um `MfaLoginChallenge` (token opaco, hash no banco, TTL 5min, uso único no sucesso). Só `verificar-login` com código TOTP/backup emite JWT. Código errado não consome o challenge (permite retry no TTL); rate-limit `auth-mfa` (5/5min prod) cobre brute-force.
+- **Desativar** exige senha atual + código (defense-in-depth) e apaga todos os backup codes.
+- `verificar-login` é isento de CSRF (faz parte do login, ainda sem sessão/cookie CSRF — igual `/auth/login`); protegido pelo challenge de uso único + TTL + rate-limit.
+- _Fontes: OWASP MFA Cheat Sheet + Credential Stuffing Prevention ("MFA is by far the best defense") + RFC 6238._
+
 ---
 
 ## 🔶 Domínios ABERTOS (rate-limit cortou a verificação — re-pesquisar)
 
 Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults abaixo = senso comum da indústria, **não verificados adversarialmente** — tratar como hipótese.
 
-- **MFA no .NET 8 concretamente:** TOTP via ASP.NET Identity? passkeys/FIDO2 (`fido2-net-lib`) no .NET 8 vs esperar .NET 10? SMS é fraco (NIST). _Não confirmado._
+- ~~**MFA no .NET 8 concretamente**~~ **✅ implementado (2026-08-23) — TOTP opt-in.** Não usamos ASP.NET Identity (auth própria), então TOTP via **Otp.NET** (RFC 6238, SHA1/6díg/30s — compatível com Google Authenticator/Authy/1Password). Opt-in, NUNCA obrigatório (decisão do Gustavo; LGPD não exige). Secret criptografado em repouso (AES-256-GCM, chave `MFA_ENCRYPTION_KEY` separada do banco); 10 backup codes hasheados (uso único); login em 2 passos (challenge de uso único + TTL 5min entre senha e código); rate-limit `auth-mfa` (5/5min prod). Ver seção "8. MFA" abaixo. Passkeys/FIDO2 seguem como evolução futura (não bloqueia nada).
 - **Gestão de segredos + rotação sem downtime:** env var vs secret manager (Azure Key Vault / Vault / AWS Secrets Manager); **key rollover da JWT signing key** (múltiplas chaves de validação simultâneas) + rotação da senha do Postgres sem derrubar a API. ⚠️ **Urgente** — ex-colaboradores têm clone com a `Jwt:Key`. _Sem fonte verificada._
 - **Criptografia:** TLS obrigatório; encryption-at-rest do Postgres (disco/TDE) vs criptografia de campos PII/financeiros em EF Core (`ValueConverter` / `EntityFrameworkCore.DataEncryption`); gestão/rotação dessas chaves. _Não confirmado._
 - **Logging/auditoria:** trilha de eventos financeiros; **nunca logar** senha/token/PII/número de conta; mascaramento; retenção. (Já temos `FinancialEventLog`.) _Não confirmado._

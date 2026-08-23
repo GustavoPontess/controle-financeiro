@@ -137,7 +137,9 @@ status: ATIVO
 > **Regra inegociável** (também em `CLAUDE.md`): app de dinheiro + dados pessoais. **Antes de lançar, pesquisar e aplicar prática bancária/fintech + LGPD + regras regulatórias (ANPD; BACEN/Open Finance se aplicável) e respeitar TODAS as regras impostas.** `1.0.0` só sai com:
 
 - [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
-- [ ] Segredos rotacionados
+- [~] Segredos rotacionados — **JWT_SECRET local rotacionado (2026-08-23)**; falta a rotação de
+  produção (feita no `fly secrets set` durante o deploy) + a senha do Postgres de prod. Pepper de
+  senha ✅ implementado (env `PASSWORD_PEPPER`, gerar novo em prod).
 - [x] **Pesquisa de conformidade completa** (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126` ✅ **fechada em 2026-08-18** (3 agentes de pesquisa, fonte primária). Resumo completo em `docs/CONFORMIDADE_BR.md` → "Status da nossa pesquisa". BACEN/Open Finance: fora do escopo, confiança alta. LGPD: base legal mapeada, DPO dispensado (agente de pequeno porte, Resolução CD/ANPD nº 2/2022), RIPD não obrigatório agora. **Achado concreto de 2026-08-12** (histórico de pagamento mostra nome da conta do devedor pro credor — `ComprovanteContaNome`): tem base legal (Art. 7º-V), não é dado sensível, mas falta transparência explícita — segue como item ⚪ P3 abaixo, não bloqueia.
 - [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
 
@@ -254,13 +256,28 @@ fica catalogado pro público.
   testadores convidados = risco baixo); revisitar se aparecer bot de verdade ou no lançamento
   público. OWASP: a defesa mais forte de verdade é MFA, não CAPTCHA — considerar MFA primeiro se
   for investir nisso.
-- 🟡 P2 — **MFA opcional (opt-in), nunca obrigatório** — decisão do Gustavo (2026-08-23): usuário
-  escolhe se quer ativar, não é forçado ("tem gente que não gosta"). **Não é exigência legal** —
-  LGPD Art. 46 pede só "medidas de segurança técnicas e administrativas aptas", sem nomear MFA nem
-  nenhuma tecnologia específica (confirmado direto no texto da lei). É recomendação de boas
-  práticas (OWASP/NIST — "preveniria 99,9% dos comprometimentos"), não obrigação. *Como* implementar
-  no .NET 8/10 (TOTP via ASP.NET Identity? passkey/FIDO2?) segue 🔶 aberto em
-  `docs/SEGURANCA_BEST_PRACTICES.md` — pesquisar antes de codar.
+- [x] **MFA opcional (opt-in), nunca obrigatório** ✅ **feito em 2026-08-23** — decisão do Gustavo
+  (usuário escolhe, "tem gente que não gosta"). TOTP RFC 6238 (Otp.NET), secret cifrado em repouso
+  (AES-256-GCM, chave `MFA_ENCRYPTION_KEY` separada do banco), 10 backup codes de uso único, login
+  em 2 passos (challenge + código), UI de ativar/desativar em `/settings` com QR code. Não é
+  exigência legal (LGPD Art. 46 não nomeia MFA), é boa prática OWASP. Detalhe em
+  `docs/SEGURANCA_BEST_PRACTICES.md` → "8. MFA". Back 446/446, front 341/341, verificado ponta a
+  ponta (ativação via UI com QR + login 2-passos via API com TOTP real e backup code). Migration
+  `AddMfaTotp`.
+- [x] **Pepper de senha (NIST SHOULD)** ✅ **feito em 2026-08-23** — segredo `PASSWORD_PEPPER`
+  aplicado no Argon2id, separado do banco, com rehash transparente quando liga. Opcional (sem a
+  env var, segue sem pepper). `PasswordHasher.cs`.
+- [x] **Remover regra de composição de senha** ✅ **feito em 2026-08-23** — NIST SHALL NOT exigir
+  maiúscula/número/especial; agora só tamanho (15+) + blocklist. Back e front.
+- [x] **Achado durante o MFA: verificar-login precisava ser isento de CSRF** — passo 2 do login
+  (sem sessão/cookie CSRF ainda) dava 403; corrigido no `CsrfValidationMiddleware` (público igual
+  `/auth/login`, protegido por challenge de uso único + TTL + rate-limit). Pego na verificação
+  ao vivo.
+- ⚪ P3 — **blocklist de senha comum virou inalcançável** — todas as entradas de `SenhasComuns`
+  têm < 15 chars, mas o mínimo agora é 15, então a checagem nunca dispara. Não é bug de segurança
+  (senha curta já é barrada pelo tamanho), mas o código está morto. Limpar ou repovoar com
+  passphrases comuns de 15+ chars numa próxima passada. Pré-existente, exposto ao revisar a
+  política de senha em 2026-08-23.
 - 🟠 P1 — **Upgrade .NET 8 → .NET 10** — achado ao vivo (2026-08-23, Gustavo perguntou sobre versão
   do .NET). .NET 8 (o que usamos, LTS) e .NET 9 (STS) **perdem suporte na mesma data: 10/11/2026**
   (fonte: dotnet.microsoft.com/platform/support/policy, checado hoje). .NET 10 é a LTS atual
