@@ -171,13 +171,30 @@ rodado, nenhum dado saiu do local. O resto fica catalogado pro público.
   fundamentado na pesquisa LGPD desta sessão. **Checkbox de aceite real** (não pré-marcado, bloqueia
   submit) no `RegisterPage`, 3 testes novos. Aviso de minimização no campo "pessoa" do form de
   empréstimo (dado de terceiro sem conta).
-- [ ] **Hospedagem ainda NÃO decidida** — Fly.io/Neon/Vercel foram só uma *proposta* explorada numa
-  sessão anterior; o Gustavo **não confirmou** e a escolha segue 100% em aberto (2026-08-23). Os
-  configs específicos daquela proposta (`fly.toml`, `vercel.json`, `docs/features/deploy-beta/deploy.md`)
-  foram **removidos** pra não parecerem decisão fechada. O que fica no repo é **neutro** e serve pra
-  qualquer host de container: `Dockerfile` (API e web), `nginx.conf` (SPA), health checks `/health`
-  e `/health/ready`, `ForwardedHeaders` (cookie Secure atrás de proxy TLS — ver `Program.cs`), CORS
-  e baseURL por env var. Quando decidir a hospedagem, avaliar do zero.
+- [ ] **Hospedagem do beta — a decidir.** Discussão/pesquisa vive em
+  `docs/features/hospedagem-beta/decisao.md` (hub de planejamento do beta). Premissas fechadas
+  (2026-08-23): beta = produção de verdade, provedor confiável (não host obscuro grátis), beta
+  fechado. Escolha do provedor em aberto. O código já é **neutro** e serve pra qualquer host de
+  container: `Dockerfile` (API e web), `nginx.conf` (SPA), health checks `/health` e `/health/ready`,
+  `ForwardedHeaders` (cookie Secure atrás de proxy TLS — ver `Program.cs`), CORS e baseURL por env
+  var. **Critério obrigatório do provedor: backup automático do banco** (produção real).
+- [ ] **🔒 Cadastro fechado por allowlist de e-mail** (caminho A, decidido 2026-08-23) — hoje
+  `/auth/register` é aberto (só rate-limit); pra beta fechado, gatear pra só e-mails pré-aprovados
+  conseguirem registrar. Reaproveitar o padrão de `HANGFIRE_ADMIN_EMAILS` (env var ou tabela de
+  allowlist). **Gate pra abrir o beta** — sem isso qualquer um com o link entra.
+- [ ] **Admin v1 (escopo enxuto, decidido 2026-08-23)** — NÃO é o painel admin completo. Só:
+  (1) **gerenciar convites** (add/remover e-mail da allowlist do item acima);
+  (2) **dashboard de métricas** (quantos testadores cadastraram, uso básico).
+  Hoje não existe admin global (só `PapelFamilia` por família; Hangfire usa allowlist de e-mail
+  avulsa). Na implementação, decidir: flag `IsAdmin` no `Usuario` vs reusar allowlist de e-mail.
+  Suporte (mexer em conta de terceiro, atender LGPD pela UI) e painel completo ficam pro futuro.
+- [ ] **Segredos de produção** (quando houver deploy, seja qual for o host) — gerar `JWT_SECRET`,
+  `PASSWORD_PEPPER` e `MFA_ENCRYPTION_KEY` novos (nunca reusar os de dev); `DATABASE_URL` no formato
+  Npgsql com TLS se o banco exigir (`;SSL Mode=Require;Trust Server Certificate=true`);
+  `CORS_ALLOWED_ORIGINS` pro domínio real do front. Guardar via o mecanismo de secrets do host
+  escolhido, nunca em arquivo versionado.
+- [ ] **Ambiente sobe como `Production`** — garantir que o deploy NÃO rode como `Development`, senão
+  nascem os seeders de teste (`dev@controle.test`) e as rotas dev-only no ar. Checável na config.
 - [ ] **Segredos de produção** (quando houver deploy, seja qual for o host) — gerar `JWT_SECRET`,
   `PASSWORD_PEPPER` e `MFA_ENCRYPTION_KEY` novos (nunca reusar os de dev); `DATABASE_URL` no formato
   Npgsql com TLS se o banco exigir (`;SSL Mode=Require;Trust Server Certificate=true`);

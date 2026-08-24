@@ -2,7 +2,7 @@
 owner: Gustavo
 last_reviewed: 2026-08-23
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um eventual beta fechado — mas HOSPEDAGEM AINDA NÃO DECIDIDA e NENHUM DEPLOY ACONTECEU. Fly.io/Neon/Vercel foram só uma proposta de sessão anterior que o Gustavo NÃO confirmou; os configs específicos daquela proposta (`fly.toml`, `vercel.json`, `docs/features/deploy-beta/deploy.md`) foram REMOVIDOS em 2026-08-23 pra não parecerem decisão fechada, e comentários/docs foram neutralizados. O que fica no repo é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 446/446, front 341/341. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d`) segue pausado, sem vencedora. Histórico no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um eventual beta fechado — mas HOSPEDAGEM AINDA NÃO DECIDIDA e NENHUM DEPLOY ACONTECEU. Decisão de onde hospedar é discutida em `docs/features/hospedagem-beta/decisao.md` (começando do zero, sem stack pré-escolhida). O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 446/446, front 341/341. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d`) segue pausado, sem vencedora. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -25,10 +25,22 @@ foco: 'Preparação de CÓDIGO/segurança pra um eventual beta fechado — mas H
   (`ForwardedHeaders`), cadastro com e-mail em case diferente dava 500 (normalização).
 - **Criptografia de campo em repouso:** Gustavo decidiu NÃO fazer agora, só catalogar (P2, análise
   pronta no ROADMAP). A peça (`MfaCrypto`) já existe.
-- **Correção de rumo (importante):** Gustavo apontou que EU vinha tratando Fly.io/Neon/Vercel como
-  decisão fechada, o que ele NUNCA confirmou. Removidos `fly.toml`, `vercel.json`,
-  `docs/features/deploy-beta/deploy.md`; comentários em `Program.cs`/`.env.example`/`ROADMAP`/`STATE`
-  neutralizados. **Hospedagem está 100% em aberto. Nenhum deploy aconteceu, nada saiu do local.**
+- **Hospedagem:** decisão começa do zero (sem stack pré-escolhida), discutida em
+  `docs/features/hospedagem-beta/decisao.md`. **100% em aberto. Nenhum deploy aconteceu, nada saiu
+  do local.** Código é neutro pra qualquer host de container.
+
+**Sessão de planejamento (2026-08-23, tarde) — só discussão/docs, zero código.** Decisões e pesquisa
+sobre o beta, tudo em `docs/features/hospedagem-beta/decisao.md`:
+- **Premissas fechadas:** beta = produção de verdade; provedor confiável (não host obscuro grátis);
+  beta FECHADO; **servidor no Brasil** (latência).
+- **Cadastro fechado → allowlist de e-mail** (caminho A) + **Admin v1 enxuto** (gerenciar convites +
+  dashboard de métricas) — catalogados no ROADMAP como itens acionáveis.
+- **Pesquisa de mercado de provedores BR feita** (tabela comparativa no doc, 3 grupos: VPS / VPS+
+  Postgres gerenciado nacional / hyperscaler). Render e Railway descartados (sem região BR).
+  Recomendação: caminho A (Hostinger ~R$28 + `pg_dump` diário) OU B (VPS + Magalu DBaaS ~R$122).
+  **Gustavo ainda NÃO escolheu A vs B** — próxima decisão dele.
+- Explicados a ele: cold-start, VPS, resiliência dos jobs Hangfire (estado-baseados, robustos a
+  atraso), por que hyperscaler é caro na ponta pequena.
 
 Back 446/446, front 341/341, lint e build limpos. Migrations `AddLoginBruteForceProtection` e
 `AddMfaTotp` aplicadas no Postgres de dev. **Tudo commitado LOCAL, SEM PUSH.**
@@ -71,13 +83,11 @@ Gustavo confirmar).
 ---
 
 **(2026-08-18) Preparação de código pra beta — sweep de segurança/limpeza.** Trabalho de código
-commitado. **Correção retroativa (2026-08-23):** este bloco originalmente dizia que a stack
-Fly.io/Neon/Vercel estava "escolhida" e que só faltava o Gustavo criar contas e dar deploy — isso
-era presunção minha, o Gustavo NUNCA confirmou hospedagem. Aquilo foi neutralizado/removido (ver
-bloco 2026-08-23 acima). O trabalho de segurança/limpeza dessa data segue válido; só a parte de
-"deploy iminente na tal stack" que não. Módulo Empréstimos (bancada de UI,
-`/emprestimos-lab-a/b/c/d`) fica pausado exatamente onde estava — ver seção "Módulo Empréstimos —
-UI (pausado em 2026-08-18)" mais abaixo antes do histórico de sessões antigas.
+commitado (Hangfire fechado, rotas demo DEV-only, worktree órfã removida, Dockerfile hardening).
+Hospedagem segue sem decisão — ver bloco 2026-08-23 acima e `docs/features/hospedagem-beta/`. Módulo
+Empréstimos (bancada de UI, `/emprestimos-lab-a/b/c/d`) fica pausado exatamente onde estava — ver
+seção "Módulo Empréstimos — UI (pausado em 2026-08-18)" mais abaixo antes do histórico de sessões
+antigas.
 
 ---
 
@@ -802,13 +812,13 @@ Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
 
-1. **Decidir hospedagem (do Gustavo, sem pressa, nada escolhido ainda).** Quando/se ele quiser
-   avaliar onde hospedar, começar do zero — Fly.io/Neon/Vercel eram só uma proposta antiga já
-   removida. O código está pronto e neutro pra qualquer host de container (Docker + nginx + env
-   vars). Só então: escolher host → gerar secrets de prod (`JWT_SECRET`/`PASSWORD_PEPPER`/
-   `MFA_ENCRYPTION_KEY` novos) → deploy → smoke test.
-2. **Push** — tem bastante commit local sem push (hardening + MFA + neutralização de hospedagem).
-   Quando o Gustavo mandar, `git push` na branch `feature/emprestimo-compartilhado`.
+1. **Decidir hospedagem** (do Gustavo, sem pressa, nada escolhido). Discussão/pesquisa em
+   `docs/features/hospedagem-beta/decisao.md` — trava nas restrições dele (orçamento, cartão
+   internacional, servidor no BR, nº de testadores, apetite de manutenção). O código está pronto e
+   neutro pra qualquer host de container. Só depois de escolher: gerar secrets de prod
+   (`JWT_SECRET`/`PASSWORD_PEPPER`/`MFA_ENCRYPTION_KEY` novos) → deploy → smoke test.
+2. **Push** — tem bastante commit local sem push (hardening + MFA + limpeza de docs). Quando o
+   Gustavo mandar, `git push` na branch `feature/emprestimo-compartilhado`.
 3. Quando/se voltar pro módulo Empréstimos (pausado, não abandonado): retomar a bancada
    `/emprestimos-lab-a/b/c/d` de onde parou — ver seção "Módulo Empréstimos — UI (pausado em
    2026-08-18)" logo abaixo pro contexto completo.
