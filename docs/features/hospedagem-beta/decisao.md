@@ -174,8 +174,13 @@ sem você tocar). Resumo honesto do trade-off:
 
 ## Decisão
 
-**Pendente** — aguardando Gustavo escolher entre caminho A (barato, administra) e B (gerenciado,
-menos trabalho), e dentro de B, Magalu DBaaS (BRL) vs Supabase (USD).
+**DECIDIDO (2026-08-24): caminho A — Hostinger.** VPS nacional barato (~R$28/mês) + `pg_dump`
+diário agendado; Gustavo administra o servidor. Backup semanal automático da Hostinger como rede
+extra. Descartado o caminho B (gerenciado) por custo.
+
+⏳ **Execução adiada por orçamento** — Gustavo sem grana no momento; contrata quando receber. Até lá,
+nada é provisionado. O código já é neutro pra qualquer host de container, então quando a grana entrar
+é só provisionar e fazer deploy — sem retrabalho de código.
 
 ## Referências
 
@@ -192,5 +197,7 @@ menos trabalho), e dentro de B, Magalu DBaaS (BRL) vs Supabase (USD).
 
 ## Histórico
 
+- 2026-08-24 — **Caminho A (Hostinger) escolhido.** Execução adiada por orçamento (contrata quando
+  receber). Nada provisionado ainda.
 - 2026-08-23 — Doc criado. Decisão começa do zero, a partir das restrições reais do Gustavo (sem
   stack pré-escolhida).

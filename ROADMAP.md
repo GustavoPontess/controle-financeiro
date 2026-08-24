@@ -55,7 +55,7 @@ status: ATIVO
 
 - [ ] **Open Finance / agregação** — gap nº 1, table-stakes. Via Pluggy ou Belvo, começa com 1 banco. Despezzas e Pierre já têm.
 - [ ] **IA conversacional / categorização automática**.
-- [ ] **App mobile / PWA** (PWA base já existe).
+- [ ] **App mobile** — estratégia mapeada em `docs/features/pwa/estrategia-mobile.md` (PWA polida → Capacitor → nativo; custos de loja; caminho recomendado). **Beta roda no PC** (decisão do Gustavo, 2026-08-24) — mobile só depois de fechar o beta. PWA base existe (#28) mas mínima (manifest genérico, só ícone SVG, sem cache de dados, telas não mobile-first).
 
 ---
 
@@ -171,13 +171,13 @@ rodado, nenhum dado saiu do local. O resto fica catalogado pro público.
   fundamentado na pesquisa LGPD desta sessão. **Checkbox de aceite real** (não pré-marcado, bloqueia
   submit) no `RegisterPage`, 3 testes novos. Aviso de minimização no campo "pessoa" do form de
   empréstimo (dado de terceiro sem conta).
-- [ ] **Hospedagem do beta — a decidir.** Discussão/pesquisa vive em
-  `docs/features/hospedagem-beta/decisao.md` (hub de planejamento do beta). Premissas fechadas
-  (2026-08-23): beta = produção de verdade, provedor confiável (não host obscuro grátis), beta
-  fechado. Escolha do provedor em aberto. O código já é **neutro** e serve pra qualquer host de
-  container: `Dockerfile` (API e web), `nginx.conf` (SPA), health checks `/health` e `/health/ready`,
-  `ForwardedHeaders` (cookie Secure atrás de proxy TLS — ver `Program.cs`), CORS e baseURL por env
-  var. **Critério obrigatório do provedor: backup automático do banco** (produção real).
+- [~] **Hospedagem do beta — DECIDIDO (caminho A / Hostinger), execução adiada por orçamento.**
+  Detalhe em `docs/features/hospedagem-beta/decisao.md`. Escolha (2026-08-24): **Hostinger** (VPS BR
+  ~R$28/mês) + `pg_dump` diário + backup semanal automático da Hostinger; Gustavo administra.
+  Descartado caminho B (gerenciado) por custo. ⏳ **Contrata quando receber** — nada provisionado.
+  Código já é **neutro** pra qualquer host de container (`Dockerfile` API/web, `nginx.conf`, health
+  checks `/health` e `/health/ready`, `ForwardedHeaders`, CORS e baseURL por env var), então na hora
+  é só provisionar e fazer deploy, sem retrabalho. Premissas: beta = produção real, provedor confiável.
 - [ ] **🔒 Cadastro fechado por allowlist de e-mail** (caminho A, decidido 2026-08-23) — hoje
   `/auth/register` é aberto (só rate-limit); pra beta fechado, gatear pra só e-mails pré-aprovados
   conseguirem registrar. Reaproveitar o padrão de `HANGFIRE_ADMIN_EMAILS` (env var ou tabela de

@@ -15,6 +15,17 @@ foco: 'Preparação de CÓDIGO/segurança pra um eventual beta fechado — mas H
 
 ## Em execução
 
+**(2026-08-24) Hospedagem do beta decidida + estratégia mobile mapeada.**
+- **Hospedagem: caminho A (Hostinger) escolhido.** VPS BR ~R$28 + `pg_dump` diário + backup semanal
+  automático; Gustavo administra. Caminho B (gerenciado) descartado por custo. ⏳ **Execução adiada
+  por orçamento** — contrata quando receber; nada provisionado. Doc: `docs/features/hospedagem-beta/decisao.md`.
+- **Estratégia mobile mapeada** (`docs/features/pwa/estrategia-mobile.md`): beta roda no PC; mobile
+  fica pra depois (PWA polida → Capacitor → nativo). Só doc, sem código.
+- **Empréstimos:** bancada vencedora (`/emprestimos-lab-a/b/c/d`) **ainda não escolhida** — Gustavo
+  arrumando as bancadas antes de decidir.
+
+---
+
 **(2026-08-23) Hardening de auth + correção de rumo sobre hospedagem.** Sessão longa de segurança:
 - **MFA opt-in (TOTP RFC 6238)** — feature completa (QR, backup codes, login 2-passos, ativar/
   desativar em `/settings`, secret cifrado AES-256-GCM). Nunca obrigatório. Verificado ponta a ponta.
