@@ -81,6 +81,28 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   registro de operações simplificados (Art. 9º/13º).
 - **Direitos do titular:** cumprimento manual (e-mail) é suficiente nesta fase — endpoint de
   autoatendimento (exportar/apagar) fica pro lançamento público.
+- **Eliminação de dados — prazo e retenção (pesquisado 2026-08-26, LGPD Art. 15-16 + ANPD FAQ 5.5):**
+  - **Não há prazo fixo em dias na LGPD.** A lei manda eliminar os dados **após o término do
+    tratamento** ("no âmbito e nos limites técnicos das atividades"), sem cravar número de dias.
+    Término do tratamento (Art. 15): finalidade alcançada/dados desnecessários, fim do período, ou
+    **comunicação do titular** (revogação/pedido de exclusão).
+  - **Padrão que passa em auditoria (GDPR/SOC 2, pesquisado 2026-08-26): soft delete → carência →
+    hard delete.** Só soft delete permanente NÃO é conforme (mantém o dado que o titular mandou
+    apagar). O soft é só a janela reversível; o hard (delete real, cascade) é obrigatório no fim pra
+    satisfazer o direito ao esquecimento. **Carência de 30 dias é a convenção fundamentada** (alinha
+    ao prazo de ~1 mês do GDPR Art. 17 / resposta ao titular) — protege contra exclusão acidental e
+    contra **conta hackeada** (o dono real recupera antes da purga).
+  - **Conservação permitida mesmo após pedido de exclusão (Art. 16):** dados necessários pra (1)
+    cumprir **obrigação legal/regulatória**; (2) estudo por órgão de pesquisa (anonimizado); (3)
+    transferência a terceiro conforme a lei; (4) **uso exclusivo do controlador, anonimizado**.
+    Regra prática: apagar o PII, e o que precisar reter (ex.: `FinancialEventLog` de auditoria)
+    fica **anonimizado**, sem acesso de terceiro.
+  - **Prazo de resposta ao pedido do titular:** ~15 dias na LGPD, **dobrado** pra agente de pequeno
+    porte (Resolução CD/ANPD nº 2/2022) → ~30 dias no nosso caso. A eliminação em si é "sem demora,
+    nos limites técnicos".
+  - **Aplicação no admin (Ferramentas LGPD):** exclusão em 2 estágios — (1) marcar pra exclusão
+    (soft-delete reversível, janela ~30 dias); (2) purga definitiva do PII após a janela, retendo
+    anonimizado só o exigido por lei.
 - **Zona cinzenta sem resposta fechada:** o que acontece se a pessoa citada num empréstimo (sem
   conta) pedir exclusão dos dados dela guardados por outro usuário — nenhuma fonte primária cobre
   esse caso específico. Cataloga como P2 pro público, não bloqueia o beta (poucos testadores
