@@ -15,6 +15,32 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-08-26) Spec do painel admin + gate do beta — planejamento fechado, pronto pra codar.**
+Só docs, zero código. Decisão do Gustavo: fazer um admin além do mínimo (tem tempo até pagar a
+hospedagem). Tudo em `docs/features/admin/spec.md`:
+- **Modelo do beta:** cadastro aberto → conta nasce `AguardandoAprovacao` → admin aprova/recusa
+  (fila) + e-mails pré-aprovados auto-aprovam. Feature flags **descartados** (Gustavo cortou —
+  complexidade sem necessidade). Sem limite configurado.
+- **Segurança da flag `IsAdmin`:** nunca setável por endpoint (só seed/DB), mass-assignment blindado,
+  authz com re-check no banco, **MFA obrigatório pra admin**, **conta break-glass** de emergência
+  (padrão MS/NIST, pesquisado).
+- **Exclusão de dados (pesquisada por fonte, corrigindo chute anterior):** soft → carência 30d
+  (convenção SOC2/GDPR, NÃO lei) → hard delete. **Marco Civil Art. 15** obriga reter logs de acesso
+  6 meses → hard delete apaga PII mas mantém logs 6m em store separado (LGPD Art. 16 I). Prazos
+  legais: LGPD Art. 19 = 15d resposta (30d pequeno porte via ANPD 2/2022); LGPD Art. 15-16 sem prazo
+  de eliminação. Tudo em `docs/CONFORMIDADE_BR.md`. Achado de código catalogado: store de registros
+  de acesso (P2).
+- Módulos: fila de aprovação + métricas · gestão de usuários · ferramentas LGPD · visualizador de
+  auditoria.
+- **Próxima ação: aguardando Gustavo** dar (1) e-mail do admin diário + e-mail da break-glass,
+  (2) confirmar os 2 estados (Bloqueado vs MarcadoParaExclusao). Com isso, codar: núcleo de
+  segurança da flag → fila de aprovação (abre o beta). Backend + teste primeiro.
+
+Commits desta sessão (local, sem push): `12fbc82` (spec admin), `78b6a5a` (correção 30 dias),
+`9872969` (Marco Civil retenção).
+
+---
+
 **(2026-08-24) Hospedagem do beta decidida + estratégia mobile mapeada.**
 - **Hospedagem: caminho A (Hostinger) escolhido.** VPS BR ~R$28 + `pg_dump` diário + backup semanal
   automático; Gustavo administra. Caminho B (gerenciado) descartado por custo. ⏳ **Execução adiada
