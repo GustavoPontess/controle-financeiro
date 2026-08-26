@@ -148,7 +148,7 @@ O limite de uso renova de 5 em 5h — gastar cedo deixa o projeto parado. Pesqui
 2. **Lint zero** — `npm run lint`.
 3. **Commit** seguindo `docs/GIT_WORKFLOW.md`. Trabalho parcial pode ser commitado desde que compile.
 4. **Atualizar `STATE.md`:** marcar etapas concluídas, atualizar "próxima ação concreta", trocar foco.
-5. **Atualizar `ROADMAP.md`** se um item foi entregue (marcar `[x]`) ou surgiu item novo.
+5. **Atualizar `ROADMAP.md`** se um item foi entregue ou surgiu item novo. **Higiene: o ROADMAP é só backlog ABERTO.** Item concluído não fica marcado `[x]` acumulando — vai pro arquivo `docs/history/ROADMAP_CONCLUIDO.md` (move o texto pra lá, preservando o detalhe; tira do ROADMAP). Fazer no encerramento, ou num pente-fino quando o arquivo inchar. Deduplique itens repetidos. Nada se apaga — só realoca.
 6. **Atualizar doc tocada:** `docs/DATABASE.md` (schema), `docs/FLOWS.md` (fluxo), `docs/STANDARDS.md` (padrão novo), `docs/features/<nome>/` (feature).
 7. **Push + PR** (se for trabalhar com remoto): `git push -u origin feature/<slug>` → `gh pr create --fill --base main`. `Closes #N` no body se tiver issue.
 8. **Avisar em chat:** o que parou, próxima ação.
