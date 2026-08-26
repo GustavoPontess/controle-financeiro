@@ -89,9 +89,17 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   - **Padrão que passa em auditoria (GDPR/SOC 2, pesquisado 2026-08-26): soft delete → carência →
     hard delete.** Só soft delete permanente NÃO é conforme (mantém o dado que o titular mandou
     apagar). O soft é só a janela reversível; o hard (delete real, cascade) é obrigatório no fim pra
-    satisfazer o direito ao esquecimento. **Carência de 30 dias é a convenção fundamentada** (alinha
-    ao prazo de ~1 mês do GDPR Art. 17 / resposta ao titular) — protege contra exclusão acidental e
-    contra **conta hackeada** (o dono real recupera antes da purga).
+    satisfazer o direito ao esquecimento.
+  - **⚠️ Sobre "30 dias" — separar duas coisas (a LGPD NÃO fixa carência de exclusão):**
+    - **Prazo de RESPOSTA ao titular (isto é lei):** LGPD **Art. 19 = 15 dias**; Resolução CD/ANPD
+      nº 2/2022 **dobra** pra agente de pequeno porte → **30 dias no nosso caso**. É o prazo pra
+      ATENDER o pedido, não "janela antes de apagar".
+    - **Prazo pra ELIMINAR os dados:** LGPD Art. 15-16 **não cravam dias** ("após o término do
+      tratamento, nos limites técnicos").
+    - **Janela de carência (soft→hard) de 30 dias:** é **convenção de mercado / boa prática (SOC 2/
+      GDPR), NÃO obrigação legal.** Escolha nossa. Protege contra exclusão acidental e contra **conta
+      hackeada** (o dono real recupera antes da purga). Coincide com nosso prazo de resposta (30d),
+      o que é conveniente, mas não é a lei mandando.
   - **Conservação permitida mesmo após pedido de exclusão (Art. 16):** dados necessários pra (1)
     cumprir **obrigação legal/regulatória**; (2) estudo por órgão de pesquisa (anonimizado); (3)
     transferência a terceiro conforme a lei; (4) **uso exclusivo do controlador, anonimizado**.

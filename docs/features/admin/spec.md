@@ -148,8 +148,12 @@ Fundamento legal em `docs/CONFORMIDADE_BR.md` ("Eliminação de dados — prazo 
   o hard é obrigatório no fim.
   1. **Soft delete (marcar pra exclusão)** → `Status=MarcadoParaExclusao` + `MarcadoExclusaoEm=agora`;
      derruba sessões, usuário não loga, para de aparecer. **Reversível na janela.**
-  2. **Janela de carência: 30 dias** — fundamentada (alinha ao prazo de ~1 mês do GDPR/LGPD). Motivo:
-     (a) arrependimento do titular; (b) **conta hackeada** — o dono real recupera antes da purga.
+  2. **Janela de carência: 30 dias** — **convenção de mercado (SOC 2/GDPR), NÃO obrigação legal.** A
+     LGPD não fixa prazo pra eliminar (Art. 15-16). O que é lei é o prazo de RESPOSTA ao titular
+     (LGPD Art. 19 = 15 dias, dobrado pra 30 pra pequeno porte pela Resolução ANPD 2/2022) — coisa
+     diferente da carência. Escolhemos 30 dias por coincidir com esse prazo e ser a prática comum.
+     Motivo da janela: (a) arrependimento do titular; (b) **conta hackeada** — o dono real recupera
+     antes da purga. Fontes em `docs/CONFORMIDADE_BR.md`.
   3. **Hard delete real** após a janela → apaga o registro (cascade). O que a lei permite reter
      (LGPD Art. 16 / GDPR Art. 17.3: obrigação legal, auditoria) fica **anonimizado** (ex.:
      `FinancialEventLog` perde o vínculo com pessoa identificável, mantém o fato). Roda via job
@@ -188,7 +192,8 @@ Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confi
 ## 8. Decisões
 
 **Fechadas (pesquisadas 2026-08-26):**
-- ✅ **Exclusão = soft delete → carência 30 dias → hard delete** (§5). Fundamentado (GDPR/SOC 2 + LGPD).
+- ✅ **Exclusão = soft delete → carência 30 dias → hard delete** (§5). Padrão SOC 2/GDPR. A carência
+  de 30 dias é **convenção, não obrigação legal** (a LGPD não fixa prazo pra excluir; ver §5 e `CONFORMIDADE_BR.md`).
 - ✅ **Break-glass admin** (§0.1) — 2 contas admin (diária com MFA + emergência offline). Padrão MS/NIST.
 - ✅ **MFA obrigatório pra admin** (§0.1).
 
