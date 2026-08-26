@@ -111,6 +111,16 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   - **Aplicação no admin (Ferramentas LGPD):** exclusão em 2 estágios — (1) marcar pra exclusão
     (soft-delete reversível, janela ~30 dias); (2) purga definitiva do PII após a janela, retendo
     anonimizado só o exigido por lei.
+- **Retenção obrigatória de logs — Marco Civil da Internet Art. 15 (pesquisado 2026-08-26):**
+  provedor de aplicações **PJ, organizado, com fins econômicos** deve guardar os **registros de acesso
+  a aplicações (login → identificador + IP + timestamp) por 6 MESES**, sob sigilo/ambiente controlado;
+  ordem judicial pode estender. **Isso limita a exclusão:** ao apagar uma conta, os registros de
+  acesso NÃO vão junto — ficam retidos 6 meses num store separado seguro (conservação por obrigação
+  legal, LGPD Art. 16, I), depois são purgados. Fonte: [Marco Civil Art. 15](https://www.jusbrasil.com.br/topicos/27363770/art-15-da-lei-n-12965-de-23-de-abril-de-2014).
+  **Aplicabilidade:** mira PJ com fins econômicos — hoje o Pontes é pré-empresa (sem CNPJ), então
+  ainda não dispara pleno, mas dispara quando existir a empresa, e ordem judicial vale pra qualquer
+  um. **Desenhar pra isso desde já.** **Achado de código:** precisa existir um store de "registros de
+  acesso" (login/IP/timestamp) seguro e consultável — hoje não há um dedicado (só Serilog geral). Catalogar.
 - **Zona cinzenta sem resposta fechada:** o que acontece se a pessoa citada num empréstimo (sem
   conta) pedir exclusão dos dados dela guardados por outro usuário — nenhuma fonte primária cobre
   esse caso específico. Cataloga como P2 pro público, não bloqueia o beta (poucos testadores

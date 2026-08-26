@@ -154,11 +154,16 @@ Fundamento legal em `docs/CONFORMIDADE_BR.md` ("Eliminação de dados — prazo 
      diferente da carência. Escolhemos 30 dias por coincidir com esse prazo e ser a prática comum.
      Motivo da janela: (a) arrependimento do titular; (b) **conta hackeada** — o dono real recupera
      antes da purga. Fontes em `docs/CONFORMIDADE_BR.md`.
-  3. **Hard delete real** após a janela → apaga o registro (cascade). O que a lei permite reter
-     (LGPD Art. 16 / GDPR Art. 17.3: obrigação legal, auditoria) fica **anonimizado** (ex.:
-     `FinancialEventLog` perde o vínculo com pessoa identificável, mantém o fato). Roda via job
-     (Hangfire) que varre `MarcadoParaExclusao` com janela vencida — ou botão "purgar agora"
-     (confirmação forte, digitar o e-mail). Auditar o pedido e a purga.
+  3. **Hard delete real** após a janela → apaga o registro (cascade). Roda via job (Hangfire) que
+     varre `MarcadoParaExclusao` com janela vencida — ou botão "purgar agora" (confirmação forte,
+     digitar o e-mail). Auditar o pedido e a purga.
+     - **⚠️ RETENÇÃO OBRIGATÓRIA (Marco Civil Art. 15):** os **registros de acesso a aplicações**
+       (login → identificador + IP + timestamp) NÃO são apagados junto — a lei obriga guardá-los por
+       **6 meses**, sob sigilo, mesmo após a conta ser apagada. Ficam num **store separado e seguro**
+       (não no cascade da conta), com retenção rolante de 6 meses e purga automática depois. É
+       conservação por obrigação legal (LGPD Art. 16, I) — compatível.
+     - Outros dados retidos por obrigação legal/auditoria (ex.: `FinancialEventLog`) ficam
+       **anonimizados** (perdem o vínculo com pessoa identificável, mantêm o fato).
 - **Confirmação forte** em apagar/purgar (digitar e-mail do alvo, igual `PontesDialog` destrutivo).
 - Admin não apaga a própria conta aqui (§0.6).
 
