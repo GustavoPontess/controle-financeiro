@@ -15,6 +15,27 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-09) Admin passo 1 — núcleo de segurança da flag IsAdmin ✅ (branch `feature/admin-beta-gate`).**
+Primeiro código do admin. Backend + testes, build 0 warning, **455/455**.
+- `Usuario.IsAdmin` (default false, migration `AddIsAdminUsuario`) — nunca setável por endpoint/DTO.
+- `AdminAuthorizationHandler` + policy `"IsAdmin"`: revalida a flag no banco a cada request (defense
+  in depth, não confia só no JWT). `AdminController` `GET /api/v1/admin/me` sob a policy.
+- `AdminSeeder`: concede IsAdmin via env var `ADMIN_EMAILS` (só concede, nunca revoga; no-op sem a
+  var). Roda no boot. `.env.example` documenta. **Gustavo precisa pôr `ADMIN_EMAILS=gut.n.pontes@gmail.com`
+  no `.env` local** e (re)subir a API depois de cadastrar esse e-mail pra virar admin.
+- Testes (+9): escalação de privilégio (não-admin/desativado/sem-claim/inexistente não autoriza),
+  cadastro nasce não-admin, seeder concede só listado/case-insensitive/no-op sem env.
+- ⚠️ Migration criada mas **não aplicada no Postgres** (Docker Desktop estava desligado) — NÃO é
+  estado quebrado: modelo/migration/testes consistentes, e `Program.cs` roda `MigrateAsync` no boot,
+  então aplica sozinha quando subir a API. Commit `2e5a5d3`.
+
+**Próxima ação:** Módulo A — fila de aprovação (abre o beta). `Usuario.Status` (AguardandoAprovacao/
+Ativo/Recusado/Bloqueado/MarcadoParaExclusao) reconciliando com o `Ativo` atual; cadastro nasce
+AguardandoAprovacao; login barra não-Ativo; endpoints admin de aprovar/recusar + métricas. Ver
+`docs/features/admin/spec.md` §3.
+
+---
+
 **(2026-08-26) Spec do painel admin + gate do beta — planejamento fechado, pronto pra codar.**
 Só docs, zero código. Decisão do Gustavo: fazer um admin além do mínimo (tem tempo até pagar a
 hospedagem). Tudo em `docs/features/admin/spec.md`:
