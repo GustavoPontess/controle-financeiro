@@ -85,11 +85,8 @@ billing, área de contabilidade/B2B (virá com papel próprio, spec futura).
 - **`Usuario.IsAdmin`** (bool, default false) — ver §0.
 - **`Usuario.Status`** (enum: `AguardandoAprovacao` | `Ativo` | `Recusado` | `Bloqueado` |
   `MarcadoParaExclusao`) + `AprovadoPor`/`AprovadoEm`, `BloqueadoEm`, `MarcadoExclusaoEm` (DateTime?).
-  `UltimoAcessoEm` (DateTime?) pra métricas/gestão. **Cadastro novo nasce `AguardandoAprovacao`**
-  (a menos que o e-mail esteja pré-aprovado → nasce `Ativo`).
-- **`EmailPreAprovado`** — lista de e-mails que ganham **aprovação automática**: `Email` (único,
-  lower), `AdicionadoPor` (admin), `CriadoEm`. Se um cadastro chega com e-mail dessa lista, a conta
-  já nasce `Ativo` (pula a fila).
+  `UltimoAcessoEm` (DateTime?) pra métricas/gestão. **Todo cadastro novo nasce `AguardandoAprovacao`**
+  — sem exceção; o admin aprova/recusa cada um na mão.
 - **`AdminAuditLog`** — `AdminUsuarioId`, `Acao` (enum), `AlvoTipo`/`AlvoId`, `Detalhe` (json),
   `CriadoEm`, `CorrelationId`. Append-only.
 
@@ -109,19 +106,16 @@ Modelo simples (decidido pelo Gustavo, 2026-08-26): **cadastro aberto, aprovaç�
 1. Qualquer um preenche `/auth/register` normalmente. A conta é criada mas nasce
    **`AguardandoAprovacao`** — o usuário **não loga/usa** o sistema ainda (login barra com
    "conta aguardando aprovação").
-2. Se o e-mail estiver na lista `EmailPreAprovado`, a conta já nasce **`Ativo`** (aprovação
-   automática, pula a fila).
-3. O admin vê a **fila de pendentes** e **aprova** (`→ Ativo`) ou **recusa** (`→ Recusado`, não loga).
+2. O admin vê a **fila de pendentes** e **aprova** (`→ Ativo`) ou **recusa** (`→ Recusado`, não loga).
+   Aprovação é sempre manual — não há auto-aprovação por lista.
 
 **Sem limite configurado** — o Gustavo controla o volume aprovando/recusando (nada de env var de teto).
-
-**Gestão de pré-aprovados (admin):** listar, adicionar, remover e-mails que ganham auto-aprovação.
 
 **Métricas básicas (admin):** total de cadastrados / pendentes / ativos / recusados, cadastros por
 dia, últimos acessos. Dashboard simples (sem BI).
 
 Endpoints (sob policy IsAdmin): `GET /admin/pendentes`, `POST /admin/usuarios/{id}/aprovar|recusar`,
-`GET/POST/DELETE /admin/pre-aprovados`, `GET /admin/metricas`.
+`GET /admin/metricas`.
 
 ---
 
@@ -189,7 +183,7 @@ Endpoint: `GET /admin/auditoria`.
 ## 7. Frontend
 
 Área `/admin` (rota protegida por `IsAdmin`, invisível/404 pra não-admin), toda em biblioteca
-Pontes (CSS Modules + `var(--pontes-*)`), navegação por abas: Pendentes (fila de aprovação) · Pré-aprovados · Métricas ·
+Pontes (CSS Modules + `var(--pontes-*)`), navegação por abas: Pendentes (fila de aprovação) · Métricas ·
 Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confirmação forte.
 
 ---
@@ -202,11 +196,14 @@ Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confi
 - ✅ **Break-glass admin** (§0.1) — 2 contas admin (diária com MFA + emergência offline). Padrão MS/NIST.
 - ✅ **MFA obrigatório pra admin** (§0.1).
 
+- ✅ **Sem auto-aprovação por lista** (2026-09-09) — todo cadastro entra na fila; admin aprova/recusa
+  na mão. `EmailPreAprovado` removido.
+- ✅ **Dois estados separados** `Bloqueado` (suspende, reversível, dados ficam) vs `MarcadoParaExclusao`
+  (caminho pra purga com carência) — confirmado, significam coisas diferentes.
+
 **Aguardando o Gustavo (dados, não design):**
 - **E-mail(s) do admin:** qual e-mail vira a conta admin diária? E um segundo pra a break-glass?
   (setados por seed/migration; nunca por endpoint).
-- **Bloqueado vs Marcado-pra-exclusão:** confirmar que os dois estados separados fazem sentido
-  (bloquear = suspende, reversível; exclusão = caminho pra purga com carência).
 
 ---
 
@@ -215,7 +212,7 @@ Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confi
 1. **Núcleo de segurança:** `Usuario.IsAdmin` + policy IsAdmin (com re-check no banco) + mass-assignment
    blindado + testes de escalação (mandar `isAdmin:true` → ignorado; não-admin em rota admin → 403).
 2. **Módulo A:** `Usuario.Status` + cadastro nasce `AguardandoAprovacao` + login barra não-`Ativo` +
-   `EmailPreAprovado` (auto-aprova) + fila de aprovar/recusar + métricas. **Abre o beta.**
+   fila de aprovar/recusar + métricas. **Abre o beta.**
 3. **Módulo B:** gestão de usuários (bloquear/reativar/reset).
 4. **Módulo C:** exportar + exclusão 2 estágios + job de purga. (o mais sensível — deixar por último,
    com mais teste.)
