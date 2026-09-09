@@ -88,6 +88,10 @@ Mantidos com o texto original. Agrupados pelas seções de origem.
 - **Pentest ao vivo (2026-08-23)** — cobertura ampla (auth/IDOR/JWT/SQLi/CORS/Hangfire/força bruta passaram); 2 achados corrigidos: cookie perdia `Secure` atrás de proxy TLS (`ForwardedHeadersOptions` em `Program.cs`) e cadastro com e-mail em case diferente dava 500 (`.ToLower()` na checagem, 2 testes). Back 427/427.
 - **Pesquisa de conformidade completa (#126)** (2026-08-18) — LGPD base legal mapeada, DPO dispensado (pequeno porte, Resolução CD/ANPD nº 2/2022), RIPD não obrigatório; BACEN/Open Finance fora do escopo. `docs/CONFORMIDADE_BR.md`.
 
+## Segurança — hardening de input (2026-09-09)
+
+- **Validação/limite de input nos DTOs de entrada** — só 10/52 DTOs tinham anotação; DTOs de entrada (Transacao, Cartao, Emprestimo, Auth, MFA, Consolidacao, Pagamento, Vinculo, Acerto, Orcamento, ParcelaTransacao, Recorrente, Convite, Importacao, Transferencia) ganharam `[MaxLength]`/`[Required]`/`[EmailAddress]`/`[Range]`. Barra "caracteres infinitos" com 400 automático (`[ApiController]`). Cap de 128 nas senhas (DoS no Argon2). Limite global de body no Kestrel (10 MB). Verificado ao vivo (nome 300 chars → 400; email inválido → 400). Build 0 warning, 455/455. Branch `feature/admin-beta-gate`, commit `c77e4b8`. _Front `maxLength` (defesa extra) fica como P2._
+
 ## Outros / higiene
 
 - **flake `CreditCardsPage` test** — race no auto-foco + data real; fix: navegação cancela auto-foco pendente + mock de `Date.now`. 3× estável.

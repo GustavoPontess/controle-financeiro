@@ -15,6 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-09, tarde) Hardening de validação de input ✅ (branch `feature/admin-beta-gate`).**
+Pedido do Gustavo ("evitar caracteres infinitos, coisas que quebram o sistema"). Achado real: só
+10/52 DTOs tinham validação. Adicionado `[MaxLength]`/`[Required]`/`[EmailAddress]`/`[Range]` em
+todos os DTOs de entrada + **limite global de body no Kestrel (10 MB)** + **cap de 128 nas senhas**
+(senha gigante = DoS no Argon2). `[ApiController]` barra com 400 automático — verificado ao vivo
+(nome 300 chars → 400, email inválido → 400). Build 0 warning, 455/455. Commit `c77e4b8`.
+App rodando: Postgres + API (5293) + frontend (5173). **Lista de segurança (feito × falta) no chat.**
+
 **(2026-09-09) Admin passo 1 — núcleo de segurança da flag IsAdmin ✅ (branch `feature/admin-beta-gate`).**
 Primeiro código do admin. Backend + testes, build 0 warning, **455/455**.
 - `Usuario.IsAdmin` (default false, migration `AddIsAdminUsuario`) — nunca setável por endpoint/DTO.
