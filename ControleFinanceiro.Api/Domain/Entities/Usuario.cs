@@ -22,6 +22,14 @@ public class Usuario
 
     public bool Ativo { get; set; } = true;
 
+    /// <summary>Admin GLOBAL do sistema (painel admin/beta). Default false e — por segurança
+    /// (spec `docs/features/admin/spec.md` §0) — NUNCA é setada por endpoint/DTO: só via seed
+    /// (env var <c>ADMIN_EMAILS</c>, ver <c>AdminSeeder</c>) ou UPDATE direto no banco. Nenhum fluxo
+    /// que o usuário alcança pode conceder esta flag (prevenção de escalação de privilégio). É
+    /// separada do <c>PapelFamilia</c> (que é por-família, escopo local). Autorização revalida esta
+    /// flag no banco a cada request (ver <c>AdminAuthorizationHandler</c>), não confia só no JWT.</summary>
+    public bool IsAdmin { get; set; }
+
     /// <summary>Issue #29 — true depois que o usuário concluiu (ou pulou) o
     /// onboarding guiado. Evita reexibir o fluxo de primeiros passos.</summary>
     public bool OnboardingConcluido { get; set; }

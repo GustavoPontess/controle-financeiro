@@ -259,6 +259,17 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// ── Autorização — policy de admin global (re-check no banco, ver AdminAuthorizationHandler) ──
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AdminRequirement.PolicyName, p =>
+    {
+        p.RequireAuthenticatedUser();
+        p.AddRequirements(new AdminRequirement());
+    });
+});
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
+
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -376,6 +387,10 @@ using (var scope = app.Services.CreateScope())
     await BancoSeeder.SeedAsync(context, httpClientFactory.CreateClient());
     await CategoriaSeeder.SeedAsync(context);
     await SubcategoriaSeeder.SeedAsync(context);
+
+    // Concede IsAdmin aos e-mails de ADMIN_EMAILS (única via pela app; ver AdminSeeder). Roda
+    // em todos os ambientes; sem a env var, é no-op.
+    await AdminSeeder.SeedAsync(context);
 
     // Dados de exemplo para o atlas Playwright / revisão visual do redesign.
     // Só em Development e idempotente (não roda se o usuário dev já existir).

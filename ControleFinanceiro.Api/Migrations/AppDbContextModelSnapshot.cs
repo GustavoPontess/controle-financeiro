@@ -1557,6 +1557,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("FalhasLoginConsecutivas")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("MfaAtivadoEm")
                         .HasColumnType("timestamp without time zone");
 
