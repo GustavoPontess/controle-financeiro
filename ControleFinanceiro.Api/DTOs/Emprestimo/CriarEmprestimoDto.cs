@@ -1,16 +1,27 @@
+using System.ComponentModel.DataAnnotations;
 using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 
 public class CriarEmprestimoDto
 {
+    [MaxLength(255)]
     public string Descricao { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(200)]
     public string Pessoa { get; set; } = string.Empty;
+
     public decimal ValorTotal { get; set; }
     public TipoEmprestimo Tipo { get; set; }
     public DateTime DataInicio { get; set; }
     public DateTime? DataVencimento { get; set; }
+
+    [MaxLength(1000)]
     public string? Observacao { get; set; }
+
+    [Required]
+    [MaxLength(100)]
     public string IdempotencyKey { get; set; } = string.Empty;
 
     /// <summary>Se informado (junto com <see cref="CategoriaId"/>), cria também o lançamento
@@ -28,6 +39,7 @@ public class CriarEmprestimoDto
     public FormaPagamentoEmprestimo FormaPagamento { get; set; } = FormaPagamentoEmprestimo.AVista;
 
     /// <summary>Obrigatório se FormaPagamento == Parcelado. Range 2-36 (mesmo do Parcelamento de cartão).</summary>
+    [Range(2, 36)]
     public int? QuantidadeParcelas { get; set; }
 
     /// <summary>Obrigatório se FormaPagamento == Parcelado. Vencimento da parcela 1; as demais

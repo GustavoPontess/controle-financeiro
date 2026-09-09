@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record RegistrarAcertoDto(
@@ -6,8 +8,8 @@ public record RegistrarAcertoDto(
     decimal Valor,
     int? Mes,
     int? Ano,
-    string? Observacao,
-    string IdempotencyKey);
+    [property: MaxLength(1000)] string? Observacao,
+    [property: Required, MaxLength(100)] string IdempotencyKey);
 
 public record AcertoContasDto(
     Guid Id,

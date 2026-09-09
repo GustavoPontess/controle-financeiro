@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Orcamento;
 
 /// <summary>Request para criar ou atualizar um orçamento mensal.</summary>
@@ -7,15 +9,19 @@ public class CriarOrcamentoDto
     public Guid? CategoriaId { get; set; }
 
     /// <summary>Mês de referência (1–12).</summary>
+    [Range(1, 12)]
     public int Mes { get; set; }
 
     /// <summary>Ano de referência.</summary>
+    [Range(2000, 2100)]
     public int Ano { get; set; }
 
     /// <summary>Limite máximo de gasto. Deve ser positivo.</summary>
+    [Range(0.01, double.MaxValue)]
     public decimal ValorLimite { get; set; }
 
     /// <summary>Percentual do limite que dispara o alerta (padrão: 80).</summary>
+    [Range(0, 100)]
     public decimal PercentualAlerta { get; set; } = 80;
 }
 

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 
 /// <summary>Registra pagamento — devedor OU credor podem chamar (unificado, mesmo formulário pros
@@ -20,6 +22,9 @@ public class SolicitarPagamentoEmprestimoDto
     /// <summary>Se informado, vincula esta despesa já existente como comprovante em vez de criar
     /// uma nova — Valor/ContaId/CategoriaId/Data são ignorados (o valor real vem da transação).</summary>
     public Guid? TransacaoExistenteId { get; set; }
+
+    [Required]
+    [MaxLength(100)]
     public string IdempotencyKey { get; set; } = string.Empty;
 }
 
@@ -37,6 +42,7 @@ public class AprovarPagamentoEmprestimoDto
 /// <summary>Credor rejeita — Motivo é opcional, texto livre, sem tamanho mínimo.</summary>
 public class RejeitarPagamentoEmprestimoDto
 {
+    [MaxLength(1000)]
     public string? Motivo { get; set; }
 }
 

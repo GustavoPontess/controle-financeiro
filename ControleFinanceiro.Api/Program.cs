@@ -39,6 +39,12 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Backstop de payload: limita o tamanho do corpo de QUALQUER request a 10 MB (default do Kestrel
+// é 30 MB). Protege contra payload gigante travar/consumir memória — complementa o [MaxLength]
+// por campo nos DTOs (que barra "caracteres infinitos" num campo específico com 400). 10 MB cobre
+// import de OFX/CSV com folga; request de API JSON normal fica muito abaixo disso.
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
+
 // Serilog — logs estruturados em JSON: console + arquivo rotativo diário.
 // Sentry só é anexado se SENTRY_DSN estiver definido (produção): captura
 // logs de nível Error+ (o GlobalExceptionHandlerMiddleware loga exceções

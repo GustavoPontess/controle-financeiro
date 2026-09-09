@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Transacao
 {
     public class CriarTransacaoDto
     {
+        [MaxLength(255)]
         public string Descricao { get; set; } = string.Empty;
         public decimal Valor { get; set; }
         public int Tipo { get; set; }
@@ -12,6 +15,7 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public bool UsadoComoCredito { get; set; }
         public int? MeioPagamento { get; set; }
         // Parcelamento: 1 = à vista (ou null). > 1 = gera N transações em N faturas
+        [Range(1, 360)]
         public int? Parcelas { get; set; }
         // true (default) = já recebido/pago → Executado (entra no saldo real, com hora).
         // false = previsão (ex.: salário do próximo mês ainda não caiu) → Previsao.

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 
@@ -10,11 +11,15 @@ namespace ControleFinanceiro.Api.DTOs.ParcelaTransacao;
 public class CancelarParcelaDto
 {
     /// <summary>Motivo do cancelamento (obrigatório, máx 400 chars).</summary>
+    [Required]
+    [MaxLength(400)]
     public string Motivo { get; set; } = string.Empty;
 
     /// <summary>
     /// Chave de idempotência — obrigatória para evitar duplicação em retry.
     /// </summary>
+    [Required]
+    [MaxLength(100)]
     public string IdempotencyKey { get; set; } = string.Empty;
 }
 

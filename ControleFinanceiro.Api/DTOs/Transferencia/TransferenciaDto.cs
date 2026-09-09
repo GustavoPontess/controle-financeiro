@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Transferencia;
 
 public class CriarTransferenciaDto
@@ -6,6 +8,8 @@ public class CriarTransferenciaDto
     public Guid ContaDestinoId { get; set; }
     public decimal Valor { get; set; }
     public DateTime Data { get; set; }
+
+    [MaxLength(255)]
     public string Descricao { get; set; } = string.Empty;
 }
 

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Emprestimo;
@@ -8,8 +9,12 @@ namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 public class ProporConsolidacaoDto
 {
     public List<Guid> EmprestimoIds { get; set; } = new();
+
+    [MaxLength(255)]
     public string Descricao { get; set; } = string.Empty;
     public FormaPagamentoEmprestimo FormaPagamento { get; set; } = FormaPagamentoEmprestimo.AVista;
+
+    [Range(2, 36)]
     public int? QuantidadeParcelas { get; set; }
     public DateTime? PrimeiroVencimento { get; set; }
 
@@ -22,6 +27,7 @@ public class ProporConsolidacaoDto
 /// <summary>Devedor recusa — motivo opcional, mesmo padrão de RejeitarPagamentoEmprestimoDto.</summary>
 public class RecusarConsolidacaoDto
 {
+    [MaxLength(1000)]
     public string? Motivo { get; set; }
 }
 

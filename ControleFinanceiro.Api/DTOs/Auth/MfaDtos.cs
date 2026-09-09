@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Auth;
 
 /// <summary>Resposta do passo 1 de ativação — secret pra digitar manualmente + URI pro QR code.</summary>
@@ -9,6 +11,8 @@ public class MfaIniciarAtivacaoResponseDto
 
 public class MfaConfirmarAtivacaoDto
 {
+    [Required]
+    [MaxLength(10)] // TOTP tem 6 dígitos; backup code é curto
     public string Codigo { get; set; } = string.Empty;
 }
 
@@ -21,13 +25,23 @@ public class MfaAtivacaoConfirmadaResponseDto
 
 public class MfaDesativarDto
 {
+    [Required]
+    [MaxLength(128)]
     public string SenhaAtual { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(10)]
     public string Codigo { get; set; } = string.Empty;
 }
 
 public class MfaVerificarLoginDto
 {
+    [Required]
+    [MaxLength(512)]
     public string ChallengeToken { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(10)]
     public string Codigo { get; set; } = string.Empty;
 }
 

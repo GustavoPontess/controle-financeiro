@@ -1,17 +1,42 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ControleFinanceiro.Api.DTOs.Auth;
 
 public class LoginDto
 {
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
+
+    // Cap de 128 no login também: senha gigante força o Argon2 a hashear um input enorme
+    // a cada tentativa (CPU DoS). O mínimo/força é validado no cadastro/reset.
+    [Required]
+    [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
 }
 
 public class RegisterDto
 {
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(200)]
     public string Nome { get; set; } = string.Empty;
+
     public DateTime? DataNascimento { get; set; }
+
+    // Teto de 128 (política NIST já aplica o mínimo 15 + blocklist no PasswordPolicyService).
+    // O teto impede senha gigante virar DoS no Argon2.
+    [Required]
+    [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(128)]
     public string ConfirmPassword { get; set; } = string.Empty;
 }
 
@@ -50,23 +75,38 @@ public class UsuarioDto
 
 public class RefreshTokenRequestDto
 {
+    [Required]
+    [MaxLength(512)]
     public string RefreshToken { get; set; } = string.Empty;
 }
 
 public class LogoutDto
 {
+    [Required]
+    [MaxLength(512)]
     public string RefreshToken { get; set; } = string.Empty;
 }
 
 public class ForgotPasswordDto
 {
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
 }
 
 public class ResetPasswordDto
 {
+    [Required]
+    [MaxLength(512)]
     public string Token { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(128)]
     public string NovaSenha { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(128)]
     public string ConfirmarNovaSenha { get; set; } = string.Empty;
 }
 
