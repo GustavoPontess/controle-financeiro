@@ -15,6 +15,27 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-09, fim da tarde) Feedback de erro no front — rede de segurança + regra oficial ✅ (branch `feature/admin-beta-gate`).**
+Gustavo cobrou: erro tem que aparecer pro usuário (campo vermelho + notificação). Feito (caminho C
+aprovado por ele):
+- **A — rede de segurança global** (`2136ae8`): interceptor do axios extrai mensagem amigável de
+  qualquer erro !=401 e dispara evento `apiError`; `DefaultLayout` mostra toast. Nenhum erro de
+  backend passa silencioso. Request pode optar `skipErrorToast` quando trata no campo.
+- **B — form de referência** (`bd6e8d6`): `NewContaDialog` deixa a rede global mostrar o erro (não
+  duplica toast), mantém modal aberto pra retry. `ContaForm` já validava por campo.
+- **Regra oficial documentada** em `docs/REGRAS_CAMPOS.md`: checklist de campo, tabela de limites,
+  "mostrar erro ao usuário", e **inline × toast (quando usar cada um, sem duplicar)** (`25b512c`,
+  `ee136dd`). Linkado em CLAUDE.md + STANDARDS.md → toda sessão futura segue.
+- **Auditoria ao vivo:** 5 forms testados (Login, Nova transação, Nova conta, Categoria,
+  Transferência) — TODOS mostram campo vermelho + mensagem inline. Validação por campo já é bem
+  adotada no app; não estava quebrada. O "erro só depois do login" que o Gustavo viu não reproduziu
+  (provável cache/HMR; refresh forçado resolve).
+- Testes 341/341 front, 455/455 back. App rodando (Postgres+API 5293+web 5173).
+
+**Próxima ação:** rollout opcional — padronizar os demais forms pra `skipErrorToast` onde já mostram
+inline (evitar toast duplicado num 400). NÃO urgente: nenhum form está quebrado. Depois disso, voltar
+ao Módulo A do admin (fila de aprovação) — o gate do beta.
+
 **(2026-09-09, tarde) Hardening de validação de input ✅ (branch `feature/admin-beta-gate`).**
 Pedido do Gustavo ("evitar caracteres infinitos, coisas que quebram o sistema"). Achado real: só
 10/52 DTOs tinham validação. Adicionado `[MaxLength]`/`[Required]`/`[EmailAddress]`/`[Range]` em
