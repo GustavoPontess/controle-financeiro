@@ -96,6 +96,18 @@ export default function DefaultLayout() {
     return () => window.removeEventListener("openNewTransaction", handler)
   }, [canCreateTransaction])
 
+  // Rede de segurança: erro de API (disparado pelo interceptor do axios) vira toast de erro —
+  // garante que nenhum erro do backend passe silencioso, mesmo se a tela não tratar.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const message = (e as CustomEvent<{ message?: string }>).detail?.message
+        ?? "Não foi possível concluir a ação."
+      setNotification({ open: true, message, severity: "error" })
+    }
+    window.addEventListener("apiError", handler)
+    return () => window.removeEventListener("apiError", handler)
+  }, [])
+
   // Auto-hide do toast
   useEffect(() => {
     if (!notification.open) return
