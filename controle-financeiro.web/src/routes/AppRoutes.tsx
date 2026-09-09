@@ -29,6 +29,7 @@ import MetasPage from "../pages/Metas/MetasPage"
 import LimitesPage from "../pages/Limites/LimitesPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
+import AdminPage from "../pages/Admin/AdminPage"
 import SiteLayout from "../pages/Site/SiteLayout"
 import CouplesPage from "../pages/Site/CouplesPage"
 import ContadoresPage from "../pages/Site/ContadoresPage"
@@ -113,6 +114,9 @@ export default function AppRoutes() {
           <Route path="/limites" element={<LimitesPage />} />
           <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          {/* Admin — a própria página confirma IsAdmin no backend (GET /admin/me);
+              não-admin vê "sem acesso". Endpoints ficam sob a policy IsAdmin. */}
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
 
         {/* Fallback — qualquer rota inexistente vai pra root (que decide HomePage ou Dashboard) */}

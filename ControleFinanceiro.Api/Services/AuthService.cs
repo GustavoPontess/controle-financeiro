@@ -45,6 +45,17 @@ public class AuthService
         return Convert.ToHexString(bytes).ToLower();
     }
 
+    // Mensagem amigável pra cada estado que barra o login. Usada em login/refresh — o usuário
+    // precisa entender por que não entrou (pendente ≠ recusado ≠ bloqueado ≠ em exclusão).
+    private static string MensagemStatusBloqueado(StatusUsuario status) => status switch
+    {
+        StatusUsuario.AguardandoAprovacao => "Sua conta está aguardando aprovação. Você receberá acesso assim que for liberada.",
+        StatusUsuario.Recusado            => "Seu cadastro não foi aprovado para o beta.",
+        StatusUsuario.Bloqueado           => "Sua conta está bloqueada. Fale com o suporte.",
+        StatusUsuario.MarcadoParaExclusao => "Esta conta está marcada para exclusão.",
+        _                                 => "Não é possível acessar esta conta.",
+    };
+
     // Retorna (entidade, token BRUTO). O bruto vai pro cliente (cookie); no banco
     // guarda-se só o hash (igual ao reset token) — vazamento de DB não dá refresh tokens
     // reutilizáveis.
@@ -65,7 +76,7 @@ public class AuthService
         return Task.FromResult((rt, tokenBruto));
     }
 
-    public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+    public async Task<RegisterResponseDto> RegisterAsync(RegisterDto dto)
     {
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
@@ -82,7 +93,11 @@ public class AuthService
         if (_context.Usuarios.Any(u => u.Email == dto.Email.ToLower()))
             throw new InvalidOperationException("Email já cadastrado");
 
-        // Create new user
+        // GATE DO BETA: a conta nasce AguardandoAprovacao (default da entidade) e NÃO recebe sessão
+        // aqui — nada de JWT nem refresh token. O usuário só loga depois que o admin aprova
+        // (spec `docs/features/admin/spec.md` §3). `Status` é setado explicitamente pra deixar a
+        // intenção clara no código, mesmo coincidindo com o default. NUNCA vem do DTO (blindagem
+        // contra escalação — cliente não escolhe o próprio status).
         var usuario = new Usuario
         {
             Id = Guid.NewGuid(),
@@ -90,7 +105,7 @@ public class AuthService
             Nome = dto.Nome,
             DataNascimento = dto.DataNascimento,
             PasswordHash = PasswordHasher.HashPassword(dto.Password),
-            Ativo = true,
+            Status = StatusUsuario.AguardandoAprovacao,
             CriadoEm = DateTime.UtcNow,
             AtualizadoEm = DateTime.UtcNow
         };
@@ -106,19 +121,13 @@ public class AuthService
             UsuarioIdProprietario = usuario.Id
         });
 
-        var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
-        var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
-
-        return new AuthResponseDto
+        return new RegisterResponseDto
         {
-            UsuarioId = usuario.Id,
-            Email = usuario.Email,
-            Nome = usuario.Nome,
-            Token = token,
-            RefreshToken = refreshBruto,
-            RefreshTokenExpiresAt = rt.ExpiresAt,
+            Status = usuario.Status,
+            Mensagem = "Cadastro enviado! Sua conta está aguardando aprovação. "
+                     + "Você receberá acesso assim que for liberada.",
         };
     }
 
@@ -157,12 +166,17 @@ public class AuthService
             throw new UnauthorizedAccessException("Email ou senha inválidos");
         }
 
-        if (!usuario.Ativo)
-            throw new UnauthorizedAccessException("Usuário inativo");
+        // GATE DE STATUS — só conta Ativa loga. Checado DEPOIS da senha (não vaza a situação da
+        // conta pra quem não provou a senha). Mensagem específica por estado pro usuário entender.
+        if (usuario.Status != StatusUsuario.Ativo)
+            throw new UnauthorizedAccessException(MensagemStatusBloqueado(usuario.Status));
 
-        // Login certo — zera o contador de força bruta.
+        // Login certo — zera o contador de força bruta e marca o último acesso (métrica do admin).
         usuario.FalhasLoginConsecutivas = 0;
         usuario.UltimaFalhaLoginEm = null;
+        // MFA ativo: o acesso só se completa no 2º fator; UltimoAcessoEm é gravado lá.
+        if (!usuario.MfaAtivo)
+            usuario.UltimoAcessoEm = DateTime.UtcNow;
 
         // Rehash transparente: senha legada (PBKDF2 10k/20B) ou Argon2id com parâmetros
         // antigos é regravada com o esquema atual após verificação bem-sucedida — upgrade
@@ -233,6 +247,9 @@ public class AuthService
         // Challenge é de uso único — remove assim que confirma, antes de emitir a sessão.
         _context.MfaLoginChallenges.Remove(challenge);
 
+        // 2º fator confirmado = login completo → marca o último acesso (métrica do admin).
+        challenge.Usuario.UltimoAcessoEm = DateTime.UtcNow;
+
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id);
         await _context.SaveChangesAsync();
 
@@ -267,8 +284,10 @@ public class AuthService
         if (rt == null || rt.Revogado || rt.ExpiresAt <= DateTime.UtcNow)
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
 
-        if (!rt.Usuario.Ativo)
-            throw new UnauthorizedAccessException("Usuário inativo.");
+        // Se a conta deixou de ser Ativa (bloqueada/marcada pra exclusão) entre um refresh e outro,
+        // a sessão morre aqui — não renova. Fail-closed.
+        if (rt.Usuario.Status != StatusUsuario.Ativo)
+            throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
 
         // Revogar o token atual (rotação)
         rt.Revogado = true;
@@ -354,8 +373,10 @@ public class AuthService
         if (prt == null || prt.Usado || prt.ExpiresAt <= DateTime.UtcNow)
             throw new ArgumentException("Token inválido ou expirado.");
 
-        if (!prt.Usuario.Ativo)
-            throw new ArgumentException("Usuário inativo.");
+        // Só conta Ativa reseta senha — não faz sentido recuperar acesso de conta pendente/recusada/
+        // bloqueada/em exclusão (o gate de login barraria depois de qualquer forma).
+        if (prt.Usuario.Status != StatusUsuario.Ativo)
+            throw new ArgumentException(MensagemStatusBloqueado(prt.Usuario.Status));
 
         // Alterar senha
         prt.Usuario.PasswordHash = PasswordHasher.HashPassword(dto.NovaSenha);
@@ -390,7 +411,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
-            Ativo = usuario.Ativo,
+            Status = usuario.Status,
             CriadoEm = usuario.CriadoEm
         };
     }
@@ -414,7 +435,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
-            Ativo = usuario.Ativo,
+            Status = usuario.Status,
             CriadoEm = usuario.CriadoEm
         };
     }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, MailCheck } from 'lucide-react'
 import {
   PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox,
 } from '@/components/pontes'
@@ -40,6 +40,9 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
+  // Cadastro no beta não loga: quando dá certo, guardamos a mensagem de "aguardando aprovação"
+  // e trocamos o form por uma tela de confirmação (o admin ainda precisa liberar).
+  const [enviado, setEnviado] = useState<string | null>(null)
   const [aceitaPrivacidade, setAceitaPrivacidade] = useState(false)
   const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string; privacidade?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -68,8 +71,8 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      await register(email, nome, dataNascimento || null, password)
-      navigate('/onboarding')
+      const mensagem = await register(email, nome, dataNascimento || null, password)
+      setEnviado(mensagem)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar')
     } finally {
@@ -154,6 +157,23 @@ export default function RegisterPage() {
             <PontesLogo color="var(--pontes-primary)" size={28} onClick={() => navigate('/')} />
           </div>
 
+          {enviado ? (
+            /* ── Confirmação — cadastro enviado, aguardando aprovação (gate do beta) ── */
+            <div className={styles.enviado} role="status">
+              <div className={styles.enviadoIcon}>
+                <MailCheck size={28} strokeWidth={2} />
+              </div>
+              <h1 className={styles.title}>Cadastro enviado!</h1>
+              <PontesAlert tone="info">{enviado}</PontesAlert>
+              <p className={styles.sub}>
+                Assim que sua conta for aprovada, você já poderá entrar normalmente.
+              </p>
+              <PontesButton variant="primary" size="lg" fullWidth onClick={() => navigate('/auth/login')}>
+                Ir para o login
+              </PontesButton>
+            </div>
+          ) : (
+          <>
           {/* Header */}
           <div className={styles.head}>
             <h1 className={styles.title}>Criar conta grátis</h1>
@@ -277,6 +297,8 @@ export default function RegisterPage() {
             Ao criar sua conta você também concorda com os{' '}
             <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>.
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

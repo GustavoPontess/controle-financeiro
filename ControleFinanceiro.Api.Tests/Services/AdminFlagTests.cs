@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Data;
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
@@ -31,7 +32,7 @@ public class AdminFlagTests
 
     private static Usuario SeedUsuario(AppDbContext ctx, string email, bool isAdmin = false)
     {
-        var u = new Usuario { Id = Guid.NewGuid(), Email = email, Nome = "U", PasswordHash = "x", Ativo = true, IsAdmin = isAdmin };
+        var u = new Usuario { Id = Guid.NewGuid(), Email = email, Nome = "U", PasswordHash = "x", Status = StatusUsuario.Ativo, IsAdmin = isAdmin };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
         return u;

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Auth;
 
@@ -69,8 +70,23 @@ public class UsuarioDto
     public string Email { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
-    public bool Ativo { get; set; }
+
+    /// <summary>Situação da conta. Serializado como número (padrão do projeto — enums vão como int
+    /// no JSON). Só <c>Ativo</c> (1) tem sessão de verdade; o <c>/auth/me</c> só responde pra quem já
+    /// passou pelo login, então na prática vem sempre <c>Ativo</c>.</summary>
+    public StatusUsuario Status { get; set; }
     public DateTime CriadoEm { get; set; }
+}
+
+/// <summary>
+/// Resposta do cadastro no beta. Diferente do login: NÃO traz token/sessão — a conta nasce
+/// <see cref="StatusUsuario.AguardandoAprovacao"/> e só loga depois que o admin aprova (gate do
+/// beta, spec `docs/features/admin/spec.md` §3). O front mostra "cadastro enviado, aguarde aprovação".
+/// </summary>
+public class RegisterResponseDto
+{
+    public StatusUsuario Status { get; set; }
+    public string Mensagem { get; set; } = string.Empty;
 }
 
 public class RefreshTokenRequestDto

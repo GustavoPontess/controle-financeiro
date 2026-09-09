@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using ControleFinanceiro.Api.DTOs.Admin;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +11,8 @@ namespace ControleFinanceiro.Api.Controllers;
 
 /// <summary>
 /// Área administrativa. TODA rota exige a policy <c>IsAdmin</c> (autenticado + flag revalidada
-/// no banco). Ver spec `docs/features/admin/spec.md`. Por ora só o endpoint de identidade do
-/// admin; os módulos (fila de aprovação, usuários, LGPD, auditoria) entram a seguir.
+/// no banco). Ver spec `docs/features/admin/spec.md`. Módulo A (fila de aprovação + métricas)
+/// implementado; usuários/LGPD/auditoria entram a seguir.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -18,15 +20,26 @@ namespace ControleFinanceiro.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly AdminUsuarioService _adminUsuarios;
 
-    public AdminController(AppDbContext context) => _context = context;
+    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios)
+    {
+        _context = context;
+        _adminUsuarios = adminUsuarios;
+    }
+
+    private Guid AdminId()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        return idClaim != null && Guid.TryParse(idClaim.Value, out var id) ? id : Guid.Empty;
+    }
 
     /// <summary>Dados do admin autenticado. Serve pro front confirmar acesso admin.</summary>
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
-        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (idClaim == null || !Guid.TryParse(idClaim.Value, out var usuarioId))
+        var usuarioId = AdminId();
+        if (usuarioId == Guid.Empty)
             return Unauthorized();
 
         var u = await _context.Usuarios
@@ -36,4 +49,26 @@ public class AdminController : ControllerBase
 
         return u == null ? NotFound() : Ok(u);
     }
+
+    // ── Módulo A — fila de aprovação + métricas (gate do beta) ────────────────────────────
+
+    /// <summary>Fila de cadastros aguardando aprovação (mais antigos primeiro).</summary>
+    [HttpGet("pendentes")]
+    public async Task<ActionResult<List<UsuarioAdminDto>>> Pendentes()
+        => Ok(await _adminUsuarios.ListarPendentesAsync());
+
+    /// <summary>Aprova um cadastro pendente — a conta passa a poder logar.</summary>
+    [HttpPost("usuarios/{id:guid}/aprovar")]
+    public async Task<ActionResult<UsuarioAdminDto>> Aprovar(Guid id)
+        => Ok(await _adminUsuarios.AprovarAsync(id, AdminId()));
+
+    /// <summary>Recusa um cadastro pendente — a conta não pode logar.</summary>
+    [HttpPost("usuarios/{id:guid}/recusar")]
+    public async Task<ActionResult<UsuarioAdminDto>> Recusar(Guid id)
+        => Ok(await _adminUsuarios.RecusarAsync(id, AdminId()));
+
+    /// <summary>Métricas do beta (contagens por status + cadastros/acessos recentes).</summary>
+    [HttpGet("metricas")]
+    public async Task<ActionResult<MetricasAdminDto>> Metricas()
+        => Ok(await _adminUsuarios.ObterMetricasAsync());
 }

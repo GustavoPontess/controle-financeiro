@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -33,7 +34,8 @@ public class AdminAuthorizationHandlerTests
             Email = "u@test.com",
             Nome = "U",
             PasswordHash = "x",
-            Ativo = ativo,
+            // "ativo" aqui = conta habilitada. Com o Status novo: Ativo permite, Bloqueado barra.
+            Status = ativo ? StatusUsuario.Ativo : StatusUsuario.Bloqueado,
             IsAdmin = isAdmin,
         };
         ctx.Usuarios.Add(u);

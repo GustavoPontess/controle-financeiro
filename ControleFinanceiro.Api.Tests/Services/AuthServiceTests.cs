@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
@@ -43,7 +44,7 @@ public class AuthServiceTests
 
     private static Usuario SeedUsuario(AppDbContext ctx, string email)
     {
-        var u = new Usuario { Id = Guid.NewGuid(), Email = email, Nome = "User", PasswordHash = "x", Ativo = true };
+        var u = new Usuario { Id = Guid.NewGuid(), Email = email, Nome = "User", PasswordHash = "x", Status = StatusUsuario.Ativo };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
         return u;
@@ -276,7 +277,7 @@ public class AuthServiceTests
         var u = new Usuario
         {
             Id = Guid.NewGuid(), Email = email, Nome = "User",
-            PasswordHash = PasswordHasher.HashPassword(senha), Ativo = true,
+            PasswordHash = PasswordHasher.HashPassword(senha), Status = StatusUsuario.Ativo,
         };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
@@ -359,6 +360,68 @@ public class AuthServiceTests
         {
             Email = "DUPLICADO@TEST.COM", Nome = "Outro", Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
         }));
+    }
+
+    // ── Gate do beta: cadastro nasce pendente e sem sessão; login barra não-Ativo ──
+
+    [Fact]
+    public async Task Register_contaNasceAguardandoAprovacao_semSessao()
+    {
+        using var ctx = CreateContext();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var resp = await auth.RegisterAsync(new DTOs.Auth.RegisterDto
+        {
+            Email = "novo@test.com", Nome = "Novo",
+            Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
+        });
+
+        // Nasce pendente…
+        Assert.Equal(StatusUsuario.AguardandoAprovacao, resp.Status);
+        var u = await ctx.Usuarios.SingleAsync(x => x.Email == "novo@test.com");
+        Assert.Equal(StatusUsuario.AguardandoAprovacao, u.Status);
+        // …e NÃO ganha sessão: nenhum refresh token foi emitido no cadastro (gate do beta).
+        Assert.Empty(ctx.RefreshTokens);
+    }
+
+    [Fact]
+    public async Task Login_contaPendente_barraComMensagemDeAprovacao()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "pendente@test.com", "SenhaForte!2026");
+        u.Status = StatusUsuario.AguardandoAprovacao;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "pendente@test.com", Password = "SenhaForte!2026" }));
+        Assert.Contains("aguardando aprovação", ex.Message);
+    }
+
+    [Fact]
+    public async Task Login_contaRecusada_barra()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "recusado@test.com", "SenhaForte!2026");
+        u.Status = StatusUsuario.Recusado;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "recusado@test.com", Password = "SenhaForte!2026" }));
+    }
+
+    [Fact]
+    public async Task Login_contaAtiva_gravaUltimoAcesso()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "ativo@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await LoginSemMfaAsync(auth, "ativo@test.com", "SenhaForte!2026");
+
+        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.NotNull(atualizado!.UltimoAcessoEm);
     }
 
     // ── Força bruta por conta (OWASP Authentication Cheat Sheet) ────────────────

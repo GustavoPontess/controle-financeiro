@@ -61,6 +61,9 @@ public static class DevDataSeeder
             Nome = nome,
             PasswordHash = hash,
             OnboardingConcluido = true,
+            // Seed de dev já nasce aprovado (o default da entidade é AguardandoAprovacao, que barraria
+            // o login). Só vale em ambiente Development.
+            Status = StatusUsuario.Ativo,
         };
 
         Conta NovaConta(string nome, TipoConta tipo, Guid dono, bool carteira = false, Guid? bancoId = null) => new()

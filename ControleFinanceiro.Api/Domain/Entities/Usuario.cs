@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.Domain.Entities;
 
@@ -20,7 +21,22 @@ public class Usuario
 
     public DateTime? DataNascimento { get; set; }
 
-    public bool Ativo { get; set; } = true;
+    /// <summary>Situação da conta (ciclo de vida do beta). Fonte ÚNICA da verdade sobre "pode usar
+    /// o sistema?" — só <see cref="StatusUsuario.Ativo"/> loga. Substituiu o antigo <c>bool Ativo</c>
+    /// (migration <c>AddStatusUsuario</c>). Default <see cref="StatusUsuario.AguardandoAprovacao"/>:
+    /// fail-closed — conta nova nasce barrada até o admin aprovar (spec `docs/features/admin/spec.md`
+    /// §3). NUNCA setável por endpoint/DTO de registro/perfil (blindagem contra escalação, igual
+    /// <see cref="IsAdmin"/>); só o fluxo de admin (aprovar/recusar/bloquear) muda.</summary>
+    public StatusUsuario Status { get; set; } = StatusUsuario.AguardandoAprovacao;
+
+    /// <summary>Admin que aprovou/recusou o cadastro (auditoria da fila). Null enquanto pendente.</summary>
+    public Guid? AprovadoPor { get; set; }
+
+    /// <summary>Quando o cadastro foi aprovado/recusado. Null enquanto pendente.</summary>
+    public DateTime? AprovadoEm { get; set; }
+
+    /// <summary>Último login bem-sucedido — base das métricas do admin (usuários ativos/inativos).</summary>
+    public DateTime? UltimoAcessoEm { get; set; }
 
     /// <summary>Admin GLOBAL do sistema (painel admin/beta). Default false e — por segurança
     /// (spec `docs/features/admin/spec.md` §0) — NUNCA é setada por endpoint/DTO: só via seed

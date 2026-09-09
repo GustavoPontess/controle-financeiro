@@ -95,8 +95,9 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(screen.getByText(/senha não atende/i)).toBeInTheDocument())
   })
 
-  it('navega para /onboarding após registro bem-sucedido', async () => {
-    mockRegister.mockResolvedValueOnce(undefined)
+  it('mostra tela de "aguardando aprovação" após cadastro (gate do beta, sem logar)', async () => {
+    // Cadastro no beta não cria sessão: register devolve a mensagem e a tela troca pra confirmação.
+    mockRegister.mockResolvedValueOnce('Cadastro enviado! Sua conta está aguardando aprovação.')
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
@@ -108,7 +109,11 @@ describe('RegisterPage', () => {
     fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/onboarding'))
+    // Não navega direto pra área logada; mostra confirmação + botão pro login.
+    await waitFor(() => expect(screen.getByRole('heading', { name: /cadastro enviado/i })).toBeInTheDocument())
+    expect(screen.getByText(/aguardando aprovação/i)).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalledWith('/onboarding')
+    expect(screen.getByRole('button', { name: /ir para o login/i })).toBeInTheDocument()
   })
 
   it('exibe erro retornado pelo backend', async () => {

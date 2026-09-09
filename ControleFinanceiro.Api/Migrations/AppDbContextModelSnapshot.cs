@@ -1537,8 +1537,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("boolean");
+                    b.Property<DateTime?>("AprovadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("AprovadoPor")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("timestamp without time zone");
@@ -1590,7 +1593,13 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("RelacionamentoId1")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UltimaFalhaLoginEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("UltimoAcessoEm")
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");

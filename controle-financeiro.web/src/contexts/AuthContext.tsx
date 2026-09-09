@@ -8,7 +8,6 @@ export interface Usuario {
   email: string
   nome: string
   dataNascimento?: string
-  ativo: boolean
   criadoEm: string
 }
 
@@ -29,7 +28,7 @@ export interface AuthContextType {
   savedAccounts: StoredAccount[]
   login: (email: string, password: string) => Promise<LoginResult>
   verificarMfaLogin: (challengeToken: string, codigo: string) => Promise<void>
-  register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<void>
+  register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<string>
   logout: () => void
   refreshUser: () => Promise<void>
   addAccount: (email: string, password: string) => Promise<void>
@@ -131,16 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const register = async (email: string, nome: string, dataNascimento: string | null, password: string) => {
+  // GATE DO BETA: o cadastro NÃO cria sessão — a conta nasce "aguardando aprovação" e só loga
+  // depois que o admin aprova. Por isso aqui não buscamos /auth/me nem setamos currentUser; só
+  // devolvemos a mensagem de confirmação pra tela mostrar "cadastro enviado, aguarde aprovação".
+  const register = async (email: string, nome: string, dataNascimento: string | null, password: string): Promise<string> => {
     try {
-      await api.post('/auth/register', { email, nome, dataNascimento, password, confirmPassword: password })
-      const usuario = await fetchCurrentUser()
-      if (usuario) {
-        setCurrentUser(usuario)
-        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
-      } else {
-        throw new Error('Falha ao carregar dados do usuário')
-      }
+      const res = await api.post('/auth/register', { email, nome, dataNascimento, password, confirmPassword: password })
+      return res.data?.mensagem
+        ?? 'Cadastro enviado! Sua conta está aguardando aprovação.'
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao registrar')
     }
@@ -183,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const account = savedAccounts.find(a => a.id === accountId)
     if (!account || account.id === currentUser?.id) return
 
-    setCurrentUser({ id: account.id, email: account.email, nome: account.nome, ativo: true, criadoEm: '' })
+    setCurrentUser({ id: account.id, email: account.email, nome: account.nome, criadoEm: '' })
     setAccountKey(k => k + 1)
 
     const usuario = await fetchCurrentUser()

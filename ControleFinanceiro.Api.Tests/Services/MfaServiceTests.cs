@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Services;
@@ -46,7 +47,7 @@ public class MfaServiceTests : IDisposable
         var u = new Usuario
         {
             Id = Guid.NewGuid(), Email = email, Nome = "User",
-            PasswordHash = PasswordHasher.HashPassword(senha), Ativo = true,
+            PasswordHash = PasswordHasher.HashPassword(senha), Status = StatusUsuario.Ativo,
         };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();

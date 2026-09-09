@@ -71,22 +71,17 @@ public class AuthController : ControllerBase
             Response.Cookies.Delete(name);
     }
 
+    /// <summary>
+    /// Cadastro no beta. A conta nasce <c>AguardandoAprovacao</c> e NÃO ganha sessão — nenhum cookie
+    /// é setado. O usuário só loga depois que o admin aprova (gate do beta, spec
+    /// `docs/features/admin/spec.md` §3). Responde 201 com a mensagem de "aguardando aprovação".
+    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth-register")]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
+    public async Task<ActionResult<RegisterResponseDto>> Register([FromBody] RegisterDto dto)
     {
         var result = await _authService.RegisterAsync(dto);
-        SetAuthCookies(result.Token, result.RefreshToken);
-
-        return CreatedAtAction(nameof(GetMe), null, new AuthResponseDto
-        {
-            UsuarioId = result.UsuarioId,
-            Email = result.Email,
-            Nome = result.Nome,
-            Token = string.Empty,
-            RefreshToken = string.Empty,
-            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
-        });
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 
     /// <summary>

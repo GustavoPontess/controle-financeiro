@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,7 @@ public class AdminAuthorizationHandler : AuthorizationHandler<AdminRequirement>
             return; // não autenticado / claim inválida → não concede
 
         var ehAdmin = await _context.Usuarios
-            .Where(u => u.Id == usuarioId && u.IsAdmin && u.Ativo)
+            .Where(u => u.Id == usuarioId && u.IsAdmin && u.Status == StatusUsuario.Ativo)
             .AnyAsync();
 
         if (ehAdmin)
