@@ -15,6 +15,34 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-09, noite) Admin Módulo A — fila de aprovação do beta ✅ (branch `feature/admin-beta-gate`, commit `038d522`).**
+O gate do beta está de pé. Decisão do Gustavo: fazer o certo sem dívida técnica — `StatusUsuario`
+(enum) **substituiu** o `bool Ativo` (opção A, não manter campo redundante). Ver
+[[feedback_sem_divida_tecnica]].
+- **`StatusUsuario`** {AguardandoAprovacao, Ativo, Recusado, Bloqueado, MarcadoParaExclusao} — fonte
+  única da verdade sobre "pode usar o sistema?". `Usuario`: removido `Ativo`, entra `Status` +
+  `AprovadoPor`/`AprovadoEm`/`UltimoAcessoEm`. Migration `AddStatusUsuario` **preserva dados**
+  (Ativo=true→Ativo, false→Bloqueado).
+- **Cadastro nasce pendente e SEM sessão** — `RegisterAsync` não emite JWT/refresh; `AuthController`
+  responde 201 sem cookie. Login/refresh/reset barram quem não é `Ativo`, com mensagem por estado.
+  Grava `UltimoAcessoEm`.
+- **Admin:** `AdminUsuarioService` + endpoints `GET /admin/pendentes`, `POST /admin/usuarios/{id}/
+  aprovar|recusar`, `GET /admin/metricas`. Policy IsAdmin já revalida no banco.
+- **Front (DS):** `RegisterPage` mostra "cadastro enviado, aguarde aprovação" (não loga);
+  `AuthContext.register` devolve a mensagem e não cria sessão (campo `ativo` morto removido);
+  `/admin` com aba Pendentes (PontesTable + aprovar/recusar via PontesDialog) + Métricas (StatCards);
+  `adminService` + tipos.
+- Testes: back **465/465** (+10), front **345/345** (+4). Lint/build limpos. Migration criada;
+  aplica sozinha no boot (Program.cs `MigrateAsync`) — **⚠️ ainda não apliquei no Postgres nesta
+  sessão** (API estava parada); não é estado quebrado (modelo/migration/testes consistentes).
+
+**Próxima ação:** subir a API (aplica a migration no boot) e **verificar o fluxo ao vivo** —
+cadastrar um usuário de teste → confirmar que nasce pendente e NÃO loga → aprovar no `/admin` →
+logar. Depois: Módulo B (bloquear/reativar/forçar reset) → C (LGPD) → D (auditoria). Ver
+`docs/features/admin/spec.md` §9.
+
+---
+
 **(2026-09-09, fim da tarde) Feedback de erro no front — rede de segurança + regra oficial ✅ (branch `feature/admin-beta-gate`).**
 Gustavo cobrou: erro tem que aparecer pro usuário (campo vermelho + notificação). Feito (caminho C
 aprovado por ele):
