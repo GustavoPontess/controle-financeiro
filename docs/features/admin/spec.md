@@ -201,9 +201,8 @@ Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confi
 - ✅ **Dois estados separados** `Bloqueado` (suspende, reversível, dados ficam) vs `MarcadoParaExclusao`
   (caminho pra purga com carência) — confirmado, significam coisas diferentes.
 
-**Aguardando o Gustavo (dados, não design):**
-- **E-mail(s) do admin:** qual e-mail vira a conta admin diária? E um segundo pra a break-glass?
-  (setados por seed/migration; nunca por endpoint).
+- ✅ **Admin diário = `gut.n.pontes@gmail.com`** (2026-09-09) — setado por seed (nunca por endpoint).
+- ✅ **Break-glass adiada** — só quando for pra produção; local, um admin basta.
 
 ---
 
