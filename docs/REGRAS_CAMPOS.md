@@ -141,6 +141,32 @@ Validação sem feedback visível não serve. O padrão de referência (ex.: `Co
    - _Avançado (opcional):_ mapear os campos do 400 (`ModelState.errors`) de volta pros campos
      vermelhos. Normalmente a validação por campo (passo 1) já evita o 400, então não é obrigatório.
 
+## Inline (campo) × Toast (canto) — quando usar cada um
+
+Regra pra não duplicar feedback e não confundir o usuário. **Cada tipo de feedback tem um lugar.**
+
+**📍 Inline — campo vermelho + mensagem no próprio campo (`PontesField error`):**
+Erro de um **campo específico**, que o usuário corrige ali: obrigatório vazio, formato errado,
+passou do limite. É o principal. **Nunca vira toast.**
+
+**🔔 Toast no canto inferior direito (`PontesToast` via `notify`/rede de segurança):** só em 3 casos:
+1. **Sucesso** de uma ação → toast verde ("Conta criada com sucesso"). Confirmação rápida.
+2. **Erro sem campo pra apontar** → toast vermelho: erro de servidor (500), sem internet, ou ação
+   que **não é um form** (excluir, arquivar, aprovar — botões soltos).
+3. **Rede de segurança** → erro de servidor que nenhum campo do form representa (interceptor do axios).
+
+**⭐ Regra de ouro (não duplicar):** se o form **já marca o campo inline**, NÃO mostra toast de erro
+junto. O toast de erro só entra quando **não há campo** onde mostrar. Um form que mapeia o erro do
+servidor no campo desliga o toast global com `skipErrorToast: true`.
+
+| Situação | Onde aparece |
+|---|---|
+| Campo obrigatório vazio / inválido / acima do limite | 🔴 inline no campo |
+| Erro de servidor (500, sem rede) | 🔔 toast vermelho |
+| Ação sem form (excluir, arquivar, aprovar) deu erro | 🔔 toast vermelho |
+| Qualquer ação deu **certo** | 🟢 toast de sucesso |
+| Form já mostra o campo inline | ❌ sem toast (não duplica) |
+
 ## Aplicar em campo ANTIGO
 
 Achou um campo/DTO antigo sem essas regras? **Boy-scout:** arruma na hora (mesmo critério da tabela)
