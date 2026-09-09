@@ -122,6 +122,25 @@ mensagem — você NÃO precisa checar na mão no controller/service. Só anotar
 
 ---
 
+## Mostrar o erro ao usuário (obrigatório)
+
+Validação sem feedback visível não serve. O padrão de referência (ex.: `ContaForm` +
+`NewContaDialog`):
+
+1. **Validação por campo, ANTES de enviar (primária):** cada campo obrigatório/limite é checado no
+   submit; inválido → `PontesField error="..."` + `invalid` no controle (campo **vermelho** +
+   mensagem inline). Bloqueia o envio. Erro limpa ao editar o campo. É o que o usuário mais vê.
+2. **`maxLength` no input** = o limite da tabela, pra o usuário nem digitar além.
+3. **Sucesso:** toast de sucesso + fecha o modal/tela.
+4. **Erro de API (400/409/500):** **NÃO** mostre um toast próprio no form — a **rede de segurança
+   global** (interceptor do axios → evento `apiError` → toast no `DefaultLayout`) já mostra a
+   **notificação** com a mensagem amigável. O form só **não fecha** no erro, pra o usuário corrigir e
+   tentar de novo. Isso evita toast duplicado e centraliza a mensagem num lugar só.
+   - Se o form fizer seu próprio tratamento de erro (raro), aí sim passe `skipErrorToast: true` no
+     request pra a rede global não disparar junto.
+   - _Avançado (opcional):_ mapear os campos do 400 (`ModelState.errors`) de volta pros campos
+     vermelhos. Normalmente a validação por campo (passo 1) já evita o 400, então não é obrigatório.
+
 ## Aplicar em campo ANTIGO
 
 Achou um campo/DTO antigo sem essas regras? **Boy-scout:** arruma na hora (mesmo critério da tabela)

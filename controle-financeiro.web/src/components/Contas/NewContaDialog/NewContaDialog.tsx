@@ -5,9 +5,6 @@ import { createConta, updateConta } from "../../../services/contaService"
 import type { Conta } from "../../../types/Conta"
 import type { Banco } from "../../../types/Banco"
 
-const errorMessage = (err: unknown, fallback: string): string =>
-  (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback
-
 type Notification = {
   open: boolean
   message: string
@@ -37,8 +34,9 @@ export default function NewContaDialog({ open, onClose, onSaved, notify, bancos,
       }
       await onSaved()
       onClose()
-    } catch (err) {
-      notify({ open: true, message: errorMessage(err, "Erro ao salvar conta"), severity: "error" })
+    } catch {
+      // Erro de API já vira toast pela rede de segurança global (interceptor do axios).
+      // Aqui só NÃO fechamos o modal — o usuário corrige e tenta de novo.
     }
   }
 
