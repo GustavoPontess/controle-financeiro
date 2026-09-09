@@ -139,6 +139,8 @@ npm run lint
 
 Detalhe completo + exemplos em `docs/STANDARDS.md` → "Estilização — CSS Modules + CSS variables".
 
+> **Regras de campo/input (limite de caracteres, obrigatório, tipo, faixa) — backend E frontend:** ver **`docs/REGRAS_CAMPOS.md`** (checklist + tabela de limites padrão). Obrigatório ao criar campo/formulário novo — evita "caracteres infinitos" e dado inválido.
+
 ### Validação de formulários (PADRÃO OBRIGATÓRIO) ⭐
 
 Todo form valida por campo e mostra erro **visual** via DS: `PontesField error="..."` + `invalid` no controle. Valida antes de submeter e **bloqueia** se inválido; erro de campo é inline vermelho (nunca toast — toast só sucesso/erro de servidor); erro limpa ao editar; mensagem ≠ placeholder; toast acima do modal. Teste obrigatório (submit vazio bloqueia + mostra erros). Detalhe + snippet: `docs/STANDARDS.md` → "Validação de formulários". Referência viva: `src/test/components/TransactionForm.test.tsx`.
