@@ -32,14 +32,17 @@ O gate do beta está de pé. Decisão do Gustavo: fazer o certo sem dívida téc
   `AuthContext.register` devolve a mensagem e não cria sessão (campo `ativo` morto removido);
   `/admin` com aba Pendentes (PontesTable + aprovar/recusar via PontesDialog) + Métricas (StatCards);
   `adminService` + tipos.
-- Testes: back **465/465** (+10), front **345/345** (+4). Lint/build limpos. Migration criada;
-  aplica sozinha no boot (Program.cs `MigrateAsync`) — **⚠️ ainda não apliquei no Postgres nesta
-  sessão** (API estava parada); não é estado quebrado (modelo/migration/testes consistentes).
+- Testes: back **465/465** (+10), front **345/345** (+4). Lint/build limpos.
+- **Migration `AddStatusUsuario` APLICADA no Postgres de dev ✅** (subi a API no fim da sessão):
+  colunas `Status` (int, default 0), `AprovadoEm`, `AprovadoPor`, `UltimoAcessoEm` conferidas no
+  banco; coluna `Ativo` removida (conversão preservou dados). **App no ar agora:** Postgres +
+  API :5293 (health 200) + front :5173. Obs de dev: `dotnet run --no-launch-profile` sobe na
+  **:5000**; pra bater com o front use `ASPNETCORE_URLS=http://localhost:5293`.
 
-**Próxima ação:** subir a API (aplica a migration no boot) e **verificar o fluxo ao vivo** —
-cadastrar um usuário de teste → confirmar que nasce pendente e NÃO loga → aprovar no `/admin` →
-logar. Depois: Módulo B (bloquear/reativar/forçar reset) → C (LGPD) → D (auditoria). Ver
-`docs/features/admin/spec.md` §9.
+**Próxima ação:** **verificar o fluxo ao vivo** (não feito ainda) — cadastrar um usuário de teste →
+confirmar que nasce pendente e NÃO loga (tela "aguarde aprovação") → aprovar no `/admin` → logar.
+Depois: Módulo B (bloquear/reativar/forçar reset) → C (LGPD: exportar + exclusão soft→30d→hard +
+store Marco Civil) → D (auditoria). Ver `docs/features/admin/spec.md` §9.
 
 ---
 
