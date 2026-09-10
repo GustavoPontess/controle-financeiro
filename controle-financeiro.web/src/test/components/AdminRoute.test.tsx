@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import AdminRoute from "../../components/Auth/AdminRoute"
 
-const { mockService } = vi.hoisted(() => ({
-  mockService: { me: vi.fn() },
-}))
-vi.mock("../../services/adminService", () => ({ default: mockService }))
+// O gate agora lê isAdmin do usuário logado (useAuth), sem tocar no adminService.
+const { useAuthMock } = vi.hoisted(() => ({ useAuthMock: vi.fn() }))
+vi.mock("../../hooks/useAuth", () => ({ useAuth: useAuthMock }))
 
 function renderAt() {
   return render(
@@ -15,14 +14,7 @@ function renderAt() {
       <MemoryRouter initialEntries={["/admin"]}>
         <Routes>
           <Route path="/" element={<div>HOME PUBLICA</div>} />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <div>CONTEUDO ADMIN</div>
-              </AdminRoute>
-            }
-          />
+          <Route path="/admin" element={<AdminRoute><div>CONTEUDO ADMIN</div></AdminRoute>} />
         </Routes>
       </MemoryRouter>
     </PontesThemeProvider>
@@ -32,25 +24,25 @@ function renderAt() {
 describe("AdminRoute", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("renderiza o conteúdo admin quando o backend confirma IsAdmin", async () => {
-    mockService.me.mockResolvedValueOnce({ id: "1", email: "adm@t.com", nome: "Adm", isAdmin: true })
+  it("renderiza o conteúdo admin quando currentUser.isAdmin é true", () => {
+    useAuthMock.mockReturnValue({ currentUser: { id: "1", nome: "Adm", isAdmin: true }, isLoading: false })
     renderAt()
-    await waitFor(() => expect(screen.getByText("CONTEUDO ADMIN")).toBeInTheDocument())
+    expect(screen.getByText("CONTEUDO ADMIN")).toBeInTheDocument()
   })
 
-  it("redireciona pra / (genérico) e NÃO monta o admin quando não é admin", async () => {
-    mockService.me.mockResolvedValueOnce({ id: "1", email: "u@t.com", nome: "U", isAdmin: false })
+  it("redireciona pra / (genérico) e NÃO monta o admin quando não é admin", () => {
+    useAuthMock.mockReturnValue({ currentUser: { id: "1", nome: "U", isAdmin: false }, isLoading: false })
     renderAt()
-    await waitFor(() => expect(screen.getByText("HOME PUBLICA")).toBeInTheDocument())
-    // Sem mensagem "sem acesso"/"restrito" — não confirma que a área existe.
+    expect(screen.getByText("HOME PUBLICA")).toBeInTheDocument()
     expect(screen.queryByText("CONTEUDO ADMIN")).not.toBeInTheDocument()
+    // Sem mensagem "sem acesso"/"restrito" — não confirma que a área existe.
     expect(screen.queryByText(/sem acesso|restrito/i)).not.toBeInTheDocument()
   })
 
-  it("redireciona pra / quando o backend nega (403)", async () => {
-    mockService.me.mockRejectedValueOnce(new Error("403"))
+  it("redireciona quando não há usuário (deslogado/sem flag)", () => {
+    useAuthMock.mockReturnValue({ currentUser: null, isLoading: false })
     renderAt()
-    await waitFor(() => expect(screen.getByText("HOME PUBLICA")).toBeInTheDocument())
+    expect(screen.getByText("HOME PUBLICA")).toBeInTheDocument()
     expect(screen.queryByText("CONTEUDO ADMIN")).not.toBeInTheDocument()
   })
 })

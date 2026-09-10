@@ -412,7 +412,8 @@ public class AuthService
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
             Status = usuario.Status,
-            CriadoEm = usuario.CriadoEm
+            CriadoEm = usuario.CriadoEm,
+            IsAdmin = usuario.IsAdmin
         };
     }
 
@@ -436,7 +437,8 @@ public class AuthService
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
             Status = usuario.Status,
-            CriadoEm = usuario.CriadoEm
+            CriadoEm = usuario.CriadoEm,
+            IsAdmin = usuario.IsAdmin
         };
     }
 

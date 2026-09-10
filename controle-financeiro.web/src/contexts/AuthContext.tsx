@@ -9,6 +9,9 @@ export interface Usuario {
   nome: string
   dataNascimento?: string
   criadoEm: string
+  /** Admin global (vem do /auth/me). Comum recebe false. Só decide UI/rota no front —
+   *  a fronteira real é a policy IsAdmin no backend. */
+  isAdmin?: boolean
 }
 
 export interface StoredAccount {

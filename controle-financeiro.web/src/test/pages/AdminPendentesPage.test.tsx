@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
-import AdminPage from "../../pages/Admin/AdminPage"
+import AdminPendentesPage from "../../pages/Admin/AdminPendentesPage"
 import { StatusUsuario } from "../../types/Admin"
 
-// vi.mock é içado pro topo — variáveis usadas na factory precisam vir de vi.hoisted.
+// vi.mock é içado pro topo — variáveis usadas na factory vêm de vi.hoisted.
 const { notify, mockService } = vi.hoisted(() => ({
   notify: vi.fn(),
   mockService: {
-    me: vi.fn(),
     pendentes: vi.fn(),
-    metricas: vi.fn(),
     aprovar: vi.fn(),
     recusar: vi.fn(),
   },
@@ -20,40 +18,31 @@ vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>()
   return { ...actual, useOutletContext: () => ({ notify }) }
 })
-
 vi.mock("../../services/adminService", () => ({ default: mockService }))
 
-const metricasZero = {
-  total: 0, pendentes: 0, ativos: 0, recusados: 0, bloqueados: 0,
-  marcadosParaExclusao: 0, cadastrosUltimos7Dias: 0, ativosUltimos7Dias: 0,
-}
-
-function renderAdmin() {
+function renderPage() {
   return render(
     <PontesThemeProvider>
-      <AdminPage />
+      <AdminPendentesPage />
     </PontesThemeProvider>
   )
 }
 
-// O gate de acesso agora vive no AdminRoute (testado à parte). A AdminPage assume que já é admin.
-describe("AdminPage", () => {
+// O gate de acesso vive no AdminRoute (testado à parte). Esta tela assume que já é admin.
+describe("AdminPendentesPage", () => {
   beforeEach(() => vi.clearAllMocks())
 
   it("lista pendentes e aprova um cadastro", async () => {
     mockService.pendentes.mockResolvedValueOnce([
       { id: "p1", email: "novo@t.com", nome: "Novo User", status: StatusUsuario.AguardandoAprovacao, criadoEm: "2026-09-09T12:00:00Z" },
     ])
-    mockService.metricas.mockResolvedValue(metricasZero)
     mockService.aprovar.mockResolvedValueOnce({})
-    renderAdmin()
+    renderPage()
 
     await waitFor(() => expect(screen.getByText("Novo User")).toBeInTheDocument())
-
     fireEvent.click(screen.getByRole("button", { name: /aprovar/i }))
 
     await waitFor(() => expect(mockService.aprovar).toHaveBeenCalledWith("p1"))
-    // Some da lista e notifica sucesso.
     await waitFor(() => expect(screen.queryByText("Novo User")).not.toBeInTheDocument())
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "success" }))
   })
@@ -62,19 +51,22 @@ describe("AdminPage", () => {
     mockService.pendentes.mockResolvedValueOnce([
       { id: "p1", email: "novo@t.com", nome: "Novo User", status: StatusUsuario.AguardandoAprovacao, criadoEm: "2026-09-09T12:00:00Z" },
     ])
-    mockService.metricas.mockResolvedValue(metricasZero)
     mockService.recusar.mockResolvedValueOnce({})
-    renderAdmin()
+    renderPage()
 
     await waitFor(() => expect(screen.getByText("Novo User")).toBeInTheDocument())
 
-    // Clicar em "Recusar" abre o diálogo, mas ainda NÃO chama o serviço.
     fireEvent.click(screen.getByRole("button", { name: /recusar/i }))
     expect(mockService.recusar).not.toHaveBeenCalled()
 
-    // Confirmar no diálogo dispara a recusa.
     const confirmar = screen.getAllByRole("button", { name: /recusar/i }).at(-1)!
     fireEvent.click(confirmar)
     await waitFor(() => expect(mockService.recusar).toHaveBeenCalledWith("p1"))
+  })
+
+  it("mostra vazio quando não há pendentes", async () => {
+    mockService.pendentes.mockResolvedValueOnce([])
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/nenhum cadastro pendente/i)).toBeInTheDocument())
   })
 })

@@ -33,11 +33,3 @@ export interface MetricasAdmin {
   cadastrosUltimos7Dias: number
   ativosUltimos7Dias: number
 }
-
-// Espelha o retorno de GET /admin/me.
-export interface AdminMe {
-  id: string
-  email: string
-  nome: string
-  isAdmin: boolean
-}

@@ -1,22 +1,47 @@
 /**
- * AdminLayout — shell EXCLUSIVO do painel admin. Isolado do app do usuário: não tem a sidebar de
- * Transações/Cartões/Importar nem o botão "Nova transação". Só o cabeçalho do painel + link pra
- * voltar ao app. Chrome próprio pra não misturar admin com o fluxo do usuário comum.
+ * AdminLayout — MESMA estrutura visual do app do usuário (sidebar lateral + navbar superior,
+ * reaproveitando os componentes `Sidebar`/`Navbar` e o shell do `DefaultLayout`), mas com os menus
+ * de ADMIN na lateral (Fila de aprovação, Métricas...) em vez dos menus financeiros do usuário.
+ * Sem "Nova transação"/ocultar valores (Navbar `showFinance={false}`).
  *
- * Traz seu próprio toast (sucesso das ações + rede de segurança global `apiError`), já que não vive
- * dentro do DefaultLayout. Passa `notify` via Outlet context (as telas admin leem com useOutletContext).
+ * Traz toast próprio (sucesso das ações + rede de segurança `apiError`) e passa `notify` via Outlet
+ * context (as telas admin leem com useOutletContext).
  */
-import { useEffect, useState } from "react"
-import { Outlet, Link } from "react-router-dom"
-import { ShieldCheck, ArrowLeft } from "lucide-react"
-import { PontesToast, PontesLogoMark } from "@/components/pontes"
-import { useAuth } from "../../hooks/useAuth"
-import styles from "./AdminLayout.module.css"
+import { useState, useEffect } from "react"
+import { Outlet, useLocation } from "react-router-dom"
+import { ClipboardCheck, BarChart3 } from "lucide-react"
+import { PontesToast } from "@/components/pontes"
+import Sidebar, { type SidebarNavGroup } from "../../components/Sidebar/Sidebar"
+import Navbar from "../../components/Navbar/Navbar"
+import styles from "../Default/DefaultLayout.module.css"
+
+const DRAWER_WIDTH = 248
+const RAIL_WIDTH = 72
+const ADMIN_HOME = "/admin/pendentes"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 
+const ADMIN_NAV: SidebarNavGroup[] = [
+  {
+    section: "Administração",
+    items: [
+      { to: "/admin/pendentes", label: "Fila de aprovação", icon: <ClipboardCheck size={19} strokeWidth={2} /> },
+      { to: "/admin/metricas", label: "Métricas", icon: <BarChart3 size={19} strokeWidth={2} /> },
+      // Futuro: Usuários, LGPD, Auditoria (Módulos B/C/D).
+    ],
+  },
+]
+
+// Títulos das telas admin — moram AQUI (chunk lazy do admin), não no Navbar compartilhado, pra
+// nenhuma rota de admin vazar no bundle do usuário comum.
+const ADMIN_TITULOS: Record<string, string> = {
+  "/admin/pendentes": "Fila de aprovação",
+  "/admin/metricas": "Métricas",
+}
+
 export default function AdminLayout() {
-  const { currentUser } = useAuth()
+  const location = useLocation()
+  const [open, setOpen] = useState(true)
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
 
   // Rede de segurança: erro de API (evento do interceptor do axios) vira toast — mesmo padrão do
@@ -39,25 +64,25 @@ export default function AdminLayout() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.bar}>
-        <div className={styles.brand}>
-          <PontesLogoMark color="var(--pontes-primary)" size={24} />
-          <span className={styles.brandText}>Painel Admin</span>
-          <span className={styles.badge}><ShieldCheck size={13} strokeWidth={2.5} /> restrito</span>
-        </div>
-        <div className={styles.right}>
-          {currentUser?.nome && <span className={styles.user}>{currentUser.nome}</span>}
-          <Link to="/dashboard" className={styles.back}>
-            <ArrowLeft size={15} strokeWidth={2.5} /> Voltar ao app
-          </Link>
-        </div>
-      </header>
+      <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} nav={ADMIN_NAV} homePath={ADMIN_HOME} />
 
-      <main className={styles.main}>
-        <div className={styles.content}>
-          <Outlet context={{ notify: setNotification }} />
-        </div>
-      </main>
+      <div className={styles.card}>
+        <div className={styles.accentStrip} />
+        <Navbar
+          toggleDrawer={() => setOpen((o) => !o)}
+          sidebarOpen={open}
+          showFinance={false}
+          title={ADMIN_TITULOS[location.pathname] ?? "Administração"}
+          homeLabel="Painel Admin"
+          homePath={ADMIN_HOME}
+        />
+
+        <main className={styles.main}>
+          <div className={styles.page}>
+            <Outlet context={{ notify: setNotification }} />
+          </div>
+        </main>
+      </div>
 
       {notification.open && (
         <div className={styles.toastWrap}>

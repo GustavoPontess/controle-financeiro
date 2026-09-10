@@ -15,11 +15,20 @@ import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
 import { useAuth } from "../../hooks/useAuth"
 import styles from "./Sidebar.module.css"
 
-type SidebarProps = { open: boolean; drawerWidth: number; railWidth: number }
+export type SidebarNavItem = { to: string; label: string; icon: React.ReactNode }
+export type SidebarNavGroup = { section: string; items: SidebarNavItem[] }
 
-type NavItem = { to: string; label: string; icon: React.ReactNode }
+type SidebarProps = {
+  open: boolean
+  drawerWidth: number
+  railWidth: number
+  /** Grupos de navegação. Default = menu do usuário. O painel admin passa o seu próprio. */
+  nav?: SidebarNavGroup[]
+  /** Destino do clique no logo. Default = /dashboard. */
+  homePath?: string
+}
 
-const NAV: { section: string; items: NavItem[] }[] = [
+const NAV: SidebarNavGroup[] = [
   {
     section: "Principal",
     items: [
@@ -50,12 +59,13 @@ function getInitials(nome: string) {
   return nome.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
 }
 
-export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) {
+export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = "/dashboard" }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { currentUser, savedAccounts, logout, switchAccount } = useAuth()
   const [addAccountOpen, setAddAccountOpen] = useState(false)
 
+  const groups = nav ?? NAV
   const width = open ? drawerWidth : railWidth
   const initials = currentUser?.nome ? getInitials(currentUser.nome) : "?"
   const otherAccounts = savedAccounts.filter((a) => a.id !== currentUser?.id)
@@ -81,16 +91,16 @@ export default function Sidebar({ open, drawerWidth, railWidth }: SidebarProps) 
       {/* Logo — wordmark e mark "P" na MESMA coluna, cross-fade. */}
       <div className={styles.logoWrap}>
         <div className={styles.logoFull}>
-          <PontesLogo color="var(--pontes-primary)" size={30} onClick={() => navigate("/dashboard")} />
+          <PontesLogo color="var(--pontes-primary)" size={30} onClick={() => navigate(homePath)} />
         </div>
         <div className={styles.logoMark}>
-          <PontesLogoMark color="var(--pontes-primary)" size={32} onClick={() => navigate("/dashboard")} />
+          <PontesLogoMark color="var(--pontes-primary)" size={32} onClick={() => navigate(homePath)} />
         </div>
       </div>
 
       {/* Nav */}
       <nav className={styles.nav}>
-        {NAV.map((group) => (
+        {groups.map((group) => (
           <div key={group.section} className={styles.group}>
             <PontesSidebarSection label={group.section} collapsed={!open} />
             {group.items.map((item) => (

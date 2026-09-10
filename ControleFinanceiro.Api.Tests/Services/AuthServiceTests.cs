@@ -362,6 +362,22 @@ public class AuthServiceTests
         }));
     }
 
+    // ── /auth/me expõe IsAdmin (o front usa pra gate/entrada do painel admin) ──
+
+    [Fact]
+    public async Task GetUsuario_exponhaIsAdmin()
+    {
+        using var ctx = CreateContext();
+        var comum = SeedUsuario(ctx, "comum@test.com");
+        var admin = SeedUsuario(ctx, "admin@test.com");
+        admin.IsAdmin = true;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        Assert.False((await auth.GetUsuarioAsync(comum.Id))!.IsAdmin);
+        Assert.True((await auth.GetUsuarioAsync(admin.Id))!.IsAdmin);
+    }
+
     // ── Gate do beta: cadastro nasce pendente e sem sessão; login barra não-Ativo ──
 
     [Fact]

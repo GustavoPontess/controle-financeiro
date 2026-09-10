@@ -1,15 +1,15 @@
 import { api } from "@/api/axiosConfig"
-import type { AdminMe, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
+import type { MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
  * Todos os endpoints ficam sob a policy IsAdmin no backend: não-admin recebe 403.
+ *
+ * Este módulo é importado SÓ pelo chunk lazy do painel (AdminApp/telas admin) — nunca pelo bundle
+ * comum. O gate de acesso (AdminRoute) lê `isAdmin` do /auth/me, não daqui, pra não arrastar estes
+ * endpoints pro bundle do usuário comum.
  */
 const adminService = {
-  // Probe de acesso admin. `skipErrorToast`: o 403 pra não-admin é esperado (a página trata
-  // renderizando "sem acesso") — não deve disparar o toast global de erro.
-  me: () => api.get<AdminMe>("/admin/me", { skipErrorToast: true }).then((r) => r.data),
-
   pendentes: () => api.get<UsuarioAdmin[]>("/admin/pendentes").then((r) => r.data),
 
   aprovar: (id: string) =>

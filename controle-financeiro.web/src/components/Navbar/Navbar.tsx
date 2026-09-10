@@ -12,9 +12,17 @@ import styles from "./Navbar.module.css"
 type Props = {
   toggleDrawer: () => void
   sidebarOpen: boolean
-  openTransaction: () => void
-  canCreateTransaction: boolean
-  openCommandPalette: () => void
+  /** Ações financeiras (Nova transação + ocultar valores). Omitir no painel admin. */
+  showFinance?: boolean
+  openTransaction?: () => void
+  canCreateTransaction?: boolean
+  openCommandPalette?: () => void
+  /** Título da tela. Se omitido, resolve pelo mapa de rotas do usuário. Telas fora desse mapa
+   *  (ex.: painel admin) passam o título aqui — assim NENHUMA rota de admin fica no bundle comum. */
+  title?: string
+  /** Rótulo do "Início" no breadcrumb + destino. Default = Início/dashboard. */
+  homeLabel?: string
+  homePath?: string
 }
 
 const TITLES: Record<string, string> = {
@@ -39,11 +47,15 @@ function resolveTitle(path: string): string {
   return k ? TITLES[k] : "Pontes"
 }
 
-export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, canCreateTransaction, openCommandPalette }: Props) {
+export default function Navbar({
+  toggleDrawer, sidebarOpen, showFinance = true,
+  openTransaction, canCreateTransaction, openCommandPalette,
+  title: titleProp, homeLabel = "Início", homePath = "/dashboard",
+}: Props) {
   const location = useLocation()
   const navigate = useNavigate()
-  const title = resolveTitle(location.pathname)
-  const isDashboard = location.pathname === "/dashboard"
+  const title = titleProp ?? resolveTitle(location.pathname)
+  const isHome = location.pathname === homePath
   const [hideBalance, toggleBalance] = useHideBalance()
 
   return (
@@ -53,9 +65,9 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
           {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
         </PontesIconButton>
         <div className={styles.titleBox}>
-          {!isDashboard && (
+          {!isHome && (
             <div className={styles.crumb}>
-              <span onClick={() => navigate("/dashboard")} className={styles.crumbHome}>Início</span>
+              <span onClick={() => navigate(homePath)} className={styles.crumbHome}>{homeLabel}</span>
               <span className={styles.crumbSep}> / </span>
               <span className={styles.crumbCur}>{title}</span>
             </div>
@@ -65,32 +77,38 @@ export default function Navbar({ toggleDrawer, sidebarOpen, openTransaction, can
       </div>
 
       <div className={styles.right}>
-        <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
-          <Search size={16} strokeWidth={2} />
-          <span className={styles.searchText}>Buscar telas…</span>
-          <kbd className={styles.kbd}>Ctrl K</kbd>
-        </button>
+        {openCommandPalette && (
+          <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
+            <Search size={16} strokeWidth={2} />
+            <span className={styles.searchText}>Buscar telas…</span>
+            <kbd className={styles.kbd}>Ctrl K</kbd>
+          </button>
+        )}
 
-        <PontesIconButton
-          variant="ghost" size={40}
-          onClick={toggleBalance}
-          aria-label={hideBalance ? "Mostrar valores" : "Ocultar valores"}
-          title={hideBalance ? "Mostrar valores" : "Ocultar valores"}
-        >
-          {hideBalance ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
-        </PontesIconButton>
+        {showFinance && (
+          <PontesIconButton
+            variant="ghost" size={40}
+            onClick={toggleBalance}
+            aria-label={hideBalance ? "Mostrar valores" : "Ocultar valores"}
+            title={hideBalance ? "Mostrar valores" : "Ocultar valores"}
+          >
+            {hideBalance ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+          </PontesIconButton>
+        )}
 
         <NotificationBell />
 
-        <PontesButton
-          variant="accent" size="md"
-          onClick={openTransaction}
-          disabled={!canCreateTransaction}
-          iconStart={<Plus size={16} strokeWidth={2.5} />}
-          title={canCreateTransaction ? undefined : "Cadastre pelo menos uma categoria antes de adicionar transações"}
-        >
-          Nova transação
-        </PontesButton>
+        {showFinance && (
+          <PontesButton
+            variant="accent" size="md"
+            onClick={openTransaction}
+            disabled={!canCreateTransaction}
+            iconStart={<Plus size={16} strokeWidth={2.5} />}
+            title={canCreateTransaction ? undefined : "Cadastre pelo menos uma categoria antes de adicionar transações"}
+          >
+            Nova transação
+          </PontesButton>
+        )}
       </div>
     </header>
   )

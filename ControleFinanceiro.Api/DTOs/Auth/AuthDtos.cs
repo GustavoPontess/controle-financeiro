@@ -76,6 +76,11 @@ public class UsuarioDto
     /// passou pelo login, então na prática vem sempre <c>Ativo</c>.</summary>
     public StatusUsuario Status { get; set; }
     public DateTime CriadoEm { get; set; }
+
+    /// <summary>Admin global. Exposto pro front decidir se mostra a entrada do painel admin e libera
+    /// a rota (defesa em profundidade — a fronteira real é a policy IsAdmin no backend, revalidada no
+    /// banco a cada request). É atributo do próprio usuário: comum recebe false.</summary>
+    public bool IsAdmin { get; set; }
 }
 
 /// <summary>
