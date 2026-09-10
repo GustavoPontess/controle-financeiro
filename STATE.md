@@ -15,6 +15,29 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-10) Admin Módulo D — auditoria ✅ (branch `feature/admin-beta-gate`, commit `df26a39`). Validado ao vivo.**
+Fecha o admin com rastreabilidade. (Escolhido no lugar do C: C é o mais perigoso, precisa do store
+Marco Civil antes e não trava beta; D é só leitura, risco baixo, valor de segurança alto.)
+- **Backend:** `AdminAuditLog` (append-only) + enum `AcaoAdmin` + migration `AddAdminAuditLog`
+  (aplicada no dev). Snapshot denormalizado (e-mail do admin + descrição do alvo) — legível sozinho,
+  sobrevive à exclusão do usuário; sem FK/cascade. `AdminAuditService` (Registrar atômico com a ação
+  + ListarAsync 200 recentes). **Toda ação de admin** (aprovar/recusar/bloquear/reativar/forçar-reset)
+  grava rastro com o e-mail do admin (do claim). `GET /admin/auditoria`. +2 testes.
+- **Front (DS):** `AdminAuditoriaPage` (tabela só-leitura: quando/admin/ação/alvo/detalhe); item
+  "Auditoria" na lateral, rota `/admin/auditoria`; `AcaoAdmin`/`ACAO_LABEL`. +2 testes.
+- **Validado ao vivo:** bloquear+reativar um seed → 2 registros na auditoria (recente primeiro, com
+  e-mail do admin snapshot + alvo + timestamp).
+- Hardening mantido (endpoints só no chunk lazy). Back **477/477** (+2), front **353/353** (+2).
+
+**Estado do admin:** Módulos A (fila), B (usuários), D (auditoria) ✅. **Falta só o C (LGPD).**
+
+**Próxima ação (a decidir):** o admin está "bom o bastante" pro beta. Opções: (1) **Módulo C — LGPD**
+(exportar + exclusão 2 estágios + store Marco Civil — o mais sensível, não trava beta); (2) **testes
+de integração do admin** (P1 — cobrir A/B/D via HTTP real, WebApplicationFactory); (3) **sair do admin**
+pra um P1 do produto (conferência de caixa / upgrade .NET 10, prazo 10/11/2026). Perguntar ao Gustavo.
+
+---
+
 **(2026-09-10) Admin Módulo B — gestão de usuários ✅ (branch `feature/admin-beta-gate`, commit `87266ce`). Validado ao vivo.**
 - **Backend** (`AdminUsuarioService`+`AdminController`): `ListarUsuariosAsync(busca?)`; `Bloquear`
   (Ativo→Bloqueado; **não bloqueia a si mesmo → 403** §0.6; só Ativo→409); `Reativar`
