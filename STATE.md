@@ -39,10 +39,26 @@ O gate do beta está de pé. Decisão do Gustavo: fazer o certo sem dívida téc
   API :5293 (health 200) + front :5173. Obs de dev: `dotnet run --no-launch-profile` sobe na
   **:5000**; pra bater com o front use `ASPNETCORE_URLS=http://localhost:5293`.
 
-**Próxima ação:** **verificar o fluxo ao vivo** (não feito ainda) — cadastrar um usuário de teste →
-confirmar que nasce pendente e NÃO loga (tela "aguarde aprovação") → aprovar no `/admin` → logar.
-Depois: Módulo B (bloquear/reativar/forçar reset) → C (LGPD: exportar + exclusão soft→30d→hard +
-store Marco Civil) → D (auditoria). Ver `docs/features/admin/spec.md` §9.
+- **Verificado ao vivo ✅ (2026-09-09):** cadastro `teste.gate.beta@example.com` → tela "Cadastro
+  enviado, aguardando aprovação" (não logou) → tentar logar barrou com "Sua conta está aguardando
+  aprovação" (inline vermelho) → em `/admin` (logado como admin) o cadastro apareceu na fila
+  Pendentes com Aprovar/Recusar. Fluxo do gate funcionando ponta a ponta.
+  - _Setup de dev pro teste:_ `solo@controle.test` promovido a admin via UPDATE direto no banco
+    (`IsAdmin=true`) — via oficial de bootstrap (spec §0.1), é seed puro de dev. A conta
+    `teste.gate.beta@example.com` ficou pendente no banco (inofensiva; dá pra aprovar/recusar/apagar).
+
+**Achados da revisão do Gustavo (catalogados no ROADMAP como 🟠 P1 — fazer na PRÓXIMA rodada, antes de B/C/D):**
+1. **Separar `AdminLayout`** — hoje `/admin` está dentro do `DefaultLayout` (aparece com sidebar de
+   Transações/Importar + "Nova transação"). Errado: admin precisa de chrome próprio, isolado.
+2. **Hardening de segurança do front** (defesa em profundidade — Gustavo quer "extremamente exigente"):
+   `AdminRoute` que barra antes de montar; lazy load do chunk admin (comum nunca baixa o JS);
+   404 genérico pra não-admin; source maps OFF em produção. NÃO fazer teatro (ofuscar rota/endpoint).
+   Backend continua a fronteira real; isso é camada extra. Detalhe no ROADMAP.
+
+**Próxima ação:** próxima rodada começa por (1) `AdminLayout` separado + (2) hardening de front
+(gate na rota + lazy load + 404), depois **Módulo B** (gestão de usuários: bloquear/reativar/forçar
+reset — surge o estado `Bloqueado` na UI) → C (LGPD) → D (auditoria). Ver `docs/features/admin/spec.md`
+§9 e o item admin no ROADMAP.
 
 ---
 
