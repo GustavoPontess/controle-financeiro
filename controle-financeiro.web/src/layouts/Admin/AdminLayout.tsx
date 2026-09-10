@@ -9,7 +9,7 @@
  */
 import { useState, useEffect } from "react"
 import { Outlet, useLocation } from "react-router-dom"
-import { ClipboardCheck, BarChart3 } from "lucide-react"
+import { ClipboardCheck, BarChart3, Users } from "lucide-react"
 import { PontesToast } from "@/components/pontes"
 import Sidebar, { type SidebarNavGroup } from "../../components/Sidebar/Sidebar"
 import Navbar from "../../components/Navbar/Navbar"
@@ -26,8 +26,9 @@ const ADMIN_NAV: SidebarNavGroup[] = [
     section: "Administração",
     items: [
       { to: "/admin/pendentes", label: "Fila de aprovação", icon: <ClipboardCheck size={19} strokeWidth={2} /> },
+      { to: "/admin/usuarios", label: "Usuários", icon: <Users size={19} strokeWidth={2} /> },
       { to: "/admin/metricas", label: "Métricas", icon: <BarChart3 size={19} strokeWidth={2} /> },
-      // Futuro: Usuários, LGPD, Auditoria (Módulos B/C/D).
+      // Futuro: LGPD, Auditoria (Módulos C/D).
     ],
   },
 ]
@@ -36,6 +37,7 @@ const ADMIN_NAV: SidebarNavGroup[] = [
 // nenhuma rota de admin vazar no bundle do usuário comum.
 const ADMIN_TITULOS: Record<string, string> = {
   "/admin/pendentes": "Fila de aprovação",
+  "/admin/usuarios": "Usuários",
   "/admin/metricas": "Métricas",
 }
 

@@ -1,20 +1,27 @@
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Admin;
 using ControleFinanceiro.Api.Infrastructure;
+using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
-/// Regras da fila de aprovação do beta (Módulo A do admin — spec `docs/features/admin/spec.md` §3).
-/// Aprovar/recusar são as únicas transições daqui; bloquear/exclusão são módulos B/C.
-/// Toda transição registra QUEM (AprovadoPor) e QUANDO (AprovadoEm) — auditoria mínima da fila.
+/// Regras do admin sobre usuários — Módulo A (fila de aprovação: aprovar/recusar + métricas) e
+/// Módulo B (gestão: listar, bloquear/reativar, forçar reset). Spec `docs/features/admin/spec.md`
+/// §3-§4. Exclusão (soft/hard) é o Módulo C, fica noutro lugar. Admin nunca age sobre a própria
+/// conta em ação sensível (§0.6). Transições da fila registram QUEM/QUANDO (AprovadoPor/AprovadoEm).
 /// </summary>
 public class AdminUsuarioService
 {
     private readonly AppDbContext _context;
+    private readonly IPasswordResetDispatcher _resetDispatcher;
 
-    public AdminUsuarioService(AppDbContext context) => _context = context;
+    public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher)
+    {
+        _context = context;
+        _resetDispatcher = resetDispatcher;
+    }
 
     /// <summary>Fila de cadastros aguardando decisão — mais antigos primeiro (ordem de chegada).</summary>
     public async Task<List<UsuarioAdminDto>> ListarPendentesAsync()
@@ -90,6 +97,82 @@ public class AdminUsuarioService
                 u => u.Status == StatusUsuario.Ativo && u.UltimoAcessoEm != null && u.UltimoAcessoEm >= seteDiasAtras),
         };
     }
+
+    // ── Módulo B — gestão de usuários ─────────────────────────────────────────────────────
+
+    /// <summary>Lista todos os usuários (gestão). Busca opcional por nome/e-mail (contém, case-insensitive).
+    /// Mais recentes primeiro. Nunca expõe hash/segredo (usa o DTO enxuto).</summary>
+    public async Task<List<UsuarioAdminDto>> ListarUsuariosAsync(string? busca = null)
+    {
+        var q = _context.Usuarios.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim().ToLower();
+            q = q.Where(u => u.Nome.ToLower().Contains(termo) || u.Email.ToLower().Contains(termo));
+        }
+
+        return await q
+            .OrderByDescending(u => u.CriadoEm)
+            .Select(u => new UsuarioAdminDto
+            {
+                Id = u.Id,
+                Email = u.Email,
+                Nome = u.Nome,
+                Status = u.Status,
+                CriadoEm = u.CriadoEm,
+                AprovadoEm = u.AprovadoEm,
+                UltimoAcessoEm = u.UltimoAcessoEm,
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>Bloqueia um usuário Ativo → <see cref="StatusUsuario.Bloqueado"/> (não loga mais; dados
+    /// preservados; reversível). Só sobre Ativo (409 caso contrário). Admin NÃO bloqueia a si mesmo
+    /// (§0.6 — evita lockout): 403.</summary>
+    public async Task<UsuarioAdminDto> BloquearAsync(Guid usuarioId, Guid adminId)
+    {
+        if (usuarioId == adminId)
+            throw new ForbiddenAccessException("Você não pode bloquear a própria conta.");
+
+        var usuario = await BuscarOuFalharAsync(usuarioId);
+        if (usuario.Status != StatusUsuario.Ativo)
+            throw new InvalidOperationException("Só é possível bloquear um usuário ativo.");
+
+        usuario.Status = StatusUsuario.Bloqueado;
+        usuario.AtualizadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return MapToDto(usuario);
+    }
+
+    /// <summary>Reativa um usuário bloqueado → <see cref="StatusUsuario.Ativo"/>. Só sobre Bloqueado (409).</summary>
+    public async Task<UsuarioAdminDto> ReativarAsync(Guid usuarioId, Guid adminId)
+    {
+        var usuario = await BuscarOuFalharAsync(usuarioId);
+        if (usuario.Status != StatusUsuario.Bloqueado)
+            throw new InvalidOperationException("Só é possível reativar um usuário bloqueado.");
+
+        usuario.Status = StatusUsuario.Ativo;
+        usuario.AtualizadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return MapToDto(usuario);
+    }
+
+    /// <summary>Força o reset de senha de um usuário Ativo — dispara o MESMO fluxo do "esqueci a senha"
+    /// (e-mail com link), reusando o dispatcher existente (rate-limit e hash de token já embutidos).
+    /// Só faz sentido pra Ativo (o job de e-mail ignora não-Ativo): 409 caso contrário.</summary>
+    public async Task ForcarResetSenhaAsync(Guid usuarioId)
+    {
+        var usuario = await BuscarOuFalharAsync(usuarioId);
+        if (usuario.Status != StatusUsuario.Ativo)
+            throw new InvalidOperationException("Só é possível forçar reset de um usuário ativo.");
+
+        _resetDispatcher.Disparar(usuario.Email);
+    }
+
+    private async Task<Domain.Entities.Usuario> BuscarOuFalharAsync(Guid usuarioId)
+        => await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId)
+           ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
     private static UsuarioAdminDto MapToDto(Domain.Entities.Usuario u) => new()
     {

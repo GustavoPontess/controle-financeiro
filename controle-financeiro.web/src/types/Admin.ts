@@ -11,6 +11,23 @@ export const StatusUsuario = {
 
 export type StatusUsuario = (typeof StatusUsuario)[keyof typeof StatusUsuario]
 
+// Rótulo + cor (tone do PontesBadge) por situação — usado nas telas de admin.
+export const STATUS_LABEL: Record<StatusUsuario, string> = {
+  [StatusUsuario.AguardandoAprovacao]: "Pendente",
+  [StatusUsuario.Ativo]: "Ativo",
+  [StatusUsuario.Recusado]: "Recusado",
+  [StatusUsuario.Bloqueado]: "Bloqueado",
+  [StatusUsuario.MarcadoParaExclusao]: "Em exclusão",
+}
+
+export const STATUS_TONE: Record<StatusUsuario, "success" | "warning" | "danger" | "neutral"> = {
+  [StatusUsuario.AguardandoAprovacao]: "warning",
+  [StatusUsuario.Ativo]: "success",
+  [StatusUsuario.Recusado]: "neutral",
+  [StatusUsuario.Bloqueado]: "danger",
+  [StatusUsuario.MarcadoParaExclusao]: "danger",
+}
+
 // Espelha DTOs/Admin/AdminDtos.cs → UsuarioAdminDto.
 export interface UsuarioAdmin {
   id: string

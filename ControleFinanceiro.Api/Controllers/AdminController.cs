@@ -71,4 +71,29 @@ public class AdminController : ControllerBase
     [HttpGet("metricas")]
     public async Task<ActionResult<MetricasAdminDto>> Metricas()
         => Ok(await _adminUsuarios.ObterMetricasAsync());
+
+    // ── Módulo B — gestão de usuários ─────────────────────────────────────────────────────
+
+    /// <summary>Lista todos os usuários (gestão). `busca` opcional filtra por nome/e-mail.</summary>
+    [HttpGet("usuarios")]
+    public async Task<ActionResult<List<UsuarioAdminDto>>> Usuarios([FromQuery] string? busca)
+        => Ok(await _adminUsuarios.ListarUsuariosAsync(busca));
+
+    /// <summary>Bloqueia um usuário ativo (não loga mais; reversível). Não pode bloquear a si mesmo.</summary>
+    [HttpPatch("usuarios/{id:guid}/bloquear")]
+    public async Task<ActionResult<UsuarioAdminDto>> Bloquear(Guid id)
+        => Ok(await _adminUsuarios.BloquearAsync(id, AdminId()));
+
+    /// <summary>Reativa um usuário bloqueado.</summary>
+    [HttpPatch("usuarios/{id:guid}/reativar")]
+    public async Task<ActionResult<UsuarioAdminDto>> Reativar(Guid id)
+        => Ok(await _adminUsuarios.ReativarAsync(id, AdminId()));
+
+    /// <summary>Força o reset de senha (dispara o e-mail de recuperação).</summary>
+    [HttpPost("usuarios/{id:guid}/forcar-reset")]
+    public async Task<IActionResult> ForcarReset(Guid id)
+    {
+        await _adminUsuarios.ForcarResetSenhaAsync(id);
+        return NoContent();
+    }
 }

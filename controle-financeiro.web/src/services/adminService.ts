@@ -19,6 +19,19 @@ const adminService = {
     api.post<UsuarioAdmin>(`/admin/usuarios/${id}/recusar`).then((r) => r.data),
 
   metricas: () => api.get<MetricasAdmin>("/admin/metricas").then((r) => r.data),
+
+  // ── Módulo B — gestão de usuários ──
+  usuarios: (busca?: string) =>
+    api.get<UsuarioAdmin[]>("/admin/usuarios", { params: busca ? { busca } : undefined }).then((r) => r.data),
+
+  bloquear: (id: string) =>
+    api.patch<UsuarioAdmin>(`/admin/usuarios/${id}/bloquear`).then((r) => r.data),
+
+  reativar: (id: string) =>
+    api.patch<UsuarioAdmin>(`/admin/usuarios/${id}/reativar`).then((r) => r.data),
+
+  forcarReset: (id: string) =>
+    api.post(`/admin/usuarios/${id}/forcar-reset`).then((r) => r.data),
 }
 
 export default adminService

@@ -10,6 +10,7 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import AdminLayout from "../../layouts/Admin/AdminLayout"
 import AdminPendentesPage from "./AdminPendentesPage"
+import AdminUsuariosPage from "./AdminUsuariosPage"
 import AdminMetricasPage from "./AdminMetricasPage"
 
 export default function AdminApp() {
@@ -18,8 +19,9 @@ export default function AdminApp() {
       <Route element={<AdminLayout />}>
         <Route index element={<Navigate to="/admin/pendentes" replace />} />
         <Route path="pendentes" element={<AdminPendentesPage />} />
+        <Route path="usuarios" element={<AdminUsuariosPage />} />
         <Route path="metricas" element={<AdminMetricasPage />} />
-        {/* Futuro: usuarios, lgpd, auditoria (Módulos B/C/D) */}
+        {/* Futuro: lgpd, auditoria (Módulos C/D) */}
         <Route path="*" element={<Navigate to="/admin/pendentes" replace />} />
       </Route>
     </Routes>
