@@ -15,6 +15,30 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-10) Painel admin exclusivo + hardening de front ✅ (branch `feature/admin-beta-gate`, commit `75c027d`).**
+Os 2 achados P1 da revisão do Gustavo, resolvidos e **validados ao vivo**.
+- **`AdminLayout` (shell próprio)** — barra "Painel Admin · restrito" + logo mark + "Voltar ao app";
+  toast + rede de segurança próprios. **Sem** a sidebar/Nova transação do usuário. `/admin` saiu de
+  dentro do `DefaultLayout`, virou `/admin/*`. **Só DS existente** (`PontesLogoMark`, `PontesToast`,
+  `PontesLoadingDots`) — nada novo criado no DS.
+- **Hardening de front (defesa em profundidade; backend segue a fronteira real):**
+  - `AdminRoute` confirma IsAdmin **antes de montar**; não-admin → redirect `/` **sem mensagem**
+    (404 genérico, não revela a área). Gate saiu da AdminPage.
+  - **Lazy load** — `AdminApp` em chunk separado (`AdminApp-*.js` no build); só baixa quando o gate
+    libera. Usuário comum **nunca puxa o JS do painel**. Roteamento admin isolado no chunk.
+  - **Source maps já off** no build de produção (Vite default) — confirmado no `dist`.
+- **Validado ao vivo:** admin vê o painel isolado (sem chrome do usuário); comum em `/admin` cai no
+  dashboard sem vazar nada; comum não baixou `AdminApp` (só o `AdminRoute`, o gate).
+- Front **346/346** (+1: AdminRoute; AdminPage.test enxuto), lint/build limpos. Backend intacto (465/465).
+
+**Próxima ação:** **Módulo B — gestão de usuários** (`docs/features/admin/spec.md` §4): listar todos
+os usuários (nome/e-mail/status/último acesso) + **bloquear/reativar** (→ estado `Bloqueado`, surge
+na UI) + **forçar reset de senha** (dispara fluxo existente). Admin não age sobre si (§0.6). Endpoints
+`GET /admin/usuarios`, `PATCH /admin/usuarios/{id}/bloquear|reativar`, `POST .../forcar-reset`.
+Depois: C (LGPD) → D (auditoria).
+
+---
+
 **(2026-09-09, noite) Admin Módulo A — fila de aprovação do beta ✅ (branch `feature/admin-beta-gate`, commit `038d522`).**
 O gate do beta está de pé. Decisão do Gustavo: fazer o certo sem dívida técnica — `StatusUsuario`
 (enum) **substituiu** o `bool Ativo` (opção A, não manter campo redundante). Ver
