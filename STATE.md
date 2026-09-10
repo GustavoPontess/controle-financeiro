@@ -15,21 +15,31 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-**(2026-09-10) Painel admin exclusivo + hardening de front ✅ (branch `feature/admin-beta-gate`, commit `75c027d`).**
-Os 2 achados P1 da revisão do Gustavo, resolvidos e **validados ao vivo**.
-- **`AdminLayout` (shell próprio)** — barra "Painel Admin · restrito" + logo mark + "Voltar ao app";
-  toast + rede de segurança próprios. **Sem** a sidebar/Nova transação do usuário. `/admin` saiu de
-  dentro do `DefaultLayout`, virou `/admin/*`. **Só DS existente** (`PontesLogoMark`, `PontesToast`,
-  `PontesLoadingDots`) — nada novo criado no DS.
-- **Hardening de front (defesa em profundidade; backend segue a fronteira real):**
-  - `AdminRoute` confirma IsAdmin **antes de montar**; não-admin → redirect `/` **sem mensagem**
-    (404 genérico, não revela a área). Gate saiu da AdminPage.
-  - **Lazy load** — `AdminApp` em chunk separado (`AdminApp-*.js` no build); só baixa quando o gate
-    libera. Usuário comum **nunca puxa o JS do painel**. Roteamento admin isolado no chunk.
-  - **Source maps já off** no build de produção (Vite default) — confirmado no `dist`.
-- **Validado ao vivo:** admin vê o painel isolado (sem chrome do usuário); comum em `/admin` cai no
-  dashboard sem vazar nada; comum não baixou `AdminApp` (só o `AdminRoute`, o gate).
-- Front **346/346** (+1: AdminRoute; AdminPage.test enxuto), lint/build limpos. Backend intacto (465/465).
+**(2026-09-10) Painel admin: mesma cara do app (sidebar+navbar) + hardening de front ✅ (branch `feature/admin-beta-gate`, commits `75c027d`→`087e253`).**
+Resolvido + retrabalhado conforme revisão do Gustavo. **Validado ao vivo.**
+- **Mesma estrutura do app, menus de admin:** `AdminLayout` reusa o shell do `DefaultLayout`
+  (sidebar lateral + navbar superior). Menus na lateral: **Fila de aprovação** (`/admin/pendentes`)
+  e **Métricas** (`/admin/metricas`); `/admin` redireciona. `AdminPage` virou 2 telas
+  (`AdminPendentesPage`, `AdminMetricasPage`).
+- **Reuso por parâmetro (sem `if isAdmin` em componente compartilhado):** `Sidebar` aceita `nav`
+  (+`homePath`); `Navbar` aceita `showFinance`/`title`/`homeLabel`/`homePath` e ações opcionais.
+  Default = comportamento do usuário (app dele inalterado). Só DS existente — nada novo no DS.
+- **Hardening de front (defesa em profundidade; backend = fronteira real):**
+  - `AdminRoute` lê `currentUser.isAdmin` (do `/auth/me`), **não importa `adminService`** → decide
+    antes de montar; não-admin → redirect `/` sem mensagem (genérico). `UsuarioDto`/`AuthContext`
+    ganharam `IsAdmin`/`isAdmin`.
+  - **Lazy load** — `AdminApp` em chunk separado; comum não baixa o JS do painel.
+  - **Bundle comum blindado:** conferido no `dist` — só sobrou `path:"/admin/*"` + `isAdmin`
+    (irredutível: router precisa do path). **Zero endpoint/tela/menu/título** de admin no bundle
+    comum (antes vazava o `adminService` inteiro). Source maps já off.
+- **Validado ao vivo:** painel com sidebar+navbar iguais ao app (Fila/Métricas na lateral, troca
+  funcionando, sem Nova transação); comum em `/admin` → dashboard sem vazar; comum não baixa o painel.
+- Back **466/466** (+1), front **347/347**, lint/build limpos.
+
+**⚠️ Pendência de UX (não bloqueia):** entrada do painel ainda é **só por URL** (`/admin`) — não há
+link. Com `isAdmin` já no `/auth/me`, dá pra pôr um item "Painel Admin" na sidebar **só pra admin**
+(condicionado a `currentUser.isAdmin`), sem vazar pro comum. Gustavo decide se quer (opção A) ou
+mantém só-URL (opção B). Anotar no ROADMAP.
 
 **Próxima ação:** **Módulo B — gestão de usuários** (`docs/features/admin/spec.md` §4): listar todos
 os usuários (nome/e-mail/status/último acesso) + **bloquear/reativar** (→ estado `Bloqueado`, surge
