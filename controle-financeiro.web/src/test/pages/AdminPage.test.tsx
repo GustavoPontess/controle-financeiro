@@ -36,24 +36,11 @@ function renderAdmin() {
   )
 }
 
+// O gate de acesso agora vive no AdminRoute (testado à parte). A AdminPage assume que já é admin.
 describe("AdminPage", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("mostra 'Sem acesso' pra não-admin", async () => {
-    mockService.me.mockResolvedValueOnce({ id: "1", email: "u@t.com", nome: "U", isAdmin: false })
-    renderAdmin()
-    await waitFor(() => expect(screen.getByText(/sem acesso/i)).toBeInTheDocument())
-    expect(mockService.pendentes).not.toHaveBeenCalled()
-  })
-
-  it("mostra 'Sem acesso' quando o backend nega (403)", async () => {
-    mockService.me.mockRejectedValueOnce(new Error("403"))
-    renderAdmin()
-    await waitFor(() => expect(screen.getByText(/sem acesso/i)).toBeInTheDocument())
-  })
-
   it("lista pendentes e aprova um cadastro", async () => {
-    mockService.me.mockResolvedValueOnce({ id: "1", email: "adm@t.com", nome: "Adm", isAdmin: true })
     mockService.pendentes.mockResolvedValueOnce([
       { id: "p1", email: "novo@t.com", nome: "Novo User", status: StatusUsuario.AguardandoAprovacao, criadoEm: "2026-09-09T12:00:00Z" },
     ])
@@ -72,7 +59,6 @@ describe("AdminPage", () => {
   })
 
   it("recusar pede confirmação antes de chamar o serviço", async () => {
-    mockService.me.mockResolvedValueOnce({ id: "1", email: "adm@t.com", nome: "Adm", isAdmin: true })
     mockService.pendentes.mockResolvedValueOnce([
       { id: "p1", email: "novo@t.com", nome: "Novo User", status: StatusUsuario.AguardandoAprovacao, criadoEm: "2026-09-09T12:00:00Z" },
     ])

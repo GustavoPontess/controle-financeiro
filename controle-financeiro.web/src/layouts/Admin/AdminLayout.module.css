@@ -1,0 +1,56 @@
+.shell {
+  min-height: 100vh;
+  background: var(--pontes-bg);
+  color: var(--pontes-text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barra superior — identidade do painel, sem nav do usuário. */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 60px;
+  padding: 0 24px;
+  background: var(--pontes-surface, #fff);
+  border-bottom: 1px solid var(--pontes-border, rgba(0, 0, 0, 0.08));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brandText { font-size: 15px; font-weight: 700; color: var(--pontes-text); letter-spacing: -0.01em; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--pontes-primary);
+  background: var(--pontes-primary-soft, rgba(0, 0, 0, 0.05));
+}
+
+.right { display: flex; align-items: center; gap: 16px; }
+.user { font-size: 13px; color: var(--pontes-text-muted); }
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pontes-primary);
+  text-decoration: none;
+}
+.back:hover { text-decoration: underline; }
+
+.main { flex: 1; display: flex; justify-content: center; }
+.content { width: 100%; max-width: 1080px; padding: 28px 24px 48px; }
+
+.toastWrap { position: fixed; right: 20px; bottom: 20px; z-index: 100; }

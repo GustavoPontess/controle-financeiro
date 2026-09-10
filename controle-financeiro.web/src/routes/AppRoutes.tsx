@@ -1,8 +1,15 @@
+import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
 import DefaultLayout from "../layouts/Default/DefaultLayout"
 import ProtectedRoute from "../components/Auth/ProtectedRoute"
+import AdminRoute from "../components/Auth/AdminRoute"
 import RootRoute from "../components/Auth/RootRoute"
+import { PontesLoadingDots } from "@/components/pontes"
+
+// Painel admin em chunk separado (lazy): só é baixado quando o AdminRoute libera pra um admin real.
+// Usuário comum nunca puxa esse JS. Ver AdminApp/AdminRoute.
+const AdminApp = lazy(() => import("../pages/Admin/AdminApp"))
 
 import LoginPage from "../pages/Auth/LoginPage"
 import RegisterPage from "../pages/Auth/RegisterPage"
@@ -29,7 +36,6 @@ import MetasPage from "../pages/Metas/MetasPage"
 import LimitesPage from "../pages/Limites/LimitesPage"
 import ImportacaoPage from "../pages/Importacao/ImportacaoPage"
 import OnboardingPage from "../pages/Onboarding/OnboardingPage"
-import AdminPage from "../pages/Admin/AdminPage"
 import SiteLayout from "../pages/Site/SiteLayout"
 import CouplesPage from "../pages/Site/CouplesPage"
 import ContadoresPage from "../pages/Site/ContadoresPage"
@@ -114,10 +120,24 @@ export default function AppRoutes() {
           <Route path="/limites" element={<LimitesPage />} />
           <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          {/* Admin — a própria página confirma IsAdmin no backend (GET /admin/me);
-              não-admin vê "sem acesso". Endpoints ficam sob a policy IsAdmin. */}
-          <Route path="/admin" element={<AdminPage />} />
         </Route>
+
+        {/* Admin — shell PRÓPRIO (AdminLayout), isolado do app do usuário. Gate em camadas:
+            ProtectedRoute (logado) → AdminRoute (confirma IsAdmin no backend ANTES de montar;
+            não-admin cai em "/" genérico) → AdminApp lazy (chunk só baixa pra admin). Fronteira
+            real = policy IsAdmin no backend; isto é defesa em profundidade. */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}><PontesLoadingDots /></div>}>
+                  <AdminApp />
+                </Suspense>
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Fallback — qualquer rota inexistente vai pra root (que decide HomePage ou Dashboard) */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import { ShieldAlert, Check, X } from "lucide-react"
+import { Check, X } from "lucide-react"
 import {
   PontesTabs, PontesTable, PontesStatCard, PontesButton, PontesBadge,
   PontesDialog, PontesEmptyState, PontesSkeleton,
@@ -25,8 +25,7 @@ function formatarData(iso?: string | null): string {
 export default function AdminPage() {
   const { notify } = useOutletContext<OutletContextType>()
 
-  // null = ainda checando acesso; false = não é admin; true = liberado.
-  const [acessoOk, setAcessoOk] = useState<boolean | null>(null)
+  // O acesso admin já foi confirmado pelo AdminRoute ANTES desta tela montar — aqui só carrega dados.
   const [aba, setAba] = useState<Aba>("pendentes")
 
   const [pendentes, setPendentes] = useState<UsuarioAdmin[]>([])
@@ -35,31 +34,14 @@ export default function AdminPage() {
   const [processando, setProcessando] = useState<string | null>(null) // id em ação
   const [recusarAlvo, setRecusarAlvo] = useState<UsuarioAdmin | null>(null)
 
-  const carregarDados = useCallback(async () => {
-    setCarregando(true)
-    try {
-      const [p, m] = await Promise.all([adminService.pendentes(), adminService.metricas()])
-      setPendentes(p)
-      setMetricas(m)
-    } finally {
-      setCarregando(false)
-    }
-  }, [])
-
   useEffect(() => {
-    // Gate: confirma admin no backend (policy IsAdmin). 403 → não-admin → tela "sem acesso".
-    adminService
-      .me()
-      .then((me) => {
-        if (me.isAdmin) {
-          setAcessoOk(true)
-          void carregarDados()
-        } else {
-          setAcessoOk(false)
-        }
-      })
-      .catch(() => setAcessoOk(false))
-  }, [carregarDados])
+    let vivo = true
+    setCarregando(true)
+    Promise.all([adminService.pendentes(), adminService.metricas()])
+      .then(([p, m]) => { if (vivo) { setPendentes(p); setMetricas(m) } })
+      .finally(() => { if (vivo) setCarregando(false) })
+    return () => { vivo = false }
+  }, [])
 
   const aprovar = async (u: UsuarioAdmin) => {
     setProcessando(u.id)
@@ -90,22 +72,6 @@ export default function AdminPage() {
     } finally {
       setProcessando(null)
     }
-  }
-
-  if (acessoOk === null) {
-    return <div className={styles.wrap}><PontesSkeleton height={120} /></div>
-  }
-
-  if (acessoOk === false) {
-    return (
-      <div className={styles.wrap}>
-        <PontesEmptyState
-          icon={<ShieldAlert size={28} strokeWidth={2} />}
-          title="Sem acesso"
-          description="Esta área é restrita a administradores."
-        />
-      </div>
-    )
   }
 
   const colunas: PontesTableColumn<UsuarioAdmin>[] = [
