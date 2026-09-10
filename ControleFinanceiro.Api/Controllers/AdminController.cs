@@ -21,11 +21,13 @@ public class AdminController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly AdminUsuarioService _adminUsuarios;
+    private readonly AdminAuditService _auditoria;
 
-    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios)
+    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios, AdminAuditService auditoria)
     {
         _context = context;
         _adminUsuarios = adminUsuarios;
+        _auditoria = auditoria;
     }
 
     private Guid AdminId()
@@ -33,6 +35,8 @@ public class AdminController : ControllerBase
         var idClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         return idClaim != null && Guid.TryParse(idClaim.Value, out var id) ? id : Guid.Empty;
     }
+
+    private string AdminEmail() => User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
 
     /// <summary>Dados do admin autenticado. Serve pro front confirmar acesso admin.</summary>
     [HttpGet("me")]
@@ -60,12 +64,12 @@ public class AdminController : ControllerBase
     /// <summary>Aprova um cadastro pendente — a conta passa a poder logar.</summary>
     [HttpPost("usuarios/{id:guid}/aprovar")]
     public async Task<ActionResult<UsuarioAdminDto>> Aprovar(Guid id)
-        => Ok(await _adminUsuarios.AprovarAsync(id, AdminId()));
+        => Ok(await _adminUsuarios.AprovarAsync(id, AdminId(), AdminEmail()));
 
     /// <summary>Recusa um cadastro pendente — a conta não pode logar.</summary>
     [HttpPost("usuarios/{id:guid}/recusar")]
     public async Task<ActionResult<UsuarioAdminDto>> Recusar(Guid id)
-        => Ok(await _adminUsuarios.RecusarAsync(id, AdminId()));
+        => Ok(await _adminUsuarios.RecusarAsync(id, AdminId(), AdminEmail()));
 
     /// <summary>Métricas do beta (contagens por status + cadastros/acessos recentes).</summary>
     [HttpGet("metricas")]
@@ -82,18 +86,25 @@ public class AdminController : ControllerBase
     /// <summary>Bloqueia um usuário ativo (não loga mais; reversível). Não pode bloquear a si mesmo.</summary>
     [HttpPatch("usuarios/{id:guid}/bloquear")]
     public async Task<ActionResult<UsuarioAdminDto>> Bloquear(Guid id)
-        => Ok(await _adminUsuarios.BloquearAsync(id, AdminId()));
+        => Ok(await _adminUsuarios.BloquearAsync(id, AdminId(), AdminEmail()));
 
     /// <summary>Reativa um usuário bloqueado.</summary>
     [HttpPatch("usuarios/{id:guid}/reativar")]
     public async Task<ActionResult<UsuarioAdminDto>> Reativar(Guid id)
-        => Ok(await _adminUsuarios.ReativarAsync(id, AdminId()));
+        => Ok(await _adminUsuarios.ReativarAsync(id, AdminId(), AdminEmail()));
 
     /// <summary>Força o reset de senha (dispara o e-mail de recuperação).</summary>
     [HttpPost("usuarios/{id:guid}/forcar-reset")]
     public async Task<IActionResult> ForcarReset(Guid id)
     {
-        await _adminUsuarios.ForcarResetSenhaAsync(id);
+        await _adminUsuarios.ForcarResetSenhaAsync(id, AdminId(), AdminEmail());
         return NoContent();
     }
+
+    // ── Módulo D — visualizador de auditoria (só leitura) ─────────────────────────────────
+
+    /// <summary>Últimas ações de admin (auditoria), mais recentes primeiro.</summary>
+    [HttpGet("auditoria")]
+    public async Task<ActionResult<List<AdminAuditLogDto>>> Auditoria()
+        => Ok(await _auditoria.ListarAsync());
 }

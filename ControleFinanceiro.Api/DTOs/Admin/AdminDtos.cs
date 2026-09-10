@@ -35,3 +35,18 @@ public class MetricasAdminDto
     /// <summary>Usuários ativos que logaram nos últimos 7 dias.</summary>
     public int AtivosUltimos7Dias { get; set; }
 }
+
+/// <summary>
+/// Linha do visualizador de auditoria (Módulo D). Só leitura. Snapshot legível sozinho.
+/// </summary>
+public class AdminAuditLogDto
+{
+    public Guid Id { get; set; }
+    public string AdminEmail { get; set; } = string.Empty;
+    public AcaoAdmin Acao { get; set; }
+    public string? AlvoTipo { get; set; }
+    public Guid? AlvoId { get; set; }
+    public string? AlvoDescricao { get; set; }
+    public string? Detalhe { get; set; }
+    public DateTime CriadoEm { get; set; }
+}

@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<Banco> Bancos => Set<Banco>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
@@ -205,6 +206,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Usuario>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        // AdminAuditLog — append-only, listado por mais recente. Sem FK pro Usuario (auditoria
+        // sobrevive à exclusão do usuário; vínculo é só o Guid solto).
+        modelBuilder.Entity<AdminAuditLog>()
+            .HasIndex(a => a.CriadoEm);
 
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })

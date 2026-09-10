@@ -26,7 +26,7 @@ public class AdminUsuarioServiceTests
     }
 
     private static AdminUsuarioService CreateService(AppDbContext ctx, IPasswordResetDispatcher? dispatcher = null)
-        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object);
+        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object, new AdminAuditService(ctx));
 
     private static Usuario Seed(AppDbContext ctx, StatusUsuario status, string? email = null, DateTime? criadoEm = null)
     {
@@ -69,7 +69,7 @@ public class AdminUsuarioServiceTests
         var adminId = Guid.NewGuid();
         var svc = CreateService(ctx);
 
-        var dto = await svc.AprovarAsync(pendente.Id, adminId);
+        var dto = await svc.AprovarAsync(pendente.Id, adminId, "admin@test.com");
 
         Assert.Equal(StatusUsuario.Ativo, dto.Status);
         var db = await ctx.Usuarios.FindAsync(pendente.Id);
@@ -85,7 +85,7 @@ public class AdminUsuarioServiceTests
         var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
         var svc = CreateService(ctx);
 
-        await svc.RecusarAsync(pendente.Id, Guid.NewGuid());
+        await svc.RecusarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
 
         var db = await ctx.Usuarios.FindAsync(pendente.Id);
         Assert.Equal(StatusUsuario.Recusado, db!.Status);
@@ -99,7 +99,7 @@ public class AdminUsuarioServiceTests
         var svc = CreateService(ctx);
 
         // Não deixa "reaprovar"/mexer em quem já saiu da fila (ativo/recusado/bloqueado).
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AprovarAsync(jaAtivo.Id, Guid.NewGuid()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AprovarAsync(jaAtivo.Id, Guid.NewGuid(), "admin@test.com"));
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class AdminUsuarioServiceTests
         using var ctx = CreateContext();
         var svc = CreateService(ctx);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AprovarAsync(Guid.NewGuid(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AprovarAsync(Guid.NewGuid(), Guid.NewGuid(), "admin@test.com"));
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class AdminUsuarioServiceTests
         var u = Seed(ctx, StatusUsuario.Ativo);
         var svc = CreateService(ctx);
 
-        var dto = await svc.BloquearAsync(u.Id, Guid.NewGuid());
+        var dto = await svc.BloquearAsync(u.Id, Guid.NewGuid(), "admin@test.com");
 
         Assert.Equal(StatusUsuario.Bloqueado, dto.Status);
         Assert.Equal(StatusUsuario.Bloqueado, (await ctx.Usuarios.FindAsync(u.Id))!.Status);
@@ -186,7 +186,7 @@ public class AdminUsuarioServiceTests
         var svc = CreateService(ctx);
 
         // §0.6 — admin não bloqueia a si mesmo (evita lockout).
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => svc.BloquearAsync(admin.Id, admin.Id));
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => svc.BloquearAsync(admin.Id, admin.Id, "admin@test.com"));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class AdminUsuarioServiceTests
         var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
         var svc = CreateService(ctx);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.BloquearAsync(pendente.Id, Guid.NewGuid()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.BloquearAsync(pendente.Id, Guid.NewGuid(), "admin@test.com"));
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public class AdminUsuarioServiceTests
         var u = Seed(ctx, StatusUsuario.Bloqueado);
         var svc = CreateService(ctx);
 
-        var dto = await svc.ReativarAsync(u.Id, Guid.NewGuid());
+        var dto = await svc.ReativarAsync(u.Id, Guid.NewGuid(), "admin@test.com");
 
         Assert.Equal(StatusUsuario.Ativo, dto.Status);
     }
@@ -218,7 +218,7 @@ public class AdminUsuarioServiceTests
         var ativo = Seed(ctx, StatusUsuario.Ativo);
         var svc = CreateService(ctx);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReativarAsync(ativo.Id, Guid.NewGuid()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReativarAsync(ativo.Id, Guid.NewGuid(), "admin@test.com"));
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class AdminUsuarioServiceTests
         var dispatcher = new Mock<IPasswordResetDispatcher>();
         var svc = CreateService(ctx, dispatcher.Object);
 
-        await svc.ForcarResetSenhaAsync(u.Id);
+        await svc.ForcarResetSenhaAsync(u.Id, Guid.NewGuid(), "admin@test.com");
 
         dispatcher.Verify(d => d.Disparar("reset@test.com"), Times.Once);
     }
@@ -242,7 +242,43 @@ public class AdminUsuarioServiceTests
         var dispatcher = new Mock<IPasswordResetDispatcher>();
         var svc = CreateService(ctx, dispatcher.Object);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ForcarResetSenhaAsync(bloqueado.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ForcarResetSenhaAsync(bloqueado.Id, Guid.NewGuid(), "admin@test.com"));
         dispatcher.Verify(d => d.Disparar(It.IsAny<string>()), Times.Never);
+    }
+
+    // ── Módulo D — auditoria (toda ação de admin deixa rastro) ─────────────────────
+
+    [Fact]
+    public async Task Bloquear_registraNaAuditoria_comSnapshot()
+    {
+        using var ctx = CreateContext();
+        var alvo = Seed(ctx, StatusUsuario.Ativo, "alvo@test.com");
+        var adminId = Guid.NewGuid();
+        var svc = CreateService(ctx);
+
+        await svc.BloquearAsync(alvo.Id, adminId, "chefe@test.com");
+
+        var log = Assert.Single(ctx.AdminAuditLogs);
+        Assert.Equal(AcaoAdmin.BloquearUsuario, log.Acao);
+        Assert.Equal(adminId, log.AdminUsuarioId);
+        Assert.Equal("chefe@test.com", log.AdminEmail);   // snapshot do admin
+        Assert.Equal(alvo.Id, log.AlvoId);
+        Assert.Equal("alvo@test.com", log.AlvoDescricao); // snapshot do alvo
+    }
+
+    [Fact]
+    public async Task Auditoria_lista_maisRecentesPrimeiro()
+    {
+        using var ctx = CreateContext();
+        var audit = new AdminAuditService(ctx);
+        audit.Registrar(Guid.NewGuid(), "a@test.com", AcaoAdmin.AprovarCadastro);
+        await ctx.SaveChangesAsync();
+        audit.Registrar(Guid.NewGuid(), "b@test.com", AcaoAdmin.BloquearUsuario);
+        await ctx.SaveChangesAsync();
+
+        var lista = await audit.ListarAsync();
+
+        Assert.Equal(2, lista.Count);
+        Assert.Equal("b@test.com", lista[0].AdminEmail); // mais recente primeiro
     }
 }

@@ -70,6 +70,48 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("AcertosContas");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.AdminAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Acao")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("AdminEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("AdminUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlvoDescricao")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid?>("AlvoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlvoTipo")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Detalhe")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.ToTable("AdminAuditLogs");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
                 {
                     b.Property<Guid>("Id")

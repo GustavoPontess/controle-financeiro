@@ -1,5 +1,5 @@
 import { api } from "@/api/axiosConfig"
-import type { MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
+import type { AdminAuditLog, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
@@ -32,6 +32,9 @@ const adminService = {
 
   forcarReset: (id: string) =>
     api.post(`/admin/usuarios/${id}/forcar-reset`).then((r) => r.data),
+
+  // ── Módulo D — auditoria ──
+  auditoria: () => api.get<AdminAuditLog[]>("/admin/auditoria").then((r) => r.data),
 }
 
 export default adminService

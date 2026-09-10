@@ -89,6 +89,7 @@ builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AdminAuditService>();
 builder.Services.AddScoped<AdminUsuarioService>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();

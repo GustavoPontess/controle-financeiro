@@ -39,6 +39,36 @@ export interface UsuarioAdmin {
   ultimoAcessoEm?: string | null
 }
 
+// Espelha Domain/Enums/AcaoAdmin.cs (número no JSON). NÃO reordenar.
+export const AcaoAdmin = {
+  AprovarCadastro: 0,
+  RecusarCadastro: 1,
+  BloquearUsuario: 2,
+  ReativarUsuario: 3,
+  ForcarResetSenha: 4,
+} as const
+export type AcaoAdmin = (typeof AcaoAdmin)[keyof typeof AcaoAdmin]
+
+export const ACAO_LABEL: Record<AcaoAdmin, string> = {
+  [AcaoAdmin.AprovarCadastro]: "Aprovou cadastro",
+  [AcaoAdmin.RecusarCadastro]: "Recusou cadastro",
+  [AcaoAdmin.BloquearUsuario]: "Bloqueou usuário",
+  [AcaoAdmin.ReativarUsuario]: "Reativou usuário",
+  [AcaoAdmin.ForcarResetSenha]: "Forçou reset de senha",
+}
+
+// Espelha DTOs/Admin/AdminDtos.cs → AdminAuditLogDto.
+export interface AdminAuditLog {
+  id: string
+  adminEmail: string
+  acao: AcaoAdmin
+  alvoTipo?: string | null
+  alvoId?: string | null
+  alvoDescricao?: string | null
+  detalhe?: string | null
+  criadoEm: string
+}
+
 // Espelha DTOs/Admin/AdminDtos.cs → MetricasAdminDto.
 export interface MetricasAdmin {
   total: number

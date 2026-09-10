@@ -16,11 +16,13 @@ public class AdminUsuarioService
 {
     private readonly AppDbContext _context;
     private readonly IPasswordResetDispatcher _resetDispatcher;
+    private readonly AdminAuditService _audit;
 
-    public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher)
+    public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher, AdminAuditService audit)
     {
         _context = context;
         _resetDispatcher = resetDispatcher;
+        _audit = audit;
     }
 
     /// <summary>Fila de cadastros aguardando decisão — mais antigos primeiro (ordem de chegada).</summary>
@@ -45,15 +47,15 @@ public class AdminUsuarioService
     /// <summary>Aprova um cadastro pendente → <see cref="StatusUsuario.Ativo"/>. Só age sobre quem
     /// está <see cref="StatusUsuario.AguardandoAprovacao"/> (409 caso contrário — evita reaprovar/
     /// "ativar" um recusado ou bloqueado por engano; esses têm fluxo próprio nos módulos B/C).</summary>
-    public async Task<UsuarioAdminDto> AprovarAsync(Guid usuarioId, Guid adminId)
-        => await DecidirAsync(usuarioId, adminId, StatusUsuario.Ativo);
+    public async Task<UsuarioAdminDto> AprovarAsync(Guid usuarioId, Guid adminId, string adminEmail)
+        => await DecidirAsync(usuarioId, adminId, adminEmail, StatusUsuario.Ativo, AcaoAdmin.AprovarCadastro);
 
     /// <summary>Recusa um cadastro pendente → <see cref="StatusUsuario.Recusado"/>. Mesma trava:
     /// só sobre pendentes.</summary>
-    public async Task<UsuarioAdminDto> RecusarAsync(Guid usuarioId, Guid adminId)
-        => await DecidirAsync(usuarioId, adminId, StatusUsuario.Recusado);
+    public async Task<UsuarioAdminDto> RecusarAsync(Guid usuarioId, Guid adminId, string adminEmail)
+        => await DecidirAsync(usuarioId, adminId, adminEmail, StatusUsuario.Recusado, AcaoAdmin.RecusarCadastro);
 
-    private async Task<UsuarioAdminDto> DecidirAsync(Guid usuarioId, Guid adminId, StatusUsuario novoStatus)
+    private async Task<UsuarioAdminDto> DecidirAsync(Guid usuarioId, Guid adminId, string adminEmail, StatusUsuario novoStatus, AcaoAdmin acao)
     {
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId)
             ?? throw new KeyNotFoundException("Usuário não encontrado.");
@@ -66,6 +68,7 @@ public class AdminUsuarioService
         usuario.AprovadoEm = DateTime.UtcNow;
         usuario.AtualizadoEm = DateTime.UtcNow;
 
+        _audit.Registrar(adminId, adminEmail, acao, "Usuario", usuario.Id, usuario.Email);
         await _context.SaveChangesAsync();
 
         return MapToDto(usuario);
@@ -130,7 +133,7 @@ public class AdminUsuarioService
     /// <summary>Bloqueia um usuário Ativo → <see cref="StatusUsuario.Bloqueado"/> (não loga mais; dados
     /// preservados; reversível). Só sobre Ativo (409 caso contrário). Admin NÃO bloqueia a si mesmo
     /// (§0.6 — evita lockout): 403.</summary>
-    public async Task<UsuarioAdminDto> BloquearAsync(Guid usuarioId, Guid adminId)
+    public async Task<UsuarioAdminDto> BloquearAsync(Guid usuarioId, Guid adminId, string adminEmail)
     {
         if (usuarioId == adminId)
             throw new ForbiddenAccessException("Você não pode bloquear a própria conta.");
@@ -141,12 +144,13 @@ public class AdminUsuarioService
 
         usuario.Status = StatusUsuario.Bloqueado;
         usuario.AtualizadoEm = DateTime.UtcNow;
+        _audit.Registrar(adminId, adminEmail, AcaoAdmin.BloquearUsuario, "Usuario", usuario.Id, usuario.Email);
         await _context.SaveChangesAsync();
         return MapToDto(usuario);
     }
 
     /// <summary>Reativa um usuário bloqueado → <see cref="StatusUsuario.Ativo"/>. Só sobre Bloqueado (409).</summary>
-    public async Task<UsuarioAdminDto> ReativarAsync(Guid usuarioId, Guid adminId)
+    public async Task<UsuarioAdminDto> ReativarAsync(Guid usuarioId, Guid adminId, string adminEmail)
     {
         var usuario = await BuscarOuFalharAsync(usuarioId);
         if (usuario.Status != StatusUsuario.Bloqueado)
@@ -154,6 +158,7 @@ public class AdminUsuarioService
 
         usuario.Status = StatusUsuario.Ativo;
         usuario.AtualizadoEm = DateTime.UtcNow;
+        _audit.Registrar(adminId, adminEmail, AcaoAdmin.ReativarUsuario, "Usuario", usuario.Id, usuario.Email);
         await _context.SaveChangesAsync();
         return MapToDto(usuario);
     }
@@ -161,13 +166,15 @@ public class AdminUsuarioService
     /// <summary>Força o reset de senha de um usuário Ativo — dispara o MESMO fluxo do "esqueci a senha"
     /// (e-mail com link), reusando o dispatcher existente (rate-limit e hash de token já embutidos).
     /// Só faz sentido pra Ativo (o job de e-mail ignora não-Ativo): 409 caso contrário.</summary>
-    public async Task ForcarResetSenhaAsync(Guid usuarioId)
+    public async Task ForcarResetSenhaAsync(Guid usuarioId, Guid adminId, string adminEmail)
     {
         var usuario = await BuscarOuFalharAsync(usuarioId);
         if (usuario.Status != StatusUsuario.Ativo)
             throw new InvalidOperationException("Só é possível forçar reset de um usuário ativo.");
 
         _resetDispatcher.Disparar(usuario.Email);
+        _audit.Registrar(adminId, adminEmail, AcaoAdmin.ForcarResetSenha, "Usuario", usuario.Id, usuario.Email);
+        await _context.SaveChangesAsync();
     }
 
     private async Task<Domain.Entities.Usuario> BuscarOuFalharAsync(Guid usuarioId)
