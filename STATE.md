@@ -15,6 +15,29 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-10) Admin Módulo B — gestão de usuários ✅ (branch `feature/admin-beta-gate`, commit `87266ce`). Validado ao vivo.**
+- **Backend** (`AdminUsuarioService`+`AdminController`): `ListarUsuariosAsync(busca?)`; `Bloquear`
+  (Ativo→Bloqueado; **não bloqueia a si mesmo → 403** §0.6; só Ativo→409); `Reativar`
+  (Bloqueado→Ativo); `ForcarResetSenha` (dispara o fluxo de reset existente; só Ativo). Endpoints
+  `GET /admin/usuarios`, `PATCH .../bloquear|reativar`, `POST .../forcar-reset`. +9 testes.
+- **Front** (DS): `AdminUsuariosPage` — tabela (nome/e-mail/situação badge/último acesso) + ações
+  por status (Ativo→Forçar reset+Bloquear; Bloqueado→Reativar), confirmação `PontesDialog`, busca
+  client-side. **Não mostra "Bloquear" na própria linha do admin.** Item "Usuários" na lateral,
+  rota `/admin/usuarios`, `STATUS_LABEL`/`STATUS_TONE`. +4 testes.
+- **Validado ao vivo:** listar todos; bloquear (dialog→Bloqueado badge+toast) → reativar; self-guard
+  confirmado (admin logado sem "Bloquear"); seed de dev restaurado. O estado `Bloqueado` já barra no
+  login (gate de Status existente, mensagem "conta bloqueada").
+- Hardening mantido: endpoints `/admin/*` só no chunk lazy, **zero no bundle comum** (conferido no dist).
+- Back **475/475** (+9), front **351/351** (+4), lint/build limpos.
+
+**Próxima ação:** **Módulo C — ferramentas LGPD** (`docs/features/admin/spec.md` §5, ⚠️ sensível):
+exportar dados de um usuário (JSON) + exclusão em 2 estágios (soft `MarcadoParaExclusao` → carência
+30d → hard delete via job Hangfire), com **retenção obrigatória Marco Civil** (registros de acesso 6
+meses num store separado — ver item P2 no ROADMAP) e `FinancialEventLog` anonimizado. Confirmação
+forte (digitar e-mail). Admin não apaga a si. É o mais delicado — mais teste. Depois: D (auditoria).
+
+---
+
 **(2026-09-10) Painel admin: mesma cara do app (sidebar+navbar) + hardening de front ✅ (branch `feature/admin-beta-gate`, commits `75c027d`→`087e253`).**
 Resolvido + retrabalhado conforme revisão do Gustavo. **Validado ao vivo.**
 - **Mesma estrutura do app, menus de admin:** `AdminLayout` reusa o shell do `DefaultLayout`
