@@ -1,5 +1,5 @@
 import { api } from "@/api/axiosConfig"
-import type { AdminAuditLog, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
+import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
@@ -32,6 +32,19 @@ const adminService = {
 
   forcarReset: (id: string) =>
     api.post(`/admin/usuarios/${id}/forcar-reset`).then((r) => r.data),
+
+  // ── Módulo C — LGPD (exportar + exclusão em 2 estágios) ──
+  exportar: (id: string) =>
+    api.get<ExportacaoUsuario>(`/admin/usuarios/${id}/exportar`).then((r) => r.data),
+
+  marcarExclusao: (id: string) =>
+    api.post<UsuarioAdmin>(`/admin/usuarios/${id}/marcar-exclusao`).then((r) => r.data),
+
+  cancelarExclusao: (id: string) =>
+    api.post<UsuarioAdmin>(`/admin/usuarios/${id}/cancelar-exclusao`).then((r) => r.data),
+
+  purgar: (id: string, emailConfirmacao: string) =>
+    api.post(`/admin/usuarios/${id}/purgar`, { emailConfirmacao }).then((r) => r.data),
 
   // ── Módulo D — auditoria ──
   auditoria: () => api.get<AdminAuditLog[]>("/admin/auditoria").then((r) => r.data),

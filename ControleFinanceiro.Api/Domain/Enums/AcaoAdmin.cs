@@ -11,4 +11,10 @@ public enum AcaoAdmin
     BloquearUsuario = 2,
     ReativarUsuario = 3,
     ForcarResetSenha = 4,
+
+    // ── Módulo C — LGPD (spec §5) ──
+    ExportarDados = 5,
+    MarcarExclusao = 6,
+    CancelarExclusao = 7,
+    PurgarUsuario = 8,
 }

@@ -1605,6 +1605,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("MarcadoExclusaoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime?>("MfaAtivadoEm")
                         .HasColumnType("timestamp without time zone");
 

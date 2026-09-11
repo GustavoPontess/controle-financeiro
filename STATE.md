@@ -15,6 +15,50 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-10) Admin Módulo C — LGPD (exportar + exclusão 2 estágios + purga real) ✅ (branch `feature/admin-beta-gate`). Validado ao vivo E2E contra Postgres real.**
+Fecha o admin: A (fila) · B (usuários) · C (LGPD) · D (auditoria) todos ✅.
+- **Backend:** `Usuario.MarcadoExclusaoEm` (migration `AddMarcadoExclusaoEm`, aplicada no dev). Enum
+  `AcaoAdmin` += Exportar/Marcar/Cancelar/Purgar. `AdminLgpdService` novo:
+  - **Exportar** — JSON com dados pessoais do usuário (perfil+contas+cartões+transações+metas+
+    orçamentos), auditado (direito de acesso, LGPD Art. 18).
+  - **Exclusão 2 estágios:** marcar (`→ MarcadoParaExclusao` + carimba data, derruba refresh tokens,
+    reversível) → carência 30d → **purga física real**. Cancelar volta a Ativo.
+  - **Purga:** guardas (não-a-si §0.6; só marcado→409; confirmação por e-mail→400) + **recusa se
+    houver vínculo com outro usuário** (relacionamento/família/rateio/acerto/empréstimo/consolidação/
+    conta compartilhada — não quebra dado de terceiro). Deleção ordenada child→parent (transferências
+    → transações → parcelas → faturas → parcelamentos → cartões → recorrentes/subcats → usuário via
+    cascade). **`FinancialEventLog` anonimizado** (CriadoPor→vazio, retido); **`AdminAuditLog`
+    preservado** (sem FK, sobrevive). Descoberta-chave: cartão/transação-de-cartão têm `CriadoPor`
+    **Guid solto (sem FK)** → apagar só o usuário deixaria órfãos → deleção explícita.
+  - **Job `PurgaExclusaoExpiradaJob`** (Hangfire, 4h UTC): purga automática de carência vencida, pula
+    contas com vínculo. Registrado no Program.cs.
+  - Endpoints: `GET .../exportar`, `POST .../marcar-exclusao|cancelar-exclusao|purgar`. +14 testes.
+- **Front (DS):** `AdminLgpdPage` — tabela + Exportar (baixa JSON) + Marcar exclusão (PontesDialog) +
+  Cancelar + **Purgar (PontesModal com confirmação forte: digitar o e-mail)**. Self-guard (sem
+  marcar/purgar na própria linha). Item "LGPD" na lateral, rota `/admin/lgpd`; `adminService` +
+  tipos + `ACAO_LABEL`. +4 testes.
+- **Testes:** back **491/491** (+14), front **357/357** (+4). Lint/build limpos.
+- **Hardening mantido:** `purgar`/`lgpd`/`marcar-exclusao` só no chunk lazy `AdminApp`, **zero no
+  bundle comum** (conferido no dist).
+- **Validado ao vivo E2E (Postgres real, usuário descartável — regra de não-testar-em-dado-real):**
+  registrar → aprovar → criar conta+cartão+transação(fatura) → marcar → **purgar (204, sem erro de
+  FK)**. SQL confirmou: usuário/conta/cartão/transações/faturas todos apagados, **`Conta` removida
+  por cascade**, auditoria da purga preservada (Acao=8). Ordem de deleção validada contra os FKs
+  Restrict reais (InMemory não força cascade — só o live prova). Usuários de teste limpos do dev.
+
+**⚠️ Catalogado P1 (não bloqueia beta):** store **Marco Civil (RegistroAcesso + captura de IP no
+login)** — hoje NÃO existe captura de log de acesso, então não há o que reter na purga; obrigatório
+antes de produção/CNPJ (Marco Civil Art. 15, 6 meses). Anotado no ROADMAP.
+
+**Estado do admin:** A · B · C · D ✅ — **admin do beta completo.**
+
+**Próxima ação (a decidir com o Gustavo):** admin fechado. Opções: (1) **testes de integração do
+admin** via HTTP real (P1 no ROADMAP — WebApplicationFactory, cobre A/B/C/D); (2) **store Marco Civil**
+(P1, pré-produção); (3) sair do admin pra P1 de produto (conferência de caixa / upgrade .NET 10,
+prazo 10/11/2026). App rodando (Postgres + API :5293 + front pendente de subir).
+
+---
+
 **(2026-09-10) Admin Módulo D — auditoria ✅ (branch `feature/admin-beta-gate`, commit `df26a39`). Validado ao vivo.**
 Fecha o admin com rastreabilidade. (Escolhido no lugar do C: C é o mais perigoso, precisa do store
 Marco Civil antes e não trava beta; D é só leitura, risco baixo, valor de segurança alto.)

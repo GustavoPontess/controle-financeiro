@@ -15,6 +15,25 @@ public class UsuarioAdminDto
     public DateTime CriadoEm { get; set; }
     public DateTime? AprovadoEm { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
+
+    /// <summary>Módulo C — quando marcada pra exclusão (null fora do fluxo). O front usa pra
+    /// mostrar a carência restante e o botão de cancelar/purgar.</summary>
+    public DateTime? MarcadoExclusaoEm { get; set; }
+
+    /// <summary>Mapeamento em memória (fonte única, reusado pelos serviços de admin). As listagens
+    /// que projetam direto no banco (EF <c>Select</c>) repetem os campos inline por causa da tradução
+    /// da query — este factory é pra quando já se tem a entidade carregada.</summary>
+    public static UsuarioAdminDto De(Domain.Entities.Usuario u) => new()
+    {
+        Id = u.Id,
+        Email = u.Email,
+        Nome = u.Nome,
+        Status = u.Status,
+        CriadoEm = u.CriadoEm,
+        AprovadoEm = u.AprovadoEm,
+        UltimoAcessoEm = u.UltimoAcessoEm,
+        MarcadoExclusaoEm = u.MarcadoExclusaoEm,
+    };
 }
 
 /// <summary>

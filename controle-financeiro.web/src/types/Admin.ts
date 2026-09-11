@@ -37,6 +37,7 @@ export interface UsuarioAdmin {
   criadoEm: string
   aprovadoEm?: string | null
   ultimoAcessoEm?: string | null
+  marcadoExclusaoEm?: string | null
 }
 
 // Espelha Domain/Enums/AcaoAdmin.cs (número no JSON). NÃO reordenar.
@@ -46,6 +47,10 @@ export const AcaoAdmin = {
   BloquearUsuario: 2,
   ReativarUsuario: 3,
   ForcarResetSenha: 4,
+  ExportarDados: 5,
+  MarcarExclusao: 6,
+  CancelarExclusao: 7,
+  PurgarUsuario: 8,
 } as const
 export type AcaoAdmin = (typeof AcaoAdmin)[keyof typeof AcaoAdmin]
 
@@ -55,6 +60,10 @@ export const ACAO_LABEL: Record<AcaoAdmin, string> = {
   [AcaoAdmin.BloquearUsuario]: "Bloqueou usuário",
   [AcaoAdmin.ReativarUsuario]: "Reativou usuário",
   [AcaoAdmin.ForcarResetSenha]: "Forçou reset de senha",
+  [AcaoAdmin.ExportarDados]: "Exportou dados",
+  [AcaoAdmin.MarcarExclusao]: "Marcou para exclusão",
+  [AcaoAdmin.CancelarExclusao]: "Cancelou exclusão",
+  [AcaoAdmin.PurgarUsuario]: "Purgou usuário",
 }
 
 // Espelha DTOs/Admin/AdminDtos.cs → AdminAuditLogDto.
@@ -67,6 +76,18 @@ export interface AdminAuditLog {
   alvoDescricao?: string | null
   detalhe?: string | null
   criadoEm: string
+}
+
+// Espelha DTOs/Admin/LgpdDtos.cs → ExportacaoUsuarioDto (Módulo C). Tipagem enxuta — o front só
+// baixa o JSON; não precisa navegar campo a campo.
+export interface ExportacaoUsuario {
+  geradoEm: string
+  perfil: { id: string; email: string; nome: string }
+  contas: unknown[]
+  cartoes: unknown[]
+  transacoes: unknown[]
+  metas: unknown[]
+  orcamentos: unknown[]
 }
 
 // Espelha DTOs/Admin/AdminDtos.cs → MetricasAdminDto.

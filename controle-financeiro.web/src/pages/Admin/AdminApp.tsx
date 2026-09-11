@@ -12,6 +12,7 @@ import AdminLayout from "../../layouts/Admin/AdminLayout"
 import AdminPendentesPage from "./AdminPendentesPage"
 import AdminUsuariosPage from "./AdminUsuariosPage"
 import AdminMetricasPage from "./AdminMetricasPage"
+import AdminLgpdPage from "./AdminLgpdPage"
 import AdminAuditoriaPage from "./AdminAuditoriaPage"
 
 export default function AdminApp() {
@@ -22,8 +23,8 @@ export default function AdminApp() {
         <Route path="pendentes" element={<AdminPendentesPage />} />
         <Route path="usuarios" element={<AdminUsuariosPage />} />
         <Route path="metricas" element={<AdminMetricasPage />} />
+        <Route path="lgpd" element={<AdminLgpdPage />} />
         <Route path="auditoria" element={<AdminAuditoriaPage />} />
-        {/* Futuro: lgpd (Módulo C) */}
         <Route path="*" element={<Navigate to="/admin/pendentes" replace />} />
       </Route>
     </Routes>

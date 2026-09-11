@@ -40,6 +40,7 @@ public class AdminUsuarioService
                 CriadoEm = u.CriadoEm,
                 AprovadoEm = u.AprovadoEm,
                 UltimoAcessoEm = u.UltimoAcessoEm,
+                MarcadoExclusaoEm = u.MarcadoExclusaoEm,
             })
             .ToListAsync();
     }
@@ -126,6 +127,7 @@ public class AdminUsuarioService
                 CriadoEm = u.CriadoEm,
                 AprovadoEm = u.AprovadoEm,
                 UltimoAcessoEm = u.UltimoAcessoEm,
+                MarcadoExclusaoEm = u.MarcadoExclusaoEm,
             })
             .ToListAsync();
     }
@@ -181,14 +183,5 @@ public class AdminUsuarioService
         => await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId)
            ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
-    private static UsuarioAdminDto MapToDto(Domain.Entities.Usuario u) => new()
-    {
-        Id = u.Id,
-        Email = u.Email,
-        Nome = u.Nome,
-        Status = u.Status,
-        CriadoEm = u.CriadoEm,
-        AprovadoEm = u.AprovadoEm,
-        UltimoAcessoEm = u.UltimoAcessoEm,
-    };
+    private static UsuarioAdminDto MapToDto(Domain.Entities.Usuario u) => UsuarioAdminDto.De(u);
 }

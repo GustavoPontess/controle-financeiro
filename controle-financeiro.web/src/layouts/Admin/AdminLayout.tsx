@@ -9,7 +9,7 @@
  */
 import { useState, useEffect } from "react"
 import { Outlet, useLocation } from "react-router-dom"
-import { ClipboardCheck, BarChart3, Users, ScrollText } from "lucide-react"
+import { ClipboardCheck, BarChart3, Users, ScrollText, ShieldCheck } from "lucide-react"
 import { PontesToast } from "@/components/pontes"
 import Sidebar, { type SidebarNavGroup } from "../../components/Sidebar/Sidebar"
 import Navbar from "../../components/Navbar/Navbar"
@@ -28,8 +28,8 @@ const ADMIN_NAV: SidebarNavGroup[] = [
       { to: "/admin/pendentes", label: "Fila de aprovação", icon: <ClipboardCheck size={19} strokeWidth={2} /> },
       { to: "/admin/usuarios", label: "Usuários", icon: <Users size={19} strokeWidth={2} /> },
       { to: "/admin/metricas", label: "Métricas", icon: <BarChart3 size={19} strokeWidth={2} /> },
+      { to: "/admin/lgpd", label: "LGPD", icon: <ShieldCheck size={19} strokeWidth={2} /> },
       { to: "/admin/auditoria", label: "Auditoria", icon: <ScrollText size={19} strokeWidth={2} /> },
-      // Futuro: LGPD (Módulo C).
     ],
   },
 ]
@@ -40,6 +40,7 @@ const ADMIN_TITULOS: Record<string, string> = {
   "/admin/pendentes": "Fila de aprovação",
   "/admin/usuarios": "Usuários",
   "/admin/metricas": "Métricas",
+  "/admin/lgpd": "LGPD — dados e exclusão",
   "/admin/auditoria": "Auditoria",
 }
 

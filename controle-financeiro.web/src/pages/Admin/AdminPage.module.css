@@ -13,3 +13,15 @@
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
+
+/* Módulo C — corpo do modal de purga (confirmação forte). */
+.purgaBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.purgaBody p {
+  margin: 0;
+  color: var(--pontes-text);
+  line-height: 1.5;
+}

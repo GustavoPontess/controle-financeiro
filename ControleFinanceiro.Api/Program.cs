@@ -91,6 +91,7 @@ builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AdminAuditService>();
 builder.Services.AddScoped<AdminUsuarioService>();
+builder.Services.AddScoped<AdminLgpdService>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
@@ -143,6 +144,7 @@ builder.Services.AddScoped<FaturaAtrasoJob>();
 builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
+builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
 
 builder.Services.AddHangfire(config =>
 {
@@ -468,6 +470,8 @@ app.Lifetime.ApplicationStarted.Register(() =>
     recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
     recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
     recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+    // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
+    recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
 });
 
 app.MapControllers();

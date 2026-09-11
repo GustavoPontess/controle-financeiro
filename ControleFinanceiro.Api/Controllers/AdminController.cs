@@ -22,12 +22,14 @@ public class AdminController : ControllerBase
     private readonly AppDbContext _context;
     private readonly AdminUsuarioService _adminUsuarios;
     private readonly AdminAuditService _auditoria;
+    private readonly AdminLgpdService _lgpd;
 
-    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios, AdminAuditService auditoria)
+    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios, AdminAuditService auditoria, AdminLgpdService lgpd)
     {
         _context = context;
         _adminUsuarios = adminUsuarios;
         _auditoria = auditoria;
+        _lgpd = lgpd;
     }
 
     private Guid AdminId()
@@ -98,6 +100,32 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ForcarReset(Guid id)
     {
         await _adminUsuarios.ForcarResetSenhaAsync(id, AdminId(), AdminEmail());
+        return NoContent();
+    }
+
+    // ── Módulo C — LGPD (exportar + exclusão em 2 estágios) ───────────────────────────────
+
+    /// <summary>Exporta os dados pessoais do usuário (direito de acesso/portabilidade, LGPD Art. 18).</summary>
+    [HttpGet("usuarios/{id:guid}/exportar")]
+    public async Task<ActionResult<ExportacaoUsuarioDto>> Exportar(Guid id)
+        => Ok(await _lgpd.ExportarAsync(id, AdminId(), AdminEmail()));
+
+    /// <summary>Estágio 1 — marca a conta pra exclusão (soft delete; reversível na carência). Não a si.</summary>
+    [HttpPost("usuarios/{id:guid}/marcar-exclusao")]
+    public async Task<ActionResult<UsuarioAdminDto>> MarcarExclusao(Guid id)
+        => Ok(await _lgpd.MarcarExclusaoAsync(id, AdminId(), AdminEmail()));
+
+    /// <summary>Desfaz a marcação de exclusão na janela de carência → conta volta a Ativo.</summary>
+    [HttpPost("usuarios/{id:guid}/cancelar-exclusao")]
+    public async Task<ActionResult<UsuarioAdminDto>> CancelarExclusao(Guid id)
+        => Ok(await _lgpd.CancelarExclusaoAsync(id, AdminId(), AdminEmail()));
+
+    /// <summary>Estágio 2 — purga física (IRREVERSÍVEL). Exige conta marcada + confirmação por e-mail;
+    /// recusa se houver vínculo com outro usuário.</summary>
+    [HttpPost("usuarios/{id:guid}/purgar")]
+    public async Task<IActionResult> Purgar(Guid id, [FromBody] PurgarUsuarioRequest body)
+    {
+        await _lgpd.PurgarAsync(id, AdminId(), AdminEmail(), body?.EmailConfirmacao ?? string.Empty);
         return NoContent();
     }
 

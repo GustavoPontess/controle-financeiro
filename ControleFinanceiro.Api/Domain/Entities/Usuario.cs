@@ -38,6 +38,12 @@ public class Usuario
     /// <summary>Último login bem-sucedido — base das métricas do admin (usuários ativos/inativos).</summary>
     public DateTime? UltimoAcessoEm { get; set; }
 
+    /// <summary>Quando a conta foi marcada para exclusão (Módulo C — LGPD). Preenchido junto com
+    /// <see cref="StatusUsuario.MarcadoParaExclusao"/>; base da janela de carência (30 dias) que o
+    /// job de purga usa pra saber quando pode apagar de verdade. Null fora do fluxo de exclusão;
+    /// volta a null quando a exclusão é cancelada (reversível na janela). Spec §5.</summary>
+    public DateTime? MarcadoExclusaoEm { get; set; }
+
     /// <summary>Admin GLOBAL do sistema (painel admin/beta). Default false e — por segurança
     /// (spec `docs/features/admin/spec.md` §0) — NUNCA é setada por endpoint/DTO: só via seed
     /// (env var <c>ADMIN_EMAILS</c>, ver <c>AdminSeeder</c>) ou UPDATE direto no banco. Nenhum fluxo
