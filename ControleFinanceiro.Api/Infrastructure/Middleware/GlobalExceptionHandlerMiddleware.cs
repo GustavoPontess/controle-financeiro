@@ -50,6 +50,10 @@ public sealed class GlobalExceptionHandlerMiddleware
     {
         var (statusCode, code) = exception switch
         {
+            // Corpo acima do limite (Kestrel MaxRequestBodySize) ou request malformado: o Kestrel
+            // lança BadHttpRequestException com o StatusCode certo (413/400). Sem isto caía no default
+            // e virava 500 — request JÁ é rejeitado (protege DoS), mas o status/log ficavam errados.
+            Microsoft.AspNetCore.Http.BadHttpRequestException bad => (bad.StatusCode, "BAD_REQUEST"),
             ArgumentException          => (StatusCodes.Status400BadRequest,          "VALIDATION_ERROR"),
             KeyNotFoundException        => (StatusCodes.Status404NotFound,             "NOT_FOUND"),
             InvalidOperationException   => (StatusCodes.Status409Conflict,             "BUSINESS_RULE_VIOLATION"),
@@ -71,7 +75,9 @@ public sealed class GlobalExceptionHandlerMiddleware
         // intencional e segura, essas seguem pro cliente.
         var message = isServerError
             ? "Erro interno do servidor. Tente novamente mais tarde."
-            : exception.Message;
+            : statusCode == StatusCodes.Status413PayloadTooLarge
+                ? "Requisição grande demais."
+                : exception.Message;
 
         var response = new ErrorResponseDto
         {

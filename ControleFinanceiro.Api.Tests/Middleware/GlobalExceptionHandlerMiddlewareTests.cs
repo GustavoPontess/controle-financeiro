@@ -54,6 +54,20 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     [Fact]
+    public async Task CorpoGrandeDemais_retorna413_naoDeixaVirar500()
+    {
+        // Kestrel lança BadHttpRequestException(413) quando o corpo excede MaxRequestBodySize.
+        // Antes caía no default → 500 (ruído de log + status errado). Deve virar 413 limpo.
+        var ex = new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+
+        var (status, body) = await Invoke(ex);
+
+        Assert.Equal(413, status);
+        Assert.Equal("BAD_REQUEST", body.Code);
+        Assert.Equal("Requisição grande demais.", body.Message);
+    }
+
+    [Fact]
     public async Task ExcecaoNaoMapeada_retorna500Generico_semVazarMensagemInterna()
     {
         const string segredo = "Npgsql: relation \"usuarios\" violates FK constraint xyz_secreto";
