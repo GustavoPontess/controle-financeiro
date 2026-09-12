@@ -15,6 +15,33 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-12) Exclusão da própria conta (self-service, LGPD Art. 18) — BACKEND ✅ / FRONT pendente (branch `feature/admin-beta-gate`).**
+Precedido de pesquisa OWASP/NIST (workflow, 5 agentes) sobre métodos de auth — conclusões-chave:
+TOTP nunca substitui a senha (usá-lo só rebaixa AAL2→AAL1); e-mail é fator fraco (NIST veda como
+out-of-band), só fallback, **nunca** bypass de TOTP; "esqueci a senha mas tenho TOTP" = recuperação
+(reset por e-mail) + TOTP reexigido no login, não login alternativo. Registrado em
+`docs/SEGURANCA_BEST_PRACTICES.md` §0.
+- **Backend feito (3 commits, back 526/526):**
+  - `EmailOtpService` + entidade `EmailOtp` (PIN 6 díg CSPRNG, só hash, TTL 10min, uso único, escopo
+    por finalidade, teto de tentativas) + `IContaEmailSender` (migration `AddEmailOtp`).
+  - `MinhaContaService` (self-service; nome distinto do `ContaService` BANCÁRIO já existente): excluir
+    (step-up **senha atual + 2º fator**: TOTP se ativo, senão PIN e-mail) → soft-delete
+    `MarcadoParaExclusao` + carência 30d + derruba tokens + auditoria (`AutoExclusaoConta`) + aviso
+    out-of-band. Reativar por credenciais na carência (`AutoReativacaoConta`). Exportar meus dados
+    (`AutoExportacaoDados`, reusa o montador do admin).
+  - Login numa conta marcada não barra mais → `{contaMarcadaExclusao, diasRestantes}`.
+  - Endpoints: `POST /auth/conta/excluir/enviar-codigo`, `POST /auth/conta/excluir`,
+    `POST /auth/conta/reativar` (público, CSRF-isento, rate-limit), `GET /auth/conta/exportar`.
+  - Enum `AcaoAdmin` += AutoExclusao/AutoReativacao/AutoExportacao (9/10/11).
+  - **⚠️ Achado no processo:** meu Write sobrescreveu `ContaService.cs` e `ContaServiceTests.cs`
+    (bancários) sem querer — restaurados do HEAD (a contagem de testes denunciou). Já existe
+    `ContaService` (contas bancárias); o novo é `MinhaContaService`.
+- **FRONT pendente (Commit 4):** em `/perfil` — "Excluir minha conta" (senha + 2º fator TOTP/PIN-email
+  + "baixar meus dados" antes) + tela de **reativação no login** (Reativar → depois exportar) + tipos
+  + service + testes. Precisa de verificação no browser.
+
+---
+
 **(2026-09-12) Notificação de admin acionável se resolve ao tratar o cadastro ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
 Achado (a partir de uma notificação órfã do pentest): a notificação "novo cadastro" não sumia depois
 de aprovar/recusar. Pesquisa de UX (NN/g/Carbon/Toptal): **acionável** some quando tratada;
