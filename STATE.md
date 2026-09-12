@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-23
+last_reviewed: 2026-09-12
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 446/446, front 341/341. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d`) segue pausado, sem vencedora. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,43 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+**(2026-09-12) Store Marco Civil — `RegistroAcesso` + captura de IP no login ✅ (branch `feature/admin-beta-gate`). Validado ao vivo E2E contra Postgres real.**
+Fecha a pendência P1 pré-produção que ficou aberta no Módulo C. Retenção de log de acesso (Marco
+Civil da Internet, Lei 12.965/2014 Art. 15).
+- **Pesquisa (fonte primária, regra de conformidade) reconfirmada 2026-09-12:** Art. 15 obriga
+  provedor PJ/organizado/fins econômicos a guardar registros de acesso 6 meses sob sigilo; Art. 5 VIII
+  define o registro como **data/hora + IP**. Pontes é pré-CNPJ → caput ainda não vincula pleno, mas
+  ordem judicial (§1) vale pra qualquer um e o caput passa a valer com a empresa → desenhar desde já.
+- **Backend:** entidade `RegistroAcesso` (append-only, **sem FK** → fora do cascade da conta, sobrevive
+  à purga LGPD do Módulo C) com `UsuarioId` solto + `Email` (identificador snapshot, mantém o log útil
+  após a purga) + `Ip` + `Tipo` (enum `TipoEventoAcesso.Login`) + `CriadoEm`. **Sem User-Agent**
+  (minimização LGPD Art. 6º III — não integra o registro legal). `RegistroAcessoService`
+  (`RegistrarLoginAsync` + `PurgarExpiradosAsync`, `RetencaoDias=180`). Captura no `AuthController`
+  (único lugar com `HttpContext`; IP via `RemoteIpAddress`, que já reflete o X-Forwarded-For real
+  atrás do proxy) nos 2 pontos de login concluído — sem MFA e após o 2º fator. **Best-effort:** falha
+  ao gravar o log NÃO derruba o login (catch + `ILogger`). Job `PurgaRegistroAcessoExpiradoJob`
+  (Hangfire, 4h30 UTC) purga a retenção vencida. Migration `AddRegistroAcesso` aplicada no dev.
+- **Sem front, sem teste de front (decisão deliberada):** o log Marco Civil existe pra retenção
+  legal/ordem judicial sob sigilo, não navegação de rotina — expor IP de todos no painel é mais
+  exposição que a finalidade exige (minimização). Viewer gated catalogado P3 no ROADMAP se quiser.
+- **Testes:** back **496/496** (+5): grava com identificador/IP/timestamp; IP vazio→placeholder; purga
+  remove >180d e mantém <180d; sem-vencidos→no-op; **`RegistroAcesso` sobrevive a `Usuarios.Remove`**
+  (prova a retenção). Build/migration limpos.
+- **Validado ao vivo E2E (Postgres real, usuário descartável — regra de não-testar-em-dado-real):**
+  registrar → aprovar → **antes do login: 0 linhas** → login (200) → **1 linha** com Email, `Ip=::1`
+  (loopback real capturado), `Tipo=0` (Login), `UsuarioId` conferido, timestamp. Usuário de teste +
+  linha limpos do dev depois.
+
+**Estado do admin:** A · B · C · D ✅ + **store Marco Civil ✅**. Pendência P1 pré-produção fechada.
+
+**Próxima ação (a decidir com o Gustavo):** admin + conformidade de beta completos. Opções: (1) **testes
+de integração HTTP do admin** (P1 — WebApplicationFactory, cobre A/B/C/D + a captura de acesso); (2) sair
+do admin pra P1 de produto (conferência de caixa / upgrade .NET 10, prazo 10/11/2026); (3) retomar
+**Empréstimos** (regra "fecha o módulo aberto": consolidação/unificação spec-only + bancada UI sem
+vencedora). App rodando (Postgres + API :5293).
+
+---
 
 **(2026-09-10) Admin Módulo C — LGPD (exportar + exclusão 2 estágios + purga real) ✅ (branch `feature/admin-beta-gate`). Validado ao vivo E2E contra Postgres real.**
 Fecha o admin: A (fila) · B (usuários) · C (LGPD) · D (auditoria) todos ✅.
@@ -46,9 +83,8 @@ Fecha o admin: A (fila) · B (usuários) · C (LGPD) · D (auditoria) todos ✅.
   por cascade**, auditoria da purga preservada (Acao=8). Ordem de deleção validada contra os FKs
   Restrict reais (InMemory não força cascade — só o live prova). Usuários de teste limpos do dev.
 
-**⚠️ Catalogado P1 (não bloqueia beta):** store **Marco Civil (RegistroAcesso + captura de IP no
-login)** — hoje NÃO existe captura de log de acesso, então não há o que reter na purga; obrigatório
-antes de produção/CNPJ (Marco Civil Art. 15, 6 meses). Anotado no ROADMAP.
+**✅ Resolvido (2026-09-12):** o store **Marco Civil (RegistroAcesso + captura de IP no login)** foi
+entregue — ver o bloco no topo. A purga LGPD preserva `RegistroAcesso` por não haver FK.
 
 **Estado do admin:** A · B · C · D ✅ — **admin do beta completo.**
 

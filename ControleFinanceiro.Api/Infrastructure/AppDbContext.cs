@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Banco> Bancos => Set<Banco>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
+    public DbSet<RegistroAcesso> RegistrosAcesso => Set<RegistroAcesso>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
@@ -211,6 +212,14 @@ public class AppDbContext : DbContext
         // sobrevive à exclusão do usuário; vínculo é só o Guid solto).
         modelBuilder.Entity<AdminAuditLog>()
             .HasIndex(a => a.CriadoEm);
+
+        // RegistroAcesso — retenção Marco Civil Art. 15. Sem FK pro Usuario (sobrevive à purga LGPD
+        // da conta; vínculo é só o Guid solto). Índice em CriadoEm pra a purga de retenção vencida;
+        // em UsuarioId pra consulta por titular (ordem judicial).
+        modelBuilder.Entity<RegistroAcesso>()
+            .HasIndex(r => r.CriadoEm);
+        modelBuilder.Entity<RegistroAcesso>()
+            .HasIndex(r => r.UsuarioId);
 
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })

@@ -119,8 +119,14 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   legal, LGPD Art. 16, I), depois são purgados. Fonte: [Marco Civil Art. 15](https://www.jusbrasil.com.br/topicos/27363770/art-15-da-lei-n-12965-de-23-de-abril-de-2014).
   **Aplicabilidade:** mira PJ com fins econômicos — hoje o Pontes é pré-empresa (sem CNPJ), então
   ainda não dispara pleno, mas dispara quando existir a empresa, e ordem judicial vale pra qualquer
-  um. **Desenhar pra isso desde já.** **Achado de código:** precisa existir um store de "registros de
-  acesso" (login/IP/timestamp) seguro e consultável — hoje não há um dedicado (só Serilog geral). Catalogar.
+  um. **Desenhar pra isso desde já.** **Achado de código — RESOLVIDO (2026-09-12):** existe o store
+  dedicado `RegistroAcesso` (entidade sem FK → fora do cascade da conta), captura de login+IP+timestamp
+  no `AuthController`, retenção 6 meses (`RegistroAcessoService.RetencaoDias=180`) com purga automática
+  via `PurgaRegistroAcessoExpiradoJob` (Hangfire diário). O dado guardado é o registro legal do
+  Art. 5 VIII — **data/hora + IP** — mais o e-mail como identificador (mantém o log útil após a purga
+  da conta); **sem User-Agent** (minimização, Art. 6º III). Reconfirmado na fonte primária em
+  2026-09-12: Art. 5, VIII define o registro como "informações referentes à data e hora de uso de uma
+  determinada aplicação de internet a partir de um determinado endereço IP".
 - **Zona cinzenta sem resposta fechada:** o que acontece se a pessoa citada num empréstimo (sem
   conta) pedir exclusão dos dados dela guardados por outro usuário — nenhuma fonte primária cobre
   esse caso específico. Cataloga como P2 pro público, não bloqueia o beta (poucos testadores

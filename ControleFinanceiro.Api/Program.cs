@@ -92,6 +92,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AdminAuditService>();
 builder.Services.AddScoped<AdminUsuarioService>();
 builder.Services.AddScoped<AdminLgpdService>();
+builder.Services.AddScoped<RegistroAcessoService>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
@@ -145,6 +146,7 @@ builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
 builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
+builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
 
 builder.Services.AddHangfire(config =>
 {
@@ -472,6 +474,8 @@ app.Lifetime.ApplicationStarted.Register(() =>
     recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
     // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
     recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
+    // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
+    recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
 });
 
 app.MapControllers();

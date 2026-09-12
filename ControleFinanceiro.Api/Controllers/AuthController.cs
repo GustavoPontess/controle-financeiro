@@ -17,13 +17,37 @@ public class AuthController : ControllerBase
     private readonly MfaService _mfaService;
     private readonly JwtTokenProvider _tokenProvider;
     private readonly CsrfTokenService _csrfTokenService;
+    private readonly RegistroAcessoService _registroAcesso;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider, CsrfTokenService csrfTokenService)
+    public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider,
+        CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, ILogger<AuthController> logger)
     {
         _authService = authService;
         _mfaService = mfaService;
         _tokenProvider = tokenProvider;
         _csrfTokenService = csrfTokenService;
+        _registroAcesso = registroAcesso;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Registra o acesso à aplicação para retenção Marco Civil (Art. 15). Best-effort: uma falha ao
+    /// gravar o log NÃO derruba o login do usuário (só loga o erro). O IP vem de
+    /// <c>Connection.RemoteIpAddress</c>, que já reflete o X-Forwarded-For real atrás do proxy
+    /// (ForwardedHeaders configurado no Program.cs).
+    /// </summary>
+    private async Task RegistrarAcessoAsync(Guid usuarioId, string email)
+    {
+        try
+        {
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido";
+            await _registroAcesso.RegistrarLoginAsync(usuarioId, email, ip);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao gravar registro de acesso (Marco Civil) do usuário {UsuarioId}.", usuarioId);
+        }
     }
 
     private Guid ExigirUsuarioId()
@@ -101,6 +125,9 @@ public class AuthController : ControllerBase
         var auth = result.Auth!;
         SetAuthCookies(auth.Token, auth.RefreshToken);
 
+        // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
+        await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
+
         // Return user info without tokens (tokens are now in httpOnly cookies)
         return Ok(new AuthResponseDto
         {
@@ -120,6 +147,9 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
         SetAuthCookies(result.Token, result.RefreshToken);
+
+        // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
+        await RegistrarAcessoAsync(result.UsuarioId, result.Email);
 
         return Ok(new AuthResponseDto
         {
