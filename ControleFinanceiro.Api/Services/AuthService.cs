@@ -127,10 +127,12 @@ public class AuthService
         await _context.SaveChangesAsync();
 
         // Notifica o painel admin que há um novo cadastro na fila (stream de admin, best-effort).
+        // Sem e-mail na mensagem (menor exposição de PII): só o nome; o e-mail (mascarado) fica a um
+        // clique na fila. Ver docs/SEGURANCA_BEST_PRACTICES.md §0.
         await _notificacaoAdmin.CriarAsync(
             TipoNotificacaoAdmin.NovoCadastro,
             "Novo cadastro na fila",
-            $"{usuario.Nome} ({usuario.Email}) está aguardando aprovação.",
+            $"{usuario.Nome} está aguardando aprovação.",
             "/admin/pendentes");
 
         return new RegisterResponseDto
@@ -180,7 +182,7 @@ public class AuthService
                 await _notificacaoAdmin.CriarAsync(
                     TipoNotificacaoAdmin.Seguranca,
                     "Conta bloqueada por força bruta",
-                    $"{usuario.Email} atingiu {FalhasParaBloqueioPermanente} tentativas de login e foi bloqueada. Só reset de senha libera.",
+                    $"A conta de {usuario.Nome} atingiu {FalhasParaBloqueioPermanente} tentativas de login e foi bloqueada. Só reset de senha libera.",
                     "/admin/usuarios");
 
             throw new UnauthorizedAccessException("Email ou senha inválidos");
