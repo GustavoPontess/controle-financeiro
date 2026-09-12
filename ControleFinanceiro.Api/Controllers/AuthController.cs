@@ -18,16 +18,19 @@ public class AuthController : ControllerBase
     private readonly JwtTokenProvider _tokenProvider;
     private readonly CsrfTokenService _csrfTokenService;
     private readonly RegistroAcessoService _registroAcesso;
+    private readonly MinhaContaService _contaService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider,
-        CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, ILogger<AuthController> logger)
+        CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, MinhaContaService contaService,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
         _mfaService = mfaService;
         _tokenProvider = tokenProvider;
         _csrfTokenService = csrfTokenService;
         _registroAcesso = registroAcesso;
+        _contaService = contaService;
         _logger = logger;
     }
 
@@ -208,6 +211,26 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> MfaDesativar([FromBody] MfaDesativarDto dto)
     {
         await _mfaService.DesativarAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
+        return NoContent();
+    }
+
+    // ── Autoatendimento: excluir a própria conta (LGPD Art. 18) ──────────────────
+    // Ação destrutiva → step-up: senha atual + 2º fator (TOTP se ativo; senão PIN por e-mail).
+    // Soft-delete + carência de 30 dias (reversível pela reativação no login).
+
+    /// <summary>Passo 1 — confirma a senha atual e decide o 2º fator; sem MFA, dispara o PIN por e-mail.</summary>
+    [Authorize]
+    [HttpPost("conta/excluir/enviar-codigo")]
+    public async Task<ActionResult<Metodo2FaResponse>> EnviarCodigoExclusao([FromBody] IniciarExclusaoContaRequest dto)
+        => Ok(await _contaService.IniciarExclusaoAsync(ExigirUsuarioId(), dto.SenhaAtual));
+
+    /// <summary>Passo 2 — valida senha + 2º fator, marca a conta pra exclusão (carência 30d) e encerra a sessão.</summary>
+    [Authorize]
+    [HttpPost("conta/excluir")]
+    public async Task<IActionResult> ExcluirMinhaConta([FromBody] ExcluirContaRequest dto)
+    {
+        await _contaService.ExcluirMinhaContaAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
+        ClearAuthCookies();
         return NoContent();
     }
 

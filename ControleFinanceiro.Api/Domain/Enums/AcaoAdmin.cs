@@ -17,4 +17,9 @@ public enum AcaoAdmin
     MarcarExclusao = 6,
     CancelarExclusao = 7,
     PurgarUsuario = 8,
+
+    // ── Autoatendimento do titular (self-service, não é ação de admin) ──
+    AutoExclusaoConta = 9,   // usuário marcou a própria conta pra exclusão
+    AutoReativacaoConta = 10, // usuário reativou a própria conta na carência
+    AutoExportacaoDados = 11, // usuário baixou os próprios dados
 }

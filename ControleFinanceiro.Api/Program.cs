@@ -95,6 +95,7 @@ builder.Services.AddScoped<AdminLgpdService>();
 builder.Services.AddScoped<RegistroAcessoService>();
 builder.Services.AddScoped<NotificacaoAdminService>();
 builder.Services.AddScoped<EmailOtpService>();
+builder.Services.AddScoped<MinhaContaService>();
 builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
