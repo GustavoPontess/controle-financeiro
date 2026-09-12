@@ -45,9 +45,19 @@ public class AdminLgpdService
     /// Ação auditada. Inclui transações canceladas (soft-deleted) — é o dado da pessoa.</summary>
     public async Task<ExportacaoUsuarioDto> ExportarAsync(Guid usuarioId, Guid adminId, string adminEmail)
     {
+        var dto = await MontarExportacaoAsync(usuarioId);
+        _audit.Registrar(adminId, adminEmail, AcaoAdmin.ExportarDados, "Usuario", usuarioId, dto.Perfil.Email);
+        await _context.SaveChangesAsync();
+        return dto;
+    }
+
+    /// <summary>Monta o pacote de dados pessoais SEM auditar/salvar — reutilizável pelo autoatendimento
+    /// do titular (`MinhaContaService`), que audita como ação própria.</summary>
+    public async Task<ExportacaoUsuarioDto> MontarExportacaoAsync(Guid usuarioId)
+    {
         var u = await BuscarOuFalharAsync(usuarioId);
 
-        var dto = new ExportacaoUsuarioDto
+        return new ExportacaoUsuarioDto
         {
             GeradoEm = DateTime.UtcNow,
             Perfil = new PerfilExportadoDto
@@ -105,11 +115,6 @@ public class AdminLgpdService
                 .Select(o => new OrcamentoExportadoDto { Id = o.Id, Mes = o.Mes, Ano = o.Ano, Valor = o.ValorLimite })
                 .ToListAsync(),
         };
-
-        _audit.Registrar(adminId, adminEmail, AcaoAdmin.ExportarDados, "Usuario", u.Id, u.Email);
-        await _context.SaveChangesAsync();
-
-        return dto;
     }
 
     // ── Exclusão em 2 estágios ────────────────────────────────────────────────────────────

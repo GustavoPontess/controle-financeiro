@@ -26,15 +26,48 @@ public class MinhaContaService
     private readonly MfaService _mfa;
     private readonly AdminAuditService _audit;
     private readonly IContaEmailSender _contaEmail;
+    private readonly AdminLgpdService _lgpd;
 
     public MinhaContaService(AppDbContext context, EmailOtpService emailOtp, MfaService mfa,
-        AdminAuditService audit, IContaEmailSender contaEmail)
+        AdminAuditService audit, IContaEmailSender contaEmail, AdminLgpdService lgpd)
     {
         _context = context;
         _emailOtp = emailOtp;
         _mfa = mfa;
         _audit = audit;
         _contaEmail = contaEmail;
+        _lgpd = lgpd;
+    }
+
+    /// <summary>Exporta os dados do próprio titular (LGPD acesso/portabilidade). Reusa o montador do
+    /// admin (só os dados dele) e audita como ação do titular.</summary>
+    public async Task<DTOs.Admin.ExportacaoUsuarioDto> ExportarMeusDadosAsync(Guid usuarioId)
+    {
+        var dto = await _lgpd.MontarExportacaoAsync(usuarioId);
+        _audit.Registrar(usuarioId, dto.Perfil.Email, AcaoAdmin.AutoExportacaoDados, "Usuario", usuarioId, dto.Perfil.Email,
+            "Exportação de dados solicitada pelo próprio titular.");
+        await _context.SaveChangesAsync();
+        return dto;
+    }
+
+    /// <summary>Reativa a própria conta dentro da carência (usuário não está logado — vem por
+    /// credenciais). Só reativa se estiver <see cref="StatusUsuario.MarcadoParaExclusao"/> e a senha
+    /// bater. Mensagem genérica (anti-enumeração). Depois o usuário loga normalmente (MFA se ativo).</summary>
+    public async Task ReativarPorCredenciaisAsync(string email, string senha)
+    {
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == (email ?? string.Empty).ToLower());
+        if (usuario is null
+            || usuario.Status != StatusUsuario.MarcadoParaExclusao
+            || string.IsNullOrEmpty(senha)
+            || !PasswordHasher.VerifyPassword(senha, usuario.PasswordHash))
+            throw new ArgumentException("Não foi possível reativar a conta. Verifique os dados.");
+
+        usuario.Status = StatusUsuario.Ativo;
+        usuario.MarcadoExclusaoEm = null;
+        usuario.AtualizadoEm = DateTime.UtcNow;
+        _audit.Registrar(usuario.Id, usuario.Email, AcaoAdmin.AutoReativacaoConta, "Usuario", usuario.Id, usuario.Email,
+            "Reativação solicitada pelo próprio titular na carência.");
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>Passo 1: confirma a senha atual e decide o 2º fator. Sem MFA → dispara o PIN por

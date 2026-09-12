@@ -197,6 +197,20 @@ public class AuthService
             throw new UnauthorizedAccessException("Email ou senha inválidos");
         }
 
+        // Conta na CARÊNCIA de exclusão: senha provada → NÃO barra e NÃO emite sessão; sinaliza pro
+        // front oferecer a reativação (autoatendimento). Zera o contador de força bruta antes.
+        if (usuario.Status == StatusUsuario.MarcadoParaExclusao)
+        {
+            usuario.FalhasLoginConsecutivas = 0;
+            usuario.UltimaFalhaLoginEm = null;
+            await _context.SaveChangesAsync();
+
+            int? dias = usuario.MarcadoExclusaoEm.HasValue
+                ? Math.Max(0, AdminLgpdService.JanelaCarenciaDias - (int)(DateTime.UtcNow - usuario.MarcadoExclusaoEm.Value).TotalDays)
+                : null;
+            return new LoginResultDto { ContaMarcadaExclusao = true, DiasRestantesExclusao = dias };
+        }
+
         // GATE DE STATUS — só conta Ativa loga. Checado DEPOIS da senha (não vaza a situação da
         // conta pra quem não provou a senha). Mensagem específica por estado pro usuário entender.
         if (usuario.Status != StatusUsuario.Ativo)

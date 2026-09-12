@@ -35,7 +35,8 @@ public class MinhaContaServiceTests
             .Options);
 
     private static MinhaContaService Create(AppDbContext ctx, SenderSpy sender) =>
-        new(ctx, new EmailOtpService(ctx, sender), new MfaService(ctx), new AdminAuditService(ctx), sender);
+        new(ctx, new EmailOtpService(ctx, sender), new MfaService(ctx), new AdminAuditService(ctx), sender,
+            new AdminLgpdService(ctx, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx)));
 
     private static Usuario Seed(AppDbContext ctx, bool mfa = false, StatusUsuario status = StatusUsuario.Ativo)
     {
@@ -140,5 +141,54 @@ public class MinhaContaServiceTests
         var u = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Create(ctx, spy).ExcluirMinhaContaAsync(u.Id, Senha, "000000"));
+    }
+
+    // ── Reativação na carência ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Reativar_marcada_senhaCerta_voltaAtivo_eAudita()
+    {
+        using var ctx = CreateContext();
+        var u = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao);
+        u.MarcadoExclusaoEm = DateTime.UtcNow; await ctx.SaveChangesAsync();
+
+        await Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, Senha);
+
+        var db = await ctx.Usuarios.FindAsync(u.Id);
+        Assert.Equal(StatusUsuario.Ativo, db!.Status);
+        Assert.Null(db.MarcadoExclusaoEm);
+        Assert.Contains(ctx.AdminAuditLogs, a => a.Acao == AcaoAdmin.AutoReativacaoConta && a.AlvoId == u.Id);
+    }
+
+    [Fact]
+    public async Task Reativar_naoMarcada_lanca_eNaoMuda()
+    {
+        using var ctx = CreateContext();
+        var u = Seed(ctx); // Ativo
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, Senha));
+        Assert.Equal(StatusUsuario.Ativo, (await ctx.Usuarios.FindAsync(u.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task Reativar_senhaErrada_lanca()
+    {
+        using var ctx = CreateContext();
+        var u = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, "errada"));
+        Assert.Equal(StatusUsuario.MarcadoParaExclusao, (await ctx.Usuarios.FindAsync(u.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task ExportarMeusDados_retornaOsDados_eAuditaComoTitular()
+    {
+        using var ctx = CreateContext();
+        var u = Seed(ctx);
+
+        var dto = await Create(ctx, new SenderSpy()).ExportarMeusDadosAsync(u.Id);
+
+        Assert.Equal(u.Email, dto.Perfil.Email);
+        Assert.Contains(ctx.AdminAuditLogs, a => a.Acao == AcaoAdmin.AutoExportacaoDados && a.AlvoId == u.Id);
     }
 }

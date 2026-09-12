@@ -423,6 +423,25 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task Login_contaMarcadaExclusao_retornaSinalDeReativacao_naoBarra()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "marcada@test.com", "SenhaForte!2026");
+        u.Status = StatusUsuario.MarcadoParaExclusao;
+        u.MarcadoExclusaoEm = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        // Não barra (não lança) — sinaliza pro front oferecer reativação, sem emitir sessão.
+        var r = await auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "marcada@test.com", Password = "SenhaForte!2026" });
+
+        Assert.True(r.ContaMarcadaExclusao);
+        Assert.False(r.MfaRequerido);
+        Assert.Null(r.Auth);
+        Assert.Empty(ctx.RefreshTokens); // nenhuma sessão emitida
+    }
+
+    [Fact]
     public async Task Login_contaRecusada_barra()
     {
         using var ctx = CreateContext();

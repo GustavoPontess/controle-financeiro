@@ -62,6 +62,24 @@ public class LoginResultDto
     public bool MfaRequerido { get; set; }
     public string? MfaChallengeToken { get; set; }
     public AuthResponseDto? Auth { get; set; }
+
+    /// <summary>Conta na carência de exclusão (senha provada). NÃO emite sessão — o front oferece
+    /// reativar. <see cref="DiasRestantesExclusao"/> = dias até a purga automática.</summary>
+    public bool ContaMarcadaExclusao { get; set; }
+    public int? DiasRestantesExclusao { get; set; }
+}
+
+/// <summary>Reativação da própria conta na carência (usuário não está logado — vem por credenciais).</summary>
+public class ReativarContaRequest
+{
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(128)]
+    public string Senha { get; set; } = string.Empty;
 }
 
 public class UsuarioDto

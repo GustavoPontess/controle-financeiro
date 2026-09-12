@@ -52,7 +52,10 @@ public class CsrfValidationMiddleware
                // Passo 2 do login com MFA — ainda não há sessão nem cookie CSRF (o passo 1 não
                // emite sessão pra quem tem MFA), então é público igual ao /auth/login. Protegido
                // pelo challenge de uso único + TTL curto + rate-limit por IP (auth-mfa).
-               pathValue.Contains("/auth/mfa/verificar-login", StringComparison.OrdinalIgnoreCase);
+               pathValue.Contains("/auth/mfa/verificar-login", StringComparison.OrdinalIgnoreCase) ||
+               // Reativar conta na carência: o usuário NÃO está logado (não há sessão nem cookie CSRF).
+               // Público como o login; protegido por senha + rate-limit por IP (auth-login).
+               pathValue.Contains("/auth/conta/reativar", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsUnsafeMethod(string method)

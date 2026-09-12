@@ -125,6 +125,10 @@ public class AuthController : ControllerBase
         if (result.MfaRequerido)
             return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
 
+        // Conta na carência de exclusão: senha certa, mas sem sessão — o front oferece reativar.
+        if (result.ContaMarcadaExclusao)
+            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
+
         var auth = result.Auth!;
         SetAuthCookies(auth.Token, auth.RefreshToken);
 
@@ -233,6 +237,22 @@ public class AuthController : ControllerBase
         ClearAuthCookies();
         return NoContent();
     }
+
+    /// <summary>Reativa a própria conta na carência (público: o usuário não está logado). Depois, loga
+    /// normalmente. Rate-limited + isento de CSRF (sem sessão), como o login.</summary>
+    [HttpPost("conta/reativar")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> ReativarConta([FromBody] ReativarContaRequest dto)
+    {
+        await _contaService.ReativarPorCredenciaisAsync(dto.Email, dto.Senha);
+        return Ok(new { mensagem = "Conta reativada. Faça login para continuar." });
+    }
+
+    /// <summary>Baixa os próprios dados (LGPD acesso/portabilidade). Auditado como ação do titular.</summary>
+    [Authorize]
+    [HttpGet("conta/exportar")]
+    public async Task<ActionResult<DTOs.Admin.ExportacaoUsuarioDto>> ExportarMeusDados()
+        => Ok(await _contaService.ExportarMeusDadosAsync(ExigirUsuarioId()));
 
     [Authorize]
     [HttpPost("change-password")]
