@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<RegistroAcesso> RegistrosAcesso => Set<RegistroAcesso>();
+    public DbSet<NotificacaoAdmin> NotificacoesAdmin => Set<NotificacaoAdmin>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
@@ -220,6 +221,10 @@ public class AppDbContext : DbContext
             .HasIndex(r => r.CriadoEm);
         modelBuilder.Entity<RegistroAcesso>()
             .HasIndex(r => r.UsuarioId);
+
+        // NotificacaoAdmin — stream do painel admin (separado do financeiro), listado por mais recente.
+        modelBuilder.Entity<NotificacaoAdmin>()
+            .HasIndex(n => n.CriadoEm);
 
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })

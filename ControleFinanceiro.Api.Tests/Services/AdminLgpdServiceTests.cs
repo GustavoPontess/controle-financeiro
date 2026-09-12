@@ -26,7 +26,7 @@ public class AdminLgpdServiceTests
         return new AppDbContext(options);
     }
 
-    private static AdminLgpdService CreateService(AppDbContext ctx) => new(ctx, new AdminAuditService(ctx));
+    private static AdminLgpdService CreateService(AppDbContext ctx) => new(ctx, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx));
 
     private static Usuario SeedUsuario(AppDbContext ctx, StatusUsuario status = StatusUsuario.Ativo,
         DateTime? marcadoEm = null, string? email = null)

@@ -30,11 +30,13 @@ public class AdminLgpdService
 
     private readonly AppDbContext _context;
     private readonly AdminAuditService _audit;
+    private readonly NotificacaoAdminService _notificacaoAdmin;
 
-    public AdminLgpdService(AppDbContext context, AdminAuditService audit)
+    public AdminLgpdService(AppDbContext context, AdminAuditService audit, NotificacaoAdminService notificacaoAdmin)
     {
         _context = context;
         _audit = audit;
+        _notificacaoAdmin = notificacaoAdmin;
     }
 
     // ── Exportar (direito de acesso/portabilidade) ────────────────────────────────────────
@@ -224,13 +226,29 @@ public class AdminLgpdService
             .ToListAsync();
 
         var purgadas = 0;
+        var comVinculo = 0;
         foreach (var u in expiradas)
         {
             var vinculos = await DetectarVinculosAsync(u.Id);
-            if (vinculos.Count > 0) continue; // entangled — não purga automático; admin resolve
+            if (vinculos.Count > 0) { comVinculo++; continue; } // entangled — não purga automático; admin resolve
             await PurgarFisicoAsync(u, Guid.Empty, "sistema:job-purga");
             purgadas++;
         }
+
+        // Notifica o painel admin sobre o que o job fez (stream de admin, best-effort).
+        if (purgadas > 0)
+            await _notificacaoAdmin.CriarAsync(
+                TipoNotificacaoAdmin.ExclusaoLgpd,
+                "Purga automática de contas (LGPD)",
+                $"{purgadas} conta(s) com carência vencida foram purgadas automaticamente.",
+                "/admin/lgpd");
+        if (comVinculo > 0)
+            await _notificacaoAdmin.CriarAsync(
+                TipoNotificacaoAdmin.ExclusaoLgpd,
+                "Contas pendentes de purga (vínculo)",
+                $"{comVinculo} conta(s) com carência vencida NÃO puderam ser purgadas por terem vínculo com outro usuário. Resolver manualmente.",
+                "/admin/lgpd");
+
         return purgadas;
     }
 

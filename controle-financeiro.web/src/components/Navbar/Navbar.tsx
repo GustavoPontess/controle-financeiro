@@ -23,6 +23,10 @@ type Props = {
   /** Rótulo do "Início" no breadcrumb + destino. Default = Início/dashboard. */
   homeLabel?: string
   homePath?: string
+  /** Sino de notificações. Se omitido, usa o financeiro (só quando `showFinance`). O painel admin
+   *  injeta o SEU próprio sino aqui — assim o stream do admin não se mistura com o do usuário, e o
+   *  componente do sino admin não entra no bundle comum. */
+  notifications?: React.ReactNode
 }
 
 const TITLES: Record<string, string> = {
@@ -50,7 +54,7 @@ function resolveTitle(path: string): string {
 export default function Navbar({
   toggleDrawer, sidebarOpen, showFinance = true,
   openTransaction, canCreateTransaction, openCommandPalette,
-  title: titleProp, homeLabel = "Início", homePath = "/dashboard",
+  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -96,7 +100,9 @@ export default function Navbar({
           </PontesIconButton>
         )}
 
-        <NotificationBell />
+        {/* Sino: o painel admin injeta o seu (stream próprio). Sem injeção, usa o financeiro — e só
+            quando showFinance (o sino do usuário puxa notificacaoService e navega pra finanças). */}
+        {notifications ?? (showFinance ? <NotificationBell /> : null)}
 
         {showFinance && (
           <PontesButton

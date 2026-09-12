@@ -39,7 +39,7 @@ public class MfaServiceTests : IDisposable
     private static AuthService CreateAuth(AppDbContext ctx)
     {
         var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
-        return new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx));
+        return new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx), TestHelpers.NotifAdmin(ctx));
     }
 
     private static Usuario SeedUsuario(AppDbContext ctx, string email, string senha)

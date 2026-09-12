@@ -13,6 +13,7 @@ import { ClipboardCheck, BarChart3, Users, ScrollText, ShieldCheck } from "lucid
 import { PontesToast } from "@/components/pontes"
 import Sidebar, { type SidebarNavGroup } from "../../components/Sidebar/Sidebar"
 import Navbar from "../../components/Navbar/Navbar"
+import AdminNotificationBell from "../../pages/Admin/AdminNotificationBell"
 import styles from "../Default/DefaultLayout.module.css"
 
 const DRAWER_WIDTH = 248
@@ -80,6 +81,7 @@ export default function AdminLayout() {
           title={ADMIN_TITULOS[location.pathname] ?? "Administração"}
           homeLabel="Painel Admin"
           homePath={ADMIN_HOME}
+          notifications={<AdminNotificationBell />}
         />
 
         <main className={styles.main}>

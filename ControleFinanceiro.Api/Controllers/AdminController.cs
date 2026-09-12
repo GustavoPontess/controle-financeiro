@@ -23,13 +23,16 @@ public class AdminController : ControllerBase
     private readonly AdminUsuarioService _adminUsuarios;
     private readonly AdminAuditService _auditoria;
     private readonly AdminLgpdService _lgpd;
+    private readonly NotificacaoAdminService _notificacoes;
 
-    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios, AdminAuditService auditoria, AdminLgpdService lgpd)
+    public AdminController(AppDbContext context, AdminUsuarioService adminUsuarios, AdminAuditService auditoria,
+        AdminLgpdService lgpd, NotificacaoAdminService notificacoes)
     {
         _context = context;
         _adminUsuarios = adminUsuarios;
         _auditoria = auditoria;
         _lgpd = lgpd;
+        _notificacoes = notificacoes;
     }
 
     private Guid AdminId()
@@ -135,4 +138,32 @@ public class AdminController : ControllerBase
     [HttpGet("auditoria")]
     public async Task<ActionResult<List<AdminAuditLogDto>>> Auditoria()
         => Ok(await _auditoria.ListarAsync());
+
+    // ── Notificações do admin (stream separado do financeiro) ─────────────────────────────
+
+    /// <summary>Notificações do painel admin (mais recentes primeiro).</summary>
+    [HttpGet("notificacoes")]
+    public async Task<ActionResult<List<NotificacaoAdminDto>>> Notificacoes()
+        => Ok(await _notificacoes.ListarAsync());
+
+    /// <summary>Quantidade de notificações de admin não lidas.</summary>
+    [HttpGet("notificacoes/contagem")]
+    public async Task<ActionResult<ContagemNotificacaoAdminDto>> ContarNotificacoes()
+        => Ok(await _notificacoes.ContarNaoLidasAsync());
+
+    /// <summary>Marca uma notificação de admin como lida.</summary>
+    [HttpPut("notificacoes/{id:guid}/lida")]
+    public async Task<IActionResult> MarcarNotificacaoLida(Guid id)
+    {
+        await _notificacoes.MarcarLidaAsync(id);
+        return NoContent();
+    }
+
+    /// <summary>Marca todas as notificações de admin como lidas.</summary>
+    [HttpPut("notificacoes/lidas")]
+    public async Task<IActionResult> MarcarTodasNotificacoesLidas()
+    {
+        await _notificacoes.MarcarTodasLidasAsync();
+        return NoContent();
+    }
 }

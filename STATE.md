@@ -15,6 +15,35 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-12) Notificações do admin — stream próprio, separado do financeiro ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
+Bug reportado pelo Gustavo: o sino de notificações **financeiras** aparecia também no painel admin
+(o `NotificationBell` renderizava sem gate no `Navbar` compartilhado). Pedido dele: **não misturar** —
+sino do financeiro só com notificação financeira, sino do admin só com a de admin.
+- **Backend (tudo separado do financeiro, zero cruzamento de query):** entidade `NotificacaoAdmin`
+  (global ao painel, sem FK/dono), enum `TipoNotificacaoAdmin { NovoCadastro, ExclusaoLgpd,
+  Seguranca }`, `NotificacaoAdminService` (criar best-effort + listar + contar + marcar/marcar-todas),
+  endpoints no `AdminController` (`GET /admin/notificacoes`, `.../contagem`, `PUT .../{id}/lida`,
+  `PUT .../lidas`), migration `AddNotificacaoAdmin` (aplicada no dev).
+- **Geradores (as 3 fontes que o Gustavo escolheu):** `RegisterAsync` → NovoCadastro (link
+  /admin/pendentes); `LoginAsync` ao bater o teto de força bruta → Seguranca; job
+  `PurgarExpiradasAsync` (LGPD) → ExclusaoLgpd (purgadas + vínculos pendentes).
+- **Front (isolado no chunk admin):** `AdminNotificationBell` (espelha o sino, reusa o CSS, lê só
+  `adminService.notificacoes`). `Navbar` ganhou slot `notifications?` — user usa o sino financeiro
+  (como era; **revertido o gate errado da 1ª tentativa**), admin injeta o seu via `AdminLayout`.
+  `types/NotificacaoAdmin.ts` + chamadas no `adminService`.
+- **Hardening mantido:** `admin/notificacoes` + `AdminNotificationBell` **só no chunk `AdminApp`**,
+  zero no bundle comum (conferido no dist).
+- **Testes:** back **505/505** (+9: service + geração register/brute/purga), front **361/361** (+4:
+  Navbar mostra o sino certo em cada contexto + AdminNotificationBell). Lint/build limpos.
+- **Validado ao vivo:** registrei um descartável → notificação NovoCadastro criada → painel admin com
+  sino badge **1** e "Novo cadastro na fila" no dropdown; sino do `/dashboard` **sem badge** (não
+  puxou a de admin) → streams separados de fato. Artefatos de teste limpos do dev.
+
+**⚠️ Nota de design:** read-state das notificações de admin é **global** (qualquer admin marca lida
+pra todos) — beta ≈ 1 admin. Se entrar +1 admin, considerar read-state por admin (catalogar então).
+
+---
+
 **(2026-09-12) Store Marco Civil — `RegistroAcesso` + captura de IP no login ✅ (branch `feature/admin-beta-gate`). Validado ao vivo E2E contra Postgres real.**
 Fecha a pendência P1 pré-produção que ficou aberta no Módulo C. Retenção de log de acesso (Marco
 Civil da Internet, Lei 12.965/2014 Art. 15).

@@ -43,7 +43,7 @@ public class AdminFlagTests
     {
         using var ctx = CreateContext();
         var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
-        var auth = new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx));
+        var auth = new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx), TestHelpers.NotifAdmin(ctx));
 
         await auth.RegisterAsync(new RegisterDto
         {

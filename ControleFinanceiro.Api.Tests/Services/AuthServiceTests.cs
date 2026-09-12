@@ -31,7 +31,7 @@ public class AuthServiceTests
     private static AuthService CreateService(AppDbContext ctx, IPasswordResetDispatcher dispatcher)
     {
         var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
-        return new AuthService(ctx, jwt, dispatcher, new MfaService(ctx));
+        return new AuthService(ctx, jwt, dispatcher, new MfaService(ctx), TestHelpers.NotifAdmin(ctx));
     }
 
     // Login sem MFA sempre retorna Auth preenchido — helper pra não repetir o `.Auth!` em todo teste.

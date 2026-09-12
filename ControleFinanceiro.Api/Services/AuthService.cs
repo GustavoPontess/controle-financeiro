@@ -14,6 +14,7 @@ public class AuthService
     private readonly JwtTokenProvider _tokenProvider;
     private readonly IPasswordResetDispatcher _resetDispatcher;
     private readonly MfaService _mfaService;
+    private readonly NotificacaoAdminService _notificacaoAdmin;
 
     private const int RefreshTokenDays = 7;
     private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
@@ -29,12 +30,14 @@ public class AuthService
         AppDbContext context,
         JwtTokenProvider tokenProvider,
         IPasswordResetDispatcher resetDispatcher,
-        MfaService mfaService)
+        MfaService mfaService,
+        NotificacaoAdminService notificacaoAdmin)
     {
         _context = context;
         _tokenProvider = tokenProvider;
         _resetDispatcher = resetDispatcher;
         _mfaService = mfaService;
+        _notificacaoAdmin = notificacaoAdmin;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -123,6 +126,13 @@ public class AuthService
 
         await _context.SaveChangesAsync();
 
+        // Notifica o painel admin que há um novo cadastro na fila (stream de admin, best-effort).
+        await _notificacaoAdmin.CriarAsync(
+            TipoNotificacaoAdmin.NovoCadastro,
+            "Novo cadastro na fila",
+            $"{usuario.Nome} ({usuario.Email}) está aguardando aprovação.",
+            "/admin/pendentes");
+
         return new RegisterResponseDto
         {
             Status = usuario.Status,
@@ -163,6 +173,16 @@ public class AuthService
             usuario.FalhasLoginConsecutivas++;
             usuario.UltimaFalhaLoginEm = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
+            // Alerta de segurança no painel admin quando a conta ACABOU de bater o teto e virou
+            // bloqueio permanente (== pra disparar só na transição, não a cada falha depois).
+            if (usuario.FalhasLoginConsecutivas == FalhasParaBloqueioPermanente)
+                await _notificacaoAdmin.CriarAsync(
+                    TipoNotificacaoAdmin.Seguranca,
+                    "Conta bloqueada por força bruta",
+                    $"{usuario.Email} atingiu {FalhasParaBloqueioPermanente} tentativas de login e foi bloqueada. Só reset de senha libera.",
+                    "/admin/usuarios");
+
             throw new UnauthorizedAccessException("Email ou senha inválidos");
         }
 

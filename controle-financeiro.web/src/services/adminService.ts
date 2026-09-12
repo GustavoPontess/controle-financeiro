@@ -1,5 +1,6 @@
 import { api } from "@/api/axiosConfig"
 import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
+import type { ContagemNotificacaoAdmin, NotificacaoAdmin } from "@/types/NotificacaoAdmin"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
@@ -48,6 +49,18 @@ const adminService = {
 
   // ── Módulo D — auditoria ──
   auditoria: () => api.get<AdminAuditLog[]>("/admin/auditoria").then((r) => r.data),
+
+  // ── Notificações do admin (stream separado do financeiro) ──
+  notificacoes: () => api.get<NotificacaoAdmin[]>("/admin/notificacoes").then((r) => r.data),
+
+  contagemNotificacoes: () =>
+    api.get<ContagemNotificacaoAdmin>("/admin/notificacoes/contagem").then((r) => r.data),
+
+  marcarNotificacaoLida: (id: string) =>
+    api.put(`/admin/notificacoes/${id}/lida`).then((r) => r.data),
+
+  marcarTodasNotificacoesLidas: () =>
+    api.put("/admin/notificacoes/lidas").then((r) => r.data),
 }
 
 export default adminService
