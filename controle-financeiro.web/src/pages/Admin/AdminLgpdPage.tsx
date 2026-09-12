@@ -156,11 +156,6 @@ export default function AdminLgpdPage() {
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.sub}>
-        Direito de acesso (exportar) e de eliminação (LGPD). A exclusão é em 2 estágios: marcar para
-        exclusão (reversível) → carência → purga física permanente.
-      </p>
-
       <PontesField label="Buscar" htmlFor="busca-lgpd">
         <PontesInput
           id="busca-lgpd"
