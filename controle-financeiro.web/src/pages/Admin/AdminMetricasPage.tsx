@@ -20,8 +20,6 @@ export default function AdminMetricasPage() {
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.sub}>Visão geral dos cadastros do beta por situação.</p>
-
       {carregando || !metricas ? (
         <PontesSkeleton height={120} />
       ) : (

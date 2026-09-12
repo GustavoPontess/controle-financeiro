@@ -32,8 +32,6 @@ export default function AdminAuditoriaPage() {
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.sub}>Registro das ações de administração (somente leitura).</p>
-
       {carregando ? (
         <PontesSkeleton height={200} />
       ) : logs.length === 0 ? (

@@ -90,8 +90,6 @@ export default function AdminPendentesPage() {
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.sub}>Cadastros aguardando aprovação pra entrar no beta.</p>
-
       {carregando ? (
         <PontesSkeleton height={180} />
       ) : pendentes.length === 0 ? (
