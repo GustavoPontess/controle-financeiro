@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<RegistroAcesso> RegistrosAcesso => Set<RegistroAcesso>();
     public DbSet<NotificacaoAdmin> NotificacoesAdmin => Set<NotificacaoAdmin>();
+    public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
@@ -225,6 +226,10 @@ public class AppDbContext : DbContext
         // NotificacaoAdmin — stream do painel admin (separado do financeiro), listado por mais recente.
         modelBuilder.Entity<NotificacaoAdmin>()
             .HasIndex(n => n.CriadoEm);
+
+        // EmailOtp — código de reserva por e-mail; consultado por (usuário, finalidade).
+        modelBuilder.Entity<EmailOtp>()
+            .HasIndex(o => new { o.UsuarioId, o.Finalidade });
 
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })

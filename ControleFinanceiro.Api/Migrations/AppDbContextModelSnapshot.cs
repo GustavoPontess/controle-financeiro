@@ -403,6 +403,42 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Dependentes");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmailOtp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Finalidade")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Finalidade");
+
+                    b.ToTable("EmailOtps");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
                     b.Property<Guid>("Id")
