@@ -12,6 +12,48 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 
 ---
 
+## 0. Checklist obrigatório por entrega ⭐ (rodar SEMPRE, sem lembrete)
+
+**Toda mudança passa por este checklist antes de fechar — não é opcional, não espera o Gustavo pedir.**
+É o baseline de segurança + qualidade do projeto (app de dinheiro + PII). Registrado em memória do
+Claude como regra permanente.
+
+### Modelo de ameaça (assumir)
+Atacante **sofisticado e automatizado**, inclusive usando IAs próprias sem as limitações de um
+assistente comum, tentando SQLi, DDoS/força bruta, XSS/CSRF, IDOR, escalação de privilégio e
+**information disclosure** (reconhecimento). Não confiar em obscuridade nem em "ninguém vai tentar".
+Backend é a **fronteira real**; o front é defesa em profundidade.
+
+### Princípio central — MENOR EXPOSIÇÃO DE INFORMAÇÃO
+**O que não é para uma pessoa, ela não pode nem VER — mesmo que não consiga usar/acessar.** Vazar a
+existência de uma rota/endpoint/campo/estrutura (ex.: rotas de admin no bundle comum) já é munição de
+reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
+
+### Checklist (marcar cada item com evidência, não com "acho que sim")
+- [ ] **Input validado no BACK e no FRONT** — limite de chars, tipo, faixa, obrigatório
+      (`docs/REGRAS_CAMPOS.md`). `[ApiController]` + DataAnnotations no DTO; validação por campo no form.
+      Rotas com id tipado (`{id:guid}`). Nunca confiar só no cliente.
+- [ ] **Isolamento de dados (IDOR)** — toda query filtra por `UsuarioId`; endpoint sensível sob
+      `[Authorize]`/policy correta; nunca expor recurso de outro usuário.
+- [ ] **SQL só via EF/LINQ parametrizado** — zero concatenação de string em query; sem `FromSqlRaw`
+      com input do usuário.
+- [ ] **DoS/força bruta** — endpoint público tem rate-limit; caps de tamanho (body, senha);
+      operação cara (hash, export) protegida.
+- [ ] **Segredo/erro não vaza** — resposta de erro genérica (middleware nunca ecoa `Message`);
+      log não grava PII/segredo (logar id, não e-mail/senha/token); sem stack trace pro cliente.
+- [ ] **Menor exposição** — nada que não seja da pessoa aparece pra ela. Se tocou admin/rota
+      sensível: **conferir no `dist` que nenhuma string/endpoint/rota de admin vaza no bundle comum**
+      (só no chunk lazy). Mascarar PII na tela quando fizer sentido (olhinho de revelar).
+- [ ] **Conformidade (se tocou auth/PII/dado sensível)** — fonte primária (OWASP/NIST/ANPD/LGPD),
+      nunca chute; catalogar achado no `ROADMAP.md`. Ver `docs/CONFORMIDADE_BR.md`.
+- [ ] **DS Pontes, zero inline** — UI só de `@/components/pontes`; estilo em CSS Modules +
+      `var(--pontes-*)`; componente reutilizável (2+ telas) vira componente da lib (barrel + smoke test).
+- [ ] **Teste cobrindo o que mudou** — front (vitest) E back (xUnit). Sem teste = não fecha.
+- [ ] **Afirmação de segurança = verificada** — não dizer "está seguro/isolado" sem rodar a checagem
+      (grep no dist, revisar DTO/erro/resposta). Ver a regra "verificar antes de afirmar" (memória).
+
+---
+
 ## 1. Hash de senha ✅ IMPLEMENTADO (A1/A2 — 2026-06-17)
 
 - **Algoritmo:** OWASP rankeia **Argon2id como 1ª escolha** (`m=19456 KiB, t=2, p=1` = 19 MiB), depois scrypt, bcrypt (legado), PBKDF2 (só se exigir FIPS-140). **Decisão: Argon2id** (app não tem requisito FIPS) via `Konscious.Security.Cryptography.Argon2` v1.3.1 (MIT, targeta net8.0, maduro). _Deep-research verificado por fonte primária (24/25 claims confirmados)._

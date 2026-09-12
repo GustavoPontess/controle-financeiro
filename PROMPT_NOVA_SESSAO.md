@@ -70,6 +70,13 @@ Atualize `STATE.md` com o que vai atacar. `gh issue` é opcional pra rastrear �
 7. **Ícones via `lucide-react`** (`<Plus size={16} strokeWidth={2.5}/>`), nunca char texto.
 8. **Form valida por campo, sempre.** `PontesField error=` + `invalid` no controle, nunca toast pra campo faltando. Bloqueia submit se inválido; erro limpa ao editar; mensagem ≠ placeholder. Teste obrigatório (submit vazio bloqueia + mostra erros).
 9. **Confirmação destrutiva:** `PontesDialog`, nunca `window.confirm`.
+10. **Baseline de segurança + qualidade — SEM PEDIR, toda entrega.** Rodar o **checklist obrigatório
+    por entrega** (`docs/SEGURANCA_BEST_PRACTICES.md` §0) antes de fechar: input validado back+front,
+    isolamento/IDOR, SQL só parametrizado, DoS/força bruta, erro/log sem vazar segredo/PII, **menor
+    exposição de informação** (o que não é da pessoa ela nem vê — conferir no `dist` que rota/endpoint
+    de admin não vaza no bundle comum), DS-only, teste, e conformidade por fonte primária. **Afirmação
+    de segurança só com evidência verificada** (grep/dist/DTO), nunca de memória. Modelo de ameaça:
+    atacante automatizado com IA sem limites — não confiar em obscuridade.
 
 > **`src/components/` (raiz, fora de `pontes/`) era ZONA LEGADA — já foi purgada (PR #166).** Hoje só sobrevivem ali `Logo/`, `Auth/` (lógica de rota), `Navbar/`, `Sidebar/`, `Pwa/`. Componente novo reutilizável vai pra `pontes/`, sem exceção.
 
