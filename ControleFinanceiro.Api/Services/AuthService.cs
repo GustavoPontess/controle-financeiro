@@ -90,11 +90,16 @@ public class AuthService
 
         PasswordPolicyService.ValidarOuLancar(dto.Password);
 
-        // Check if email already exists (case-insensitive — email é sempre gravado em
-        // lowercase abaixo; comparar sem normalizar deixava passar duplicata com case
-        // diferente, que quebrava depois na constraint única do banco com um 500 feio).
+        // Anti-enumeração de usuário (OWASP, achado do pentest 2026-09-12): NÃO revelar se o e-mail
+        // já existe. Antes lançava "Email já cadastrado" (409) → dava pra enumerar quem tem conta.
+        // Agora, se já existe (case-insensitive — e-mail é gravado em lowercase abaixo), devolve a
+        // MESMA resposta genérica de um cadastro novo, sem criar duplicata. Equaliza o timing fazendo
+        // o mesmo trabalho caro (hash Argon2) e descartando, pra não vazar por tempo de resposta.
         if (_context.Usuarios.Any(u => u.Email == dto.Email.ToLower()))
-            throw new InvalidOperationException("Email já cadastrado");
+        {
+            _ = PasswordHasher.HashPassword(dto.Password);
+            return RespostaCadastroRecebido();
+        }
 
         // GATE DO BETA: a conta nasce AguardandoAprovacao (default da entidade) e NÃO recebe sessão
         // aqui — nada de JWT nem refresh token. O usuário só loga depois que o admin aprova
@@ -135,13 +140,16 @@ public class AuthService
             $"{usuario.Nome} está aguardando aprovação.",
             "/admin/pendentes");
 
-        return new RegisterResponseDto
-        {
-            Status = usuario.Status,
-            Mensagem = "Cadastro enviado! Sua conta está aguardando aprovação. "
-                     + "Você receberá acesso assim que for liberada.",
-        };
+        return RespostaCadastroRecebido();
     }
+
+    // Resposta genérica do cadastro — idêntica para e-mail novo e já existente (anti-enumeração).
+    private static RegisterResponseDto RespostaCadastroRecebido() => new()
+    {
+        Status = StatusUsuario.AguardandoAprovacao,
+        Mensagem = "Cadastro enviado! Sua conta está aguardando aprovação. "
+                 + "Você receberá acesso assim que for liberada.",
+    };
 
     public async Task<LoginResultDto> LoginAsync(LoginDto dto)
     {
