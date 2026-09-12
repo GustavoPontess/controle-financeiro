@@ -15,6 +15,31 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-12) Batida de segurança / pentest autorizado (app local) ✅ (branch `feature/admin-beta-gate`).**
+Agi como atacante contra a API :5293 (probes, sem mutar dado real — throwaways limpos depois).
+- **Corrigido (2):**
+  1. **Corpo > 10 MB → 413** (era **500**). `BadHttpRequestException` caía no default do
+     `GlobalExceptionHandlerMiddleware`; agora mapeia pro StatusCode real (413, "Requisição grande
+     demais."). Request já era rejeitado (DoS ok); só status/log estavam errados. +1 teste. Verificado
+     ao vivo.
+  2. **Enumeração de usuário no `/auth/register`** — respondia "Email já cadastrado" p/ existente vs
+     "Cadastro enviado" p/ novo. Agora responde **sempre genérico**, sem criar duplicata, com hash
+     descartado p/ equalizar timing. 2 testes atualizados. Verificado ao vivo (resposta genérica,
+     count=1).
+- **Falso achado retirado:** HSTS "ausente" — ERRO meu (catalogei sem checar). `SecurityHeadersMiddleware`
+  JÁ seta HSTS gated em HTTPS; não apareceu só porque testei em HTTP. Removido do ROADMAP. (2º episódio
+  de afirmar sem verificar nesta sessão — a checagem-antes-de-corrigir pegou.)
+- **Passou (com evidência):** /admin/* exige auth (401) e barra não-admin (403); IDOR de conta de
+  outro → 404/403; mass-assignment de isAdmin/status ignorado (register E profile — dev seguiu IsAdmin=f);
+  CSRF sem/errado token → 403; SQLi no login → 400/401 (EF parametrizado); JWT forjado → 401; CORS nega
+  origin externa; headers de segurança presentes (nosniff/X-Frame DENY/CSP `default-src 'none'`/Referrer/
+  Permissions-Policy/HSTS-sob-HTTPS); Swagger dev-only; Hangfire exige auth; 500 não ecoa detalhe; login
+  e forgot-password sem enumeração; sem `dangerouslySetInnerHTML`/`eval` no front.
+- **Não coberto (honesto):** DDoS volumétrico real, fuzzing do parser de import OFX/CSV, XSS armazenado
+  campo-a-campo (React escapa por padrão, sem innerHTML), timing fino. Back **506/506**.
+
+---
+
 **(2026-09-12) Mascaramento de dado sensível no admin (olhinho de revelar) ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
 Pedido do Gustavo: mascarar PII no painel admin com olho de revelar, igual ao "ocultar valores" do
 financeiro. Antes disso, **pesquisa LGPD em fonte primária** (a pedido dele — eu tinha afirmado sem
