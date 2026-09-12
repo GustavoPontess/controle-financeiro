@@ -46,6 +46,9 @@ public class NotificacaoAdminGeracaoTests
         var n = Assert.Single(ctx.NotificacoesAdmin);
         Assert.Equal(TipoNotificacaoAdmin.NovoCadastro, n.Tipo);
         Assert.Equal("/admin/pendentes", n.LinkRelativo);
+        // Acionável: ligada ao usuário pendente (AlvoId) pra dar baixa no aprovar/recusar.
+        var user = await ctx.Usuarios.SingleAsync(u => u.Email == "novato@test.com");
+        Assert.Equal(user.Id, n.AlvoId);
         Assert.Empty(ctx.Notificacoes); // não vaza pro stream do usuário
     }
 

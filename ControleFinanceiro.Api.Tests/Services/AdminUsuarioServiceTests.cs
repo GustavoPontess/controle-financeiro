@@ -26,7 +26,7 @@ public class AdminUsuarioServiceTests
     }
 
     private static AdminUsuarioService CreateService(AppDbContext ctx, IPasswordResetDispatcher? dispatcher = null)
-        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object, new AdminAuditService(ctx));
+        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx));
 
     private static Usuario Seed(AppDbContext ctx, StatusUsuario status, string? email = null, DateTime? criadoEm = null)
     {
@@ -76,6 +76,26 @@ public class AdminUsuarioServiceTests
         Assert.Equal(StatusUsuario.Ativo, db!.Status);
         Assert.Equal(adminId, db.AprovadoPor);
         Assert.NotNull(db.AprovadoEm);
+    }
+
+    [Fact]
+    public async Task Aprovar_daBaixaNaNotificacaoDoCadastro_someDoSino()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
+        // Notificação acionável "novo cadastro" ligada a esse usuário (como o register cria).
+        ctx.NotificacoesAdmin.Add(new NotificacaoAdmin
+        {
+            Id = Guid.NewGuid(), Tipo = TipoNotificacaoAdmin.NovoCadastro,
+            Titulo = "Novo cadastro na fila", Mensagem = "U aguardando.", AlvoId = pendente.Id, Lida = false,
+        });
+        await ctx.SaveChangesAsync();
+        var svc = CreateService(ctx);
+
+        await svc.AprovarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
+
+        // A notificação daquele cadastro foi baixada (não fica no sino como pendente).
+        Assert.True(ctx.NotificacoesAdmin.Single(n => n.AlvoId == pendente.Id).Lida);
     }
 
     [Fact]

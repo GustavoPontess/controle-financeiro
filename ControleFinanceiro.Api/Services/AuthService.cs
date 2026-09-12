@@ -138,7 +138,8 @@ public class AuthService
             TipoNotificacaoAdmin.NovoCadastro,
             "Novo cadastro na fila",
             $"{usuario.Nome} está aguardando aprovação.",
-            "/admin/pendentes");
+            "/admin/pendentes",
+            alvoId: usuario.Id); // acionável: some do sino quando o cadastro for aprovado/recusado
 
         return RespostaCadastroRecebido();
     }

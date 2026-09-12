@@ -93,6 +93,38 @@ public class NotificacaoAdminServiceTests
     }
 
     [Fact]
+    public async Task Criar_comAlvoId_guardaOVinculo()
+    {
+        using var ctx = CreateContext();
+        var alvo = Guid.NewGuid();
+        await TestHelpers.NotifAdmin(ctx).CriarAsync(
+            TipoNotificacaoAdmin.NovoCadastro, "Novo cadastro na fila", "Fulano aguardando.", "/admin/pendentes", alvoId: alvo);
+
+        Assert.Equal(alvo, Assert.Single(ctx.NotificacoesAdmin).AlvoId!.Value);
+    }
+
+    [Fact]
+    public async Task MarcarLidasPorAlvo_baixaSoAsDoAlvo_naoTocaNasOutras()
+    {
+        using var ctx = CreateContext();
+        var svc = TestHelpers.NotifAdmin(ctx);
+        var alvo = Guid.NewGuid();
+        var outro = Guid.NewGuid();
+        ctx.NotificacoesAdmin.AddRange(
+            new NotificacaoAdmin { Id = Guid.NewGuid(), Tipo = TipoNotificacaoAdmin.NovoCadastro, Titulo = "a", Mensagem = "", AlvoId = alvo },
+            new NotificacaoAdmin { Id = Guid.NewGuid(), Tipo = TipoNotificacaoAdmin.NovoCadastro, Titulo = "b", Mensagem = "", AlvoId = outro },
+            new NotificacaoAdmin { Id = Guid.NewGuid(), Tipo = TipoNotificacaoAdmin.Seguranca, Titulo = "c", Mensagem = "", AlvoId = null });
+        await ctx.SaveChangesAsync();
+
+        await svc.MarcarLidasPorAlvoAsync(alvo);
+        await ctx.SaveChangesAsync(); // o método não salva (é gravado junto da ação do caller)
+
+        Assert.True(ctx.NotificacoesAdmin.Single(n => n.AlvoId == alvo).Lida);
+        Assert.False(ctx.NotificacoesAdmin.Single(n => n.AlvoId == outro).Lida); // outro usuário intacto
+        Assert.False(ctx.NotificacoesAdmin.Single(n => n.AlvoId == null).Lida);  // informativa intacta
+    }
+
+    [Fact]
     public async Task Criar_naoTocaNoStreamDoUsuario()
     {
         // Garantia de não-mistura: criar notificação de admin não cria nada em Notificacoes (usuário).

@@ -17,12 +17,15 @@ public class AdminUsuarioService
     private readonly AppDbContext _context;
     private readonly IPasswordResetDispatcher _resetDispatcher;
     private readonly AdminAuditService _audit;
+    private readonly NotificacaoAdminService _notificacaoAdmin;
 
-    public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher, AdminAuditService audit)
+    public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher,
+        AdminAuditService audit, NotificacaoAdminService notificacaoAdmin)
     {
         _context = context;
         _resetDispatcher = resetDispatcher;
         _audit = audit;
+        _notificacaoAdmin = notificacaoAdmin;
     }
 
     /// <summary>Fila de cadastros aguardando decisão — mais antigos primeiro (ordem de chegada).</summary>
@@ -70,6 +73,8 @@ public class AdminUsuarioService
         usuario.AtualizadoEm = DateTime.UtcNow;
 
         _audit.Registrar(adminId, adminEmail, acao, "Usuario", usuario.Id, usuario.Email);
+        // Cadastro tratado → dá baixa na notificação "novo cadastro" desse usuário (some do sino).
+        await _notificacaoAdmin.MarcarLidasPorAlvoAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
         return MapToDto(usuario);

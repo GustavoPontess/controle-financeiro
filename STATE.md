@@ -15,6 +15,19 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-12) Notificação de admin acionável se resolve ao tratar o cadastro ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
+Achado (a partir de uma notificação órfã do pentest): a notificação "novo cadastro" não sumia depois
+de aprovar/recusar. Pesquisa de UX (NN/g/Carbon/Toptal): **acionável** some quando tratada;
+**informativa** fica como log.
+- `NotificacaoAdmin.AlvoId` (Guid solto, migration `AddAlvoIdNotificacaoAdmin`, aplicada no dev) —
+  preenchido só nas acionáveis (NovoCadastro → usuário pendente). `MarcarLidasPorAlvoAsync` (não salva;
+  grava junto da ação, atômico). Aprovar/recusar (`AdminUsuarioService.DecidirAsync`) dá baixa.
+  Segurança/ExclusaoLgpd seguem informativas (sem AlvoId, log manual).
+- +3 testes (baixa por alvo não toca as outras; register seta AlvoId; aprovar baixa). Back **509/509**.
+  Validado ao vivo: registrar→notif AlvoId Lida=f→aprovar 200→Lida=t; test users limpos.
+
+---
+
 **(2026-09-12) Batida de segurança / pentest autorizado (app local) ✅ (branch `feature/admin-beta-gate`).**
 Agi como atacante contra a API :5293 (probes, sem mutar dado real — throwaways limpos depois).
 - **Corrigido (2):**

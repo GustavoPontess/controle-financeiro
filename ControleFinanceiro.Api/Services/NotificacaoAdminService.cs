@@ -25,7 +25,8 @@ public class NotificacaoAdminService
 
     /// <summary>Cria uma notificação de admin. Best-effort: falha aqui NUNCA derruba a operação de
     /// origem (ex.: cadastro, login, purga) — o erro é logado e engolido.</summary>
-    public async Task CriarAsync(TipoNotificacaoAdmin tipo, string titulo, string mensagem, string? linkRelativo = null)
+    public async Task CriarAsync(TipoNotificacaoAdmin tipo, string titulo, string mensagem,
+        string? linkRelativo = null, Guid? alvoId = null)
     {
         try
         {
@@ -36,6 +37,7 @@ public class NotificacaoAdminService
                 Titulo = titulo,
                 Mensagem = mensagem,
                 LinkRelativo = linkRelativo,
+                AlvoId = alvoId,
                 Lida = false,
             });
             await _context.SaveChangesAsync();
@@ -76,6 +78,20 @@ public class NotificacaoAdminService
 
         notificacao.Lida = true;
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Dá baixa (marca como lidas) nas notificações acionáveis ligadas a um alvo — ex.: ao
+    /// aprovar/recusar um cadastro, a notificação "novo cadastro" daquele usuário some do sino
+    /// (padrão: notificação acionável se resolve quando a ação é tratada). NÃO chama SaveChanges: é
+    /// gravado junto com a transação da ação do caller (mesmo AppDbContext scoped), pra ficar atômico.</summary>
+    public async Task MarcarLidasPorAlvoAsync(Guid alvoId)
+    {
+        var pendentes = await _context.NotificacoesAdmin
+            .Where(n => n.AlvoId == alvoId && !n.Lida)
+            .ToListAsync();
+
+        foreach (var n in pendentes)
+            n.Lida = true;
     }
 
     /// <summary>Marca todas as notificações de admin como lidas.</summary>
