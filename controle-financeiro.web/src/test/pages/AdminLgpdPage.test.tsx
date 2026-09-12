@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { PontesThemeProvider } from "../../components/pontes"
+import { PontesThemeProvider, setMaskData } from "../../components/pontes"
 import AdminLgpdPage from "../../pages/Admin/AdminLgpdPage"
 import { StatusUsuario } from "../../types/Admin"
 
@@ -38,6 +38,7 @@ describe("AdminLgpdPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAuthMock.mockReturnValue({ currentUser: { id: "admin", nome: "Adm", isAdmin: true } })
+    setMaskData(false) // revela os e-mails: estes testes checam e-mail real (mascaramento é coberto no pontes.test)
   })
 
   it("marcar para exclusão pede confirmação e só então chama o serviço", async () => {
@@ -81,6 +82,17 @@ describe("AdminLgpdPage", () => {
     expect(screen.getByRole("button", { name: /exportar/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /cancelar/i })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /purgar/i })).not.toBeInTheDocument()
+  })
+
+  it("mascara o e-mail na tabela por padrão (olhinho do admin)", async () => {
+    setMaskData(true) // default do painel: mascarado
+    mockService.usuarios.mockResolvedValueOnce([ativo])
+    renderPage()
+    await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
+    // e-mail aparece mascarado, nunca em texto puro
+    expect(screen.getByText("at•••@t•••.com")).toBeInTheDocument()
+    expect(screen.queryByText("ativo@t.com")).not.toBeInTheDocument()
+    setMaskData(false)
   })
 
   it("exportar baixa o JSON e notifica", async () => {

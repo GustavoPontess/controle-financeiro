@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Ban, RotateCcw, KeyRound, Search } from "lucide-react"
 import {
   PontesTable, PontesButton, PontesBadge, PontesDialog, PontesInput, PontesField,
-  PontesSkeleton, PontesEmptyState,
+  PontesSkeleton, PontesEmptyState, PontesMaskedValue, useMaskData, maskEmail,
   type PontesTableColumn,
 } from "@/components/pontes"
 import { useAuth } from "../../hooks/useAuth"
@@ -25,6 +25,7 @@ type Confirm = { tipo: "bloquear" | "reset"; alvo: UsuarioAdmin } | null
 export default function AdminUsuariosPage() {
   const { notify } = useOutletContext<OutletContextType>()
   const { currentUser } = useAuth()
+  const [mascarar] = useMaskData()
 
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -72,7 +73,7 @@ export default function AdminUsuariosPage() {
         notify({ open: true, message: `${alvo.nome} bloqueado`, severity: "success" })
       } else {
         await adminService.forcarReset(alvo.id)
-        notify({ open: true, message: `Link de redefinição enviado para ${alvo.email}`, severity: "success" })
+        notify({ open: true, message: `Link de redefinição enviado para ${mascarar ? maskEmail(alvo.email) : alvo.email}`, severity: "success" })
       }
     } catch {
       // rede de segurança global mostra o erro.
@@ -83,7 +84,7 @@ export default function AdminUsuariosPage() {
 
   const colunas: PontesTableColumn<UsuarioAdmin>[] = [
     { key: "nome", header: "Nome", render: (u) => <strong>{u.nome}</strong> },
-    { key: "email", header: "E-mail", render: (u) => u.email },
+    { key: "email", header: "E-mail", render: (u) => <PontesMaskedValue value={u.email} /> },
     { key: "status", header: "Situação", render: (u) => <PontesBadge tone={STATUS_TONE[u.status]} size="sm">{STATUS_LABEL[u.status]}</PontesBadge> },
     { key: "ultimoAcesso", header: "Último acesso", render: (u) => formatarData(u.ultimoAcessoEm) },
     {
@@ -145,7 +146,7 @@ export default function AdminUsuariosPage() {
         description={
           confirm?.tipo === "bloquear"
             ? `${confirm?.alvo.nome} não poderá mais acessar até ser reativado. Os dados são preservados.`
-            : `Vamos enviar um link de redefinição de senha para ${confirm?.alvo.email}.`
+            : `Vamos enviar um link de redefinição de senha para ${confirm ? (mascarar ? maskEmail(confirm.alvo.email) : confirm.alvo.email) : ""}.`
         }
         confirmLabel={confirm?.tipo === "bloquear" ? "Bloquear" : "Enviar link"}
         cancelLabel="Cancelar"

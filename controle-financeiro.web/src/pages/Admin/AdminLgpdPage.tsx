@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Download, Trash2, RotateCcw, Search, ShieldAlert } from "lucide-react"
 import {
   PontesTable, PontesButton, PontesBadge, PontesDialog, PontesModal, PontesInput, PontesField,
-  PontesSkeleton, PontesEmptyState,
+  PontesSkeleton, PontesEmptyState, PontesMaskedValue, useMaskData, maskEmail,
   type PontesTableColumn,
 } from "@/components/pontes"
 import { useAuth } from "../../hooks/useAuth"
@@ -28,6 +28,7 @@ function formatarData(iso?: string | null): string {
 export default function AdminLgpdPage() {
   const { notify } = useOutletContext<OutletContextType>()
   const { currentUser } = useAuth()
+  const [mascarar] = useMaskData()
 
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -65,7 +66,7 @@ export default function AdminLgpdPage() {
       a.download = `dados-${u.email}.json`
       a.click()
       URL.revokeObjectURL(url)
-      notify({ open: true, message: `Dados de ${u.email} exportados`, severity: "success" })
+      notify({ open: true, message: `Dados de ${mascarar ? maskEmail(u.email) : u.email} exportados`, severity: "success" })
     } catch {
       // rede de segurança global mostra o erro.
     } finally {
@@ -103,7 +104,7 @@ export default function AdminLgpdPage() {
     try {
       await adminService.purgar(alvo.id, alvo.email)
       setUsuarios((prev) => prev.filter((x) => x.id !== alvo.id))
-      notify({ open: true, message: `${alvo.email} purgado permanentemente`, severity: "success" })
+      notify({ open: true, message: `${mascarar ? maskEmail(alvo.email) : alvo.email} purgado permanentemente`, severity: "success" })
     } catch {
       // rede de segurança global mostra o erro (inclui a recusa por vínculo com terceiro).
     } finally {
@@ -113,7 +114,7 @@ export default function AdminLgpdPage() {
 
   const colunas: PontesTableColumn<UsuarioAdmin>[] = [
     { key: "nome", header: "Nome", render: (u) => <strong>{u.nome}</strong> },
-    { key: "email", header: "E-mail", render: (u) => u.email },
+    { key: "email", header: "E-mail", render: (u) => <PontesMaskedValue value={u.email} /> },
     { key: "status", header: "Situação", render: (u) => <PontesBadge tone={STATUS_TONE[u.status]} size="sm">{STATUS_LABEL[u.status]}</PontesBadge> },
     { key: "marcado", header: "Marcado em", render: (u) => formatarData(u.marcadoExclusaoEm) },
     {
@@ -210,14 +211,19 @@ export default function AdminLgpdPage() {
       >
         <div className={styles.purgaBody}>
           <p>
-            Ação <strong>irreversível</strong>. Todos os dados de <strong>{purgaAlvo?.email}</strong> serão
+            Ação <strong>irreversível</strong>. Todos os dados de{" "}
+            <strong>{purgaAlvo ? (mascarar ? maskEmail(purgaAlvo.email) : purgaAlvo.email) : ""}</strong> serão
             apagados de vez. Se a conta tiver vínculo com outro usuário (família, empréstimo, rateio,
             acerto), a purga é recusada para não quebrar dados de terceiros.
           </p>
-          <PontesField label="Digite o e-mail do usuário para confirmar" htmlFor="purga-email">
+          <PontesField
+            label="Digite o e-mail do usuário para confirmar"
+            htmlFor="purga-email"
+            helper={mascarar ? "Dados mascarados — use o olho na barra superior para revelar o e-mail." : undefined}
+          >
             <PontesInput
               id="purga-email"
-              placeholder={purgaAlvo?.email}
+              placeholder={purgaAlvo ? (mascarar ? maskEmail(purgaAlvo.email) : purgaAlvo.email) : ""}
               value={purgaEmail}
               onChange={(e) => setPurgaEmail(e.target.value)}
               autoComplete="off"

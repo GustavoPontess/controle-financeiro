@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import { Check, X } from "lucide-react"
 import {
   PontesTable, PontesButton, PontesDialog, PontesEmptyState, PontesSkeleton,
+  PontesMaskedValue, useMaskData, maskEmail,
   type PontesTableColumn,
 } from "@/components/pontes"
 import adminService from "@/services/adminService"
@@ -21,6 +22,7 @@ function formatarData(iso?: string | null): string {
 /** Fila de aprovação (item "Fila de aprovação" da lateral do admin). Acesso já garantido pelo AdminRoute. */
 export default function AdminPendentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
+  const [mascarar] = useMaskData()
 
   const [pendentes, setPendentes] = useState<UsuarioAdmin[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -67,7 +69,7 @@ export default function AdminPendentesPage() {
 
   const colunas: PontesTableColumn<UsuarioAdmin>[] = [
     { key: "nome", header: "Nome", render: (u) => <strong>{u.nome}</strong> },
-    { key: "email", header: "E-mail", render: (u) => u.email },
+    { key: "email", header: "E-mail", render: (u) => <PontesMaskedValue value={u.email} /> },
     { key: "criadoEm", header: "Cadastro", render: (u) => formatarData(u.criadoEm) },
     {
       key: "acoes",
@@ -106,7 +108,7 @@ export default function AdminPendentesPage() {
         open={!!recusarAlvo}
         tone="danger"
         title="Recusar cadastro?"
-        description={recusarAlvo ? `${recusarAlvo.nome} (${recusarAlvo.email}) não poderá acessar o sistema.` : ""}
+        description={recusarAlvo ? `${recusarAlvo.nome} (${mascarar ? maskEmail(recusarAlvo.email) : recusarAlvo.email}) não poderá acessar o sistema.` : ""}
         confirmLabel="Recusar"
         cancelLabel="Cancelar"
         onConfirm={confirmarRecusa}

@@ -10,6 +10,7 @@ import {
   PontesModal, PontesDialog,
   PontesTable, PontesTablePagination,
   PONTES_TABLE_PAGE_SIZE_DEFAULT, PONTES_TABLE_PAGE_SIZE_MAX, PONTES_TABLE_PAGE_SIZES,
+  PontesMaskedValue, PontesMaskToggle, useMaskData, setMaskData, maskEmail,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -377,5 +378,39 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
       />
     )
     expect(screen.getByText(/0 registros/)).toBeInTheDocument()
+  })
+
+  // ── Mascaramento de dado sensível (olhinho do admin) ───────────────────────
+  it("maskEmail mascara e-mail preservando pistas mínimas e trata não-e-mail/vazio", () => {
+    expect(maskEmail("gustavo@gmail.com")).toBe("gu•••@g•••.com")
+    expect(maskEmail("ab@x.io")).toBe("a•••@x•••.io") // local curto (≤2) revela só 1 char
+    expect(maskEmail("Fulano de Tal")).toBe("Fu•••") // sem @ → genérico
+    expect(maskEmail("")).toBe("—")
+    expect(maskEmail(null)).toBe("—")
+  })
+
+  it("PontesMaskedValue mascara por padrão e revela quando destravado", () => {
+    setMaskData(true)
+    const { rerender } = render(<PontesMaskedValue value="gustavo@gmail.com" />)
+    expect(screen.getByText("gu•••@g•••.com")).toBeInTheDocument()
+    expect(screen.queryByText("gustavo@gmail.com")).not.toBeInTheDocument()
+
+    setMaskData(false)
+    rerender(<PontesMaskedValue value="gustavo@gmail.com" />)
+    expect(screen.getByText("gustavo@gmail.com")).toBeInTheDocument()
+    setMaskData(true) // restaura o default pra não vazar estado entre testes
+  })
+
+  it("PontesMaskToggle alterna o estado global de mascarar", () => {
+    setMaskData(true)
+    function Probe() {
+      const [masked] = useMaskData()
+      return <span data-testid="estado">{masked ? "oculto" : "revelado"}</span>
+    }
+    render(<><PontesMaskToggle /><Probe /></>)
+    expect(screen.getByTestId("estado")).toHaveTextContent("oculto")
+    fireEvent.click(screen.getByRole("button", { name: /revelar dados/i }))
+    expect(screen.getByTestId("estado")).toHaveTextContent("revelado")
+    setMaskData(true)
   })
 })

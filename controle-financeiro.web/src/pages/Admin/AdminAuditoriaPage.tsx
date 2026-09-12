@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { PontesTable, PontesSkeleton, PontesEmptyState, type PontesTableColumn } from "@/components/pontes"
+import { PontesTable, PontesSkeleton, PontesEmptyState, PontesMaskedValue, type PontesTableColumn } from "@/components/pontes"
 import adminService from "@/services/adminService"
 import { ACAO_LABEL, type AdminAuditLog } from "@/types/Admin"
 import styles from "./AdminPage.module.css"
@@ -24,9 +24,9 @@ export default function AdminAuditoriaPage() {
 
   const colunas: PontesTableColumn<AdminAuditLog>[] = [
     { key: "quando", header: "Quando", render: (l) => formatarData(l.criadoEm) },
-    { key: "admin", header: "Admin", render: (l) => l.adminEmail },
+    { key: "admin", header: "Admin", render: (l) => <PontesMaskedValue value={l.adminEmail} /> },
     { key: "acao", header: "Ação", render: (l) => <strong>{ACAO_LABEL[l.acao] ?? "—"}</strong> },
-    { key: "alvo", header: "Alvo", render: (l) => l.alvoDescricao ?? "—" },
+    { key: "alvo", header: "Alvo", render: (l) => <PontesMaskedValue value={l.alvoDescricao} /> },
     { key: "detalhe", header: "Detalhe", render: (l) => l.detalhe ?? "—" },
   ]
 

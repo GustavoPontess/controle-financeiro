@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
-import { PontesThemeProvider } from "../../components/pontes"
+import { PontesThemeProvider, setMaskData } from "../../components/pontes"
 import AdminAuditoriaPage from "../../pages/Admin/AdminAuditoriaPage"
 import { AcaoAdmin } from "../../types/Admin"
 
@@ -16,7 +16,10 @@ function renderPage() {
 }
 
 describe("AdminAuditoriaPage", () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setMaskData(false) // revela e-mails: este teste checa e-mail real (mascaramento coberto no pontes.test)
+  })
 
   it("lista as ações com rótulo legível", async () => {
     mockService.auditoria.mockResolvedValueOnce([

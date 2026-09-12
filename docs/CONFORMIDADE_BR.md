@@ -81,6 +81,15 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   registro de operações simplificados (Art. 9º/13º).
 - **Direitos do titular:** cumprimento manual (e-mail) é suficiente nesta fase — endpoint de
   autoatendimento (exportar/apagar) fica pro lançamento público.
+- **Exibição de PII (e-mail) no painel admin — analisado 2026-09-12 (fonte primária):** exibir o
+  e-mail do usuário pro **admin autenticado** (fila de aprovação, gestão de usuários, LGPD, auditoria)
+  **é permitido**. Base: Art. 6º III (necessidade) — o e-mail é dado *pertinente e proporcional* à
+  finalidade (decidir aprovação, gerir conta, atender direito do titular), não excessivo; Art. 6º VII +
+  Art. 46 (segurança/controle de acesso) — exigem que só quem precisa veja, e o acesso já é restrito
+  (policy `IsAdmin` + chunk lazy só-admin, zero no bundle comum). A LGPD **não obriga** mascarar PII do
+  operador autorizado. **Mesmo assim implementamos mascaramento com "revelar" (olhinho)** como *privacy
+  by design* (Art. 6º VII/VIII) — reduz exposição em print/ombro; default mascarado, revelação sob
+  demanda. Não é exigência legal, é reforço.
 - **Eliminação de dados — prazo e retenção (pesquisado 2026-08-26, LGPD Art. 15-16 + ANPD FAQ 5.5):**
   - **Não há prazo fixo em dias na LGPD.** A lei manda eliminar os dados **após o término do
     tratamento** ("no âmbito e nos limites técnicos das atividades"), sem cravar número de dias.

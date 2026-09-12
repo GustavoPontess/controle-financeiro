@@ -9,8 +9,8 @@
  */
 import { useState, useEffect } from "react"
 import { Outlet, useLocation } from "react-router-dom"
-import { ClipboardCheck, BarChart3, Users, ScrollText, ShieldCheck } from "lucide-react"
-import { PontesToast } from "@/components/pontes"
+import { ClipboardCheck, BarChart3, Users, ScrollText, ShieldCheck, Eye, EyeOff } from "lucide-react"
+import { PontesToast, PontesIconButton, useMaskData } from "@/components/pontes"
 import Sidebar, { type SidebarNavGroup } from "../../components/Sidebar/Sidebar"
 import Navbar from "../../components/Navbar/Navbar"
 import AdminNotificationBell from "../../pages/Admin/AdminNotificationBell"
@@ -49,6 +49,9 @@ export default function AdminLayout() {
   const location = useLocation()
   const [open, setOpen] = useState(true)
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
+  // Mascaramento de PII no painel (default: mascarado). Olhinho revela sob demanda, igual ao "ocultar
+  // valores" do financeiro. Estado global persistido (useMaskData) — vale em todas as telas admin.
+  const [masked, toggleMask] = useMaskData()
 
   // Rede de segurança: erro de API (evento do interceptor do axios) vira toast — mesmo padrão do
   // DefaultLayout, pra nenhum erro do backend passar silencioso no painel admin.
@@ -82,6 +85,16 @@ export default function AdminLayout() {
           homeLabel="Painel Admin"
           homePath={ADMIN_HOME}
           notifications={<AdminNotificationBell />}
+          sensitiveToggle={
+            <PontesIconButton
+              variant="ghost" size={40}
+              onClick={toggleMask}
+              aria-label={masked ? "Revelar dados sensíveis" : "Ocultar dados sensíveis"}
+              title={masked ? "Revelar dados sensíveis" : "Ocultar dados sensíveis"}
+            >
+              {masked ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+            </PontesIconButton>
+          }
         />
 
         <main className={styles.main}>

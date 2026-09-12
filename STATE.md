@@ -15,6 +15,44 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+**(2026-09-12) Mascaramento de dado sensível no admin (olhinho de revelar) ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
+Pedido do Gustavo: mascarar PII no painel admin com olho de revelar, igual ao "ocultar valores" do
+financeiro. Antes disso, **pesquisa LGPD em fonte primária** (a pedido dele — eu tinha afirmado sem
+verificar): Art. 6º III (necessidade/minimização) + Art. 46 (segurança/controle de acesso) — **exibir
+e-mail pro admin autorizado é permitido** (dado necessário à finalidade + acesso restrito por IsAdmin);
+mascarar é *privacy by design* extra, não obrigação legal. Confirmado no código que o e-mail aparecia
+**nas duas telas** (Fila E Usuários), não só na Fila. Registrado em `docs/CONFORMIDADE_BR.md`.
+- **Primitivo novo na lib Pontes (reusável, espelha o `useHideBalance`):** `useMaskData` (store global
+  `useSyncExternalStore` + localStorage, **default MASCARADO**), `PontesMaskedValue` (mascara valor,
+  revela conforme store), `PontesMaskToggle` (olho) + util `maskEmail` (`gu•••@g•••.com`, trata
+  não-e-mail/vazio). Barrel + smoke tests. (Sem demo no /design-system — segue o precedente do
+  `SensitiveValue`, que também não tem.)
+- **Olho no `Navbar`:** slot `sensitiveToggle?` (mesmo padrão do slot `notifications`); `AdminLayout`
+  injeta o olho (PontesIconButton, visual igual ao do financeiro). Estado global → vale em todas as
+  telas admin, persiste no reload.
+- **Mascarado nas 4 telas admin:** Fila (e-mail + dialog recusar), Usuários (e-mail + dialog/toast
+  reset), LGPD (e-mail + modal de purga: display, placeholder e helper "use o olho pra revelar"; a
+  comparação de confirmação usa o e-mail REAL), Auditoria (admin + alvo). Nome fica visível (usabilidade
+  — o admin precisa reconhecer quem é; e-mail é o identificador sensível). Busca continua no dado real.
+- **Hardening mantido:** olho + `PontesMaskedValue` + `admin/notificacoes` só no chunk `AdminApp`,
+  zero no bundle comum (conferido no build). `tsc -b` 0 erros.
+- **Testes:** front **365/365** (+4: `maskEmail`, `PontesMaskedValue`, `PontesMaskToggle`, wiring na
+  LgpdPage). Testes das páginas admin que checam e-mail real forçam `setMaskData(false)` no beforeEach.
+  Lint limpo.
+- **Validado ao vivo:** Fila nasce com e-mail `te•••@e•••.com` + olho riscado → clico → e-mail
+  completo + olho aberto → clico → volta a mascarar. Toggle global.
+
+**⚠️ Fora do escopo desta rodada (catalogar se quiser):** a mensagem do sino de admin ("Novo cadastro
+— Fulano (email)...") ainda mostra o e-mail em texto; é transitória (atrás de clique). Dá pra tirar o
+e-mail da mensagem ou mascarar depois.
+
+**⚠️ Obs de build (ambiente, não código):** a pasta `controle-financeiro.web/dist` ficou com lock de
+handle no Windows (o dev server do PWA + cwd do shell). Build validado num outDir alternativo
+(`tsc -b` 0 + vite build OK); `dist` é gitignored, não bloqueia. Se um build de deploy reclamar de
+`EPERM` ao limpar `dist`, parar o preview e apagar a pasta antes.
+
+---
+
 **(2026-09-12) Notificações do admin — stream próprio, separado do financeiro ✅ (branch `feature/admin-beta-gate`). Validado ao vivo.**
 Bug reportado pelo Gustavo: o sino de notificações **financeiras** aparecia também no painel admin
 (o `NotificationBell` renderizava sem gate no `Navbar` compartilhado). Pedido dele: **não misturar** —

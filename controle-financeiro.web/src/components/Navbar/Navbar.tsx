@@ -27,6 +27,8 @@ type Props = {
    *  injeta o SEU próprio sino aqui — assim o stream do admin não se mistura com o do usuário, e o
    *  componente do sino admin não entra no bundle comum. */
   notifications?: React.ReactNode
+  /** Botão de mascarar/revelar dados sensíveis (olhinho). O painel admin injeta o seu aqui. */
+  sensitiveToggle?: React.ReactNode
 }
 
 const TITLES: Record<string, string> = {
@@ -54,7 +56,7 @@ function resolveTitle(path: string): string {
 export default function Navbar({
   toggleDrawer, sidebarOpen, showFinance = true,
   openTransaction, canCreateTransaction, openCommandPalette,
-  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications,
+  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -99,6 +101,9 @@ export default function Navbar({
             {hideBalance ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
           </PontesIconButton>
         )}
+
+        {/* Olho de mascarar dado sensível (injetado pelo painel admin). */}
+        {sensitiveToggle}
 
         {/* Sino: o painel admin injeta o seu (stream próprio). Sem injeção, usa o financeiro — e só
             quando showFinance (o sino do usuário puxa notificacaoService e navega pra finanças). */}
