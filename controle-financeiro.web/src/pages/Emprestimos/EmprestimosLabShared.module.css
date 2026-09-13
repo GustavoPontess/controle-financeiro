@@ -1,6 +1,6 @@
 /* Compartilhado pelas 3 páginas de bancada (lab-a/b/c) — estilo dos modais/formulários, idêntico
    ao padrão da tela real (EmprestimosPage.module.css), só renomeado pro contexto da bancada. */
-.formCol { display: flex; flex-direction: column; gap: 14px; }
+.formCol { display: flex; flex-direction: column; gap: 20px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .hintText { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
 

@@ -6,18 +6,45 @@
 .subtitle { font-size: 12px; color: var(--pontes-text-muted); margin-top: 2px; }
 .headerActions { display: flex; align-items: center; gap: 8px; }
 
-/* KPIs — variação compacta do PontesStatCard (referência do Gustavo), densidade de admin. */
-.statsRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
-.statCard {
-  display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px;
-  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+/* Hero — resumo (igual ao Lab C): "A receber" grande + A pagar/Vencido/Ativos ao lado. */
+.hero {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg);
+  background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
+  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between;
+  gap: 32px; flex-wrap: wrap;
 }
-.statLabel { font-size: 10px; color: var(--pontes-text-muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.statValue { font-size: 16px; font-weight: 800; color: var(--pontes-text); letter-spacing: -.01em; }
-.statValue[data-tone="success"] { color: var(--pontes-success); }
-.statValue[data-tone="danger"] { color: var(--pontes-danger); }
+.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+.heroMain { position: relative; min-width: 0; }
+.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+.heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+.heroStats { display: flex; align-items: stretch; gap: 18px; }
+.heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.heroStatValue[data-tone="up"] { color: #4ADE80; }
+.heroStatValue[data-tone="down"] { color: #FB7185; }
+.heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatDivider { width: 1px; background: rgba(255, 255, 255, 0.22); }
+
+@media (max-width: 720px) {
+  .hero { gap: 20px; }
+  .heroSide { align-items: flex-start; width: 100%; }
+  .heroStats { width: 100%; justify-content: space-between; }
+  .heroStat { align-items: flex-start; }
+}
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* Filtro de direção (Tudo / A receber / A pagar). */
+.segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
+.segBtn {
+  border: none; background: transparent; cursor: pointer; font-family: var(--pontes-font);
+  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 14px; border-radius: 8px;
+  transition: background-color .12s ease, color .12s ease;
+}
+.segBtn:hover { color: var(--pontes-text); }
+.segBtn[data-active="true"] { background: var(--pontes-surface); color: var(--pontes-primary); box-shadow: var(--pontes-shadow-sm); }
 
 .banner { display: flex; flex-direction: column; gap: 6px; }
 .bannerRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12.5px; }
@@ -33,17 +60,26 @@
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: var(--pontes-bg); }
 .table tbody tr[data-quitado="true"] { opacity: .55; }
+.table tbody tr[data-clickable] { cursor: pointer; }
 .tDesc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/* Caret de expandir parcelas ao clicar na linha (aponta pra baixo quando aberto). */
+.expandCaret { display: inline-block; vertical-align: middle; margin-right: 6px; color: var(--pontes-text-muted); transition: transform .15s ease; }
+.expandCaret[data-open="true"] { transform: rotate(90deg); }
 .tRight { text-align: right; }
 .tValor[data-tone="danger"] { color: var(--pontes-danger); }
 .tMuted { color: var(--pontes-text-muted); font-size: 12px; }
 .tBadges { display: flex; gap: 4px; flex-wrap: wrap; }
 .rowActions { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
 
-.parcelasWrap { display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; background: var(--pontes-bg); font-size: 12px; }
-.parcelaRow { display: flex; align-items: center; gap: 14px; }
-.parcelaRow span:nth-child(1) { color: var(--pontes-text-muted); min-width: 40px; }
-.parcelaRow span:nth-child(2) { flex: 1; color: var(--pontes-text); }
-.parcelaRow span:nth-child(3) { font-weight: 700; color: var(--pontes-text); }
+/* Tabelinha de detalhe (parcelas ou linha única do à vista) — igual à do Lab D. */
+.parcelasTable { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--pontes-bg); }
+.parcelasTable thead th {
+  text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--pontes-text-muted); font-weight: 700; padding: 6px 20px 6px 40px;
+}
+.parcelasTable thead th:not(:first-child) { padding-left: 16px; }
+.parcelasTable tbody td { padding: 5px 16px; color: var(--pontes-text); }
+.parcelasTable tbody td:first-child { padding-left: 40px; color: var(--pontes-text-muted); }
+.parcelasTable tbody tr:last-child td { padding-bottom: 8px; }
 
 .emptyWrap { padding: 32px 20px; font-size: 13px; color: var(--pontes-text-muted); text-align: center; }
