@@ -68,6 +68,8 @@ export type FormState = {
   pessoa: string
   valorTotal?: number
   tipo: string
+  /** Com quem é o empréstimo: pessoa física (P2P) ou um banco. Decide qual campo aparece. */
+  modalidade: "pessoa" | "banco"
   bancoId: string
   dataInicio: string
   dataVencimento: string
@@ -83,14 +85,14 @@ export type FormState = {
   percentualMultaAtraso?: number
 }
 const emptyForm: FormState = {
-  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1", bancoId: "",
+  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1", modalidade: "pessoa", bancoId: "",
   dataInicio: today(), dataVencimento: "", observacao: "",
   movimentacao: "", contaId: "", categoriaId: "", transacaoExistenteId: "",
   formaPagamento: "avista", quantidadeParcelas: undefined, primeiroVencimento: "",
   taxaJuroMensal: undefined, percentualMultaAtraso: undefined,
 }
 export type Errors = Partial<Record<
-  "descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId"
+  "descricao" | "pessoa" | "bancoId" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId"
   | "quantidadeParcelas" | "primeiroVencimento", string>>
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -286,8 +288,13 @@ export function useEmprestimosLogic() {
 
   const handleSalvar = async () => {
     const e: Errors = {}
+    const ehBanco = form.modalidade === "banco"
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
-    if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+    if (ehBanco) {
+      if (!form.bancoId) e.bancoId = "Escolha o banco"
+    } else if (!form.pessoa.trim()) {
+      e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+    }
     if (form.valorTotal == null) e.valorTotal = "Informe o valor"
     else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
     if (!form.movimentacao) e.movimentacao = "Escolha uma opção"
@@ -305,12 +312,15 @@ export function useEmprestimosLogic() {
     setLoading(true)
     try {
       const parcelado = form.formaPagamento === "parcelado"
+      // Bancário: a "pessoa" é o próprio banco (o backend exige Pessoa) — preenche com o nome do
+      // banco pra não pedir isso do usuário. P2P: a pessoa digitada.
+      const nomeBanco = bancos.find((b) => b.id === form.bancoId)?.nome ?? ""
       const payload: CriarEmprestimo = {
         descricao: form.descricao.trim(),
-        pessoa: form.pessoa.trim(),
+        pessoa: ehBanco ? nomeBanco : form.pessoa.trim(),
         valorTotal: form.valorTotal!,
         tipo: Number(form.tipo),
-        bancoId: form.bancoId || undefined,
+        bancoId: ehBanco ? form.bancoId : undefined,
         dataInicio: new Date(form.dataInicio).toISOString(),
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
@@ -339,7 +349,11 @@ export function useEmprestimosLogic() {
     const e: Errors = {}
     if (step === 0) {
       if (!form.descricao.trim()) e.descricao = "Informe a descrição"
-      if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+      if (form.modalidade === "banco") {
+        if (!form.bancoId) e.bancoId = "Escolha o banco"
+      } else if (!form.pessoa.trim()) {
+        e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+      }
       if (form.valorTotal == null) e.valorTotal = "Informe o valor"
       else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
     } else if (step === 1) {

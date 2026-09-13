@@ -80,21 +80,54 @@ export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogi
           <PontesStepper steps={novoStepperSteps} />
 
           {novoStep === 0 && (<>
-            <PontesField label="Tipo" required>
-              <PontesSelect value={l.form.tipo} onChange={(v) => l.setF("tipo", v)} options={TIPOS} />
+            <PontesField label="Com quem é o empréstimo?">
+              <div className={styles.segmented} role="tablist">
+                {([["pessoa", "Uma pessoa"], ["banco", "Um banco"]] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    role="tab"
+                    aria-selected={l.form.modalidade === val}
+                    data-active={l.form.modalidade === val ? "true" : undefined}
+                    className={styles.segBtn}
+                    onClick={() => {
+                      l.setF("modalidade", val)
+                      if (val === "banco") l.setF("tipo", "2") // banco ⇒ só "peguei emprestado" (regras.md §2.2)
+                      l.clearErr("pessoa"); l.clearErr("bancoId")
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </PontesField>
 
-            <PontesField label="Banco" helper="Opcional — deixe vazio se for entre pessoas">
-              <PontesSelect
-                value={l.form.bancoId}
-                onChange={(v) => l.setF("bancoId", v)}
-                placeholder="Sem banco (pessoa)"
-                options={[
-                  { value: "", label: "Sem banco (pessoa)" },
-                  ...l.bancos.map((b) => ({ value: b.id, label: b.nome })),
-                ]}
-              />
-            </PontesField>
+            {/* Tipo só faz sentido em P2P — com banco é sempre "peguei emprestado" (regras.md §2.2). */}
+            {l.form.modalidade === "pessoa" && (
+              <PontesField label="Tipo" required>
+                <PontesSelect value={l.form.tipo} onChange={(v) => l.setF("tipo", v)} options={TIPOS} />
+              </PontesField>
+            )}
+
+            {l.form.modalidade === "banco" ? (
+              <PontesField label="Banco" required error={l.errors.bancoId}>
+                <PontesSelect
+                  value={l.form.bancoId}
+                  onChange={(v) => { l.setF("bancoId", v); l.clearErr("bancoId") }}
+                  placeholder="Selecione o banco"
+                  options={l.bancos.map((b) => ({ value: b.id, label: b.nome }))}
+                />
+              </PontesField>
+            ) : (
+              <PontesField label={l.form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={l.errors.pessoa}>
+                <PontesInput
+                  value={l.form.pessoa}
+                  onChange={(e) => { l.setF("pessoa", e.target.value); l.clearErr("pessoa") }}
+                  invalid={!!l.errors.pessoa}
+                  placeholder="Nome da pessoa"
+                />
+              </PontesField>
+            )}
 
             <PontesField label="Descrição" required error={l.errors.descricao}>
               <PontesInput
@@ -102,15 +135,6 @@ export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogi
                 onChange={(e) => { l.setF("descricao", e.target.value); l.clearErr("descricao") }}
                 invalid={!!l.errors.descricao}
                 placeholder="Ex: Empréstimo para viagem"
-              />
-            </PontesField>
-
-            <PontesField label={l.form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={l.errors.pessoa}>
-              <PontesInput
-                value={l.form.pessoa}
-                onChange={(e) => { l.setF("pessoa", e.target.value); l.clearErr("pessoa") }}
-                invalid={!!l.errors.pessoa}
-                placeholder="Nome da pessoa"
               />
             </PontesField>
 

@@ -165,6 +165,11 @@ public class EmprestimoService(
             var bancoOk = await _context.Bancos.AnyAsync(b => b.Id == dto.BancoId.Value && b.Ativo);
             if (!bancoOk)
                 throw new ArgumentException("Banco inválido ou inativo.");
+
+            // Pessoa física não empresta pra banco (isso seria investimento, fora do escopo).
+            // Empréstimo bancário é sempre "peguei emprestado". Regra: regras.md §2.2.
+            if (dto.Tipo != TipoEmprestimo.PeguiEmprestado)
+                throw new ArgumentException("Empréstimo com banco só pode ser do tipo 'peguei emprestado'.");
         }
 
         var replay = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);

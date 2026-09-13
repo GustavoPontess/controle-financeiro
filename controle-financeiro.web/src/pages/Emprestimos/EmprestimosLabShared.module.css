@@ -12,6 +12,16 @@
 
 .gateGroup { display: flex; flex-direction: column; gap: 8px; }
 
+/* Segmented "Com quem é?" (pessoa/banco) — mesmo visual do filtro do Lab B. */
+.segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
+.segBtn {
+  border: none; background: transparent; cursor: pointer; font-family: var(--pontes-font);
+  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 14px; border-radius: 8px;
+  transition: background-color .12s ease, color .12s ease;
+}
+.segBtn:hover { color: var(--pontes-text); }
+.segBtn[data-active="true"] { background: var(--pontes-surface); color: var(--pontes-primary); box-shadow: var(--pontes-shadow-sm); }
+
 /* Lista de seleção (consolidar): cada item é um card com scroll interno quando são muitos. */
 .selectList { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding: 2px; margin: -2px; }
 .selectRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pontes-border); }

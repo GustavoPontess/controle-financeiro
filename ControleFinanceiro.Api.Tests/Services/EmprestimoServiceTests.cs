@@ -176,6 +176,7 @@ public class EmprestimoServiceTests
         var bancoId = SeedBanco(ctx, "Nubank");
         var dto = DtoValido();
         dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.PeguiEmprestado; // banco só aceita PeguiEmprestado
 
         var resultado = await svc.CriarAsync(dto, usuarioId);
 
@@ -183,6 +184,36 @@ public class EmprestimoServiceTests
         Assert.Equal("Nubank", resultado.BancoNome);
         Assert.Equal("#820AD1", resultado.BancoCor);
         Assert.Equal((int)OrigemEmprestimo.Manual, resultado.Origem);
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBanco_TipoEmprestei_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.Emprestei; // banco só aceita PeguiEmprestado
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        Assert.Contains("peguei emprestado", ex.Message);
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBanco_TipoPeguiEmprestado_CriaSucesso()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.PeguiEmprestado;
+
+        var resultado = await svc.CriarAsync(dto, Guid.NewGuid());
+
+        Assert.Equal(bancoId, resultado.BancoId);
+        Assert.Equal((int)TipoEmprestimo.PeguiEmprestado, resultado.Tipo);
     }
 
     [Fact]
