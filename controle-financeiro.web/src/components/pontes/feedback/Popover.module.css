@@ -5,7 +5,7 @@
 .wrap[data-fullwidth="true"] .trigger { display: block; width: 100%; }
 .menu {
   position: absolute; background: var(--pontes-surface); border: 1px solid var(--pontes-border);
-  border-radius: 10px; box-shadow: 0 12px 28px rgba(0, 0, 0, .15); padding: 6px;
+  border-radius: 12px; box-shadow: var(--pontes-shadow-lg); padding: 6px;
   font-family: var(--pontes-font); z-index: 100;
 }
 .menu[data-dir="down"] { top: calc(100% + 8px); }
@@ -15,9 +15,11 @@
 .divider { height: 1px; background: var(--pontes-border); margin: 4px 0; }
 .item {
   width: 100%; text-align: left; background: transparent; border: none;
-  display: flex; align-items: center; gap: 10px; padding: 8px 10px; font-size: 13px;
-  color: var(--pontes-text); cursor: pointer; border-radius: 6px; font-family: var(--pontes-font);
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: 14px;
+  color: var(--pontes-text); cursor: pointer; border-radius: 8px; font-family: var(--pontes-font);
   transition: background-color .12s ease;
 }
+/* Ícone do item alinhado e com a cor do texto (herda danger no item destrutivo). */
+.item > span:first-child { display: inline-flex; flex-shrink: 0; }
 .item:hover { background: var(--pontes-bg); }
 .item[data-danger="true"] { color: var(--pontes-danger); }

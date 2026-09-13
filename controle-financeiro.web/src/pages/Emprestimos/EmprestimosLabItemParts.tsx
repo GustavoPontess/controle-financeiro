@@ -1,7 +1,7 @@
 // Peças reaproveitadas pelas 3 páginas de bancada — mesmo cluster de badges de status e mesmos
 // ícones de ação da tela real, ligados no hook compartilhado (ações mexem no dado de verdade).
-import { AlertCircle, Receipt, Handshake, History, ChevronDown, Trash2, Link2, Check, X, Archive, ArchiveRestore } from "lucide-react"
-import { PontesBadge, PontesIconButton } from "@/components/pontes"
+import { AlertCircle, Receipt, Handshake, History, ChevronDown, Trash2, Link2, Check, X, Archive, ArchiveRestore, MoreVertical } from "lucide-react"
+import { PontesBadge, PontesIconButton, PontesPopover, type PontesPopoverItem } from "@/components/pontes"
 import { StatusVinculoEmprestimo, FormaPagamentoEmprestimo, type Emprestimo } from "../../types/Emprestimo"
 import type { EmprestimosLogic } from "./useEmprestimosLogic"
 
@@ -23,53 +23,62 @@ export function StatusBadges({ e }: { e: Emprestimo }) {
   )
 }
 
-/** Mesmos ícones de ação da tela real (Ver parcelas/Registrar/Quitar/Histórico/Vincular/Arquivar/Remover),
- * ligados no MESMO hook — clicar aqui mexe no dado de verdade, com as mesmas confirmações de sempre. */
+/** Mesmas ações da tela real (Ver parcelas/Registrar/Quitar/Histórico/Vincular/Arquivar/Remover),
+ * agora num menu kebab (⋮) — ligado no MESMO hook, com as mesmas confirmações de sempre. */
 export function ActionIcons({ e, size = 32, logic, className }: {
   e: Emprestimo; size?: 24 | 32; logic: EmprestimosLogic; className?: string
 }) {
   const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
+  const semVinculo = e.statusVinculo === StatusVinculoEmprestimo.SemVinculo || e.statusVinculo === StatusVinculoEmprestimo.Recusado
+
+  const items: PontesPopoverItem[] = [
+    isParcelado && {
+      key: "parcelas", icon: <ChevronDown size={16} />,
+      label: logic.expandedId === e.id ? "Recolher parcelas" : "Ver parcelas",
+      onClick: () => void logic.toggleExpand(e.id),
+    },
+    !e.quitado && {
+      key: "registrar", icon: <Receipt size={16} />, label: "Registrar pagamento",
+      onClick: () => logic.openSolicitar(e.id),
+    },
+    !e.quitado && e.souCredor && {
+      key: "quitar", icon: <Handshake size={16} />, label: "Marcar como quitado",
+      onClick: () => logic.setQuitarId(e.id),
+    },
+    e.statusVinculo === StatusVinculoEmprestimo.Vinculado && {
+      key: "historico", icon: <History size={16} />, label: "Ver histórico de pagamentos",
+      onClick: () => logic.openHistorico(e.id),
+    },
+    semVinculo && {
+      key: "vincular", icon: <Link2 size={16} />, label: "Vincular a uma pessoa",
+      onClick: () => logic.openVincular(e.id),
+    },
+    e.quitado && !e.arquivado && {
+      key: "arquivar", icon: <Archive size={16} />, label: "Arquivar",
+      onClick: () => void logic.handleArquivar(e.id),
+    },
+    e.quitado && e.arquivado && {
+      key: "desarquivar", icon: <ArchiveRestore size={16} />, label: "Desarquivar",
+      onClick: () => void logic.handleDesarquivar(e.id),
+    },
+    {
+      key: "remover", icon: <Trash2 size={16} />, label: "Remover", danger: true, divider: true,
+      onClick: () => logic.setDelId(e.id),
+    },
+  ].filter(Boolean) as PontesPopoverItem[]
+
   return (
     <div className={className}>
-      {isParcelado && (
-        <PontesIconButton size={size} variant="ghost" aria-label={logic.expandedId === e.id ? "Recolher parcelas" : "Ver parcelas"}
-          onClick={() => void logic.toggleExpand(e.id)}>
-          <ChevronDown size={14} />
-        </PontesIconButton>
-      )}
-      {!e.quitado && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Registrar pagamento" onClick={() => logic.openSolicitar(e.id)}>
-          <Receipt size={14} />
-        </PontesIconButton>
-      )}
-      {!e.quitado && e.souCredor && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Marcar como quitado" onClick={() => logic.setQuitarId(e.id)}>
-          <Handshake size={14} />
-        </PontesIconButton>
-      )}
-      {e.statusVinculo === StatusVinculoEmprestimo.Vinculado && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Ver histórico de pagamentos" onClick={() => logic.openHistorico(e.id)}>
-          <History size={14} />
-        </PontesIconButton>
-      )}
-      {(e.statusVinculo === StatusVinculoEmprestimo.SemVinculo || e.statusVinculo === StatusVinculoEmprestimo.Recusado) && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Vincular a uma pessoa" onClick={() => logic.openVincular(e.id)}>
-          <Link2 size={14} />
-        </PontesIconButton>
-      )}
-      {e.quitado && !e.arquivado && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Arquivar" onClick={() => void logic.handleArquivar(e.id)} disabled={logic.arquivandoId === e.id}>
-          <Archive size={14} />
-        </PontesIconButton>
-      )}
-      {e.quitado && e.arquivado && (
-        <PontesIconButton size={size} variant="ghost" aria-label="Desarquivar" onClick={() => void logic.handleDesarquivar(e.id)} disabled={logic.arquivandoId === e.id}>
-          <ArchiveRestore size={14} />
-        </PontesIconButton>
-      )}
-      <PontesIconButton size={size} variant="ghost" aria-label="Remover" onClick={() => logic.setDelId(e.id)}>
-        <Trash2 size={14} />
-      </PontesIconButton>
+      <PontesPopover
+        align="right"
+        minWidth={210}
+        trigger={
+          <PontesIconButton size={size} variant="ghost" aria-label="Ações">
+            <MoreVertical size={16} />
+          </PontesIconButton>
+        }
+        items={items}
+      />
     </div>
   )
 }
@@ -79,10 +88,10 @@ export function AcaoDupla({ onAceitar, onRecusar, disabled }: { onAceitar: () =>
   return (
     <div style={{ display: "flex", gap: 6 }}>
       <PontesIconButton size={32} variant="ghost" aria-label="Aceitar" disabled={disabled} onClick={onAceitar}>
-        <Check size={14} />
+        <Check size={16} />
       </PontesIconButton>
       <PontesIconButton size={32} variant="ghost" aria-label="Recusar" disabled={disabled} onClick={onRecusar}>
-        <X size={14} />
+        <X size={16} />
       </PontesIconButton>
     </div>
   )
