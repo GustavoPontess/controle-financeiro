@@ -15,7 +15,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-**(2026-09-12) Exclusão da própria conta (self-service, LGPD Art. 18) — BACKEND ✅ / FRONT pendente (branch `feature/admin-beta-gate`).**
+**(2026-09-12) Exclusão da própria conta (self-service, LGPD Art. 18) ✅ COMPLETO — back + front (branch `feature/admin-beta-gate`). Validado ao vivo E2E.**
 Precedido de pesquisa OWASP/NIST (workflow, 5 agentes) sobre métodos de auth — conclusões-chave:
 TOTP nunca substitui a senha (usá-lo só rebaixa AAL2→AAL1); e-mail é fator fraco (NIST veda como
 out-of-band), só fallback, **nunca** bypass de TOTP; "esqueci a senha mas tenho TOTP" = recuperação
@@ -36,9 +36,15 @@ out-of-band), só fallback, **nunca** bypass de TOTP; "esqueci a senha mas tenho
   - **⚠️ Achado no processo:** meu Write sobrescreveu `ContaService.cs` e `ContaServiceTests.cs`
     (bancários) sem querer — restaurados do HEAD (a contagem de testes denunciou). Já existe
     `ContaService` (contas bancárias); o novo é `MinhaContaService`.
-- **FRONT pendente (Commit 4):** em `/perfil` — "Excluir minha conta" (senha + 2º fator TOTP/PIN-email
-  + "baixar meus dados" antes) + tela de **reativação no login** (Reativar → depois exportar) + tipos
-  + service + testes. Precisa de verificação no browser.
+- **Front feito (Commit 4, front 369/369):** Settings → seção "Excluir minha conta" (zona de perigo:
+  baixar meus dados + fluxo senha → 2º fator TOTP/PIN-email → exclui/desloga/vai pro login). Login →
+  tela de **reativação** quando a conta está marcada (mostra dias restantes; reativa e loga de novo).
+  `minhaContaService` (front; distinto do `contaService` bancário — que meu Write sobrescreveu e foi
+  restaurado do HEAD). +4 testes. Validado ao vivo: E2E descartável (excluir 204→marcada→reativar) +
+  zona de perigo/fase de senha conferidas no browser.
+- **Próxima ação (a decidir):** admin + conformidade de beta bem robustos. Voltar às prioridades:
+  testes de integração HTTP do admin (P1) / conferência de caixa (P1) / upgrade .NET 10 (P1) /
+  Empréstimos. App no ar (:5293 + :5173).
 
 ---
 

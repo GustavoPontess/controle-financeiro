@@ -125,7 +125,7 @@ Escopo menor que o `1.0.0` (poucos testadores convidados). Trabalho de código l
 - 🟡 **P2 — CAPTCHA no login** (Cloudflare Turnstile, grátis) só depois de N tentativas, complementando o delay já implementado. Decisão (2026-08-19): não vale criar conta externa agora pro beta fechado. OWASP: MFA é defesa mais forte que CAPTCHA (MFA já feito).
 - 🟡 **P2 — reavaliar porte** (pequeno → DPO/RIPD?) se base/receita crescer — Resolução CD/ANPD nº 2/2022.
 - ⚪ **P3 — política de exclusão/acesso** pra pessoa citada num empréstimo sem conta no Pontes (zona cinzenta LGPD — `docs/CONFORMIDADE_BR.md`).
-- ⚪ **P3 — endpoint de autoatendimento (exportar/apagar dado)** — cumprimento manual por e-mail basta pro beta.
+- ✅ **Autoatendimento do titular (exportar/apagar dado) — feito 2026-09-12.** LGPD Art. 18: usuário exclui a própria conta (step-up senha + 2º fator TOTP/PIN-email → soft-delete 30d → reativar no login), exporta os próprios dados, tudo self-service. Precedido de pesquisa OWASP/NIST (`docs/SEGURANCA_BEST_PRACTICES.md` §0). Back 526/526 + front 369/369, validado ao vivo. _(Detalhe no histórico quando fechar a branch.)_
 - ⚪ **P3 — aviso inline no "Registrar pagamento"** sobre o nome da conta aparecer pro credor (2026-08-12).
 
 ---
