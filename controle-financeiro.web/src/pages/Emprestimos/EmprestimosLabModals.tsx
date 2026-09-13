@@ -84,6 +84,18 @@ export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogi
               <PontesSelect value={l.form.tipo} onChange={(v) => l.setF("tipo", v)} options={TIPOS} />
             </PontesField>
 
+            <PontesField label="Banco" helper="Opcional — deixe vazio se for entre pessoas">
+              <PontesSelect
+                value={l.form.bancoId}
+                onChange={(v) => l.setF("bancoId", v)}
+                placeholder="Sem banco (pessoa)"
+                options={[
+                  { value: "", label: "Sem banco (pessoa)" },
+                  ...l.bancos.map((b) => ({ value: b.id, label: b.nome })),
+                ]}
+              />
+            </PontesField>
+
             <PontesField label="Descrição" required error={l.errors.descricao}>
               <PontesInput
                 value={l.form.descricao}

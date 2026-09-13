@@ -24,9 +24,11 @@ import {
 } from "../../types/Emprestimo"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
+import { getBancos } from "../../services/bancoService"
 import { listTransactionsPage } from "../../services/transactionService"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
+import type { Banco } from "../../types/Banco"
 import type { Transaction } from "../../types/Transaction"
 
 export const errorMessage = (err: unknown, fallback: string): string =>
@@ -66,6 +68,7 @@ export type FormState = {
   pessoa: string
   valorTotal?: number
   tipo: string
+  bancoId: string
   dataInicio: string
   dataVencimento: string
   observacao: string
@@ -80,7 +83,7 @@ export type FormState = {
   percentualMultaAtraso?: number
 }
 const emptyForm: FormState = {
-  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
+  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1", bancoId: "",
   dataInicio: today(), dataVencimento: "", observacao: "",
   movimentacao: "", contaId: "", categoriaId: "", transacaoExistenteId: "",
   formaPagamento: "avista", quantidadeParcelas: undefined, primeiroVencimento: "",
@@ -125,6 +128,7 @@ export function useEmprestimosLogic() {
   const [idemKey, setIdemKey] = useState<string>("")
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
+  const [bancos, setBancos] = useState<Banco[]>([])
   const [despesasRecentes, setDespesasRecentes] = useState<Transaction[]>([])
   const [despesasLoading, setDespesasLoading] = useState(false)
   const [receitasRecentes, setReceitasRecentes] = useState<Transaction[]>([])
@@ -218,12 +222,13 @@ export function useEmprestimosLogic() {
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, candidatosResult, consolidacoesResult] = await Promise.all([
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, bancosResult, candidatosResult, consolidacoesResult] = await Promise.all([
         listEmprestimosPage(page, pageSize, mostrarArquivados, buscaDebounced, direcao === "todos" ? undefined : direcao),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
         getCategories(),
+        getBancos(),
         listCandidatosConsolidacao(),
         listConsolidacoes(),
       ])
@@ -233,6 +238,7 @@ export function useEmprestimosLogic() {
       setPendentes(pendentesResult)
       setContas(contasResult)
       setCategorias(categoriasResult)
+      setBancos(bancosResult)
       setCandidatosConsolidacao(candidatosResult)
       setConsolidacoes(consolidacoesResult)
     } catch {
@@ -304,6 +310,7 @@ export function useEmprestimosLogic() {
         pessoa: form.pessoa.trim(),
         valorTotal: form.valorTotal!,
         tipo: Number(form.tipo),
+        bancoId: form.bancoId || undefined,
         dataInicio: new Date(form.dataInicio).toISOString(),
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
@@ -726,7 +733,7 @@ export function useEmprestimosLogic() {
     busca, setBusca, direcao, setDirecao,
     dialogOpen, setDialogOpen, quitarId, setQuitarId, delId, setDelId,
     arquivandoId, mostrarArquivados, setMostrarArquivados, loading,
-    form, setF, errors, clearErr, contas, categorias,
+    form, setF, errors, clearErr, contas, categorias, bancos,
     despesasRecentes, despesasLoading, receitasRecentes, receitasLoading,
     openCreate, handleSalvar, validarPassoNovo, handleMovimentacaoChange,
     pendentes, respondendoId, handleAceitarConvite, handleRecusarConvite,

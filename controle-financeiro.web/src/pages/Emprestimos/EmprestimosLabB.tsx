@@ -6,9 +6,9 @@ import { formatMoney } from "@/utils/money"
 import { Plus, Layers, Ban, Search, ChevronRight, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import {
   PontesButton, PontesAlert, PontesCard, PontesInput, PontesBadge,
-  PontesTablePagination,
+  PontesTablePagination, PontesBankBadge,
 } from "@/components/pontes"
-import { FormaPagamentoEmprestimo, StatusParcelaEmprestimo } from "../../types/Emprestimo"
+import { FormaPagamentoEmprestimo, StatusParcelaEmprestimo, TipoEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
@@ -163,12 +163,19 @@ export default function EmprestimosLabB() {
                           />
                           {e.descricao}
                         </td>
-                        <td>{e.contraparteNome ?? e.pessoa}</td>
+                        <td>
+                          {e.bancoId ? (
+                            <span className={styles.pessoaBanco}>
+                              <PontesBankBadge name={e.bancoNome ?? "Banco"} logoUrl={e.bancoLogoUrl} cor={e.bancoCor} size={22} />
+                              {e.bancoNome}
+                            </span>
+                          ) : (e.contraparteNome ?? e.pessoa)}
+                        </td>
                         <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
                         <td>
                           <div className={styles.tBadges}>
-                            <PontesBadge size="sm" tone={e.souCredor ? "success" : "danger"}>
-                              {e.souCredor
+                            <PontesBadge size="sm" tone={e.tipo === TipoEmprestimo.Emprestei ? "success" : "danger"}>
+                              {e.tipo === TipoEmprestimo.Emprestei
                                 ? <><ArrowDownLeft size={11} strokeWidth={2.5} /> A receber</>
                                 : <><ArrowUpRight size={11} strokeWidth={2.5} /> A pagar</>}
                             </PontesBadge>
