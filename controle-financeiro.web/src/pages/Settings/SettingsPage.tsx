@@ -1,4 +1,4 @@
-import { Check } from "lucide-react"
+import { Check, Palette, Type } from "lucide-react"
 import { palettes, fonts, usePontesTheme } from "@/components/pontes"
 import MfaSection from "./MfaSection"
 import ExcluirContaSection from "./ExcluirContaSection"
@@ -25,7 +25,11 @@ export default function SettingsPage() {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>Paleta de cores</h2>
+          <p className={styles.eyebrow}>Aparência</p>
+          <h2 className={styles.sectionTitle}>
+            <Palette size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
+            Paleta de cores
+          </h2>
           <p className={styles.sectionHint}>15 combinações curadas. Clique pra trocar — vale em tudo na hora.</p>
         </div>
         <div className={styles.paletteGrid}>
@@ -55,9 +59,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.grouped}`}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>Fonte</h2>
+          <h2 className={styles.sectionTitle}>
+            <Type size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
+            Fonte
+          </h2>
           <p className={styles.sectionHint}>7 famílias. Wordmark "Pontes" mantém Plus Jakarta (marca fixa).</p>
         </div>
         <div className={styles.fontGrid}>

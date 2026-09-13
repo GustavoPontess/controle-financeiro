@@ -1,12 +1,20 @@
-.root { display: flex; flex-direction: column; gap: 28px; font-family: var(--pontes-font); }
+.root { display: flex; flex-direction: column; gap: 0; font-family: var(--pontes-font); }
 
-.header { display: flex; flex-direction: column; gap: 4px; }
+.header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 28px; }
 .title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
 .subtitle { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
 
+/* Ritmo: cada domínio separado por uma hairline. Primeira seção (MFA) e a Fonte
+   (agrupada à Aparência) não recebem divisória. */
+.root > section { padding-top: 26px; border-top: 1px solid var(--pontes-border); }
+.root > section:first-of-type { padding-top: 0; border-top: none; }
+.root > section.grouped { padding-top: 0; border-top: none; }
+
 .section { display: flex; flex-direction: column; gap: 14px; }
 .sectionHead { display: flex; flex-direction: column; gap: 2px; }
-.sectionTitle { font-size: 15px; font-weight: 700; color: var(--pontes-text); margin: 0; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); margin: 0 0 2px; }
+.sectionTitle { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--pontes-text); margin: 0; }
+.sectionIcon { color: var(--pontes-primary); flex-shrink: 0; }
 .sectionHint { font-size: 12px; color: var(--pontes-text-muted); margin: 0; }
 
 /* Grid de paletas — auto-fit cards */

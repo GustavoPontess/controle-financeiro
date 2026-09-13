@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Download, TriangleAlert } from "lucide-react"
+import { Download, TriangleAlert, UserCog } from "lucide-react"
 import { PontesButton, PontesField, PontesInput, PontesAlert } from "@/components/pontes"
 import { useAuth } from "../../hooks/useAuth"
 import contaService, { type MetodoExclusao } from "@/services/minhaContaService"
@@ -73,29 +73,43 @@ export default function ExcluirContaSection() {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>Excluir minha conta</h2>
-        <p className={styles.sectionHint}>
-          Encerra sua conta e agenda a remoção dos seus dados. Você tem <strong>30 dias</strong> para
-          reativar entrando de novo — depois disso a exclusão é permanente.
-        </p>
+        <h2 className={styles.sectionTitle}>
+          <UserCog size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
+          Conta e dados
+        </h2>
+        <p className={styles.sectionHint}>Baixe uma cópia dos seus dados ou encerre sua conta.</p>
       </div>
 
       {erro && <PontesAlert tone="error">{erro}</PontesAlert>}
 
+      {/* Exportar é um direito (LGPD Art. 18), não uma ação de perigo — fica calmo, fora da caixa vermelha. */}
+      <div className={styles.exportRow}>
+        <div className={styles.exportText}>
+          <p className={styles.exportTitle}>Baixar meus dados</p>
+          <p className={styles.exportDesc}>
+            Uma cópia em JSON: perfil, contas, cartões, transações, metas e orçamentos.
+          </p>
+        </div>
+        <PontesButton variant="outline" size="md" onClick={baixarDados} loading={baixando}
+          iconStart={<Download size={16} strokeWidth={2.5} />}>
+          Baixar meus dados
+        </PontesButton>
+      </div>
+
+      {/* Zona de perigo: exclusão irreversível. */}
       <div className={styles.danger}>
-        <TriangleAlert size={20} className={styles.icon} />
+        <div className={styles.dangerHead}>
+          <TriangleAlert size={18} className={styles.icon} aria-hidden="true" />
+          <span className={styles.eyebrow}>Zona de perigo</span>
+        </div>
         <div className={styles.body}>
           {fase === "inicio" && (
             <>
               <p className={styles.text}>
-                Antes de excluir, você pode <strong>baixar uma cópia dos seus dados</strong> (perfil,
-                contas, cartões, transações, metas e orçamentos).
+                Encerra sua conta e agenda a remoção dos seus dados. Você tem <strong>30 dias</strong> para
+                reativar entrando de novo — depois disso a exclusão é permanente.
               </p>
               <div className={styles.actions}>
-                <PontesButton variant="outline" size="md" onClick={baixarDados} loading={baixando}
-                  iconStart={<Download size={16} strokeWidth={2.5} />}>
-                  Baixar meus dados
-                </PontesButton>
                 <PontesButton variant="danger" size="md" onClick={() => { setErro(undefined); setFase("senha") }}>
                   Excluir minha conta
                 </PontesButton>

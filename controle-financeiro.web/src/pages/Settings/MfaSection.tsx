@@ -91,6 +91,7 @@ export default function MfaSection() {
     <section className={styles.section}>
       <div className={styles.sectionHead}>
         <h2 className={styles.sectionTitle}>
+          <ShieldCheck size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
           Verificação em duas etapas (MFA)
           {status?.ativo && <PontesBadge tone="success">Ativo</PontesBadge>}
         </h2>
@@ -107,9 +108,11 @@ export default function MfaSection() {
           <ShieldOff size={20} className={styles.iconMuted} />
           <div className={styles.cardBody}>
             <p className={styles.cardText}>MFA está desligado. Recomendamos ativar pra proteger sua conta.</p>
-            <PontesButton variant="primary" size="md" onClick={iniciar} loading={loading}>
-              Ativar MFA
-            </PontesButton>
+            <div className={styles.actions}>
+              <PontesButton variant="primary" size="md" onClick={iniciar} loading={loading}>
+                Ativar MFA
+              </PontesButton>
+            </div>
           </div>
         </div>
       )}
@@ -174,9 +177,11 @@ export default function MfaSection() {
             <p className={styles.cardText}>
               MFA está ativo{status?.backupCodesRestantes != null && <> · {status.backupCodesRestantes} códigos de recuperação restantes</>}.
             </p>
-            <PontesButton variant="danger" size="md" onClick={() => { setFase("desativar"); setErro(undefined) }}>
-              Desativar MFA
-            </PontesButton>
+            <div className={styles.actions}>
+              <PontesButton variant="danger" size="md" onClick={() => { setFase("desativar"); setErro(undefined) }}>
+                Desativar MFA
+              </PontesButton>
+            </div>
           </div>
         </div>
       )}
