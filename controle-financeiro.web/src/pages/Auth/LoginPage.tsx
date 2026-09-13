@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
+import contaService from '@/services/minhaContaService'
 import styles from './LoginPage.module.css'
 
 const DEV_SENHA = 'Dev@123456'
@@ -44,6 +45,10 @@ export default function LoginPage() {
   const [mfaCodigo, setMfaCodigo] = useState('')
   const [mfaErro, setMfaErro] = useState<string | undefined>()
 
+  // Conta na carência de exclusão — login retornou que a conta está marcada; oferece reativar.
+  const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
+  const [reativarErro, setReativarErro] = useState<string | undefined>()
+
   const validate = (): boolean => {
     const e: { email?: string; password?: string } = {}
     if (!email.trim()) e.email = 'Informe o e-mail'
@@ -64,9 +69,30 @@ export default function LoginPage() {
         setMfaChallenge(result.challengeToken) // troca pra tela do código
         return
       }
+      if (result.contaMarcadaExclusao) {
+        setMarcada({ dias: result.diasRestantes }) // troca pra tela de reativação
+        return
+      }
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleReativar = async () => {
+    setReativarErro(undefined)
+    setIsLoading(true)
+    try {
+      await contaService.reativarConta(email, password)
+      // Reativada → loga normalmente (respeita MFA se estiver ativo).
+      setMarcada(null)
+      const result = await login(email, password)
+      if (result.mfaRequerido) { setMfaChallenge(result.challengeToken); return }
+      navigate('/')
+    } catch (err) {
+      setReativarErro(err instanceof Error ? err.message : 'Não foi possível reativar a conta.')
     } finally {
       setIsLoading(false)
     }
@@ -163,9 +189,13 @@ export default function LoginPage() {
 
           {/* Header form */}
           <div className={styles.head}>
-            <h1 className={styles.title}>{mfaChallenge ? 'Verificação em duas etapas' : 'Bem-vindo de volta'}</h1>
+            <h1 className={styles.title}>
+              {marcada ? 'Reativar conta' : mfaChallenge ? 'Verificação em duas etapas' : 'Bem-vindo de volta'}
+            </h1>
             <p className={styles.sub}>
-              {mfaChallenge ? (
+              {marcada ? (
+                'Sua conta está marcada para exclusão. Você ainda pode reativá-la.'
+              ) : mfaChallenge ? (
                 'Digite o código do seu app autenticador (ou um código de recuperação).'
               ) : (
                 <>Não tem conta?{' '}
@@ -174,7 +204,25 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {mfaChallenge ? (
+          {marcada ? (
+            /* Conta na carência — oferece reativar */
+            <div className={styles.formBody}>
+              {reativarErro && <PontesAlert tone="error">{reativarErro}</PontesAlert>}
+              <PontesAlert tone="warning">
+                {marcada.dias != null
+                  ? `Faltam ${marcada.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
+                  : 'Reative para voltar a usar sua conta antes da remoção permanente.'}
+              </PontesAlert>
+              <PontesButton type="button" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}
+                onClick={handleReativar}>
+                Reativar conta
+              </PontesButton>
+              <PontesButton type="button" variant="ghost" size="md" fullWidth
+                onClick={() => { setMarcada(null); setReativarErro(undefined); setPassword('') }}>
+                Voltar
+              </PontesButton>
+            </div>
+          ) : mfaChallenge ? (
             /* Passo 2 — código MFA */
             <form onSubmit={handleMfaSubmit} className={styles.formBody} noValidate>
               <PontesField label="Código" htmlFor="mfa-codigo" required error={mfaErro}>

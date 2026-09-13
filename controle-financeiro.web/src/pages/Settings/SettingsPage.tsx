@@ -1,6 +1,7 @@
 import { Check } from "lucide-react"
 import { palettes, fonts, usePontesTheme } from "@/components/pontes"
 import MfaSection from "./MfaSection"
+import ExcluirContaSection from "./ExcluirContaSection"
 import styles from "./SettingsPage.module.css"
 
 /**
@@ -83,6 +84,8 @@ export default function SettingsPage() {
           })}
         </div>
       </section>
+
+      <ExcluirContaSection />
     </div>
   )
 }

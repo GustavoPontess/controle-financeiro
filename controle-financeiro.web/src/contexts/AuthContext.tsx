@@ -20,8 +20,12 @@ export interface StoredAccount {
   nome: string
 }
 
-/** Resultado do passo 1 do login: ou terminou, ou pede o 2º fator (MFA). */
-export type LoginResult = { mfaRequerido: false } | { mfaRequerido: true; challengeToken: string }
+/** Resultado do passo 1 do login: terminou, pede o 2º fator (MFA), ou a conta está na carência de
+ *  exclusão (senha certa, sem sessão — o front oferece reativar). */
+export type LoginResult =
+  | { mfaRequerido: false; contaMarcadaExclusao: false }
+  | { mfaRequerido: true; challengeToken: string }
+  | { mfaRequerido: false; contaMarcadaExclusao: true; diasRestantes: number | null }
 
 export interface AuthContextType {
   currentUser: Usuario | null
@@ -117,8 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.data?.mfaRequerido) {
         return { mfaRequerido: true, challengeToken: res.data.mfaChallengeToken }
       }
+      // Conta na carência de exclusão — senha certa, sem sessão; o front oferece reativar.
+      if (res.data?.contaMarcadaExclusao) {
+        return { mfaRequerido: false, contaMarcadaExclusao: true, diasRestantes: res.data.diasRestantes ?? null }
+      }
       await carregarSessao()
-      return { mfaRequerido: false }
+      return { mfaRequerido: false, contaMarcadaExclusao: false }
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao fazer login')
     }
