@@ -30,6 +30,18 @@ public class EmprestimoServiceTests
         return u.Id;
     }
 
+    private static Guid SeedBanco(AppDbContext ctx, string nome = "Nubank", bool ativo = true)
+    {
+        var b = new Banco
+        {
+            Id = Guid.NewGuid(), Nome = nome, Tipo = TipoBanco.Fintech, Ativo = ativo,
+            LogoUrl = "https://logo.test/nu.png", Cor = "#820AD1",
+        };
+        ctx.Bancos.Add(b);
+        ctx.SaveChanges();
+        return b.Id;
+    }
+
     private static (Guid contaId, Guid categoriaId) SeedContaECategoria(AppDbContext ctx, Guid usuarioId)
     {
         var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
@@ -153,6 +165,60 @@ public class EmprestimoServiceTests
         Assert.False(resultado.Quitado);
         Assert.True(resultado.SouCredor); // criador, Emprestei, sem vínculo ainda
         Assert.Equal(1, await ctx.Emprestimos.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBancoValido_VinculaBancoEOrigemManual()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+
+        var resultado = await svc.CriarAsync(dto, usuarioId);
+
+        Assert.Equal(bancoId, resultado.BancoId);
+        Assert.Equal("Nubank", resultado.BancoNome);
+        Assert.Equal("#820AD1", resultado.BancoCor);
+        Assert.Equal((int)OrigemEmprestimo.Manual, resultado.Origem);
+    }
+
+    [Fact]
+    public async Task CriarAsync_BancoInexistente_LancaException()
+    {
+        var svc = NewSvc(CreateContext());
+        var dto = DtoValido();
+        dto.BancoId = Guid.NewGuid();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        Assert.Contains("Banco", ex.Message);
+    }
+
+    [Fact]
+    public async Task CriarAsync_BancoInativo_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Banco Morto", ativo: false);
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task CriarAsync_SemBanco_OrigemManualEBancoNulo()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+
+        var resultado = await svc.CriarAsync(DtoValido(), Guid.NewGuid());
+
+        Assert.Null(resultado.BancoId);
+        Assert.Null(resultado.BancoNome);
+        Assert.Equal((int)OrigemEmprestimo.Manual, resultado.Origem);
     }
 
     [Fact]

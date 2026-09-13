@@ -159,11 +159,20 @@ public class EmprestimoService(
                 throw new ArgumentException("Informe o vencimento da primeira parcela.");
         }
 
+        // Banco é opcional; se informado tem que existir e estar ativo (catálogo global).
+        if (dto.BancoId.HasValue)
+        {
+            var bancoOk = await _context.Bancos.AnyAsync(b => b.Id == dto.BancoId.Value && b.Ativo);
+            if (!bancoOk)
+                throw new ArgumentException("Banco inválido ou inativo.");
+        }
+
         var replay = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);
         if (replay != null && replay.Tipo == FinancialEventType.EmprestimoCriado)
         {
             var anterior = await _context.Emprestimos
                 .Include(e => e.Parcelas)
+                .Include(e => e.Banco)
                 .FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
             if (anterior != null)
                 return await ToDtoAsync(anterior, usuarioId);
@@ -224,6 +233,8 @@ public class EmprestimoService(
             Quitado = false,
             Observacao = dto.Observacao,
             CriadoPor = usuarioId,
+            BancoId = dto.BancoId,
+            Origem = OrigemEmprestimo.Manual,
             TransacaoId = transacaoId,
             FormaPagamento = dto.FormaPagamento,
             TaxaJuroMensal = dto.TaxaJuroMensal,
@@ -1458,6 +1469,7 @@ public class EmprestimoService(
 
     private IQueryable<Emprestimo> VisivelPara(Guid usuarioId) => _context.Emprestimos
         .Include(e => e.Parcelas)
+        .Include(e => e.Banco)
         .Where(e => e.Ativo && (e.CriadoPor == usuarioId
             || (e.ContraparteUsuarioId == usuarioId && e.StatusVinculo == StatusVinculoEmprestimo.Vinculado)));
 
@@ -1585,6 +1597,9 @@ public class EmprestimoService(
     {
         var nomes = await ObterNomesAsync([e]);
         var agregados = await ObterAgregadosSolicitacaoAsync([e.Id]);
+        // Empréstimo recém-criado não vem por VisivelPara (sem Include do Banco) — carrega aqui.
+        if (e.BancoId.HasValue && e.Banco is null)
+            e.Banco = await _context.Bancos.FirstOrDefaultAsync(b => b.Id == e.BancoId.Value);
         return ToDto(e, usuarioId, nomes, agregados);
     }
 
@@ -1670,6 +1685,11 @@ public class EmprestimoService(
             Quitado = e.Quitado,
             Vencido = vencido,
             Observacao = e.Observacao,
+            BancoId = e.BancoId,
+            BancoNome = e.Banco?.Nome,
+            BancoLogoUrl = e.Banco?.LogoUrl,
+            BancoCor = e.Banco?.Cor,
+            Origem = (int)e.Origem,
             StatusVinculo = (int)e.StatusVinculo,
             ContraparteNome = contraparteNome,
             SouCredor = souCredor,

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.Infrastructure;
 
@@ -455,6 +456,20 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.TransacaoId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Emprestimo → Banco (SetNull: banco é catálogo global; se um dia sumir, o empréstimo não
+        // some junto, só perde o vínculo). Empréstimo bancário (Open Finance Fase 1).
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.Banco)
+            .WithMany()
+            .HasForeignKey(e => e.BancoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Default Manual no banco — sem isso o EF usaria o default do CLR (0, valor inválido do enum)
+        // na coluna das linhas já existentes.
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.Origem)
+            .HasDefaultValue(OrigemEmprestimo.Manual);
 
         // Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
         modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()

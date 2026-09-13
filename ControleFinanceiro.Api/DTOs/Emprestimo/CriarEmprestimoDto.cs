@@ -14,6 +14,11 @@ public class CriarEmprestimoDto
 
     public decimal ValorTotal { get; set; }
     public TipoEmprestimo Tipo { get; set; }
+
+    /// <summary>Opcional. Banco da instituição, quando é um empréstimo bancário (não P2P). Se
+    /// informado, tem que existir no catálogo e estar ativo. Ver
+    /// docs/features/emprestimo-bancario/pesquisa-openfinance.md.</summary>
+    public Guid? BancoId { get; set; }
     public DateTime DataInicio { get; set; }
     public DateTime? DataVencimento { get; set; }
 

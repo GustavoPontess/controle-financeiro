@@ -25,6 +25,15 @@ public class EmprestimoDto
     public bool Vencido { get; set; }
     public string? Observacao { get; set; }
 
+    // Banco vinculado (empréstimo bancário — Open Finance Fase 1). Null = P2P (pessoa física).
+    public Guid? BancoId { get; set; }
+    public string? BancoNome { get; set; }
+    public string? BancoLogoUrl { get; set; }
+    public string? BancoCor { get; set; }
+
+    /// <summary>Origem dos dados: 1 = Manual, 2 = OpenFinance (importado do banco).</summary>
+    public int Origem { get; set; }
+
     // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md)
     public int StatusVinculo { get; set; }
     public string? ContraparteNome { get; set; }
