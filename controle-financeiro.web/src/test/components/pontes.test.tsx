@@ -82,6 +82,22 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("Inválido")).toBeInTheDocument()
   })
 
+  it("PontesField mostra helper sozinho, e erro tem precedência sobre helper", () => {
+    const { rerender } = render(
+      <PontesField label="Juros" helper="Opcional, sobre o total">
+        <PontesInput />
+      </PontesField>
+    )
+    expect(screen.getByText("Opcional, sobre o total")).toBeInTheDocument()
+    rerender(
+      <PontesField label="Juros" helper="Opcional, sobre o total" error="Inválido">
+        <PontesInput />
+      </PontesField>
+    )
+    expect(screen.getByText("Inválido")).toBeInTheDocument()
+    expect(screen.queryByText("Opcional, sobre o total")).not.toBeInTheDocument()
+  })
+
   it("PontesMoneyInput só aceita números e formata como moeda BR", () => {
     function Wrapper() {
       const [v, setV] = useState("")
