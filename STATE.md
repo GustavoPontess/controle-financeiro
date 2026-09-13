@@ -15,6 +15,35 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Resumo da sessão 2026-09-12 (branch `feature/admin-beta-gate`, tudo LOCAL, sem push · verde: back 526/526, front 369/369)
+
+19 commits (`bd3f27a` → `107df08`). Ponto verde. Detalhe de cada item nos blocos abaixo.
+
+1. **Store Marco Civil** (`bd3f27a`) — `RegistroAcesso` (sem FK, sobrevive à purga LGPD) + captura de
+   IP no login + retenção 6m (job) + purga. Fecha a pendência P1 pré-produção do Módulo C.
+2. **Notificações do admin** (`67c0d75`) — stream próprio (`NotificacaoAdmin`), separado do financeiro
+   (bug reportado: sino financeiro vazava no admin). 3 fontes: novo cadastro / segurança / LGPD.
+3. **Mascaramento de PII no admin** (`7573046`) — olhinho de revelar (`useMaskData`, default mascarado);
+   e-mail mascarado nas 4 telas admin. Antes: pesquisa LGPD (Art. 6º III + 46) confirmando que exibir
+   ao admin é permitido; mascarar é privacy-by-design.
+4. **Checklist de segurança+qualidade por entrega** (`281e8e8`) — cravado em `docs/SEGURANCA_BEST_PRACTICES.md` §0
+   + regra 10 no `PROMPT_NOVA_SESSAO.md` (rodar sem pedir). Princípio: menor exposição de info.
+5. **Sino do admin sem e-mail na mensagem** (`266d09b`) + **subtítulos admin removidos** (`783144d`,`2d1f462`).
+6. **Pentest autorizado** (`78799ee`,`c0e34dc`) — 2 corrigidos (body>10MB→413 não 500; enumeração no
+   register fechada), 1 falso achado retirado (HSTS já existe, gated em HTTPS — testado com X-Forwarded-Proto),
+   resto passou (401/403/IDOR/CSRF/SQLi/JWT/CORS/Swagger dev-only). HSTS preload catalogado P3.
+7. **Notificação acionável se resolve** (`1d5db2e`) — `AlvoId` na notif; aprovar/recusar baixa a do cadastro.
+8. **Exclusão da própria conta self-service (LGPD Art. 18)** (`b01d097`→`ea6c602`) — o grande item, ver abaixo.
+
+**⚠️ Lição de processo (repetida 3×, catalogar):** meu `Write` sobrescreveu arquivos existentes de
+mesmo nome (`ContaService.cs`, `ContaServiceTests.cs`, `contaService.ts` — todos de contas bancárias).
+Restaurados do HEAD (contagem de testes/`tsc` denunciaram). **Antes de Write num arquivo novo, checar se
+o nome já existe** (grep/ls). O meu virou `MinhaContaService`/`minhaContaService`.
+
+**App no ar:** Postgres + API :5293 + front :5173 (dev).
+
+---
+
 **(2026-09-12) Exclusão da própria conta (self-service, LGPD Art. 18) ✅ COMPLETO — back + front (branch `feature/admin-beta-gate`). Validado ao vivo E2E.**
 Precedido de pesquisa OWASP/NIST (workflow, 5 agentes) sobre métodos de auth — conclusões-chave:
 TOTP nunca substitui a senha (usá-lo só rebaixa AAL2→AAL1); e-mail é fator fraco (NIST veda como
