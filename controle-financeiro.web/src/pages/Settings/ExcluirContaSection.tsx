@@ -77,7 +77,6 @@ export default function ExcluirContaSection() {
           <UserCog size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
           Conta e dados
         </h2>
-        <p className={styles.sectionHint}>Baixe uma cópia dos seus dados ou encerre sua conta.</p>
       </div>
 
       {erro && <PontesAlert tone="error">{erro}</PontesAlert>}
