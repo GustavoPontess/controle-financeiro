@@ -30,7 +30,6 @@ export default function SettingsPage() {
             <Palette size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
             Paleta de cores
           </h2>
-          <p className={styles.sectionHint}>15 combinações curadas. Clique pra trocar — vale em tudo na hora.</p>
         </div>
         <div className={styles.paletteGrid}>
           {palettes.map((p) => {
@@ -65,7 +64,6 @@ export default function SettingsPage() {
             <Type size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
             Fonte
           </h2>
-          <p className={styles.sectionHint}>7 famílias. Wordmark "Pontes" mantém Plus Jakarta (marca fixa).</p>
         </div>
         <div className={styles.fontGrid}>
           {fonts.map((f) => {
