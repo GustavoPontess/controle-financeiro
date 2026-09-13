@@ -15,7 +15,38 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Resumo da sessão 2026-09-12 (branch `feature/admin-beta-gate`, tudo LOCAL, sem push · verde: back 526/526, front 369/369)
+### 📌 Resumo da sessão 2026-09-13 (branch `feature/emprestimos-ui`, off-main · verde: back 528/528, front 369/369)
+
+**Admin do beta foi MERGEADO NA MAIN e PUSHADO** (PR #235, squash `9d697ae`). Login/gh: o app
+precisa do GitHub logado no próprio app (não só no terminal) pra o widget de PR/CI aparecer.
+
+**Empréstimos — retomada da UI (bancada Lab B virando a vencedora).** 4 commits (`2a5a4dd`→`e400828`)
+na `feature/emprestimos-ui` (a partir da main; NÃO pushado ainda):
+1. **Kebab (⋮)** nas ações da linha (`ActionIcons`), padrão DS.
+2. **PontesPopover em portal** (`position: fixed` em `document.body`) — some o clip/scrollbar em
+   tabela/card/sidebar; fullWidth acompanha a largura do trigger (conserta overflow do menu do usuário).
+3. **Lab B mais completo:** hero de resumo (igual Lab C), linha clicável abre tabelinha de detalhe
+   (parcelado = parcelas; **à vista = 1 linha** mostrando pago/atrasado), badge de direção (A receber ↙ /
+   A pagar ↗), pageSize mín 10, sem subtítulo/contador, respiro no form do modal.
+4. **Busca + direção SERVER-SIDE** — `EmprestimoService.ListarAsync` aceita `busca`/`direcao`
+   (paginação já filtrada, `total` correto, EF parametrizado, isolado por usuário; `.ToLower().Contains`
+   portável InMemory+Postgres) + controller + front (hook com debounce, remove filtro client-side). +2 testes.
+
+**⚠️ Incidente de branch (lição):** comecei os empréstimos na `feature/emprestimo-compartilhado`
+(ANTIGA, schema `bool Ativo`). A main já tinha as lab pages + `StatusUsuario` → API reiniciada quebrou
+login com `column u.Ativo does not exist`. Movi tudo pra `feature/emprestimos-ui` off-main via cherry-pick
+(base dos arquivos-alvo idêntica → limpo). A branch antiga fica órfã (apagar depois).
+
+**Próxima ação (a decidir):**
+- **Nit:** `pageSize` do Lab B aparece 25 em vez de 10 — conferir por que o `setPageSize(10)` não fixa.
+- **P1 (Gustavo pediu):** auditar TODAS as tabelas/listas do app e garantir busca/filtro/paginação
+  **server-side** (Transações, Admin, etc.) — ver ROADMAP. Regra registrada.
+- Decidir formalmente a bancada vencedora e portar pra `EmprestimosPage.tsx` (real) com teste.
+- App no ar: API :5293 (health 200) + front :5173.
+
+---
+
+### 📌 Resumo da sessão 2026-09-12 (branch `feature/admin-beta-gate`, MERGEADO na main via PR #235 · verde: back 526/526, front 369/369)
 
 19 commits (`bd3f27a` → `107df08`). Ponto verde. Detalhe de cada item nos blocos abaixo.
 
