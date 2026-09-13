@@ -326,6 +326,26 @@ export function useEmprestimosLogic() {
     } finally { setLoading(false) }
   }
 
+  // Validação por passo do wizard de novo empréstimo (mesmas regras do handleSalvar, fatiadas).
+  // Passo 0 = básico (descrição/pessoa/valor); 1 = condições (parcelas); 2 = movimentação.
+  const validarPassoNovo = (step: number): boolean => {
+    const e: Errors = {}
+    if (step === 0) {
+      if (!form.descricao.trim()) e.descricao = "Informe a descrição"
+      if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+      if (form.valorTotal == null) e.valorTotal = "Informe o valor"
+      else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
+    } else if (step === 1) {
+      if (form.formaPagamento === "parcelado") {
+        if (!form.quantidadeParcelas || form.quantidadeParcelas < 2 || form.quantidadeParcelas > 36)
+          e.quantidadeParcelas = "Entre 2 e 36 parcelas"
+        if (!form.primeiroVencimento) e.primeiroVencimento = "Informe o vencimento da 1ª parcela"
+      }
+    }
+    setErrors((p) => ({ ...p, ...e }))
+    return Object.keys(e).length === 0
+  }
+
   const openVincular = (id: string) => {
     setVincularFor(id); setVincularEmail(""); setVincularErr(undefined); setVincularLink(null)
   }
@@ -708,7 +728,7 @@ export function useEmprestimosLogic() {
     arquivandoId, mostrarArquivados, setMostrarArquivados, loading,
     form, setF, errors, clearErr, contas, categorias,
     despesasRecentes, despesasLoading, receitasRecentes, receitasLoading,
-    openCreate, handleSalvar, handleMovimentacaoChange,
+    openCreate, handleSalvar, validarPassoNovo, handleMovimentacaoChange,
     pendentes, respondendoId, handleAceitarConvite, handleRecusarConvite,
     vincularFor, setVincularFor, vincularEmail, setVincularEmail, vincularErr, setVincularErr,
     vincularLink, vincularLoading, openVincular, handleVincular, handleCopiarLink,

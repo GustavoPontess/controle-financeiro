@@ -1,11 +1,13 @@
 // Modais reais compartilhados pelas 3 páginas de bancada (lab-a/b/c) — mesmo conjunto e mesma
 // lógica da EmprestimosPage.tsx real, só extraído pra não repetir 600 linhas de JSX 3x.
+import { useEffect, useState } from "react"
 import {
   Copy, Link2, Check, X, RotateCcw,
 } from "lucide-react"
 import {
   PontesButton, PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput,
   PontesSelect, PontesTextarea, PontesBadge, PontesIconButton, PontesCheckbox,
+  PontesStepper, type PontesStep,
 } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import {
@@ -21,6 +23,31 @@ import styles from "./EmprestimosLabShared.module.css"
 export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogic }) {
   const l = logic
 
+  // Wizard de consolidação: 0 = Pessoa, 1 = Empréstimos, 2 = Detalhes.
+  // Com 1 candidato só, pula a escolha de pessoa (começa no passo 1).
+  const consolidarAberto = l.consolidarGrupo !== null
+  const multiPessoa = l.candidatosConsolidacao.length > 1
+  const stepInicial = multiPessoa ? 0 : 1
+  const [consolidarStep, setConsolidarStep] = useState(stepInicial)
+  useEffect(() => {
+    if (consolidarAberto) setConsolidarStep(multiPessoa ? 0 : 1)
+  }, [consolidarAberto]) // eslint-disable-line react-hooks/exhaustive-deps
+  const consolidarPassos = multiPessoa ? [0, 1, 2] : [1, 2]
+  const consolidarLabels = ["Pessoa", "Empréstimos", "Detalhes"]
+  const consolidarStepperSteps: PontesStep[] = consolidarPassos.map((s) => ({
+    label: consolidarLabels[s],
+    status: consolidarStep === s ? "current" : consolidarStep > s ? "done" : undefined,
+  }))
+
+  // Wizard de novo empréstimo: 0 = Básico, 1 = Condições, 2 = Movimentação.
+  const novoLabels = ["Básico", "Condições", "Movimentação"]
+  const [novoStep, setNovoStep] = useState(0)
+  useEffect(() => { if (l.dialogOpen) setNovoStep(0) }, [l.dialogOpen])
+  const novoStepperSteps: PontesStep[] = novoLabels.map((label, s) => ({
+    label,
+    status: novoStep === s ? "current" : novoStep > s ? "done" : undefined,
+  }))
+
   return (
     <>
       {/* Modal: Novo empréstimo */}
@@ -29,152 +56,176 @@ export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogi
         title="Novo empréstimo"
         onClose={() => l.setDialogOpen(false)}
         footer={<>
-          <PontesButton variant="outline" onClick={() => l.setDialogOpen(false)}>Cancelar</PontesButton>
-          <PontesButton onClick={l.handleSalvar} loading={l.loading} disabled={l.loading}>Criar empréstimo</PontesButton>
+          {novoStep > 0 ? (
+            <PontesButton variant="outline" onClick={() => setNovoStep((s) => s - 1)}>Voltar</PontesButton>
+          ) : (
+            <PontesButton variant="outline" onClick={() => l.setDialogOpen(false)}>Cancelar</PontesButton>
+          )}
+          {novoStep < 2 ? (
+            <PontesButton onClick={() => { if (l.validarPassoNovo(novoStep)) setNovoStep((s) => s + 1) }}>Continuar</PontesButton>
+          ) : (
+            <PontesButton onClick={l.handleSalvar} loading={l.loading} disabled={l.loading}>Criar empréstimo</PontesButton>
+          )}
         </>}
       >
-        <form noValidate onSubmit={(e) => { e.preventDefault(); void l.handleSalvar() }} className={styles.formCol}>
-          <PontesField label="Tipo" required>
-            <PontesSelect value={l.form.tipo} onChange={(v) => l.setF("tipo", v)} options={TIPOS} />
-          </PontesField>
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (novoStep === 2) void l.handleSalvar()
+            else if (l.validarPassoNovo(novoStep)) setNovoStep((s) => s + 1)
+          }}
+          className={styles.formCol}
+        >
+          <PontesStepper steps={novoStepperSteps} />
 
-          <PontesField label="Descrição" required error={l.errors.descricao}>
-            <PontesInput
-              value={l.form.descricao}
-              onChange={(e) => { l.setF("descricao", e.target.value); l.clearErr("descricao") }}
-              invalid={!!l.errors.descricao}
-              placeholder="Ex: Empréstimo para viagem"
-            />
-          </PontesField>
-
-          <PontesField label={l.form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={l.errors.pessoa}>
-            <PontesInput
-              value={l.form.pessoa}
-              onChange={(e) => { l.setF("pessoa", e.target.value); l.clearErr("pessoa") }}
-              invalid={!!l.errors.pessoa}
-              placeholder="Nome da pessoa"
-            />
-          </PontesField>
-
-          <PontesField label="Valor" required error={l.errors.valorTotal}>
-            <PontesInput
-              iconStart="R$"
-              value={fmtMoney(l.form.valorTotal)}
-              onChange={(e) => { l.setF("valorTotal", parseMoney(e.target.value)); l.clearErr("valorTotal") }}
-              invalid={!!l.errors.valorTotal}
-              inputMode="decimal"
-              placeholder="0,00"
-            />
-          </PontesField>
-
-          <div className={styles.grid2}>
-            <PontesField label="Data" required>
-              <PontesDateInput value={l.form.dataInicio} onChange={(v) => l.setF("dataInicio", v)} />
+          {novoStep === 0 && (<>
+            <PontesField label="Tipo" required>
+              <PontesSelect value={l.form.tipo} onChange={(v) => l.setF("tipo", v)} options={TIPOS} />
             </PontesField>
-            <PontesField label="Vencimento" helper="Opcional">
-              <PontesDateInput value={l.form.dataVencimento} onChange={(v) => l.setF("dataVencimento", v)} />
+
+            <PontesField label="Descrição" required error={l.errors.descricao}>
+              <PontesInput
+                value={l.form.descricao}
+                onChange={(e) => { l.setF("descricao", e.target.value); l.clearErr("descricao") }}
+                invalid={!!l.errors.descricao}
+                placeholder="Ex: Empréstimo para viagem"
+              />
             </PontesField>
-          </div>
 
-          <PontesField label="Observação" helper="Opcional">
-            <PontesTextarea value={l.form.observacao} onChange={(e) => l.setF("observacao", e.target.value)} rows={2} />
-          </PontesField>
+            <PontesField label={l.form.tipo === "1" ? "Para quem emprestei" : "De quem peguei"} required error={l.errors.pessoa}>
+              <PontesInput
+                value={l.form.pessoa}
+                onChange={(e) => { l.setF("pessoa", e.target.value); l.clearErr("pessoa") }}
+                invalid={!!l.errors.pessoa}
+                placeholder="Nome da pessoa"
+              />
+            </PontesField>
 
-          <PontesField label="Forma de pagamento">
-            <PontesSelect
-              value={l.form.formaPagamento}
-              onChange={(v) => l.setF("formaPagamento", v as EscolhaFormaPagamento)}
-              options={FORMAS_PAGAMENTO}
-            />
-          </PontesField>
+            <PontesField label="Valor" required error={l.errors.valorTotal}>
+              <PontesInput
+                iconStart="R$"
+                value={fmtMoney(l.form.valorTotal)}
+                onChange={(e) => { l.setF("valorTotal", parseMoney(e.target.value)); l.clearErr("valorTotal") }}
+                invalid={!!l.errors.valorTotal}
+                inputMode="decimal"
+                placeholder="0,00"
+              />
+            </PontesField>
+          </>)}
 
-          {l.form.formaPagamento === "parcelado" && (
+          {novoStep === 1 && (<>
             <div className={styles.grid2}>
-              <PontesField label="Quantidade de parcelas" required error={l.errors.quantidadeParcelas}>
-                <PontesInput
-                  value={l.form.quantidadeParcelas ?? ""}
-                  onChange={(e) => { l.setF("quantidadeParcelas", e.target.value ? Number(e.target.value) : undefined); l.clearErr("quantidadeParcelas") }}
-                  invalid={!!l.errors.quantidadeParcelas}
-                  inputMode="numeric"
-                  placeholder="Ex: 12"
-                />
+              <PontesField label="Data" required>
+                <PontesDateInput value={l.form.dataInicio} onChange={(v) => l.setF("dataInicio", v)} />
               </PontesField>
-              <PontesField label="Vencimento da 1ª parcela" required error={l.errors.primeiroVencimento}>
-                <PontesDateInput
-                  value={l.form.primeiroVencimento}
-                  onChange={(v) => { l.setF("primeiroVencimento", v); l.clearErr("primeiroVencimento") }}
-                />
+              <PontesField label="Vencimento" helper="Opcional">
+                <PontesDateInput value={l.form.dataVencimento} onChange={(v) => l.setF("dataVencimento", v)} />
               </PontesField>
             </div>
-          )}
 
-          <div className={styles.grid2}>
-            <PontesField label="Juros ao mês" helper={l.form.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
-              <PontesInput
-                value={l.form.taxaJuroMensal ?? ""}
-                onChange={(e) => l.setF("taxaJuroMensal", e.target.value ? Number(e.target.value) : undefined)}
-                inputMode="decimal" iconEnd="%" placeholder="0"
-              />
-            </PontesField>
-            <PontesField label="Multa por atraso" helper={l.form.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
-              <PontesInput
-                value={l.form.percentualMultaAtraso ?? ""}
-                onChange={(e) => l.setF("percentualMultaAtraso", e.target.value ? Number(e.target.value) : undefined)}
-                inputMode="decimal" iconEnd="%" placeholder="0"
-              />
-            </PontesField>
-          </div>
-
-          <PontesField label="Esse dinheiro já saiu/entrou de verdade?" required error={l.errors.movimentacao}>
-            <div className={styles.gateGroup}>
-              <GateOption name="movimentacao" value="nao" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
-                Ainda não — é só o combinado, nada pra lançar agora
-              </GateOption>
-              <GateOption name="movimentacao" value="existente" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
-                Já lancei isso em outro lugar — quero vincular
-              </GateOption>
-              <GateOption name="movimentacao" value="novo" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
-                Já movimentou e ainda não lancei — lançar agora
-              </GateOption>
-            </div>
-          </PontesField>
-
-          {l.form.movimentacao === "existente" && (
-            <PontesField label={l.form.tipo === "1" ? "Despesa já lançada" : "Receita já lançada"} required
-              error={l.errors.transacaoExistenteId} helper={l.despesasLoading || l.receitasLoading ? "Carregando…" : undefined}>
+            <PontesField label="Forma de pagamento">
               <PontesSelect
-                value={l.form.transacaoExistenteId}
-                onChange={(v) => { l.setF("transacaoExistenteId", v); l.clearErr("transacaoExistenteId") }}
-                options={(l.form.tipo === "1" ? l.despesasRecentes : l.receitasRecentes).map((t) => ({
-                  value: t.id, label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
-                }))}
-                placeholder="Selecione o lançamento"
+                value={l.form.formaPagamento}
+                onChange={(v) => l.setF("formaPagamento", v as EscolhaFormaPagamento)}
+                options={FORMAS_PAGAMENTO}
               />
             </PontesField>
-          )}
 
-          {l.form.movimentacao === "novo" && (
+            {l.form.formaPagamento === "parcelado" && (
+              <div className={styles.grid2}>
+                <PontesField label="Quantidade de parcelas" required error={l.errors.quantidadeParcelas}>
+                  <PontesInput
+                    value={l.form.quantidadeParcelas ?? ""}
+                    onChange={(e) => { l.setF("quantidadeParcelas", e.target.value ? Number(e.target.value) : undefined); l.clearErr("quantidadeParcelas") }}
+                    invalid={!!l.errors.quantidadeParcelas}
+                    inputMode="numeric"
+                    placeholder="Ex: 12"
+                  />
+                </PontesField>
+                <PontesField label="Vencimento da 1ª parcela" required error={l.errors.primeiroVencimento}>
+                  <PontesDateInput
+                    value={l.form.primeiroVencimento}
+                    onChange={(v) => { l.setF("primeiroVencimento", v); l.clearErr("primeiroVencimento") }}
+                  />
+                </PontesField>
+              </div>
+            )}
+
             <div className={styles.grid2}>
-              <PontesField label="Conta" required error={l.errors.contaId}>
-                <PontesSelect
-                  value={l.form.contaId}
-                  onChange={(v) => { l.setF("contaId", v); l.clearErr("contaId") }}
-                  options={l.contas.map((c) => ({ value: c.id, label: c.nome }))}
-                  placeholder="Selecione"
+              <PontesField label="Juros ao mês" helper={l.form.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
+                <PontesInput
+                  value={l.form.taxaJuroMensal ?? ""}
+                  onChange={(e) => l.setF("taxaJuroMensal", e.target.value ? Number(e.target.value) : undefined)}
+                  inputMode="decimal" iconEnd="%" placeholder="0"
                 />
               </PontesField>
-              <PontesField label="Categoria" required error={l.errors.categoriaId}>
-                <PontesSelect
-                  value={l.form.categoriaId}
-                  onChange={(v) => { l.setF("categoriaId", v); l.clearErr("categoriaId") }}
-                  options={l.categorias
-                    .filter((c) => c.finalidade === 3 || (l.form.tipo === "1" ? c.finalidade === 1 : c.finalidade === 2))
-                    .map((c) => ({ value: c.id, label: c.descricao }))}
-                  placeholder="Selecione"
+              <PontesField label="Multa por atraso" helper={l.form.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
+                <PontesInput
+                  value={l.form.percentualMultaAtraso ?? ""}
+                  onChange={(e) => l.setF("percentualMultaAtraso", e.target.value ? Number(e.target.value) : undefined)}
+                  inputMode="decimal" iconEnd="%" placeholder="0"
                 />
               </PontesField>
             </div>
-          )}
+
+            <PontesField label="Observação" helper="Opcional">
+              <PontesTextarea value={l.form.observacao} onChange={(e) => l.setF("observacao", e.target.value)} rows={2} />
+            </PontesField>
+          </>)}
+
+          {novoStep === 2 && (<>
+            <PontesField label="Esse dinheiro já saiu/entrou de verdade?" required error={l.errors.movimentacao}>
+              <div className={styles.gateGroup}>
+                <GateOption name="movimentacao" value="nao" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
+                  Ainda não — é só o combinado, nada pra lançar agora
+                </GateOption>
+                <GateOption name="movimentacao" value="existente" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
+                  Já lancei isso em outro lugar — quero vincular
+                </GateOption>
+                <GateOption name="movimentacao" value="novo" current={l.form.movimentacao} onChange={l.handleMovimentacaoChange} className={styles.gateOption}>
+                  Já movimentou e ainda não lancei — lançar agora
+                </GateOption>
+              </div>
+            </PontesField>
+
+            {l.form.movimentacao === "existente" && (
+              <PontesField label={l.form.tipo === "1" ? "Despesa já lançada" : "Receita já lançada"} required
+                error={l.errors.transacaoExistenteId} helper={l.despesasLoading || l.receitasLoading ? "Carregando…" : undefined}>
+                <PontesSelect
+                  value={l.form.transacaoExistenteId}
+                  onChange={(v) => { l.setF("transacaoExistenteId", v); l.clearErr("transacaoExistenteId") }}
+                  options={(l.form.tipo === "1" ? l.despesasRecentes : l.receitasRecentes).map((t) => ({
+                    value: t.id, label: `${formatDate(t.data)} — ${t.descricao} — ${formatMoney(t.valor)}`,
+                  }))}
+                  placeholder="Selecione o lançamento"
+                />
+              </PontesField>
+            )}
+
+            {l.form.movimentacao === "novo" && (
+              <div className={styles.grid2}>
+                <PontesField label="Conta" required error={l.errors.contaId}>
+                  <PontesSelect
+                    value={l.form.contaId}
+                    onChange={(v) => { l.setF("contaId", v); l.clearErr("contaId") }}
+                    options={l.contas.map((c) => ({ value: c.id, label: c.nome }))}
+                    placeholder="Selecione"
+                  />
+                </PontesField>
+                <PontesField label="Categoria" required error={l.errors.categoriaId}>
+                  <PontesSelect
+                    value={l.form.categoriaId}
+                    onChange={(v) => { l.setF("categoriaId", v); l.clearErr("categoriaId") }}
+                    options={l.categorias
+                      .filter((c) => c.finalidade === 3 || (l.form.tipo === "1" ? c.finalidade === 1 : c.finalidade === 2))
+                      .map((c) => ({ value: c.id, label: c.descricao }))}
+                    placeholder="Selecione"
+                  />
+                </PontesField>
+              </div>
+            )}
+          </>)}
         </form>
       </PontesModal>
 
@@ -448,94 +499,137 @@ export default function EmprestimosLabModals({ logic }: { logic: EmprestimosLogi
 
       {/* Modal: Propor consolidação */}
       <PontesModal
-        open={l.consolidarGrupo !== null}
+        open={consolidarAberto}
         title="Propor consolidação"
         onClose={() => l.setConsolidarGrupo(null)}
         footer={<>
-          <PontesButton variant="outline" onClick={() => l.setConsolidarGrupo(null)}>Cancelar</PontesButton>
-          <PontesButton onClick={l.handleProporConsolidacao} loading={l.consolidarLoading} disabled={l.consolidarLoading}>
-            Propor
-          </PontesButton>
+          {consolidarStep > stepInicial ? (
+            <PontesButton variant="outline" onClick={() => setConsolidarStep((s) => s - 1)}>Voltar</PontesButton>
+          ) : (
+            <PontesButton variant="outline" onClick={() => l.setConsolidarGrupo(null)}>Cancelar</PontesButton>
+          )}
+          {consolidarStep < 2 ? (
+            <PontesButton
+              onClick={() => setConsolidarStep((s) => s + 1)}
+              disabled={consolidarStep === 1 && l.consolidarSelecionados.size < 2}
+            >Continuar</PontesButton>
+          ) : (
+            <PontesButton onClick={l.handleProporConsolidacao} loading={l.consolidarLoading} disabled={l.consolidarLoading}>
+              Propor
+            </PontesButton>
+          )}
         </>}
       >
         {l.consolidarGrupo && (
-          <form noValidate onSubmit={(e) => { e.preventDefault(); void l.handleProporConsolidacao() }} className={styles.formCol}>
-            <p className={styles.hintText}>
-              Junta os empréstimos escolhidos num plano novo com {l.consolidarGrupo.contraparteNome} — os originais
-              só fecham depois que ela aceitar as novas condições.
-            </p>
+          <form noValidate onSubmit={(e) => { e.preventDefault(); if (consolidarStep === 2) void l.handleProporConsolidacao() }} className={styles.formCol}>
+            <PontesStepper steps={consolidarStepperSteps} />
 
-            <PontesField label="Quais empréstimos entram?" required error={l.consolidarErrors.selecao}>
-              <div className={styles.gateGroup}>
-                {l.consolidarGrupo.itens.map((i) => (
-                  <PontesCheckbox
-                    key={i.emprestimoOriginalId}
-                    checked={l.consolidarSelecionados.has(i.emprestimoOriginalId)}
-                    onChange={() => l.toggleConsolidarSelecionado(i.emprestimoOriginalId)}
-                    label={`${i.descricao} — ${formatMoney(i.valorRestanteSnapshot)}`}
-                  />
-                ))}
-              </div>
-            </PontesField>
 
-            <PontesField label="Descrição do plano novo" required error={l.consolidarErrors.descricao}>
-              <PontesInput
-                value={l.consolidarForm.descricao}
-                onChange={(e) => l.setConsolidarForm((f) => ({ ...f, descricao: e.target.value }))}
-                invalid={!!l.consolidarErrors.descricao}
-              />
-            </PontesField>
-
-            <PontesField label="Forma de pagamento">
-              <PontesSelect
-                value={l.consolidarForm.formaPagamento}
-                onChange={(v) => l.setConsolidarForm((f) => ({ ...f, formaPagamento: v as EscolhaFormaPagamento }))}
-                options={FORMAS_PAGAMENTO}
-              />
-            </PontesField>
-
-            {l.consolidarForm.formaPagamento === "parcelado" ? (
-              <div className={styles.grid2}>
-                <PontesField label="Quantidade de parcelas" required error={l.consolidarErrors.quantidadeParcelas}>
-                  <PontesInput
-                    value={l.consolidarForm.quantidadeParcelas ?? ""}
-                    onChange={(e) => l.setConsolidarForm((f) => ({ ...f, quantidadeParcelas: e.target.value ? Number(e.target.value) : undefined }))}
-                    invalid={!!l.consolidarErrors.quantidadeParcelas}
-                    inputMode="numeric" placeholder="Ex: 12"
-                  />
-                </PontesField>
-                <PontesField label="Vencimento da 1ª parcela" required error={l.consolidarErrors.primeiroVencimento}>
-                  <PontesDateInput
-                    value={l.consolidarForm.primeiroVencimento}
-                    onChange={(v) => l.setConsolidarForm((f) => ({ ...f, primeiroVencimento: v }))}
-                  />
-                </PontesField>
-              </div>
-            ) : (
-              <PontesField label="Vencimento" helper="Opcional">
-                <PontesDateInput
-                  value={l.consolidarForm.dataVencimento}
-                  onChange={(v) => l.setConsolidarForm((f) => ({ ...f, dataVencimento: v }))}
-                />
+            {consolidarStep === 0 && (
+              <PontesField label="Com quem é a consolidação?">
+                <div className={styles.selectList}>
+                  {l.candidatosConsolidacao.map((c) => {
+                    const sel = l.consolidarGrupo?.contraparteUsuarioId === c.contraparteUsuarioId
+                    return (
+                      <button
+                        type="button"
+                        key={c.contraparteUsuarioId}
+                        className={styles.pessoaRow}
+                        data-selected={sel || undefined}
+                        onClick={() => l.openConsolidar(c)}
+                      >
+                        <span className={styles.pessoaMain}>
+                          <span className={styles.pessoaNome}>{c.contraparteNome}</span>
+                          <span className={styles.pessoaSub}>{c.itens.length} empréstimos ativos</span>
+                        </span>
+                        <span className={styles.selectValor}>{formatMoney(c.itens.reduce((sum, i) => sum + i.valorRestanteSnapshot, 0))}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </PontesField>
             )}
 
-            <div className={styles.grid2}>
-              <PontesField label="Juros ao mês" helper={l.consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
+            {consolidarStep === 1 && (
+              <PontesField label="Quais empréstimos entram?" helper="Escolha 2 ou mais">
+                <div className={styles.selectList}>
+                  {l.consolidarGrupo.itens.map((i) => {
+                    const sel = l.consolidarSelecionados.has(i.emprestimoOriginalId)
+                    return (
+                      <div key={i.emprestimoOriginalId} className={styles.selectRow} data-selected={sel || undefined}>
+                        <PontesCheckbox
+                          checked={sel}
+                          onChange={() => l.toggleConsolidarSelecionado(i.emprestimoOriginalId)}
+                          label={i.descricao}
+                        />
+                        <span className={styles.selectValor}>{formatMoney(i.valorRestanteSnapshot)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </PontesField>
+            )}
+
+            {consolidarStep === 2 && (<>
+              <PontesField label="Descrição do plano novo" required error={l.consolidarErrors.descricao}>
                 <PontesInput
-                  value={l.consolidarForm.taxaJuroMensal ?? ""}
-                  onChange={(e) => l.setConsolidarForm((f) => ({ ...f, taxaJuroMensal: e.target.value ? Number(e.target.value) : undefined }))}
-                  inputMode="decimal" iconEnd="%" placeholder="0"
+                  value={l.consolidarForm.descricao}
+                  onChange={(e) => l.setConsolidarForm((f) => ({ ...f, descricao: e.target.value }))}
+                  invalid={!!l.consolidarErrors.descricao}
                 />
               </PontesField>
-              <PontesField label="Multa por atraso" helper={l.consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
-                <PontesInput
-                  value={l.consolidarForm.percentualMultaAtraso ?? ""}
-                  onChange={(e) => l.setConsolidarForm((f) => ({ ...f, percentualMultaAtraso: e.target.value ? Number(e.target.value) : undefined }))}
-                  inputMode="decimal" iconEnd="%" placeholder="0"
+
+              <PontesField label="Forma de pagamento">
+                <PontesSelect
+                  value={l.consolidarForm.formaPagamento}
+                  onChange={(v) => l.setConsolidarForm((f) => ({ ...f, formaPagamento: v as EscolhaFormaPagamento }))}
+                  options={FORMAS_PAGAMENTO}
                 />
               </PontesField>
-            </div>
+
+              {l.consolidarForm.formaPagamento === "parcelado" ? (
+                <div className={styles.grid2}>
+                  <PontesField label="Quantidade de parcelas" required error={l.consolidarErrors.quantidadeParcelas}>
+                    <PontesInput
+                      value={l.consolidarForm.quantidadeParcelas ?? ""}
+                      onChange={(e) => l.setConsolidarForm((f) => ({ ...f, quantidadeParcelas: e.target.value ? Number(e.target.value) : undefined }))}
+                      invalid={!!l.consolidarErrors.quantidadeParcelas}
+                      inputMode="numeric" placeholder="Ex: 12"
+                    />
+                  </PontesField>
+                  <PontesField label="Vencimento da 1ª parcela" required error={l.consolidarErrors.primeiroVencimento}>
+                    <PontesDateInput
+                      value={l.consolidarForm.primeiroVencimento}
+                      onChange={(v) => l.setConsolidarForm((f) => ({ ...f, primeiroVencimento: v }))}
+                    />
+                  </PontesField>
+                </div>
+              ) : (
+                <PontesField label="Vencimento" helper="Opcional">
+                  <PontesDateInput
+                    value={l.consolidarForm.dataVencimento}
+                    onChange={(v) => l.setConsolidarForm((f) => ({ ...f, dataVencimento: v }))}
+                  />
+                </PontesField>
+              )}
+
+              <div className={styles.grid2}>
+                <PontesField label="Juros ao mês" helper={l.consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre o valor da parcela" : "Opcional, sobre o total"}>
+                  <PontesInput
+                    value={l.consolidarForm.taxaJuroMensal ?? ""}
+                    onChange={(e) => l.setConsolidarForm((f) => ({ ...f, taxaJuroMensal: e.target.value ? Number(e.target.value) : undefined }))}
+                    inputMode="decimal" iconEnd="%" placeholder="0"
+                  />
+                </PontesField>
+                <PontesField label="Multa por atraso" helper={l.consolidarForm.formaPagamento === "parcelado" ? "Opcional, sobre a parcela" : "Opcional, sobre o total"}>
+                  <PontesInput
+                    value={l.consolidarForm.percentualMultaAtraso ?? ""}
+                    onChange={(e) => l.setConsolidarForm((f) => ({ ...f, percentualMultaAtraso: e.target.value ? Number(e.target.value) : undefined }))}
+                    inputMode="decimal" iconEnd="%" placeholder="0"
+                  />
+                </PontesField>
+              </div>
+            </>)}
           </form>
         )}
       </PontesModal>

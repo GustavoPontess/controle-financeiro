@@ -89,15 +89,9 @@ export default function EmprestimosLabB() {
         </PontesAlert>
       )}
 
-      {(l.candidatosConsolidacao.length > 0 || l.consolidacoesEnviadas.length > 0) && (
+      {l.consolidacoesEnviadas.length > 0 && (
         <PontesCard padding={12} radius={12}>
           <div className={styles.banner}>
-            {l.candidatosConsolidacao.map((g) => (
-              <div key={g.contraparteUsuarioId} className={styles.bannerRow}>
-                <span><strong>{g.contraparteNome}</strong> — {g.itens.length} empréstimos ativos, {formatMoney(g.itens.reduce((s, i) => s + i.valorRestanteSnapshot, 0))}</span>
-                <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />} onClick={() => l.openConsolidar(g)}>Consolidar</PontesButton>
-              </div>
-            ))}
             {l.consolidacoesEnviadas.map((c) => (
               <div key={c.id} className={styles.bannerRow}>
                 <span>Proposta pra <strong>{c.devedorNome}</strong> — {formatMoney(c.valorTotalProposto)}, aguardando resposta</span>
@@ -126,6 +120,12 @@ export default function EmprestimosLabB() {
             </button>
           ))}
         </div>
+        {l.candidatosConsolidacao.length > 0 && (
+          <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}
+            onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
+            Consolidar
+          </PontesButton>
+        )}
         <PontesInput
           value={l.busca}
           onChange={(e) => l.setBusca(e.target.value)}
