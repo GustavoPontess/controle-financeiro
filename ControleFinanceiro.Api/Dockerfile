@@ -10,10 +10,14 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
 WORKDIR /app
 
-# Usuário não-root (hardening pré-beta, 2026-08-18) — a imagem base roda como root por padrão.
+# Usuário não-root (hardening pré-beta, 2026-08-18).
+# Versões recentes da imagem base aspnet:8.0-alpine já trazem o usuário/grupo `app` embutido —
+# por isso a criação é idempotente (só cria se não existir), senão o build falha com exit 1.
 # /app/logs é onde o Serilog file sink escreve (Program.cs, path relativo "logs/log-.json");
 # /app/data era do SQLite (removido na #114), não usado por ninguém mais — não recriado.
-RUN addgroup -S app && adduser -S app -G app && mkdir -p /app/logs && chown -R app:app /app
+RUN (getent group app || addgroup -S app) \
+ && (id -u app >/dev/null 2>&1 || adduser -S app -G app) \
+ && mkdir -p /app/logs && chown -R app:app /app
 USER app
 
 COPY --from=build --chown=app:app /app/publish .
