@@ -2008,6 +2008,50 @@ public class EmprestimoServiceTests
         Assert.Equal(atrasada.ValorComMulta, segunda.First(p => p.Numero == 1).ValorComMulta);
     }
 
+    // ── Busca / direção server-side ──────────────────────────────────────────
+
+    [Fact]
+    public async Task ListarAsync_Busca_FiltraPorDescricaoOuPessoa()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "busca@x.com");
+        await svc.CriarAsync(NovoDto("Aluguel do mês", "Maria", 100, TipoEmprestimo.Emprestei), u);
+        await svc.CriarAsync(NovoDto("Compra do carro", "Pedro", 200, TipoEmprestimo.Emprestei), u);
+
+        var porDescricao = await svc.ListarAsync(u, busca: "alug");
+        Assert.Equal(1, porDescricao.Total);
+        Assert.Equal("Aluguel do mês", porDescricao.Items.Single().Descricao);
+
+        var porPessoa = await svc.ListarAsync(u, busca: "PEDRO"); // case-insensitive
+        Assert.Equal(1, porPessoa.Total);
+        Assert.Equal("Compra do carro", porPessoa.Items.Single().Descricao);
+
+        var semMatch = await svc.ListarAsync(u, busca: "zzz");
+        Assert.Equal(0, semMatch.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Direcao_SeparaReceberEPagar()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "direcao@x.com");
+        await svc.CriarAsync(NovoDto("Emprestei pra alguém", "A", 100, TipoEmprestimo.Emprestei), u);
+        await svc.CriarAsync(NovoDto("Peguei emprestado", "B", 50, TipoEmprestimo.PeguiEmprestado), u);
+
+        var receber = await svc.ListarAsync(u, direcao: "receber");
+        Assert.Equal(1, receber.Total);
+        Assert.Equal("Emprestei pra alguém", receber.Items.Single().Descricao);
+
+        var pagar = await svc.ListarAsync(u, direcao: "pagar");
+        Assert.Equal(1, pagar.Total);
+        Assert.Equal("Peguei emprestado", pagar.Items.Single().Descricao);
+
+        var tudo = await svc.ListarAsync(u);
+        Assert.Equal(2, tudo.Total);
+    }
+
     // ── helpers de teste ─────────────────────────────────────────────────────
 
     private static CriarEmprestimoDto NovoDto(string descricao, string pessoa, decimal valor, TipoEmprestimo tipo) => new()

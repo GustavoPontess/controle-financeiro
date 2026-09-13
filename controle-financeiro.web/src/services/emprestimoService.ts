@@ -13,8 +13,16 @@ export const listEmprestimosPage = async (
   page: number,
   pageSize: number,
   incluirArquivados = false,
+  busca?: string,
+  direcao?: "receber" | "pagar",
 ): Promise<PagedResult<Emprestimo>> => {
-  const res = await api.get("/emprestimos", { params: { page, pageSize, incluirArquivados } })
+  const res = await api.get("/emprestimos", {
+    params: {
+      page, pageSize, incluirArquivados,
+      busca: busca?.trim() || undefined,
+      direcao: direcao || undefined,
+    },
+  })
   return res.data
 }
 

@@ -104,6 +104,16 @@ export function useEmprestimosLogic() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(100)
+  // Busca + direção — filtro SERVER-SIDE (o backend pagina já filtrado).
+  const [busca, setBuscaState] = useState("")
+  const [buscaDebounced, setBuscaDebounced] = useState("")
+  const [direcao, setDirecaoState] = useState<"todos" | "receber" | "pagar">("todos")
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca), 300) // debounce: 1 request por pausa, não por tecla
+    return () => clearTimeout(t)
+  }, [busca])
+  const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
+  const setDirecao = (v: "todos" | "receber" | "pagar") => { setDirecaoState(v); setPage(1) }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [quitarId, setQuitarId] = useState<string | null>(null)
   const [delId, setDelId] = useState<string | null>(null)
@@ -209,7 +219,7 @@ export function useEmprestimosLogic() {
   const loadData = useCallback(async () => {
     try {
       const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, candidatosResult, consolidacoesResult] = await Promise.all([
-        listEmprestimosPage(page, pageSize, mostrarArquivados),
+        listEmprestimosPage(page, pageSize, mostrarArquivados, buscaDebounced, direcao === "todos" ? undefined : direcao),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
@@ -228,7 +238,7 @@ export function useEmprestimosLogic() {
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify, page, pageSize, mostrarArquivados])
+  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -693,6 +703,7 @@ export function useEmprestimosLogic() {
   return {
     currentUser, notify,
     emprestimos, stats, total, page, setPage, pageSize, setPageSize,
+    busca, setBusca, direcao, setDirecao,
     dialogOpen, setDialogOpen, quitarId, setQuitarId, delId, setDelId,
     arquivandoId, mostrarArquivados, setMostrarArquivados, loading,
     form, setF, errors, clearErr, contas, categorias,

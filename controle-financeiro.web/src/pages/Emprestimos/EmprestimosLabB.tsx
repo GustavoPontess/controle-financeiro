@@ -1,7 +1,7 @@
 // Bancada de teste — TELA INTEIRA, direção B: "Painel administrativo". Denso, tabela com colunas
 // fixas, busca funcional, paginação real (servidor). Ações reais (mesmo hook da tela principal).
 // Rota /emprestimos-lab-b, sem link no menu. Comparar com lab-a (extrato) e lab-c (agrupado).
-import React, { useEffect, useState } from "react"
+import React, { useEffect } from "react"
 import { formatMoney } from "@/utils/money"
 import { Plus, Layers, Ban, Search, ChevronRight, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import {
@@ -17,21 +17,12 @@ import styles from "./EmprestimosLabB.module.css"
 
 export default function EmprestimosLabB() {
   const l = useEmprestimosLogic()
-  const [busca, setBusca] = useState("")
-  const [direcao, setDirecao] = useState<"todos" | "receber" | "pagar">("todos")
 
   // Densidade de admin — página menor que o default da bancada, pra paginação real aparecer.
   useEffect(() => { l.setPageSize(10) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Nota: filtro client-side na página atual (mesmo padrão da busca da bancada).
-  // No port real vira param de servidor pra paginar já filtrado.
-  const visiveis = l.emprestimos.filter((e) => {
-    if (direcao === "receber" && !e.souCredor) return false
-    if (direcao === "pagar" && e.souCredor) return false
-    if (!busca.trim()) return true
-    const alvo = `${e.descricao} ${e.contraparteNome ?? e.pessoa}`.toLowerCase()
-    return alvo.includes(busca.trim().toLowerCase())
-  })
+  // Busca e direção são SERVER-SIDE (o hook manda os params, o backend pagina já filtrado).
+  const visiveis = l.emprestimos
 
   return (
     <div className={styles.root}>
@@ -126,18 +117,18 @@ export default function EmprestimosLabB() {
               key={val}
               type="button"
               role="tab"
-              aria-selected={direcao === val}
-              data-active={direcao === val ? "true" : undefined}
+              aria-selected={l.direcao === val}
+              data-active={l.direcao === val ? "true" : undefined}
               className={styles.segBtn}
-              onClick={() => setDirecao(val)}
+              onClick={() => l.setDirecao(val)}
             >
               {label}
             </button>
           ))}
         </div>
         <PontesInput
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          value={l.busca}
+          onChange={(e) => l.setBusca(e.target.value)}
           placeholder="Buscar por descrição ou pessoa…"
           iconStart={<Search size={14} />}
         />
