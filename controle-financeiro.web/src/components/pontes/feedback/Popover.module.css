@@ -3,15 +3,12 @@
 .wrap[data-fullwidth="true"] { display: block; width: 100%; }
 .trigger { cursor: pointer; display: inline-block; }
 .wrap[data-fullwidth="true"] .trigger { display: block; width: 100%; }
+/* Posição vem inline (portal em document.body, position: fixed) — ver Popover.tsx. */
 .menu {
-  position: absolute; background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
   border-radius: 12px; box-shadow: var(--pontes-shadow-lg); padding: 6px;
-  font-family: var(--pontes-font); z-index: 100;
+  font-family: var(--pontes-font); z-index: 1000; box-sizing: border-box;
 }
-.menu[data-dir="down"] { top: calc(100% + 8px); }
-.menu[data-dir="up"] { bottom: calc(100% + 8px); }
-.menu[data-align="left"] { left: 0; }
-.menu[data-align="right"] { right: 0; }
 .divider { height: 1px; background: var(--pontes-border); margin: 4px 0; }
 .item {
   width: 100%; text-align: left; background: transparent; border: none;
