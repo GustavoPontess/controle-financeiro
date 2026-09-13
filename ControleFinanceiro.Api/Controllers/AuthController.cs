@@ -14,14 +14,51 @@ namespace ControleFinanceiro.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly MfaService _mfaService;
     private readonly JwtTokenProvider _tokenProvider;
     private readonly CsrfTokenService _csrfTokenService;
+    private readonly RegistroAcessoService _registroAcesso;
+    private readonly MinhaContaService _contaService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AuthService authService, JwtTokenProvider tokenProvider, CsrfTokenService csrfTokenService)
+    public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider,
+        CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, MinhaContaService contaService,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
+        _mfaService = mfaService;
         _tokenProvider = tokenProvider;
         _csrfTokenService = csrfTokenService;
+        _registroAcesso = registroAcesso;
+        _contaService = contaService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Registra o acesso à aplicação para retenção Marco Civil (Art. 15). Best-effort: uma falha ao
+    /// gravar o log NÃO derruba o login do usuário (só loga o erro). O IP vem de
+    /// <c>Connection.RemoteIpAddress</c>, que já reflete o X-Forwarded-For real atrás do proxy
+    /// (ForwardedHeaders configurado no Program.cs).
+    /// </summary>
+    private async Task RegistrarAcessoAsync(Guid usuarioId, string email)
+    {
+        try
+        {
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido";
+            await _registroAcesso.RegistrarLoginAsync(usuarioId, email, ip);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao gravar registro de acesso (Marco Civil) do usuário {UsuarioId}.", usuarioId);
+        }
+    }
+
+    private Guid ExigirUsuarioId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (claim == null || !Guid.TryParse(claim.Value, out var usuarioId))
+            throw new UnauthorizedAccessException("Usuário não identificado");
+        return usuarioId;
     }
 
     private void SetAuthCookies(string jwtToken, string refreshToken)
@@ -61,32 +98,66 @@ public class AuthController : ControllerBase
             Response.Cookies.Delete(name);
     }
 
+    /// <summary>
+    /// Cadastro no beta. A conta nasce <c>AguardandoAprovacao</c> e NÃO ganha sessão — nenhum cookie
+    /// é setado. O usuário só loga depois que o admin aprova (gate do beta, spec
+    /// `docs/features/admin/spec.md` §3). Responde 201 com a mensagem de "aguardando aprovação".
+    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth-register")]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
+    public async Task<ActionResult<RegisterResponseDto>> Register([FromBody] RegisterDto dto)
     {
         var result = await _authService.RegisterAsync(dto);
-        SetAuthCookies(result.Token, result.RefreshToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
 
-        return CreatedAtAction(nameof(GetMe), null, new AuthResponseDto
+    /// <summary>
+    /// Login. Se o usuário tem MFA ativo, NÃO retorna sessão — retorna
+    /// <c>{ mfaRequerido: true, mfaChallengeToken }</c> e o cliente precisa chamar
+    /// <c>POST /mfa/verificar-login</c> com o código do 2º fator pra completar.
+    /// </summary>
+    [HttpPost("login")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    {
+        var result = await _authService.LoginAsync(dto);
+
+        if (result.MfaRequerido)
+            return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
+
+        // Conta na carência de exclusão: senha certa, mas sem sessão — o front oferece reativar.
+        if (result.ContaMarcadaExclusao)
+            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
+
+        var auth = result.Auth!;
+        SetAuthCookies(auth.Token, auth.RefreshToken);
+
+        // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
+        await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
+
+        // Return user info without tokens (tokens are now in httpOnly cookies)
+        return Ok(new AuthResponseDto
         {
-            UsuarioId = result.UsuarioId,
-            Email = result.Email,
-            Nome = result.Nome,
+            UsuarioId = auth.UsuarioId,
+            Email = auth.Email,
+            Nome = auth.Nome,
             Token = string.Empty,
             RefreshToken = string.Empty,
-            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+            RefreshTokenExpiresAt = auth.RefreshTokenExpiresAt
         });
     }
 
-    [HttpPost("login")]
-    [EnableRateLimiting("auth-login")]
-    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
+    /// <summary>Passo 2 do login com MFA — código TOTP ou backup code + o challenge do passo 1.</summary>
+    [HttpPost("mfa/verificar-login")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
-        var result = await _authService.LoginAsync(dto);
+        var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
         SetAuthCookies(result.Token, result.RefreshToken);
 
-        // Return user info without tokens (tokens are now in httpOnly cookies)
+        // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
+        await RegistrarAcessoAsync(result.UsuarioId, result.Email);
+
         return Ok(new AuthResponseDto
         {
             UsuarioId = result.UsuarioId,
@@ -102,11 +173,7 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<UsuarioDto>> GetMe()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            throw new UnauthorizedAccessException("Usuário não identificado");
-
-        var usuario = await _authService.GetUsuarioAsync(usuarioId);
+        var usuario = await _authService.GetUsuarioAsync(ExigirUsuarioId());
         if (usuario == null) return NotFound();
 
         return Ok(usuario);
@@ -116,13 +183,76 @@ public class AuthController : ControllerBase
     [HttpPut("profile")]
     public async Task<ActionResult<UsuarioDto>> UpdateProfile([FromBody] UpdateProfileDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
-            throw new UnauthorizedAccessException("Usuário não identificado");
-
-        var result = await _authService.UpdateProfileAsync(usuarioId, dto.Nome, dto.DataNascimento);
+        var result = await _authService.UpdateProfileAsync(ExigirUsuarioId(), dto.Nome, dto.DataNascimento);
         return Ok(result);
     }
+
+    // ── MFA (opt-in, nunca obrigatório) ──────────────────────────────────────────
+
+    [Authorize]
+    [HttpGet("mfa/status")]
+    public async Task<ActionResult<MfaStatusDto>> MfaStatus()
+        => Ok(await _mfaService.ObterStatusAsync(ExigirUsuarioId()));
+
+    [Authorize]
+    [HttpPost("mfa/iniciar-ativacao")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<MfaIniciarAtivacaoResponseDto>> MfaIniciarAtivacao()
+        => Ok(await _mfaService.IniciarAtivacaoAsync(ExigirUsuarioId()));
+
+    [Authorize]
+    [HttpPost("mfa/confirmar-ativacao")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<ActionResult<MfaAtivacaoConfirmadaResponseDto>> MfaConfirmarAtivacao([FromBody] MfaConfirmarAtivacaoDto dto)
+    {
+        var backupCodes = await _mfaService.ConfirmarAtivacaoAsync(ExigirUsuarioId(), dto.Codigo);
+        return Ok(new MfaAtivacaoConfirmadaResponseDto { BackupCodes = backupCodes });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/desativar")]
+    [EnableRateLimiting("auth-mfa")]
+    public async Task<IActionResult> MfaDesativar([FromBody] MfaDesativarDto dto)
+    {
+        await _mfaService.DesativarAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
+        return NoContent();
+    }
+
+    // ── Autoatendimento: excluir a própria conta (LGPD Art. 18) ──────────────────
+    // Ação destrutiva → step-up: senha atual + 2º fator (TOTP se ativo; senão PIN por e-mail).
+    // Soft-delete + carência de 30 dias (reversível pela reativação no login).
+
+    /// <summary>Passo 1 — confirma a senha atual e decide o 2º fator; sem MFA, dispara o PIN por e-mail.</summary>
+    [Authorize]
+    [HttpPost("conta/excluir/enviar-codigo")]
+    public async Task<ActionResult<Metodo2FaResponse>> EnviarCodigoExclusao([FromBody] IniciarExclusaoContaRequest dto)
+        => Ok(await _contaService.IniciarExclusaoAsync(ExigirUsuarioId(), dto.SenhaAtual));
+
+    /// <summary>Passo 2 — valida senha + 2º fator, marca a conta pra exclusão (carência 30d) e encerra a sessão.</summary>
+    [Authorize]
+    [HttpPost("conta/excluir")]
+    public async Task<IActionResult> ExcluirMinhaConta([FromBody] ExcluirContaRequest dto)
+    {
+        await _contaService.ExcluirMinhaContaAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
+        ClearAuthCookies();
+        return NoContent();
+    }
+
+    /// <summary>Reativa a própria conta na carência (público: o usuário não está logado). Depois, loga
+    /// normalmente. Rate-limited + isento de CSRF (sem sessão), como o login.</summary>
+    [HttpPost("conta/reativar")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> ReativarConta([FromBody] ReativarContaRequest dto)
+    {
+        await _contaService.ReativarPorCredenciaisAsync(dto.Email, dto.Senha);
+        return Ok(new { mensagem = "Conta reativada. Faça login para continuar." });
+    }
+
+    /// <summary>Baixa os próprios dados (LGPD acesso/portabilidade). Auditado como ação do titular.</summary>
+    [Authorize]
+    [HttpGet("conta/exportar")]
+    public async Task<ActionResult<DTOs.Admin.ExportacaoUsuarioDto>> ExportarMeusDados()
+        => Ok(await _contaService.ExportarMeusDadosAsync(ExigirUsuarioId()));
 
     [Authorize]
     [HttpPost("change-password")]

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Importacao;
@@ -22,10 +23,10 @@ public record PreviewImportacaoDto(
 /// <summary>Uma linha aprovada pelo usuário para virar transação.</summary>
 public record LinhaImportarDto(
     DateTime Data,
-    string Descricao,
+    [property: MaxLength(255)] string Descricao,
     decimal Valor,
     TipoTransacao Tipo,
-    string? FitId,
+    [property: MaxLength(255)] string? FitId,
     Guid? CategoriaId);
 
 /// <summary>Confirmação da importação: conta de destino + linhas aprovadas.</summary>

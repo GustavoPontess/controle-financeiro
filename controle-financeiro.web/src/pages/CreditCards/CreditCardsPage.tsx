@@ -8,6 +8,13 @@ import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
   PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState, PontesSkeletonList,
 } from "@/components/pontes"
+// Logos reais das bandeiras — vendorizados localmente (Apache-2.0, ver src/assets/bandeiras/LICENSE.txt),
+// sem dependência de runtime pra 6 arquivos estáticos.
+import visaLogo from "@/assets/bandeiras/visa.svg"
+import mastercardLogo from "@/assets/bandeiras/mastercard.svg"
+import eloLogo from "@/assets/bandeiras/elo.svg"
+import hipercardLogo from "@/assets/bandeiras/hipercard.svg"
+import amexLogo from "@/assets/bandeiras/amex.svg"
 import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../services/cartaoCreditoService"
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
@@ -36,10 +43,13 @@ const mesLabel = (s: string) => {
   return m.charAt(0).toUpperCase() + m.slice(1)
 }
 
-const BANDEIRAS = [
-  { value: "1", label: "Visa" }, { value: "2", label: "Mastercard" }, { value: "3", label: "Elo" },
-  { value: "4", label: "Hipercard" }, { value: "5", label: "American Express" }, { value: "6", label: "Outros" },
+// Só 6 bandeiras — poucas o bastante pra virar chips visuais (3 por linha) em vez
+// de select. 1 toque, sem digitar número nenhum (nem completo, nem mascarado).
+const BANDEIRA_OPTIONS = [
+  { value: 1, label: "Visa" }, { value: 2, label: "Mastercard" }, { value: 3, label: "Elo" },
+  { value: 4, label: "Hipercard" }, { value: 5, label: "American Express" }, { value: 6, label: "Outros" },
 ]
+
 const MEIOS_PAGAMENTO = [
   { value: "4", label: "Pix" }, { value: "2", label: "Débito" }, { value: "1", label: "Dinheiro" },
   { value: "5", label: "TED / DOC" }, { value: "6", label: "Boleto" },
@@ -106,20 +116,16 @@ function diasAteProxDia(dia: number | undefined, now: number): number | null {
   return Math.round((alvo.getTime() - today.getTime()) / 86_400_000)
 }
 
-// Marca visual da bandeira no canto inferior direito do card físico.
-// Mastercard usa 2 círculos icônicos. Demais usam wordmark estilizado.
-function BandeiraMark({ bandeira, label }: { bandeira: number; label: string }) {
-  if (bandeira === 2) {
-    return (
-      <svg width="46" height="30" viewBox="0 0 46 30" aria-label="Mastercard" role="img">
-        <circle cx="17" cy="15" r="13" fill="#eb001b" opacity="0.92" />
-        <circle cx="29" cy="15" r="13" fill="#f79e1b" opacity="0.92" />
-        <path d="M23 5.5a13 13 0 0 0 0 19 13 13 0 0 0 0-19z" fill="#ff5f00" opacity="0.95" />
-      </svg>
-    )
-  }
-  // Wordmark estilizado em branco semi-transparente.
-  return <span className={styles.bandeiraWordmark}>{label}</span>
+// Logo oficial real da bandeira — mesmo princípio já usado pro logo do banco
+// (PontesBankBadge): marca de verdade, não abstração nossa. "Outros" não tem
+// logo (não é uma bandeira real) — usa o ícone genérico de cartão.
+const BANDEIRA_LOGO: Record<number, string> = {
+  1: visaLogo, 2: mastercardLogo, 3: eloLogo, 4: hipercardLogo, 5: amexLogo,
+}
+function BandeiraMark({ bandeira, width = 46, genericColor = "#fff" }: { bandeira: number; width?: number; genericColor?: string }) {
+  const logo = BANDEIRA_LOGO[bandeira]
+  if (!logo) return <CreditCard size={Math.round(width * 0.5)} color={genericColor} strokeWidth={2} />
+  return <img src={logo} alt="" width={width} style={{ display: "block", borderRadius: 4 }} />
 }
 
 const STATUS: Record<number, { label: string; tone: "soft" | "warning" | "success" | "neutral" }> = {
@@ -355,7 +361,6 @@ export default function CreditCardsPage() {
   const totalLimite = cartoes.filter((c) => c.temCredito && c.limite).reduce((s, c) => s + (c.limite ?? 0), 0)
   const totalGastos = cartoes.filter((c) => c.temCredito).reduce((s, c) => s + c.gastosNoCicloAtual, 0)
   const totalDisp = Math.max(0, totalLimite - totalGastos)
-  const isPrePago = form.modo === "prepago"
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -513,7 +518,7 @@ export default function CreditCardsPage() {
             <div className={styles.txMain}>
               <span className={styles.txDesc}>{l.t.descricao}</span>
               <span className={styles.txMeta}>
-                {new Date(l.t.data).toLocaleDateString("pt-BR")} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(l.t.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.t.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 {l.t.categoriaDescricao ? ` · ${l.t.categoriaDescricao}` : ""}
               </span>
             </div>
@@ -583,7 +588,7 @@ export default function CreditCardsPage() {
             <div className={styles.faceBottom}>
               <span className={styles.cardNumber}>•••• {c.ultimosDigitos ?? "••••"}</span>
               <div className={styles.bandeiraSlot}>
-                <BandeiraMark bandeira={c.bandeira} label={c.bandeiraDescricao} />
+                <BandeiraMark bandeira={c.bandeira} />
               </div>
             </div>
           </div>
@@ -804,32 +809,34 @@ export default function CreditCardsPage() {
           <PontesField label="Nome do cartão" required error={formErrors.nome}>
             <PontesInput value={form.nome} onChange={(e) => { setF("nome", e.target.value); setFormErrors((p) => ({ ...p, nome: undefined })) }} invalid={!!formErrors.nome} placeholder="Ex: Nubank Roxinho" />
           </PontesField>
-          <div className={styles.grid2}>
-            <PontesField label="Bandeira">
-              <PontesSelect value={String(form.bandeira)} onChange={(v) => setF("bandeira", Number(v))} options={BANDEIRAS} />
-            </PontesField>
-            <PontesField label="Últimos 4 dígitos" error={formErrors.ultimosDigitos}>
-              <PontesInput
-                value={form.ultimosDigitos ?? ""}
-                onChange={(e) => { const d = e.target.value.replace(/\D/g, "").slice(0, 4); setF("ultimosDigitos", d || undefined); clearErr("ultimosDigitos") }}
-                invalid={!!formErrors.ultimosDigitos}
-                inputMode="numeric" maxLength={4} placeholder="0000"
-              />
-            </PontesField>
-          </div>
+          <PontesField label="Bandeira">
+            <div className={styles.bandeiraGrid}>
+              {BANDEIRA_OPTIONS.map((b) => (
+                <button
+                  key={b.value}
+                  type="button"
+                  className={styles.bandeiraChip}
+                  data-selected={form.bandeira === b.value ? "true" : undefined}
+                  onClick={() => setF("bandeira", b.value)}
+                  aria-label={b.label}
+                  title={b.label}
+                >
+                  <BandeiraMark bandeira={b.value} width={40} genericColor="var(--pontes-text-muted)" />
+                </button>
+              ))}
+            </div>
+          </PontesField>
+          <PontesField label="Últimos 4 dígitos" error={formErrors.ultimosDigitos}>
+            <PontesInput
+              value={form.ultimosDigitos ?? ""}
+              onChange={(e) => { const d = e.target.value.replace(/\D/g, "").slice(0, 4); setF("ultimosDigitos", d || undefined); clearErr("ultimosDigitos") }}
+              invalid={!!formErrors.ultimosDigitos}
+              inputMode="numeric" maxLength={4} placeholder="0000"
+            />
+          </PontesField>
           <PontesField label="Banco emissor" required error={formErrors.bancoId}>
             <PontesSelect value={form.bancoId ?? ""} onChange={(v) => { setF("bancoId", v || undefined); clearErr("bancoId") }} invalid={!!formErrors.bancoId} placeholder="Quem emitiu o cartão" options={bancos.map((b) => ({ value: b.id, label: b.nome }))} />
           </PontesField>
-          {!isPrePago && (
-            <PontesField label="Conta que paga a fatura">
-              <PontesSelect
-                value={form.contaId ?? ""}
-                onChange={(v) => setF("contaId", v || undefined)}
-                placeholder="Opcional — escolhe ao pagar"
-                options={contas.map((c) => ({ value: c.id, label: c.nome }))}
-              />
-            </PontesField>
-          )}
           {temCredito && (
             <PontesField label="Limite de crédito" required error={formErrors.limite}>
               <PontesInput

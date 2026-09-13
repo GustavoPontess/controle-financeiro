@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
@@ -9,9 +10,23 @@ namespace ControleFinanceiro.Api.Services
     {
         private readonly AppDbContext _context;
 
+        // Só dígitos (agência não tem dígito verificador na maioria dos bancos BR).
+        private static readonly Regex AgenciaRegex = new(@"^\d{1,10}$", RegexOptions.Compiled);
+        // Dígitos, com dígito verificador opcional separado por hífen (ex: 91205195-5).
+        private static readonly Regex NumeroContaRegex = new(@"^\d{1,20}(-\d)?$", RegexOptions.Compiled);
+
         public ContaService(AppDbContext context)
         {
             _context = context;
+        }
+
+        private static void ValidarFormato(Conta conta)
+        {
+            if (!string.IsNullOrWhiteSpace(conta.Agencia) && !AgenciaRegex.IsMatch(conta.Agencia))
+                throw new ArgumentException("Agência deve conter só números (até 10 dígitos).");
+
+            if (!string.IsNullOrWhiteSpace(conta.NumeroConta) && !NumeroContaRegex.IsMatch(conta.NumeroConta))
+                throw new ArgumentException("Número da conta deve conter só números, com dígito verificador opcional após um hífen (ex: 91205195-5).");
         }
 
         public async Task<List<Conta>> ListarAsync(Guid usuarioId)
@@ -43,6 +58,8 @@ namespace ControleFinanceiro.Api.Services
 
             if (saldoInicial < 0)
                 throw new ArgumentException("Saldo inicial não pode ser negativo.");
+
+            ValidarFormato(conta);
 
             conta.Id = Guid.NewGuid();
             conta.UsuarioIdProprietario = usuarioId;
@@ -82,8 +99,11 @@ namespace ControleFinanceiro.Api.Services
             if (string.IsNullOrWhiteSpace(conta.Nome))
                 throw new ArgumentException("Nome é obrigatório.");
 
+            ValidarFormato(conta);
+
             existente.Nome = conta.Nome;
             existente.NumeroConta = conta.NumeroConta;
+            existente.Agencia = conta.Agencia;
             existente.Tipo = conta.Tipo;
             existente.TipoCartao = conta.TipoCartao;
             existente.BancoId = conta.BancoId;

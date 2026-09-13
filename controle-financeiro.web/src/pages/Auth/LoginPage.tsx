@@ -3,11 +3,35 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
+import contaService from '@/services/minhaContaService'
 import styles from './LoginPage.module.css'
+
+const DEV_SENHA = 'Dev@123456'
+
+// Contas fictícias do DevDataSeeder (sempre existem em dev, sem risco — nada real).
+const DEV_ACCOUNTS_BASE: { email: string; label: string }[] = [
+  { email: 'dev@controle.test', label: 'Dev (casal)' },
+  { email: 'conjuge@controle.test', label: 'Cônjuge do Dev' },
+  { email: 'solo@controle.test', label: 'Solo (sem família)' },
+]
+
+// Contas locais extras (ex: seu cenário real do MeuCenarioSeeder) — vêm de um
+// .env do frontend (gitignored, nunca commitado). Formato:
+// VITE_DEV_LOGIN_EXTRA="email1:Rótulo 1,email2:Rótulo 2"
+function contasExtras(): { email: string; label: string }[] {
+  const raw = import.meta.env.VITE_DEV_LOGIN_EXTRA as string | undefined
+  if (!raw) return []
+  return raw.split(',').map((par) => {
+    const [email, label] = par.split(':')
+    return { email: (email ?? '').trim(), label: (label ?? email ?? '').trim() }
+  }).filter((c) => c.email)
+}
+
+const DEV_ACCOUNTS = [...DEV_ACCOUNTS_BASE, ...contasExtras()]
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, verificarMfaLogin } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,6 +39,15 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Passo 2 (MFA) — preenchido quando o login retorna que o 2º fator é necessário.
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
+  const [mfaCodigo, setMfaCodigo] = useState('')
+  const [mfaErro, setMfaErro] = useState<string | undefined>()
+
+  // Conta na carência de exclusão — login retornou que a conta está marcada; oferece reativar.
+  const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
+  const [reativarErro, setReativarErro] = useState<string | undefined>()
 
   const validate = (): boolean => {
     const e: { email?: string; password?: string } = {}
@@ -31,10 +64,50 @@ export default function LoginPage() {
     if (!validate()) return
     setIsLoading(true)
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      if (result.mfaRequerido) {
+        setMfaChallenge(result.challengeToken) // troca pra tela do código
+        return
+      }
+      if (result.contaMarcadaExclusao) {
+        setMarcada({ dias: result.diasRestantes }) // troca pra tela de reativação
+        return
+      }
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleReativar = async () => {
+    setReativarErro(undefined)
+    setIsLoading(true)
+    try {
+      await contaService.reativarConta(email, password)
+      // Reativada → loga normalmente (respeita MFA se estiver ativo).
+      setMarcada(null)
+      const result = await login(email, password)
+      if (result.mfaRequerido) { setMfaChallenge(result.challengeToken); return }
+      navigate('/')
+    } catch (err) {
+      setReativarErro(err instanceof Error ? err.message : 'Não foi possível reativar a conta.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMfaErro(undefined)
+    if (!mfaCodigo.trim()) { setMfaErro('Informe o código'); return }
+    setIsLoading(true)
+    try {
+      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim())
+      navigate('/')
+    } catch (err) {
+      setMfaErro(err instanceof Error ? err.message : 'Código inválido')
     } finally {
       setIsLoading(false)
     }
@@ -116,14 +189,68 @@ export default function LoginPage() {
 
           {/* Header form */}
           <div className={styles.head}>
-            <h1 className={styles.title}>Bem-vindo de volta</h1>
+            <h1 className={styles.title}>
+              {marcada ? 'Reativar conta' : mfaChallenge ? 'Verificação em duas etapas' : 'Bem-vindo de volta'}
+            </h1>
             <p className={styles.sub}>
-              Não tem conta?{' '}
-              <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link>
+              {marcada ? (
+                'Sua conta está marcada para exclusão. Você ainda pode reativá-la.'
+              ) : mfaChallenge ? (
+                'Digite o código do seu app autenticador (ou um código de recuperação).'
+              ) : (
+                <>Não tem conta?{' '}
+                <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></>
+              )}
             </p>
           </div>
 
-          {/* Form */}
+          {marcada ? (
+            /* Conta na carência — oferece reativar */
+            <div className={styles.formBody}>
+              {reativarErro && <PontesAlert tone="error">{reativarErro}</PontesAlert>}
+              <PontesAlert tone="warning">
+                {marcada.dias != null
+                  ? `Faltam ${marcada.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
+                  : 'Reative para voltar a usar sua conta antes da remoção permanente.'}
+              </PontesAlert>
+              <PontesButton type="button" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}
+                onClick={handleReativar}>
+                Reativar conta
+              </PontesButton>
+              <PontesButton type="button" variant="ghost" size="md" fullWidth
+                onClick={() => { setMarcada(null); setReativarErro(undefined); setPassword('') }}>
+                Voltar
+              </PontesButton>
+            </div>
+          ) : mfaChallenge ? (
+            /* Passo 2 — código MFA */
+            <form onSubmit={handleMfaSubmit} className={styles.formBody} noValidate>
+              <PontesField label="Código" htmlFor="mfa-codigo" required error={mfaErro}>
+                <PontesInput
+                  id="mfa-codigo"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={mfaCodigo}
+                  onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(undefined) }}
+                  invalid={!!mfaErro}
+                  placeholder="000000"
+                />
+              </PontesField>
+
+              <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
+                Verificar
+              </PontesButton>
+              <PontesButton
+                type="button" variant="ghost" size="md" fullWidth
+                onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined) }}
+              >
+                Voltar
+              </PontesButton>
+            </form>
+          ) : (
+          /* Passo 1 — email + senha */
           <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
             {error && (
               <PontesAlert tone="error">{error}</PontesAlert>
@@ -177,36 +304,40 @@ export default function LoginPage() {
               Entrar
             </PontesButton>
           </form>
+          )}
 
           {/* Footer */}
           <p className={styles.footer}>
             Ao entrar você concorda com os{' '}
-            <span className={styles.footerMuted}>Termos de Uso</span>
+            <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>
             {' '}e{' '}
-            <span className={styles.footerMuted}>Política de Privacidade</span>.
+            <Link to="/privacidade" target="_blank" className={styles.link}>Política de Privacidade</Link>.
           </p>
         </div>
       </div>
 
       {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção) */}
       {import.meta.env.DEV && (
-        <button
-          type="button"
-          className={styles.devHint}
-          onClick={() => {
-            setEmail('dev@controle.test')
-            setPassword('Dev@123456')
-            setErrors({})
-            setError('')
-          }}
-          title="Clique para preencher o login de teste"
-        >
-          <span className={styles.devHintTag}>DEV</span>
-          <span className={styles.devHintCol}>
-            <span className={styles.devHintLabel}>login de teste · clique p/ preencher</span>
-            <span className={styles.devHintCreds}>dev@controle.test · Dev@123456</span>
-          </span>
-        </button>
+        <div className={styles.devHintPanel}>
+          <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
+          {DEV_ACCOUNTS.map((conta) => (
+            <button
+              key={conta.email}
+              type="button"
+              className={styles.devHintRow}
+              onClick={() => {
+                setEmail(conta.email)
+                setPassword(DEV_SENHA)
+                setErrors({})
+                setError('')
+              }}
+              title={`Preencher login de ${conta.label}`}
+            >
+              <span className={styles.devHintLabel}>{conta.label}</span>
+              <span className={styles.devHintCreds}>{conta.email}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

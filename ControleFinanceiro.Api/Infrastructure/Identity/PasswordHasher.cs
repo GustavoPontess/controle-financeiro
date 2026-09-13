@@ -11,15 +11,20 @@ namespace ControleFinanceiro.Api.Infrastructure.Identity;
 /// Salt 16 bytes (RNG), saída 32 bytes (= tamanho nativo, sem truncar).
 ///
 /// Formato armazenado, auto-descritivo (permite migração futura de parâmetros/algoritmo):
-///   ARGON2ID$&lt;memKiB&gt;$&lt;iterations&gt;$&lt;parallelism&gt;$&lt;base64(salt)&gt;$&lt;base64(hash)&gt;
+///   ARGON2ID$&lt;memKiB&gt;$&lt;iterations&gt;$&lt;parallelism&gt;$&lt;pepperFlag&gt;$&lt;base64(salt)&gt;$&lt;base64(hash)&gt;
 ///
 /// Compatível com o hash <b>legado</b> (PBKDF2-HMAC-SHA256, 10k iterações, 20 bytes) — um
 /// blob base64 sem '$'. <see cref="VerifyPassword"/> aceita ambos; <see cref="NeedsRehash"/>
-/// sinaliza hashes fora do padrão atual para rehash transparente no próximo login.
+/// sinaliza hashes fora do padrão atual (formato de 6 partes sem pepperFlag, ou pepper ligado
+/// mas hash gravado sem ele) para rehash transparente no próximo login.
 ///
 /// Fontes: OWASP Password Storage Cheat Sheet; NIST SP 800-63B §3.1.1.2.
-/// Pepper (NIST SHOULD — segredo server-side) não implementado aqui ainda: depende de
-/// gestão de chave (KMS/HSM) — ver ROADMAP. Ponto de extensão: <c>argon2.KnownSecret</c>.
+///
+/// <b>Pepper (NIST SHOULD):</b> segredo server-side aplicado via <c>Argon2.KnownSecret</c> — nunca
+/// gravado no banco, só na env var <c>PASSWORD_PEPPER</c> (fica fora do alcance de quem só vaza o
+/// Postgres). Se a env var não estiver setada, hash/verify seguem sem pepper (não quebra ambiente
+/// sem ela configurada — ex. dev local). <c>pepperFlag</c> no formato registra se aquele hash
+/// específico foi gravado com pepper, pra saber se deve aplicar no verify.
 /// </summary>
 public static class PasswordHasher
 {
@@ -36,15 +41,23 @@ public static class PasswordHasher
     private const int LegacyHashSize = 20;
     private const int LegacyIterations = 10000;
 
+    private static byte[]? Pepper()
+    {
+        var raw = Environment.GetEnvironmentVariable("PASSWORD_PEPPER");
+        return string.IsNullOrEmpty(raw) ? null : Encoding.UTF8.GetBytes(raw);
+    }
+
     public static string HashPassword(string password)
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
-        var hash = Argon2Hash(password, salt);
+        var pepper = Pepper();
+        var hash = Argon2Hash(password, salt, knownSecret: pepper);
         return string.Join('$',
             Argon2Prefix,
             Argon2MemoryKiB,
             Argon2Iterations,
             Argon2Parallelism,
+            pepper is null ? "0" : "1",
             Convert.ToBase64String(salt),
             Convert.ToBase64String(hash));
     }
@@ -69,17 +82,25 @@ public static class PasswordHasher
             return true; // legado (ou vazio/desconhecido)
 
         var parts = stored.Split('$');
-        // ARGON2ID $ mem $ iter $ par $ salt $ hash  → 6 partes
-        if (parts.Length != 6) return true;
-        return !(int.TryParse(parts[1], out var mem) && mem == Argon2MemoryKiB
+        // ARGON2ID $ mem $ iter $ par $ pepperFlag $ salt $ hash  → 7 partes
+        if (parts.Length != 7) return true; // inclui o formato antigo de 6 partes (sem pepperFlag)
+        if (!(int.TryParse(parts[1], out var mem) && mem == Argon2MemoryKiB
               && int.TryParse(parts[2], out var iter) && iter == Argon2Iterations
-              && int.TryParse(parts[3], out var par) && par == Argon2Parallelism);
+              && int.TryParse(parts[3], out var par) && par == Argon2Parallelism))
+            return true;
+
+        // Pepper foi ligado (env var configurada) mas esse hash específico foi gravado sem —
+        // regrava pra passar a usar, mesmo que os outros parâmetros já estejam atuais.
+        var hashTemPepper = parts[4] == "1";
+        var pepperLigado = Pepper() is not null;
+        return pepperLigado && !hashTemPepper;
     }
 
     // ── Internos ─────────────────────────────────────────────────────────────────
 
     private static byte[] Argon2Hash(string password, byte[] salt,
-        int memoryKiB = Argon2MemoryKiB, int iterations = Argon2Iterations, int parallelism = Argon2Parallelism)
+        int memoryKiB = Argon2MemoryKiB, int iterations = Argon2Iterations, int parallelism = Argon2Parallelism,
+        byte[]? knownSecret = null)
     {
         using var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
         {
@@ -87,6 +108,7 @@ public static class PasswordHasher
             MemorySize = memoryKiB,
             Iterations = iterations,
             DegreeOfParallelism = parallelism,
+            KnownSecret = knownSecret,
         };
         return argon2.GetBytes(HashSize);
     }
@@ -94,26 +116,37 @@ public static class PasswordHasher
     private static bool VerifyArgon2(string password, string stored)
     {
         var parts = stored.Split('$');
-        if (parts.Length != 6) return false;
+        // Formato antigo (6 partes, sem pepperFlag) — hash foi gravado sem pepper, sempre.
+        var legacySemPepperFlag = parts.Length == 6;
+        if (!legacySemPepperFlag && parts.Length != 7) return false;
+
         if (!int.TryParse(parts[1], out var mem) ||
             !int.TryParse(parts[2], out var iter) ||
             !int.TryParse(parts[3], out var par))
             return false;
 
+        var saltIdx = legacySemPepperFlag ? 4 : 5;
+        var hashIdx = legacySemPepperFlag ? 5 : 6;
+        var hashTemPepper = !legacySemPepperFlag && parts[4] == "1";
+
         byte[] salt, expected;
         try
         {
-            salt = Convert.FromBase64String(parts[4]);
-            expected = Convert.FromBase64String(parts[5]);
+            salt = Convert.FromBase64String(parts[saltIdx]);
+            expected = Convert.FromBase64String(parts[hashIdx]);
         }
         catch (FormatException)
         {
             return false;
         }
 
+        // Só aplica o pepper atual se ESSE hash foi gravado com pepper — senão a senha nunca
+        // mais validaria pra quem se cadastrou antes do pepper existir.
+        var pepper = hashTemPepper ? Pepper() : null;
+
         // Recomputa com os MESMOS parâmetros gravados no hash (não os atuais) — assim um
         // hash antigo de Argon2id ainda valida mesmo após subirmos os parâmetros.
-        var actual = Argon2Hash(password, salt, mem, iter, par);
+        var actual = Argon2Hash(password, salt, mem, iter, par, pepper);
         return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 

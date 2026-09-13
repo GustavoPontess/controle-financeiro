@@ -1,139 +1,135 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-07-17
+last_reviewed: 2026-08-24
 status: ATIVO
 ---
 
 # Roadmap — Pontes
 
-**Fonte única do "o que fazer a seguir".** Backlog vivo do produto. O estado granular do que está em execução agora vive em [`STATE.md`](STATE.md).
+**Fonte única do "o que fazer a seguir".** Backlog vivo do produto — **só o que falta**. O estado
+granular do que está em execução agora vive em [`STATE.md`](STATE.md). O que já foi entregue está
+arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUIDO.md).
 
-> Projeto **solo** (Gustavo). `gh issue` continua sendo usado pra rastrear trabalho no GitHub, mas sem assignee de terceiros.
+> Projeto **solo** (Gustavo). `gh issue` opcional pra rastrear no GitHub, sem assignee de terceiros.
+>
+> **Regra de manutenção (higiene):** item concluído sai daqui e vai pro arquivo de histórico — este
+> arquivo é só backlog aberto. Detalhe em `PROMPT_NOVA_SESSAO.md` §9.
 
 ---
 
 ## Onde estamos
 
-- **Q5 2026 fechado:** app inteiro refatorado pra biblioteca **Pontes** (zero MUI), CSS Modules + `var(--pontes-*)`, personalização global (paleta + fonte), paginação server-side real, CI gate. Histórico em `docs/history/` (ISSUES/PROGRESS/IMPLEMENTATION_STATE `_2026Q5`).
-- **Frente atual:** features derivadas da análise de concorrentes (Pierre, Despezzas, Monarch). Pesquisa bruta em `docs/concorrentes/`. **Sem gating/plano/preço por enquanto — tudo acessível.**
-- **Fosso de produto:** gestão financeira de **casal/família real BR** (rateio "quem paga o quê", papéis, dependentes, acerto). Nenhum concorrente faz bem. Ver `docs/features/familia/visao.md`.
+- **Fundação fechada:** app refatorado pra biblioteca **Pontes** (zero MUI), CSS Modules + `var(--pontes-*)`, personalização global, paginação server-side, CI gate. Auth hardening (OWASP/NIST) + MFA opt-in + conformidade LGPD pesquisada — tudo feito (ver arquivo de histórico).
+- **Módulo Empréstimo compartilhado:** backend 100% pronto e testado; **falta escolher a UI da lista** (bancadas `/emprestimos-lab-*`, item P2 abaixo).
+- **Beta fechado:** hospedagem decidida (Hostinger, execução adiada por orçamento); faltam 2 itens de código (cadastro fechado + admin v1).
+- **Fosso de produto:** gestão financeira de casal/família real BR. Ver `docs/features/familia/visao.md`.
 
 ---
 
 ## Backlog — features de concorrentes
 
-> Origem: `docs/concorrentes/ACHADOS_ACIONAVEIS.md`. Ordem = quick-wins primeiro, fosso (família) com maior peso de produto.
+> Origem: `docs/concorrentes/ACHADOS_ACIONAVEIS.md`.
 
-### Lote 1 — quick-wins (front + dados que já temos)
-
-- [x] **1.2 Privacy toggle (ocultar saldo)** — olho global no navbar, `formatMoney` central, persiste em localStorage, mascara em toda tela. _(branch `feature/privacy-toggle-ocultar-saldo`)_
-- [x] **1.1 Filtros de transação ricos** ⭐ flagship → ✅ — **back** (`Listar`+controller: contaId/cartaoId/valorMin-Max/status/ordenacao, 4 testes) + **front** (`PontesDrawer` de filtros na TransactionsPage com conta/cartão/faixa-valor/status/ordenação + **chips** de filtro ativo removíveis + badge de contagem no botão + "Limpar"; service estende `ListTransactionsFilter`, 3 testes). Verificado no preview ponta-a-ponta (valor ≥ R$100 → 20→9 lançamentos). _Fonte: Despezzas + Pierre._
-- [x] **1.4 Orçamento no Dashboard** → ✅ — _decisão (alinhada ao mercado): NÃO criar entidade "salário+meta" (modelo rígido/datado) — o `Orcamento` por-categoria já existe e suporta **orçamento geral** (CategoriaId=null). Surfaçamos isso num card **"Orçamento do mês"** no Dashboard ("safe-to-spend" estilo Monarch/YNAB): barra de progresso + "ainda pode gastar X" (tom ok/alerta/estourou), ou CTA "Configurar" → `/limites` se não houver. Frontend puro (zero migration), consome `getOrcamentos`. 2 testes. Verificado no preview (41%, R$4.698 restante)._ _Fonte: Despezzas/Monarch._
-- [x] **1.3 Variação % vs mês anterior** → ✅ (Dashboard) — cards "Entrou/Saiu" mostram delta % vs mês anterior + seta colorida (cor por bom/ruim pra métrica). Back: `DashboardDto.EntradasCaixaMesAnterior`/`SaidasCaixaMesAnterior` (mesma base caixa). Verificado no preview com dados reais. _Extensão opcional: replicar em `/reports`._ _Fonte: Pierre + Despezzas._
-
-### Lote 2 — colaboração / família (o fosso)
-
-> ⚠️ **Reconciliação (auditoria 2026-06-17, workflow de 7 agentes):** o fosso **já está construído** ponta-a-ponta (entidades Familia/Membro/Convite/Dependente/RateioTransacao/AcertoContas; services Familia/Rateio/DespesaCompartilhada/Acerto/Dependente; `FamiliasController`; `FamiliasPage`; ~9 migrations; testes fortes). O ROADMAP listava tudo como `[ ]` — **errado**. Status real abaixo. Os gaps reais **não são features faltando**, são **buracos de segurança de app de dinheiro** (ver "Achados da auditoria família" na seção de higiene).
-
-- [x] **2.2 Família REAL — rateio + settle-up** ⭐⭐ FOSSO → ✅ — rateio (igualitário/proporcional/personalizado) em `RateioService`, balanço "quem deve a quem" + abate por acerto em `DespesaCompartilhadaService`, quitação em `AcertoService`, UI completa (lista + página de detalhe, PR #233). Idempotência no POST de acerto + `FinancialEventLog` já entregues no PR #221 (2026-06-17) — item ficou marcado "falta" por ~1 mês depois de já resolvido.
-- [x] **2.1 Atribuir transação a um membro/responsável** → ✅ — `Transacao.ResponsavelUsuarioId` (migration `AddResponsavelTransacao`); `AtribuirResponsavelAsync` (qualquer membro atribui; responsável deve ser membro ativo); feed filtra por `responsavelId`; endpoint `PUT /despesas/{id}/responsavel`. Front: filtro de responsável no topo do feed + picker por linha + nome do responsável visível na lista. Back +5 / front +6 testes. _Fonte: Monarch._
-- [~] **2.3 Papéis/permissões + dependentes** → **BACKEND ✅ / FRONT pendente** — spec em `docs/features/familia/papeis-permissoes.md`. Enum `PapelFamilia` (Admin/Membro/Dependente) + `MembroFamilia.PapelPermissao`/`ConviteFamilia.PapelPermissao` (migration `AddPapelPermissao` com backfill criador→Admin); helper central `FamiliaPermissoes.ExigirPapelAsync` reaplicado em todos os 6 services (leitura=qualquer membro, escrita=bloqueia Dependente, config=Admin); criador sempre Admin/inamovível; vários admins; endpoint `PUT .../membros/{id}/permissao`; convite carrega papel (Membro|Dependente, não Admin). Back 294/294. **Falta front:** badge de papel, convite com papel, promover/rebaixar, gates de UI por papel.
-- [x] **2.4 Aprovação de despesa** → ✅ — spec em `docs/features/familia/aprovacao-despesa.md`. **Back:** `Familia.LimiteAprovacao` + `Transacao.StatusAprovacao` (NaoRequerida/Pendente/Aprovada/Rejeitada) + `AprovadoPor`/`Em`; compartilhar ≥ limite → Pendente (fora do balanço até aprovar); endpoints `PUT /limite-aprovacao` (admin), `POST /despesas/{id}/aprovar|rejeitar` (membro ≠ criador); migration `AddAprovacaoDespesa`; 12 testes (PR #224). **Front:** `FamiliasPage` ganhou config de limite (admin), badge de status no feed, e botões aprovar/rejeitar nas pendentes (só não-pagador); service + types + 8 testes.
+### Lote 2 — família (parcial)
+- [~] **2.3 Papéis/permissões + dependentes** → **BACKEND ✅ / FRONT pendente** — spec em `docs/features/familia/papeis-permissoes.md`. Backend inteiro pronto (enum `PapelFamilia`, `FamiliaPermissoes.ExigirPapelAsync` nos 6 services, endpoint `PUT .../membros/{id}/permissao`). **Falta front:** badge de papel, convite com papel, promover/rebaixar, gates de UI por papel.
 
 ### Lote 3 — aquisição / SEO (site público)
-
-- [ ] **3.1 Tela de Assinaturas** — derivar de `Recorrente`: agrupar recorrências, total/mês, projeção anual. _Fonte: Pierre, Despezzas, Monarch._
-- [ ] **3.2 Ferramentas grátis + comparações** — páginas públicas `pages/Site/ferramentas/`: juros compostos, CLT×PJ. SEO "sem cadastro". _Fonte: Despezzas, Monarch, Qive._
-- [ ] **3.3 Fotografia lifestyle de casal/família** em `/casais` e `/contadores`. _Fonte: Monarch._
-- [ ] **3.4 Programa de indicação (referral)** — código por usuário + "Convide e ganhe". _Fonte: Despezzas + Monarch._
+- [ ] **3.1 Tela de Assinaturas** — derivar de `Recorrente`: agrupar, total/mês, projeção anual. _Pierre, Despezzas, Monarch._
+- [ ] **3.2 Ferramentas grátis + comparações** — `pages/Site/ferramentas/`: juros compostos, CLT×PJ. SEO "sem cadastro". _Despezzas, Monarch, Qive._
+- [ ] **3.3 Fotografia lifestyle de casal/família** em `/casais` e `/contadores`. _Monarch._
+- [ ] **3.4 Programa de indicação (referral)** — código por usuário + "Convide e ganhe". _Despezzas + Monarch._
 
 ### Lote 4 — eixo PJ / contador (futuro)
-
-- [ ] **4.1 Wedge PJ leve + ponte contador** — separar PF/PJ, módulo NF simples, conexão com contador (referência Conta Azul). Spec dedicada antes de codar. Ver `docs/features/b2b-contadores/visao.md`.
+- [ ] **4.1 Wedge PJ leve + ponte contador** — separar PF/PJ, módulo NF simples, conexão com contador (ref. Conta Azul). Spec antes de codar. `docs/features/b2b-contadores/visao.md`.
 
 ### Lote 5 — estratégico (caro, longo)
-
-- [ ] **Open Finance / agregação** — gap nº 1, table-stakes. Via Pluggy ou Belvo, começa com 1 banco. Despezzas e Pierre já têm.
+- [ ] **Open Finance / agregação** — gap nº 1, table-stakes. Via Pluggy ou Belvo, começa com 1 banco.
 - [ ] **IA conversacional / categorização automática**.
-- [ ] **App mobile / PWA** (PWA base já existe).
+- [ ] **App mobile** — estratégia em `docs/features/pwa/estrategia-mobile.md` (PWA polida → Capacitor → nativo; custos de loja). **Beta roda no PC** (2026-08-24) — mobile só depois do beta. PWA base existe (#28) mas mínima.
 
 ---
 
 ## Higiene / dívida conhecida
 
-> **Prioridade (protocolo de triagem — `PROMPT_NOVA_SESSAO.md` §8.5):** **P0** 🔴 bloqueador/segurança crítica (fura fila, vira o próximo; se bloqueia o trabalho atual, parka a branch e troca) · **P1** 🟠 alta · **P2** 🟡 média · **P3** ⚪ baixa. **Todo achado entra aqui com nível, na hora.**
+> **Prioridade:** **P0** 🔴 bloqueador/segurança crítica · **P1** 🟠 alta · **P2** 🟡 média · **P3** ⚪ baixa. Todo achado entra aqui com nível, na hora.
 
-### 📥 Achados a triar (intake)
-- **Empréstimo compartilhado (bilateral, com confirmação assimétrica)** — caso real do Gustavo (17/07/2026): pagou contas atrasadas de terceiro (luz, aluguel, móveis) parcelado, terceiro deve devolver em parcelas. Hoje `Emprestimo` é 100% privado (`Pessoa` é texto livre, só `CriadoPor` vê/edita). Precisa: (a) vínculo opcional a um `UsuarioId` real da contraparte pra visibilidade bilateral, (b) regra de autorização assimétrica — só quem é **credor** naquele registro específico pode confirmar pagamento/quitação (nem o devedor pode auto-marcar como pago), (c) idealmente fluxo de aceite (devedor confirma que a dívida é legítima antes de contar), reaproveitando o padrão de aprovação já existente em 2.4. **Não depende de Família existir** — é vínculo pessoa-a-pessoa, sobrevive mesmo se a relação/família acabar. Maior prioridade de produto agora: caso de teste real disponível (Gustavo + terceira pessoa), dogfooding imediato. Nível provisório: 🟠 P1 (motivação alta + caso de validação real pronto). Detalhar spec antes de codar (`docs/features/familia/`).
-- **Empréstimo/divisão de limite de cartão de crédito entre pessoas** — caso comum (emprestar cartão, ou dividir limite de um cartão entre membros/terceiros). Registrado 17/07/2026 a pedido do Gustavo — **explicitamente "pra depois"**, não atacar agora. Nível provisório: ⚪ P3.
-- [ ] **P3 ⚪ — `CLAUDE.md` "Adicionar Nova Entidade" usa `int Id`/`int usuarioId`** no template, mas toda entidade real usa `Guid` (`Emprestimo.Id`, `CriadoPor`, etc). Template desatualizado, confunde se copiado literal. Achado em 2026-07-17 enquanto corrigia os exemplos MUI do mesmo arquivo.
+### Empréstimos (backend fechado, faltam pontas)
+- 🟡 **P2 — UI da lista de empréstimos: escolher a bancada vencedora** (achado 2026-08-14) — Gustavo não gostou do UI da lista real. Bancada `/emprestimos-lab-a/b/c/d` (Extrato / Tabela / Agrupado por pessoa) usa o empréstimo real e os mesmos serviços. **Gustavo ainda não escolheu** (ou se nenhuma resolve). Próximo passo: escolher → portar a vencedora pra `EmprestimosPage.tsx` com teste. _(Gustavo está arrumando as bancadas.)_
+- 🟡 **P2 — Empréstimo ↔ Conta/Transacao real** — hoje criar/vincular `Emprestimo` não move saldo real (é só registro). Gustavo quer que emprestar gere saída real da conta e o pagamento aprovado gere entrada. **Mesma "QUESTÃO CRÍTICA" de `docs/features/familia/visao.md` §16.5** (despesa compartilhada × saldo real) — decisão de modelagem conjunta pros dois casos. Pesquisar como bancos/apps modelam antes de decidir.
+- 🟡 **P2 — `PontesNavbar` contraste quebrado em `/convite/emprestimo/:token`** (2026-08-12) — navbar quase ilegível num estado "rolado" em página curta sem hero. Reproduzir e decidir se é bug do componente (afeta outras páginas) ou da landing.
+- ⚪ **P3 — LGPD: avisar no "Registrar pagamento" que o credor vê o nome da conta do devedor** (2026-08-12) — `ComprovanteContaNome` tem base legal (Art. 7º-V), não é sensível, mas falta transparência explícita no momento de escolher a conta.
+- ⚪ **P3 — Empréstimo/divisão de limite de cartão entre pessoas** — emprestar cartão / dividir limite. Registrado 17/07/2026, explicitamente "pra depois".
 
-### 🏠 Achados da auditoria família (2026-06-17) — segurança de app de dinheiro
-> Auditoria por workflow (7 agentes) do módulo família. Fosso construído; gaps = safety holes. **P1 fechado em PR #221 (`a331efa`).**
-- [x] **P1 🟠 — `AcertoService.CancelarAsync` sem checar dono** (authz hole) → ✅ — só criador OU participante (de/para) cancela; terceiro → `ForbiddenAccessException` (403). PR #221.
-- [x] **P1 🟠 — POST `/acertos` sem idempotência** → ✅ — `idempotencyKey` no DTO + `BuscarPorIdempotencyKeyAsync` (padrão `ParcelamentoService`); front gera UUID estável por tentativa. PR #221.
-- [x] **P1 🟠 — acerto sem `FinancialEventLog`** → ✅ — `AcertoRegistrado`/`AcertoCancelado` gravados em registrar/cancelar. PR #221.
-- [x] **P2 🟡 — `FamiliasPage` `ehProprio` hardcoded `true`** → ✅ — `ehProprio = m.usuarioId === currentUser?.id` (via `useAuth`); botão remover só aparece pro próprio membro (sair) ou pra admin removendo outro; criador nunca removível; label dinâmico "Sair da família"/"Remover membro". 3 testes. _branch `fix/familia-remover-membro-ehproprio`._
-- [x] **P3 ⚪ — papéis (2.3) + aprovação de despesa (2.4)** → ✅ — resolvido: 2.3 backend (PR #228) + 2.4 back+front (PR #224/#225). Ver status real no Lote 2 acima. _(item ficou desatualizado ~1 mês; reconciliado em 2026-07-17.)_
-- _Descartado (não é bug):_ `RateioService.RemoveRange` hard-delete de `RateioTransacao` — é config de split substituída por inteiro na edição, **não** entidade de ledger; soft-delete não se aplica.
+### Produto / UX
+- 🟠 **P1 — Conferência de caixa (saldo declarado × calculado)** (2026-07-20) — `Conta.Saldo` é soma cega sem filtro de data; lançar retroativo faz o saldo divergir do banco real sem saber se é lançamento faltando ou erro. Spec com os 2 modos (achar lançamento × ajuste 1-clique) em `docs/features/conferencia-caixa/spec.md`. É o que mantém o Gustavo confiando no próprio saldo usando o app.
+- ⚪ **P3 — Onboarding / tutorial guiado (product tour)** — passo-a-passo no 1º uso. Decidir abordagem (react-joyride/driver.js vs componente Pontes; escopo). Menos urgente que a conferência de caixa.
+- ⚪ **P3 — Gesto de captura rápida (toque duplo traseira do iPhone)** — recurso nativo do iOS, PWA não intercepta; viável só instruindo o usuário a criar Atalho. Mobile é prioridade por último.
 
-### 🔒 Sprint de Auth Hardening (spec em `docs/SEGURANCA_BEST_PRACTICES.md`, verificado OWASP/NIST)
-- [x] **C1 — reset token vazado na resposta HTTP** 🔴 = account takeover. **Corrigido:** token fora da resposta (DTO só com `Mensagem` genérica idêntica), geração+e-mail **fire-and-forget** (Hangfire `PasswordResetEmailJob` + `IPasswordResetEmailSender`) → sem timing/enumeração. 6 testes de regressão. _OWASP Forgot Password._
-- [x] **C2 — contrato de exceção furado** 🔴 → ✅ — os 67 `throw new Exception(...)` viraram tipos certos (404/400/409/401 conforme semântica) e o middleware **não ecoa mais `Message` no 500** (mensagem genérica; detalhe só no log). 5 testes do middleware + 26 asserts de teste atualizados. _Follow-up registrado: distinguir 403 (ownership) de 401 (auth) — hoje 401 desloga; pré-existente em ~32 sites._
-- [x] **C3 — soft-delete de `Transacao` violado** 🔴 → ✅ — `DeletarAsync` agora faz soft delete (`Ativo=false` + `Cancelado` + `CanceladoEm` + motivo, padrão do `TransferenciaService`) e foi adicionado **global query filter** `HasQueryFilter(t => t.Ativo)` no `Transacao` → toda query/navegação (saldo, listagem, dashboard, relatório, totais de fatura) exclui canceladas automaticamente. Corrige de quebra o caso real do bug (pernas de transferência soft-deleted apareciam na lista). 3 testes de regressão.
-- [x] **A1/A2 — PasswordHasher** 🟠 → ✅ — migrado p/ **Argon2id** (Konscious v1.3.1, OWASP 1ª escolha) m=19456/t=2/p=1, salt 16B, **saída 32B** (era 20), formato versionado `ARGON2ID$...` + **rehash transparente no login** (verifica hash legado PBKDF2, regrava no esquema atual sem forçar reset). 8 testes. _Deep-research OWASP/NIST. Pepper (NIST SHOULD) fica de follow-up com a rotação de segredos._
-- [x] **Reset token hasheado** no banco + **rate-limit por conta** + **política 15 chars** → ✅ — token guardado como SHA-256 (`OpaqueTokenHasher`), bruto só no e-mail; rate-limit 3/conta/hora no `PasswordResetEmailJob` (+ 1/IP/15min no endpoint); política 10→15 + teto 128 (front e back). 11 testes.
-- [x] **Re-auth em operação sensível + cookie HttpOnly + CSP** → ✅ — troca de senha já exige senha atual (`ChangePasswordAsync`); não há troca de e-mail/delete de conta (nada mais a re-autenticar); jwt+refresh confirmados em cookie HttpOnly+Secure+SameSite=Strict; **`SecurityHeadersMiddleware`** adiciona CSP (estrita p/ API, relaxada p/ Swagger/Hangfire) + nosniff + X-Frame DENY + Referrer + Permissions + HSTS(HTTPS). 5 testes.
-- [ ] **A4 — critério de gasto divergente** Orçamento (`CriadoPor`) × Relatório (ownership) — padronizar.
-- [x] **⚠️ Rotacionar segredos — DEV** ✅ (2026-06-17) — `JWT_SECRET` + senha Postgres novos (aleatórios) nos `.env` locais; volume do Postgres recriado; API + login verificados. Chave de dev antiga invalidada. **Falta só prod:** gerar segredos frescos no secret manager quando houver deploy (nunca reusar os de dev). A chave nunca esteve no git.
-- [ ] **Pepper de senha (NIST SHOULD)** — segredo server-side por cima do Argon2id, guardado separado do banco (KMS/HSM/env). Ponto de extensão já existe (`Argon2id.KnownSecret` no `PasswordHasher`). Fazer junto da gestão/rotação de segredos.
-- [x] **A3 — segredos no compose/CI versionado** → ✅ — `docker-compose.yml` deixou de hardcodar senha Postgres e o `JWT_SECRET` default fraco; agora exige `${POSTGRES_PASSWORD:?}` e `${JWT_SECRET:?}` (falha-rápido sem default). `.env.example` na raiz + `.env` gitignored; CI passa valores efêmeros. Validado com `docker compose config`. **Falta só a metade manual (valores reais) — ver "Rotação de segredos" abaixo.**
-- [x] **403 (ownership) × 401 (auth)** → ✅ — criado `ForbiddenAccessException`→403; **27 sites** de ownership/autorização (Categoria, Conta, Convite, Dependente, DespesaCompartilhada, Familia, Fatura, Meta, Rateio, Recorrente, Subcategoria) remapeados de 401→403; os 6 de **autenticação real** do `AuthService` (login/refresh/senha) ficam 401. O interceptor do front só desloga em 401 → erro de permissão não desloga mais (mostra a mensagem). 14 asserts de teste + caso 403 no middleware. Convenção atualizada em `PROMPT_NOVA_SESSAO.md` §11.
+### Backend / débito técnico
+- 🟠 **P1 — CI/Docker: build da imagem da API quebrado (E2E vermelho)** (achado 2026-09-13, PR #235) — `ControleFinanceiro.Api/Dockerfile:16` faz `addgroup -S app && adduser -S app -G app` (hardening não-root de 2026-08-18), mas a imagem base `mcr.microsoft.com/dotnet/aspnet:8.0-alpine` **passou a trazer o usuário/grupo `app` embutido** (drift do upstream) → o passo falha com exit 1 → imagem não builda → API não sobe → **job E2E Playwright falha** (não é check obrigatório, mas **quebra o build de deploy**). Correção: não recriar o usuário se já existir (guardar com `getent group app || addgroup ...` / `id app || adduser ...`) ou usar `USER $APP_UID` que a base já provê, mantendo o não-root. Verificar imagem base antes de afirmar a causa exata. — tudo é service unitário (InMemory); nenhum teste HTTP real (`WebApplicationFactory`). Camada de controller (`[Authorize]`, `UsuarioId` do token, status codes, middlewares) só validada à mão no pentest. Fazer suite cobrindo: login sem/com MFA, sem token (401), IDOR cross-user (403/404), Hangfire allowlist.
+- 🟡 **P2 — Backend: 6 services sem teste dedicado** (2026-08-23) — por risco: `FaturaService`, `FamiliaPermissoes`, `FinancialEventLogService`, `ParcelaTransacaoService`, `BancoService`/`CategoriaService`.
+- 🟡 **P2 — Cobertura de teste das páginas sem teste dedicado** (2026-08-23) — faltam 6: `Settings` (⭐ UI de MFA), `Transactions` (container), `Importacao` (OFX/CSV), `Onboarding`, `PrivacidadePage`, `TermosDeUsoPage`. Decisão do Gustavo: fazer pra todas, depois.
+- 🟠 **P1 — Upgrade .NET 8 → 10** (2026-08-23) — .NET 8 (LTS) e 9 (STS) **perdem suporte na MESMA data: 10/11/2026**. .NET 10 é a LTS atual (suporte até nov/2028), pula o 9 direto. Prazo real (sem patch de segurança depois). Bump do TFM (API+Tests) + pacotes EF + `dotnet-version` no CI + retestar. Mapear esforço antes de out/2026.
+- 🟡 **P2 — A4: critério de gasto divergente** Orçamento (`CriadoPor`) × Relatório (ownership) — padronizar.
+- 🟡 **P2 — KPIs de topo agregam só 1 página** (Transactions/Recorrentes/Emprestimos/Parcelamentos) — endpoints `/stats` dedicados.
+- 🟡 **P2 — Médios da auditoria família** — enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI. Branch de fixes.
+- ⚪ **P3 — `CLAUDE.md` "Adicionar Nova Entidade" usa `int Id`/`int usuarioId`** — mas toda entidade real usa `Guid`. Template desatualizado, confunde se copiado literal.
+- ⚪ **P3 — blocklist de senha comum virou inalcançável** — todas as entradas de `SenhasComuns` têm < 15 chars, mas o mínimo é 15. Código morto (não é bug — tamanho já barra). Limpar ou repovoar com passphrases 15+.
 
-### 🔬 Re-pesquisar (gaps que o rate-limit cortou) antes de codar
-- [ ] **Rotação de segredos / key rollover** da JWT key sem downtime · **MFA no .NET** (TOTP/passkeys) · **cripto-at-rest / PII em EF Core** · **logging/auditoria** · **LGPD + BACEN/Open Finance**. Deep-research verificado por fonte primária.
+### 🔬 Re-pesquisar antes de codar (gaps que o rate-limit cortou)
+- [ ] **Rotação de segredos / key rollover** da JWT key sem downtime · **cripto-at-rest / PII em EF Core** · **logging/auditoria** · **LGPD + BACEN/Open Finance** (BACEN já fechado fora do escopo). _MFA e pepper já feitos (ver histórico)._
 
-### 🟡 / outros
-- [x] **P1 — flake `CreditCardsPage` test (CI da main vermelho)** → ✅ — race: o teste via "Aberta" e clicava "Mês anterior" antes do effect de auto-foco rodar; o effect atrasado resetava `faturaIdx` pra `atualIdx`, desfazendo a navegação ("Paga" sumia → timeout). Também frágil à data real (`now = Date.now()`; quebraria após 20/jun). **Fix:** navegação do usuário cancela o auto-foco pendente (`irParaFatura` zera `justOpenedRef`, prod+teste) + teste mocka `Date.now` numa data fixa do ciclo. Rodado 3× estável.
-- [x] **P3 — vitrine do DS documenta todos os tokens** → ✅ — `/design-system` ganhou aba dedicada **"Espaço & Efeitos"** (espaçamento, radii, sombras, transições — visuais, do `theme.ts`), antes ausentes. A aba Tokens segue com cores/tipografia/semânticas. Tipografia da vitrine corrigida pra refletir a realidade: H1/H2 usam a **fonte de título da marca** `--pontes-font-heading` (Fraunces, carregada no `index.html`), H3+ a fonte do tema `--pontes-font`.
-- [ ] **P2 — upgrade .NET 8 → 10 (LTS)** — projeto alveja `net8.0` (LTS, suporte até ~nov/2026); a máquina/CI ainda usam SDK 9.x (STS, já EOL ~mai/2026). `.NET 10` é o LTS atual (~nov/2025). Migrar pula o 9 (STS). Esforço baixo/médio: bump do TFM (API+Tests) + pacotes EF/etc + `dotnet-version` no CI + retestar. **Confirmar datas de EOL na fonte antes de decidir** (info do treino, corte jan/2026). Alinhado ao mandato de longevidade/segurança do CLAUDE.md.
-- [x] **P3 — warnings de CI limpos** → ✅ — XML doc malformado (`P&L`→`P&amp;L` no `TransacaoService`; `<summary>` duplicado/paramref órfão no `ParcelamentoService`) + `async` sem `await` no `CriarRefreshTokenAsync`. Build agora **0 warning**. GitHub Actions bumpados pra major em Node 24 (checkout v6, setup-dotnet v5, cache v5, setup-node v6, upload-artifact v7) — fim do deprecation de Node 20.
-- [x] **P2 — Refresh token em plaintext no banco** → ✅ — `RefreshToken.Token` agora é guardado como hash (SHA-256 via `OpaqueTokenHasher`); o bruto vai só pro cookie. `CriarRefreshTokenAsync` devolve `(entity, bruto)`; refresh/logout fazem lookup por hash. Vazamento de DB não dá refresh tokens reutilizáveis. 3 testes.
-- [x] **P2 — CSP no SPA (frontend prod)** → ✅ — headers de segurança + CSP estrita no `nginx.conf` que serve o SPA buildado (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'` p/ estilos inline do React, `connect-src` pro API, `frame-ancestors 'none'`, nosniff, X-Frame DENY, Referrer, Permissions). Dev (Vite) não passa por nginx → HMR intacto. Verificado via build+curl. _⚠️ prod real: ajustar `connect-src` pro domínio do API (e o baseURL hardcoded do axios)._
-- [ ] **P2 — Política: remover regras de composição (NIST)** — NIST SP 800-63B recomenda NÃO exigir maiúscula/número/símbolo (leva a senhas previsíveis tipo `Password1!`); com mín. 15 + blocklist já basta. Hoje `PasswordPolicyService` ainda exige as 4 classes. Mudança de UX — decidir antes. _Documentado em `docs/SEGURANCA_BEST_PRACTICES.md` §2._
-- [ ] Médios da auditoria (enumeração de usuário, categoria sem filtro de dono, nits Pontes nas telas família/auth, coverage gate no CI) — branch de fixes.
-- [x] **#114 Postgres único + #92 E2E** mergeados na main, auditados e limpos. Dev exige Postgres no ar.
-- [x] **Versionamento** — SemVer 0.x, CHANGELOG, `docs/RELEASING.md`, release `v0.9.0`.
-- [x] **Ex-colaboradores apagados** do repo (autoria/co-autoria/branches/site/co-autoria-IA) + histórico linearizado.
-- [ ] **KPIs de topo agregam só 1 página** (Transactions/Recorrentes/Emprestimos/Parcelamentos) — endpoints `/stats` dedicados.
-- [ ] **#125 INPI marca Pontes** · **#126 LGPD pré-lançamento** (legais, não-código).
-- [x] **Lint debt NBSP** resolvido (escape `\u00A0` no ReportsPage.test, comportamento idêntico).
+### Legais (não-código)
+- [ ] **#125 INPI marca Pontes** _(#126 LGPD pré-lançamento ✅ fechada — ver histórico)._
+
+### Branches
+- [ ] `polish/relatorios` — nenhum PR no GitHub, branch não existe local/remoto. Provavelmente abandonada. Se o trabalho ainda for necessário, tratar como item novo.
 
 ---
 
 ## 🚦 Gate de lançamento `1.0.0` (conformidade obrigatória)
 
-> **Regra inegociável** (também em `CLAUDE.md`): app de dinheiro + dados pessoais. **Antes de lançar, pesquisar e aplicar prática bancária/fintech + LGPD + regras regulatórias (ANPD; BACEN/Open Finance se aplicável) e respeitar TODAS as regras impostas.** `1.0.0` só sai com:
+> **Regra inegociável** (também em `CLAUDE.md`): app de dinheiro + dados pessoais. Antes de lançar, aplicar prática bancária/fintech + LGPD + regras regulatórias. `1.0.0` só sai com:
 
-- [ ] Sprint de Auth Hardening fechado (🔴 C1/C2/C3 + 🟠)
-- [ ] Segredos rotacionados
-- [ ] Pesquisa de conformidade completa (LGPD: base legal, direitos do titular, minimização, DPO, RIPD; e se BACEN/Open Finance se aplica) — `#126`
-- [ ] Gaps de segurança re-pesquisados e fechados (`docs/SEGURANCA_BEST_PRACTICES.md`)
+- [x] **Sprint de Auth Hardening fechado** (🔴 C1/C2/C3 + 🟠) — ✅ concluído (ver histórico).
+- [x] **Pesquisa de conformidade completa** (#126) — ✅ fechada 2026-08-18 (`docs/CONFORMIDADE_BR.md`).
+- [~] **Segredos rotacionados** — JWT local rotacionado (2026-08-23) + pepper implementado; **falta prod** (JWT/pepper/MFA-key/senha Postgres novos no secret manager do host, quando houver deploy).
+- [ ] **Gaps de segurança re-pesquisados e fechados** (`docs/SEGURANCA_BEST_PRACTICES.md`) — ver "Re-pesquisar" acima.
+
+### 🎯 Preparação pro beta fechado (código; deploy ainda NÃO aconteceu)
+
+Escopo menor que o `1.0.0` (poucos testadores convidados). Trabalho de código local. **Nada foi ao ar.** Feitos estão no histórico; abertos abaixo.
+
+- [~] **Hospedagem do beta — DECIDIDO (Hostinger), execução adiada por orçamento.** `docs/features/hospedagem-beta/decisao.md`. Hostinger VPS BR ~R$28 + `pg_dump` diário + backup semanal automático; Gustavo administra. Caminho B descartado por custo. ⏳ **Contrata quando receber** — nada provisionado. Código já é neutro pra qualquer host de container (Dockerfile API/web, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var).
+- [~] **🔒 Admin + gate do beta — spec em `docs/features/admin/spec.md`.** Segurança da flag ✅ (2026-09-09) + **Módulo A (fila de aprovação + métricas) ✅ (2026-09-09, `038d522`)** — `StatusUsuario` substituiu `bool Ativo`; cadastro nasce pendente sem sessão; endpoints admin pendentes/aprovar/recusar/metricas; front `/admin` (Pendentes + Métricas). **Verificado ao vivo** (2026-09-09): cadastro nasce pendente → login barra com "aguardando aprovação" → admin aprova em `/admin`. **Falta (próximas rodadas):**
+  - ✅ **Painel admin com a MESMA cara do app (sidebar+navbar, menus de admin) + hardening de front — feito 2026-09-10 (`75c027d`→`087e253`), validado ao vivo.** `AdminLayout` reusa o shell do `DefaultLayout`; `Sidebar`/`Navbar` parametrizados (`nav`/`showFinance`/`title`, sem `if isAdmin`); menus Fila de aprovação + Métricas na lateral. `AdminRoute` lê `isAdmin` do `/auth/me` (não importa `adminService`) → **zero endpoint/tela/menu de admin no bundle comum** (só `/admin/*`+`isAdmin`, irredutível); lazy load; source maps off. _(Detalhe no histórico quando fechar a branch.)_
+  - ⚪ **P3 — Entrada do painel admin (só pra admin).** Hoje só por URL (`/admin`). Com `isAdmin` já no `/auth/me`, dá pra mostrar um item "Painel Admin" na sidebar **condicionado a `currentUser.isAdmin`** — comum não vê, e se forçar cai no 403/redirect. Decisão do Gustavo: A) pôr o link, B) manter só-URL (máxima discrição).
+  - ✅ **Módulo B (gestão de usuários) — feito 2026-09-10 (`87266ce`), validado ao vivo.** Listar + bloquear/reativar (estado `Bloqueado` com ação na UI + login barrado) + forçar reset; admin não bloqueia a si. _(Detalhe no histórico quando fechar a branch.)_
+  - ✅ **Módulo D (visualizador de auditoria) — feito 2026-09-10 (`df26a39`), validado ao vivo.** `AdminAuditLog` append-only + toda ação de admin registra rastro (snapshot admin+alvo) + tela só-leitura `/admin/auditoria`. _(Detalhe no histórico quando fechar a branch.)_
+  - ✅ **Módulo C (LGPD ⚠️ sensível) — feito 2026-09-10, validado ao vivo E2E contra Postgres real.** Exportar dados (JSON, auditado) + exclusão 2 estágios (soft `MarcadoParaExclusao` + carência 30d + job `PurgaExclusaoExpiradaJob`) + **purga física real** com confirmação forte (digitar e-mail), **recusa se houver vínculo com outro usuário** (não quebra dado de terceiro), deleção ordenada child→parent, `FinancialEventLog` anonimizado, `AdminAuditLog` preservado. `AdminLgpdService` + `AdminLgpdPage` (`/admin/lgpd`) + migration `AddMarcadoExclusaoEm`. Purga validada ao vivo (204, cascade OK, sem erro de FK). **Ressalva resolvida:** o store Marco Civil (captura de log de acesso) foi entregue em 2026-09-12 — a purga LGPD preserva `RegistroAcesso` por não haver FK. _(Detalhe no histórico quando fechar a branch.)_
+  - **Admin do beta COMPLETO:** A · B · C · D ✅. Store Marco Civil ✅ (2026-09-12). Notificações admin (stream próprio) ✅ + mascaramento de PII com olhinho ✅ (2026-09-12). Falta só (opcional) testes de integração HTTP do admin (P1).
+  - ✅ **Mensagem do sino de admin sem e-mail — feito 2026-09-12.** As notificações (NovoCadastro/Seguranca) agora usam só o nome; o e-mail (mascarado) fica a 1 clique na tela. Menor exposição de PII, consistente com o mascaramento das tabelas.
+  - MFA obrigatório pra admin + break-glass adiados pra produção. Feature flags descartados.
+  - _Obs: os 5 estados de `StatusUsuario` já existem no modelo e nas Métricas; a aba Pendentes só expõe Aprovar/Recusar porque é a fila (Módulo A). Não é o padrão ativo/inativo — as outras transições chegam com B/C._
+- [ ] **Segredos de produção** (quando houver deploy) — gerar `JWT_SECRET`, `PASSWORD_PEPPER`, `MFA_ENCRYPTION_KEY` novos (nunca reusar dev); `DATABASE_URL` Npgsql com TLS (`;SSL Mode=Require;Trust Server Certificate=true`); `CORS_ALLOWED_ORIGINS` pro domínio real. Via secrets do host, nunca versionado.
+- [ ] **Ambiente sobe como `Production`** — garantir que o deploy NÃO rode como `Development` (senão nascem seeders de teste `dev@controle.test` + rotas dev-only no ar). Checável na config.
+
+### Catalogado pro lançamento público (não bloqueia o beta)
+- 🟡 **P2 — Criptografia de campo em repouso (PII/financeiro no Postgres)** — decisão (2026-08-23): só catalogar, não bloqueia beta (Postgres gerenciado já tem cripto de disco; LGPD não exige técnica específica; poucos testadores). Peça pronta: `MfaCrypto` (AES-256-GCM). **Estender:** generalizar num helper + ligar via EF Core `ValueConverter`. **Análise dos campos:** ✅ seguro cifrar `Emprestimo.Pessoa`/`Descricao`/`Observacao`; ⚠️ precisa retrabalho `Transacao.Descricao` (WHERE LIKE), valores (soma/filtro), `Emprestimo.EmailContraparte` (lookup exato).
+- 🟡 **P2 — Mapa de "onde entram os dados de contato da empresa"** (2026-08-19) — e-mail pessoal removido das páginas legais; TODOs no código apontam pra cá pra quando existir e-mail/CNPJ/redes da empresa: caixa "Fale com a gente" (Privacidade/Termos) provisória; `Footer.tsx` com dead links (`/contato`, `/blog`, `/lgpd`), CNPJ placeholder fictício mantido de propósito, ícones sociais/badges de loja em `href="#"`.
+- ✅ **Store de "registros de acesso" (Marco Civil Art. 15) + captura de IP no login — feito 2026-09-12, validado ao vivo E2E.** Entidade `RegistroAcesso` (store separado, **sem FK** → fora do cascade da conta, sobrevive à purga LGPD), captura de login+IP+timestamp no `AuthController` (best-effort, não derruba o login), retenção 6m (`RetencaoDias=180`) com `PurgaRegistroAcessoExpiradoJob` (Hangfire diário). Guarda só o registro legal (data/hora + IP + identificador) — **sem User-Agent** (minimização, reconfirmado na fonte primária: Marco Civil Art. 5 VIII = data/hora + IP). +5 testes back. Validado ao vivo (registrar→aprovar→login → linha no Postgres com IP capturado; sobrevivência à purga coberta em teste). Pesquisado 2026-08-26 + reconfirmado 2026-09-12, ver `docs/CONFORMIDADE_BR.md`. _(Detalhe no histórico quando fechar a branch.)_
+- 🟡 **P2 — Revisão jurídica dos Termos de Uso** (`/termos-de-uso`) — rascunho (CDC/Marco Civil), sem revisão jurídica de verdade. Gustavo revisa antes do público.
+- ✅ **Enumeração de usuário no `/auth/register` — corrigido 2026-09-12 (pentest).** `RegisterAsync` responde sempre a mesma mensagem genérica (não revela se o e-mail existe), sem criar duplicata, com hash descartado p/ equalizar timing. Login/forgot já eram genéricos. 2 testes + validado ao vivo. _(Detalhe no histórico quando fechar a branch.)_
+- ✅ **Notificação de admin acionável se resolve ao tratar o cadastro — feito 2026-09-12.** Pesquisa de UX (NN/g/Carbon/Toptal): notificação **acionável** deve sumir quando a ação é feita; **informativa** fica como log. Implementado: `NotificacaoAdmin.AlvoId` (Guid solto, migration `AddAlvoIdNotificacaoAdmin`) ligado ao usuário nas notificações NovoCadastro; aprovar/recusar chama `MarcarLidasPorAlvoAsync` → a notificação daquele cadastro baixa do sino (atômico na mesma transação). Segurança/LGPD seguem como log (informativas, sem AlvoId). +3 testes, validado ao vivo (registrar→aprovar→Lida=t). _(Detalhe no histórico quando fechar a branch.)_
+- ⚪ **P3 — HSTS `preload`** (só quando existir domínio real + deploy) — hoje o HSTS já sai sob HTTPS (`max-age=31536000; includeSubDomains`, verificado 2026-09-12). Falta o passo opcional de preload: adicionar `preload` ao header (`SecurityHeadersMiddleware`) e **submeter o domínio em https://hstspreload.org** pra forçar HTTPS já na 1ª visita (antes da 1ª resposta). Requisitos: max-age ≥ 1 ano (ok), includeSubDomains (ok), servir preload no apex. Gated no domínio de produção.
+- 🟡 **P2 — CAPTCHA no login** (Cloudflare Turnstile, grátis) só depois de N tentativas, complementando o delay já implementado. Decisão (2026-08-19): não vale criar conta externa agora pro beta fechado. OWASP: MFA é defesa mais forte que CAPTCHA (MFA já feito).
+- 🟡 **P2 — reavaliar porte** (pequeno → DPO/RIPD?) se base/receita crescer — Resolução CD/ANPD nº 2/2022.
+- ⚪ **P3 — política de exclusão/acesso** pra pessoa citada num empréstimo sem conta no Pontes (zona cinzenta LGPD — `docs/CONFORMIDADE_BR.md`).
+- ✅ **Autoatendimento do titular (exportar/apagar dado) — feito 2026-09-12.** LGPD Art. 18: usuário exclui a própria conta (step-up senha + 2º fator TOTP/PIN-email → soft-delete 30d → reativar no login), exporta os próprios dados, tudo self-service. Precedido de pesquisa OWASP/NIST (`docs/SEGURANCA_BEST_PRACTICES.md` §0). Back 526/526 + front 369/369, validado ao vivo. _(Detalhe no histórico quando fechar a branch.)_
+- ⚪ **P3 — aviso inline no "Registrar pagamento"** sobre o nome da conta aparecer pro credor (2026-08-12).
 
 ---
 
 ## Processo (futuro, quando atacar feature grande)
 
-**Spec-Driven Development** — antes de feature complexa (rateio família, módulo contador, Open Finance), escrever `docs/features/<feature>/spec.md` (comportamento, regras, casos de uso, edge cases, contrato de API) e só depois codar. Reduz drift. Começar pelo próximo grande pivot (família real).
-
----
-
-## Branches pendentes (decidir merge)
-
-> Reconciliado em 2026-07-17 contra `gh pr list` — todas as entradas abaixo já estavam resolvidas há semanas, só nunca foram tiradas daqui. Seção decai rápido; conferir `gh pr list --state all` antes de confiar cegamente da próxima vez.
-
-- [x] `feature/privacy-toggle-ocultar-saldo` — mergeada via PR #198 (2026-06-16).
-- [x] `feature/paginacao-server-side` — mergeada via PR #178 (2026-05-29).
-- [x] `chore/reorg-docs-solo` — mergeada via PR #198 (2026-06-16).
-- [x] `feature/familia-papeis-permissoes` — mergeada via PR #228 (2026-06-18) — era o backend da 2.3 (`STATE.md` ainda descrevia como pendente; corrigido).
-- [ ] `polish/relatorios` — nenhum PR encontrado no GitHub e branch não existe local/remoto. Provavelmente abandonada ou nunca chegou a ser pushada de fato. Se o trabalho ainda for necessário, tratar como item novo.
+**Spec-Driven Development** — antes de feature complexa (módulo contador, Open Finance), escrever `docs/features/<feature>/spec.md` (comportamento, regras, casos de uso, edge cases, contrato de API) e só depois codar. Reduz drift.

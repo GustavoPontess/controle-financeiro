@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import {
-  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, Plus, SlidersHorizontal,
+  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, SlidersHorizontal,
 } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesSelect,
@@ -255,10 +255,6 @@ export default function TransactionsPage() {
           <h1 className={styles.title}>Transações</h1>
           <div className={styles.subtitle}>Todos os seus lançamentos, mês a mês</div>
         </div>
-        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />}
-          onClick={() => window.dispatchEvent(new Event("openNewTransaction"))}>
-          Nova transação
-        </PontesButton>
       </div>
 
       {/* Hero composto — saldo total (global) à esquerda; resumo do mês à direita.

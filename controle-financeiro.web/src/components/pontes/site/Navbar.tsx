@@ -26,6 +26,11 @@ export type PontesNavbarProps = {
   topOffset?: number
   /** Posição do topo quando scrolled (px). Default 16. */
   scrolledTop?: number
+  /** Página sem hero escura por trás (ex: páginas legais) — força o visual
+   * "sólido" (fundo opaco, texto escuro) desde o início. Só afeta COR/fundo,
+   * não a posição — a posição continua seguindo o scroll de verdade, senão a
+   * barra nasce alta demais e sobrepõe o banner promocional/dev bar acima dela. */
+  forceSolid?: boolean
 }
 
 const DEFAULT_LINKS: PontesNavbarLink[] = [
@@ -37,8 +42,13 @@ const DEFAULT_LINKS: PontesNavbarLink[] = [
 
 export function PontesNavbar({
   p, font, activePath, links = DEFAULT_LINKS, onNavigate, hideAuth, topOffset = 110, scrolledTop = 16,
+  forceSolid = false,
 }: PontesNavbarProps) {
+  // `scrolled` (posição/top) segue o scroll real sempre — senão a barra nasce
+  // colada no topo e sobrepõe o banner promocional/dev bar. `solid` (cor/fundo)
+  // pode ser forçado por página sem hero, independente de já ter rolado ou não.
   const [scrolled, setScrolled] = useState(false)
+  const solid = forceSolid || scrolled
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80)
@@ -52,13 +62,13 @@ export function PontesNavbar({
     else { window.history.pushState({}, "", to); window.dispatchEvent(new PopStateEvent("popstate")) }
   }
 
-  const textColor = scrolled ? "var(--pontes-text)" : "var(--pontes-hero-fg)"
-  const wordmarkColor = scrolled ? "var(--pontes-primary)" : "var(--pontes-hero-fg)"
-  const hoverColor = scrolled ? "var(--pontes-primary)" : "var(--pontes-accent)"
+  const textColor = solid ? "var(--pontes-text)" : "var(--pontes-hero-fg)"
+  const wordmarkColor = solid ? "var(--pontes-primary)" : "var(--pontes-hero-fg)"
+  const hoverColor = solid ? "var(--pontes-primary)" : "var(--pontes-accent)"
 
   return (
     <nav className={styles.nav} style={{ top: scrolled ? scrolledTop : topOffset, ...scopedThemeVars(p, font) } as CSSProperties}>
-      <div className={styles.bar} data-scrolled={scrolled ? "true" : undefined}>
+      <div className={styles.bar} data-scrolled={solid ? "true" : undefined}>
         <Logo color={wordmarkColor} size={22} onClick={() => go("/")} />
 
         <div className={styles.links}>
@@ -69,7 +79,7 @@ export function PontesNavbar({
               hoverColor={hoverColor}
               active={activePath === link.to}
               onClick={() => go(link.to)}
-              style={{ opacity: scrolled ? 1 : 0.92 }}
+              style={{ opacity: solid ? 1 : 0.92 }}
             >
               {link.label}
             </PontesNavLink>
@@ -79,12 +89,12 @@ export function PontesNavbar({
         {!hideAuth ? (
           <div className={styles.auth}>
             <PontesButton
-              variant={scrolled ? "outline" : "outline-light"} size="sm"
+              variant={solid ? "outline" : "outline-light"} size="sm"
               onClick={() => go("/auth/login")}
               style={{ padding: "8px 16px", borderRadius: 999, fontSize: 13 }}
             >Entrar</PontesButton>
             <PontesButton
-              variant={scrolled ? "primary" : "accent"} size="sm"
+              variant={solid ? "primary" : "accent"} size="sm"
               onClick={() => go("/auth/register")}
               style={{ padding: "8px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700 }}
             >Criar conta</PontesButton>

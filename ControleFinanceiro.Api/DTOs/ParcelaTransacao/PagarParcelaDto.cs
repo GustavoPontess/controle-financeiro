@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 
@@ -19,6 +20,8 @@ public class PagarParcelaDto
     /// Chave de idempotência — obrigatória para evitar duplicação em retry.
     /// Use UUID v4 por chamada; reutilize o mesmo UUID em retry do mesmo pagamento.
     /// </summary>
+    [Required]
+    [MaxLength(100)]
     public string IdempotencyKey { get; set; } = string.Empty;
 }
 

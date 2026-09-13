@@ -1,0 +1,26 @@
+.wrap { display: flex; flex-direction: column; gap: 20px; }
+
+.head { display: flex; flex-direction: column; gap: 4px; }
+.title { font-size: 24px; font-weight: 700; color: var(--pontes-text); letter-spacing: -0.02em; margin: 0; }
+
+.section { margin-top: 4px; }
+
+.acoes { display: inline-flex; gap: 8px; justify-content: flex-end; }
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* Módulo C — corpo do modal de purga (confirmação forte). */
+.purgaBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.purgaBody p {
+  margin: 0;
+  color: var(--pontes-text);
+  line-height: 1.5;
+}

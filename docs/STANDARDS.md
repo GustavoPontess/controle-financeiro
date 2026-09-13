@@ -249,6 +249,10 @@ export default function MinhaTela() {
 
 ### Validação de formulários (PADRÃO OBRIGATÓRIO) ⭐
 
+> **Regras de campo (limite de caracteres, obrigatório, tipo, faixa de valor) — backend E frontend:**
+> ver **`docs/REGRAS_CAMPOS.md`** (checklist + tabela de limites padrão). Leitura obrigatória ao criar
+> campo/formulário novo.
+
 **Todo formulário valida por campo e mostra o erro visualmente. Sempre. Usa o mecanismo do Design System — não inventar outro.**
 
 Mecanismo do DS (já existe, não criar nada novo):

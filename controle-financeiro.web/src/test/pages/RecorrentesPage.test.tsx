@@ -89,7 +89,7 @@ describe("RecorrentesPage", () => {
   it("mostra empty state quando não há recorrentes", async () => {
     listRecorrentesPage.mockResolvedValue(paged([]))
     renderPage()
-    expect(await screen.findByText("Nenhuma assinatura")).toBeInTheDocument()
+    expect(await screen.findByText("Nenhuma conta fixa")).toBeInTheDocument()
   })
 
   // ── Listagem ──
@@ -97,7 +97,7 @@ describe("RecorrentesPage", () => {
   it("exibe recorrente carregado", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
     // "Netflix" pode aparecer em "Próximas cobranças" E na lista — basta existir.
     expect((await screen.findAllByText("Netflix")).length).toBeGreaterThan(0)
     expect(screen.getAllByText("Mensal").length).toBeGreaterThan(0)
@@ -107,37 +107,37 @@ describe("RecorrentesPage", () => {
   it("exibe hero de custo (custo mensal + ativas)", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
-    expect(screen.getByText("Custo mensal em assinaturas")).toBeInTheDocument()
+    await screen.findByText("Suas contas fixas")
+    expect(screen.getByText("Custo mensal em contas fixas")).toBeInTheDocument()
     expect(screen.getByText("ativas")).toBeInTheDocument()
   })
 
   it("inativa aparece com data-inactive", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false })]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
     const row = document.querySelector("[data-inactive='true']")
     expect(row).toBeInTheDocument()
   })
 
   // ── Criar modal ──
 
-  it("abre modal criar ao clicar em Nova Assinatura", async () => {
+  it("abre modal criar ao clicar em Nova Conta Fixa", async () => {
     listRecorrentesPage.mockResolvedValue(paged([]))
     renderPage()
-    await screen.findByText("Nenhuma assinatura")
-    fireEvent.click(screen.getAllByText("Nova Assinatura")[0])
-    expect(await screen.findByPlaceholderText("Ex: Netflix, Academia...")).toBeInTheDocument()
+    await screen.findByText("Nenhuma conta fixa")
+    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
+    expect(await screen.findByPlaceholderText("Ex: Aluguel, Escola, Netflix...")).toBeInTheDocument()
   })
 
   it("bloqueia submit com campos vazios e mostra erros", async () => {
     listRecorrentesPage.mockResolvedValue(paged([]))
     createRecorrente.mockResolvedValue(makeRecorrente())
     renderPage()
-    await screen.findByText("Nenhuma assinatura")
-    fireEvent.click(screen.getAllByText("Nova Assinatura")[0])
-    await screen.findByText("Criar Assinatura")
-    fireEvent.click(screen.getByText("Criar Assinatura"))
+    await screen.findByText("Nenhuma conta fixa")
+    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
+    await screen.findByText("Criar Conta Fixa")
+    fireEvent.click(screen.getByText("Criar Conta Fixa"))
     expect(await screen.findByText("Descrição obrigatória.")).toBeInTheDocument()
     expect(createRecorrente).not.toHaveBeenCalled()
   })
@@ -147,12 +147,12 @@ describe("RecorrentesPage", () => {
     createRecorrente.mockResolvedValue(makeRecorrente())
     listRecorrentesPage.mockResolvedValueOnce(paged([])).mockResolvedValueOnce(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Nenhuma assinatura")
+    await screen.findByText("Nenhuma conta fixa")
 
-    fireEvent.click(screen.getAllByText("Nova Assinatura")[0])
-    await screen.findByText("Criar Assinatura")
+    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
+    await screen.findByText("Criar Conta Fixa")
 
-    fireEvent.change(screen.getByPlaceholderText("Ex: Netflix, Academia..."), {
+    fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), {
       target: { value: "Netflix" },
     })
     fireEvent.change(screen.getByPlaceholderText("0,00"), {
@@ -161,10 +161,10 @@ describe("RecorrentesPage", () => {
 
     // Select conta (Nubank) — wait for the select to be ready
     await waitFor(() => {
-      expect(screen.getByText("Criar Assinatura")).toBeInTheDocument()
+      expect(screen.getByText("Criar Conta Fixa")).toBeInTheDocument()
     })
     // Data inicio is pre-filled via today()
-    fireEvent.click(screen.getByText("Criar Assinatura"))
+    fireEvent.click(screen.getByText("Criar Conta Fixa"))
 
     // If conta not selected, error shows
     expect(await screen.findByText("Selecione uma conta.")).toBeInTheDocument()
@@ -175,10 +175,10 @@ describe("RecorrentesPage", () => {
   it("abre modal cancelar com campo motivo", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     // The XCircle (cancelar) button — aguarda a row renderizar (header é estático)
-    const cancelarBtn = (await screen.findAllByTitle("Cancelar assinatura"))[0]
+    const cancelarBtn = (await screen.findAllByTitle("Cancelar conta fixa"))[0]
     fireEvent.click(cancelarBtn)
 
     expect(await screen.findByText("Motivo do cancelamento")).toBeInTheDocument()
@@ -188,9 +188,9 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
-    fireEvent.click((await screen.findAllByTitle("Cancelar assinatura"))[0])
+    fireEvent.click((await screen.findAllByTitle("Cancelar conta fixa"))[0])
     await screen.findByText("Confirmar cancelamento")
     fireEvent.click(screen.getByText("Confirmar cancelamento"))
 
@@ -202,9 +202,9 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
-    fireEvent.click((await screen.findAllByTitle("Cancelar assinatura"))[0])
+    fireEvent.click((await screen.findAllByTitle("Cancelar conta fixa"))[0])
     await screen.findByText("Confirmar cancelamento")
 
     fireEvent.change(screen.getByPlaceholderText("Ex: Não uso mais, preço alto..."), {
@@ -222,7 +222,7 @@ describe("RecorrentesPage", () => {
   it("abre modal editar próxima", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     expect(await screen.findByText("Novo valor (opcional)")).toBeInTheDocument()
@@ -233,7 +233,7 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     await screen.findByText("Novo valor (opcional)")
@@ -250,7 +250,7 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
     await screen.findByText("Novo valor (opcional)")
@@ -270,7 +270,7 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     toggleRecorrente.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Pausar"))[0])
     await waitFor(() => {
@@ -283,10 +283,10 @@ describe("RecorrentesPage", () => {
   it("abre confirm dialog ao clicar excluir", async () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
-    expect(await screen.findByText("Remover assinatura")).toBeInTheDocument()
+    expect(await screen.findByText("Remover conta fixa")).toBeInTheDocument()
     expect(screen.getByText(/Remover "Netflix"/)).toBeInTheDocument()
   })
 
@@ -294,10 +294,10 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     deleteRecorrente.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas assinaturas")
+    await screen.findByText("Suas contas fixas")
 
     fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
-    await screen.findByText("Remover assinatura")
+    await screen.findByText("Remover conta fixa")
     fireEvent.click(screen.getByText("Confirmar"))
 
     await waitFor(() => {

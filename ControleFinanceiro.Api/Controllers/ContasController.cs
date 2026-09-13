@@ -51,6 +51,7 @@ namespace ControleFinanceiro.Api.Controllers
             Id = c.Id,
             Nome = c.Nome,
             NumeroConta = c.NumeroConta,
+            Agencia = c.Agencia,
             Tipo = (int)c.Tipo,
             TipoDescricao = DescricaoTipo(c.Tipo),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
@@ -106,6 +107,7 @@ namespace ControleFinanceiro.Api.Controllers
             {
                 Nome = dto.Nome,
                 NumeroConta = dto.NumeroConta,
+                Agencia = dto.Agencia,
                 Tipo = (TipoConta)dto.Tipo,
                 TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
                 BancoId = dto.BancoId,
@@ -128,6 +130,7 @@ namespace ControleFinanceiro.Api.Controllers
             {
                 Nome = dto.Nome,
                 NumeroConta = dto.NumeroConta,
+                Agencia = dto.Agencia,
                 Tipo = (TipoConta)dto.Tipo,
                 TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
                 BancoId = dto.BancoId,

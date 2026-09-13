@@ -35,7 +35,8 @@ export default function NewContaDialog({ open, onClose, onSaved, notify, bancos,
       await onSaved()
       onClose()
     } catch {
-      notify({ open: true, message: "Erro ao salvar conta", severity: "error" })
+      // Erro de API já vira toast pela rede de segurança global (interceptor do axios).
+      // Aqui só NÃO fechamos o modal — o usuário corrige e tenta de novo.
     }
   }
 

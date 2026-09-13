@@ -57,6 +57,8 @@ export * from "./data/TablePagination"
 export * from "./data/BankBadge"
 export * from "./data/useHideBalance"
 export * from "./data/SensitiveValue"
+export * from "./data/useMaskData"
+export * from "./data/MaskedData"
 
 // ── Feedback & Overlays ──────────────────────────────────────────────────────
 export * from "./feedback/Toast"

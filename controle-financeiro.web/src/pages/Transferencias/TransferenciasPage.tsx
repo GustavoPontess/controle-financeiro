@@ -16,6 +16,10 @@ import styles from "./TransferenciasPage.module.css"
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
+const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" })
+
 // Máscara monetária — dígitos → centavos formatados pt-BR.
 const parseMoney = (masked: string): number | undefined => {
   const digits = masked.replace(/\D/g, "")
@@ -157,7 +161,7 @@ export default function TransferenciasPage() {
                         <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
                         <ArrowLeftRight size={12} className={styles.routeArrow} />
                         <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
-                        <span className={styles.itemDate}>{new Date(t.data).toLocaleDateString("pt-BR")}</span>
+                        <span className={styles.itemDate}>{formatDate(t.data)}</span>
                       </div>
                     </div>
                   </div>

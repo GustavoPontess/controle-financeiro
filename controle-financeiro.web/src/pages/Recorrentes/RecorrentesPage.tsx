@@ -29,8 +29,10 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString("pt-BR") : "—"
+  d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -239,9 +241,9 @@ export default function RecorrentesPage() {
       setCriarOpen(false)
       await loadData()
       window.dispatchEvent(new Event("transactionCreated"))
-      notify({ open: true, message: "Assinatura criada com sucesso.", severity: "success" })
+      notify({ open: true, message: "Conta fixa criada com sucesso.", severity: "success" })
     } catch {
-      notify({ open: true, message: "Erro ao criar assinatura.", severity: "error" })
+      notify({ open: true, message: "Erro ao criar conta fixa.", severity: "error" })
     } finally {
       setCriarSaving(false)
     }
@@ -254,7 +256,7 @@ export default function RecorrentesPage() {
       await toggleRecorrente(r.id)
       await loadData()
     } catch {
-      notify({ open: true, message: "Erro ao atualizar assinatura.", severity: "error" })
+      notify({ open: true, message: "Erro ao atualizar conta fixa.", severity: "error" })
     }
   }
 
@@ -262,13 +264,13 @@ export default function RecorrentesPage() {
 
   function openDeletar(r: Recorrente) {
     setConfirm({
-      title: "Remover assinatura",
+      title: "Remover conta fixa",
       description: `Remover "${r.descricao}"? As transações já geradas serão mantidas.`,
       tone: "danger",
       onConfirm: async () => {
         await deleteRecorrente(r.id)
         await loadData()
-        notify({ open: true, message: "Assinatura removida.", severity: "success" })
+        notify({ open: true, message: "Conta fixa removida.", severity: "success" })
       },
     })
   }
@@ -291,9 +293,9 @@ export default function RecorrentesPage() {
       await cancelarRecorrente(cancelarTarget.id, { motivo: cancelarForm.motivo })
       setCancelarOpen(false)
       await loadData()
-      notify({ open: true, message: "Assinatura cancelada.", severity: "success" })
+      notify({ open: true, message: "Conta fixa cancelada.", severity: "success" })
     } catch {
-      notify({ open: true, message: "Erro ao cancelar assinatura.", severity: "error" })
+      notify({ open: true, message: "Erro ao cancelar conta fixa.", severity: "error" })
     } finally {
       setCancelarSaving(false)
     }
@@ -363,11 +365,11 @@ export default function RecorrentesPage() {
       {/* Header */}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Assinaturas</h1>
-          <p className={styles.subtitle}>Assinaturas e pagamentos automáticos</p>
+          <h1 className={styles.title}>Contas Fixas</h1>
+          <p className={styles.subtitle}>Aluguel, escola, plano de saúde e outros pagamentos recorrentes</p>
         </div>
         <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
-          Nova Assinatura
+          Nova Conta Fixa
         </PontesButton>
       </div>
 
@@ -375,7 +377,7 @@ export default function RecorrentesPage() {
       <div className={styles.hero}>
         <div className={styles.heroBlob} />
         <div className={styles.heroMain}>
-          <div className={styles.heroLabel}>Custo mensal em assinaturas</div>
+          <div className={styles.heroLabel}>Custo mensal em contas fixas</div>
           <div className={styles.heroValue}>{formatMoney(totalMensalDespesa)}</div>
           <div className={styles.heroProj}>
             <Repeat size={14} strokeWidth={2.4} />
@@ -422,21 +424,23 @@ export default function RecorrentesPage() {
       {/* Lista */}
       <div className={styles.list}>
         <div className={styles.listHeader}>
-          <span className={styles.listTitle}>Suas assinaturas</span>
+          <span className={styles.listTitle}>Suas contas fixas</span>
           {!loading && total > 0 && (
-            <span className={styles.listMeta}>{total} {total === 1 ? "assinatura" : "assinaturas"}</span>
+            <span className={styles.listMeta}>{total} {total === 1 ? "conta fixa" : "contas fixas"}</span>
           )}
         </div>
 
         {loading ? (
           <div className={styles.center}><PontesLoadingDots /></div>
         ) : total === 0 ? (
-          <PontesEmptyState
-            icon={<Repeat size={40} />}
-            title="Nenhuma assinatura"
-            description="Cadastre Netflix, academia ou qualquer pagamento recorrente."
-            actions={<PontesButton variant="primary" size="sm" onClick={openCriar}>Nova Assinatura</PontesButton>}
-          />
+          <div className={styles.emptyWrap}>
+            <PontesEmptyState
+              icon={<Repeat size={40} />}
+              title="Nenhuma conta fixa"
+              description="Cadastre aluguel, escola, plano de saúde, assinaturas ou qualquer pagamento recorrente."
+              actions={<PontesButton variant="primary" size="sm" onClick={openCriar}>Nova Conta Fixa</PontesButton>}
+            />
+          </div>
         ) : (
           <div className={styles.cards}>
             {recorrentes.map((r) => {
@@ -484,7 +488,7 @@ export default function RecorrentesPage() {
                           <PontesIconButton size={32} variant="ghost" aria-label="Editar próxima ocorrência" onClick={() => openEditarProxima(r)} title="Editar próxima ocorrência">
                             <Pencil size={15} />
                           </PontesIconButton>
-                          <PontesIconButton size={32} variant="ghost" aria-label="Cancelar assinatura" onClick={() => openCancelar(r)} title="Cancelar assinatura">
+                          <PontesIconButton size={32} variant="ghost" aria-label="Cancelar conta fixa" onClick={() => openCancelar(r)} title="Cancelar conta fixa">
                             <XCircle size={15} />
                           </PontesIconButton>
                         </>
@@ -492,7 +496,7 @@ export default function RecorrentesPage() {
                       <PontesIconButton size={32} variant="ghost" aria-label={r.ativo ? "Pausar" : "Ativar"} onClick={() => handleToggle(r)} title={r.ativo ? "Pausar" : "Ativar"}>
                         {r.ativo ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
                       </PontesIconButton>
-                      <PontesIconButton size={32} variant="ghost" aria-label="Excluir assinatura" onClick={() => openDeletar(r)} title="Excluir">
+                      <PontesIconButton size={32} variant="ghost" aria-label="Excluir conta fixa" onClick={() => openDeletar(r)} title="Excluir">
                         <Trash2 size={15} />
                       </PontesIconButton>
                     </div>
@@ -507,7 +511,7 @@ export default function RecorrentesPage() {
             total={total} page={page} pageSize={pageSize}
             onPageChange={setPage}
             onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-            itemLabel="assinaturas" itemLabelSingular="assinatura"
+            itemLabel="contas fixas" itemLabelSingular="conta fixa"
           />
         )}
       </div>
@@ -515,14 +519,14 @@ export default function RecorrentesPage() {
       {/* ── Modal criar ──────────────────────────────────────────────────────── */}
       <PontesModal
         open={criarOpen}
-        title="Nova Assinatura"
+        title="Nova Conta Fixa"
         onClose={() => setCriarOpen(false)}
         maxWidth={520}
         footer={
           <div className={styles.modalFooter}>
             <PontesButton variant="outline" size="sm" onClick={() => setCriarOpen(false)}>Cancelar</PontesButton>
             <PontesButton variant="primary" size="sm" loading={criarSaving} onClick={handleCriar}>
-              Criar Assinatura
+              Criar Conta Fixa
             </PontesButton>
           </div>
         }
@@ -530,7 +534,7 @@ export default function RecorrentesPage() {
         <div className={styles.form}>
           <PontesField label="Descrição" required error={criarErrors.descricao}>
             <PontesInput
-              placeholder="Ex: Netflix, Academia..."
+              placeholder="Ex: Aluguel, Escola, Netflix..."
               value={criarForm.descricao}
               invalid={!!criarErrors.descricao}
               onChange={e => {

@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-16
+last_reviewed: 2026-08-18
 status: ATIVO
 ---
 
@@ -53,4 +53,96 @@ status: ATIVO
 
 ## Status da nossa pesquisa
 - ✅ Técnico (senha/reset/token/CSRF/API) verificado por fonte primária → `docs/SEGURANCA_BEST_PRACTICES.md`.
-- 🔶 **Aberto** (re-pesquisar antes do lançamento): obrigações concretas de **LGPD** (RIPD/DPIA, endpoints de direito do titular, DPO), e a pergunta-chave **BACEN/Open Finance se aplica a agregador de finanças pessoais que não movimenta dinheiro?**
+- ✅ **LGPD, BACEN/Open Finance e regime de pequeno porte — pesquisados por completo em 2026-08-18**
+  (3 agentes em paralelo, fonte primária: planalto.gov.br, gov.br/anpd, bcb.gov.br,
+  normativos.bcb.gov.br). Resumo abaixo; achados acionáveis catalogados no `ROADMAP.md` → "Gate de
+  lançamento".
+
+### BACEN / Open Finance — **fora do escopo regulatório**, confiança alta
+Pontes não coleta/intermedeia recursos de terceiros nem tem custódia de valor (Lei 4.595/1964,
+Art. 17), não opera "conta de pagamento" nem executa instrução de pagamento (Lei 12.865/2013,
+Art. 6º), e Open Finance só se aplica a instituições já autorizadas pelo BACEN (Resolução Conjunta
+BCB/CMN nº 1/2020, Art. 1º-2º — quem não é autorizado é sempre "cliente", nunca "participante"). O
+recurso de empréstimo entre pessoas também fica fora do SEP (Resolução CMN 4.656/2018) — não há
+captação/direcionamento de recursos por uma plataforma de matching. **Sem ação necessária.** Vale
+reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair do papel de verdade.
+
+### LGPD — base legal, RIPD, DPO, direitos do titular
+- **Base legal:** dados próprios (transação, conta, cartão) → execução de contrato (Art. 7º, V).
+  Dados de terceiro em empréstimo (nome/valor de alguém sem conta) → legítimo interesse (Art. 7º,
+  IX + teste de balanceamento do Art. 10), com minimização estrita (só nome + valor).
+- **RIPD:** não obrigatório agora (não há dado sensível nem processamento em larga escala); ANPD
+  pode exigir a qualquer momento por causa da base de legítimo interesse — reavaliar se a base de
+  usuários crescer.
+- **DPO/Encarregado:** dispensado — Pontes se qualifica como **agente de tratamento de pequeno
+  porte** (Resolução CD/ANPD nº 2/2022, Art. 11º), que troca o DPO por um canal de comunicação
+  acessível com o titular (temos: e-mail de contato na `/privacidade`). Essa resolução também
+  dobra o prazo de resposta a pedido de titular (Art. 14º) e permite política de segurança e
+  registro de operações simplificados (Art. 9º/13º).
+- **Direitos do titular:** cumprimento manual (e-mail) é suficiente nesta fase — endpoint de
+  autoatendimento (exportar/apagar) fica pro lançamento público.
+- **Exibição de PII (e-mail) no painel admin — analisado 2026-09-12 (fonte primária):** exibir o
+  e-mail do usuário pro **admin autenticado** (fila de aprovação, gestão de usuários, LGPD, auditoria)
+  **é permitido**. Base: Art. 6º III (necessidade) — o e-mail é dado *pertinente e proporcional* à
+  finalidade (decidir aprovação, gerir conta, atender direito do titular), não excessivo; Art. 6º VII +
+  Art. 46 (segurança/controle de acesso) — exigem que só quem precisa veja, e o acesso já é restrito
+  (policy `IsAdmin` + chunk lazy só-admin, zero no bundle comum). A LGPD **não obriga** mascarar PII do
+  operador autorizado. **Mesmo assim implementamos mascaramento com "revelar" (olhinho)** como *privacy
+  by design* (Art. 6º VII/VIII) — reduz exposição em print/ombro; default mascarado, revelação sob
+  demanda. Não é exigência legal, é reforço.
+- **Eliminação de dados — prazo e retenção (pesquisado 2026-08-26, LGPD Art. 15-16 + ANPD FAQ 5.5):**
+  - **Não há prazo fixo em dias na LGPD.** A lei manda eliminar os dados **após o término do
+    tratamento** ("no âmbito e nos limites técnicos das atividades"), sem cravar número de dias.
+    Término do tratamento (Art. 15): finalidade alcançada/dados desnecessários, fim do período, ou
+    **comunicação do titular** (revogação/pedido de exclusão).
+  - **Padrão que passa em auditoria (GDPR/SOC 2, pesquisado 2026-08-26): soft delete → carência →
+    hard delete.** Só soft delete permanente NÃO é conforme (mantém o dado que o titular mandou
+    apagar). O soft é só a janela reversível; o hard (delete real, cascade) é obrigatório no fim pra
+    satisfazer o direito ao esquecimento.
+  - **⚠️ Sobre "30 dias" — separar duas coisas (a LGPD NÃO fixa carência de exclusão):**
+    - **Prazo de RESPOSTA ao titular (isto é lei):** LGPD **Art. 19 = 15 dias**; Resolução CD/ANPD
+      nº 2/2022 **dobra** pra agente de pequeno porte → **30 dias no nosso caso**. É o prazo pra
+      ATENDER o pedido, não "janela antes de apagar".
+    - **Prazo pra ELIMINAR os dados:** LGPD Art. 15-16 **não cravam dias** ("após o término do
+      tratamento, nos limites técnicos").
+    - **Janela de carência (soft→hard) de 30 dias:** é **convenção de mercado / boa prática (SOC 2/
+      GDPR), NÃO obrigação legal.** Escolha nossa. Protege contra exclusão acidental e contra **conta
+      hackeada** (o dono real recupera antes da purga). Coincide com nosso prazo de resposta (30d),
+      o que é conveniente, mas não é a lei mandando.
+  - **Conservação permitida mesmo após pedido de exclusão (Art. 16):** dados necessários pra (1)
+    cumprir **obrigação legal/regulatória**; (2) estudo por órgão de pesquisa (anonimizado); (3)
+    transferência a terceiro conforme a lei; (4) **uso exclusivo do controlador, anonimizado**.
+    Regra prática: apagar o PII, e o que precisar reter (ex.: `FinancialEventLog` de auditoria)
+    fica **anonimizado**, sem acesso de terceiro.
+  - **Prazo de resposta ao pedido do titular:** ~15 dias na LGPD, **dobrado** pra agente de pequeno
+    porte (Resolução CD/ANPD nº 2/2022) → ~30 dias no nosso caso. A eliminação em si é "sem demora,
+    nos limites técnicos".
+  - **Aplicação no admin (Ferramentas LGPD):** exclusão em 2 estágios — (1) marcar pra exclusão
+    (soft-delete reversível, janela ~30 dias); (2) purga definitiva do PII após a janela, retendo
+    anonimizado só o exigido por lei.
+- **Retenção obrigatória de logs — Marco Civil da Internet Art. 15 (pesquisado 2026-08-26):**
+  provedor de aplicações **PJ, organizado, com fins econômicos** deve guardar os **registros de acesso
+  a aplicações (login → identificador + IP + timestamp) por 6 MESES**, sob sigilo/ambiente controlado;
+  ordem judicial pode estender. **Isso limita a exclusão:** ao apagar uma conta, os registros de
+  acesso NÃO vão junto — ficam retidos 6 meses num store separado seguro (conservação por obrigação
+  legal, LGPD Art. 16, I), depois são purgados. Fonte: [Marco Civil Art. 15](https://www.jusbrasil.com.br/topicos/27363770/art-15-da-lei-n-12965-de-23-de-abril-de-2014).
+  **Aplicabilidade:** mira PJ com fins econômicos — hoje o Pontes é pré-empresa (sem CNPJ), então
+  ainda não dispara pleno, mas dispara quando existir a empresa, e ordem judicial vale pra qualquer
+  um. **Desenhar pra isso desde já.** **Achado de código — RESOLVIDO (2026-09-12):** existe o store
+  dedicado `RegistroAcesso` (entidade sem FK → fora do cascade da conta), captura de login+IP+timestamp
+  no `AuthController`, retenção 6 meses (`RegistroAcessoService.RetencaoDias=180`) com purga automática
+  via `PurgaRegistroAcessoExpiradoJob` (Hangfire diário). O dado guardado é o registro legal do
+  Art. 5 VIII — **data/hora + IP** — mais o e-mail como identificador (mantém o log útil após a purga
+  da conta); **sem User-Agent** (minimização, Art. 6º III). Reconfirmado na fonte primária em
+  2026-09-12: Art. 5, VIII define o registro como "informações referentes à data e hora de uso de uma
+  determinada aplicação de internet a partir de um determinado endereço IP".
+- **Zona cinzenta sem resposta fechada:** o que acontece se a pessoa citada num empréstimo (sem
+  conta) pedir exclusão dos dados dela guardados por outro usuário — nenhuma fonte primária cobre
+  esse caso específico. Cataloga como P2 pro público, não bloqueia o beta (poucos testadores
+  conhecidos, risco baixo).
+
+**O que ficou pronto no código desta sessão (2026-08-18):** página `/privacidade`, checkbox real
+de aceite (não pré-marcado) no cadastro, aviso de minimização no campo "pessoa" do empréstimo.
+**O que falta pro público (não bloqueia o beta):** endpoint de exportar/apagar dado, política pra
+pedido de exclusão de terceiro sem conta, reavaliação de porte se a receita/escala crescer.
+

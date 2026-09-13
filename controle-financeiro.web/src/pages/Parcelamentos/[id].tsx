@@ -13,8 +13,10 @@ import type { Conta } from "../../types/Conta"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
 
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString("pt-BR") : "—"
+  d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
 const formatarMesAno = (data: string) => {
   const [ano, mes] = data.substring(0, 7).split("-")

@@ -1,8 +1,15 @@
+import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
 import DefaultLayout from "../layouts/Default/DefaultLayout"
 import ProtectedRoute from "../components/Auth/ProtectedRoute"
+import AdminRoute from "../components/Auth/AdminRoute"
 import RootRoute from "../components/Auth/RootRoute"
+import { PontesLoadingDots } from "@/components/pontes"
+
+// Painel admin em chunk separado (lazy): só é baixado quando o AdminRoute libera pra um admin real.
+// Usuário comum nunca puxa esse JS. Ver AdminApp/AdminRoute.
+const AdminApp = lazy(() => import("../pages/Admin/AdminApp"))
 
 import LoginPage from "../pages/Auth/LoginPage"
 import RegisterPage from "../pages/Auth/RegisterPage"
@@ -18,6 +25,10 @@ import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import ParcelamentosPage from "../pages/Parcelamentos"
 import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
+import EmprestimosLabA from "../pages/Emprestimos/EmprestimosLabA"
+import EmprestimosLabB from "../pages/Emprestimos/EmprestimosLabB"
+import EmprestimosLabC from "../pages/Emprestimos/EmprestimosLabC"
+import EmprestimosLabD from "../pages/Emprestimos/EmprestimosLabD"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import FamiliaDetalhePage from "../pages/Familia/FamiliaDetalhePage"
@@ -30,7 +41,9 @@ import CouplesPage from "../pages/Site/CouplesPage"
 import ContadoresPage from "../pages/Site/ContadoresPage"
 import RecursosPage from "../pages/Site/RecursosPage"
 import SobrePage from "../pages/Site/SobrePage"
-import LogoConcepts from "../pages/Site/LogoConcepts"
+import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
+import PrivacidadePage from "../pages/Site/PrivacidadePage"
+import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 
 export default function AppRoutes() {
@@ -48,15 +61,20 @@ export default function AppRoutes() {
           <Route path="/contadores" element={<ContadoresPage />} />
           <Route path="/recursos" element={<RecursosPage />} />
           <Route path="/sobre" element={<SobrePage />} />
+          <Route path="/convite/emprestimo/:token" element={<ConviteEmprestimoPage />} />
+          <Route path="/privacidade" element={<PrivacidadePage />} />
+          <Route path="/termos-de-uso" element={<TermosDeUsoPage />} />
         </Route>
 
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
-        {/* Páginas públicas com chrome próprio */}
-        <Route path="/logo-concepts" element={<LogoConcepts />} />
-        <Route path="/design-system" element={<DesignSystemPage />} />
+        {/* Páginas públicas com chrome próprio — só em DEV, não devem ir pro build de produção
+            (achado do sweep pré-beta, 2026-08-18: eram públicas sem gate nenhum). */}
+        {import.meta.env.DEV && (
+          <Route path="/design-system" element={<DesignSystemPage />} />
+        )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
         <Route
@@ -86,6 +104,15 @@ export default function AppRoutes() {
           <Route path="/parcelamentos" element={<ParcelamentosPage />} />
           <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
+          {/* Bancada de comparação de layout — nunca vai pro beta/prod, só DEV local. */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/emprestimos-lab-a" element={<EmprestimosLabA />} />
+              <Route path="/emprestimos-lab-b" element={<EmprestimosLabB />} />
+              <Route path="/emprestimos-lab-c" element={<EmprestimosLabC />} />
+              <Route path="/emprestimos-lab-d" element={<EmprestimosLabD />} />
+            </>
+          )}
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/familias/:id" element={<FamiliaDetalhePage />} />
@@ -94,6 +121,23 @@ export default function AppRoutes() {
           <Route path="/importacao" element={<ImportacaoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
+
+        {/* Admin — shell PRÓPRIO (AdminLayout), isolado do app do usuário. Gate em camadas:
+            ProtectedRoute (logado) → AdminRoute (confirma IsAdmin no backend ANTES de montar;
+            não-admin cai em "/" genérico) → AdminApp lazy (chunk só baixa pra admin). Fronteira
+            real = policy IsAdmin no backend; isto é defesa em profundidade. */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}><PontesLoadingDots /></div>}>
+                  <AdminApp />
+                </Suspense>
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Fallback — qualquer rota inexistente vai pra root (que decide HomePage ou Dashboard) */}
         <Route path="*" element={<Navigate to="/" replace />} />

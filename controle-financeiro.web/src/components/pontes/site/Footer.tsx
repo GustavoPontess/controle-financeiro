@@ -31,6 +31,11 @@ const DEFAULT_COLUMNS: PontesFooterColumn[] = [
     { label: "Para Contadores", to: "/contadores" },
     { label: "Preços", to: "/precos" },
   ] },
+  // TODO (Gustavo, quando tiver conta/CNPJ da empresa): "Contato" aponta pra
+  // /contato, que não existe (dead link) — falta decidir se vira mailto: com
+  // e-mail da empresa ou uma página de verdade. "Blog" (/blog) também não
+  // existe ainda. Ver mapa completo em ROADMAP.md → "Catalogado pro
+  // lançamento público".
   { title: "Empresa", links: [
     { label: "Sobre", to: "/sobre" },
     { label: "Blog", to: "/blog" },
@@ -41,8 +46,10 @@ const DEFAULT_COLUMNS: PontesFooterColumn[] = [
     { label: "Status", to: "/status" },
     { label: "API", to: "/api" },
   ] },
+  // TODO (Gustavo): "LGPD" (/lgpd) não existe — decidir se vira seção dentro
+  // da própria /privacidade ou página própria antes do lançamento público.
   { title: "Legal", links: [
-    { label: "Termos", to: "/termos" },
+    { label: "Termos", to: "/termos-de-uso" },
     { label: "Privacidade", to: "/privacidade" },
     { label: "LGPD", to: "/lgpd" },
   ] },
@@ -138,6 +145,8 @@ export function PontesFooter({
           ))}
         </div>
 
+        {/* TODO (Gustavo, quando tiver CNPJ de verdade): trocar o placeholder
+            fictício abaixo pelo CNPJ real. */}
         <div className={styles.bottom}>
           <span>{copyright}</span>
           <span>CNPJ XX.XXX.XXX/0001-XX · Brasil</span>

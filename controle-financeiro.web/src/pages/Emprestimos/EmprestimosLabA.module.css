@@ -1,0 +1,43 @@
+/* Lab A — Extrato minimalista: baixo chrome, tudo perto, densidade tipo extrato bancário. */
+.root { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); padding-bottom: 60px; }
+
+.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.title { font-family: var(--pontes-font-heading); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 12px; color: var(--pontes-text-muted); margin-top: 2px; }
+
+/* KPIs — mesmo PontesStatCard da tela real (referência do Gustavo). */
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+
+.consolidarStrip { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; border-bottom: 1px solid var(--pontes-border); }
+.consolidarRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12.5px; color: var(--pontes-text); }
+
+.extratoList { list-style: none; margin: 0; padding: 0; }
+.extratoRow {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 10px 4px; border-bottom: 1px solid var(--pontes-border);
+  border-left: 3px solid transparent; padding-left: 10px;
+}
+.extratoRow:last-child { border-bottom: none; }
+.extratoRow[data-tone="danger"] { border-left-color: var(--pontes-danger); }
+.extratoRow[data-tone="warning"] { border-left-color: var(--pontes-warning); }
+.extratoRow[data-quitado="true"] { opacity: .55; }
+.extratoRow .actions { opacity: 0; transition: opacity .12s ease; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.extratoRow:hover .actions, .extratoRow:focus-within .actions { opacity: 1; }
+.extratoMain { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.extratoHead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.extratoDesc {
+  font-size: 13px; font-weight: 600; color: var(--pontes-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px;
+}
+.extratoSub { font-size: 11px; color: var(--pontes-text-muted); }
+.extratoValor { font-size: 14px; font-weight: 700; white-space: nowrap; color: var(--pontes-text); flex-shrink: 0; min-width: 90px; text-align: right; }
+.extratoValor[data-tone="danger"] { color: var(--pontes-danger); }
+
+.parcelasWrap { display: flex; flex-direction: column; gap: 6px; padding: 8px 4px 8px 20px; font-size: 12px; }
+.parcelaRow { display: flex; align-items: center; gap: 14px; }
+.parcelaRow span:nth-child(1) { color: var(--pontes-text-muted); min-width: 40px; }
+.parcelaRow span:nth-child(2) { flex: 1; color: var(--pontes-text); }
+.parcelaRow span:nth-child(3) { font-weight: 700; color: var(--pontes-text); }
+
+.footerMeta { font-size: 12px; color: var(--pontes-text-muted); padding: 4px; }
+.emptyWrap { padding: 32px 4px; font-size: 13px; color: var(--pontes-text-muted); }

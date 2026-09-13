@@ -70,6 +70,13 @@ Atualize `STATE.md` com o que vai atacar. `gh issue` é opcional pra rastrear �
 7. **Ícones via `lucide-react`** (`<Plus size={16} strokeWidth={2.5}/>`), nunca char texto.
 8. **Form valida por campo, sempre.** `PontesField error=` + `invalid` no controle, nunca toast pra campo faltando. Bloqueia submit se inválido; erro limpa ao editar; mensagem ≠ placeholder. Teste obrigatório (submit vazio bloqueia + mostra erros).
 9. **Confirmação destrutiva:** `PontesDialog`, nunca `window.confirm`.
+10. **Baseline de segurança + qualidade — SEM PEDIR, toda entrega.** Rodar o **checklist obrigatório
+    por entrega** (`docs/SEGURANCA_BEST_PRACTICES.md` §0) antes de fechar: input validado back+front,
+    isolamento/IDOR, SQL só parametrizado, DoS/força bruta, erro/log sem vazar segredo/PII, **menor
+    exposição de informação** (o que não é da pessoa ela nem vê — conferir no `dist` que rota/endpoint
+    de admin não vaza no bundle comum), DS-only, teste, e conformidade por fonte primária. **Afirmação
+    de segurança só com evidência verificada** (grep/dist/DTO), nunca de memória. Modelo de ameaça:
+    atacante automatizado com IA sem limites — não confiar em obscuridade.
 
 > **`src/components/` (raiz, fora de `pontes/`) era ZONA LEGADA — já foi purgada (PR #166).** Hoje só sobrevivem ali `Logo/`, `Auth/` (lógica de rota), `Navbar/`, `Sidebar/`, `Pwa/`. Componente novo reutilizável vai pra `pontes/`, sem exceção.
 
@@ -148,7 +155,7 @@ O limite de uso renova de 5 em 5h — gastar cedo deixa o projeto parado. Pesqui
 2. **Lint zero** — `npm run lint`.
 3. **Commit** seguindo `docs/GIT_WORKFLOW.md`. Trabalho parcial pode ser commitado desde que compile.
 4. **Atualizar `STATE.md`:** marcar etapas concluídas, atualizar "próxima ação concreta", trocar foco.
-5. **Atualizar `ROADMAP.md`** se um item foi entregue (marcar `[x]`) ou surgiu item novo.
+5. **Atualizar `ROADMAP.md`** se um item foi entregue ou surgiu item novo. **Higiene: o ROADMAP é só backlog ABERTO.** Item concluído não fica marcado `[x]` acumulando — vai pro arquivo `docs/history/ROADMAP_CONCLUIDO.md` (move o texto pra lá, preservando o detalhe; tira do ROADMAP). Fazer no encerramento, ou num pente-fino quando o arquivo inchar. Deduplique itens repetidos. Nada se apaga — só realoca.
 6. **Atualizar doc tocada:** `docs/DATABASE.md` (schema), `docs/FLOWS.md` (fluxo), `docs/STANDARDS.md` (padrão novo), `docs/features/<nome>/` (feature).
 7. **Push + PR** (se for trabalhar com remoto): `git push -u origin feature/<slug>` → `gh pr create --fill --base main`. `Closes #N` no body se tiver issue.
 8. **Avisar em chat:** o que parou, próxima ação.

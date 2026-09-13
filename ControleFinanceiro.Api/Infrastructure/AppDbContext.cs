@@ -13,11 +13,19 @@ public class AppDbContext : DbContext
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<Banco> Bancos => Set<Banco>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
+    public DbSet<RegistroAcesso> RegistrosAcesso => Set<RegistroAcesso>();
+    public DbSet<NotificacaoAdmin> NotificacoesAdmin => Set<NotificacaoAdmin>();
+    public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     public DbSet<Relacionamento> Relacionamentos => Set<Relacionamento>();
     public DbSet<CompartilhamentoConta> CompartilhamentosContas => Set<CompartilhamentoConta>();
     public DbSet<Transferencia> Transferencias => Set<Transferencia>();
     public DbSet<Recorrente> Recorrentes => Set<Recorrente>();
     public DbSet<Emprestimo> Emprestimos => Set<Emprestimo>();
+    public DbSet<EmprestimoPagamentoSolicitacao> EmprestimoPagamentoSolicitacoes => Set<EmprestimoPagamentoSolicitacao>();
+    public DbSet<EmprestimoParcela> EmprestimoParcelas => Set<EmprestimoParcela>();
+    public DbSet<EmprestimoConsolidacaoProposta> EmprestimoConsolidacaoPropostas => Set<EmprestimoConsolidacaoProposta>();
+    public DbSet<EmprestimoConsolidacaoItem> EmprestimoConsolidacaoItens => Set<EmprestimoConsolidacaoItem>();
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
 
@@ -29,6 +37,8 @@ public class AppDbContext : DbContext
     // ── Issue #5 Autenticação Robusta ──
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+    public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
 
     // ── Issue #10 Orçamento/Metas ──
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
@@ -200,6 +210,27 @@ public class AppDbContext : DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
+        // AdminAuditLog — append-only, listado por mais recente. Sem FK pro Usuario (auditoria
+        // sobrevive à exclusão do usuário; vínculo é só o Guid solto).
+        modelBuilder.Entity<AdminAuditLog>()
+            .HasIndex(a => a.CriadoEm);
+
+        // RegistroAcesso — retenção Marco Civil Art. 15. Sem FK pro Usuario (sobrevive à purga LGPD
+        // da conta; vínculo é só o Guid solto). Índice em CriadoEm pra a purga de retenção vencida;
+        // em UsuarioId pra consulta por titular (ordem judicial).
+        modelBuilder.Entity<RegistroAcesso>()
+            .HasIndex(r => r.CriadoEm);
+        modelBuilder.Entity<RegistroAcesso>()
+            .HasIndex(r => r.UsuarioId);
+
+        // NotificacaoAdmin — stream do painel admin (separado do financeiro), listado por mais recente.
+        modelBuilder.Entity<NotificacaoAdmin>()
+            .HasIndex(n => n.CriadoEm);
+
+        // EmailOtp — código de reserva por e-mail; consultado por (usuário, finalidade).
+        modelBuilder.Entity<EmailOtp>()
+            .HasIndex(o => new { o.UsuarioId, o.Finalidade });
+
         modelBuilder.Entity<CompartilhamentoConta>()
             .HasIndex(c => new { c.ContaId, c.UsuarioId })
             .IsUnique();
@@ -226,6 +257,24 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PasswordResetToken>()
             .HasIndex(prt => prt.Token)
+            .IsUnique();
+
+        // MfaBackupCode → Usuario (Cascade: códigos somem com o usuário)
+        modelBuilder.Entity<MfaBackupCode>()
+            .HasOne(c => c.Usuario)
+            .WithMany(u => u.MfaBackupCodes)
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MfaLoginChallenge → Usuario (Cascade)
+        modelBuilder.Entity<MfaLoginChallenge>()
+            .HasOne(c => c.Usuario)
+            .WithMany()
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MfaLoginChallenge>()
+            .HasIndex(c => c.TokenHash)
             .IsUnique();
 
         // ── Issue #10 Orçamento/Metas ──
@@ -380,6 +429,133 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<AcertoContas>()
             .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
+
+        // ── Empréstimo compartilhado (docs/features/emprestimo-compartilhado/spec.md) ──
+
+        // Emprestimo → ContraparteUsuario (Restrict: não deletar usuário com vínculo ativo)
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.ContraparteUsuario)
+            .WithMany()
+            .HasForeignKey(e => e.ContraparteUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Default true no banco — sem isso o EF usa o default do CLR (false) na coluna,
+        // o que soft-deletaria todo empréstimo existente ao aplicar a migration.
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.Ativo)
+            .HasDefaultValue(true);
+
+        modelBuilder.Entity<Emprestimo>()
+            .HasIndex(e => e.ConviteTokenHash);
+
+        // Emprestimo → Transacao (SetNull: a Transacao nunca é hard-deletada — soft delete
+        // via Ativo — mas se algum dia for, o empréstimo não some junto, só perde o vínculo).
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.Transacao)
+            .WithMany()
+            .HasForeignKey(e => e.TransacaoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Pagamento com comprovante + aprovação (docs/features/emprestimo-compartilhado/pagamento-aprovacao.md)
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.Emprestimo)
+            .WithMany()
+            .HasForeignKey(s => s.EmprestimoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.TransacaoComprovante)
+            .WithMany()
+            .HasForeignKey(s => s.TransacaoComprovanteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.TransacaoRecebimento)
+            .WithMany()
+            .HasForeignKey(s => s.TransacaoRecebimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Forma de pagamento + parcelas (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.TaxaJuroMensal)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<Emprestimo>()
+            .Property(e => e.PercentualMultaAtraso)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasOne(p => p.Emprestimo)
+            .WithMany(e => e.Parcelas)
+            .HasForeignKey(p => p.EmprestimoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasOne(p => p.SolicitacaoPagamento)
+            .WithMany()
+            .HasForeignKey(p => p.SolicitacaoPagamentoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<EmprestimoParcela>()
+            .HasIndex(p => new { p.EmprestimoId, p.Numero });
+
+        modelBuilder.Entity<EmprestimoPagamentoSolicitacao>()
+            .HasOne(s => s.Parcela)
+            .WithMany()
+            .HasForeignKey(s => s.ParcelaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Unificar/consolidar (docs/features/emprestimo-compartilhado/parcelamento-e-agrupamento.md)
+        modelBuilder.Entity<Emprestimo>()
+            .HasOne(e => e.ConsolidadoNoEmprestimo)
+            .WithMany()
+            .HasForeignKey(e => e.ConsolidadoNoEmprestimoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.CredorUsuario)
+            .WithMany()
+            .HasForeignKey(p => p.CredorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.DevedorUsuario)
+            .WithMany()
+            .HasForeignKey(p => p.DevedorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .HasOne(p => p.EmprestimoConsolidado)
+            .WithMany()
+            .HasForeignKey(p => p.EmprestimoConsolidadoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .Property(p => p.TaxaJuroMensal)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoProposta>()
+            .Property(p => p.PercentualMultaAtraso)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasOne(i => i.Proposta)
+            .WithMany(p => p.Itens)
+            .HasForeignKey(i => i.PropostaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Restrict (não Cascade): apagar o item de consolidação não pode arrastar o Emprestimo
+        // original — soft delete é o único jeito de "sumir" um empréstimo (CLAUDE.md).
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasOne(i => i.EmprestimoOriginal)
+            .WithMany()
+            .HasForeignKey(i => i.EmprestimoOriginalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmprestimoConsolidacaoItem>()
+            .HasIndex(i => new { i.PropostaId, i.EmprestimoOriginalId })
+            .IsUnique();
+
         // ── Issue #86 Metas ──
 
         // Meta → Usuario (Cascade: metas somem com o usuário)

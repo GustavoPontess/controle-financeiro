@@ -62,11 +62,12 @@
 .searchClear:hover { color: var(--pontes-text); }
 
 .tipoChips {
-  display: inline-flex; gap: 2px; padding: 3px;
+  display: inline-flex; gap: 2px; padding: 3px; height: 42px; box-sizing: border-box;
   background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 11px;
 }
 .tipoChip {
-  padding: 7px 14px; border: none; background: transparent; cursor: pointer;
+  display: inline-flex; align-items: center;
+  padding: 0 14px; border: none; background: transparent; cursor: pointer;
   font-family: var(--pontes-font); font-size: 13px; font-weight: 600;
   color: var(--pontes-text-muted); border-radius: 8px;
   transition: background-color .14s ease, color .14s ease;
@@ -78,6 +79,9 @@
 }
 
 .catField { min-width: 200px; flex: 0 1 220px; }
+
+/* Filtros/Limpar (PontesButton) — mesma altura dos demais controles da toolbar (42px). */
+.toolbar > button { height: 42px; box-sizing: border-box; }
 
 /* Filtros avançados (#1.1) — chips ativos + corpo do drawer */
 .advChips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }

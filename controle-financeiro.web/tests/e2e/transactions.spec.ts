@@ -23,7 +23,8 @@ test.describe('Transações', () => {
   });
 
   test('botão Nova transação abre modal com campos obrigatórios', async ({ page }) => {
-    await page.locator('main').getByRole('button', { name: /nova transação/i }).click();
+    // O botão "Nova transação" vive na navbar (fora de <main>) — é o disparador global do modal.
+    await page.getByRole('button', { name: /nova transação/i }).first().click();
 
     // Campos obrigatórios aparecem no modal
     await expect(page.locator('input[inputmode="decimal"]').first()).toBeVisible({ timeout: 5_000 });

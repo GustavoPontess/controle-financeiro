@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +32,7 @@ public class PasswordResetEmailJob
             return;
 
         var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.Email == email.ToLower() && u.Ativo);
+            .FirstOrDefaultAsync(u => u.Email == email.ToLower() && u.Status == StatusUsuario.Ativo);
 
         if (usuario == null)
             return; // e-mail não cadastrado: nada a fazer

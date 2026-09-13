@@ -1,0 +1,61 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+  font-family: var(--pontes-font);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 440px;
+  width: 100%;
+}
+
+.iconBadge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pontes-primary-soft, color-mix(in srgb, var(--pontes-primary) 14%, transparent));
+  color: var(--pontes-primary);
+}
+
+.title {
+  font-family: var(--pontes-font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--pontes-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.pitch {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pontes-text-muted);
+  margin: 0;
+}
+
+.pitch strong {
+  color: var(--pontes-text);
+}
+
+.ctaRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--pontes-text-muted);
+  margin: 0;
+}

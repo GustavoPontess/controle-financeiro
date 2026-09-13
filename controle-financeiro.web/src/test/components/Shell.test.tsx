@@ -34,7 +34,7 @@ describe("Shell interno (#118)", () => {
 
   it("Sidebar lista os itens de navegação", () => {
     withProviders(<Sidebar open drawerWidth={248} railWidth={72} />)
-    for (const item of ["Dashboard", "Transações", "Cartões de Crédito", "Contas", "Categorias", "Famílias"]) {
+    for (const item of ["Dashboard", "Transações", "Cartões de Crédito", "Bancos", "Categorias", "Famílias"]) {
       expect(screen.getByText(item)).toBeInTheDocument()
     }
   })
@@ -67,5 +67,28 @@ describe("Shell interno (#118)", () => {
       <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction={false} openCommandPalette={() => {}} />
     )
     expect(screen.getByRole("button", { name: /Nova transação/i })).toBeDisabled()
+  })
+
+  it("Navbar mostra o sino FINANCEIRO no app do usuário (showFinance, sem slot)", () => {
+    withProviders(
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />
+    )
+    expect(screen.getByTestId("bell")).toBeInTheDocument()
+  })
+
+  it("Navbar usa o sino INJETADO no admin e NÃO o financeiro (streams separados)", () => {
+    // Regressão: notificações financeiras vazavam pra tela de admin. O admin injeta o SEU sino;
+    // o financeiro (data-testid=bell) não pode aparecer, nem Nova transação.
+    withProviders(
+      <Navbar
+        toggleDrawer={() => {}} sidebarOpen showFinance={false}
+        title="Fila de aprovação" homeLabel="Painel Admin" homePath="/admin/pendentes"
+        notifications={<div data-testid="admin-bell" />}
+      />,
+      "/admin/pendentes"
+    )
+    expect(screen.getByTestId("admin-bell")).toBeInTheDocument()
+    expect(screen.queryByTestId("bell")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Nova transação/i })).not.toBeInTheDocument()
   })
 })

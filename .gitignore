@@ -457,3 +457,7 @@ docs/referencias/
 **/.env
 !.env.example
 !**/.env.example
+
+# Seeder pessoal de dogfooding (dados financeiros reais do Gustavo + terceiros
+# reais) — nunca comitar. Local-only, cada dev cria o seu se precisar.
+ControleFinanceiro.Api/Data/MeuCenarioSeeder.cs

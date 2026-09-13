@@ -37,6 +37,11 @@
 .btn[data-variant="danger-outline"] { background: transparent; color: var(--pontes-danger); border: 1.5px solid var(--pontes-danger); }
 .btn[data-variant="danger-outline"]:not(:disabled):hover { background: var(--pontes-danger-soft); }
 .btn[data-variant="danger-outline"]:not(:disabled):active { background: var(--pontes-danger); color: #fff; }
+.btn[data-variant="success"] { background: var(--pontes-success); color: #fff; }
+.btn[data-variant="success"]:not(:disabled):hover { background: color-mix(in srgb, var(--pontes-success) 90%, #000); }
+.btn[data-variant="success-outline"] { background: transparent; color: var(--pontes-success); border: 1.5px solid var(--pontes-success); }
+.btn[data-variant="success-outline"]:not(:disabled):hover { background: var(--pontes-success-soft); }
+.btn[data-variant="success-outline"]:not(:disabled):active { background: var(--pontes-success); color: #fff; }
 .btn[data-variant="outline-light"] { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.3); }
 .btn[data-variant="outline-light"]:not(:disabled):hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.55); }
 .btn[data-variant="ghost-light"] { background: transparent; color: #fff; }
@@ -59,6 +64,7 @@
 .iconBtn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(0,0,0,.25); }
 .iconBtn:not(:disabled):active { transform: translateY(0); filter: brightness(.92); }
 .iconBtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.iconBtn[data-size="24"] { width: 24px; height: 24px; border-radius: 6px; font-size: 11px; }
 .iconBtn[data-size="32"] { width: 32px; height: 32px; border-radius: 8px; font-size: 14px; }
 .iconBtn[data-size="40"] { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; }
 .iconBtn[data-size="48"] { width: 48px; height: 48px; border-radius: 12px; font-size: 20px; }
@@ -70,6 +76,10 @@
 .iconBtn[data-variant="outline"]:not(:disabled):hover { background: var(--pontes-primary-soft); border-color: var(--pontes-primary); color: var(--pontes-primary); }
 .iconBtn[data-variant="ghost"] { background: transparent; color: var(--pontes-text); }
 .iconBtn[data-variant="ghost"]:not(:disabled):hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); }
+.iconBtn[data-variant="success"] { background: var(--pontes-success); color: #fff; }
+.iconBtn[data-variant="success"]:not(:disabled):hover { background: color-mix(in srgb, var(--pontes-success) 90%, #000); }
+.iconBtn[data-variant="danger"] { background: var(--pontes-danger); color: #fff; }
+.iconBtn[data-variant="danger"]:not(:disabled):hover { background: color-mix(in srgb, var(--pontes-danger) 90%, #000); }
 .badge { position: absolute; top: -4px; right: -4px; background: var(--pontes-danger); color: #fff; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 2px 6px; border: 2px solid var(--pontes-surface); }
 
 /* ===== PontesFab ===== */

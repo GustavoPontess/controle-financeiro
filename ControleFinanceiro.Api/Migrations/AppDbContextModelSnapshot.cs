@@ -70,6 +70,48 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("AcertosContas");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.AdminAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Acao")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("AdminEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("AdminUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlvoDescricao")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid?>("AlvoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlvoTipo")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Detalhe")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.ToTable("AdminAuditLogs");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Banco", b =>
                 {
                     b.Property<Guid>("Id")
@@ -236,6 +278,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Agencia")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<Guid?>("BancoId")
                         .HasColumnType("uuid");
 
@@ -357,11 +403,70 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Dependentes");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmailOtp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Finalidade")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Finalidade");
+
+                    b.ToTable("EmailOtps");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("ArquivadoPorContraparte")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ArquivadoPorCriador")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid?>("ConsolidadoNoEmprestimoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ContraparteUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConviteExpiraEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ConviteTokenHash")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
@@ -376,8 +481,18 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("EmailContraparte")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FormaPagamento")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Observacao")
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("PercentualMultaAtraso")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<string>("Pessoa")
                         .IsRequired()
@@ -386,8 +501,24 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("Quitado")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("StatusVinculo")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("TaxaJuroMensal")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("TransacaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ValorComJuros")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorComMulta")
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("ValorPago")
                         .HasColumnType("numeric");
@@ -395,9 +526,210 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTime?>("VinculoRespondidoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("ConsolidadoNoEmprestimoId");
+
+                    b.HasIndex("ContraparteUsuarioId");
+
+                    b.HasIndex("ConviteTokenHash");
+
+                    b.HasIndex("TransacaoId");
+
                     b.ToTable("Emprestimos");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmprestimoOriginalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PropostaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ValorRestanteSnapshot")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmprestimoOriginalId");
+
+                    b.HasIndex("PropostaId", "EmprestimoOriginalId")
+                        .IsUnique();
+
+                    b.ToTable("EmprestimoConsolidacaoItens");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CredorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DataVencimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DevedorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EmprestimoConsolidadoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("FormaPagamento")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MotivoRecusa")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("PercentualMultaAtraso")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("PrimeiroVencimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("QuantidadeParcelas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RespondidoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("TaxaJuroMensal")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("ValorTotalProposto")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredorUsuarioId");
+
+                    b.HasIndex("DevedorUsuarioId");
+
+                    b.HasIndex("EmprestimoConsolidadoId");
+
+                    b.ToTable("EmprestimoConsolidacaoPropostas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AprovadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("AprovadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("EmprestimoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MotivoRejeicao")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ParcelaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SolicitadoPor")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("StatusAprovacao")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TransacaoComprovanteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransacaoRecebimentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmprestimoId");
+
+                    b.HasIndex("ParcelaId");
+
+                    b.HasIndex("TransacaoComprovanteId");
+
+                    b.HasIndex("TransacaoRecebimentoId");
+
+                    b.ToTable("EmprestimoPagamentoSolicitacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoParcela", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("EmprestimoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantidadeTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SolicitacaoPagamentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorComJuros")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorComMulta")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("ValorPago")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoPagamentoId");
+
+                    b.HasIndex("EmprestimoId", "Numero");
+
+                    b.ToTable("EmprestimoParcelas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>
@@ -625,6 +957,64 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Metas");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("MfaBackupCodes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaLoginChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("MfaLoginChallenges");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Notificacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -662,6 +1052,45 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("UsuarioId", "Lida");
 
                     b.ToTable("Notificacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.NotificacaoAdmin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AlvoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LinkRelativo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.ToTable("NotificacoesAdmin");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Orcamento", b =>
@@ -982,6 +1411,40 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RegistroAcesso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("RegistrosAcesso");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1225,8 +1688,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("boolean");
+                    b.Property<DateTime?>("AprovadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("AprovadoPor")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("timestamp without time zone");
@@ -1241,6 +1707,27 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("FalhasLoginConsecutivas")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("MarcadoExclusaoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("MfaAtivadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("MfaAtivo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MfaSecretoCriptografado")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MfaSecretoPendenteCriptografado")
+                        .HasColumnType("text");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -1259,6 +1746,15 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("RelacionamentoId1")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UltimaFalhaLoginEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("UltimoAcessoEm")
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -1386,6 +1882,125 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Familia");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "ConsolidadoNoEmprestimo")
+                        .WithMany()
+                        .HasForeignKey("ConsolidadoNoEmprestimoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "ContraparteUsuario")
+                        .WithMany()
+                        .HasForeignKey("ContraparteUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "Transacao")
+                        .WithMany()
+                        .HasForeignKey("TransacaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ConsolidadoNoEmprestimo");
+
+                    b.Navigation("ContraparteUsuario");
+
+                    b.Navigation("Transacao");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoItem", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "EmprestimoOriginal")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoOriginalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", "Proposta")
+                        .WithMany("Itens")
+                        .HasForeignKey("PropostaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EmprestimoOriginal");
+
+                    b.Navigation("Proposta");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "CredorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CredorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "DevedorUsuario")
+                        .WithMany()
+                        .HasForeignKey("DevedorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "EmprestimoConsolidado")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoConsolidadoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CredorUsuario");
+
+                    b.Navigation("DevedorUsuario");
+
+                    b.Navigation("EmprestimoConsolidado");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "Emprestimo")
+                        .WithMany()
+                        .HasForeignKey("EmprestimoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.EmprestimoParcela", "Parcela")
+                        .WithMany()
+                        .HasForeignKey("ParcelaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoComprovante")
+                        .WithMany()
+                        .HasForeignKey("TransacaoComprovanteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoRecebimento")
+                        .WithMany()
+                        .HasForeignKey("TransacaoRecebimentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Emprestimo");
+
+                    b.Navigation("Parcela");
+
+                    b.Navigation("TransacaoComprovante");
+
+                    b.Navigation("TransacaoRecebimento");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoParcela", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "Emprestimo")
+                        .WithMany("Parcelas")
+                        .HasForeignKey("EmprestimoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.EmprestimoPagamentoSolicitacao", "SolicitacaoPagamento")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoPagamentoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Emprestimo");
+
+                    b.Navigation("SolicitacaoPagamento");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "CriadoPor")
@@ -1448,6 +2063,28 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Familia");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany("MfaBackupCodes")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaLoginChallenge", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Usuario");
                 });
@@ -1721,6 +2358,16 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Transacoes");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
+                {
+                    b.Navigation("Parcelas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.EmprestimoConsolidacaoProposta", b =>
+                {
+                    b.Navigation("Itens");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Familia", b =>
                 {
                     b.Navigation("Convites");
@@ -1757,6 +2404,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("CompartilhamentosContas");
 
                     b.Navigation("Contas");
+
+                    b.Navigation("MfaBackupCodes");
 
                     b.Navigation("Relacionamento");
                 });

@@ -5,6 +5,7 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         public Guid Id { get; set; }
         public string Nome { get; set; } = string.Empty;
         public string? NumeroConta { get; set; }
+        public string? Agencia { get; set; }
         public int Tipo { get; set; }
         public string TipoDescricao { get; set; } = string.Empty;
         public int? TipoCartao { get; set; }

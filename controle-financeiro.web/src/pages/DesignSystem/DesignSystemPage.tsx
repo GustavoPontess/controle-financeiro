@@ -14,7 +14,7 @@ import { useEffect, useState } from "react"
 import {
   Plus, Download, ArrowRight, ChevronLeft, ChevronRight,
   Settings, MoreHorizontal, Bell, Search, Pencil, Copy, Share2, Trash2,
-  TrendingDown, TrendingUp,
+  TrendingDown, TrendingUp, Check, X,
 } from "lucide-react"
 import {
   // theme
@@ -220,6 +220,8 @@ function ButtonsSection() {
           <PontesButton variant="soft">Soft</PontesButton>
           <PontesButton variant="danger">Perigo</PontesButton>
           <PontesButton variant="danger-outline">Perigo outline</PontesButton>
+          <PontesButton variant="success">Sucesso</PontesButton>
+          <PontesButton variant="success-outline">Sucesso outline</PontesButton>
           <PontesLink>Link</PontesLink>
           <PontesButton variant="primary" disabled>Desabilitado</PontesButton>
         </div>
@@ -253,12 +255,15 @@ function ButtonsSection() {
 
       <Group title="Icon-only + FAB + Badge">
         <div className={styles.rowGap10}>
+          <PontesIconButton size={24}><Plus size={14} strokeWidth={3} /></PontesIconButton>
           <PontesIconButton size={32}><Plus size={18} strokeWidth={3} /></PontesIconButton>
           <PontesIconButton size={40}><Plus size={20} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={48}><Plus size={22} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={40} variant="soft"><Settings size={18} strokeWidth={2} /></PontesIconButton>
           <PontesIconButton size={40} variant="outline"><MoreHorizontal size={18} strokeWidth={2.5} /></PontesIconButton>
           <PontesIconButton size={40} variant="outline" badge={3}><Bell size={18} strokeWidth={2} /></PontesIconButton>
+          <PontesIconButton size={24} variant="success" aria-label="Aprovar"><Check size={12} strokeWidth={3} /></PontesIconButton>
+          <PontesIconButton size={24} variant="danger" aria-label="Rejeitar"><X size={12} strokeWidth={3} /></PontesIconButton>
           <PontesFab><Plus size={26} strokeWidth={2.5} /></PontesFab>
         </div>
       </Group>
@@ -591,6 +596,14 @@ function DataSection({ p }: { p: Palette }) {
           <PontesProgress label="Meta de viagem" value={45} />
           <PontesProgress label="Limite usado" value={78} color={p.accent} />
           <PontesProgress label="Reserva de emergência" value={92} color={semantic.success} />
+          <PontesProgress
+            label="Empréstimo — confirmado/pendente/recusado"
+            segments={[
+              { value: 40, color: semantic.success, label: "Confirmado" },
+              { value: 15, color: semantic.warning, label: "Pendente" },
+              { value: 10, color: semantic.danger, label: "Recusado" },
+            ]}
+          />
         </div>
       </Group>
 

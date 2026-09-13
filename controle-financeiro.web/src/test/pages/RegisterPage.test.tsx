@@ -52,16 +52,16 @@ describe('RegisterPage', () => {
     expect(passwordInputs.length).toBe(2)
   })
 
-  it('não exibe indicador de força quando senha está vazia', () => {
+  it('não exibe indicador de requisito quando senha está vazia', () => {
     renderRegister()
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mínimo 15 caracteres')).not.toBeInTheDocument()
   })
 
-  it('exibe indicador de força quando senha é digitada', () => {
+  it('exibe indicador de requisito quando senha é digitada', () => {
     const { container } = renderRegister()
     const [senhaInput] = container.querySelectorAll('input[type="password"]')
     fireEvent.change(senhaInput, { target: { value: 'abc' } })
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.getByText(/Mínimo 15 caracteres/)).toBeInTheDocument()
   })
 
   it('exibe requisito de comprimento com ✓ quando senha tem 15+ chars', () => {
@@ -95,8 +95,9 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(screen.getByText(/senha não atende/i)).toBeInTheDocument())
   })
 
-  it('navega para /onboarding após registro bem-sucedido', async () => {
-    mockRegister.mockResolvedValueOnce(undefined)
+  it('mostra tela de "aguardando aprovação" após cadastro (gate do beta, sem logar)', async () => {
+    // Cadastro no beta não cria sessão: register devolve a mensagem e a tela troca pra confirmação.
+    mockRegister.mockResolvedValueOnce('Cadastro enviado! Sua conta está aguardando aprovação.')
     const { container } = renderRegister()
     const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
 
@@ -105,9 +106,14 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/onboarding'))
+    // Não navega direto pra área logada; mostra confirmação + botão pro login.
+    await waitFor(() => expect(screen.getByRole('heading', { name: /cadastro enviado/i })).toBeInTheDocument())
+    expect(screen.getByText(/aguardando aprovação/i)).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalledWith('/onboarding')
+    expect(screen.getByRole('button', { name: /ir para o login/i })).toBeInTheDocument()
   })
 
   it('exibe erro retornado pelo backend', async () => {
@@ -120,6 +126,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
 
     await waitFor(() => expect(screen.getByText(/email já cadastrado/i)).toBeInTheDocument())
@@ -133,6 +140,43 @@ describe('RegisterPage', () => {
     expect(screen.getByText('Informe o e-mail')).toBeInTheDocument()
     expect(screen.getByText('Informe a data de nascimento')).toBeInTheDocument()
     expect(screen.getByText('Informe a senha')).toBeInTheDocument()
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+  })
+
+  it('bloqueia submit se não aceitar a Política de Privacidade, mesmo com resto preenchido', () => {
+    const { container } = renderRegister()
+    const [senhaInput, confirmarInput] = container.querySelectorAll('input[type="password"]')
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'u@test.com' } })
+    fireEvent.change(screen.getByLabelText(/nome completo/i), { target: { value: 'Teste' } })
+    fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
+    fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+
+    expect(mockRegister).not.toHaveBeenCalled()
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+  })
+
+  it('erro do checkbox de privacidade limpa ao marcar', () => {
+    const { container } = renderRegister()
+    fireEvent.submit(screen.getByRole('button', { name: /criar conta/i }).closest('form')!)
+    expect(screen.getByText(/precisa aceitar a política de privacidade/i)).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('[data-checked]')!)
+    expect(screen.queryByText(/precisa aceitar a política de privacidade/i)).not.toBeInTheDocument()
+  })
+
+  it('link da Política de Privacidade aponta pra /privacidade', () => {
+    renderRegister()
+    const link = screen.getByRole('link', { name: /política de privacidade/i })
+    expect(link).toHaveAttribute('href', '/privacidade')
+  })
+
+  it('link dos Termos de Uso aponta pra /termos-de-uso', () => {
+    renderRegister()
+    const link = screen.getByRole('link', { name: /termos de uso/i })
+    expect(link).toHaveAttribute('href', '/termos-de-uso')
   })
 
   it('exibe botão voltar à página inicial', () => {
@@ -165,6 +209,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/data de nascimento/i), { target: { value: '1990-05-10' } })
     fireEvent.change(senhaInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
     fireEvent.change(confirmarInput, { target: { value: 'Tr0ub4dor&3Xyzw' } })
+    fireEvent.click(container.querySelector('[data-checked]')!)
     fireEvent.submit(container.querySelector('button[type="submit"]')!.closest('form')!)
 
     await waitFor(() =>

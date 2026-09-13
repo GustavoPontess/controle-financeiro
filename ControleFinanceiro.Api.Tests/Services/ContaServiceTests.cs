@@ -104,6 +104,75 @@ public class ContaServiceTests
         Assert.NotEqual(Guid.Empty, resultado.Id);
     }
 
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("00-01")]
+    [InlineData("0001a")]
+    public async Task CriarAsync_AgenciaComLetras_LancaException(string agencia)
+    {
+        var ctx = CreateContext();
+        var svc = new ContaService(ctx);
+        var usuarioId = Guid.NewGuid();
+
+        var conta = new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente, Agencia = agencia };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, usuarioId));
+        Assert.Contains("Agência", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("abc-5")]
+    [InlineData("91205195-55")]
+    [InlineData("912.051.955")]
+    public async Task CriarAsync_NumeroContaFormatoInvalido_LancaException(string numeroConta)
+    {
+        var ctx = CreateContext();
+        var svc = new ContaService(ctx);
+        var usuarioId = Guid.NewGuid();
+
+        var conta = new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente, NumeroConta = numeroConta };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, usuarioId));
+        Assert.Contains("Número da conta", ex.Message);
+    }
+
+    [Fact]
+    public async Task CriarAsync_AgenciaENumeroContaValidos_Persiste()
+    {
+        var ctx = CreateContext();
+        var svc = new ContaService(ctx);
+        var usuarioId = Guid.NewGuid();
+
+        var conta = new Conta
+        {
+            Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente,
+            Agencia = "0001", NumeroConta = "91205195-5",
+        };
+
+        var resultado = await svc.CriarAsync(conta, usuarioId);
+
+        Assert.Equal("0001", resultado.Agencia);
+        Assert.Equal("91205195-5", resultado.NumeroConta);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_AgenciaInvalida_LancaExceptionSemPersistir()
+    {
+        var ctx = CreateContext();
+        var svc = new ContaService(ctx);
+        var usuarioId = Guid.NewGuid();
+
+        var conta = new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente };
+        var criada = await svc.CriarAsync(conta, usuarioId);
+
+        var atualizacao = new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente, Agencia = "abcd" };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(criada.Id, atualizacao, usuarioId));
+
+        var doBanco = await ctx.Contas.FindAsync(criada.Id);
+        Assert.Null(doBanco!.Agencia);
+    }
+
     [Fact]
     public async Task DeletarAsync_CarteiraNaoPodeSerDeletada_LancaException()
     {

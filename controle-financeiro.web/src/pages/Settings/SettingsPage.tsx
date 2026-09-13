@@ -1,5 +1,7 @@
-import { Check } from "lucide-react"
+import { Check, Palette, Type } from "lucide-react"
 import { palettes, fonts, usePontesTheme } from "@/components/pontes"
+import MfaSection from "./MfaSection"
+import ExcluirContaSection from "./ExcluirContaSection"
 import styles from "./SettingsPage.module.css"
 
 /**
@@ -15,14 +17,19 @@ export default function SettingsPage() {
       <header className={styles.header}>
         <h1 className={styles.title}>Configurações</h1>
         <p className={styles.subtitle}>
-          Personalize a aparência do app. As escolhas valem em todas as telas e sobrevivem ao reload.
+          Segurança da conta e aparência do app. As escolhas de tema valem em todas as telas e sobrevivem ao reload.
         </p>
       </header>
 
+      <MfaSection />
+
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>Paleta de cores</h2>
-          <p className={styles.sectionHint}>15 combinações curadas. Clique pra trocar — vale em tudo na hora.</p>
+          <p className={styles.eyebrow}>Aparência</p>
+          <h2 className={styles.sectionTitle}>
+            <Palette size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
+            Paleta de cores
+          </h2>
         </div>
         <div className={styles.paletteGrid}>
           {palettes.map((p) => {
@@ -51,10 +58,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={`${styles.section} ${styles.grouped}`}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>Fonte</h2>
-          <p className={styles.sectionHint}>7 famílias. Wordmark "Pontes" mantém Plus Jakarta (marca fixa).</p>
+          <h2 className={styles.sectionTitle}>
+            <Type size={18} strokeWidth={2.5} className={styles.sectionIcon} aria-hidden="true" />
+            Fonte
+          </h2>
         </div>
         <div className={styles.fontGrid}>
           {fonts.map((f) => {
@@ -80,6 +89,8 @@ export default function SettingsPage() {
           })}
         </div>
       </section>
+
+      <ExcluirContaSection />
     </div>
   )
 }

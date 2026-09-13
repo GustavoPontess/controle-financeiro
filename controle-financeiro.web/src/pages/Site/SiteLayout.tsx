@@ -25,6 +25,11 @@ import styles from "./SiteLayout.module.css"
  * Renderiza `children` quando passado direto (ex: RootRoute deslogado),
  * senão usa `<Outlet/>` (rotas filhas aninhadas).
  */
+// Páginas sem hero escura/gradiente por trás — navbar precisa nascer no visual
+// "sólido" (fundo opaco, texto escuro), senão o texto pensado pra ficar sobre
+// hero fica ilegível em cima do fundo claro dessas páginas legais.
+const PAGINAS_SEM_HERO = ["/privacidade", "/termos-de-uso"]
+
 export default function SiteLayout({ children }: { children?: ReactNode }) {
   // Paleta/fonte vêm do provider global (#90) — persiste e vale em todas as telas.
   const { palette, fontOption, paletteId, fontId, setPaletteId, setFontId, palettes, fonts } = usePontesTheme()
@@ -74,44 +79,48 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
   const topOffset = barOpen ? barHeight : 0
   return (
     <div>
-      {/* Control bar de dev (BRAND PREVIEW) — fixed overlay, recolhível. Sai no #90. */}
-      <div className={styles.barFixed} data-open={barOpen}>
-        <div ref={barRef} className={styles.bar}>
-          <button onClick={() => setBarOpen(false)} aria-label="Esconder brand preview" className={styles.barBtn}>
-            <ChevronUp size={16} strokeWidth={2.5} />
-          </button>
+      {/* Control bar de dev (BRAND PREVIEW) — só em dev, nunca no build de produção. Sai no #90. */}
+      {import.meta.env.DEV && (
+        <>
+          <div className={styles.barFixed} data-open={barOpen}>
+            <div ref={barRef} className={styles.bar}>
+              <button onClick={() => setBarOpen(false)} aria-label="Esconder brand preview" className={styles.barBtn}>
+                <ChevronUp size={16} strokeWidth={2.5} />
+              </button>
 
-          <div className={styles.barTitle}>🎨 BRAND PREVIEW</div>
+              <div className={styles.barTitle}>🎨 BRAND PREVIEW</div>
 
-          <div className={styles.barGroup}>
-            <span className={styles.barDim}>Paleta:</span>
-            <div className={styles.swatchWrap}>
-              {palettes.map((pp) => (
-                <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label} className={styles.swatch} data-active={paletteId === pp.id}>
-                  <span className={styles.swatchChip} style={{ background: pp.primary }} />
-                  <span className={styles.swatchChip} style={{ background: pp.accent }} />
-                  <span>{pp.id}</span>
-                </button>
-              ))}
+              <div className={styles.barGroup}>
+                <span className={styles.barDim}>Paleta:</span>
+                <div className={styles.swatchWrap}>
+                  {palettes.map((pp) => (
+                    <button key={pp.id} onClick={() => setPaletteId(pp.id)} title={pp.label} className={styles.swatch} data-active={paletteId === pp.id}>
+                      <span className={styles.swatchChip} style={{ background: pp.primary }} />
+                      <span className={styles.swatchChip} style={{ background: pp.accent }} />
+                      <span>{pp.id}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.barGroup}>
+                <span className={styles.barDim}>Fonte:</span>
+                <select value={fontId} onChange={(e) => setFontId(e.target.value)} className={styles.fontSelect}>
+                  {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
+                </select>
+              </div>
+
+              <div className={styles.barMeta}>{palette.label} · {fontOpt.label}</div>
             </div>
           </div>
 
-          <div className={styles.barGroup}>
-            <span className={styles.barDim}>Fonte:</span>
-            <select value={fontId} onChange={(e) => setFontId(e.target.value)} className={styles.fontSelect}>
-              {fonts.map((f) => (<option key={f.id} value={f.id}>{f.label} — {f.description}</option>))}
-            </select>
-          </div>
-
-          <div className={styles.barMeta}>{palette.label} · {fontOpt.label}</div>
-        </div>
-      </div>
-
-      {/* Reabrir onde estiver (seta pra baixo) — esquerda fixa */}
-      {!barOpen && (
-        <button onClick={() => setBarOpen(true)} aria-label="Mostrar brand preview" className={styles.reopen}>
-          <ChevronDown size={16} strokeWidth={2.5} />
-        </button>
+          {/* Reabrir onde estiver (seta pra baixo) — esquerda fixa */}
+          {!barOpen && (
+            <button onClick={() => setBarOpen(true)} aria-label="Mostrar brand preview" className={styles.reopen}>
+              <ChevronDown size={16} strokeWidth={2.5} />
+            </button>
+          )}
+        </>
       )}
 
       {/* Navbar compartilhada — activePath pela rota atual */}
@@ -120,6 +129,7 @@ export default function SiteLayout({ children }: { children?: ReactNode }) {
         onNavigate={(to) => navigate(to)}
         topOffset={topOffset + 50}
         scrolledTop={topOffset + 16}
+        forceSolid={PAGINAS_SEM_HERO.includes(location.pathname)}
       />
 
       {/* Conteúdo da página (empurrado abaixo da bar fixa quando aberta) */}

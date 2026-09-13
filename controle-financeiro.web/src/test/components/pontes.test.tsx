@@ -10,6 +10,7 @@ import {
   PontesModal, PontesDialog,
   PontesTable, PontesTablePagination,
   PONTES_TABLE_PAGE_SIZE_DEFAULT, PONTES_TABLE_PAGE_SIZE_MAX, PONTES_TABLE_PAGE_SIZES,
+  PontesMaskedValue, PontesMaskToggle, useMaskData, setMaskData, maskEmail,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -57,6 +58,17 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
   it("PontesIconButton com badge renderiza contador", () => {
     render(<PontesIconButton p={p} badge={3}>🔔</PontesIconButton>)
     expect(screen.getByText("3")).toBeInTheDocument()
+  })
+
+  it("PontesButton e PontesIconButton aceitam variant success/danger preenchidos", () => {
+    render(<>
+      <PontesButton p={p} variant="success">Sucesso</PontesButton>
+      <PontesIconButton p={p} variant="success" aria-label="Aprovar">✓</PontesIconButton>
+      <PontesIconButton p={p} variant="danger" aria-label="Rejeitar">✗</PontesIconButton>
+    </>)
+    expect(screen.getByText("Sucesso")).toHaveAttribute("data-variant", "success")
+    expect(screen.getByLabelText("Aprovar")).toHaveAttribute("data-variant", "success")
+    expect(screen.getByLabelText("Rejeitar")).toHaveAttribute("data-variant", "danger")
   })
 
   it("PontesField mostra label, required asterisk e erro", () => {
@@ -235,6 +247,16 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     expect(screen.getByText("75%")).toBeInTheDocument()
   })
 
+  it("PontesProgress com segments renderiza cada fatia, sem percentual único", () => {
+    render(<PontesProgress p={p} font={font} label="Empréstimo" segments={[
+      { value: 40, color: "#0a0", label: "Confirmado" },
+      { value: 20, color: "#a00", label: "Recusado" },
+    ]} />)
+    expect(screen.getByText("Empréstimo")).toBeInTheDocument()
+    expect(screen.getByTitle("Confirmado")).toBeInTheDocument()
+    expect(screen.getByTitle("Recusado")).toBeInTheDocument()
+  })
+
   it("PontesStatCard mostra label/value/trend", () => {
     render(<PontesStatCard p={p} font={font} label="Saldo" value="R$ 1.000" trend="+5%" trendUp />)
     expect(screen.getByText("Saldo")).toBeInTheDocument()
@@ -356,5 +378,39 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
       />
     )
     expect(screen.getByText(/0 registros/)).toBeInTheDocument()
+  })
+
+  // ── Mascaramento de dado sensível (olhinho do admin) ───────────────────────
+  it("maskEmail mascara e-mail preservando pistas mínimas e trata não-e-mail/vazio", () => {
+    expect(maskEmail("gustavo@gmail.com")).toBe("gu•••@g•••.com")
+    expect(maskEmail("ab@x.io")).toBe("a•••@x•••.io") // local curto (≤2) revela só 1 char
+    expect(maskEmail("Fulano de Tal")).toBe("Fu•••") // sem @ → genérico
+    expect(maskEmail("")).toBe("—")
+    expect(maskEmail(null)).toBe("—")
+  })
+
+  it("PontesMaskedValue mascara por padrão e revela quando destravado", () => {
+    setMaskData(true)
+    const { rerender } = render(<PontesMaskedValue value="gustavo@gmail.com" />)
+    expect(screen.getByText("gu•••@g•••.com")).toBeInTheDocument()
+    expect(screen.queryByText("gustavo@gmail.com")).not.toBeInTheDocument()
+
+    setMaskData(false)
+    rerender(<PontesMaskedValue value="gustavo@gmail.com" />)
+    expect(screen.getByText("gustavo@gmail.com")).toBeInTheDocument()
+    setMaskData(true) // restaura o default pra não vazar estado entre testes
+  })
+
+  it("PontesMaskToggle alterna o estado global de mascarar", () => {
+    setMaskData(true)
+    function Probe() {
+      const [masked] = useMaskData()
+      return <span data-testid="estado">{masked ? "oculto" : "revelado"}</span>
+    }
+    render(<><PontesMaskToggle /><Probe /></>)
+    expect(screen.getByTestId("estado")).toHaveTextContent("oculto")
+    fireEvent.click(screen.getByRole("button", { name: /revelar dados/i }))
+    expect(screen.getByTestId("estado")).toHaveTextContent("revelado")
+    setMaskData(true)
   })
 })

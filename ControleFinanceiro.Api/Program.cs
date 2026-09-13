@@ -12,6 +12,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -37,6 +38,12 @@ if (File.Exists(".env"))
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Backstop de payload: limita o tamanho do corpo de QUALQUER request a 10 MB (default do Kestrel
+// é 30 MB). Protege contra payload gigante travar/consumir memória — complementa o [MaxLength]
+// por campo nos DTOs (que barra "caracteres infinitos" num campo específico com 400). 10 MB cobre
+// import de OFX/CSV com folga; request de API JSON normal fica muito abaixo disso.
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
 
 // Serilog — logs estruturados em JSON: console + arquivo rotativo diário.
 // Sentry só é anexado se SENTRY_DSN estiver definido (produção): captura
@@ -80,7 +87,16 @@ builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<SubcategoriaService>();
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<BancoService>();
+builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AdminAuditService>();
+builder.Services.AddScoped<AdminUsuarioService>();
+builder.Services.AddScoped<AdminLgpdService>();
+builder.Services.AddScoped<RegistroAcessoService>();
+builder.Services.AddScoped<NotificacaoAdminService>();
+builder.Services.AddScoped<EmailOtpService>();
+builder.Services.AddScoped<MinhaContaService>();
+builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
 builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
@@ -133,6 +149,8 @@ builder.Services.AddScoped<FaturaAtrasoJob>();
 builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
+builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
+builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
 
 builder.Services.AddHangfire(config =>
 {
@@ -191,6 +209,17 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Confirmar ativação / verificar login / desativar MFA — código de 6 dígitos, precisa de
+    // limite estrito (OWASP MFA Cheat Sheet: "SHOULD apply strict attempt limits").
+    options.AddPolicy("auth-mfa", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+
     options.OnRejected = async (context, token) =>
     {
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -245,6 +274,17 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
+
+// ── Autorização — policy de admin global (re-check no banco, ver AdminAuthorizationHandler) ──
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AdminRequirement.PolicyName, p =>
+    {
+        p.RequireAuthenticatedUser();
+        p.AddRequirements(new AdminRequirement());
+    });
+});
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
@@ -331,6 +371,22 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Achado do pentest ao vivo (2026-08-23): atrás de qualquer proxy/load balancer que
+// termina TLS na borda (padrão de praticamente todo host gerenciado de container — o
+// container recebe HTTP puro internamente), `Request.IsHttps` fica sempre false, mesmo
+// o usuário estando em HTTPS de verdade. Isso quebrava o `Secure` do cookie de sessão
+// (AuthController.SetAuthCookies usa Request.IsHttps), confirmado simulando o header
+// X-Forwarded-Proto sem esse middleware. KnownNetworks/KnownProxies limpos porque o
+// container só é alcançável pelo proxy do próprio host (rede interna isolada), sem IP
+// fixo de proxy pra fixar. IMPORTANTE: se a hospedagem escolhida NÃO isolar assim a
+// rede do container, restringir KnownProxies ao IP do proxy antes de confiar no header.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 // Migrations + seeds rodam antes de servir. Ordem importa: BancoSeeder primeiro
@@ -348,10 +404,27 @@ using (var scope = app.Services.CreateScope())
     await CategoriaSeeder.SeedAsync(context);
     await SubcategoriaSeeder.SeedAsync(context);
 
+    // Concede IsAdmin aos e-mails de ADMIN_EMAILS (única via pela app; ver AdminSeeder). Roda
+    // em todos os ambientes; sem a env var, é no-op.
+    await AdminSeeder.SeedAsync(context);
+
     // Dados de exemplo para o atlas Playwright / revisão visual do redesign.
     // Só em Development e idempotente (não roda se o usuário dev já existir).
     if (app.Environment.IsDevelopment())
         await DevDataSeeder.SeedAsync(context);
+
+    // Seeder pessoal de dogfooding — Data/MeuCenarioSeeder.cs é gitignored (cada
+    // dev cria o seu, com dados reais que nunca vão pro Git). Carregado via
+    // reflection pra Program.cs compilar igual em qualquer checkout, com ou
+    // sem o arquivo (CI, outro worktree, clone novo — nenhum deles tem essa
+    // classe, e não deveriam precisar).
+    if (app.Environment.IsDevelopment())
+    {
+        var meuCenarioSeedAsync = Type.GetType("ControleFinanceiro.Api.Data.MeuCenarioSeeder")
+            ?.GetMethod("SeedAsync");
+        if (meuCenarioSeedAsync != null)
+            await (Task)meuCenarioSeedAsync.Invoke(null, new object[] { context })!;
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -359,6 +432,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Primeiro middleware de todos — precisa rodar antes de qualquer coisa que
+// leia Request.Scheme/IsHttps (cookie Secure, HTTPS redirect, etc).
+app.UseForwardedHeaders();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 
@@ -399,6 +476,10 @@ app.Lifetime.ApplicationStarted.Register(() =>
     recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
     recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
     recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+    // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
+    recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
+    // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
+    recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
 });
 
 app.MapControllers();

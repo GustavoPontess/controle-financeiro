@@ -1,29 +1,22 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, MailCheck } from 'lucide-react'
 import {
-  PontesButton, PontesField, PontesInput, PontesAlert, PontesProgress, PontesLogo,
+  PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox,
 } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
-import { getSenhaRequisitos, getSenhaForca } from '../../utils/passwordPolicy'
+import { getSenhaRequisitos } from '../../utils/passwordPolicy'
 import styles from './RegisterPage.module.css'
 
 function PasswordStrengthIndicator({ senha }: { senha: string }) {
   if (!senha) return null
 
+  // NIST SP 800-63B: só tamanho importa (sem regra de composição) — um único critério,
+  // não faz mais sentido barra de progresso de 5 níveis. Indicador simples ok/não-ok.
   const requisitos = getSenhaRequisitos(senha)
-  const forca = getSenhaForca(requisitos)
-  const progresso = (forca / requisitos.length) * 100
-
-  const cor =
-    forca <= 2 ? 'var(--pontes-danger)'
-    : forca <= 3 ? 'var(--pontes-warning)'
-    : forca === 4 ? 'var(--pontes-info)'
-    : 'var(--pontes-success)'
 
   return (
     <div className={styles.strength}>
-      <PontesProgress value={progresso} color={cor} height={3} showValue={false} />
       <div className={styles.reqs}>
         {requisitos.map((r) => (
           <span key={r.label} className={styles.req} data-ok={r.ok}>
@@ -47,7 +40,11 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
-  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string }>({})
+  // Cadastro no beta não loga: quando dá certo, guardamos a mensagem de "aguardando aprovação"
+  // e trocamos o form por uma tela de confirmação (o admin ainda precisa liberar).
+  const [enviado, setEnviado] = useState<string | null>(null)
+  const [aceitaPrivacidade, setAceitaPrivacidade] = useState(false)
+  const [errors, setErrors] = useState<{ nome?: string; email?: string; dataNascimento?: string; password?: string; confirmPassword?: string; privacidade?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
 
   const clearErr = (k: keyof typeof errors) => setErrors((p) => ({ ...p, [k]: undefined }))
@@ -62,6 +59,7 @@ export default function RegisterPage() {
     else if (getSenhaRequisitos(password).some((r) => !r.ok)) e.password = 'Senha não atende aos requisitos'
     if (!confirmPassword) e.confirmPassword = 'Confirme a senha'
     else if (password !== confirmPassword) e.confirmPassword = 'As senhas não conferem'
+    if (!aceitaPrivacidade) e.privacidade = 'Você precisa aceitar a Política de Privacidade pra continuar'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -73,8 +71,8 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      await register(email, nome, dataNascimento || null, password)
-      navigate('/onboarding')
+      const mensagem = await register(email, nome, dataNascimento || null, password)
+      setEnviado(mensagem)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar')
     } finally {
@@ -159,6 +157,23 @@ export default function RegisterPage() {
             <PontesLogo color="var(--pontes-primary)" size={28} onClick={() => navigate('/')} />
           </div>
 
+          {enviado ? (
+            /* ── Confirmação — cadastro enviado, aguardando aprovação (gate do beta) ── */
+            <div className={styles.enviado} role="status">
+              <div className={styles.enviadoIcon}>
+                <MailCheck size={28} strokeWidth={2} />
+              </div>
+              <h1 className={styles.title}>Cadastro enviado!</h1>
+              <PontesAlert tone="info">{enviado}</PontesAlert>
+              <p className={styles.sub}>
+                Assim que sua conta for aprovada, você já poderá entrar normalmente.
+              </p>
+              <PontesButton variant="primary" size="lg" fullWidth onClick={() => navigate('/auth/login')}>
+                Ir para o login
+              </PontesButton>
+            </div>
+          ) : (
+          <>
           {/* Header */}
           <div className={styles.head}>
             <h1 className={styles.title}>Criar conta grátis</h1>
@@ -253,6 +268,18 @@ export default function RegisterPage() {
               />
             </PontesField>
 
+            <div className={styles.consentRow}>
+              <PontesCheckbox
+                checked={aceitaPrivacidade}
+                onChange={(v) => { setAceitaPrivacidade(v); clearErr('privacidade') }}
+              />
+              <span className={styles.consentText}>
+                Li e aceito a{' '}
+                <Link to="/privacidade" target="_blank" className={styles.link}>Política de Privacidade</Link>.
+              </span>
+            </div>
+            {errors.privacidade && <p className={styles.consentError}>{errors.privacidade}</p>}
+
             <PontesButton
               type="submit"
               variant="primary"
@@ -267,11 +294,11 @@ export default function RegisterPage() {
 
           {/* Footer */}
           <p className={styles.footer}>
-            Ao criar sua conta você concorda com os{' '}
-            <span className={styles.footerMuted}>Termos de Uso</span>
-            {' '}e{' '}
-            <span className={styles.footerMuted}>Política de Privacidade</span>.
+            Ao criar sua conta você também concorda com os{' '}
+            <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>.
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

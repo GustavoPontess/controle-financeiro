@@ -1,9 +1,35 @@
 import axios from "axios"
 
+// Permite um request optar por NÃO disparar o toast global de erro (quando a própria tela já
+// mostra o erro mapeado no campo). Default: toast global ligado (rede de segurança).
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipErrorToast?: boolean
+  }
+}
+
 export const api = axios.create({
-  baseURL: "http://localhost:5293/api/v1",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5293/api/v1",
   withCredentials: true, // Include cookies in requests
 })
+
+/**
+ * Extrai uma mensagem amigável do erro do backend pra mostrar ao usuário.
+ * - 400 com `errors` (ModelState do [ApiController]) → mensagem genérica (os detalhes técnicos
+ *   em inglês não servem pro usuário; o mapeamento por campo é feito na própria tela).
+ * - Corpo com `message`/`detail`/`title` (nossos erros de negócio) → mostra a mensagem real.
+ */
+export function mensagemDeErro(error: unknown): string {
+  const resp = (error as { response?: { status?: number; data?: unknown } })?.response
+  const data = resp?.data as { message?: string; detail?: string; title?: string; errors?: unknown } | undefined
+  if (data?.errors && resp?.status === 400)
+    return "Há campos inválidos no formulário. Verifique os destaques e tente de novo."
+  if (typeof data?.message === "string" && data.message) return data.message
+  if (typeof data?.detail === "string" && data.detail) return data.detail
+  if (typeof data?.title === "string" && data.title) return data.title
+  if (resp?.status && resp.status >= 500) return "Algo deu errado do nosso lado. Tente de novo em instantes."
+  return "Não foi possível concluir a ação. Tente de novo."
+}
 
 // Request interceptor to add CSRF token
 api.interceptors.request.use(
@@ -47,7 +73,7 @@ api.interceptors.response.use(
       // Páginas públicas (sem auth): auth, design-system, e verticais do site
       // institucional (URLs limpas, sem prefixo /site).
       const publicPaths = [
-        '/auth/', '/logo-concepts', '/design-system',
+        '/auth/', '/design-system', '/convite',
         '/casais', '/contadores', '/recursos', '/sobre', '/precos',
         '/blog', '/contato', '/ajuda', '/status', '/api', '/termos', '/privacidade', '/lgpd',
       ]
@@ -57,6 +83,15 @@ api.interceptors.response.use(
       if (!isPublic) {
         window.location.href = '/auth/login'
       }
+      return Promise.reject(error)
+    }
+
+    // Rede de segurança: qualquer erro de API que não seja 401 dispara um toast global com a
+    // mensagem amigável — garante que NENHUM erro passe silencioso, mesmo se a tela esquecer de
+    // tratar. A tela pode optar por não disparar (quando já mostra o erro no campo) via
+    // `skipErrorToast: true` no config do request. O DefaultLayout escuta "apiError".
+    if (!error.config?.skipErrorToast) {
+      window.dispatchEvent(new CustomEvent("apiError", { detail: { message: mensagemDeErro(error) } }))
     }
     return Promise.reject(error)
   }

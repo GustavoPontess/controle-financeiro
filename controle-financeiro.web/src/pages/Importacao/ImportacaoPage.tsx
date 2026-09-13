@@ -17,7 +17,9 @@ import styles from "./ImportacaoPage.module.css"
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR")
+// UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
+// fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
+const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
 
 type LinhaEstado = { selecionada: boolean; categoriaId: string }
 

@@ -33,11 +33,11 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={18} strokeWidth={2} /> },
   { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
   { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
-  { to: "/assinaturas", label: "Assinaturas", icon: <Repeat size={18} strokeWidth={2} /> },
+  { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={18} strokeWidth={2} /> },
   { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
   { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },
   { to: "/importacao", label: "Importar Extrato", icon: <Upload size={18} strokeWidth={2} /> },
-  { to: "/accounts", label: "Contas", icon: <Landmark size={18} strokeWidth={2} /> },
+  { to: "/accounts", label: "Bancos", icon: <Landmark size={18} strokeWidth={2} /> },
   { to: "/categories", label: "Categorias", icon: <Tags size={18} strokeWidth={2} /> },
   { to: "/familias", label: "Famílias", icon: <Users size={18} strokeWidth={2} /> },
   { to: "/metas", label: "Metas", icon: <Target size={18} strokeWidth={2} /> },
@@ -95,6 +95,18 @@ export default function DefaultLayout() {
     window.addEventListener("openNewTransaction", handler)
     return () => window.removeEventListener("openNewTransaction", handler)
   }, [canCreateTransaction])
+
+  // Rede de segurança: erro de API (disparado pelo interceptor do axios) vira toast de erro —
+  // garante que nenhum erro do backend passe silencioso, mesmo se a tela não tratar.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const message = (e as CustomEvent<{ message?: string }>).detail?.message
+        ?? "Não foi possível concluir a ação."
+      setNotification({ open: true, message, severity: "error" })
+    }
+    window.addEventListener("apiError", handler)
+    return () => window.removeEventListener("apiError", handler)
+  }, [])
 
   // Auto-hide do toast
   useEffect(() => {

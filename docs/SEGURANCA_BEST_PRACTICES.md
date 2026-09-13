@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-06-16
+last_reviewed: 2026-08-23
 status: ATIVO
 ---
 
@@ -12,6 +12,48 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 
 ---
 
+## 0. Checklist obrigatório por entrega ⭐ (rodar SEMPRE, sem lembrete)
+
+**Toda mudança passa por este checklist antes de fechar — não é opcional, não espera o Gustavo pedir.**
+É o baseline de segurança + qualidade do projeto (app de dinheiro + PII). Registrado em memória do
+Claude como regra permanente.
+
+### Modelo de ameaça (assumir)
+Atacante **sofisticado e automatizado**, inclusive usando IAs próprias sem as limitações de um
+assistente comum, tentando SQLi, DDoS/força bruta, XSS/CSRF, IDOR, escalação de privilégio e
+**information disclosure** (reconhecimento). Não confiar em obscuridade nem em "ninguém vai tentar".
+Backend é a **fronteira real**; o front é defesa em profundidade.
+
+### Princípio central — MENOR EXPOSIÇÃO DE INFORMAÇÃO
+**O que não é para uma pessoa, ela não pode nem VER — mesmo que não consiga usar/acessar.** Vazar a
+existência de uma rota/endpoint/campo/estrutura (ex.: rotas de admin no bundle comum) já é munição de
+reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
+
+### Checklist (marcar cada item com evidência, não com "acho que sim")
+- [ ] **Input validado no BACK e no FRONT** — limite de chars, tipo, faixa, obrigatório
+      (`docs/REGRAS_CAMPOS.md`). `[ApiController]` + DataAnnotations no DTO; validação por campo no form.
+      Rotas com id tipado (`{id:guid}`). Nunca confiar só no cliente.
+- [ ] **Isolamento de dados (IDOR)** — toda query filtra por `UsuarioId`; endpoint sensível sob
+      `[Authorize]`/policy correta; nunca expor recurso de outro usuário.
+- [ ] **SQL só via EF/LINQ parametrizado** — zero concatenação de string em query; sem `FromSqlRaw`
+      com input do usuário.
+- [ ] **DoS/força bruta** — endpoint público tem rate-limit; caps de tamanho (body, senha);
+      operação cara (hash, export) protegida.
+- [ ] **Segredo/erro não vaza** — resposta de erro genérica (middleware nunca ecoa `Message`);
+      log não grava PII/segredo (logar id, não e-mail/senha/token); sem stack trace pro cliente.
+- [ ] **Menor exposição** — nada que não seja da pessoa aparece pra ela. Se tocou admin/rota
+      sensível: **conferir no `dist` que nenhuma string/endpoint/rota de admin vaza no bundle comum**
+      (só no chunk lazy). Mascarar PII na tela quando fizer sentido (olhinho de revelar).
+- [ ] **Conformidade (se tocou auth/PII/dado sensível)** — fonte primária (OWASP/NIST/ANPD/LGPD),
+      nunca chute; catalogar achado no `ROADMAP.md`. Ver `docs/CONFORMIDADE_BR.md`.
+- [ ] **DS Pontes, zero inline** — UI só de `@/components/pontes`; estilo em CSS Modules +
+      `var(--pontes-*)`; componente reutilizável (2+ telas) vira componente da lib (barrel + smoke test).
+- [ ] **Teste cobrindo o que mudou** — front (vitest) E back (xUnit). Sem teste = não fecha.
+- [ ] **Afirmação de segurança = verificada** — não dizer "está seguro/isolado" sem rodar a checagem
+      (grep no dist, revisar DTO/erro/resposta). Ver a regra "verificar antes de afirmar" (memória).
+
+---
+
 ## 1. Hash de senha ✅ IMPLEMENTADO (A1/A2 — 2026-06-17)
 
 - **Algoritmo:** OWASP rankeia **Argon2id como 1ª escolha** (`m=19456 KiB, t=2, p=1` = 19 MiB), depois scrypt, bcrypt (legado), PBKDF2 (só se exigir FIPS-140). **Decisão: Argon2id** (app não tem requisito FIPS) via `Konscious.Security.Cryptography.Argon2` v1.3.1 (MIT, targeta net8.0, maduro). _Deep-research verificado por fonte primária (24/25 claims confirmados)._
@@ -20,13 +62,13 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - **Formato versionado, auto-descritivo:** `ARGON2ID$<memKiB>$<t>$<p>$<b64salt>$<b64hash>` — permite migrar parâmetros/algoritmo no futuro (NIST: guardar referência ao esquema + custo).
 - **Migração transparente:** `VerifyPassword` aceita o hash legado (PBKDF2 10k/20B, blob base64 sem `$`); `NeedsRehash` detecta hash fora do padrão atual; `LoginAsync` **regrava no esquema atual após login bem-sucedido** — upgrade gradual sem forçar reset (OWASP). `VerifyArgon2` recomputa com os parâmetros gravados no próprio hash, então subir os params no futuro não invalida hashes antigos.
 - **Comparação constant-time** no verify (`FixedTimeEquals`).
-- **Pepper (NIST SHOULD):** segredo server-side aplicado por cima do hash, guardado **separado** (KMS/HSM/env, nunca no banco). Não implementado ainda — depende de gestão/rotação de chave. Ponto de extensão pronto: `Argon2id.KnownSecret`. _Follow-up no ROADMAP, junto da rotação de segredos._
+- **Pepper (NIST SHOULD): ✅ implementado (2026-08-23).** Segredo server-side (`Argon2.KnownSecret`) aplicado por cima do hash, guardado **separado** do banco (env var `PASSWORD_PEPPER`, nunca no Postgres). Opcional/fail-safe: sem a env var, hash/verify seguem sem pepper (não quebra dev local). Formato do hash versionado ganhou um `pepperFlag` — hash antigo sem pepper faz rehash transparente no próximo login quando o pepper liga. `PasswordHasher.cs`, testes cobrindo liga/desliga/rehash.
 - _Fontes: OWASP Password Storage Cheat Sheet; NIST SP 800-63B §3.1.1.2._
 
 ## 2. Política de senha ✅ (mín. 15 aplicado — 2026-06-17)
 
 - **NIST SP800-63B:** mínimo **15 chars sem MFA** (8 com MFA), **máximo ≥64** (permitir passphrase), **sem regra de composição** (não exigir maiúscula/número/símbolo).
-- **Aplicado:** `PasswordPolicyService` subiu de 10 → **15 chars** + teto **128** (anti-DoS no Argon2id); espelhado no front (`utils/passwordPolicy.ts`). _Pendência catalogada: NIST recomenda **remover** as regras de composição (hoje exigimos maiúscula/número/especial) — mudança de UX, P2 no ROADMAP._
+- **Aplicado:** `PasswordPolicyService` subiu de 10 → **15 chars** + teto **128** (anti-DoS no Argon2id); espelhado no front (`utils/passwordPolicy.ts`). **Regra de composição removida (2026-08-23)** — NIST SP 800-63B §5.1.1.2 SHALL NOT impor maiúscula/número/especial (aumenta previsibilidade sem entropia real). Agora só tamanho + blocklist de senha comum.
 - _Fonte: OWASP Authentication Cheat Sheet + NIST SP800-63B-4._
 
 ## 3. Reset de senha ✅ (token hasheado + rate-limit por conta — 2026-06-17)
@@ -58,17 +100,53 @@ Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgre
 - **CORS restritivo:** `WithOrigins(...)` por ambiente, **nunca `AllowAnyOrigin`** (e nunca AllowAnyOrigin+AllowCredentials). _Fonte: MS Learn ASP.NET Core CORS._
 - **Security headers** (HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy) — recomendado, detalhe de implementação 🔶.
 
+## 7. Proteção contra força bruta no login ✅ (2026-08-19)
+
+- **Contador de falha por CONTA, não só por IP.** O rate-limit por IP (`Program.cs`, 5
+  tentativas/5min em prod) sozinho é contornável trocando de IP — OWASP: *"O contador de logins
+  falhos deve ser associado à própria conta, pra evitar que o atacante contorne trocando de IP."*
+- **Delay progressivo:** a partir da 3ª tentativa errada, cada nova tentativa exige esperar um
+  delay que **dobra** a cada erro (1s, 2s, 4s... teto de 5min) — OWASP: *"lockout exponencial...
+  começa curto (ex. 1s), mas dobra a cada tentativa falha."* Aplicado mesmo se a próxima tentativa
+  usar a senha certa (é delay, não é "só bloqueia erro").
+- **Bloqueio permanente após 10 falhas seguidas** — só reset de senha libera (zera o contador).
+  OWASP: *"amount of time to delay after each account lockout (max 2-3, after that permanent
+  account lockout)"*.
+- **Reset de senha também zera o contador** — outra via de recuperação legítima.
+- **CAPTCHA — decisão consciente de NÃO implementar no beta.** OWASP recomenda CAPTCHA só depois
+  de N tentativas suspeitas (não na 1ª tentativa), mas exige serviço externo (ex. Cloudflare
+  Turnstile) e conta própria do Gustavo — adiado pro lançamento público ou se aparecer bot de
+  verdade (`ROADMAP.md` → "Catalogado pro lançamento público"). A defesa mais forte segundo a
+  própria OWASP é **MFA** ("preveniria 99,9% dos comprometimentos"), não CAPTCHA — MFA já está no
+  domínio 🔶 aberto abaixo.
+- `AuthService.LoginAsync`/`ResetSenhaAsync`, migration `AddLoginBruteForceProtection`
+  (`Usuario.FalhasLoginConsecutivas`/`UltimaFalhaLoginEm`). 5 testes novos
+  (`AuthServiceTests.cs`).
+- _Fonte: OWASP Authentication Cheat Sheet ("Account Lockout"/"Automated Threats") + OWASP
+  Credential Stuffing Prevention Cheat Sheet._
+
+## 8. MFA (TOTP, opt-in) ✅ (2026-08-23)
+
+- **Opt-in, NUNCA obrigatório** — decisão explícita do Gustavo. LGPD Art. 46 pede só "medidas de segurança aptas", sem nomear MFA; é boa prática OWASP oferecida como opção, não obrigação. O usuário liga/desliga em `/settings`.
+- **TOTP RFC 6238** via `Otp.NET` (SHA1, 6 dígitos, passo 30s, janela ±1 pra clock drift) — compatível com qualquer app autenticador. Não usamos ASP.NET Identity (auth própria).
+- **Secret criptografado em repouso:** AES-256-GCM (`MfaCrypto`), chave `MFA_ENCRYPTION_KEY` (env var, 32 bytes base64) **separada do banco** — vazamento do Postgres sozinho não expõe os secrets. Diferente de hash: o secret precisa ser recuperável pra validar o código, então é cifrado, não hasheado.
+- **Ativação em 2 passos:** setup gera secret pendente (não ativa ainda) → usuário confirma com 1 código certo → só aí vira ativo + gera 10 **backup codes** (hasheados SHA-256, uso único, mostrados 1 vez).
+- **Login em 2 passos:** senha certa NÃO emite sessão pra quem tem MFA — cria um `MfaLoginChallenge` (token opaco, hash no banco, TTL 5min, uso único no sucesso). Só `verificar-login` com código TOTP/backup emite JWT. Código errado não consome o challenge (permite retry no TTL); rate-limit `auth-mfa` (5/5min prod) cobre brute-force.
+- **Desativar** exige senha atual + código (defense-in-depth) e apaga todos os backup codes.
+- `verificar-login` é isento de CSRF (faz parte do login, ainda sem sessão/cookie CSRF — igual `/auth/login`); protegido pelo challenge de uso único + TTL + rate-limit.
+- _Fontes: OWASP MFA Cheat Sheet + Credential Stuffing Prevention ("MFA is by far the best defense") + RFC 6238._
+
 ---
 
 ## 🔶 Domínios ABERTOS (rate-limit cortou a verificação — re-pesquisar)
 
 Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults abaixo = senso comum da indústria, **não verificados adversarialmente** — tratar como hipótese.
 
-- **MFA no .NET 8 concretamente:** TOTP via ASP.NET Identity? passkeys/FIDO2 (`fido2-net-lib`) no .NET 8 vs esperar .NET 10? SMS é fraco (NIST). _Não confirmado._
+- ~~**MFA no .NET 8 concretamente**~~ **✅ implementado (2026-08-23) — TOTP opt-in.** Não usamos ASP.NET Identity (auth própria), então TOTP via **Otp.NET** (RFC 6238, SHA1/6díg/30s — compatível com Google Authenticator/Authy/1Password). Opt-in, NUNCA obrigatório (decisão do Gustavo; LGPD não exige). Secret criptografado em repouso (AES-256-GCM, chave `MFA_ENCRYPTION_KEY` separada do banco); 10 backup codes hasheados (uso único); login em 2 passos (challenge de uso único + TTL 5min entre senha e código); rate-limit `auth-mfa` (5/5min prod). Ver seção "8. MFA" abaixo. Passkeys/FIDO2 seguem como evolução futura (não bloqueia nada).
 - **Gestão de segredos + rotação sem downtime:** env var vs secret manager (Azure Key Vault / Vault / AWS Secrets Manager); **key rollover da JWT signing key** (múltiplas chaves de validação simultâneas) + rotação da senha do Postgres sem derrubar a API. ⚠️ **Urgente** — ex-colaboradores têm clone com a `Jwt:Key`. _Sem fonte verificada._
 - **Criptografia:** TLS obrigatório; encryption-at-rest do Postgres (disco/TDE) vs criptografia de campos PII/financeiros em EF Core (`ValueConverter` / `EntityFrameworkCore.DataEncryption`); gestão/rotação dessas chaves. _Não confirmado._
 - **Logging/auditoria:** trilha de eventos financeiros; **nunca logar** senha/token/PII/número de conta; mascaramento; retenção. (Já temos `FinancialEventLog`.) _Não confirmado._
-- **Regulatório BR:** obrigações LGPD (base legal, direitos do titular, minimização, DPO, RIPD/DPIA Art.38). **BACEN/Open Finance** se aplica a agregador de finanças pessoais que **não movimenta dinheiro**? _Pergunta-chave SEM resposta confirmada._
+- ~~**Regulatório BR:** obrigações LGPD (base legal, direitos do titular, minimização, DPO, RIPD/DPIA Art.38). **BACEN/Open Finance** se aplica a agregador de finanças pessoais que **não movimenta dinheiro**?~~ **Resolvido em 2026-08-18** — pesquisa completa fonte primária em `docs/CONFORMIDADE_BR.md`. BACEN fora do escopo; LGPD com base legal mapeada, DPO dispensado.
 
 ---
 
@@ -105,3 +183,4 @@ Re-rodar deep-research (quando o servidor não estiver rate-limitando) para: **r
 
 ## Fontes primárias
 OWASP Cheat Sheets: Password Storage · Forgot Password · Authentication · Session Management · CSRF Prevention · HTML5 Security · Secrets Management · Logging. OWASP API Security Top 10 (2023) API2/API4. NIST SP800-63B. RFC 8725 (JWT BCP). Microsoft Learn (ASP.NET Core CORS / Key Vault / EF value conversions). IETF draft-ietf-oauth-browser-based-apps. ANPD (RIPD).
+
