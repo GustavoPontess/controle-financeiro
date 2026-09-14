@@ -31,10 +31,14 @@ export function ActionIcons({ e, size = 32, logic, className }: {
   const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
   const semVinculo = e.statusVinculo === StatusVinculoEmprestimo.SemVinculo || e.statusVinculo === StatusVinculoEmprestimo.Recusado
 
+  const aberto = logic.expandedId === e.id
   const items: PontesPopoverItem[] = [
-    isParcelado && {
-      key: "parcelas", icon: <ChevronDown size={16} />,
-      label: logic.expandedId === e.id ? "Recolher parcelas" : "Ver parcelas",
+    {
+      key: "detalhe", icon: <ChevronDown size={16} />,
+      // Parcelado abre as parcelas; à vista abre o detalhe (pago/atrasado/vencido).
+      label: isParcelado
+        ? (aberto ? "Recolher parcelas" : "Ver parcelas")
+        : (aberto ? "Recolher detalhe" : "Ver detalhe"),
       onClick: () => void logic.toggleExpand(e.id),
     },
     !e.quitado && {

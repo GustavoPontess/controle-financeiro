@@ -220,6 +220,16 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     })
   })
 
+  it("toggle 'Arquivados' recarrega server-side com mostrarArquivados=true", async () => {
+    renderPage()
+    await screen.findByText("Viagem")
+    fireEvent.click(screen.getByRole("button", { name: /Arquivados/ }))
+    await waitFor(() => {
+      const ultima = listEmprestimosPage.mock.calls.at(-1)
+      expect(ultima?.[2]).toBe(true)
+    })
+  })
+
   it("credor vê ações Registrar pagamento + Marcar como quitado no kebab", async () => {
     renderPage()
     await screen.findByText("Viagem")
@@ -227,6 +237,23 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     expect(await screen.findByText("Registrar pagamento")).toBeInTheDocument()
     expect(screen.getByText("Marcar como quitado")).toBeInTheDocument()
     expect(screen.getByText("Vincular a uma pessoa")).toBeInTheDocument()
+  })
+
+  it("kebab do à vista tem 'Ver detalhe' (não 'Ver parcelas')", async () => {
+    renderPage()
+    await screen.findByText("Viagem") // emp = à vista
+    abrirAcoes()
+    expect(await screen.findByText("Ver detalhe")).toBeInTheDocument()
+    expect(screen.queryByText("Ver parcelas")).not.toBeInTheDocument()
+  })
+
+  it("kebab do parcelado tem 'Ver parcelas'", async () => {
+    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
+    renderPage()
+    await screen.findByText("Carro")
+    abrirAcoes()
+    expect(await screen.findByText("Ver parcelas")).toBeInTheDocument()
+    expect(screen.queryByText("Ver detalhe")).not.toBeInTheDocument()
   })
 
   it("devedor vinculado não vê 'Marcar como quitado'", async () => {

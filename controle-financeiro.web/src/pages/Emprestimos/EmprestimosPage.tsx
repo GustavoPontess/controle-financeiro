@@ -4,7 +4,7 @@
 // (Vencedora da bancada B, promovida a tela real em 2026-09-13.)
 import React, { useEffect } from "react"
 import { formatMoney } from "@/utils/money"
-import { Plus, Layers, Ban, Search, ChevronRight, ArrowDownLeft, ArrowUpRight } from "lucide-react"
+import { Plus, Layers, Ban, Search, ChevronRight, ArrowDownLeft, ArrowUpRight, Archive } from "lucide-react"
 import {
   PontesButton, PontesAlert, PontesCard, PontesInput, PontesBadge,
   PontesTablePagination, PontesBankBadge,
@@ -104,20 +104,31 @@ export default function EmprestimosPage() {
       )}
 
       <div className={styles.toolbar}>
-        <div className={styles.segmented} role="tablist">
-          {([["todos", "Tudo"], ["receber", "A receber"], ["pagar", "A pagar"]] as const).map(([val, label]) => (
-            <button
-              key={val}
-              type="button"
-              role="tab"
-              aria-selected={l.direcao === val}
-              data-active={l.direcao === val ? "true" : undefined}
-              className={styles.segBtn}
-              onClick={() => l.setDirecao(val)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className={styles.toolbarFilters}>
+          <div className={styles.segmented} role="tablist">
+            {([["todos", "Tudo"], ["receber", "A receber"], ["pagar", "A pagar"]] as const).map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                role="tab"
+                aria-selected={l.direcao === val}
+                data-active={l.direcao === val ? "true" : undefined}
+                className={styles.segBtn}
+                onClick={() => l.setDirecao(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-pressed={l.mostrarArquivados}
+            data-active={l.mostrarArquivados ? "true" : undefined}
+            className={styles.toggleArquivados}
+            onClick={() => { l.setMostrarArquivados(!l.mostrarArquivados); l.setPage(1) }}
+          >
+            <Archive size={14} strokeWidth={2.5} /> Arquivados
+          </button>
         </div>
         {l.candidatosConsolidacao.length > 0 && (
           <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}

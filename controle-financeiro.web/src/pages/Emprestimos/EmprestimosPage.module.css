@@ -40,6 +40,20 @@
 }
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.toolbarFilters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Toggle "Arquivados" — mostra/oculta empréstimos quitados que o usuário arquivou. */
+.toggleArquivados {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--pontes-border);
+  background: transparent; cursor: pointer; font-family: var(--pontes-font);
+  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 12px; border-radius: 10px;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.toggleArquivados:hover { color: var(--pontes-text); }
+.toggleArquivados[data-active="true"] {
+  border-color: var(--pontes-primary); color: var(--pontes-primary);
+  background: color-mix(in srgb, var(--pontes-primary) 6%, transparent);
+}
 
 /* Filtro de direção (Tudo / A receber / A pagar). */
 .segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
