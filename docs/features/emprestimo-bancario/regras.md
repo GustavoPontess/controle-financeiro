@@ -44,6 +44,8 @@ Distinção no modelo: `BancoId != null` ⇒ **bancário**; `BancoId == null` �
 
 ## 3. Regras de dinheiro
 
+> **PRINCÍPIO — dados dinâmicos, nunca chumbados (REGRA DECIDIDA, Gustavo 2026-09-13).** Taxa de juros, multa e afins **pertencem ao registro do empréstimo**, informados pelo usuário (Fase 1 manual) ou trazidos da integração (Fase 2). **Nunca hardcodar taxa de banco no código** — se o banco/mercado muda, muda o *dado*, não o código. Limite legal (ex.: teto de multa) que virar regra fica em **config nomeada** (um lugar só), nunca número solto espalhado. Todo cálculo (juros/multa/mora) é fórmula sobre o dado do registro.
+
 ### 3.1 Valor e vencimento (REGRA DECIDIDA — no código)
 - `ValorTotal > 0`, senão `ArgumentException` (`:145-146`).
 - `DataVencimento` (nullable) não pode ser anterior a `DataInicio`, comparação por `.Date` (`:148-149`).
@@ -144,14 +146,27 @@ Só P2P. Spec: `../emprestimo-compartilhado/spec.md`. Vai além do Splitwise: ex
 
 ---
 
-## 6. Decisões pendentes para o Gustavo
+## 6. Decisões (fechadas em 2026-09-13)
 
-1. **Travar `Tipo=PeguiEmprestado` no backend quando `BancoId != null`?** Regra já decidida (§2.2), hoje só a UI protege. Adicionar validação no `CriarAsync` (`:163-168`) + rejeitar `Emprestei` com banco. Baixo custo, fecha a regra. → catalogar em `ROADMAP.md`.
-2. **Validar multa ≤ 2% (CDC)?** Front + back. Só em bancário (relação de consumo clara) ou também em P2P? Hoje `PercentualMultaAtraso` é livre.
-3. **Adotar juros compostos (PRICE/SAC) em bancário?** Manter flat como modo "simples" para P2P informal, e PRICE/SAC para bancário (casa com Open Finance Fase 2)? Ou continuar só flat por enquanto?
-4. **Modelar juros de mora (~1% a.m., por tempo) além da multa única?** É o mercado real, mas adiciona cálculo diário na consulta. Vale agora ou fica pra depois?
-5. **Trocar snapshot on-read de atraso por job diário** (padrão `FaturaAtrasoJob`) para marcar parcela atrasada + recalcular encargos? Só se entrar juros de mora (item 4).
-6. **Criar `TipoCredito` + `Garantia`** para distinguir empréstimo × financiamento? Ou tratar tudo como "empréstimo" na Fase 1?
-7. **CET/IOF:** confirmado que ficam **fora da Fase 1** e entram só na Fase 2 via Open Finance? (Recomendação: sim.)
+**Diretriz geral (Gustavo):** *tudo manual na Fase 1*. Os campos manuais já existem e ficam prontos pra integração — quando ligar Pluggy/Open Finance, só troca `Origem` (Manual→OpenFinance) e preenche o mesmo campo automático. Sem engine de cálculo automático agora.
 
-> Ao decidir qualquer item acima, atualizar esta tabela (§5) + `ROADMAP.md` (prioridade P0-P3) e, se envolver cálculo, criar/preencher `regras-calculo.md` com a matemática detalhada (fórmulas em §3.4/§3.6).
+1. **Banco ⇒ `Tipo=PeguiEmprestado`** — ✅ **IMPLEMENTADO** (UI esconde Tipo + backend `CriarAsync` rejeita `Emprestei` com banco + testes). §2.2.
+2. **Multa ≤ 2% (CDC)** — ⏸️ **NÃO trava agora.** `PercentualMultaAtraso` segue **manual/livre** (dado do registro, dinâmico). O teto legal fica anotado como referência; se virar validação, entra como **config nomeada** (não número solto), e provavelmente só em bancário. Revisitar antes do 1.0.0.
+3. **Juros PRICE/SAC** — ⏸️ **Fica flat manual.** Usuário informa a taxa; sem engine de amortização por enquanto. PRICE/SAC entra junto com a integração (o cronograma vem pronto do Open Finance) ou quando houver demanda.
+4. **Juros de mora (~1%/mês por tempo)** — ⏸️ **Não modelar agora** (só a multa única de hoje). Adiciona cálculo diário; adiar.
+5. **Job diário de atraso** — ⏸️ adiado (só se entrar mora, item 4). Segue snapshot on-read.
+6. **`TipoCredito`/`Garantia` (empréstimo × financiamento)** — ⏸️ **tudo "empréstimo" por enquanto.** Modelar depois se necessário.
+7. **CET/IOF** — ⏸️ **fora da Fase 1**, entram via Open Finance na Fase 2. ✅ confirmado.
+
+> Regra viva: ao mudar qualquer decisão acima, atualizar a tabela §5 + `ROADMAP.md`; se envolver cálculo, criar `regras-calculo.md`.
+
+---
+
+## 7. Monetização (ideia — a validar)
+
+Gancho já existe: campo `Origem` (`Manual` | `OpenFinance`) em `Emprestimo` (`Domain/Enums/OrigemEmprestimo.cs`).
+
+- **Grátis:** uso 100% manual — usuário digita banco, valor, taxa, parcelas, multa. Tudo que a Fase 1 já entrega.
+- **Pago:** integração (Pluggy/Open Finance) que **preenche/atualiza automático** taxa, parcelas, saldo devedor — `Origem = OpenFinance`. Justifica a mensalidade (o agregador é OPEX recorrente — ver `pesquisa-openfinance.md` §2).
+
+Como os campos são os mesmos, o plano pago não é uma feature nova de dados — é **automação + sincronização** do que o grátis faz à mão. Sem retrabalho de modelo. *(Ideia de produto; não implementar billing agora.)*

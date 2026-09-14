@@ -59,14 +59,12 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
   - **Fase 1 — ✅ ENTREGUE (2026-09-13):** decidido P2P + bancário no mesmo `Emprestimo`. `BancoId` (`Guid?` FK SetNull) + enum `OrigemEmprestimo {Manual,OpenFinance}` + migration `AddBancoIdEOrigemToEmprestimo` (aplicada); `PontesSelect` de banco no passo Básico do wizard (catálogo real) + `PontesBankBadge` na lista; validação banco existe&ativo; testes back+front verdes. **Feito nas bancadas (Lab B) — falta portar pra `EmprestimosPage.tsx` real junto com o item de escolher a bancada.**
   - **Fase 2 (futuro, só com demanda + gate LGPD/DPA):** botão "importar do banco" via agregador preenche taxa/parcelas/saldo auto; `OrigemDados`; minimização na borda (descartar payload cru; não ingerir PII de terceiros/avalista); cripto at-rest; consentimento só `LOANS`/`FINANCINGS`.
   - **Reconfirmar antes de codar Fase 2:** preços reais Pluggy/Belvo; fim do teto de 12 meses de consentimento (Res. Conjunta 7/2023 — fonte secundária); figura "entidade parceira" 1x1x1 (não vigente).
-- 🟠 **P1 — Regras de empréstimo: decisões pendentes** (achado 2026-09-13, doc `docs/features/emprestimo-bancario/regras.md` §6) — regras agora documentadas (fonte da verdade). Decisões a fechar com o Gustavo, cada uma vira código quando decidida:
-  1. 🟠 **Banco ⇒ `Tipo` travado em PeguiEmprestado** — JÁ DECIDIDO pelo Gustavo (pessoa não empresta pra banco). Falta implementar: trava no backend (`CriarAsync`) + UI não oferece "Emprestei"/pessoa quando banco. **Fazer primeiro.**
-  2. ⚪ Validar multa ≤ 2% (CDC art. 52 §1º) front+back — só bancário ou também P2P? (hoje % livre).
-  3. ⚪ Juros compostos PRICE/SAC em bancário (flat continua p/ P2P informal) vs manter só flat.
-  4. ⚪ Modelar juros de mora (~1% a.m., por tempo) além da multa única (exige cálculo diário on-read/job).
-  5. ⚪ Trocar snapshot on-read de atraso por job diário (só se entrar mora, item 4).
-  6. ⚪ `TipoCredito`/`Garantia` p/ distinguir empréstimo × financiamento, ou tratar tudo como empréstimo.
-  7. ⚪ CET/IOF ficam fora da Fase 1 (entram via Open Finance Fase 2) — recomendação: sim.
+- ✅ **Regras de empréstimo — decididas (2026-09-13, doc `docs/features/emprestimo-bancario/regras.md` §6).** Diretriz: **tudo manual na Fase 1**; campos prontos pra integração (só troca `Origem`). Princípio: taxa/multa são **dado dinâmico do registro, nunca chumbado no código**.
+  - #1 Banco ⇒ `Tipo=PeguiEmprestado` — **IMPLEMENTADO** (UI + backend + testes).
+  - #2 multa ≤2% CDC — **não trava agora** (multa manual/livre; se virar regra, config nomeada, revisitar antes do 1.0.0).
+  - #3 PRICE/SAC, #4 juros de mora, #5 job de atraso, #6 TipoCredito/Garantia — **adiados** (entram com integração ou por demanda).
+  - #7 CET/IOF — **fora da Fase 1**, via Open Finance na Fase 2.
+  - 💡 Monetização (ideia, não implementar billing): grátis = manual; pago = integração (Pluggy) que preenche automático via `Origem=OpenFinance`. Doc §7.
 - 🟡 **P2 — Empréstimo ↔ Conta/Transacao real** — hoje criar/vincular `Emprestimo` não move saldo real (é só registro). Gustavo quer que emprestar gere saída real da conta e o pagamento aprovado gere entrada. **Mesma "QUESTÃO CRÍTICA" de `docs/features/familia/visao.md` §16.5** (despesa compartilhada × saldo real) — decisão de modelagem conjunta pros dois casos. Pesquisar como bancos/apps modelam antes de decidir.
 - 🟡 **P2 — `PontesNavbar` contraste quebrado em `/convite/emprestimo/:token`** (2026-08-12) — navbar quase ilegível num estado "rolado" em página curta sem hero. Reproduzir e decidir se é bug do componente (afeta outras páginas) ou da landing.
 - ⚪ **P3 — LGPD: avisar no "Registrar pagamento" que o credor vê o nome da conta do devedor** (2026-08-12) — `ComprovanteContaNome` tem base legal (Art. 7º-V), não é sensível, mas falta transparência explícita no momento de escolher a conta.
