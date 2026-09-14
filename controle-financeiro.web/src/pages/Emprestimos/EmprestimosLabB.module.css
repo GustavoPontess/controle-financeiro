@@ -14,10 +14,14 @@
   gap: 32px; flex-wrap: wrap;
 }
 .heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+/* Dois valores co-iguais (A receber + A pagar) — nenhum é "o herói"; serve pra quem só
+   empresta, só deve, ou os dois. */
+.heroPrimary { position: relative; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.heroPrimaryDivider { align-self: stretch; width: 1px; background: rgba(255, 255, 255, 0.22); }
 .heroMain { position: relative; min-width: 0; }
 .heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
-.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+.heroValue { font-size: 32px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroValue[data-tone="down"] { color: #FB7185; }
 .heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .heroStats { display: flex; align-items: stretch; gap: 18px; }
 .heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }

@@ -41,18 +41,19 @@ export default function EmprestimosLabB() {
 
       <div className={styles.hero}>
         <div className={styles.heroBlob} />
-        <div className={styles.heroMain}>
-          <div className={styles.heroLabel}>A receber</div>
-          <div className={styles.heroValue}>{formatMoney(l.totalAReceber)}</div>
-          <div className={styles.heroSub}>dinheiro que emprestei, ainda não recebido</div>
+        <div className={styles.heroPrimary}>
+          <div className={styles.heroMain}>
+            <div className={styles.heroLabel}>A receber</div>
+            <div className={styles.heroValue}>{formatMoney(l.totalAReceber)}</div>
+          </div>
+          <div className={styles.heroPrimaryDivider} />
+          <div className={styles.heroMain}>
+            <div className={styles.heroLabel}>A pagar</div>
+            <div className={styles.heroValue} data-tone="down">{formatMoney(l.totalAPagar)}</div>
+          </div>
         </div>
         <div className={styles.heroSide}>
           <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue} data-tone="down">{formatMoney(l.totalAPagar)}</span>
-              <span className={styles.heroStatLabel}>A pagar</span>
-            </div>
-            <div className={styles.heroStatDivider} />
             <div className={styles.heroStat}>
               <span className={styles.heroStatValue} data-tone="down">{formatMoney(l.totalAReceberVencido)}</span>
               <span className={styles.heroStatLabel}>Vencido</span>
