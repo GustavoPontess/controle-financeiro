@@ -31,6 +31,12 @@ export default function EmprestimosPage() {
           <h1 className={styles.title}>Empréstimos</h1>
         </div>
         <div className={styles.headerActions}>
+          {l.candidatosConsolidacao.length > 0 && (
+            <PontesButton size="sm" variant="outline" iconStart={<Layers size={16} strokeWidth={2.5} />}
+              onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
+              Consolidar
+            </PontesButton>
+          )}
           <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={l.openCreate}>
             Novo empréstimo
           </PontesButton>
@@ -130,22 +136,12 @@ export default function EmprestimosPage() {
             <Archive size={14} strokeWidth={2.5} /> Arquivados
           </button>
         </div>
-        <div className={styles.toolbarActions}>
-          <div className={styles.searchGrow}>
-            <PontesInput
-              value={l.busca}
-              onChange={(e) => l.setBusca(e.target.value)}
-              placeholder="Buscar por descrição ou pessoa…"
-              iconStart={<Search size={14} />}
-            />
-          </div>
-          {l.candidatosConsolidacao.length > 0 && (
-            <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}
-              onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
-              Consolidar
-            </PontesButton>
-          )}
-        </div>
+        <PontesInput
+          value={l.busca}
+          onChange={(e) => l.setBusca(e.target.value)}
+          placeholder="Buscar por descrição ou pessoa…"
+          iconStart={<Search size={14} />}
+        />
       </div>
 
       <PontesCard padding={0} radius={16}>
