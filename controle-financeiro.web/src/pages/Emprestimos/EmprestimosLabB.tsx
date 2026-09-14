@@ -44,7 +44,7 @@ export default function EmprestimosLabB() {
         <div className={styles.heroPrimary}>
           <div className={styles.heroMain}>
             <div className={styles.heroLabel}>A receber</div>
-            <div className={styles.heroValue}>{formatMoney(l.totalAReceber)}</div>
+            <div className={styles.heroValue} data-tone="up">{formatMoney(l.totalAReceber)}</div>
           </div>
           <div className={styles.heroPrimaryDivider} />
           <div className={styles.heroMain}>

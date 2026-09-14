@@ -21,6 +21,7 @@
 .heroMain { position: relative; min-width: 0; }
 .heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
 .heroValue { font-size: 32px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroValue[data-tone="up"] { color: #4ADE80; }
 .heroValue[data-tone="down"] { color: #FB7185; }
 .heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .heroStats { display: flex; align-items: stretch; gap: 18px; }
