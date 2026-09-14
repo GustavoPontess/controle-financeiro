@@ -39,16 +39,17 @@
   .heroStat { align-items: flex-start; }
 }
 
-/* Duas linhas: filtros (direção + arquivados) em cima; busca embaixo. Consolidar/Novo no header. */
+/* Duas linhas: filtros (direção + arquivados) em cima; busca (cresce) + Consolidar embaixo. */
 .toolbar { display: flex; flex-direction: column; gap: 10px; }
 .toolbarFilters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.toolbarActions { display: flex; align-items: center; gap: 10px; }
+.searchGrow { flex: 1; min-width: 200px; }
 
-/* Toggle "Arquivados" — mesma altura (38px) do segmented pra alinhar a linha de filtros. */
+/* Toggle "Arquivados" — mostra/oculta empréstimos quitados que o usuário arquivou. */
 .toggleArquivados {
-  display: inline-flex; align-items: center; gap: 6px; height: 38px; box-sizing: border-box;
-  border: 1px solid var(--pontes-border);
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--pontes-border);
   background: transparent; cursor: pointer; font-family: var(--pontes-font);
-  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 0 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 12px; border-radius: 10px;
   transition: background-color .12s ease, color .12s ease, border-color .12s ease;
 }
 .toggleArquivados:hover { color: var(--pontes-text); }
@@ -57,8 +58,8 @@
   background: color-mix(in srgb, var(--pontes-primary) 6%, transparent);
 }
 
-/* Filtro de direção (Tudo / A receber / A pagar). Altura casa com o toggle Arquivados. */
-.segmented { display: inline-flex; align-items: center; height: 38px; box-sizing: border-box; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
+/* Filtro de direção (Tudo / A receber / A pagar). */
+.segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
 .segBtn {
   border: none; background: transparent; cursor: pointer; font-family: var(--pontes-font);
   font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 14px; border-radius: 8px;
