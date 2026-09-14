@@ -549,6 +549,8 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasIndex("TransacaoId");
 
+                    b.HasIndex("CriadoPor", "Quitado", "DataVencimento", "DataInicio");
+
                     b.ToTable("Emprestimos");
                 });
 

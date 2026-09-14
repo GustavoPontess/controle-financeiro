@@ -449,6 +449,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Emprestimo>()
             .HasIndex(e => e.ConviteTokenHash);
 
+        // Índice do filtro principal de multi-tenancy + ordenação da listagem. Sem ele, o
+        // `CriadoPor == usuarioId OR ContraparteUsuarioId == usuarioId` cai em seq scan O(N)
+        // (Contraparte já tem índice, CriadoPor não tinha). Com este, o Postgres faz BitmapOr
+        // dos dois índices → O(K) (K = empréstimos do usuário). Colunas de ordenação
+        // (Quitado, DataVencimento, DataInicio) cobrem o ORDER BY da ListarAsync no caso comum.
+        modelBuilder.Entity<Emprestimo>()
+            .HasIndex(e => new { e.CriadoPor, e.Quitado, e.DataVencimento, e.DataInicio });
+
         // Emprestimo → Transacao (SetNull: a Transacao nunca é hard-deletada — soft delete
         // via Ativo — mas se algum dia for, o empréstimo não some junto, só perde o vínculo).
         modelBuilder.Entity<Emprestimo>()
