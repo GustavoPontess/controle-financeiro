@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-12
+last_reviewed: 2026-09-14
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 446/446, front 341/341. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos (4 bancadas `/emprestimos-lab-a/b/c/d`) segue pausado, sem vencedora. Histórico no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 534/534, front 349/349. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos essencialmente FECHADO: bancada B promovida a tela real (`/emprestimos`), labs A/C/D apagados, empréstimo bancário Fase 1 (manual) + índice de perf. Regras documentadas em `docs/features/emprestimo-bancario/regras.md`. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -15,34 +15,35 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Resumo da sessão 2026-09-13 (branch `feature/emprestimos-ui`, off-main · verde: back 528/528, front 369/369)
+### 📌 Resumo da sessão 2026-09-13/14 (branch `feature/emprestimos-ui`, off-main · verde: back 534/534, front 349/349 · **NÃO pushado**)
 
-**Admin do beta foi MERGEADO NA MAIN e PUSHADO** (PR #235, squash `9d697ae`). Login/gh: o app
-precisa do GitHub logado no próprio app (não só no terminal) pra o widget de PR/CI aparecer.
+**Módulo Empréstimos essencialmente fechado.** Bancada B eleita e **promovida a tela real**.
 
-**Empréstimos — retomada da UI (bancada Lab B virando a vencedora).** 4 commits (`2a5a4dd`→`e400828`)
-na `feature/emprestimos-ui` (a partir da main; NÃO pushado ainda):
-1. **Kebab (⋮)** nas ações da linha (`ActionIcons`), padrão DS.
-2. **PontesPopover em portal** (`position: fixed` em `document.body`) — some o clip/scrollbar em
-   tabela/card/sidebar; fullWidth acompanha a largura do trigger (conserta overflow do menu do usuário).
-3. **Lab B mais completo:** hero de resumo (igual Lab C), linha clicável abre tabelinha de detalhe
-   (parcelado = parcelas; **à vista = 1 linha** mostrando pago/atrasado), badge de direção (A receber ↙ /
-   A pagar ↗), pageSize mín 10, sem subtítulo/contador, respiro no form do modal.
-4. **Busca + direção SERVER-SIDE** — `EmprestimoService.ListarAsync` aceita `busca`/`direcao`
-   (paginação já filtrada, `total` correto, EF parametrizado, isolado por usuário; `.ToLower().Contains`
-   portável InMemory+Postgres) + controller + front (hook com debounce, remove filtro client-side). +2 testes.
+1. **B → `EmprestimosPage.tsx` real** — a página real agora É o layout B (tabela densa, kebab ⋮,
+   wizard, hero, busca/direção server-side), via `useEmprestimosLogic` + `EmprestimosLabModals` +
+   `EmprestimosLabItemParts`. **Apagados** Lab A/C/D + `EmprestimosLabNav` + rotas `/emprestimos-lab-*`.
+   Teste reescrito pra nova UI (16 testes).
+2. **Wizard 3 passos** (Novo empréstimo + Propor consolidação) com `PontesStepper` do DS, validação por passo.
+3. **Empréstimo bancário — Fase 1 (tudo manual):** `Emprestimo.BancoId` (FK opcional) + enum
+   `OrigemEmprestimo {Manual,OpenFinance}` + migration; no wizard, **"Com quem é? [Uma pessoa | Um banco]"**
+   — banco ⇒ só "peguei emprestado" (UI + backend + testes); `PontesBankBadge` na lista.
+4. **Hero co-igual** A receber (verde) / A pagar (vermelho) — não assume mais que todo mundo tem a receber.
+5. **Toggle "Arquivados"** na toolbar (server-side, `mostrarArquivados`); kebab do à vista ganhou "Ver detalhe".
+6. **Perf:** índice `(CriadoPor, Quitado, DataVencimento, DataInicio)` — antes o filtro de tenant caía em
+   **seq scan O(N)** (CriadoPor sem índice); agora BitmapOr → **O(K)**. Migration `AddIndexEmprestimoCriadoPor`.
+7. **fix DS `PontesField`** — helper entra no fluxo (não gruda no campo de baixo). Vale em todo form.
 
-**⚠️ Incidente de branch (lição):** comecei os empréstimos na `feature/emprestimo-compartilhado`
-(ANTIGA, schema `bool Ativo`). A main já tinha as lab pages + `StatusUsuario` → API reiniciada quebrou
-login com `column u.Ativo does not exist`. Movi tudo pra `feature/emprestimos-ui` off-main via cherry-pick
-(base dos arquivos-alvo idêntica → limpo). A branch antiga fica órfã (apagar depois).
+**Pesquisa + regras (docs):** `docs/features/emprestimo-bancario/pesquisa-openfinance.md` (Open Finance
+entrega taxa/parcelas/saldo, mas acesso só via agregador Pluggy/Belvo — Fase 2) e **`regras.md`** (fonte da
+verdade das regras de empréstimo). Decisões: **tudo manual na Fase 1**; **taxa é dado dinâmico, nunca
+chumbada**; ideia de monetização grátis-manual / pago-integração (gancho = campo `Origem`).
 
-**Próxima ação (a decidir):**
-- **Nit:** `pageSize` do Lab B aparece 25 em vez de 10 — conferir por que o `setPageSize(10)` não fixa.
-- **P1 (Gustavo pediu):** auditar TODAS as tabelas/listas do app e garantir busca/filtro/paginação
-  **server-side** (Transações, Admin, etc.) — ver ROADMAP. Regra registrada.
-- Decidir formalmente a bancada vencedora e portar pra `EmprestimosPage.tsx` (real) com teste.
-- App no ar: API :5293 (health 200) + front :5173.
+**Próxima ação:**
+- **P1 (Gustavo pediu):** auditar TODAS as tabelas/listas do app → busca/filtro/paginação server-side
+  (Transações, Admin, Recorrentes, Parcelamentos, Cartões, Categorias/Bancos, Famílias). Ver ROADMAP.
+- **Gaps abertos:** recobrir testes profundos de modal (P3); keyset pagination se escalar (P3).
+- Apagar branch órfã `feature/emprestimo-compartilhado`. Pushar `feature/emprestimos-ui` quando decidir.
+- App no ar: API :5293 (health 200) + front :5173. Dados de teste no dev DB (Marina x3 + NU bancário).
 
 ---
 
