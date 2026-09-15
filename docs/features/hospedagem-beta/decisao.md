@@ -1,7 +1,7 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-23
-status: EM_DISCUSSAO
+last_reviewed: 2026-09-14
+status: DECIDIDO
 ---
 
 # Decisão de hospedagem + escopo essencial do beta
@@ -182,6 +182,27 @@ extra. Descartado o caminho B (gerenciado) por custo.
 nada é provisionado. O código já é neutro pra qualquer host de container, então quando a grana entrar
 é só provisionar e fazer deploy — sem retrabalho de código.
 
+### Atualização 2026-09-14 — preços reais conferidos + modelo de pagamento MENSAL
+
+Conferido ao vivo no site da Hostinger (não era o que o `~R$28` sugeria):
+
+- **O `~R$28/mês` é a taxa do plano de 24 meses PAGO À VISTA** (KVM1 = R$29,99/mês × 24 = **R$719,76 de entrada**; KVM2 = R$43,99 × 24 = **R$1.055,76**). Não é mensalidade — é o total do contrato dividido.
+- **VPS não tem plano de 48 meses.** Os prazos são só **1 mês, 12 meses, 24 meses** (24 = "melhor custo-benefício"). O 48 meses é da hospedagem *compartilhada* (que não serve — sem root/Docker/.NET/Postgres).
+- **Taxa promocional cai depois do 1º ciclo.** Preços reais por prazo:
+
+| Plano | 1 mês (1º ciclo → renova) | 12 meses (à vista → renova) | 24 meses (à vista → renova) |
+|---|---|---|---|
+| **KVM1** (1vCPU/4GB/50GB) | R$52,99 → **R$87,99/mês** | — | R$29,99/mês (R$719,76) → R$59,99 |
+| **KVM2** (2vCPU/8GB/100GB) | R$70,99 → R$108,99/mês | R$49,99/mês (R$599,88) → R$88,99 | R$43,99/mês (R$1.055,76) → R$77,99 |
+
+**DECISÃO DE PAGAMENTO (Gustavo, 2026-09-14): começar MENSAL, não à vista.** Não há caixa pra o total do contrato (R$720-1.055 de entrada); há pra a mensalidade. Aceita-se pagar mais por mês em troca de não travar 2 anos nem desembolsar tudo agora — coerente com "beta pode ser desligado".
+
+- **Plano de partida: KVM1 mensal** — ~R$53 no 1º mês, depois ~R$88/mês. 4GB/1vCPU cobrem o beta (poucos testadores; gargalo é usuários simultâneos, não a máquina).
+- **Medo de lentidão (Gustavo):** mitigado por (a) deploy tunado pra caber — Postgres enxuto (`shared_buffers`/`work_mem` modestos), .NET **workstation GC** (`DOTNET_gcServer=0`), gzip no nginx; queries já são server-side + indexadas; (b) **upgrade KVM1→KVM2 é 1 clique, sem reinstalar** — sobe no mês que precisar, desce depois (mensal). Trigger: testador reclamar ou CPU/RAM > ~80%.
+- **KVM2 mensal** fica como opção de "zero risco desde já" por ~R$18-21/mês a mais — não escolhido; sobe só se KVM1 apertar.
+- **Quando entrar grana e o beta provar que vale:** migrar pra 24 meses à vista derruba a mensal (KVM1 R$88 → R$30). Aí compensa travar; agora não.
+- **Sem add-on de backup diário pago (R$32,99/mês):** fazemos `pg_dump` diário via cron (config única, ~0 custo), como já planejado no caminho A.
+
 ## Referências
 
 - serverspace.com.br/about/blog/melhores-provedores-de-nuvem-para-pequenas-empresas-no-brasil-em-2026
@@ -191,12 +212,12 @@ nada é provisionado. O código já é neutro pra qualquer host de container, en
 - makerkit.dev/blog/saas/supabase-pricing (Supabase Pro US$25, região SP)
 - render.com/articles/railway-vs-fly-io + expresstech.io/render-vs-railway-vs-fly-io-2026-pricing-showdown (regiões Render/Railway — sem BR)
 
-## Decisão
-
-**Pendente.** Nada escolhido.
-
 ## Histórico
 
+- 2026-09-14 — **Preços reais conferidos ao vivo + modelo MENSAL decidido.** O `~R$28` era o plano de
+  24 meses à vista (R$720 de entrada), não mensalidade. VPS não tem 48 meses (só 1/12/24). Sem caixa
+  pro total do contrato → começar **KVM1 mensal** (~R$53→R$88/mês), sem lock. Deploy será tunado pra
+  caber em 4GB; upgrade KVM1→KVM2 é 1 clique se apertar. Migrar pra 24 meses só quando entrar grana.
 - 2026-08-24 — **Caminho A (Hostinger) escolhido.** Execução adiada por orçamento (contrata quando
   receber). Nada provisionado ainda.
 - 2026-08-23 — Doc criado. Decisão começa do zero, a partir das restrições reais do Gustavo (sem
