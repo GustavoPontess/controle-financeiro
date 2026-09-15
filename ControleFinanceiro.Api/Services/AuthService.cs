@@ -355,6 +355,49 @@ public class AuthService
     }
 
     /// <summary>
+    /// Troca a conta ativa (multi-sessão, Opção A). O <paramref name="refreshToken"/> vem do cookie
+    /// httpOnly `rt_&lt;slot&gt;` da conta destino — a AUTORIDADE da troca é a posse desse token, não o
+    /// <paramref name="accountId"/> do corpo, que é só SELETOR. Guard anti-IDOR explícito
+    /// (<c>rt.UsuarioId == accountId</c>): quem não possui o refresh daquela conta não troca pra ela.
+    /// Fail-closed (token ausente/inválido/revogado/expirado/conta não-Ativa → Unauthorized genérico).
+    /// Rotaciona o refresh (revoga o antigo, cria novo), igual ao <see cref="RefreshAsync"/>.
+    /// </summary>
+    public async Task<AuthResponseDto> SwitchAsync(string? refreshToken, Guid accountId)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+
+        var tokenHash = OpaqueTokenHasher.Hash(refreshToken);
+        var rt = await _context.RefreshTokens
+            .Include(r => r.Usuario)
+            .FirstOrDefaultAsync(r => r.Token == tokenHash);
+
+        // Fail-closed + anti-IDOR: o token tem que existir, estar válido E pertencer À conta pedida.
+        if (rt == null || rt.Revogado || rt.ExpiresAt <= DateTime.UtcNow || rt.UsuarioId != accountId)
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+
+        if (rt.Usuario.Status != StatusUsuario.Ativo)
+            throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
+
+        // Rotação (mesmo padrão do refresh).
+        rt.Revogado = true;
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId);
+        await _context.SaveChangesAsync();
+
+        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome);
+
+        return new AuthResponseDto
+        {
+            UsuarioId = rt.Usuario.Id,
+            Email = rt.Usuario.Email,
+            Nome = rt.Usuario.Nome,
+            Token = jwtToken,
+            RefreshToken = refreshBruto,
+            RefreshTokenExpiresAt = novoRt.ExpiresAt,
+        };
+    }
+
+    /// <summary>
     /// Revoga o refresh token (logout). Silencioso se token não encontrado.
     /// </summary>
     public async Task LogoutAsync(string refreshToken)
@@ -370,6 +413,28 @@ public class AuthService
             rt.Revogado = true;
             await _context.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Logout de TODAS as contas parqueadas no browser — revoga cada refresh token informado
+    /// (os cookies `rt_*` que o controller enumerou). Silencioso para os que não existirem.
+    /// </summary>
+    public async Task LogoutAllAsync(IEnumerable<string> refreshTokens)
+    {
+        var hashes = refreshTokens
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(OpaqueTokenHasher.Hash)
+            .ToList();
+        if (hashes.Count == 0) return;
+
+        var tokens = await _context.RefreshTokens
+            .Where(r => hashes.Contains(r.Token) && !r.Revogado)
+            .ToListAsync();
+        foreach (var r in tokens)
+            r.Revogado = true;
+
+        if (tokens.Count > 0)
+            await _context.SaveChangesAsync();
     }
 
     // ── Forgot / Reset Password ───────────────────────────────────────────────

@@ -331,6 +331,82 @@ public class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
     }
 
+    // ── SwitchAsync (multi-conta) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task Switch_comRefreshDaConta_rotaciona_eRetornaAContaCerta()
+    {
+        using var ctx = CreateContext();
+        var a = SeedUsuarioComSenha(ctx, "a@test.com", "SenhaForte!2026");
+        var b = SeedUsuarioComSenha(ctx, "b@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        await LoginSemMfaAsync(auth, "a@test.com", "SenhaForte!2026");
+        var loginB = await LoginSemMfaAsync(auth, "b@test.com", "SenhaForte!2026");
+
+        var trocado = await auth.SwitchAsync(loginB.RefreshToken, b.Id);
+
+        Assert.Equal(b.Id, trocado.UsuarioId);                 // ativou a conta B
+        Assert.NotEqual(loginB.RefreshToken, trocado.RefreshToken); // rotacionou
+        // O refresh antigo de B já não vale (rotação).
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(loginB.RefreshToken));
+        _ = a; // A permanece intacta (não foi tocada)
+    }
+
+    [Fact]
+    public async Task Switch_antiIDOR_refreshDeOutraConta_naoTrocaPraContaPedida()
+    {
+        using var ctx = CreateContext();
+        var a = SeedUsuarioComSenha(ctx, "a@test.com", "SenhaForte!2026");
+        var b = SeedUsuarioComSenha(ctx, "b@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var loginA = await LoginSemMfaAsync(auth, "a@test.com", "SenhaForte!2026");
+
+        // Tenta trocar pra B usando o refresh de A (seletor mente; autoridade é o token) → recusado.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.SwitchAsync(loginA.RefreshToken, b.Id));
+        // E o refresh de A NÃO foi rotacionado/consumido pela tentativa falha.
+        var aindaVale = await auth.RefreshAsync(loginA.RefreshToken);
+        Assert.Equal(a.Id, aindaVale.UsuarioId);
+    }
+
+    [Fact]
+    public async Task Switch_semRefresh_falha()
+    {
+        using var ctx = CreateContext();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.SwitchAsync(null, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Switch_contaNaoAtiva_falha()
+    {
+        using var ctx = CreateContext();
+        var b = SeedUsuarioComSenha(ctx, "b@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var loginB = await LoginSemMfaAsync(auth, "b@test.com", "SenhaForte!2026");
+
+        // Conta some da atividade entre o login e o switch (bloqueada).
+        b.Status = StatusUsuario.Bloqueado;
+        await ctx.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.SwitchAsync(loginB.RefreshToken, b.Id));
+    }
+
+    [Fact]
+    public async Task LogoutAll_revogaTodosOsRefreshInformados()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "a@test.com", "SenhaForte!2026");
+        SeedUsuarioComSenha(ctx, "b@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var loginA = await LoginSemMfaAsync(auth, "a@test.com", "SenhaForte!2026");
+        var loginB = await LoginSemMfaAsync(auth, "b@test.com", "SenhaForte!2026");
+
+        await auth.LogoutAllAsync(new[] { loginA.RefreshToken, loginB.RefreshToken });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(loginA.RefreshToken));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(loginB.RefreshToken));
+    }
+
     // ── Register: e-mail duplicado — anti-enumeração (pentest 2026-09-12) ──
     // Não pode revelar que o e-mail existe: responde IGUAL a um cadastro novo e NÃO cria duplicata.
 
