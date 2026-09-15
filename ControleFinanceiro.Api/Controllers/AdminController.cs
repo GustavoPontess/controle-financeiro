@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControleFinanceiro.Api.DTOs.Admin;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Services;
@@ -83,10 +84,11 @@ public class AdminController : ControllerBase
 
     // ── Módulo B — gestão de usuários ─────────────────────────────────────────────────────
 
-    /// <summary>Lista todos os usuários (gestão). `busca` opcional filtra por nome/e-mail.</summary>
+    /// <summary>Lista usuários (gestão), paginada. `busca` opcional filtra por nome/e-mail (server-side).</summary>
     [HttpGet("usuarios")]
-    public async Task<ActionResult<List<UsuarioAdminDto>>> Usuarios([FromQuery] string? busca)
-        => Ok(await _adminUsuarios.ListarUsuariosAsync(busca));
+    public async Task<ActionResult<PagedResult<UsuarioAdminDto>>> Usuarios(
+        [FromQuery] string? busca, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+        => Ok(await _adminUsuarios.ListarUsuariosAsync(busca, page, pageSize));
 
     /// <summary>Bloqueia um usuário ativo (não loga mais; reversível). Não pode bloquear a si mesmo.</summary>
     [HttpPatch("usuarios/{id:guid}/bloquear")]
@@ -134,10 +136,12 @@ public class AdminController : ControllerBase
 
     // ── Módulo D — visualizador de auditoria (só leitura) ─────────────────────────────────
 
-    /// <summary>Últimas ações de admin (auditoria), mais recentes primeiro.</summary>
+    /// <summary>Ações de admin (auditoria), paginada, mais recentes primeiro. `busca` opcional filtra
+    /// por e-mail do admin ou descrição do alvo (server-side).</summary>
     [HttpGet("auditoria")]
-    public async Task<ActionResult<List<AdminAuditLogDto>>> Auditoria()
-        => Ok(await _auditoria.ListarAsync());
+    public async Task<ActionResult<PagedResult<AdminAuditLogDto>>> Auditoria(
+        [FromQuery] string? busca, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+        => Ok(await _auditoria.ListarAsync(busca, page, pageSize));
 
     // ── Notificações do admin (stream separado do financeiro) ─────────────────────────────
 

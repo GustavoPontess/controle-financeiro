@@ -167,8 +167,9 @@ public class AdminUsuarioServiceTests
 
         var todos = await svc.ListarUsuariosAsync();
 
-        Assert.Equal(3, todos.Count);
-        Assert.Equal("c@test.com", todos[0].Email); // mais recente primeiro
+        Assert.Equal(3, todos.Total);
+        Assert.Equal(3, todos.Items.Count());
+        Assert.Equal("c@test.com", todos.Items.First().Email); // mais recente primeiro
     }
 
     [Fact]
@@ -181,8 +182,48 @@ public class AdminUsuarioServiceTests
 
         var r = await svc.ListarUsuariosAsync("GUSTAVO");
 
-        Assert.Single(r);
-        Assert.Equal("gustavo@test.com", r[0].Email);
+        Assert.Equal(1, r.Total); // total reflete o filtro (server-side), não a página
+        var item = Assert.Single(r.Items);
+        Assert.Equal("gustavo@test.com", item.Email);
+    }
+
+    [Fact]
+    public async Task ListarUsuarios_paginacao_respeitaPageEPageSize_eTotalIgnoraPagina()
+    {
+        using var ctx = CreateContext();
+        for (int i = 0; i < 5; i++)
+            Seed(ctx, StatusUsuario.Ativo, $"u{i}@test.com", DateTime.UtcNow.AddMinutes(-i));
+        var svc = CreateService(ctx);
+
+        var p1 = await svc.ListarUsuariosAsync(page: 1, pageSize: 2);
+        var p2 = await svc.ListarUsuariosAsync(page: 2, pageSize: 2);
+        var p3 = await svc.ListarUsuariosAsync(page: 3, pageSize: 2);
+
+        Assert.Equal(5, p1.Total); // total é o dataset inteiro, não a página
+        Assert.Equal(2, p1.Items.Count());
+        Assert.Equal(2, p2.Items.Count());
+        Assert.Single(p3.Items); // última página: sobra 1
+        // páginas não se sobrepõem
+        var idsP1 = p1.Items.Select(u => u.Id);
+        var idsP2 = p2.Items.Select(u => u.Id);
+        Assert.Empty(idsP1.Intersect(idsP2));
+    }
+
+    [Fact]
+    public async Task ListarUsuarios_busca_ePaginacao_combinadas()
+    {
+        using var ctx = CreateContext();
+        Seed(ctx, StatusUsuario.Ativo, "gustavo1@test.com", DateTime.UtcNow.AddMinutes(-1));
+        Seed(ctx, StatusUsuario.Ativo, "gustavo2@test.com", DateTime.UtcNow.AddMinutes(-2));
+        Seed(ctx, StatusUsuario.Ativo, "gustavo3@test.com", DateTime.UtcNow.AddMinutes(-3));
+        Seed(ctx, StatusUsuario.Ativo, "outro@test.com");
+        var svc = CreateService(ctx);
+
+        var r = await svc.ListarUsuariosAsync("gustavo", page: 1, pageSize: 2);
+
+        Assert.Equal(3, r.Total); // 3 batem na busca, mesmo trazendo só 2 na página
+        Assert.Equal(2, r.Items.Count());
+        Assert.All(r.Items, u => Assert.Contains("gustavo", u.Email));
     }
 
     [Fact]
@@ -298,7 +339,43 @@ public class AdminUsuarioServiceTests
 
         var lista = await audit.ListarAsync();
 
-        Assert.Equal(2, lista.Count);
-        Assert.Equal("b@test.com", lista[0].AdminEmail); // mais recente primeiro
+        Assert.Equal(2, lista.Total);
+        Assert.Equal("b@test.com", lista.Items.First().AdminEmail); // mais recente primeiro
+    }
+
+    [Fact]
+    public async Task Auditoria_paginacao_alcancaRegistrosAlemDe200()
+    {
+        using var ctx = CreateContext();
+        var audit = new AdminAuditService(ctx);
+        // 205 registros — antes o teto fixo de 200 deixava os mais antigos inalcançáveis.
+        for (int i = 0; i < 205; i++)
+        {
+            audit.Registrar(Guid.NewGuid(), $"admin{i}@test.com", AcaoAdmin.AprovarCadastro);
+            await ctx.SaveChangesAsync();
+        }
+
+        var primeira = await audit.ListarAsync(page: 1, pageSize: 50);
+        var ultima = await audit.ListarAsync(page: 5, pageSize: 50);
+
+        Assert.Equal(205, primeira.Total);        // total real, não capado em 200
+        Assert.Equal(50, primeira.Items.Count());
+        Assert.Equal(5, ultima.Items.Count());    // 205 = 4×50 + 5 → registros antigos acessíveis
+    }
+
+    [Fact]
+    public async Task Auditoria_busca_filtraPorEmailDoAdmin()
+    {
+        using var ctx = CreateContext();
+        var audit = new AdminAuditService(ctx);
+        audit.Registrar(Guid.NewGuid(), "gustavo@test.com", AcaoAdmin.AprovarCadastro);
+        await ctx.SaveChangesAsync();
+        audit.Registrar(Guid.NewGuid(), "outro@test.com", AcaoAdmin.BloquearUsuario);
+        await ctx.SaveChangesAsync();
+
+        var r = await audit.ListarAsync("GUSTAVO");
+
+        Assert.Equal(1, r.Total);
+        Assert.Equal("gustavo@test.com", Assert.Single(r.Items).AdminEmail);
     }
 }

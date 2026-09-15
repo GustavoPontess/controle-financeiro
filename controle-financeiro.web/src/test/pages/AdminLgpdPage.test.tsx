@@ -26,6 +26,10 @@ vi.mock("../../hooks/useAuth", () => ({ useAuth: useAuthMock }))
 const ativo = { id: "u1", email: "ativo@t.com", nome: "Ativo User", status: StatusUsuario.Ativo, criadoEm: "2026-09-01T10:00:00Z" }
 const emExclusao = { id: "u2", email: "bye@t.com", nome: "Saindo", status: StatusUsuario.MarcadoParaExclusao, criadoEm: "2026-09-01T10:00:00Z", marcadoExclusaoEm: "2026-09-10T10:00:00Z" }
 
+// Envelope paginado (server-side) — o backend devolve isso, não um array cru.
+type Row = typeof ativo | typeof emExclusao
+const paged = (items: Row[], total = items.length) => ({ items, total, page: 1, pageSize: 25, totalPages: 1 })
+
 function renderPage() {
   return render(
     <PontesThemeProvider>
@@ -42,7 +46,7 @@ describe("AdminLgpdPage", () => {
   })
 
   it("marcar para exclusão pede confirmação e só então chama o serviço", async () => {
-    mockService.usuarios.mockResolvedValueOnce([ativo])
+    mockService.usuarios.mockResolvedValue(paged([ativo]))
     mockService.marcarExclusao.mockResolvedValueOnce({ ...ativo, status: StatusUsuario.MarcadoParaExclusao })
     renderPage()
     await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
@@ -55,8 +59,19 @@ describe("AdminLgpdPage", () => {
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "success" }))
   })
 
+  it("busca é server-side: manda o termo pro serviço (não filtra em memória)", async () => {
+    mockService.usuarios.mockResolvedValue(paged([ativo]))
+    renderPage()
+    await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
+
+    fireEvent.change(screen.getByPlaceholderText("Nome ou e-mail"), { target: { value: "saindo" } })
+    await waitFor(() =>
+      expect(mockService.usuarios).toHaveBeenCalledWith("saindo", 1, expect.any(Number))
+    )
+  })
+
   it("purga só habilita quando o e-mail digitado confere", async () => {
-    mockService.usuarios.mockResolvedValueOnce([emExclusao])
+    mockService.usuarios.mockResolvedValue(paged([emExclusao]))
     mockService.purgar.mockResolvedValueOnce({})
     renderPage()
     await waitFor(() => expect(screen.getByText("Saindo")).toBeInTheDocument())
@@ -74,7 +89,7 @@ describe("AdminLgpdPage", () => {
 
   it("não mostra 'Marcar exclusão' nem 'Purgar' na própria linha do admin", async () => {
     const adminMarcado = { ...emExclusao, id: "admin", nome: "Adm", email: "adm@t.com" }
-    mockService.usuarios.mockResolvedValueOnce([adminMarcado])
+    mockService.usuarios.mockResolvedValue(paged([adminMarcado]))
     renderPage()
     await waitFor(() => expect(screen.getByText("Adm")).toBeInTheDocument())
 
@@ -86,7 +101,7 @@ describe("AdminLgpdPage", () => {
 
   it("mascara o e-mail na tabela por padrão (olhinho do admin)", async () => {
     setMaskData(true) // default do painel: mascarado
-    mockService.usuarios.mockResolvedValueOnce([ativo])
+    mockService.usuarios.mockResolvedValue(paged([ativo]))
     renderPage()
     await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
     // e-mail aparece mascarado, nunca em texto puro
@@ -96,7 +111,7 @@ describe("AdminLgpdPage", () => {
   })
 
   it("exportar baixa o JSON e notifica", async () => {
-    mockService.usuarios.mockResolvedValueOnce([ativo])
+    mockService.usuarios.mockResolvedValue(paged([ativo]))
     mockService.exportar.mockResolvedValueOnce({ geradoEm: "x", perfil: { id: "u1", email: "ativo@t.com", nome: "Ativo User" }, contas: [], cartoes: [], transacoes: [], metas: [], orcamentos: [] })
     // jsdom não implementa createObjectURL/click de download — stub pra não quebrar.
     URL.createObjectURL = vi.fn(() => "blob:x")
