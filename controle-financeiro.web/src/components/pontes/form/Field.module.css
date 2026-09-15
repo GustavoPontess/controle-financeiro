@@ -3,6 +3,7 @@
 .label { font-size: 13px; font-weight: 600; color: var(--pontes-text); }
 .field[data-error="true"] .label { color: var(--pontes-danger); }
 .req { color: var(--pontes-danger); margin-left: 4px; }
-/* Mensagem flutua no gap (absolute) → não empurra o layout (sem reflow ao errar). */
-.helper { position: absolute; top: 100%; left: 0; right: 0; margin-top: 3px; font-size: 11px; line-height: 1.2; color: var(--pontes-text-muted); pointer-events: none; }
-.field[data-error="true"] .helper { color: var(--pontes-danger); }
+/* Helper persistente entra no fluxo (reserva espaço, não invade o gap do próximo campo). */
+.helper { margin-top: -2px; font-size: 11px; line-height: 1.2; color: var(--pontes-text-muted); }
+/* Erro flutua no gap (absolute) → não empurra o layout (sem reflow ao validar). */
+.error { position: absolute; top: 100%; left: 0; right: 0; margin-top: 3px; font-size: 11px; line-height: 1.2; color: var(--pontes-danger); pointer-events: none; }

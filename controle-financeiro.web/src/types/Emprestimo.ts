@@ -27,6 +27,13 @@ export interface Emprestimo {
   observacao?: string
   statusVinculo: number
   contraparteNome?: string
+  /** Banco vinculado (empréstimo bancário — Open Finance Fase 1). Null/undefined = P2P (pessoa). */
+  bancoId?: string
+  bancoNome?: string
+  bancoLogoUrl?: string
+  bancoCor?: string
+  /** Origem dos dados: 1 = Manual, 2 = OpenFinance. */
+  origem: number
   /** Só quem é credor confirma pagamento/quitação — nunca o devedor, mesmo vinculado. */
   souCredor: boolean
   /** Lançamento (Transacao) vinculado — só existe se criado junto com o empréstimo. */
@@ -49,6 +56,12 @@ export interface Emprestimo {
    * novo que o substituiu (por isso está Quitado sem pagamento de verdade). */
   consolidadoNoEmprestimoId?: string
 }
+
+/** Tipo do empréstimo, sempre relativo a quem olha (o backend inverte pra contraparte). */
+export const TipoEmprestimo = {
+  Emprestei: 1,
+  PeguiEmprestado: 2,
+} as const
 
 /** Forma de pagamento combinada de um empréstimo. */
 export const FormaPagamentoEmprestimo = {
@@ -91,6 +104,8 @@ export interface CriarEmprestimo {
   dataVencimento?: string
   observacao?: string
   idempotencyKey: string
+  /** Opcional. Banco da instituição (empréstimo bancário). Se informado, tem que existir e estar ativo. */
+  bancoId?: string
   /** Se informado (junto com categoriaId), cria também o lançamento real da saída/entrada. */
   contaId?: string
   categoriaId?: string

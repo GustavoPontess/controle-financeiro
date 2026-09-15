@@ -25,10 +25,6 @@ import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import ParcelamentosPage from "../pages/Parcelamentos"
 import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
 import EmprestimosPage from "../pages/Emprestimos/EmprestimosPage"
-import EmprestimosLabA from "../pages/Emprestimos/EmprestimosLabA"
-import EmprestimosLabB from "../pages/Emprestimos/EmprestimosLabB"
-import EmprestimosLabC from "../pages/Emprestimos/EmprestimosLabC"
-import EmprestimosLabD from "../pages/Emprestimos/EmprestimosLabD"
 import AccountsPage from "../pages/Accounts/AccountsPage"
 import FamiliasPage from "../pages/Familia/FamiliasPage"
 import FamiliaDetalhePage from "../pages/Familia/FamiliaDetalhePage"
@@ -104,15 +100,6 @@ export default function AppRoutes() {
           <Route path="/parcelamentos" element={<ParcelamentosPage />} />
           <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
-          {/* Bancada de comparação de layout — nunca vai pro beta/prod, só DEV local. */}
-          {import.meta.env.DEV && (
-            <>
-              <Route path="/emprestimos-lab-a" element={<EmprestimosLabA />} />
-              <Route path="/emprestimos-lab-b" element={<EmprestimosLabB />} />
-              <Route path="/emprestimos-lab-c" element={<EmprestimosLabC />} />
-              <Route path="/emprestimos-lab-d" element={<EmprestimosLabD />} />
-            </>
-          )}
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/familias" element={<FamiliasPage />} />
           <Route path="/familias/:id" element={<FamiliaDetalhePage />} />

@@ -21,7 +21,8 @@ public class EmprestimoService(
     private readonly TransacaoService _transacaoService = transacaoService;
 
     public async Task<PagedResult<EmprestimoDto>> ListarAsync(
-        Guid usuarioId, int page = 1, int pageSize = 25, bool incluirArquivados = false)
+        Guid usuarioId, int page = 1, int pageSize = 25, bool incluirArquivados = false,
+        string? busca = null, string? direcao = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -35,6 +36,29 @@ public class EmprestimoService(
                 !((e.CriadoPor == usuarioId && e.ArquivadoPorCriador)
                     || (e.ContraparteUsuarioId == usuarioId && e.ArquivadoPorContraparte)));
         }
+
+        // Busca server-side (descrição, pessoa digitada, ou nome da contraparte vinculada).
+        // ToLower().Contains() é portável (InMemory nos testes + lower()/LIKE no Postgres).
+        // Limita o termo pra não virar vetor de custo; EF parametriza (sem SQL injection).
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim().ToLower();
+            if (termo.Length > 100) termo = termo[..100];
+            query = query.Where(e =>
+                e.Descricao.ToLower().Contains(termo)
+                || e.Pessoa.ToLower().Contains(termo)
+                || (e.ContraparteUsuarioId != null
+                    && _context.Usuarios.Any(u => u.Id == e.ContraparteUsuarioId && u.Nome.ToLower().Contains(termo))));
+        }
+
+        // Direção (a receber / a pagar) — mesmo predicado dos KPIs, pra bater com o hero.
+        if (direcao == "receber")
+            query = query.Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.Emprestei)
+                                  || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado));
+        else if (direcao == "pagar")
+            query = query.Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado)
+                                  || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.Emprestei));
+
         query = query
             .OrderBy(e => e.Quitado)
             .ThenBy(e => e.DataVencimento)
@@ -135,11 +159,25 @@ public class EmprestimoService(
                 throw new ArgumentException("Informe o vencimento da primeira parcela.");
         }
 
+        // Banco é opcional; se informado tem que existir e estar ativo (catálogo global).
+        if (dto.BancoId.HasValue)
+        {
+            var bancoOk = await _context.Bancos.AnyAsync(b => b.Id == dto.BancoId.Value && b.Ativo);
+            if (!bancoOk)
+                throw new ArgumentException("Banco inválido ou inativo.");
+
+            // Pessoa física não empresta pra banco (isso seria investimento, fora do escopo).
+            // Empréstimo bancário é sempre "peguei emprestado". Regra: regras.md §2.2.
+            if (dto.Tipo != TipoEmprestimo.PeguiEmprestado)
+                throw new ArgumentException("Empréstimo com banco só pode ser do tipo 'peguei emprestado'.");
+        }
+
         var replay = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);
         if (replay != null && replay.Tipo == FinancialEventType.EmprestimoCriado)
         {
             var anterior = await _context.Emprestimos
                 .Include(e => e.Parcelas)
+                .Include(e => e.Banco)
                 .FirstOrDefaultAsync(x => x.Id == replay.EntidadeId);
             if (anterior != null)
                 return await ToDtoAsync(anterior, usuarioId);
@@ -200,6 +238,8 @@ public class EmprestimoService(
             Quitado = false,
             Observacao = dto.Observacao,
             CriadoPor = usuarioId,
+            BancoId = dto.BancoId,
+            Origem = OrigemEmprestimo.Manual,
             TransacaoId = transacaoId,
             FormaPagamento = dto.FormaPagamento,
             TaxaJuroMensal = dto.TaxaJuroMensal,
@@ -1434,6 +1474,7 @@ public class EmprestimoService(
 
     private IQueryable<Emprestimo> VisivelPara(Guid usuarioId) => _context.Emprestimos
         .Include(e => e.Parcelas)
+        .Include(e => e.Banco)
         .Where(e => e.Ativo && (e.CriadoPor == usuarioId
             || (e.ContraparteUsuarioId == usuarioId && e.StatusVinculo == StatusVinculoEmprestimo.Vinculado)));
 
@@ -1561,6 +1602,9 @@ public class EmprestimoService(
     {
         var nomes = await ObterNomesAsync([e]);
         var agregados = await ObterAgregadosSolicitacaoAsync([e.Id]);
+        // Empréstimo recém-criado não vem por VisivelPara (sem Include do Banco) — carrega aqui.
+        if (e.BancoId.HasValue && e.Banco is null)
+            e.Banco = await _context.Bancos.FirstOrDefaultAsync(b => b.Id == e.BancoId.Value);
         return ToDto(e, usuarioId, nomes, agregados);
     }
 
@@ -1646,6 +1690,11 @@ public class EmprestimoService(
             Quitado = e.Quitado,
             Vencido = vencido,
             Observacao = e.Observacao,
+            BancoId = e.BancoId,
+            BancoNome = e.Banco?.Nome,
+            BancoLogoUrl = e.Banco?.LogoUrl,
+            BancoCor = e.Banco?.Cor,
+            Origem = (int)e.Origem,
             StatusVinculo = (int)e.StatusVinculo,
             ContraparteNome = contraparteNome,
             SouCredor = souCredor,

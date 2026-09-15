@@ -1,6 +1,6 @@
 /* Compartilhado pelas 3 páginas de bancada (lab-a/b/c) — estilo dos modais/formulários, idêntico
    ao padrão da tela real (EmprestimosPage.module.css), só renomeado pro contexto da bancada. */
-.formCol { display: flex; flex-direction: column; gap: 14px; }
+.formCol { display: flex; flex-direction: column; gap: 20px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .hintText { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
 
@@ -11,6 +11,29 @@
 .vincularLinkBox { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); font-size: 12px; word-break: break-all; }
 
 .gateGroup { display: flex; flex-direction: column; gap: 8px; }
+
+/* Segmented "Com quem é?" (pessoa/banco) — mesmo visual do filtro do Lab B. */
+.segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 10px; }
+.segBtn {
+  border: none; background: transparent; cursor: pointer; font-family: var(--pontes-font);
+  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 6px 14px; border-radius: 8px;
+  transition: background-color .12s ease, color .12s ease;
+}
+.segBtn:hover { color: var(--pontes-text); }
+.segBtn[data-active="true"] { background: var(--pontes-surface); color: var(--pontes-primary); box-shadow: var(--pontes-shadow-sm); }
+
+/* Lista de seleção (consolidar): cada item é um card com scroll interno quando são muitos. */
+.selectList { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding: 2px; margin: -2px; }
+.selectRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pontes-border); }
+.selectRow[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }
+.selectValor { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; flex-shrink: 0; }
+
+/* Linha de pessoa (passo 1 do wizard de consolidação). */
+.pessoaRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--pontes-border); background: none; cursor: pointer; font-family: inherit; text-align: left; width: 100%; }
+.pessoaRow[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }
+.pessoaMain { display: flex; flex-direction: column; gap: 2px; }
+.pessoaNome { font-size: 14px; font-weight: 600; color: var(--pontes-text); }
+.pessoaSub { font-size: 12px; color: var(--pontes-text-muted); }
 .gateOption { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--pontes-text); cursor: pointer; line-height: 1.4; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pontes-border); }
 .gateOption input { margin-top: 2px; accent-color: var(--pontes-primary); cursor: pointer; }
 .gateOption[data-selected] { border-color: var(--pontes-primary); background: color-mix(in srgb, var(--pontes-primary) 6%, transparent); }

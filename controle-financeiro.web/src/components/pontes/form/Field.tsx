@@ -29,7 +29,9 @@ export function PontesField({
         </label>
       )}
       {children}
-      {(error || helper) && <div className={styles.helper}>{error || helper}</div>}
+      {error
+        ? <div className={styles.error}>{error}</div>
+        : helper && <div className={styles.helper}>{helper}</div>}
     </div>
   )
 }

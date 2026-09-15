@@ -24,9 +24,11 @@ import {
 } from "../../types/Emprestimo"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
+import { getBancos } from "../../services/bancoService"
 import { listTransactionsPage } from "../../services/transactionService"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
+import type { Banco } from "../../types/Banco"
 import type { Transaction } from "../../types/Transaction"
 
 export const errorMessage = (err: unknown, fallback: string): string =>
@@ -66,6 +68,9 @@ export type FormState = {
   pessoa: string
   valorTotal?: number
   tipo: string
+  /** Com quem é o empréstimo: pessoa física (P2P) ou um banco. Decide qual campo aparece. */
+  modalidade: "pessoa" | "banco"
+  bancoId: string
   dataInicio: string
   dataVencimento: string
   observacao: string
@@ -80,14 +85,14 @@ export type FormState = {
   percentualMultaAtraso?: number
 }
 const emptyForm: FormState = {
-  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1",
+  descricao: "", pessoa: "", valorTotal: undefined, tipo: "1", modalidade: "pessoa", bancoId: "",
   dataInicio: today(), dataVencimento: "", observacao: "",
   movimentacao: "", contaId: "", categoriaId: "", transacaoExistenteId: "",
   formaPagamento: "avista", quantidadeParcelas: undefined, primeiroVencimento: "",
   taxaJuroMensal: undefined, percentualMultaAtraso: undefined,
 }
 export type Errors = Partial<Record<
-  "descricao" | "pessoa" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId"
+  "descricao" | "pessoa" | "bancoId" | "valorTotal" | "contaId" | "categoriaId" | "movimentacao" | "transacaoExistenteId"
   | "quantidadeParcelas" | "primeiroVencimento", string>>
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -104,6 +109,16 @@ export function useEmprestimosLogic() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(100)
+  // Busca + direção — filtro SERVER-SIDE (o backend pagina já filtrado).
+  const [busca, setBuscaState] = useState("")
+  const [buscaDebounced, setBuscaDebounced] = useState("")
+  const [direcao, setDirecaoState] = useState<"todos" | "receber" | "pagar">("todos")
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca), 300) // debounce: 1 request por pausa, não por tecla
+    return () => clearTimeout(t)
+  }, [busca])
+  const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
+  const setDirecao = (v: "todos" | "receber" | "pagar") => { setDirecaoState(v); setPage(1) }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [quitarId, setQuitarId] = useState<string | null>(null)
   const [delId, setDelId] = useState<string | null>(null)
@@ -115,6 +130,7 @@ export function useEmprestimosLogic() {
   const [idemKey, setIdemKey] = useState<string>("")
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
+  const [bancos, setBancos] = useState<Banco[]>([])
   const [despesasRecentes, setDespesasRecentes] = useState<Transaction[]>([])
   const [despesasLoading, setDespesasLoading] = useState(false)
   const [receitasRecentes, setReceitasRecentes] = useState<Transaction[]>([])
@@ -208,12 +224,13 @@ export function useEmprestimosLogic() {
 
   const loadData = useCallback(async () => {
     try {
-      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, candidatosResult, consolidacoesResult] = await Promise.all([
-        listEmprestimosPage(page, pageSize, mostrarArquivados),
+      const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, bancosResult, candidatosResult, consolidacoesResult] = await Promise.all([
+        listEmprestimosPage(page, pageSize, mostrarArquivados, buscaDebounced, direcao === "todos" ? undefined : direcao),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
         getCategories(),
+        getBancos(),
         listCandidatosConsolidacao(),
         listConsolidacoes(),
       ])
@@ -223,12 +240,13 @@ export function useEmprestimosLogic() {
       setPendentes(pendentesResult)
       setContas(contasResult)
       setCategorias(categoriasResult)
+      setBancos(bancosResult)
       setCandidatosConsolidacao(candidatosResult)
       setConsolidacoes(consolidacoesResult)
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify, page, pageSize, mostrarArquivados])
+  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -270,8 +288,13 @@ export function useEmprestimosLogic() {
 
   const handleSalvar = async () => {
     const e: Errors = {}
+    const ehBanco = form.modalidade === "banco"
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
-    if (!form.pessoa.trim()) e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+    if (ehBanco) {
+      if (!form.bancoId) e.bancoId = "Escolha o banco"
+    } else if (!form.pessoa.trim()) {
+      e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+    }
     if (form.valorTotal == null) e.valorTotal = "Informe o valor"
     else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
     if (!form.movimentacao) e.movimentacao = "Escolha uma opção"
@@ -289,11 +312,15 @@ export function useEmprestimosLogic() {
     setLoading(true)
     try {
       const parcelado = form.formaPagamento === "parcelado"
+      // Bancário: a "pessoa" é o próprio banco (o backend exige Pessoa) — preenche com o nome do
+      // banco pra não pedir isso do usuário. P2P: a pessoa digitada.
+      const nomeBanco = bancos.find((b) => b.id === form.bancoId)?.nome ?? ""
       const payload: CriarEmprestimo = {
         descricao: form.descricao.trim(),
-        pessoa: form.pessoa.trim(),
+        pessoa: ehBanco ? nomeBanco : form.pessoa.trim(),
         valorTotal: form.valorTotal!,
         tipo: Number(form.tipo),
+        bancoId: ehBanco ? form.bancoId : undefined,
         dataInicio: new Date(form.dataInicio).toISOString(),
         dataVencimento: form.dataVencimento ? new Date(form.dataVencimento).toISOString() : undefined,
         observacao: form.observacao.trim() || undefined,
@@ -314,6 +341,30 @@ export function useEmprestimosLogic() {
     } catch (err) {
       notify({ open: true, message: errorMessage(err, "Erro ao criar empréstimo"), severity: "error" })
     } finally { setLoading(false) }
+  }
+
+  // Validação por passo do wizard de novo empréstimo (mesmas regras do handleSalvar, fatiadas).
+  // Passo 0 = básico (descrição/pessoa/valor); 1 = condições (parcelas); 2 = movimentação.
+  const validarPassoNovo = (step: number): boolean => {
+    const e: Errors = {}
+    if (step === 0) {
+      if (!form.descricao.trim()) e.descricao = "Informe a descrição"
+      if (form.modalidade === "banco") {
+        if (!form.bancoId) e.bancoId = "Escolha o banco"
+      } else if (!form.pessoa.trim()) {
+        e.pessoa = form.tipo === "1" ? "Informe pra quem emprestou" : "Informe de quem pegou"
+      }
+      if (form.valorTotal == null) e.valorTotal = "Informe o valor"
+      else if (form.valorTotal <= 0) e.valorTotal = "Valor deve ser maior que zero"
+    } else if (step === 1) {
+      if (form.formaPagamento === "parcelado") {
+        if (!form.quantidadeParcelas || form.quantidadeParcelas < 2 || form.quantidadeParcelas > 36)
+          e.quantidadeParcelas = "Entre 2 e 36 parcelas"
+        if (!form.primeiroVencimento) e.primeiroVencimento = "Informe o vencimento da 1ª parcela"
+      }
+    }
+    setErrors((p) => ({ ...p, ...e }))
+    return Object.keys(e).length === 0
   }
 
   const openVincular = (id: string) => {
@@ -693,11 +744,12 @@ export function useEmprestimosLogic() {
   return {
     currentUser, notify,
     emprestimos, stats, total, page, setPage, pageSize, setPageSize,
+    busca, setBusca, direcao, setDirecao,
     dialogOpen, setDialogOpen, quitarId, setQuitarId, delId, setDelId,
     arquivandoId, mostrarArquivados, setMostrarArquivados, loading,
-    form, setF, errors, clearErr, contas, categorias,
+    form, setF, errors, clearErr, contas, categorias, bancos,
     despesasRecentes, despesasLoading, receitasRecentes, receitasLoading,
-    openCreate, handleSalvar, handleMovimentacaoChange,
+    openCreate, handleSalvar, validarPassoNovo, handleMovimentacaoChange,
     pendentes, respondendoId, handleAceitarConvite, handleRecusarConvite,
     vincularFor, setVincularFor, vincularEmail, setVincularEmail, vincularErr, setVincularErr,
     vincularLink, vincularLoading, openVincular, handleVincular, handleCopiarLink,

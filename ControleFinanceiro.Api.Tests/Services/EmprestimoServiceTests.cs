@@ -30,6 +30,18 @@ public class EmprestimoServiceTests
         return u.Id;
     }
 
+    private static Guid SeedBanco(AppDbContext ctx, string nome = "Nubank", bool ativo = true)
+    {
+        var b = new Banco
+        {
+            Id = Guid.NewGuid(), Nome = nome, Tipo = TipoBanco.Fintech, Ativo = ativo,
+            LogoUrl = "https://logo.test/nu.png", Cor = "#820AD1",
+        };
+        ctx.Bancos.Add(b);
+        ctx.SaveChanges();
+        return b.Id;
+    }
+
     private static (Guid contaId, Guid categoriaId) SeedContaECategoria(AppDbContext ctx, Guid usuarioId)
     {
         var conta = new Conta { Id = Guid.NewGuid(), Nome = "Conta", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
@@ -153,6 +165,91 @@ public class EmprestimoServiceTests
         Assert.False(resultado.Quitado);
         Assert.True(resultado.SouCredor); // criador, Emprestei, sem vínculo ainda
         Assert.Equal(1, await ctx.Emprestimos.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBancoValido_VinculaBancoEOrigemManual()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var usuarioId = Guid.NewGuid();
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.PeguiEmprestado; // banco só aceita PeguiEmprestado
+
+        var resultado = await svc.CriarAsync(dto, usuarioId);
+
+        Assert.Equal(bancoId, resultado.BancoId);
+        Assert.Equal("Nubank", resultado.BancoNome);
+        Assert.Equal("#820AD1", resultado.BancoCor);
+        Assert.Equal((int)OrigemEmprestimo.Manual, resultado.Origem);
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBanco_TipoEmprestei_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.Emprestei; // banco só aceita PeguiEmprestado
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        Assert.Contains("peguei emprestado", ex.Message);
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComBanco_TipoPeguiEmprestado_CriaSucesso()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Nubank");
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+        dto.Tipo = TipoEmprestimo.PeguiEmprestado;
+
+        var resultado = await svc.CriarAsync(dto, Guid.NewGuid());
+
+        Assert.Equal(bancoId, resultado.BancoId);
+        Assert.Equal((int)TipoEmprestimo.PeguiEmprestado, resultado.Tipo);
+    }
+
+    [Fact]
+    public async Task CriarAsync_BancoInexistente_LancaException()
+    {
+        var svc = NewSvc(CreateContext());
+        var dto = DtoValido();
+        dto.BancoId = Guid.NewGuid();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+        Assert.Contains("Banco", ex.Message);
+    }
+
+    [Fact]
+    public async Task CriarAsync_BancoInativo_LancaException()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var bancoId = SeedBanco(ctx, "Banco Morto", ativo: false);
+        var dto = DtoValido();
+        dto.BancoId = bancoId;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task CriarAsync_SemBanco_OrigemManualEBancoNulo()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+
+        var resultado = await svc.CriarAsync(DtoValido(), Guid.NewGuid());
+
+        Assert.Null(resultado.BancoId);
+        Assert.Null(resultado.BancoNome);
+        Assert.Equal((int)OrigemEmprestimo.Manual, resultado.Origem);
     }
 
     [Fact]
@@ -2006,6 +2103,50 @@ public class EmprestimoServiceTests
         // Segunda leitura não recalcula — snapshot congelado na primeira detecção.
         var segunda = await svc.ListarParcelasAsync(emprestimoId, credorId);
         Assert.Equal(atrasada.ValorComMulta, segunda.First(p => p.Numero == 1).ValorComMulta);
+    }
+
+    // ── Busca / direção server-side ──────────────────────────────────────────
+
+    [Fact]
+    public async Task ListarAsync_Busca_FiltraPorDescricaoOuPessoa()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "busca@x.com");
+        await svc.CriarAsync(NovoDto("Aluguel do mês", "Maria", 100, TipoEmprestimo.Emprestei), u);
+        await svc.CriarAsync(NovoDto("Compra do carro", "Pedro", 200, TipoEmprestimo.Emprestei), u);
+
+        var porDescricao = await svc.ListarAsync(u, busca: "alug");
+        Assert.Equal(1, porDescricao.Total);
+        Assert.Equal("Aluguel do mês", porDescricao.Items.Single().Descricao);
+
+        var porPessoa = await svc.ListarAsync(u, busca: "PEDRO"); // case-insensitive
+        Assert.Equal(1, porPessoa.Total);
+        Assert.Equal("Compra do carro", porPessoa.Items.Single().Descricao);
+
+        var semMatch = await svc.ListarAsync(u, busca: "zzz");
+        Assert.Equal(0, semMatch.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Direcao_SeparaReceberEPagar()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "direcao@x.com");
+        await svc.CriarAsync(NovoDto("Emprestei pra alguém", "A", 100, TipoEmprestimo.Emprestei), u);
+        await svc.CriarAsync(NovoDto("Peguei emprestado", "B", 50, TipoEmprestimo.PeguiEmprestado), u);
+
+        var receber = await svc.ListarAsync(u, direcao: "receber");
+        Assert.Equal(1, receber.Total);
+        Assert.Equal("Emprestei pra alguém", receber.Items.Single().Descricao);
+
+        var pagar = await svc.ListarAsync(u, direcao: "pagar");
+        Assert.Equal(1, pagar.Total);
+        Assert.Equal("Peguei emprestado", pagar.Items.Single().Descricao);
+
+        var tudo = await svc.ListarAsync(u);
+        Assert.Equal(2, tudo.Total);
     }
 
     // ── helpers de teste ─────────────────────────────────────────────────────

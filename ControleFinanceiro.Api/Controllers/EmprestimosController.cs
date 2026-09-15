@@ -19,9 +19,10 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<EmprestimoDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] bool incluirArquivados = false)
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] bool incluirArquivados = false,
+        [FromQuery] string? busca = null, [FromQuery] string? direcao = null)
     {
-        var result = await _service.ListarAsync(UserId, page, pageSize, incluirArquivados);
+        var result = await _service.ListarAsync(UserId, page, pageSize, incluirArquivados, busca, direcao);
         return Ok(result);
     }
 

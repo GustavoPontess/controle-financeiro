@@ -456,6 +456,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<Guid?>("BancoId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ConsolidadoNoEmprestimoId")
                         .HasColumnType("uuid");
 
@@ -489,6 +492,11 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<string>("Observacao")
                         .HasColumnType("text");
+
+                    b.Property<int>("Origem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<decimal?>("PercentualMultaAtraso")
                         .HasPrecision(5, 2)
@@ -531,6 +539,8 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BancoId");
+
                     b.HasIndex("ConsolidadoNoEmprestimoId");
 
                     b.HasIndex("ContraparteUsuarioId");
@@ -538,6 +548,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ConviteTokenHash");
 
                     b.HasIndex("TransacaoId");
+
+                    b.HasIndex("CriadoPor", "Quitado", "DataVencimento", "DataInicio");
 
                     b.ToTable("Emprestimos");
                 });
@@ -1884,6 +1896,11 @@ namespace ControleFinanceiro.Api.Migrations
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Emprestimo", b =>
                 {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Banco", "Banco")
+                        .WithMany()
+                        .HasForeignKey("BancoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Emprestimo", "ConsolidadoNoEmprestimo")
                         .WithMany()
                         .HasForeignKey("ConsolidadoNoEmprestimoId")
@@ -1898,6 +1915,8 @@ namespace ControleFinanceiro.Api.Migrations
                         .WithMany()
                         .HasForeignKey("TransacaoId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Banco");
 
                     b.Navigation("ConsolidadoNoEmprestimo");
 

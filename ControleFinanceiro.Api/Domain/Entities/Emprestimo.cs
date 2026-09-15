@@ -25,6 +25,16 @@ public class Emprestimo
     public Guid? TransacaoId { get; set; }
     public Transacao? Transacao { get; set; }
 
+    /// <summary>Banco da instituição, quando é um empréstimo bancário (não P2P). Opcional — FK pro
+    /// catálogo global de bancos. Coexiste com Pessoa: se BancoId != null é bancário; senão é P2P
+    /// (pessoa física). Prepara o vínculo pro Open Finance (Fase 2). Ver
+    /// docs/features/emprestimo-bancario/pesquisa-openfinance.md.</summary>
+    public Guid? BancoId { get; set; }
+    public Banco? Banco { get; set; }
+
+    /// <summary>Origem dos dados — Manual (digitado) ou OpenFinance (importado). Default Manual.</summary>
+    public OrigemEmprestimo Origem { get; set; } = OrigemEmprestimo.Manual;
+
     // Vínculo bilateral (docs/features/emprestimo-compartilhado/spec.md).
     // Só setado no aceite explícito — antes disso é null, mesmo padrão de MembroFamilia.UsuarioId.
     public Guid? ContraparteUsuarioId { get; set; }
