@@ -20,7 +20,10 @@ public class JwtTokenProvider
         _expirationMinutes = expirationMinutes;
     }
 
-    public string GenerateToken(Guid usuarioId, string email, string nome)
+    /// <param name="sessionId">Família de sessão (FamiliaId do refresh) — vira o claim "sid". Um
+    /// middleware valida por request se essa sessão ainda está viva → revogação INSTANTÂNEA (não
+    /// espera o token expirar). Null = sem sid (compat com tokens legados).</param>
+    public string GenerateToken(Guid usuarioId, string email, string nome, Guid? sessionId = null)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_secretKey);
@@ -31,6 +34,8 @@ public class JwtTokenProvider
             new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Name, nome),
         };
+        if (sessionId.HasValue)
+            claims.Add(new Claim("sid", sessionId.Value.ToString()));
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {

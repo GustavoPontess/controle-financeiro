@@ -292,7 +292,7 @@ public class AuthService
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
-        var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
+        var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome, rt.FamiliaId);
 
         return new LoginResultDto
         {
@@ -340,7 +340,7 @@ public class AuthService
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id);
         await _context.SaveChangesAsync();
 
-        var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome);
+        var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome, rt.FamiliaId);
 
         return new AuthResponseDto
         {
@@ -396,7 +396,7 @@ public class AuthService
         rt.SubstituidoPorId = novoRt.Id;
         await _context.SaveChangesAsync();
 
-        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome);
+        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome, novoRt.FamiliaId);
 
         return new AuthResponseDto
         {
@@ -453,7 +453,7 @@ public class AuthService
         rt.SubstituidoPorId = novoRt.Id;
         await _context.SaveChangesAsync();
 
-        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome);
+        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome, novoRt.FamiliaId);
 
         return new AuthResponseDto
         {

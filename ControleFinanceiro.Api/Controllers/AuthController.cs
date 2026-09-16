@@ -105,10 +105,13 @@ public class AuthController : ControllerBase
     {
         var isSecure = Request.IsHttps;
 
+        // Vida do cookie alinhada ao TTL do access token (15min, JWT_EXPIRATION_MINUTES). Quando
+        // vence, o silent refresh renova pelo refresh (7d). Curto encurta a janela; a revogação
+        // instantânea vem do OnTokenValidated (checagem de sessão viva por request).
         Response.Cookies.Append("jwt", jwtToken, new CookieOptions
         {
             HttpOnly = true, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(1),
+            Expires = DateTimeOffset.UtcNow.AddMinutes(15),
         });
 
         var csrfToken = _csrfTokenService.GenerateToken();
