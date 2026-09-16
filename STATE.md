@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-16
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 534/534, front 349/349. TUDO commitado LOCAL, SEM PUSH. Módulo Empréstimos essencialmente FECHADO: bancada B promovida a tela real (`/emprestimos`), labs A/C/D apagados, empréstimo bancário Fase 1 (manual) + índice de perf. Regras documentadas em `docs/features/emprestimo-bancario/regras.md`. Histórico no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 558/558, front 356/356. TUDO MERGEADO na `main` (`dcaff66`): empréstimos (#236), P1 auditoria server-side/admin (#237), P1 multi-conta + revogação instantânea (#238), P1 testes HTTP de integração (#239). Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated). Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -15,7 +15,31 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Resumo da sessão 2026-09-13/14 (branch `feature/emprestimos-ui`, off-main · verde: back 534/534, front 349/349 · **NÃO pushado**)
+### 📌 Sessão 2026-09-15/16 — TUDO MERGEADO na `main` (`dcaff66`) · verde: back 558/558, front 356/356
+
+Todas as frentes viraram PR mergeado (não há mais branch solta, exceto a órfã de limpeza):
+
+1. **Empréstimos** (#236) + **hospedagem beta** decidida: **mensal KVM1** (~R$53→88), sem lock; migrar pra 24m quando entrar grana (`docs/features/hospedagem-beta/decisao.md`). **P1 Docker** verificado — era stale (guard idempotente já estava na main).
+2. **P1 auditoria server-side** (#237): auditadas 8 superfícies; **só o Admin** furava. Usuários/LGPD/Auditoria → `PagedResult` + busca/paginação server-side.
+3. **P1 multi-conta** (#238) — o "login simultâneo" que o Gustavo pediu, agora funciona de verdade:
+   - **Fase 1:** `/auth/switch` server-authoritative (accountId só seletor; autoridade = cookie httpOnly `rt_<slot>`; anti-IDOR); `logout`/`logout-all`; **guarda multi-aba** (`X-Active-Account` + `ActiveAccountGuardMiddleware` → 409); **silent refresh** (interceptor axios); **cap 5 contas**; CSRF 7d + `FixedTimeEquals`.
+   - **Fase 2:** **reuse-detection** (RFC 9700 §4.14 — `FamiliaId`/`SubstituidoPorId`; replay → mata a família + alerta admin); tela **Sessões e dispositivos** (Configurações).
+   - **Revogação INSTANTÂNEA:** access token 60→**15min** + claim `sid` no JWT + `OnTokenValidated` (valida por request se a sessão está viva + usuário Ativo → 401 na hora). Doc `docs/features/auth/multi-conta.md`.
+4. **P1 testes HTTP de integração** (#239): `CustomWebApplicationFactory` (InMemory + boot gateado por `ASPNETCORE_ENVIRONMENT=Testing` — pula migrations/seeders/Hangfire/rate-limiter) + **8 testes** (`AuthHttpTests`: 401/CSRF-403/login/MFA/IDOR-404/**revogação instantânea**/**guarda 409**).
+
+**⚠️ Pré-condição de PROD (gate 1.0.0, NÃO é código):** rotacionar `Jwt:Key` (quem tem a chave forja sessão de qualquer conta).
+
+**Próxima ação (P1 restantes):**
+- **Conferência de caixa** (saldo declarado × calculado; tem spec em `docs/features/conferencia-caixa/spec.md`) — **próximo recomendado**.
+- **.NET 8→10** (deadline suporte 10/11/2026).
+- Quick-win pedido pelo Gustavo: **MFA baixar códigos de backup** em `.txt` (P2, só front, `MfaSection`).
+- Limpeza: branch órfã `feature/emprestimo-compartilhado`.
+
+**Ambiente:** API :5293 **parada**; Postgres no ar; front preview pode estar no ar. Migrations aplicadas no dev DB (incl. `AddSessaoTrackingToRefreshToken`).
+
+---
+
+### 📌 Resumo da sessão 2026-09-13/14 (branch `feature/emprestimos-ui` → MERGEADA na main via #236 · verde: back 534/534, front 349/349)
 
 **Módulo Empréstimos essencialmente fechado.** Bancada B eleita e **promovida a tela real**.
 
