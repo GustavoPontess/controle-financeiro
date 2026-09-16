@@ -72,6 +72,26 @@ public class AuthController : ControllerBase
     private const string AuthPath = "/api/v1/auth";
     private const int SessionDays = 7;
 
+    // Teto de contas conectadas simultaneamente no mesmo navegador (blast-radius: cada conta
+    // parqueada é mais um refresh de 7d exposto se o device for comprometido). Re-login da MESMA
+    // conta já parqueada não conta. Ver docs/features/auth/multi-conta.md.
+    private const int MaxContasConectadas = 5;
+
+    /// <summary>Pode parquear esta conta? Re-login da mesma (slot já existe) sempre pode; conta nova
+    /// só se ainda não bateu o teto de <see cref="MaxContasConectadas"/> cookies rt_*.</summary>
+    private bool PodeParquearConta(Guid accountId)
+    {
+        if (Request.Cookies.ContainsKey(SlotCookieName(accountId))) return true;
+        var conectadas = Request.Cookies.Keys.Count(k => k.StartsWith("rt_", StringComparison.Ordinal));
+        return conectadas < MaxContasConectadas;
+    }
+
+    private ObjectResult LimiteContasResult() => Conflict(new
+    {
+        code = "limite_contas",
+        message = $"Limite de {MaxContasConectadas} contas conectadas neste navegador. Saia de uma antes de adicionar outra.",
+    });
+
     // Nome opaco do cookie de refresh por conta — hash do id, NÃO o GUID cru, pra não vazar no
     // devtools QUAIS contas estão conectadas. Determinístico: o servidor recomputa do accountId
     // pra ler/rotacionar/apagar o slot certo.
@@ -195,6 +215,9 @@ public class AuthController : ControllerBase
             return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
 
         var auth = result.Auth!;
+        // Cap de contas conectadas no navegador (blast-radius). Re-login da mesma conta não conta.
+        if (!PodeParquearConta(auth.UsuarioId))
+            return LimiteContasResult();
         SetLoggedInCookies(auth);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
@@ -218,6 +241,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
+        if (!PodeParquearConta(result.UsuarioId))
+            return LimiteContasResult();
         SetLoggedInCookies(result);
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.

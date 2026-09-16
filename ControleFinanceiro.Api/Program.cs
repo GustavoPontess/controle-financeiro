@@ -456,6 +456,10 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Guarda multi-aba (multi-conta): barra escrita quando a aba está numa conta diferente da ativa
+// (header X-Active-Account ≠ dono do jwt). Depois do auth (precisa de User populado); no-op sem header.
+app.UseMiddleware<ActiveAccountGuardMiddleware>();
+
 // Hangfire Dashboard — protegido: exige usuário autenticado
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
