@@ -13,6 +13,14 @@ export const api = axios.create({
   withCredentials: true, // Include cookies in requests
 })
 
+// Conta que ESTA aba considera ativa (multi-conta). Vai no header X-Active-Account pra o backend
+// barrar escrita quando a aba está defasada de uma troca feita em outra aba (guarda multi-aba).
+// O AuthContext atualiza isso a cada login/switch/refresh/logout.
+let activeAccountId: string | null = null
+export function setActiveAccountId(id: string | null) {
+  activeAccountId = id
+}
+
 /**
  * Extrai uma mensagem amigável do erro do backend pra mostrar ao usuário.
  * - 400 com `errors` (ModelState do [ApiController]) → mensagem genérica (os detalhes técnicos
@@ -42,6 +50,11 @@ api.interceptors.request.use(
         config.headers['X-CSRF-Token'] = csrfToken
       }
     }
+    // Guarda multi-aba: informa qual conta ESTA aba acha ativa; o backend barra (409) se divergir
+    // do dono do jwt (troca feita em outra aba) — evita gravar na conta errada.
+    if (activeAccountId) {
+      config.headers['X-Active-Account'] = activeAccountId
+    }
     return config
   },
   (error) => {
@@ -64,8 +77,27 @@ function getCookie(name: string): string | null {
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const status = error.response?.status
+    const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined
+    const url = typeof original?.url === "string" ? original.url : ""
+    const isAuthEndpoint = url.includes("/auth/")
+
+    // Silent refresh: o access token (jwt) expira em 1h, o refresh vive 7d. Num 401, tenta UMA vez
+    // renovar via /auth/refresh (rotaciona os cookies httpOnly) e refaz a request original — sem
+    // isso, o refresh de 7d era inútil e o usuário caía no login após 1h. Não tenta pra endpoints de
+    // auth (evita recursão) nem repete (_retry).
+    if (status === 401 && original && !original._retry && !isAuthEndpoint) {
+      original._retry = true
+      try {
+        await api.post("/auth/refresh")
+        return await api(original)
+      } catch {
+        // Refresh falhou (refresh expirado/revogado) → segue pro fluxo de redirect abaixo.
+      }
+    }
+
+    if (status === 401) {
       // Token expired or invalid (cookie will be cleared by backend).
       // Não redirecionar quando já estamos em uma página de auth (/auth/login,
       // /auth/register): nessas páginas o 401 do probe de sessão é esperado e
@@ -80,7 +112,10 @@ api.interceptors.response.use(
       const path = window.location.pathname
       // `/` é público (RootRoute decide). Strict equal pra não bater em /dashboard etc.
       const isPublic = path === '/' || publicPaths.some((p) => path.startsWith(p))
-      if (!isPublic) {
+      // NÃO redireciona quando o 401 veio de um endpoint de auth (login/switch/refresh/me): esses
+      // são tratados pelo caller (a tela de login, o switchAccount) — um /auth/switch que falha não
+      // pode derrubar a sessão boa da conta atual pro login.
+      if (!isPublic && !isAuthEndpoint) {
         window.location.href = '/auth/login'
       }
       return Promise.reject(error)
@@ -88,8 +123,9 @@ api.interceptors.response.use(
 
     // Rede de segurança: qualquer erro de API que não seja 401 dispara um toast global com a
     // mensagem amigável — garante que NENHUM erro passe silencioso, mesmo se a tela esquecer de
-    // tratar. A tela pode optar por não disparar (quando já mostra o erro no campo) via
-    // `skipErrorToast: true` no config do request. O DefaultLayout escuta "apiError".
+    // tratar. Inclui o 409 da guarda multi-aba ("A conta ativa mudou em outra aba..."). A tela
+    // pode optar por não disparar (quando já mostra o erro no campo) via `skipErrorToast: true`.
+    // O DefaultLayout escuta "apiError".
     if (!error.config?.skipErrorToast) {
       window.dispatchEvent(new CustomEvent("apiError", { detail: { message: mensagemDeErro(error) } }))
     }

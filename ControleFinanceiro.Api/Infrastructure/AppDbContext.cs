@@ -249,6 +249,19 @@ public class AppDbContext : DbContext
             .HasIndex(rt => rt.Token)
             .IsUnique();
 
+        // Fase 2 multi-conta: índice na família p/ reuse-detection (revogar a família toda de uma
+        // vez) e listagem de sessões ativas por usuário. Limita o tamanho dos campos de exibição.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(rt => rt.FamiliaId);
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(rt => new { rt.UsuarioId, rt.Revogado });
+        modelBuilder.Entity<RefreshToken>()
+            .Property(rt => rt.DispositivoInfo)
+            .HasMaxLength(256);
+        modelBuilder.Entity<RefreshToken>()
+            .Property(rt => rt.IpCriacao)
+            .HasMaxLength(64);
+
         // PasswordResetToken → Usuario (Cascade: tokens somem com o usuário)
         modelBuilder.Entity<PasswordResetToken>()
             .HasOne(prt => prt.Usuario)

@@ -61,41 +61,129 @@ public class AuthController : ControllerBase
         return usuarioId;
     }
 
-    private void SetAuthCookies(string jwtToken, string refreshToken)
+    // ── Cookies de sessão (multi-conta, Opção A) ─────────────────────────────────
+    // Modelo: 1 conta ATIVA (cookie `jwt`, Path=/, identifica toda request) + N contas PARQUEADAS,
+    // cada uma com seu refresh no cookie httpOnly `rt_<slot>` (Path do auth — NÃO vai em toda
+    // request, só nos endpoints de auth: menor exposição). `active_acct` (httpOnly, path do auth)
+    // diz qual conta está ativa pro /refresh achar o slot. O X-CSRF-Token (legível por JS, Path=/)
+    // vive tanto quanto o refresh (7d) e é reemitido em TODO evento de auth (login/mfa/switch/
+    // refresh) — anti session-fixation e fecha a janela CSRF (antes expirava em 1h e derrubava
+    // /refresh e /switch). TODO o token (jwt/refresh) segue httpOnly — nunca legível por JS.
+    private const string AuthPath = "/api/v1/auth";
+    private const int SessionDays = 7;
+
+    // Teto de contas conectadas simultaneamente no mesmo navegador (blast-radius: cada conta
+    // parqueada é mais um refresh de 7d exposto se o device for comprometido). Re-login da MESMA
+    // conta já parqueada não conta. Ver docs/features/auth/multi-conta.md.
+    private const int MaxContasConectadas = 5;
+
+    /// <summary>Pode parquear esta conta? Re-login da mesma (slot já existe) sempre pode; conta nova
+    /// só se ainda não bateu o teto de <see cref="MaxContasConectadas"/> cookies rt_*.</summary>
+    private bool PodeParquearConta(Guid accountId)
     {
-        // Secure=true only over HTTPS; HTTP is allowed in dev
+        if (Request.Cookies.ContainsKey(SlotCookieName(accountId))) return true;
+        var conectadas = Request.Cookies.Keys.Count(k => k.StartsWith("rt_", StringComparison.Ordinal));
+        return conectadas < MaxContasConectadas;
+    }
+
+    private ObjectResult LimiteContasResult() => Conflict(new
+    {
+        code = "limite_contas",
+        message = $"Limite de {MaxContasConectadas} contas conectadas neste navegador. Saia de uma antes de adicionar outra.",
+    });
+
+    // Nome opaco do cookie de refresh por conta — hash do id, NÃO o GUID cru, pra não vazar no
+    // devtools QUAIS contas estão conectadas. Determinístico: o servidor recomputa do accountId
+    // pra ler/rotacionar/apagar o slot certo.
+    private static string SlotCookieName(Guid accountId)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(accountId.ToByteArray());
+        return "rt_" + Convert.ToHexString(hash)[..16].ToLowerInvariant();
+    }
+
+    private void SetActiveSessionCookies(string jwtToken, Guid accountId)
+    {
         var isSecure = Request.IsHttps;
 
+        // Vida do cookie alinhada ao TTL do access token (15min, JWT_EXPIRATION_MINUTES). Quando
+        // vence, o silent refresh renova pelo refresh (7d). Curto encurta a janela; a revogação
+        // instantânea vem do OnTokenValidated (checagem de sessão viva por request).
         Response.Cookies.Append("jwt", jwtToken, new CookieOptions
         {
-            HttpOnly = true,
-            Secure = isSecure,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddHours(1)
-        });
-
-        Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = isSecure,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddDays(7)
+            HttpOnly = true, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = "/",
+            Expires = DateTimeOffset.UtcNow.AddMinutes(15),
         });
 
         var csrfToken = _csrfTokenService.GenerateToken();
         Response.Cookies.Append("X-CSRF-Token", csrfToken, new CookieOptions
         {
-            HttpOnly = false,
-            Secure = isSecure,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddHours(1)
+            HttpOnly = false, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = "/",
+            Expires = DateTimeOffset.UtcNow.AddDays(SessionDays),
+        });
+
+        Response.Cookies.Append("active_acct", accountId.ToString(), new CookieOptions
+        {
+            HttpOnly = true, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = AuthPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(SessionDays),
         });
     }
 
-    private void ClearAuthCookies()
+    private void ParkRefreshCookie(Guid accountId, string refreshToken)
     {
-        foreach (var name in new[] { "jwt", "refreshToken", "X-CSRF-Token" })
-            Response.Cookies.Delete(name);
+        Response.Cookies.Append(SlotCookieName(accountId), refreshToken, new CookieOptions
+        {
+            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(SessionDays),
+        });
+    }
+
+    // Parqueia o refresh da conta e a torna ativa (jwt+csrf+active_acct). Usado em login/mfa/
+    // switch/refresh — NÃO mexe nos slots das outras contas.
+    private void SetLoggedInCookies(AuthResponseDto auth)
+    {
+        ParkRefreshCookie(auth.UsuarioId, auth.RefreshToken);
+        SetActiveSessionCookies(auth.Token, auth.UsuarioId);
+    }
+
+    private void DeleteCookie(string name, string path) =>
+        Response.Cookies.Delete(name, new CookieOptions
+        {
+            Path = path, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict,
+        });
+
+    // Encerra SÓ a conta ativa; mantém as outras parqueadas (o front escolhe a próxima).
+    private void ClearActiveSession(Guid? accountId)
+    {
+        DeleteCookie("jwt", "/");
+        DeleteCookie("X-CSRF-Token", "/");
+        DeleteCookie("active_acct", AuthPath);
+        if (accountId.HasValue)
+            DeleteCookie(SlotCookieName(accountId.Value), AuthPath);
+        DeleteCookie("refreshToken", "/"); // compat: sessão legada (pré multi-conta)
+    }
+
+    // Encerra TODAS: jwt/csrf/active_acct + todos os rt_* presentes.
+    private void ClearAllSessions()
+    {
+        DeleteCookie("jwt", "/");
+        DeleteCookie("X-CSRF-Token", "/");
+        DeleteCookie("active_acct", AuthPath);
+        DeleteCookie("refreshToken", "/"); // compat legado
+        foreach (var name in Request.Cookies.Keys.Where(k => k.StartsWith("rt_", StringComparison.Ordinal)))
+            DeleteCookie(name, AuthPath);
+    }
+
+    // Refresh da conta ativa (slot novo) com fallback pro cookie legado "refreshToken".
+    private (string? Refresh, Guid? AccountId) ReadActiveRefresh()
+    {
+        if (Request.Cookies.TryGetValue("active_acct", out var acctStr) && Guid.TryParse(acctStr, out var acct)
+            && Request.Cookies.TryGetValue(SlotCookieName(acct), out var rt) && !string.IsNullOrEmpty(rt))
+            return (rt, acct);
+
+        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
+            return (legacy, null); // sessão criada antes do multi-conta
+
+        return (null, null);
     }
 
     /// <summary>
@@ -130,7 +218,10 @@ public class AuthController : ControllerBase
             return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
 
         var auth = result.Auth!;
-        SetAuthCookies(auth.Token, auth.RefreshToken);
+        // Cap de contas conectadas no navegador (blast-radius). Re-login da mesma conta não conta.
+        if (!PodeParquearConta(auth.UsuarioId))
+            return LimiteContasResult();
+        SetLoggedInCookies(auth);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
         await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
@@ -153,7 +244,9 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
-        SetAuthCookies(result.Token, result.RefreshToken);
+        if (!PodeParquearConta(result.UsuarioId))
+            return LimiteContasResult();
+        SetLoggedInCookies(result);
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
         await RegistrarAcessoAsync(result.UsuarioId, result.Email);
@@ -233,8 +326,10 @@ public class AuthController : ControllerBase
     [HttpPost("conta/excluir")]
     public async Task<IActionResult> ExcluirMinhaConta([FromBody] ExcluirContaRequest dto)
     {
-        await _contaService.ExcluirMinhaContaAsync(ExigirUsuarioId(), dto.SenhaAtual, dto.Codigo);
-        ClearAuthCookies();
+        var usuarioId = ExigirUsuarioId();
+        await _contaService.ExcluirMinhaContaAsync(usuarioId, dto.SenhaAtual, dto.Codigo);
+        // Encerra só a sessão desta conta (a pessoa pode ter outras parqueadas no browser).
+        ClearActiveSession(usuarioId);
         return NoContent();
     }
 
@@ -275,12 +370,38 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh()
     {
-        var refreshToken = Request.Cookies["refreshToken"];
+        var (refreshToken, _) = ReadActiveRefresh();
         if (string.IsNullOrEmpty(refreshToken))
             throw new UnauthorizedAccessException("Refresh token não encontrado");
 
         var result = await _authService.RefreshAsync(refreshToken);
-        SetAuthCookies(result.Token, result.RefreshToken);
+        SetLoggedInCookies(result);
+
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = result.UsuarioId,
+            Email = result.Email,
+            Nome = result.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
+    }
+
+    /// <summary>
+    /// Troca a conta ATIVA para outra já parqueada no browser (multi-sessão). O corpo traz só o
+    /// <c>accountId</c> SELETOR; a autoridade é o cookie httpOnly `rt_&lt;slot&gt;` daquela conta,
+    /// validado no servidor (fail-closed, anti-IDOR). Reemite jwt+CSRF+refresh da conta destino.
+    /// Protegido por CSRF (não é público) — o cookie CSRF vive 7d, então sobrevive à ociosidade.
+    /// </summary>
+    [HttpPost("switch")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Switch([FromBody] SwitchAccountDto dto)
+    {
+        Request.Cookies.TryGetValue(SlotCookieName(dto.AccountId), out var refreshToken);
+        var result = await _authService.SwitchAsync(refreshToken, dto.AccountId);
+        SetLoggedInCookies(result);
 
         return Ok(new AuthResponseDto
         {
@@ -300,12 +421,65 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout()
     {
-        var refreshToken = Request.Cookies["refreshToken"];
+        var (refreshToken, accountId) = ReadActiveRefresh();
         if (!string.IsNullOrEmpty(refreshToken))
             await _authService.LogoutAsync(refreshToken);
 
-        ClearAuthCookies();
+        // Só a conta ativa sai; as outras parqueadas continuam (o front troca pra uma delas).
+        ClearActiveSession(accountId);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Logout de TODAS as contas parqueadas no browser — revoga cada refresh (cookies `rt_*`) no
+    /// banco e limpa todos os cookies de sessão. Protegido por CSRF.
+    /// </summary>
+    [HttpPost("logout-all")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> LogoutAll()
+    {
+        var refreshTokens = Request.Cookies
+            .Where(c => c.Key.StartsWith("rt_", StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToList();
+        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
+            refreshTokens.Add(legacy); // compat: sessão legada
+
+        await _authService.LogoutAllAsync(refreshTokens);
+        ClearAllSessions();
+        return NoContent();
+    }
+
+    // ── Sessões ativas / dispositivos (Fase 2) ────────────────────────────────────
+    // Diferente do logout-all (que é do NAVEGADOR): estas rotas listam/encerram as sessões do
+    // USUÁRIO em QUALQUER dispositivo. Todas exigem sessão (Authorize).
+
+    /// <summary>Lista as sessões ativas do usuário (todos os dispositivos), marcando a atual.</summary>
+    [Authorize]
+    [HttpGet("sessions")]
+    public async Task<ActionResult<List<DTOs.Auth.SessaoDto>>> Sessions()
+    {
+        var (refreshAtual, _) = ReadActiveRefresh();
+        return Ok(await _authService.ListarSessoesAsync(ExigirUsuarioId(), refreshAtual));
+    }
+
+    /// <summary>Encerra UMA sessão do usuário (aquele dispositivo). Anti-IDOR no service.</summary>
+    [Authorize]
+    [HttpPost("sessions/{id:guid}/revogar")]
+    public async Task<IActionResult> RevogarSessao(Guid id)
+    {
+        await _authService.RevogarSessaoAsync(ExigirUsuarioId(), id);
+        return NoContent();
+    }
+
+    /// <summary>"Sair de todos os outros dispositivos" — encerra tudo menos a sessão atual.</summary>
+    [Authorize]
+    [HttpPost("sessions/revogar-outras")]
+    public async Task<IActionResult> RevogarOutrasSessoes()
+    {
+        var (refreshAtual, _) = ReadActiveRefresh();
+        var qtd = await _authService.RevogarOutrasSessoesAsync(ExigirUsuarioId(), refreshAtual);
+        return Ok(new { encerradas = qtd });
     }
 
     /// <summary>
@@ -344,4 +518,10 @@ public class ChangePasswordDto
 {
     public string SenhaAtual { get; set; } = string.Empty;
     public string NovaSenha { get; set; } = string.Empty;
+}
+
+public class SwitchAccountDto
+{
+    /// <summary>Conta destino da troca — apenas SELETOR; a autoridade é o cookie httpOnly da conta.</summary>
+    public Guid AccountId { get; set; }
 }

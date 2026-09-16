@@ -1,6 +1,7 @@
 import { Check, Palette, Type } from "lucide-react"
 import { palettes, fonts, usePontesTheme } from "@/components/pontes"
 import MfaSection from "./MfaSection"
+import SessoesSection from "./SessoesSection"
 import ExcluirContaSection from "./ExcluirContaSection"
 import styles from "./SettingsPage.module.css"
 
@@ -22,6 +23,8 @@ export default function SettingsPage() {
       </header>
 
       <MfaSection />
+
+      <SessoesSection />
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>

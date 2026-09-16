@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api } from '@/api/axiosConfig'
+import { api, setActiveAccountId } from '@/api/axiosConfig'
 
 export interface Usuario {
   id: string
@@ -37,6 +37,7 @@ export interface AuthContextType {
   verificarMfaLogin: (challengeToken: string, codigo: string) => Promise<void>
   register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<string>
   logout: () => void
+  logoutAll: () => void
   refreshUser: () => Promise<void>
   addAccount: (email: string, password: string) => Promise<void>
   switchAccount: (accountId: string) => Promise<void>
@@ -98,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchCurrentUser().then(usuario => {
       if (usuario) {
         setCurrentUser(usuario)
+        setActiveAccountId(usuario.id) // guarda multi-aba: esta aba está nesta conta
         upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
       }
       setIsLoading(false)
@@ -108,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const usuario = await fetchCurrentUser()
     if (usuario) {
       setCurrentUser(usuario)
+      setActiveAccountId(usuario.id)
       upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
     } else {
       throw new Error('Falha ao carregar dados do usuário')
@@ -163,25 +166,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     }
     setCurrentUser(null)
+    setActiveAccountId(null)
+    // Encerra só a conta ativa no servidor (as outras parqueadas seguem vivas).
     api.post('/auth/logout').catch(() => {})
+  }
+
+  // Sai de TODAS as contas parqueadas no navegador (revoga todos os refresh no servidor).
+  const logoutAll = () => {
+    setSavedAccounts([])
+    persistSavedAccounts([])
+    setCurrentUser(null)
+    setActiveAccountId(null)
+    api.post('/auth/logout-all').catch(() => {})
   }
 
   const refreshUser = async () => {
     const usuario = await fetchCurrentUser()
-    if (usuario) setCurrentUser(usuario)
+    if (usuario) {
+      setCurrentUser(usuario)
+      setActiveAccountId(usuario.id)
+    }
   }
 
   const addAccount = async (email: string, password: string) => {
     try {
+      // O backend PARQUEIA a conta nova sem matar as outras e a torna ATIVA (login). Então, após
+      // adicionar, esta aba passa a operar na conta nova — sincronizamos currentUser/activeAccountId
+      // pra não ficar mostrando a antiga enquanto as requests já saem pela nova (guarda multi-aba).
       await api.post('/auth/login', { email, password })
       const usuario = await fetchCurrentUser()
       if (!usuario) throw new Error('Erro ao buscar dados da conta')
 
-      if (savedAccounts.some(a => a.id === usuario.id || normEmail(a.email) === normEmail(usuario.email))) {
-        throw new Error('Esta conta já está conectada')
-      }
-
       upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      setCurrentUser(usuario)
+      setActiveAccountId(usuario.id)
+      setAccountKey(k => k + 1)
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Credenciais inválidas')
     }
@@ -191,20 +210,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const account = savedAccounts.find(a => a.id === accountId)
     if (!account || account.id === currentUser?.id) return
 
-    setCurrentUser({ id: account.id, email: account.email, nome: account.nome, criadoEm: '' })
-    setAccountKey(k => k + 1)
-
-    const usuario = await fetchCurrentUser()
-    if (usuario) {
-      setCurrentUser(usuario)
-      upsertSavedAccount(account)
-    } else {
+    // Troca REAL no servidor: /auth/switch reaponta o cookie jwt pra conta destino (autoridade = o
+    // refresh httpOnly dela, validado no backend). Só DEPOIS recarregamos o usuário — nada de UI
+    // otimista mentindo enquanto as requests ainda saem pela conta antiga.
+    try {
+      await api.post('/auth/switch', { accountId })
+    } catch {
+      // Sessão daquela conta expirou/foi revogada → tira da lista e pede relogar.
       setSavedAccounts(prev => {
         const updated = prev.filter(a => a.id !== accountId)
         persistSavedAccounts(updated)
         return updated
       })
-      setCurrentUser(null)
+      throw new Error('Sua sessão nessa conta expirou. Entre nela de novo.')
+    }
+
+    const usuario = await fetchCurrentUser()
+    if (usuario) {
+      setCurrentUser(usuario)
+      setActiveAccountId(usuario.id)
+      upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      setAccountKey(k => k + 1) // remonta a subtree e dropa o cache/estado da conta anterior
+    } else {
+      throw new Error('Não foi possível carregar a conta após a troca.')
     }
   }
 
@@ -228,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verificarMfaLogin,
         register,
         logout,
+        logoutAll,
         refreshUser,
         addAccount,
         switchAccount,

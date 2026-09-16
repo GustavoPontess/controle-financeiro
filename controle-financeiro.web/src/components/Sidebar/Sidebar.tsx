@@ -80,7 +80,14 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       icon: <span className={styles.miniAvatar}>{getInitials(a.nome)}</span>,
       label: a.nome,
       divider: true,
-      onClick: () => void switchAccount(a.id),
+      onClick: () => {
+        // switchAccount pode rejeitar (sessão daquela conta expirou) — surfa no toast global.
+        switchAccount(a.id).catch((e) =>
+          window.dispatchEvent(new CustomEvent("apiError", {
+            detail: { message: (e as Error)?.message ?? "Não foi possível trocar de conta." },
+          }))
+        )
+      },
     })),
     { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", divider: otherAccounts.length === 0, onClick: () => setAddAccountOpen(true) },
     { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", danger: true, divider: true, onClick: () => { logout(); navigate("/auth/login") } },

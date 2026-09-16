@@ -15,6 +15,7 @@ public class AuthService
     private readonly IPasswordResetDispatcher _resetDispatcher;
     private readonly MfaService _mfaService;
     private readonly NotificacaoAdminService _notificacaoAdmin;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     private const int RefreshTokenDays = 7;
     private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
@@ -31,13 +32,15 @@ public class AuthService
         JwtTokenProvider tokenProvider,
         IPasswordResetDispatcher resetDispatcher,
         MfaService mfaService,
-        NotificacaoAdminService notificacaoAdmin)
+        NotificacaoAdminService notificacaoAdmin,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
         _resetDispatcher = resetDispatcher;
         _mfaService = mfaService;
         _notificacaoAdmin = notificacaoAdmin;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -61,10 +64,12 @@ public class AuthService
 
     // Retorna (entidade, token BRUTO). O bruto vai pro cliente (cookie); no banco
     // guarda-se só o hash (igual ao reset token) — vazamento de DB não dá refresh tokens
-    // reutilizáveis.
-    private Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId)
+    // reutilizáveis. `familiaId` null = novo login (família nova); preenchido = rotação (herda a
+    // família do antecessor, pra reuse-detection). Captura dispositivo/IP só pra exibir na UI de sessões.
+    private Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId, Guid? familiaId = null)
     {
         var tokenBruto = GerarTokenOpaco();
+        var (dispositivo, ip) = CapturarDispositivo();
         var rt = new RefreshToken
         {
             Id = Guid.NewGuid(),
@@ -73,10 +78,47 @@ public class AuthService
             ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays),
             Revogado = false,
             CriadoEm = DateTime.UtcNow,
+            FamiliaId = familiaId ?? Guid.NewGuid(),
+            DispositivoInfo = dispositivo,
+            IpCriacao = ip,
         };
         _context.RefreshTokens.Add(rt);
         // Sem I/O aqui (o SaveChanges é do caller) — não precisa de async/await.
         return Task.FromResult((rt, tokenBruto));
+    }
+
+    // User-Agent (truncado) + IP da request atual, pra exibir o dispositivo na tela de sessões.
+    // Minimização: sem fingerprint/parsing; só o que dá pra mostrar "de onde/quando". Null fora de
+    // uma request (ex.: testes, jobs).
+    private (string? Dispositivo, string? Ip) CapturarDispositivo()
+    {
+        var ctx = _httpContextAccessor?.HttpContext;
+        if (ctx == null) return (null, null);
+
+        var ua = ctx.Request.Headers.UserAgent.ToString();
+        if (ua.Length > 256) ua = ua[..256];
+        var ip = ctx.Connection.RemoteIpAddress?.ToString();
+        return (string.IsNullOrWhiteSpace(ua) ? null : ua, string.IsNullOrWhiteSpace(ip) ? null : ip);
+    }
+
+    // Reuse-detection (RFC 9700 §4.14): um refresh JÁ ROTACIONADO reapresentado indica replay/roubo.
+    // Revoga a FAMÍLIA inteira (mata a sessão do atacante E a legítima) e alerta o admin. Fail-closed:
+    // o caller lança Unauthorized depois de chamar isto.
+    private async Task ComprometerFamiliaAsync(RefreshToken tokenComprometido)
+    {
+        var familia = await _context.RefreshTokens
+            .Where(r => r.FamiliaId == tokenComprometido.FamiliaId && !r.Revogado)
+            .ToListAsync();
+        foreach (var r in familia)
+            r.Revogado = true;
+        await _context.SaveChangesAsync();
+
+        var quem = tokenComprometido.Usuario?.Nome ?? tokenComprometido.UsuarioId.ToString();
+        await _notificacaoAdmin.CriarAsync(
+            TipoNotificacaoAdmin.Seguranca,
+            "Refresh token reutilizado (possível roubo)",
+            $"Um refresh token já rotacionado da conta de {quem} foi reapresentado. A sessão foi encerrada por segurança (reuse-detection).",
+            "/admin/usuarios");
     }
 
     public async Task<RegisterResponseDto> RegisterAsync(RegisterDto dto)
@@ -250,7 +292,7 @@ public class AuthService
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
         await _context.SaveChangesAsync();
 
-        var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome);
+        var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome, rt.FamiliaId);
 
         return new LoginResultDto
         {
@@ -298,7 +340,7 @@ public class AuthService
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id);
         await _context.SaveChangesAsync();
 
-        var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome);
+        var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome, rt.FamiliaId);
 
         return new AuthResponseDto
         {
@@ -326,7 +368,19 @@ public class AuthService
             .Include(r => r.Usuario)
             .FirstOrDefaultAsync(r => r.Token == tokenHash);
 
-        if (rt == null || rt.Revogado || rt.ExpiresAt <= DateTime.UtcNow)
+        if (rt == null)
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
+
+        // Reuse-detection: um refresh JÁ ROTACIONADO (SubstituidoPorId != null) reapresentado =
+        // replay/roubo → compromete a família inteira. Revogado sem substituto (logout/reset) só falha.
+        if (rt.Revogado)
+        {
+            if (rt.SubstituidoPorId != null)
+                await ComprometerFamiliaAsync(rt);
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
+        }
+
+        if (rt.ExpiresAt <= DateTime.UtcNow)
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
 
         // Se a conta deixou de ser Ativa (bloqueada/marcada pra exclusão) entre um refresh e outro,
@@ -334,14 +388,72 @@ public class AuthService
         if (rt.Usuario.Status != StatusUsuario.Ativo)
             throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
 
-        // Revogar o token atual (rotação)
+        // Rotação: revoga o atual e cria o sucessor na MESMA família (reuse-detection).
         rt.Revogado = true;
+        rt.UltimoUsoEm = DateTime.UtcNow;
 
-        // Criar novo refresh token
-        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId);
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId);
+        rt.SubstituidoPorId = novoRt.Id;
         await _context.SaveChangesAsync();
 
-        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome);
+        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome, novoRt.FamiliaId);
+
+        return new AuthResponseDto
+        {
+            UsuarioId = rt.Usuario.Id,
+            Email = rt.Usuario.Email,
+            Nome = rt.Usuario.Nome,
+            Token = jwtToken,
+            RefreshToken = refreshBruto,
+            RefreshTokenExpiresAt = novoRt.ExpiresAt,
+        };
+    }
+
+    /// <summary>
+    /// Troca a conta ativa (multi-sessão, Opção A). O <paramref name="refreshToken"/> vem do cookie
+    /// httpOnly `rt_&lt;slot&gt;` da conta destino — a AUTORIDADE da troca é a posse desse token, não o
+    /// <paramref name="accountId"/> do corpo, que é só SELETOR. Guard anti-IDOR explícito
+    /// (<c>rt.UsuarioId == accountId</c>): quem não possui o refresh daquela conta não troca pra ela.
+    /// Fail-closed (token ausente/inválido/revogado/expirado/conta não-Ativa → Unauthorized genérico).
+    /// Rotaciona o refresh (revoga o antigo, cria novo), igual ao <see cref="RefreshAsync"/>.
+    /// </summary>
+    public async Task<AuthResponseDto> SwitchAsync(string? refreshToken, Guid accountId)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+
+        var tokenHash = OpaqueTokenHasher.Hash(refreshToken);
+        var rt = await _context.RefreshTokens
+            .Include(r => r.Usuario)
+            .FirstOrDefaultAsync(r => r.Token == tokenHash);
+
+        if (rt == null)
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+
+        // Reuse-detection (o switch é uma rotação): replay de token já rotacionado da conta pedida
+        // compromete a família. Só dispara se pertence à conta (não vaza nada sobre outras contas).
+        if (rt.Revogado)
+        {
+            if (rt.SubstituidoPorId != null && rt.UsuarioId == accountId)
+                await ComprometerFamiliaAsync(rt);
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+        }
+
+        // Fail-closed + anti-IDOR: válido E pertence À conta pedida.
+        if (rt.ExpiresAt <= DateTime.UtcNow || rt.UsuarioId != accountId)
+            throw new UnauthorizedAccessException("Sessão inválida para esta conta.");
+
+        if (rt.Usuario.Status != StatusUsuario.Ativo)
+            throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
+
+        // Rotação na MESMA família (reuse-detection).
+        rt.Revogado = true;
+        rt.UltimoUsoEm = DateTime.UtcNow;
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId);
+        rt.SubstituidoPorId = novoRt.Id;
+        await _context.SaveChangesAsync();
+
+        var jwtToken = _tokenProvider.GenerateToken(rt.Usuario.Id, rt.Usuario.Email, rt.Usuario.Nome, novoRt.FamiliaId);
 
         return new AuthResponseDto
         {
@@ -370,6 +482,83 @@ public class AuthService
             rt.Revogado = true;
             await _context.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Logout de TODAS as contas parqueadas no browser — revoga cada refresh token informado
+    /// (os cookies `rt_*` que o controller enumerou). Silencioso para os que não existirem.
+    /// </summary>
+    public async Task LogoutAllAsync(IEnumerable<string> refreshTokens)
+    {
+        var hashes = refreshTokens
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(OpaqueTokenHasher.Hash)
+            .ToList();
+        if (hashes.Count == 0) return;
+
+        var tokens = await _context.RefreshTokens
+            .Where(r => hashes.Contains(r.Token) && !r.Revogado)
+            .ToListAsync();
+        foreach (var r in tokens)
+            r.Revogado = true;
+
+        if (tokens.Count > 0)
+            await _context.SaveChangesAsync();
+    }
+
+    // ── Sessões ativas / dispositivos (Fase 2) ─────────────────────────────────
+
+    /// <summary>Lista as sessões ativas (refresh não revogado/não expirado) do usuário, mais recente
+    /// primeiro, marcando a atual (a que fez esta request, via o refresh bruto da conta ativa). Nunca
+    /// devolve o token — só id + metadados de exibição.</summary>
+    public async Task<List<SessaoDto>> ListarSessoesAsync(Guid usuarioId, string? refreshTokenAtual)
+    {
+        var hashAtual = string.IsNullOrWhiteSpace(refreshTokenAtual) ? null : OpaqueTokenHasher.Hash(refreshTokenAtual);
+        var agora = DateTime.UtcNow;
+
+        return await _context.RefreshTokens
+            .Where(r => r.UsuarioId == usuarioId && !r.Revogado && r.ExpiresAt > agora)
+            .OrderByDescending(r => r.UltimoUsoEm ?? r.CriadoEm)
+            .Select(r => new SessaoDto
+            {
+                Id = r.Id,
+                CriadoEm = r.CriadoEm,
+                UltimoUsoEm = r.UltimoUsoEm,
+                Dispositivo = r.DispositivoInfo,
+                Ip = r.IpCriacao,
+                Atual = hashAtual != null && r.Token == hashAtual,
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>Revoga UMA sessão do usuário (encerra aquele dispositivo). Anti-IDOR: filtra por
+    /// UsuarioId — não dá pra revogar sessão de terceiro. 404 se não for dele/já revogada.</summary>
+    public async Task RevogarSessaoAsync(Guid usuarioId, Guid sessaoId)
+    {
+        var rt = await _context.RefreshTokens
+            .FirstOrDefaultAsync(r => r.Id == sessaoId && r.UsuarioId == usuarioId && !r.Revogado);
+        if (rt == null)
+            throw new KeyNotFoundException("Sessão não encontrada.");
+
+        rt.Revogado = true;
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>"Sair de todos os outros dispositivos": revoga todas as sessões do usuário EXCETO a
+    /// atual (a que fez a request). Retorna quantas encerrou.</summary>
+    public async Task<int> RevogarOutrasSessoesAsync(Guid usuarioId, string? refreshTokenAtual)
+    {
+        var hashAtual = string.IsNullOrWhiteSpace(refreshTokenAtual) ? null : OpaqueTokenHasher.Hash(refreshTokenAtual);
+
+        var outras = await _context.RefreshTokens
+            .Where(r => r.UsuarioId == usuarioId && !r.Revogado && (hashAtual == null || r.Token != hashAtual))
+            .ToListAsync();
+        foreach (var r in outras)
+            r.Revogado = true;
+
+        if (outras.Count > 0)
+            await _context.SaveChangesAsync();
+        return outras.Count;
     }
 
     // ── Forgot / Reset Password ───────────────────────────────────────────────

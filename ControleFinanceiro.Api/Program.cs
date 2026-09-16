@@ -241,7 +241,10 @@ var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? throw new InvalidOperationException("JWT_SECRET environment variable is not set");
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "ControleFinanceiro";
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "ControleFinanceiroUsers";
-var jwtExpirationMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES") ?? "60");
+// Access token curto (15min) — encurta a janela de exposição; a revogação INSTANTÂNEA vem do
+// OnTokenValidated abaixo (checagem de sessão viva por request). Silent refresh no front renova
+// transparente pelo refresh (7d). Sobrescrevível por env em prod.
+var jwtExpirationMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES") ?? "15");
 
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 builder.Services.AddSingleton(new JwtTokenProvider(jwtSecret, jwtIssuer, jwtAudience, jwtExpirationMinutes));
@@ -271,6 +274,28 @@ builder.Services.AddAuthentication(options =>
             if (ctx.Request.Cookies.TryGetValue("jwt", out var jwtCookie) && !string.IsNullOrEmpty(jwtCookie))
                 ctx.Token = jwtCookie;
             return Task.CompletedTask;
+        },
+        // Revogação INSTANTÂNEA (não espera os 15min do access token): valida por request se a sessão
+        // (claim "sid" = FamiliaId do refresh) ainda tem um refresh VIVO e se o usuário segue Ativo.
+        // Se não, o access token é rejeitado na hora. Cobre num só lugar: encerrar sessão,
+        // sair-de-todos, reset de senha, reuse-detection E bloqueio/exclusão do usuário. Query
+        // indexada (IX_RefreshTokens_FamiliaId) — barata no beta; cache com invalidação fica pra
+        // escala. Tokens legados sem "sid" passam (compat de transição pós-deploy).
+        OnTokenValidated = async ctx =>
+        {
+            var sid = ctx.Principal?.FindFirst("sid")?.Value;
+            if (string.IsNullOrEmpty(sid) || !Guid.TryParse(sid, out var familiaId))
+                return;
+
+            var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var agora = DateTime.UtcNow;
+            var status = await db.RefreshTokens
+                .Where(r => r.FamiliaId == familiaId && !r.Revogado && r.ExpiresAt > agora)
+                .Select(r => (ControleFinanceiro.Api.Domain.Enums.StatusUsuario?)r.Usuario.Status)
+                .FirstOrDefaultAsync();
+
+            if (status is null || status != ControleFinanceiro.Api.Domain.Enums.StatusUsuario.Ativo)
+                ctx.Fail("Sessão revogada.");
         }
     };
 });
@@ -455,6 +480,10 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Guarda multi-aba (multi-conta): barra escrita quando a aba está numa conta diferente da ativa
+// (header X-Active-Account ≠ dono do jwt). Depois do auth (precisa de User populado); no-op sem header.
+app.UseMiddleware<ActiveAccountGuardMiddleware>();
 
 // Hangfire Dashboard — protegido: exige usuário autenticado
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
