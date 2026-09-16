@@ -1,14 +1,26 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-15
-status: DESENHO_APROVACAO_PENDENTE
+last_reviewed: 2026-09-16
+status: IMPLEMENTADO
 ---
 
-# Multi-conta (várias contas logadas + troca real) — desenho
+# Multi-conta (várias contas logadas + troca real) — desenho + implementação
 
 **Documento de decisão (ADR).** P1 do ROADMAP: "multi-conta não alterna de verdade (bug de auth)".
-Desenho produzido por investigação + revisão adversarial de segurança (2026-09-15). **Nada codado
-ainda** — aguarda escolha de opção do Gustavo.
+Desenho produzido por investigação + revisão adversarial de segurança (2026-09-15).
+
+> **STATUS (2026-09-16): IMPLEMENTADO (Opção A + Opção B), branch `feat/multi-conta-fase1`.**
+> - **Fase 1 (A):** `/auth/switch` server-authoritative (anti-IDOR, fail-closed), cookies por conta
+>   (`rt_<slot>` opaco), `logout`/`logout-all`, guarda multi-aba (header `X-Active-Account` +
+>   `ActiveAccountGuardMiddleware` → 409), silent refresh (interceptor axios), cap de 5 contas,
+>   CSRF 7d + `FixedTimeEquals`.
+> - **Fase 2 (B):** reuse-detection (RFC 9700 §4.14 — `FamiliaId`/`SubstituidoPorId`; replay de
+>   token rotacionado revoga a família + alerta admin), tela **Sessões e dispositivos** (listar/
+>   encerrar/"sair dos outros"), device/IP por sessão.
+> - **Verificado ao vivo** (Postgres real): login, adicionar conta, switch A↔B, listar/revogar sessão.
+> - Testes: back 544/544, front 356/356. **Pré-condição de PROD (não codável): rotacionar `Jwt:Key`.**
+> - Não implementado de propósito: cookie de grupo `sid` (sessões são por-usuário, dispensa) e
+>   BFF (Opção D, futuro). Path-scoping do refresh ficou em Path=/api/v1/auth.
 
 ## Diagnóstico — por que hoje NÃO alterna
 
