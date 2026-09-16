@@ -1,6 +1,7 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Admin;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,8 +14,6 @@ namespace ControleFinanceiro.Api.Services;
 /// </summary>
 public class AdminAuditService
 {
-    private const int MaxListagem = 200; // beta: volume baixo; paginação fica pra depois se precisar
-
     private readonly AppDbContext _context;
 
     public AdminAuditService(AppDbContext context) => _context = context;
@@ -38,12 +37,30 @@ public class AdminAuditService
         });
     }
 
-    /// <summary>Últimas ações de admin, mais recentes primeiro.</summary>
-    public async Task<List<AdminAuditLogDto>> ListarAsync()
+    /// <summary>Ações de admin — paginado e com busca SERVER-SIDE (e-mail do admin ou descrição do alvo),
+    /// mais recentes primeiro. Filtro/contagem/paginação na query (não no cliente), pra alcançar também
+    /// registros antigos — antes havia um teto fixo de 200 que os deixava inacessíveis. `pageSize`
+    /// clampado em 1..100.</summary>
+    public async Task<PagedResult<AdminAuditLogDto>> ListarAsync(string? busca = null, int page = 1, int pageSize = 25)
     {
-        return await _context.AdminAuditLogs
-            .OrderByDescending(a => a.CriadoEm)
-            .Take(MaxListagem)
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var q = _context.AdminAuditLogs.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim().ToLower();
+            q = q.Where(a => a.AdminEmail.ToLower().Contains(termo)
+                || (a.AlvoDescricao != null && a.AlvoDescricao.ToLower().Contains(termo)));
+        }
+
+        q = q.OrderByDescending(a => a.CriadoEm);
+
+        var total = await q.CountAsync();
+        var items = await q
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(a => new AdminAuditLogDto
             {
                 Id = a.Id,
@@ -56,5 +73,13 @@ public class AdminAuditService
                 CriadoEm = a.CriadoEm,
             })
             .ToListAsync();
+
+        return new PagedResult<AdminAuditLogDto>
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 }

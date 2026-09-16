@@ -1,6 +1,7 @@
 import { api } from "@/api/axiosConfig"
 import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
 import type { ContagemNotificacaoAdmin, NotificacaoAdmin } from "@/types/NotificacaoAdmin"
+import type { PagedResult } from "@/types/Paged"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
@@ -22,8 +23,12 @@ const adminService = {
   metricas: () => api.get<MetricasAdmin>("/admin/metricas").then((r) => r.data),
 
   // ── Módulo B — gestão de usuários ──
-  usuarios: (busca?: string) =>
-    api.get<UsuarioAdmin[]>("/admin/usuarios", { params: busca ? { busca } : undefined }).then((r) => r.data),
+  // Busca/paginação SERVER-SIDE: manda busca+page+pageSize e devolve PagedResult (Total reflete o
+  // filtro no servidor, nunca a página carregada).
+  usuarios: (busca?: string, page = 1, pageSize = 25) =>
+    api.get<PagedResult<UsuarioAdmin>>("/admin/usuarios", {
+      params: { ...(busca ? { busca } : {}), page, pageSize },
+    }).then((r) => r.data),
 
   bloquear: (id: string) =>
     api.patch<UsuarioAdmin>(`/admin/usuarios/${id}/bloquear`).then((r) => r.data),
@@ -48,7 +53,11 @@ const adminService = {
     api.post(`/admin/usuarios/${id}/purgar`, { emailConfirmacao }).then((r) => r.data),
 
   // ── Módulo D — auditoria ──
-  auditoria: () => api.get<AdminAuditLog[]>("/admin/auditoria").then((r) => r.data),
+  // Paginação/busca SERVER-SIDE (antes o backend capava em 200 registros fixos).
+  auditoria: (busca?: string, page = 1, pageSize = 25) =>
+    api.get<PagedResult<AdminAuditLog>>("/admin/auditoria", {
+      params: { ...(busca ? { busca } : {}), page, pageSize },
+    }).then((r) => r.data),
 
   // ── Notificações do admin (stream separado do financeiro) ──
   notificacoes: () => api.get<NotificacaoAdmin[]>("/admin/notificacoes").then((r) => r.data),

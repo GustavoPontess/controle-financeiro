@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Admin;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -109,10 +110,15 @@ public class AdminUsuarioService
 
     // ── Módulo B — gestão de usuários ─────────────────────────────────────────────────────
 
-    /// <summary>Lista todos os usuários (gestão). Busca opcional por nome/e-mail (contém, case-insensitive).
-    /// Mais recentes primeiro. Nunca expõe hash/segredo (usa o DTO enxuto).</summary>
-    public async Task<List<UsuarioAdminDto>> ListarUsuariosAsync(string? busca = null)
+    /// <summary>Lista usuários (gestão) — paginado e com busca SERVER-SIDE por nome/e-mail (contém,
+    /// case-insensitive). Filtro/contagem/paginação na query (nunca no cliente), pra `Total` refletir
+    /// o filtro e não trazer a tabela inteira pro browser. Mais recentes primeiro. Nunca expõe
+    /// hash/segredo (usa o DTO enxuto). `pageSize` clampado em 1..100.</summary>
+    public async Task<PagedResult<UsuarioAdminDto>> ListarUsuariosAsync(string? busca = null, int page = 1, int pageSize = 25)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
         var q = _context.Usuarios.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busca))
@@ -121,8 +127,12 @@ public class AdminUsuarioService
             q = q.Where(u => u.Nome.ToLower().Contains(termo) || u.Email.ToLower().Contains(termo));
         }
 
-        return await q
-            .OrderByDescending(u => u.CriadoEm)
+        q = q.OrderByDescending(u => u.CriadoEm);
+
+        var total = await q.CountAsync();
+        var items = await q
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(u => new UsuarioAdminDto
             {
                 Id = u.Id,
@@ -135,6 +145,14 @@ public class AdminUsuarioService
                 MarcadoExclusaoEm = u.MarcadoExclusaoEm,
             })
             .ToListAsync();
+
+        return new PagedResult<UsuarioAdminDto>
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     /// <summary>Bloqueia um usuário Ativo → <see cref="StatusUsuario.Bloqueado"/> (não loga mais; dados
