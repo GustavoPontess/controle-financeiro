@@ -407,6 +407,95 @@ public class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(loginB.RefreshToken));
     }
 
+    // ── Fase 2: reuse-detection + sessões ──────────────────────────────────────
+
+    [Fact]
+    public async Task Refresh_replayDeTokenJaRotacionado_comprometeAFamiliaInteira()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var login = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+
+        // Rotação legítima → o token de login vira "já rotacionado".
+        var novo = await auth.RefreshAsync(login.RefreshToken);
+
+        // Replay do token ANTIGO (roubado) → reuse-detection dispara.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(login.RefreshToken));
+
+        // A família inteira foi comprometida: o refresh NOVO (legítimo) também morre.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(novo.RefreshToken));
+    }
+
+    [Fact]
+    public async Task Logout_naoDispara_reuseDetection_noReplay()
+    {
+        // Token revogado por LOGOUT (sem SubstituidoPorId) reapresentado só falha — não é replay de
+        // rotação, então NÃO deve comprometer a outra sessão (outra família).
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var l1 = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+        var l2 = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+
+        await auth.LogoutAsync(l1.RefreshToken);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(l1.RefreshToken));
+
+        // A outra sessão (l2) segue válida.
+        var novo = await auth.RefreshAsync(l2.RefreshToken);
+        Assert.False(string.IsNullOrEmpty(novo.RefreshToken));
+    }
+
+    [Fact]
+    public async Task ListarSessoes_retornaAtivas_eMarcaAtual()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+        var atual = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+
+        var sessoes = await auth.ListarSessoesAsync(u.Id, atual.RefreshToken);
+
+        Assert.Equal(2, sessoes.Count);
+        Assert.Single(sessoes, s => s.Atual);
+        Assert.All(sessoes, s => Assert.NotEqual(Guid.Empty, s.Id));
+    }
+
+    [Fact]
+    public async Task RevogarSessao_antiIDOR_naoRevogaSessaoDeOutroUsuario()
+    {
+        using var ctx = CreateContext();
+        var a = SeedUsuarioComSenha(ctx, "a@test.com", "SenhaForte!2026");
+        var b = SeedUsuarioComSenha(ctx, "b@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var loginA = await LoginSemMfaAsync(auth, "a@test.com", "SenhaForte!2026");
+        await LoginSemMfaAsync(auth, "b@test.com", "SenhaForte!2026");
+
+        var sessaoDeA = (await auth.ListarSessoesAsync(a.Id, loginA.RefreshToken)).Single();
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => auth.RevogarSessaoAsync(b.Id, sessaoDeA.Id));
+        Assert.Single(await auth.ListarSessoesAsync(a.Id, loginA.RefreshToken));
+    }
+
+    [Fact]
+    public async Task RevogarOutrasSessoes_encerraTudoMenosAAtual()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "u@test.com", "SenhaForte!2026");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+        await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+        var atual = await LoginSemMfaAsync(auth, "u@test.com", "SenhaForte!2026");
+
+        var encerradas = await auth.RevogarOutrasSessoesAsync(u.Id, atual.RefreshToken);
+
+        Assert.Equal(2, encerradas);
+        var restantes = await auth.ListarSessoesAsync(u.Id, atual.RefreshToken);
+        Assert.Single(restantes);
+        Assert.True(restantes[0].Atual);
+    }
+
     // ── Register: e-mail duplicado — anti-enumeração (pentest 2026-09-12) ──
     // Não pode revelar que o e-mail existe: responde IGUAL a um cadastro novo e NÃO cria duplicata.
 

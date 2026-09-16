@@ -1400,25 +1400,44 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<string>("DispositivoInfo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IpCriacao")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<bool>("Revogado")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("SubstituidoPorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UltimoUsoEm")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FamiliaId");
+
                     b.HasIndex("Token")
                         .IsUnique();
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UsuarioId", "Revogado");
 
                     b.ToTable("RefreshTokens");
                 });

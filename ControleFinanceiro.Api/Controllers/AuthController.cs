@@ -447,6 +447,38 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    // ── Sessões ativas / dispositivos (Fase 2) ────────────────────────────────────
+    // Diferente do logout-all (que é do NAVEGADOR): estas rotas listam/encerram as sessões do
+    // USUÁRIO em QUALQUER dispositivo. Todas exigem sessão (Authorize).
+
+    /// <summary>Lista as sessões ativas do usuário (todos os dispositivos), marcando a atual.</summary>
+    [Authorize]
+    [HttpGet("sessions")]
+    public async Task<ActionResult<List<DTOs.Auth.SessaoDto>>> Sessions()
+    {
+        var (refreshAtual, _) = ReadActiveRefresh();
+        return Ok(await _authService.ListarSessoesAsync(ExigirUsuarioId(), refreshAtual));
+    }
+
+    /// <summary>Encerra UMA sessão do usuário (aquele dispositivo). Anti-IDOR no service.</summary>
+    [Authorize]
+    [HttpPost("sessions/{id:guid}/revogar")]
+    public async Task<IActionResult> RevogarSessao(Guid id)
+    {
+        await _authService.RevogarSessaoAsync(ExigirUsuarioId(), id);
+        return NoContent();
+    }
+
+    /// <summary>"Sair de todos os outros dispositivos" — encerra tudo menos a sessão atual.</summary>
+    [Authorize]
+    [HttpPost("sessions/revogar-outras")]
+    public async Task<IActionResult> RevogarOutrasSessoes()
+    {
+        var (refreshAtual, _) = ReadActiveRefresh();
+        var qtd = await _authService.RevogarOutrasSessoesAsync(ExigirUsuarioId(), refreshAtual);
+        return Ok(new { encerradas = qtd });
+    }
+
     /// <summary>
     /// Solicita reset de senha. Resposta genérica e idêntica para qualquer e-mail; se o e-mail
     /// existir, um link com o token é enviado por e-mail (o token nunca volta na resposta).
