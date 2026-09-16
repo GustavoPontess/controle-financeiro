@@ -20,7 +20,7 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
 
     public AuthHttpTests(CustomWebApplicationFactory factory) => _factory = factory;
 
-    private Usuario SeedUsuario(string email, string senha, StatusUsuario status = StatusUsuario.Ativo)
+    private Usuario SeedUsuario(string email, string senha, StatusUsuario status = StatusUsuario.Ativo, bool mfaAtivo = false)
     {
         using var scope = _factory.CreateScopeComBanco();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -31,11 +31,108 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
             Nome = "User HTTP",
             PasswordHash = PasswordHasher.HashPassword(senha),
             Status = status,
+            MfaAtivo = mfaAtivo,
             CriadoEm = DateTime.UtcNow,
         };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
         return u;
+    }
+
+    // Loga um NOVO client (cookie container próprio = sessão independente) e devolve (client, csrf).
+    private async Task<(HttpClient Client, string Csrf)> LoginClientAsync(string email, string senha)
+    {
+        var client = _factory.CreateClient();
+        var resp = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = senha });
+        resp.EnsureSuccessStatusCode();
+        return (client, ExtrairCsrf(resp));
+    }
+
+    // O X-CSRF-Token chega URL-encodado no Set-Cookie; o header do double-submit tem que bater com o
+    // valor decodificado (o servidor decoda o cookie). Igual ao que o front faz (decodeURIComponent).
+    private static string ExtrairCsrf(HttpResponseMessage resp)
+    {
+        foreach (var sc in resp.Headers.GetValues("Set-Cookie"))
+        {
+            if (sc.StartsWith("X-CSRF-Token=", StringComparison.Ordinal))
+                return Uri.UnescapeDataString(sc.Substring("X-CSRF-Token=".Length).Split(';')[0]);
+        }
+        return "";
+    }
+
+    private static HttpRequestMessage Post(string url, string csrf, Guid? activeAccount = null)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Headers.Add("X-CSRF-Token", csrf);
+        if (activeAccount.HasValue)
+            req.Headers.Add("X-Active-Account", activeAccount.Value.ToString());
+        return req;
+    }
+
+    [Fact]
+    public async Task Login_comMfaAtivo_naoEmiteSessao_pedeSegundoFator()
+    {
+        SeedUsuario("mfa-http@test.com", "SenhaForte!2026", mfaAtivo: true);
+        var client = _factory.CreateClient();
+
+        var resp = await client.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "mfa-http@test.com", password = "SenhaForte!2026" });
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var body = await resp.Content.ReadFromJsonAsync<MfaLoginDto>();
+        Assert.True(body!.MfaRequerido);                 // pede o 2º fator
+        Assert.False(resp.Headers.Contains("Set-Cookie")); // NÃO emitiu sessão
+    }
+
+    [Fact]
+    public async Task RevogarSessao_deOutroUsuario_retorna404_antiIDOR()
+    {
+        SeedUsuario("idor-a@test.com", "SenhaForte!2026");
+        SeedUsuario("idor-b@test.com", "SenhaForte!2026");
+        var (clientA, _) = await LoginClientAsync("idor-a@test.com", "SenhaForte!2026");
+        var (clientB, csrfB) = await LoginClientAsync("idor-b@test.com", "SenhaForte!2026");
+
+        var sessoesA = await clientA.GetFromJsonAsync<List<SessaoLite>>("/api/v1/auth/sessions");
+        var sessaoDeA = sessoesA!.Single().Id;
+
+        // B tenta revogar a sessão de A → 404 (RevogarSessaoAsync filtra por UsuarioId).
+        var resp = await clientB.SendAsync(Post($"/api/v1/auth/sessions/{sessaoDeA}/revogar", csrfB));
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+
+        // A continua logada (nada foi revogado).
+        Assert.Equal(HttpStatusCode.OK, (await clientA.GetAsync("/api/v1/auth/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task RevogarSessao_derrubaOOutroDispositivo_naHora()
+    {
+        SeedUsuario("revoke-http@test.com", "SenhaForte!2026");
+        var (clientA, _) = await LoginClientAsync("revoke-http@test.com", "SenhaForte!2026");
+        var (clientB, csrfB) = await LoginClientAsync("revoke-http@test.com", "SenhaForte!2026");
+
+        Assert.Equal(HttpStatusCode.OK, (await clientA.GetAsync("/api/v1/auth/me")).StatusCode);
+
+        // Da B, acha a sessão A (a não-atual sob a ótica de B) e revoga.
+        var sessoes = await clientB.GetFromJsonAsync<List<SessaoLite>>("/api/v1/auth/sessions");
+        var sessaoA = sessoes!.First(s => !s.Atual).Id;
+        var revoke = await clientB.SendAsync(Post($"/api/v1/auth/sessions/{sessaoA}/revogar", csrfB));
+        Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
+
+        // A cai NA HORA (jwt ainda dentro dos 15min) — OnTokenValidated rejeita a sessão morta.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await clientA.GetAsync("/api/v1/auth/me")).StatusCode);
+        // B segue viva (revogação por-sessão, não global).
+        Assert.Equal(HttpStatusCode.OK, (await clientB.GetAsync("/api/v1/auth/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task RequestMutante_deAbaDefasada_retorna409()
+    {
+        SeedUsuario("guard-http@test.com", "SenhaForte!2026");
+        var (client, csrf) = await LoginClientAsync("guard-http@test.com", "SenhaForte!2026");
+
+        // Aba "defasada": manda X-Active-Account de OUTRA conta numa escrita fora de /auth → 409.
+        var resp = await client.SendAsync(Post("/api/v1/transacoes", csrf, activeAccount: Guid.NewGuid()));
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
     }
 
     [Fact]
@@ -86,5 +183,16 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         public string Email { get; set; } = "";
         public string Nome { get; set; } = "";
+    }
+
+    private sealed class MfaLoginDto
+    {
+        public bool MfaRequerido { get; set; }
+    }
+
+    private sealed class SessaoLite
+    {
+        public Guid Id { get; set; }
+        public bool Atual { get; set; }
     }
 }

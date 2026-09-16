@@ -489,7 +489,10 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
 
-app.UseRateLimiter();
+// Rate limiter desligado em teste (a suíte HTTP faz vários logins na mesma instância e bateria no
+// 429). Não muda dev/prod. As políticas seguem registradas (AddRateLimiter); só o middleware sai.
+if (!isTesting)
+    app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
