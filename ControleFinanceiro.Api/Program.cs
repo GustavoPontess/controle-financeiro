@@ -39,6 +39,11 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ambiente de teste HTTP (WebApplicationFactory, ASPNETCORE_ENVIRONMENT=Testing): pula a infra de
+// boot que exige Postgres/Hangfire reais (migrations, seeders, Hangfire server/dashboard/jobs). A
+// factory troca o AppDbContext por InMemory. NÃO altera nada em Development/Production.
+var isTesting = builder.Environment.IsEnvironment("Testing");
+
 // Backstop de payload: limita o tamanho do corpo de QUALQUER request a 10 MB (default do Kestrel
 // é 30 MB). Protege contra payload gigante travar/consumir memória — complementa o [MaxLength]
 // por campo nos DTOs (que barra "caracteres infinitos" num campo específico com 400). 10 MB cobre
@@ -152,24 +157,30 @@ builder.Services.AddScoped<RecalcularLimitesJob>();
 builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
 builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
 
-builder.Services.AddHangfire(config =>
+// Hangfire exige Postgres real (storage + server) — pulado em teste (a factory usa InMemory e não
+// exercita jobs). O IPasswordResetDispatcher é sobrescrito por um no-op na factory.
+if (!isTesting)
 {
-    config.UsePostgreSqlStorage(
-        c => c.UseNpgsqlConnection(databaseUrl),
-        new PostgreSqlStorageOptions
-        {
-            SchemaName = "hangfire",
-            PrepareSchemaIfNecessary = true,
-        });
-});
-builder.Services.AddHangfireServer();
+    builder.Services.AddHangfire(config =>
+    {
+        config.UsePostgreSqlStorage(
+            c => c.UseNpgsqlConnection(databaseUrl),
+            new PostgreSqlStorageOptions
+            {
+                SchemaName = "hangfire",
+                PrepareSchemaIfNecessary = true,
+            });
+    });
+    builder.Services.AddHangfireServer();
+}
 
 // Health checks: /health (liveness, leve) e /health/ready (readiness:
 // banco + Hangfire). Usa AddDbContextCheck — provider-agnóstico, funciona
 // tanto em SQLite quanto Postgres.
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" })
-    .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire", tags: new[] { "ready" });
+var healthChecks = builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" });
+if (!isTesting)
+    healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire", tags: new[] { "ready" });
 
 // Rate Limiting — protege endpoints de autenticação contra brute force.
 // Todas as políticas particionam por IP de origem.
@@ -418,6 +429,8 @@ var app = builder.Build();
 // (DevDataSeeder usa a lista de bancos). O BancoSeeder chama a BrasilAPI mas tem
 // timeout interno (15s) + try/catch — se a API externa estiver lenta/fora, ele
 // desiste e segue, sem travar o boot. /health então sobe de forma previsível.
+// Pulado em teste (InMemory não tem migrations; BancoSeeder chama a BrasilAPI).
+if (!isTesting)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -485,31 +498,35 @@ app.UseAuthorization();
 // (header X-Active-Account ≠ dono do jwt). Depois do auth (precisa de User populado); no-op sem header.
 app.UseMiddleware<ActiveAccountGuardMiddleware>();
 
-// Hangfire Dashboard — protegido: exige usuário autenticado
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+// Hangfire (dashboard + agendamento) exige Postgres real — pulado em teste.
+if (!isTesting)
 {
-    Authorization = new[] { new HangfireDashboardAuthFilter() }
-});
+    // Hangfire Dashboard — protegido: exige usuário autenticado
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuthFilter() }
+    });
 
-// Agenda os jobs recorrentes DEPOIS que o app sobe (ApplicationStarted), fora do
-// caminho crítico do boot. A primeira escrita no storage do Hangfire cria o schema
-// `hangfire` num DB novo — operação que pode ser lenta/travar (lock advisory) e
-// não deve impedir o /health de responder. Sai do boot, agenda em background.
-app.Lifetime.ApplicationStarted.Register(() =>
-{
-    var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
-    var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
+    // Agenda os jobs recorrentes DEPOIS que o app sobe (ApplicationStarted), fora do
+    // caminho crítico do boot. A primeira escrita no storage do Hangfire cria o schema
+    // `hangfire` num DB novo — operação que pode ser lenta/travar (lock advisory) e
+    // não deve impedir o /health de responder. Sai do boot, agenda em background.
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
+        var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
 
-    recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
-    recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
-    recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
-    recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
-    recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
-    // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
-    recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
-    // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
-    recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
-});
+        recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
+        recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
+        recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
+        recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
+        recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+        // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
+        recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
+        // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
+        recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
+    });
+}
 
 app.MapControllers();
 
@@ -526,3 +543,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 
 app.Run();
+
+// Torna a classe Program (gerada pelos top-level statements) acessível pro projeto de teste,
+// que usa WebApplicationFactory<Program> nos testes HTTP de integração.
+public partial class Program { }
