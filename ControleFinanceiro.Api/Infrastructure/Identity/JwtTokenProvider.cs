@@ -20,9 +20,9 @@ public class JwtTokenProvider
         _expirationMinutes = expirationMinutes;
     }
 
-    /// <param name="sessionId">Família de sessão (FamiliaId do refresh) — vira o claim "sid". Um
-    /// middleware valida por request se essa sessão ainda está viva → revogação INSTANTÂNEA (não
-    /// espera o token expirar). Null = sem sid (compat com tokens legados).</param>
+    // sessionId (opcional) = família de sessão (FamiliaId do refresh) → vira o claim "sid". Um
+    // middleware valida por request se essa sessão ainda está viva → revogação INSTANTÂNEA (não
+    // espera o token expirar). Null = sem sid (compat com tokens legados).
     public string GenerateToken(Guid usuarioId, string email, string nome, Guid? sessionId = null)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
