@@ -17,10 +17,18 @@ Desenho produzido por investigação + revisão adversarial de segurança (2026-
 > - **Fase 2 (B):** reuse-detection (RFC 9700 §4.14 — `FamiliaId`/`SubstituidoPorId`; replay de
 >   token rotacionado revoga a família + alerta admin), tela **Sessões e dispositivos** (listar/
 >   encerrar/"sair dos outros"), device/IP por sessão.
+> - **Revogação INSTANTÂNEA (2026-09-16):** access token curto (**15min**, era 60) + claim `sid`
+>   (FamiliaId da sessão) no JWT + `JwtBearerEvents.OnTokenValidated` que, por request, valida se a
+>   sessão ainda tem refresh vivo E se o usuário está Ativo — senão 401 na hora. Fecha a janela de
+>   até 1h em que uma sessão revogada seguia válida. Uma query indexada cobre: encerrar sessão,
+>   sair-de-todos, reset, reuse-detection **e** bloqueio/exclusão. **Verificado ao vivo** (2 cookie
+>   jars = 2 dispositivos): revoga A da B → A toma 401 imediato, B intacta. Decisão: FamiliaId-liveness
+>   no lugar de TokenVersion separado (cobre per-sessão E global). Cache com invalidação = otimização
+>   de escala (ROADMAP P3); no beta a query direta indexada basta.
 > - **Verificado ao vivo** (Postgres real): login, adicionar conta, switch A↔B, listar/revogar sessão.
-> - Testes: back 544/544, front 356/356. **Pré-condição de PROD (não codável): rotacionar `Jwt:Key`.**
-> - Não implementado de propósito: cookie de grupo `sid` (sessões são por-usuário, dispensa) e
->   BFF (Opção D, futuro). Path-scoping do refresh ficou em Path=/api/v1/auth.
+> - Testes: back 546/546, front 356/356. **Pré-condição de PROD (não codável): rotacionar `Jwt:Key`.**
+> - Não implementado de propósito: cookie de grupo `sid`-de-navegador (sessões são por-usuário,
+>   dispensa) e BFF (Opção D, futuro). Path-scoping do refresh ficou em Path=/api/v1/auth.
 
 ## Diagnóstico — por que hoje NÃO alterna
 
