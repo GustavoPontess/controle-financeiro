@@ -1,11 +1,24 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import QRCode from "qrcode"
-import { ShieldCheck, ShieldOff, Copy, Check } from "lucide-react"
+import { ShieldCheck, ShieldOff, Copy, Check, Download } from "lucide-react"
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesBadge } from "@/components/pontes"
 import mfaService, { type MfaStatus } from "@/services/mfaService"
 import styles from "./MfaSection.module.css"
 
 type Fase = "carregando" | "inativo" | "setup" | "backup" | "ativo" | "desativar"
+
+// Monta o conteúdo do arquivo .txt de recuperação. \r\n pra abrir bem no Bloco de Notas (Windows).
+const montarArquivoBackup = (codes: string[]) =>
+  [
+    "Pontes — Códigos de recuperação (MFA)",
+    `Gerados em: ${new Date().toLocaleString("pt-BR")}`,
+    "",
+    "Guarde este arquivo num lugar seguro. Cada código funciona uma única vez,",
+    "para quando você não tiver o app autenticador. Eles não aparecem de novo.",
+    "",
+    ...codes,
+    "",
+  ].join("\r\n")
 
 export default function MfaSection() {
   const [fase, setFase] = useState<Fase>("carregando")
@@ -21,6 +34,8 @@ export default function MfaSection() {
   // backup codes (mostrados uma vez)
   const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [copiado, setCopiado] = useState(false)
+  const [baixado, setBaixado] = useState(false)
+  const autoBaixadoRef = useRef(false)
 
   // desativar
   const [senhaAtual, setSenhaAtual] = useState("")
@@ -86,6 +101,31 @@ export default function MfaSection() {
     setCopiado(true)
     setTimeout(() => setCopiado(false), 2000)
   }
+
+  const baixarBackup = useCallback((codes: string[]) => {
+    const blob = new Blob([montarArquivoBackup(codes)], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "pontes-codigos-recuperacao.txt"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setBaixado(true)
+    setTimeout(() => setBaixado(false), 2000)
+  }, [])
+
+  // Baixa automaticamente ao entrar na fase de backup (garante que a pessoa tem uma cópia
+  // mesmo se ignorar os botões). Best-effort — o botão manual continua disponível. Ref evita
+  // download duplicado em re-render / StrictMode.
+  useEffect(() => {
+    if (fase === "backup" && backupCodes.length > 0 && !autoBaixadoRef.current) {
+      autoBaixadoRef.current = true
+      baixarBackup(backupCodes)
+    }
+    if (fase !== "backup") autoBaixadoRef.current = false
+  }, [fase, backupCodes, baixarBackup])
 
   return (
     <section className={styles.section}>
@@ -160,7 +200,15 @@ export default function MfaSection() {
             <div className={styles.backupGrid}>
               {backupCodes.map((c) => <code key={c} className={styles.backupCode}>{c}</code>)}
             </div>
+            <p className={styles.backupNote}>
+              <Download size={14} strokeWidth={2.5} aria-hidden="true" />
+              Já salvamos um arquivo <code>pontes-codigos-recuperacao.txt</code> no seu dispositivo.
+              Se não achou, baixe de novo abaixo.
+            </p>
             <div className={styles.actions}>
+              <PontesButton variant="outline" size="md" onClick={() => baixarBackup(backupCodes)} iconStart={baixado ? <Check size={16} /> : <Download size={16} />}>
+                {baixado ? "Baixado" : "Baixar .txt"}
+              </PontesButton>
               <PontesButton variant="outline" size="md" onClick={copiarBackup} iconStart={copiado ? <Check size={16} /> : <Copy size={16} />}>
                 {copiado ? "Copiado" : "Copiar códigos"}
               </PontesButton>

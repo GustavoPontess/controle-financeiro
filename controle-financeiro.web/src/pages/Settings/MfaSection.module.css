@@ -29,6 +29,8 @@
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .backupHead { display: flex; gap: 12px; align-items: flex-start; }
+.backupNote { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--pontes-text-muted); margin: 0; }
+.backupNote code { font-family: ui-monospace, monospace; font-size: 11px; color: var(--pontes-text); background: var(--pontes-bg); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--pontes-border); }
 .backupGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .backupCode { font-family: ui-monospace, monospace; font-size: 15px; letter-spacing: 0.1em; text-align: center; color: var(--pontes-text); background: var(--pontes-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--pontes-border); }
 
