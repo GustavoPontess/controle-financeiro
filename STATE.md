@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-16
+last_reviewed: 2026-09-17
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 558/558, front 356/356. TUDO MERGEADO na `main` (`dcaff66`): empréstimos (#236), P1 auditoria server-side/admin (#237), P1 multi-conta + revogação instantânea (#238), P1 testes HTTP de integração (#239). Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated). Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 558/558, front 363/363. TUDO MERGEADO na `main` (`42d45d5`): empréstimos (#236), P1 auditoria server-side/admin (#237), P1 multi-conta + revogação instantânea (#238), P1 testes HTTP de integração (#239), doc ponto verde (#240), P2 MFA baixar backup codes em `.txt` (#241). Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated). Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -14,6 +14,15 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-09-17 — git limpo + P2 MFA download · verde: back 558/558, front 363/363 · main `42d45d5`
+
+Sessão curta de higiene + 1 quick-win.
+
+1. **Git arrumado:** commit do STATE que estava preso local (main protegida) virou PR **#240** e mergeou. Branch órfã `feature/emprestimo-compartilhado` deletada (remota+local) após confirmar que o conteúdo já estava na main (labs superados pelo #236; deploy Fly.io abandonado → Hostinger; /privacidade + Hangfire + Dockerfiles conferidos na main). 3 branches merjadas (#237/238/239) já estavam deletadas no remoto — só refs stale, limpos por prune. Estado: só `main`, working tree clean.
+2. **P2 MFA baixar backup codes** (#241) — pedido do Gustavo. Ao ativar o MFA, os backup codes agora são **salvos automaticamente** num `.txt` (`pontes-codigos-recuperacao.txt`, Blob + `<a download>`) + botão "Baixar .txt" + nota; mantém "Copiar códigos". `ref` evita download duplicado. Front-only (`MfaSection`). Novo `MfaSection.test.tsx` (4). CI verde (Backend/Frontend/E2E).
+
+---
 
 ### 📌 Sessão 2026-09-15/16 — TUDO MERGEADO na `main` (`dcaff66`) · verde: back 558/558, front 356/356
 
@@ -32,8 +41,6 @@ Todas as frentes viraram PR mergeado (não há mais branch solta, exceto a órf�
 **Próxima ação (P1 restantes):**
 - **Conferência de caixa** (saldo declarado × calculado; tem spec em `docs/features/conferencia-caixa/spec.md`) — **próximo recomendado**.
 - **.NET 8→10** (deadline suporte 10/11/2026).
-- Quick-win pedido pelo Gustavo: **MFA baixar códigos de backup** em `.txt` (P2, só front, `MfaSection`).
-- Limpeza: branch órfã `feature/emprestimo-compartilhado`.
 
 **Ambiente:** API :5293 **parada**; Postgres no ar; front preview pode estar no ar. Migrations aplicadas no dev DB (incl. `AddSessaoTrackingToRefreshToken`).
 
