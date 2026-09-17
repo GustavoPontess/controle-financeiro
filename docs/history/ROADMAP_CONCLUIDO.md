@@ -69,6 +69,7 @@ Mantidos com o texto original. Agrupados pelas seções de origem.
 ## Hardening de auth 2026-08-23 (prep beta)
 
 - **MFA opcional (opt-in)** — TOTP RFC 6238 (Otp.NET), secret cifrado (AES-256-GCM, chave `MFA_ENCRYPTION_KEY`), 10 backup codes, login 2-passos, UI ativar/desativar em `/settings` com QR. Migration `AddMfaTotp`. `docs/SEGURANCA_BEST_PRACTICES.md` §8. Back 446/446, front 341/341.
+- **MFA — baixar backup codes em `.txt` (2026-09-17, PR #241)** — na tela de ativação, os backup codes agora são salvos automaticamente num arquivo `pontes-codigos-recuperacao.txt` (download via Blob + `<a download>`) ao aparecerem, mais botão "Baixar .txt" pra baixar de novo, além do "Copiar códigos" que já existia. Garante cópia mesmo se a pessoa fechar a tela sem copiar (os códigos aparecem uma vez só). Front-only (`MfaSection`); `ref` evita download duplicado em StrictMode/re-render. Novo `MfaSection.test.tsx` (4). Front 363/363.
 - **Pepper de senha (NIST SHOULD)** — `PASSWORD_PEPPER` no Argon2id, separado do banco, rehash transparente. `PasswordHasher.cs`.
 - **Remover regra de composição de senha** — NIST SHALL NOT; agora só tamanho 15+ + blocklist. Back e front.
 - **verificar-login isento de CSRF** — passo 2 do login dava 403; corrigido no `CsrfValidationMiddleware` (público + challenge de uso único + TTL + rate-limit).
