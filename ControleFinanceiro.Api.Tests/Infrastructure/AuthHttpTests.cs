@@ -162,6 +162,26 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task Importacao_preview_rotaVersionada_existe_e_exigeAutenticacao()
+    {
+        // Regressão do bug em que [ApiController]/[Route]/[Authorize] estavam na classe do form
+        // (PreviewUploadForm) e NÃO no ImportacaoController: a rota resolvia em "/preview" e o
+        // endpoint ficava sem [Authorize]. Agora os atributos estão no controller → a rota é
+        // "/api/v1/importacao/preview" (front bate com isso) e o [Authorize] gateia.
+        SeedUsuario("import-http@test.com", "SenhaForte!2026");
+        var (client, csrf) = await LoginClientAsync("import-http@test.com", "SenhaForte!2026");
+
+        // POST autenticado (CSRF ok) sem multipart → chega no controller e cai em 400/415
+        // (model/content-type). Não pode ser 404 (rota certa) nem 401 (logado passou).
+        var resp = await client.SendAsync(Post("/api/v1/importacao/preview", csrf));
+        Assert.NotEqual(HttpStatusCode.NotFound, resp.StatusCode);
+        Assert.NotEqual(HttpStatusCode.Unauthorized, resp.StatusCode);
+        Assert.True(
+            resp.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnsupportedMediaType,
+            $"esperado 400/415 (chegou no controller), veio {(int)resp.StatusCode}");
+    }
+
+    [Fact]
     public async Task Login_valido_setaCookies_e_Me_retornaOUsuario()
     {
         SeedUsuario("http-ok@test.com", "SenhaForte!2026");

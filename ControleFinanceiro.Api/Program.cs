@@ -346,12 +346,12 @@ builder.Services.AddApiVersioning(options =>
 // Swagger/OpenAPI Configuration with JWT Support + Versioning
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "Controle Financeiro API",
         Version = "v1",
         Description = "API de gerenciamento financeiro pessoal — v1.",
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        Contact = new Microsoft.OpenApi.OpenApiContact
         {
             Name = "Gustavo Pontes",
             Email = "gut.n.pontes@gmail.com"
@@ -359,26 +359,21 @@ builder.Services.AddSwaggerGen(options =>
     });
 
     // Add JWT Bearer authentication to Swagger
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
     {
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http,
         Scheme = "Bearer",
         BearerFormat = "JWT",
         Description = "Enter your JWT token in the format: Bearer {token}"
     });
 
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    // Microsoft.OpenApi 2.x + Swashbuckle 10.x: referência via OpenApiSecuritySchemeReference,
+    // e AddSecurityRequirement agora recebe uma factory Func<OpenApiDocument, ...>.
+    options.AddSecurityRequirement(_ => new Microsoft.OpenApi.OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+            new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer"),
+            new List<string>()
         }
     });
 
@@ -419,7 +414,7 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownNetworks.Clear();
+    options.KnownIPNetworks.Clear(); // .NET 10: KnownNetworks obsoleto → KnownIPNetworks (mesmo backing, comportamento idêntico)
     options.KnownProxies.Clear();
 });
 

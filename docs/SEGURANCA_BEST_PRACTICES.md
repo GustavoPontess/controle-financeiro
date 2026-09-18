@@ -6,7 +6,7 @@ status: ATIVO
 
 # Segurança — best practices (pesquisa OWASP/NIST)
 
-Spec de segurança nível fintech para o nosso stack (.NET 8 + EF Core + Postgres + React/JWT), levantado por deep-research com **verificação adversarial** (3 votos) contra **fontes primárias**. Cada item marca se foi **✅ verificado** (sobreviveu à verificação com fonte primária) ou **🔶 aberto** (pesquisado mas a verificação foi cortada por rate-limit do servidor — não refutado, só não confirmado; re-pesquisar antes de decidir).
+Spec de segurança nível fintech para o nosso stack (.NET 10 + EF Core + Postgres + React/JWT), levantado por deep-research com **verificação adversarial** (3 votos) contra **fontes primárias**. Cada item marca se foi **✅ verificado** (sobreviveu à verificação com fonte primária) ou **🔶 aberto** (pesquisado mas a verificação foi cortada por rate-limit do servidor — não refutado, só não confirmado; re-pesquisar antes de decidir).
 
 > Cross-map com a auditoria do código (`AUDITORIA_CODIGO_HERDADO.md`) e plano priorizado no fim.
 
@@ -94,7 +94,7 @@ reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
 
 ## 6. Hardening de API ✅
 
-- **Validação de JWT completa** (não só decode): assinatura, **`alg≠none`**, `exp`, `issuer`, `audience` via `TokenValidationParameters` (todos default `true` no .NET 8). _Fonte: OWASP API2:2023 + RFC 8725 + MS Learn._
+- **Validação de JWT completa** (não só decode): assinatura, **`alg≠none`**, `exp`, `issuer`, `audience` via `TokenValidationParameters` (todos default `true` no .NET 10). _Fonte: OWASP API2:2023 + RFC 8725 + MS Learn._
 - **Re-autenticação em operações sensíveis** (trocar e-mail/senha/2FA) — permitir sem confirmar senha = Broken Auth (API2:2023). _Fonte: OWASP API2:2023._
 - **MFA onde possível** (genérico OWASP — o *como* no .NET ficou 🔶 aberto). _Fonte: OWASP API2:2023._
 - **CORS restritivo:** `WithOrigins(...)` por ambiente, **nunca `AllowAnyOrigin`** (e nunca AllowAnyOrigin+AllowCredentials). _Fonte: MS Learn ASP.NET Core CORS._

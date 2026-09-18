@@ -2,7 +2,7 @@
 
 ## Sobre
 
-API RESTful desenvolvida em .NET 8 para gerenciar gastos residenciais.
+API RESTful desenvolvida em .NET 10 para gerenciar gastos residenciais.
 
 Funcionalidades:
 - Cadastro de pessoas
@@ -12,7 +12,7 @@ Funcionalidades:
 
 ## Tecnologias
 
-- .NET 8
+- .NET 10
 - ASP.NET Core Web API
 - Entity Framework Core
 - SQLite

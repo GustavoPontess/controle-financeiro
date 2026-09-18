@@ -7,15 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ControleFinanceiro.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-[Authorize]
 public class PreviewUploadForm
 {
     public IFormFile Arquivo { get; set; } = null!;
     public Guid ContaId { get; set; }
 }
 
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
 public class ImportacaoController : ControllerBase
 {
     private const long TamanhoMaximoBytes = 2 * 1024 * 1024; // 2 MB

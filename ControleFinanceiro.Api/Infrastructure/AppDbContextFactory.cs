@@ -9,6 +9,15 @@ namespace ControleFinanceiro.Api.Infrastructure;
 /// </summary>
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
+    // MESMO switch do runtime (Program.cs) — mapeia DateTime → 'timestamp without time zone'.
+    // O `dotnet ef` NÃO passa pelo Program.cs, só por esta factory; sem o switch aqui, o
+    // model scaffolda 'timestamp with time zone' e diverge do schema real → migration fantasma
+    // que reescreveria toda coluna de data (perigoso). Setar antes de qualquer uso do Npgsql.
+    static AppDbContextFactory()
+    {
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    }
+
     public AppDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
