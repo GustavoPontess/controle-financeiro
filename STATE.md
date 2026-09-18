@@ -15,6 +15,20 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-17b — Upgrade .NET 8 → 10 (branch `feature/upgrade-net10`, EM PR) · verde local: back 559/559, 0 warnings
+
+Migração de plataforma, precedida de **auditoria de risco multi-agente** (5 frentes). Detalhe em `docs/history/ROADMAP_CONCLUIDO.md`.
+
+1. **.NET 8 → 10** — TFM API+Tests `net10.0`; pacotes Microsoft →10.0.x; **Npgsql EF →10.0.3** (evita bug #3699 do 10.0.0); Asp.Versioning →10.2.1; Serilog.AspNetCore →10; Hangfire →1.8.24; HealthChecks.Hangfire →9; Test.Sdk →18.10.0 + xunit →2.9.3 + runner →4.0.0. **Dockerfile** (`sdk`/`aspnet` → `10.0-alpine`) + **CI** (`dotnet-version` →`10.0.x`, label "Backend (.NET 10)").
+2. **Swagger** — Swashbuckle →10.2.3 (net10-nativo); reescrito `AddSecurityDefinition`/`AddSecurityRequirement` pro Microsoft.OpenApi 2.x (namespace achatado + `OpenApiSecuritySchemeReference` + factory). **Fechada vuln HIGH** `Microsoft.OpenApi` 2.0.0 (removido o `AspNetCore.OpenApi` dead-ref; 10.2.3 traz OpenApi 2.7.5).
+3. **Gate de migração:** `AppDbContextFactory` não setava `EnableLegacyTimestampBehavior` no design-time → EF10 gerava migration fantasma reescrevendo TODA coluna de data (perigoso). Fix: switch no static ctor → `has-pending-model-changes` **vazio**, zero mudança de schema.
+4. **`CustomWebApplicationFactory`** — fix EF Core 9/10 ("Only a single database provider"): remove `DbContextOptions<>` **e** `IDbContextOptionsConfiguration<AppDbContext>` antes do InMemory.
+5. **Bug pré-existente corrigido (revelado pelo analyzer AV0014):** `ImportacaoController` tinha `[ApiController]`/`[Route]`/`[Authorize]` na classe do form → rota resolvia em `/preview` (importação quebrada) e sem `[Authorize]`. Atributos movidos pro controller + teste de regressão. Removido código morto `DatabaseProvider.cs`.
+
+**⚠️ Verificação pendente:** smoke em **Postgres real** (MigrateAsync/Npgsql 10.0.3/timestamp) NÃO rodou local (Docker fora do ar) → **cai no job E2E do CI** (Docker+Postgres). Acompanhar o CI do PR.
+
+---
+
 ### 📌 Sessão 2026-09-17 — git limpo + P2 MFA download · verde: back 558/558, front 363/363 · main `42d45d5`
 
 Sessão curta de higiene + 1 quick-win.
@@ -40,7 +54,6 @@ Todas as frentes viraram PR mergeado (não há mais branch solta, exceto a órf�
 
 **Próxima ação (P1 restantes):**
 - **Conferência de caixa** (saldo declarado × calculado; tem spec em `docs/features/conferencia-caixa/spec.md`) — **próximo recomendado**.
-- **.NET 8→10** (deadline suporte 10/11/2026).
 
 **Ambiente:** API :5293 **parada**; Postgres no ar; front preview pode estar no ar. Migrations aplicadas no dev DB (incl. `AddSessaoTrackingToRefreshToken`).
 

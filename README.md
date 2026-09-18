@@ -19,14 +19,14 @@ O projeto está dividido em dois repositórios independentes:
 
 ```
 controle-financeiro/
-├── ControleFinanceiro.Api/     # Backend (.NET 8)
+├── ControleFinanceiro.Api/     # Backend (.NET 10)
 └── controle-financeiro.web/    # Frontend (React + TypeScript)
 ```
 
 ## Tecnologias Utilizadas
 
 **Backend:**
-- .NET 8 Web API
+- .NET 10 Web API
 - Entity Framework Core
 - SQLite
 - Swagger
@@ -41,7 +41,7 @@ controle-financeiro/
 ## Como Executar
 
 ### Pré-requisitos
-- .NET 8 SDK
+- .NET 10 SDK
 - Node.js 18+
 
 ### Backend

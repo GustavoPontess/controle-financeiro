@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ControleFinanceiro.Api.Tests.Infrastructure;
 
@@ -31,9 +32,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
-            // Troca o AppDbContext (Npgsql) por InMemory.
-            var dbCtxOptions = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-            if (dbCtxOptions != null) services.Remove(dbCtxOptions);
+            // Troca o AppDbContext (Npgsql) por InMemory. EF Core 9/10: o AddDbContext do app
+            // registra a config do provider via IDbContextOptionsConfiguration<AppDbContext> além do
+            // DbContextOptions<AppDbContext>. Remover só o segundo deixaria o Npgsql ativo e cairia em
+            // "Only a single database provider can be registered". Remove AMBOS (match por FullName pra
+            // não depender do nome exato do tipo genérico) antes de re-adicionar como InMemory.
+            var efDescriptors = services.Where(d =>
+                d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+                (d.ServiceType.FullName?.Contains("IDbContextOptionsConfiguration") == true &&
+                 d.ServiceType.GenericTypeArguments.Contains(typeof(AppDbContext)))).ToList();
+            foreach (var d in efDescriptors) services.Remove(d);
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_dbName));
 
             // Sem Hangfire em Testing → o dispatcher de reset vira no-op (não enfileira job).

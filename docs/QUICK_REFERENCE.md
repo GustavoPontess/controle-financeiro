@@ -6,7 +6,7 @@
 
 ## 🏗️ Stack
 
-- **Backend:** .NET 8, C#, EF Core, **Postgres único** (SQLite removido no #114; exige Docker/Postgres no ar), JWT + refresh token
+- **Backend:** .NET 10, C#, EF Core, **Postgres único** (SQLite removido no #114; exige Docker/Postgres no ar), JWT + refresh token
 - **Frontend:** React 19, TypeScript, Vite, **biblioteca Pontes** (`src/components/pontes/`) — **zero MUI** (purgado PR #166), CSS Modules + `var(--pontes-*)`
 - **DB:** Postgres via `docker compose up -d postgres` (dev e prod). Provider escolhido em runtime por `DATABASE_URL`
 - **Auth:** JWT Bearer (HS256, 60min) + refresh token (rotação, 7 dias) + reset password (1h)

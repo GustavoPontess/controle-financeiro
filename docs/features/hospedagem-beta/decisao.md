@@ -33,7 +33,7 @@ container (Docker nos dois lados, nginx no front, tudo configurável por env var
 
 ## Requisitos técnicos (do app, já conhecidos)
 
-- **Backend .NET 8 sempre ligado** — sem cold start (pedido explícito do Gustavo: "não quero acordar
+- **Backend .NET 10 sempre ligado** — sem cold start (pedido explícito do Gustavo: "não quero acordar
   servidor toda hora"). O Hangfire (jobs de fatura/recorrente) exige o processo vivo continuamente,
   não serverless que dorme.
 - **Postgres persistente de verdade** — não pode resetar/expirar (é dado financeiro dos testadores).
@@ -88,7 +88,7 @@ Além da infra, o que precisa estar pronto ANTES de abrir o beta:
 
 ### Tabela completa — custo mensal pra hospedar o Pontes inteiro (região BR)
 _(backend .NET sempre ligado + Postgres + frontend. Câmbio ~R$5,40/US$, aproximado. Fonte nas
-referências. .NET 8 + Hangfire + Postgres juntos pedem ~2GB RAM confortável; 1GB aperta.)_
+referências. .NET 10 + Hangfire + Postgres juntos pedem ~2GB RAM confortável; 1GB aperta.)_
 
 **Grupo 1 — VPS (você administra tudo junto num servidor só):**
 | Provedor (região) | Plano | Preço/mês | Backup |

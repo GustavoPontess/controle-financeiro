@@ -13,7 +13,7 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
-- **Backend:** .NET 8 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
+- **Backend:** .NET 10 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
 - **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
 - **Banco de dados:** 18 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
