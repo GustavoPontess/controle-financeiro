@@ -438,7 +438,6 @@ export default function RecorrentesPage() {
               icon={<Repeat size={40} />}
               title="Nenhuma conta fixa"
               description="Cadastre aluguel, escola, plano de saúde, assinaturas ou qualquer pagamento recorrente."
-              actions={<PontesButton variant="primary" size="sm" onClick={openCriar}>Nova Conta Fixa</PontesButton>}
             />
           </div>
         ) : (

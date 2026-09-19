@@ -146,16 +146,6 @@ export default function AccountsPage() {
           icon={<Landmark size={28} />}
           title="Nenhuma conta bancária cadastrada"
           description="Crie uma conta corrente, poupança ou investimento para organizar suas finanças."
-          actions={
-            <PontesButton
-              variant="primary"
-              size="sm"
-              iconStart={<Plus size={15} />}
-              onClick={() => { setEditingConta(null); setOpenDialog(true) }}
-            >
-              Nova Conta
-            </PontesButton>
-          }
         />
       ) : (
         <div className={styles.grid}>

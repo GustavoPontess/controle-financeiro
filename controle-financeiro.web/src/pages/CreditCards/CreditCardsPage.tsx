@@ -685,7 +685,6 @@ export default function CreditCardsPage() {
           icon={<CreditCard size={28} />}
           title="Nenhum cartão cadastrado"
           description="Adicione seus cartões de crédito, débito ou pré-pagos."
-          actions={<PontesButton iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>Novo Cartão</PontesButton>}
         />
       ) : faturasCartaoId && cartaoAtivo ? (
         // Modo foco: só o cartão selecionado, com a fatura logo abaixo.
