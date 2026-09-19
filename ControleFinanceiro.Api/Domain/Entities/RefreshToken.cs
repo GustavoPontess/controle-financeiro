@@ -33,6 +33,12 @@ public class RefreshToken
     /// <summary>IP de criação da sessão (exibição na UI). Mesmo dado legal do RegistroAcesso.</summary>
     public string? IpCriacao { get; set; }
 
+    /// <summary>"Manter-me conectado": true = a sessão nasceu com o opt-in marcado → os cookies são
+    /// PERSISTENTES (sobrevivem ao fechar o navegador). false (padrão) = cookies de SESSÃO (morrem ao
+    /// fechar — OWASP default, seguro em PC compartilhado). Herdado na rotação (refresh/switch) pra o
+    /// servidor re-emitir o cookie com a mesma natureza a cada renovação.</summary>
+    public bool LembrarSessao { get; set; }
+
     // Nav
     public Usuario Usuario { get; set; } = null!;
 }

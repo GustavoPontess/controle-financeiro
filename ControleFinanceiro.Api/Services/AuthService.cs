@@ -67,7 +67,7 @@ public class AuthService
     // guarda-se só o hash (igual ao reset token) — vazamento de DB não dá refresh tokens
     // reutilizáveis. `familiaId` null = novo login (família nova); preenchido = rotação (herda a
     // família do antecessor, pra reuse-detection). Captura dispositivo/IP só pra exibir na UI de sessões.
-    private Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId, Guid? familiaId = null)
+    private Task<(RefreshToken Entity, string TokenBruto)> CriarRefreshTokenAsync(Guid usuarioId, Guid? familiaId = null, bool lembrarSessao = false)
     {
         var tokenBruto = GerarTokenOpaco();
         var (dispositivo, ip) = CapturarDispositivo();
@@ -82,6 +82,7 @@ public class AuthService
             FamiliaId = familiaId ?? Guid.NewGuid(),
             DispositivoInfo = dispositivo,
             IpCriacao = ip,
+            LembrarSessao = lembrarSessao,
         };
         _context.RefreshTokens.Add(rt);
         // Sem I/O aqui (o SaveChanges é do caller) — não precisa de async/await.
@@ -245,7 +246,7 @@ public class AuthService
                  + "Você receberá acesso assim que for liberada.",
     };
 
-    public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null)
+    public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null, bool manterConectado = false)
     {
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
@@ -351,7 +352,7 @@ public class AuthService
             usuario.UltimoAcessoEm = DateTime.UtcNow;
         }
 
-        var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
+        var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id, lembrarSessao: manterConectado);
         await _context.SaveChangesAsync();
 
         var token = _tokenProvider.GenerateToken(usuario.Id, usuario.Email, usuario.Nome, rt.FamiliaId);
@@ -367,6 +368,7 @@ public class AuthService
                 Token = token,
                 RefreshToken = refreshBruto,
                 RefreshTokenExpiresAt = rt.ExpiresAt,
+                LembrarSessao = rt.LembrarSessao,
             },
         };
     }
@@ -377,7 +379,7 @@ public class AuthService
     /// único em caso de SUCESSO (deletado); código errado não consome o challenge, permite
     /// tentar de novo dentro do TTL (rate-limit por IP no endpoint cobre brute-force do código).
     /// </summary>
-    public async Task<AuthResponseDto> VerificarMfaLoginAsync(string challengeTokenBruto, string codigo)
+    public async Task<AuthResponseDto> VerificarMfaLoginAsync(string challengeTokenBruto, string codigo, bool manterConectado = false)
     {
         if (string.IsNullOrWhiteSpace(challengeTokenBruto) || string.IsNullOrWhiteSpace(codigo))
             throw new ArgumentException("Challenge e código são obrigatórios.");
@@ -399,7 +401,7 @@ public class AuthService
         // 2º fator confirmado = login completo → marca o último acesso (métrica do admin).
         challenge.Usuario.UltimoAcessoEm = DateTime.UtcNow;
 
-        var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id);
+        var (rt, refreshBruto) = await CriarRefreshTokenAsync(challenge.Usuario.Id, lembrarSessao: manterConectado);
         await _context.SaveChangesAsync();
 
         var token = _tokenProvider.GenerateToken(challenge.Usuario.Id, challenge.Usuario.Email, challenge.Usuario.Nome, rt.FamiliaId);
@@ -412,6 +414,7 @@ public class AuthService
             Token = token,
             RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = rt.ExpiresAt,
+            LembrarSessao = rt.LembrarSessao,
         };
     }
 
@@ -454,7 +457,7 @@ public class AuthService
         rt.Revogado = true;
         rt.UltimoUsoEm = DateTime.UtcNow;
 
-        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId);
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId, rt.LembrarSessao);
         rt.SubstituidoPorId = novoRt.Id;
         await _context.SaveChangesAsync();
 
@@ -468,6 +471,7 @@ public class AuthService
             Token = jwtToken,
             RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = novoRt.ExpiresAt,
+            LembrarSessao = novoRt.LembrarSessao,
         };
     }
 
@@ -511,7 +515,7 @@ public class AuthService
         // Rotação na MESMA família (reuse-detection).
         rt.Revogado = true;
         rt.UltimoUsoEm = DateTime.UtcNow;
-        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId);
+        var (novoRt, refreshBruto) = await CriarRefreshTokenAsync(rt.UsuarioId, rt.FamiliaId, rt.LembrarSessao);
         rt.SubstituidoPorId = novoRt.Id;
         await _context.SaveChangesAsync();
 
@@ -525,6 +529,7 @@ public class AuthService
             Token = jwtToken,
             RefreshToken = refreshBruto,
             RefreshTokenExpiresAt = novoRt.ExpiresAt,
+            LembrarSessao = novoRt.LembrarSessao,
         };
     }
 

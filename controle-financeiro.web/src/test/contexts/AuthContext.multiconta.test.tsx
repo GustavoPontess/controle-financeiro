@@ -135,7 +135,7 @@ describe("AuthContext multi-conta", () => {
 
     await act(async () => { screen.getByText("login").click() })
 
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith("/auth/login", { email: C.email, password: "SenhaForte!2026" }))
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith("/auth/login", { email: C.email, password: "SenhaForte!2026", manterConectado: false }))
     await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("Caio"))
     // login frio: NÃO herda A/B — a lista fica só com a conta recém-logada
     expect(screen.getByTestId("saved").textContent).toBe("c")

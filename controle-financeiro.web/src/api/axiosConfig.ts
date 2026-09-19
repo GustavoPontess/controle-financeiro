@@ -82,12 +82,17 @@ api.interceptors.response.use(
     const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined
     const url = typeof original?.url === "string" ? original.url : ""
     const isAuthEndpoint = url.includes("/auth/")
+    // /auth/me é o PROBE de sessão no reabrir o site: precisa poder disparar o silent refresh, senão
+    // depois dos 15min do jwt o usuário cai no login mesmo com refresh de 7d vivo (o "manter conectado"
+    // não funcionava no reabrir). Os demais /auth/* seguem bloqueados (recursão do /refresh, ou 401 do
+    // login = senha errada, não sessão expirada).
+    const podeSilentRefresh = !isAuthEndpoint || url.includes("/auth/me")
 
     // Silent refresh: o access token (jwt) expira em 1h, o refresh vive 7d. Num 401, tenta UMA vez
     // renovar via /auth/refresh (rotaciona os cookies httpOnly) e refaz a request original — sem
     // isso, o refresh de 7d era inútil e o usuário caía no login após 1h. Não tenta pra endpoints de
     // auth (evita recursão) nem repete (_retry).
-    if (status === 401 && original && !original._retry && !isAuthEndpoint) {
+    if (status === 401 && original && !original._retry && podeSilentRefresh) {
       original._retry = true
       try {
         await api.post("/auth/refresh")

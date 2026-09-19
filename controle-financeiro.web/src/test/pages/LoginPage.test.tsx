@@ -17,6 +17,18 @@ vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ login: mockLogin, verificarMfaLogin: mockVerificarMfaLogin }),
 }))
 
+const mockRosterListar = vi.fn().mockResolvedValue([])
+const mockRosterObterEmail = vi.fn()
+const mockRosterRemover = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/services/rosterService', () => ({
+  default: {
+    listar: () => mockRosterListar(),
+    obterEmail: (id: string) => mockRosterObterEmail(id),
+    remover: (id: string) => mockRosterRemover(id),
+    esquecerTodas: vi.fn(),
+  },
+}))
+
 function renderLogin() {
   return render(
     <PontesThemeProvider>
@@ -30,6 +42,7 @@ function renderLogin() {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRosterListar.mockResolvedValue([]) // sem contas lembradas → mostra o form direto
   })
 
   it('renderiza sem crash', () => {
@@ -96,8 +109,8 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/código/i), { target: { value: '123456' } })
     fireEvent.submit(screen.getByRole('button', { name: /verificar/i }).closest('form')!)
 
-    // Checkbox "confiar" desmarcado por padrão (opt-in) → 3º arg false.
-    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-123', '123456', false))
+    // Checkboxes "confiar" e "manter conectado" desmarcados por padrão (opt-in) → 3º/4º arg false.
+    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-123', '123456', false, false))
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
   })
 
@@ -117,7 +130,37 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /confiar neste dispositivo/i }))
     fireEvent.submit(screen.getByRole('button', { name: /verificar/i }).closest('form')!)
 
-    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-xyz', '123456', true))
+    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-xyz', '123456', true, false))
+  })
+
+  it('marca "manter-me conectado" e envia o opt-in (3º arg true) ao logar', async () => {
+    mockLogin.mockResolvedValueOnce({ mfaRequerido: false })
+    renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
+    fireEvent.click(screen.getByRole('button', { name: /manter-me conectado/i }))
+    fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
+
+    await waitFor(() => expect(mockLogin).toHaveBeenCalledWith('user@test.com', 'senha123', true))
+  })
+
+  it('mostra o chooser quando há contas lembradas e selecionar pré-preenche o e-mail', async () => {
+    mockRosterListar.mockResolvedValueOnce([
+      { usuarioId: 'u1', nome: 'Gustavo', emailMascarado: 'gu•••@gmail.com' },
+    ])
+    mockRosterObterEmail.mockResolvedValueOnce('gustavo@gmail.com')
+    renderLogin()
+
+    // Chooser aparece com nome + e-mail mascarado (não o inteiro).
+    await waitFor(() => expect(screen.getByText('Gustavo')).toBeInTheDocument())
+    expect(screen.getByText('gu•••@gmail.com')).toBeInTheDocument()
+    expect(screen.queryByText('gustavo@gmail.com')).not.toBeInTheDocument()
+
+    // Selecionar → revela o e-mail real e vai pro form (só falta a senha).
+    fireEvent.click(screen.getByText('Gustavo'))
+    await waitFor(() => expect(mockRosterObterEmail).toHaveBeenCalledWith('u1'))
+    await waitFor(() => expect(screen.getByLabelText(/e-mail/i)).toHaveValue('gustavo@gmail.com'))
   })
 
   it('exibe mensagem de erro quando login falha', async () => {
