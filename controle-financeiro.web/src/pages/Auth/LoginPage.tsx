@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo } from '@/components/pontes'
+import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import contaService from '@/services/minhaContaService'
 import styles from './LoginPage.module.css'
@@ -44,6 +44,8 @@ export default function LoginPage() {
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
   const [mfaCodigo, setMfaCodigo] = useState('')
   const [mfaErro, setMfaErro] = useState<string | undefined>()
+  // Opt-in "confiar neste dispositivo" — pula o 2º fator nos próximos logins deste navegador.
+  const [confiarDispositivo, setConfiarDispositivo] = useState(false)
 
   // Conta na carência de exclusão — login retornou que a conta está marcada; oferece reativar.
   const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
@@ -104,7 +106,7 @@ export default function LoginPage() {
     if (!mfaCodigo.trim()) { setMfaErro('Informe o código'); return }
     setIsLoading(true)
     try {
-      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim())
+      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim(), confiarDispositivo)
       navigate('/')
     } catch (err) {
       setMfaErro(err instanceof Error ? err.message : 'Código inválido')
@@ -239,12 +241,18 @@ export default function LoginPage() {
                 />
               </PontesField>
 
+              <PontesCheckbox
+                checked={confiarDispositivo}
+                onChange={setConfiarDispositivo}
+                label="Confiar neste dispositivo por 30 dias"
+              />
+
               <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
                 Verificar
               </PontesButton>
               <PontesButton
                 type="button" variant="ghost" size="md" fullWidth
-                onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined) }}
+                onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined); setConfiarDispositivo(false) }}
               >
                 Voltar
               </PontesButton>

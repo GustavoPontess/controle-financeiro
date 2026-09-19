@@ -43,6 +43,12 @@ public class MfaVerificarLoginDto
     [Required]
     [MaxLength(10)]
     public string Codigo { get; set; } = string.Empty;
+
+    /// <summary>Opt-in "confiar neste dispositivo por X dias": se true, após validar o código o
+    /// servidor cria um <see cref="Domain.Entities.TrustedDevice"/> e seta o cookie httpOnly `td`,
+    /// e os próximos logins NESTE navegador (só desta conta) pulam o 2º fator até expirar. Default
+    /// false (opt-in explícito, LGPD).</summary>
+    public bool ConfiarDispositivo { get; set; }
 }
 
 public class MfaStatusDto

@@ -72,6 +72,10 @@ public class AuthController : ControllerBase
     private const string AuthPath = "/api/v1/auth";
     private const int SessionDays = 7;
 
+    // Trusted-device (MFA "lembrar este dispositivo"): cookie opaco httpOnly, escopo do auth.
+    private const string TrustedDeviceCookie = "td";
+    private const int TrustedDeviceDias = 30; // alinhado a AuthService.TrustedDeviceDias
+
     // Teto de contas conectadas simultaneamente no mesmo navegador (blast-radius: cada conta
     // parqueada é mais um refresh de 7d exposto se o device for comprometido). Re-login da MESMA
     // conta já parqueada não conta. Ver docs/features/auth/multi-conta.md.
@@ -127,6 +131,16 @@ public class AuthController : ControllerBase
             Expires = DateTimeOffset.UtcNow.AddDays(SessionDays),
         });
     }
+
+    // Cookie do device confiável (MFA): opaco, httpOnly, escopo do auth (só vai nos endpoints de
+    // auth = menor exposição). Vive ALÉM do logout de propósito — o device segue confiável pro
+    // próximo login (modelo Google/Microsoft); só some ao expirar ou ser revogado no servidor.
+    private void SetTrustedDeviceCookie(string token) =>
+        Response.Cookies.Append(TrustedDeviceCookie, token, new CookieOptions
+        {
+            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(TrustedDeviceDias),
+        });
 
     private void ParkRefreshCookie(Guid accountId, string refreshToken)
     {
@@ -226,7 +240,10 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var result = await _authService.LoginAsync(dto);
+        // Device confiável (opt-in): se o navegador tem o cookie `td` válido PRA ESTA conta, o
+        // LoginAsync pula o 2º fator e já devolve sessão (anti-cross-account é checado no service).
+        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var trustedDeviceToken);
+        var result = await _authService.LoginAsync(dto, trustedDeviceToken);
 
         if (result.MfaRequerido)
             return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
@@ -270,6 +287,14 @@ public class AuthController : ControllerBase
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
         await RegistrarAcessoAsync(result.UsuarioId, result.Email);
+
+        // Opt-in "confiar neste dispositivo": cria o device e seta o cookie `td` — próximos logins
+        // deste navegador (só desta conta) pulam o 2º fator até expirar.
+        if (dto.ConfiarDispositivo)
+        {
+            var trustedDeviceToken = await _authService.CriarTrustedDeviceAsync(result.UsuarioId);
+            SetTrustedDeviceCookie(trustedDeviceToken);
+        }
 
         return Ok(new AuthResponseDto
         {

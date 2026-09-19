@@ -17,7 +17,7 @@ namespace ControleFinanceiro.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1713,6 +1713,49 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Transferencias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TrustedDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DispositivoInfo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("IpCriacao")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Revogado")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UltimoUsoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId", "Revogado");
+
+                    b.ToTable("TrustedDevices");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2366,6 +2409,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("ContaDestino");
 
                     b.Navigation("ContaOrigem");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TrustedDevice", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Usuario", b =>

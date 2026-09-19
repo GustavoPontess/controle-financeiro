@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
     public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
 
     // ── Issue #10 Orçamento/Metas ──
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
@@ -290,6 +291,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MfaLoginChallenge>()
             .HasIndex(c => c.TokenHash)
             .IsUnique();
+
+        // TrustedDevice → Usuario (Cascade: devices confiáveis somem com o usuário; a purga LGPD
+        // também os remove explicitamente na marcação pra exclusão). Hash único; índice por
+        // (UsuarioId, Revogado) pra listar/revogar em massa. Campos de exibição limitados.
+        modelBuilder.Entity<TrustedDevice>()
+            .HasOne(d => d.Usuario)
+            .WithMany()
+            .HasForeignKey(d => d.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TrustedDevice>()
+            .HasIndex(d => d.TokenHash)
+            .IsUnique();
+        modelBuilder.Entity<TrustedDevice>()
+            .HasIndex(d => new { d.UsuarioId, d.Revogado });
+        modelBuilder.Entity<TrustedDevice>()
+            .Property(d => d.DispositivoInfo)
+            .HasMaxLength(256);
+        modelBuilder.Entity<TrustedDevice>()
+            .Property(d => d.IpCriacao)
+            .HasMaxLength(64);
 
         // ── Issue #10 Orçamento/Metas ──
 

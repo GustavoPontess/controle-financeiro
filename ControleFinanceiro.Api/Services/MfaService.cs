@@ -99,6 +99,12 @@ public class MfaService
         var backupCodes = await _context.MfaBackupCodes.Where(c => c.UsuarioId == usuarioId).ToListAsync();
         _context.MfaBackupCodes.RemoveRange(backupCodes);
 
+        // MFA desligado → dispositivos confiáveis não fazem mais sentido (o skip era do 2º fator):
+        // revoga todos, senão religar o MFA depois herdaria devices que pulariam o código.
+        var devices = await _context.TrustedDevices.Where(d => d.UsuarioId == usuarioId && !d.Revogado).ToListAsync();
+        foreach (var d in devices)
+            d.Revogado = true;
+
         await _context.SaveChangesAsync();
     }
 

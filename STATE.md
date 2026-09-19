@@ -15,6 +15,18 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-19 (cont.) — Testes de 5 services (#248, multi-agente) + trusted-device MFA (parte do login)
+
+1. **Fan-out multi-agente de testes (#248, MERGEADO)** — 6 `escritor-de-teste` em worktrees isoladas cobriram **5/6** services sem teste dedicado (`Fatura`/`Categoria`/`Banco`/`FinancialEventLog`/`FamiliaPermissoes`, +115 testes). O fan-out pescou **2 achados reais** (confirmados na fonte, catalogados no ROADMAP): 🔴 **P1** `ParcelaTransacaoService.PagarAntecipadoAsync` estoura 500 DEPOIS de debitar (ciclo de Include `Fatura→ParcelasTransacao` sob `AsNoTracking`); 🟡 **P2** `BancosController` sem `[Authorize]` na escrita. `ParcelaTransacaoService` (23 testes prontos) segurado pra entrar junto com o fix do bug (não cravar 500 como "esperado").
+2. **Trusted-device MFA — PARTE DO LOGIN (branch `feat/trusted-device-mfa`)** — spec `docs/features/auth/trusted-device.md`. Entidade `TrustedDevice` + migration `AddTrustedDevice` (aplicada no Postgres dev; migration só cria a tabela, sem phantom timestamptz) + cookie httpOnly `td` (30d) + **skip do 2º fator no login só pra a conta DONA do device** (anti-cross-account, fail-closed) + criação no verify quando o checkbox opt-in (desmarcado por padrão) é marcado + revogação em troca/reset de senha, desativar MFA e marcar conta pra exclusão. Nunca pula a senha. **Back 675/675, front 366/366**, builds ok.
+
+**Próxima ação:**
+- **Abrir PR do `feat/trusted-device-mfa`** e esperar CI.
+- **Trusted-device — tela "Dispositivos confiáveis"** (Configurações): listar + revogar 1 + esquecer todos (`GET/DELETE /auth/trusted-devices`, anti-IDOR). Par imediato da parte do login.
+- **Fix do P1 do pagar-antecipado** + entrar os 23 testes do `ParcelaTransacaoService`.
+
+---
+
 ### 📌 Sessão 2026-09-19 — Multi-conta: fecha vazamento em navegador compartilhado (PR #246) + roster de agentes
 
 1. **Fix do vazamento multi-conta (P0/P1) — PR #246** (branch `fix/multiconta-logout-vazamento`). Furo: sair/relogar como outra pessoa no mesmo navegador deixava as contas anteriores acessíveis. **Reproduzido e validado fechado ao vivo** (switch pra conta anterior: era 200, agora 401). Correções: `/auth/login` + `/auth/mfa/verificar-login` **sempre começam limpos** (revogam anteriores); novo **`POST /auth/add-account` `[Authorize]`** pro "adicionar conta"; **`logout()` async** com `await` no `/auth/logout-all` (revoga no servidor antes de limpar). Achado do **P1 pelo agente `auditor-seguranca`** (a heurística `IsAuthenticated` tinha brecha). Testes: `AuthHttpTests` 12/12 (+ regressão do P1), front multiconta 5/5, front 365/365, **back 562/562** (flakiness resolvida por um fork: `[Collection("PasswordHasherEnv")]`).
