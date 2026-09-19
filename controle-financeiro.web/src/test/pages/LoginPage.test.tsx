@@ -163,6 +163,22 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByLabelText(/e-mail/i)).toHaveValue('gustavo@gmail.com'))
   })
 
+  it('do form dá pra voltar pra lista de contas salvas sem sair da tela de login', async () => {
+    mockRosterListar.mockResolvedValueOnce([
+      { usuarioId: 'u1', nome: 'Gustavo', emailMascarado: 'gu•••@gmail.com' },
+    ])
+    renderLogin()
+    await waitFor(() => expect(screen.getByText('Gustavo')).toBeInTheDocument())
+
+    // Vai pro form ("entrar em outra conta")…
+    fireEvent.click(screen.getByRole('button', { name: /entrar em outra conta/i }))
+    await waitFor(() => expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument())
+
+    // …e consegue VOLTAR pra lista direto do form.
+    fireEvent.click(screen.getByRole('button', { name: /escolher uma conta salva/i }))
+    await waitFor(() => expect(screen.getByText('Gustavo')).toBeInTheDocument())
+  })
+
   it('exibe mensagem de erro quando login falha', async () => {
     mockLogin.mockRejectedValueOnce(new Error('Email ou senha inválidos'))
     renderLogin()
