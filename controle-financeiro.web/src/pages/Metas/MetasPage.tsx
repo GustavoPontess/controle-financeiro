@@ -250,11 +250,6 @@ export default function MetasPage() {
           icon={<Target size={40} />}
           title="Nenhuma meta ainda"
           description="Crie sua primeira meta financeira e acompanhe o progresso."
-          actions={
-            <PontesButton variant="primary" size="sm" onClick={openCriar}>
-              Criar meta
-            </PontesButton>
-          }
         />
       ) : (
         <div className={styles.grid}>

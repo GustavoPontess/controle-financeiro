@@ -282,11 +282,6 @@ export default function LimitesPage() {
           icon={<BarChart2 size={40} />}
           title="Nenhum limite definido"
           description={`Crie limites de gasto para ${mesLabel}/${ano} e acompanhe o consumo.`}
-          actions={
-            <PontesButton variant="primary" size="sm" onClick={openCriar}>
-              Criar limite
-            </PontesButton>
-          }
         />
       ) : (
         <div className={styles.grid}>

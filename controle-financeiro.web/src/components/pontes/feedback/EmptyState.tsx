@@ -18,10 +18,15 @@ export type PontesEmptyStateProps = {
 }
 
 export function PontesEmptyState({
-  p, font, icon = "📭", title, description, actions, maxWidth = 480,
+  p, font, icon = "📭", title, description, actions, maxWidth,
 }: PontesEmptyStateProps) {
+  // Sem maxWidth por padrão: o empty state ocupa toda a largura do container e o conteúdo já fica
+  // centralizado (text-align + ícone margin:auto no CSS). Passe maxWidth só se quiser capar.
   return (
-    <div className={styles.wrap} style={{ maxWidth, ...scopedThemeVars(p, font) } as CSSProperties}>
+    <div
+      className={styles.wrap}
+      style={{ ...(maxWidth ? { maxWidth } : null), ...scopedThemeVars(p, font) } as CSSProperties}
+    >
       <div className={styles.icon}>{icon}</div>
       <div className={styles.title}>{title}</div>
       {description && <div className={styles.desc}>{description}</div>}

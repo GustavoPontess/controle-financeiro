@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import { Plus, ChevronRight, Lock, Pencil, Trash2 } from "lucide-react"
+import { Plus, ChevronRight, Lock, Pencil, Trash2, Tags } from "lucide-react"
 import {
-  PontesButton, PontesIconButton, PontesBadge, PontesCard,
+  PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesEmptyState,
   PontesModal, PontesDialog, PontesField, PontesInput, PontesSelect, PontesColorPicker,
 } from "@/components/pontes"
 import type { Category } from "../../types/Category"
@@ -221,10 +221,11 @@ export default function CategoriesPage() {
         </div>
         {pessoais.length === 0
           ? (
-            <div className={styles.empty}>
-              Você ainda não criou nenhuma categoria pessoal
-              <div className={styles.emptyHint}>Clique em "Nova Categoria" para adicionar</div>
-            </div>
+            <PontesEmptyState
+              icon={<Tags size={28} strokeWidth={2} />}
+              title="Você ainda não criou nenhuma categoria pessoal"
+              description={'Clique em "Nova Categoria" para adicionar'}
+            />
           )
           : pessoais.map(renderCategoria)}
       </PontesCard>
