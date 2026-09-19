@@ -33,8 +33,8 @@ export interface AuthContextType {
   isLoading: boolean
   accountKey: number
   savedAccounts: StoredAccount[]
-  login: (email: string, password: string) => Promise<LoginResult>
-  verificarMfaLogin: (challengeToken: string, codigo: string, confiarDispositivo?: boolean) => Promise<void>
+  login: (email: string, password: string, manterConectado?: boolean) => Promise<LoginResult>
+  verificarMfaLogin: (challengeToken: string, codigo: string, confiarDispositivo?: boolean, manterConectado?: boolean) => Promise<void>
   register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<string>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
@@ -126,9 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string): Promise<LoginResult> => {
+  const login = async (email: string, password: string, manterConectado = false): Promise<LoginResult> => {
     try {
-      const res = await api.post('/auth/login', { email, password })
+      const res = await api.post('/auth/login', { email, password, manterConectado })
       // MFA ativo — backend não emitiu sessão, pede o 2º fator.
       if (res.data?.mfaRequerido) {
         return { mfaRequerido: true, challengeToken: res.data.mfaChallengeToken }
@@ -144,9 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const verificarMfaLogin = async (challengeToken: string, codigo: string, confiarDispositivo = false) => {
+  const verificarMfaLogin = async (challengeToken: string, codigo: string, confiarDispositivo = false, manterConectado = false) => {
     try {
-      await api.post('/auth/mfa/verificar-login', { challengeToken, codigo, confiarDispositivo })
+      await api.post('/auth/mfa/verificar-login', { challengeToken, codigo, confiarDispositivo, manterConectado })
       await carregarSessao(true) // login frio com MFA → reseta a lista de contas
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Código inválido')

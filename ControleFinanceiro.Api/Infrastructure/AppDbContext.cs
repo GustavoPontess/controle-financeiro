@@ -41,6 +41,7 @@ public class AppDbContext : DbContext
     public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
     public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
+    public DbSet<ContaLembrada> ContasLembradas => Set<ContaLembrada>();
 
     // ── Issue #10 Orçamento/Metas ──
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
@@ -310,6 +311,20 @@ public class AppDbContext : DbContext
             .HasMaxLength(256);
         modelBuilder.Entity<TrustedDevice>()
             .Property(d => d.IpCriacao)
+            .HasMaxLength(64);
+
+        // ContaLembrada → Usuario (Cascade). Índice único por (DeviceHash, UsuarioId): 1 linha por
+        // conta por navegador; DeviceHash entra no índice pra listar/remover por navegador.
+        modelBuilder.Entity<ContaLembrada>()
+            .HasOne(c => c.Usuario)
+            .WithMany()
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ContaLembrada>()
+            .HasIndex(c => new { c.DeviceHash, c.UsuarioId })
+            .IsUnique();
+        modelBuilder.Entity<ContaLembrada>()
+            .Property(c => c.DeviceHash)
             .HasMaxLength(64);
 
         // ── Issue #10 Orçamento/Metas ──

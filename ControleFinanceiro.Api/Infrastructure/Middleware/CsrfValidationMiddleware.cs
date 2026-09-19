@@ -55,7 +55,11 @@ public class CsrfValidationMiddleware
                pathValue.Contains("/auth/mfa/verificar-login", StringComparison.OrdinalIgnoreCase) ||
                // Reativar conta na carência: o usuário NÃO está logado (não há sessão nem cookie CSRF).
                // Público como o login; protegido por senha + rate-limit por IP (auth-login).
-               pathValue.Contains("/auth/conta/reativar", StringComparison.OrdinalIgnoreCase);
+               pathValue.Contains("/auth/conta/reativar", StringComparison.OrdinalIgnoreCase) ||
+               // Roster / chooser pré-login: sem sessão nem cookie CSRF. Autenticado só pelo cookie
+               // opaco de device `rd` com SameSite=Strict — que NÃO vai em request cross-site, então
+               // já é imune a CSRF (um DELETE forjado de outro site não carrega o cookie → no-op).
+               pathValue.Contains("/auth/roster", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsUnsafeMethod(string method)
