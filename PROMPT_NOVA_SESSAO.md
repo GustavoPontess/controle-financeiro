@@ -145,6 +145,21 @@ O limite de uso renova de 5 em 5h — gastar cedo deixa o projeto parado. Pesqui
 3. **Deep-research pesado** (skill `deep-research`, ~100 agentes) **só pra incógnita grande e nova, avisando o custo e pedindo OK antes.**
 4. A regra de conformidade (`CLAUDE.md`) continua: fonte primária, nunca chute — só o **método** é proporcional.
 
+## 8.7. Orquestração multi-agente (só pra tarefa GRANDE) ⭐
+
+Decisão do Gustavo (2026-09-19): usar multi-agente **só pra tarefa grande** — fix pequeno (1-2 arquivos, óbvio) o Claude faz **inline**, delegar seria mais lento. No modelo, **o Claude é o ORQUESTRADOR**: decompõe, delega, junta os resultados, garante o ponto verde (build/lint/test), commita e conversa com o Gustavo — o trabalho braçal vai pros agentes.
+
+**Roster (em `.claude/agents/`):**
+- **builder** — implementa um escopo bounded seguindo CLAUDE.md. Não faz scope creep, não commita.
+- **auditor-seguranca** — checklist OWASP/LGPD/ANPD, fonte primária, classifica P0-P3. Read-only. Gate obrigatório de auth/PII/dinheiro.
+- **escritor-de-teste** — xUnit (back) + vitest (front) no padrão do repo. Roda os testes.
+- **code-reviewer** (já existia) — review contra CLAUDE.md. + os analisadores especializados (`pr-test-analyzer`, `silent-failure-hunter`, `type-design-analyzer`, `comment-analyzer`, `code-simplifier`).
+- Investigação read-only: `Explore` / `cavecrew-investigator` (genéricos, servem).
+
+**Pipeline típico de feature grande:** investigar/mapear → [Claude: plano] → **builder** implementa → **escritor-de-teste** → **code-reviewer** + **auditor-seguranca** (em paralelo) → [Claude: build/lint/test verde + commit].
+
+**Regras:** (1) implementar em paralelo (2+ builders) só com **worktree isolado** por builder e só em frentes independentes — senão conflitam; serial-delegado é o padrão. (2) O Claude continua dono do ponto verde, do commit e do julgamento em código sensível (auth/dinheiro) — revisa com lupa mesmo delegando. (3) Mais agentes = mais tokens: vale pela velocidade quando a tarefa é grande, não pra fix trivial.
+
 ---
 
 ## 9. Encerramento de sessão
