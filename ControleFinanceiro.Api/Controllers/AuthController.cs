@@ -173,6 +173,24 @@ public class AuthController : ControllerBase
             DeleteCookie(name, AuthPath);
     }
 
+    // Login "frio" (feito pela tela de login, SEM sessão ativa) começa do ZERO: revoga no banco e
+    // apaga do navegador qualquer conta parqueada de quem usou o dispositivo antes. Sem isso, num
+    // PC compartilhado o próximo usuário herdava as contas do anterior no switcher e conseguia
+    // entrar nelas (cookie rt_ ainda válido). Login ESTANDO autenticado = "adicionar conta": aí NÃO
+    // limpa (é o mesmo dono anexando outra conta).
+    private async Task RevogarSessoesAnterioresAsync()
+    {
+        var tokens = Request.Cookies
+            .Where(c => c.Key.StartsWith("rt_", StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToList();
+        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
+            tokens.Add(legacy);
+        if (tokens.Count > 0)
+            await _authService.LogoutAllAsync(tokens);
+        ClearAllSessions();
+    }
+
     // Refresh da conta ativa (slot novo) com fallback pro cookie legado "refreshToken".
     private (string? Refresh, Guid? AccountId) ReadActiveRefresh()
     {
@@ -218,9 +236,11 @@ public class AuthController : ControllerBase
             return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
 
         var auth = result.Auth!;
-        // Cap de contas conectadas no navegador (blast-radius). Re-login da mesma conta não conta.
-        if (!PodeParquearConta(auth.UsuarioId))
-            return LimiteContasResult();
+        // Login pela tela de login SEMPRE começa do zero: revoga no banco + apaga os cookies de
+        // qualquer conta parqueada de quem usou o navegador antes. NUNCA inferir "adicionar conta"
+        // do cookie ambiente (uma sessão anterior ainda viva mascararia isso e deixaria a conta
+        // acessível — o furo). "Adicionar conta" é OUTRO endpoint: POST /auth/add-account [Authorize].
+        await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(auth);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
@@ -244,8 +264,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
-        if (!PodeParquearConta(result.UsuarioId))
-            return LimiteContasResult();
+        // Passo 2 do login pela tela = também começa limpo (mesma regra do /login).
+        await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(result);
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
@@ -259,6 +279,44 @@ public class AuthController : ControllerBase
             Token = string.Empty,
             RefreshToken = string.Empty,
             RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
+    }
+
+    /// <summary>
+    /// Adiciona OUTRA conta ao navegador (multi-conta) SEM encerrar as já conectadas. Exige sessão
+    /// ativa ([Authorize]) — só o dono do "pacote" de contas adiciona. É o gesto separado do /login
+    /// (que sempre começa limpo). Parqueia a conta nova e a torna ativa; NÃO mexe nas outras.
+    /// </summary>
+    [Authorize]
+    [HttpPost("add-account")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> AddAccount([FromBody] LoginDto dto)
+    {
+        var result = await _authService.LoginAsync(dto);
+
+        if (result.MfaRequerido)
+            // Conta com MFA ainda não é suportada no "adicionar conta" (o fluxo de 2 passos precisa
+            // preservar o pacote atual). Limitação conhecida — entra por ela na tela de login.
+            return Conflict(new { code = "mfa_add_nao_suportado", message = "Conta com verificação em duas etapas: entre por ela na tela de login." });
+
+        if (result.ContaMarcadaExclusao)
+            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
+
+        var auth = result.Auth!;
+        if (!PodeParquearConta(auth.UsuarioId))
+            return LimiteContasResult();
+        SetLoggedInCookies(auth); // parqueia a nova + torna ativa; NÃO limpa as outras
+
+        await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
+
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = auth.UsuarioId,
+            Email = auth.Email,
+            Nome = auth.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = auth.RefreshTokenExpiresAt
         });
     }
 

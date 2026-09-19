@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -57,14 +58,21 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
 
     // O X-CSRF-Token chega URL-encodado no Set-Cookie; o header do double-submit tem que bater com o
     // valor decodificado (o servidor decoda o cookie). Igual ao que o front faz (decodeURIComponent).
+    // Pega o ÚLTIMO Set-Cookie de X-CSRF-Token da resposta, não o primeiro: o login frio agora emite
+    // um Set-Cookie de LIMPEZA (delete, valor vazio) antes do de login (RevogarSessoesAnterioresAsync
+    // → ClearAllSessions() roda antes de SetLoggedInCookies) — duas ocorrências do mesmo cookie na
+    // mesma resposta. Isso é inofensivo pra qualquer cookie jar de verdade (navegador ou
+    // HttpClient/CookieContainer): processam os Set-Cookie em ordem e o último pro mesmo
+    // nome+path "vence" no armazenamento. Pegar o primeiro aqui pegaria o cookie já apagado.
     private static string ExtrairCsrf(HttpResponseMessage resp)
     {
+        string valor = "";
         foreach (var sc in resp.Headers.GetValues("Set-Cookie"))
         {
             if (sc.StartsWith("X-CSRF-Token=", StringComparison.Ordinal))
-                return Uri.UnescapeDataString(sc.Substring("X-CSRF-Token=".Length).Split(';')[0]);
+                valor = Uri.UnescapeDataString(sc.Substring("X-CSRF-Token=".Length).Split(';')[0]);
         }
-        return "";
+        return valor;
     }
 
     private static HttpRequestMessage Post(string url, string csrf, Guid? activeAccount = null)
@@ -74,6 +82,40 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
         if (activeAccount.HasValue)
             req.Headers.Add("X-Active-Account", activeAccount.Value.ToString());
         return req;
+    }
+
+    // Extrai os cookies rt_* (um por conta parqueada) do Set-Cookie de uma resposta de login —
+    // usado pra simular, num client SEM cookie jar, alguém que "herdou" só o refresh cru de uma
+    // conta parqueada por outra pessoa no mesmo navegador (sem jwt válido junto).
+    private static Dictionary<string, string> ExtrairCookiesPorPrefixo(HttpResponseMessage resp, string prefixo)
+    {
+        var result = new Dictionary<string, string>();
+        if (!resp.Headers.TryGetValues("Set-Cookie", out var cookies)) return result;
+        foreach (var sc in cookies)
+        {
+            var nome = sc.Split('=')[0];
+            if (nome.StartsWith(prefixo, StringComparison.Ordinal))
+                result[nome] = sc.Substring(nome.Length + 1).Split(';')[0];
+        }
+        return result;
+    }
+
+    // Monta um client NOVO (sem cookie jar compartilhado) carregando só o cookie rt_<slot> cru de
+    // uma conta + um par CSRF válido (double-submit não é atado à sessão — só compara os dois
+    // lados), e tenta /auth/switch pra essa conta. Devolve o status: prova se o refresh daquele
+    // slot ainda é aceito pelo servidor (ou já foi revogado).
+    private async Task<HttpStatusCode> SwitchComRefreshCru(Guid accountId, string cookieNome, string cookieValor)
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        const string csrf = "csrf-fixo-de-teste";
+        var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/switch")
+        {
+            Content = JsonContent.Create(new { accountId }),
+        };
+        req.Headers.Add("Cookie", $"{cookieNome}={cookieValor}; X-CSRF-Token={csrf}");
+        req.Headers.Add("X-CSRF-Token", csrf);
+        var resp = await client.SendAsync(req);
+        return resp.StatusCode;
     }
 
     [Fact]
@@ -129,6 +171,112 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await clientA.GetAsync("/api/v1/auth/me")).StatusCode);
         // B segue viva (revogação por-sessão, não global).
         Assert.Equal(HttpStatusCode.OK, (await clientB.GetAsync("/api/v1/auth/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task LoginFrio_revogaContasParqueadasAnteriores_fechaVazamentoMultiConta()
+    {
+        // Regressão do vazamento multi-conta em navegador compartilhado: login "frio" (sem sessão
+        // ativa) tinha que revogar as contas parqueadas de quem usou o dispositivo antes, senão o
+        // próximo usuário conseguia acessá-las pelo switcher (cookie rt_ ainda válido).
+        var usuarioA = SeedUsuario("multiconta-a@test.com", "SenhaForte!2026");
+        var usuarioB = SeedUsuario("multiconta-b@test.com", "SenhaForte!2026");
+        SeedUsuario("multiconta-c@test.com", "SenhaForte!2026");
+
+        // Um único client = um navegador (cookie jar compartilhado entre as duas chamadas de login).
+        var navegador = _factory.CreateClient();
+
+        // 1) Login frio como A: parqueia rt_A.
+        var loginA = await navegador.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "multiconta-a@test.com", password = "SenhaForte!2026" });
+        loginA.EnsureSuccessStatusCode();
+        var rtA = ExtrairCookiesPorPrefixo(loginA, "rt_").Single();
+
+        // 2) Adiciona B pelo endpoint DEDICADO /auth/add-account ([Authorize] + CSRF): parqueia B
+        // SEM revogar A. Agora o jar tem rt_A + rt_B (duas contas) — a pré-condição do vazamento.
+        var csrfA = ExtrairCsrf(loginA);
+        var addB = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/add-account")
+        {
+            Content = JsonContent.Create(new { email = "multiconta-b@test.com", password = "SenhaForte!2026" }),
+        };
+        addB.Headers.Add("X-CSRF-Token", csrfA);
+        var loginB = await navegador.SendAsync(addB);
+        loginB.EnsureSuccessStatusCode();
+        var rtB = ExtrairCookiesPorPrefixo(loginB, "rt_").Single();
+        Assert.NotEqual(rtA.Key, rtB.Key);
+
+        // 3) "Outra pessoa, mesmo navegador": monta uma request de login FRIO (sem jwt/active_acct)
+        // carregando só os cookies rt_A e rt_B crus — User.Identity.IsAuthenticated é false, então
+        // o servidor trata como login frio.
+        var estranhoNoNavegador = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var loginC = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = JsonContent.Create(new { email = "multiconta-c@test.com", password = "SenhaForte!2026" }),
+        };
+        loginC.Headers.Add("Cookie", $"{rtA.Key}={rtA.Value}; {rtB.Key}={rtB.Value}");
+        var respC = await estranhoNoNavegador.SendAsync(loginC);
+        Assert.Equal(HttpStatusCode.OK, respC.StatusCode); // login de C funciona normalmente
+
+        // 4) Prova do fix: o login frio de C revogou as sessões de A e B no banco. Trocar pra
+        // qualquer uma delas com o refresh antigo agora dá 401 (fechou o furo).
+        Assert.Equal(HttpStatusCode.Unauthorized, await SwitchComRefreshCru(usuarioA.Id, rtA.Key, rtA.Value));
+        Assert.Equal(HttpStatusCode.Unauthorized, await SwitchComRefreshCru(usuarioB.Id, rtB.Key, rtB.Value));
+    }
+
+    [Fact]
+    public async Task LogoutAll_revogaTodasAsContasParqueadasNoNavegador()
+    {
+        var usuarioA = SeedUsuario("logoutall-a@test.com", "SenhaForte!2026");
+        var usuarioB = SeedUsuario("logoutall-b@test.com", "SenhaForte!2026");
+
+        var navegador = _factory.CreateClient();
+        var loginA = await navegador.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "logoutall-a@test.com", password = "SenhaForte!2026" });
+        loginA.EnsureSuccessStatusCode();
+        var rtA = ExtrairCookiesPorPrefixo(loginA, "rt_").Single();
+
+        // Adiciona B via /auth/add-account (autenticado como A + CSRF) → jar fica com rt_A + rt_B.
+        var addB = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/add-account")
+        {
+            Content = JsonContent.Create(new { email = "logoutall-b@test.com", password = "SenhaForte!2026" }),
+        };
+        addB.Headers.Add("X-CSRF-Token", ExtrairCsrf(loginA));
+        var loginB = await navegador.SendAsync(addB);
+        loginB.EnsureSuccessStatusCode();
+        var rtB = ExtrairCookiesPorPrefixo(loginB, "rt_").Single();
+        var csrfAtual = ExtrairCsrf(loginB); // csrf reemitido no add-account, ainda no jar do navegador
+
+        // "Sair" (logout-all) no mesmo navegador — tem que matar as duas contas parqueadas.
+        var logoutAll = await navegador.SendAsync(Post("/api/v1/auth/logout-all", csrfAtual));
+        Assert.Equal(HttpStatusCode.NoContent, logoutAll.StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await SwitchComRefreshCru(usuarioA.Id, rtA.Key, rtA.Value));
+        Assert.Equal(HttpStatusCode.Unauthorized, await SwitchComRefreshCru(usuarioB.Id, rtB.Key, rtB.Value));
+    }
+
+    [Fact]
+    public async Task LoginPelaTela_comSessaoAnteriorVivaNoNavegador_revogaAContaAntiga_P1()
+    {
+        // Regressão do P1 (achado do auditor): A loga e NÃO clica "Sair" (jwt de A segue vivo no
+        // jar). B loga PELA TELA DE LOGIN no mesmo navegador. Antes, o jwt de A vivo fazia o servidor
+        // tratar como "adicionar conta" e NÃO revogar A → A seguia acessível (o furo demonstrado).
+        // Agora /auth/login SEMPRE começa limpo → A é revogada mesmo com a sessão dela viva.
+        var usuarioA = SeedUsuario("p1-a@test.com", "SenhaForte!2026");
+        SeedUsuario("p1-b@test.com", "SenhaForte!2026");
+
+        var navegador = _factory.CreateClient();
+        var loginA = await navegador.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "p1-a@test.com", password = "SenhaForte!2026" });
+        loginA.EnsureSuccessStatusCode();
+        var rtA = ExtrairCookiesPorPrefixo(loginA, "rt_").Single();
+
+        // B loga pela tela (mesmo navegador, jwt de A ainda no jar).
+        var loginB = await navegador.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "p1-b@test.com", password = "SenhaForte!2026" });
+        loginB.EnsureSuccessStatusCode();
+
+        // A foi revogada no login de B (não virou "adicionar conta"): switch pra A dá 401.
+        Assert.Equal(HttpStatusCode.Unauthorized, await SwitchComRefreshCru(usuarioA.Id, rtA.Key, rtA.Value));
     }
 
     [Fact]

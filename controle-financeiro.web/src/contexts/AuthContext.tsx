@@ -36,8 +36,8 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<LoginResult>
   verificarMfaLogin: (challengeToken: string, codigo: string) => Promise<void>
   register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<string>
-  logout: () => void
-  logoutAll: () => void
+  logout: () => Promise<void>
+  logoutAll: () => Promise<void>
   refreshUser: () => Promise<void>
   addAccount: (email: string, password: string) => Promise<void>
   switchAccount: (accountId: string) => Promise<void>
@@ -106,12 +106,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const carregarSessao = async () => {
+  const carregarSessao = async (resetLista = false) => {
     const usuario = await fetchCurrentUser()
     if (usuario) {
       setCurrentUser(usuario)
       setActiveAccountId(usuario.id)
-      upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      if (resetLista) {
+        // Login FRIO (tela de login): a lista começa só com esta conta. Não herda as contas de
+        // quem usou o navegador antes — o backend já revogou os cookies rt_ delas. Fecha o
+        // vazamento de conta em dispositivo compartilhado.
+        const only = [{ id: usuario.id, email: usuario.email, nome: usuario.nome }]
+        setSavedAccounts(only)
+        persistSavedAccounts(only)
+      } else {
+        upsertSavedAccount({ id: usuario.id, email: usuario.email, nome: usuario.nome })
+      }
     } else {
       throw new Error('Falha ao carregar dados do usuário')
     }
@@ -128,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.data?.contaMarcadaExclusao) {
         return { mfaRequerido: false, contaMarcadaExclusao: true, diasRestantes: res.data.diasRestantes ?? null }
       }
-      await carregarSessao()
+      await carregarSessao(true) // login frio → reseta a lista de contas
       return { mfaRequerido: false, contaMarcadaExclusao: false }
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erro ao fazer login')
@@ -138,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verificarMfaLogin = async (challengeToken: string, codigo: string) => {
     try {
       await api.post('/auth/mfa/verificar-login', { challengeToken, codigo })
-      await carregarSessao()
+      await carregarSessao(true) // login frio com MFA → reseta a lista de contas
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Código inválido')
     }
@@ -157,28 +166,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
-    if (currentUser) {
-      setSavedAccounts(prev => {
-        const updated = prev.filter(a => a.id !== currentUser.id)
-        persistSavedAccounts(updated)
-        return updated
-      })
-    }
-    setCurrentUser(null)
-    setActiveAccountId(null)
-    // Encerra só a conta ativa no servidor (as outras parqueadas seguem vivas).
-    api.post('/auth/logout').catch(() => {})
-  }
-
-  // Sai de TODAS as contas parqueadas no navegador (revoga todos os refresh no servidor).
-  const logoutAll = () => {
+  // "Sair" encerra TODAS as contas parqueadas no navegador — revoga todos os refresh no servidor
+  // e limpa a lista local. Em dispositivo compartilhado, sair não pode deixar conta acessível pro
+  // próximo. (Trocar entre contas continua livre enquanto logado; só o "Sair" é que zera tudo.)
+  const logout = async () => {
+    // Revoga no SERVIDOR primeiro (await) — logout tem que invalidar a sessão no servidor, não só
+    // apagar cookie local (OWASP). Só limpamos o estado local DEPOIS da confirmação; se a request
+    // falha, propaga o erro pro caller avisar (não afirmar "saiu" com a sessão ainda viva).
+    await api.post('/auth/logout-all')
     setSavedAccounts([])
     persistSavedAccounts([])
     setCurrentUser(null)
     setActiveAccountId(null)
-    api.post('/auth/logout-all').catch(() => {})
   }
+
+  // Alias explícito de "sair de todas" (usado por telas que oferecem a ação nominalmente).
+  const logoutAll = logout
 
   const refreshUser = async () => {
     const usuario = await fetchCurrentUser()
@@ -190,10 +193,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addAccount = async (email: string, password: string) => {
     try {
-      // O backend PARQUEIA a conta nova sem matar as outras e a torna ATIVA (login). Então, após
-      // adicionar, esta aba passa a operar na conta nova — sincronizamos currentUser/activeAccountId
-      // pra não ficar mostrando a antiga enquanto as requests já saem pela nova (guarda multi-aba).
-      await api.post('/auth/login', { email, password })
+      // Endpoint DEDICADO de adicionar conta ([Authorize]): parqueia a nova sem matar as outras e a
+      // torna ATIVA. NÃO é o /auth/login (esse sempre começa limpo — senão adicionar mataria as
+      // demais). Após adicionar, esta aba passa a operar na conta nova — sincronizamos
+      // currentUser/activeAccountId (guarda multi-aba).
+      await api.post('/auth/add-account', { email, password })
       const usuario = await fetchCurrentUser()
       if (!usuario) throw new Error('Erro ao buscar dados da conta')
 

@@ -90,7 +90,15 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       },
     })),
     { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", divider: otherAccounts.length === 0, onClick: () => setAddAccountOpen(true) },
-    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", danger: true, divider: true, onClick: () => { logout(); navigate("/auth/login") } },
+    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", danger: true, divider: true, onClick: () => {
+      // Só navega pra login DEPOIS que o servidor confirmou a revogação (logout-all). Se falhar,
+      // não afirma "saiu" — mantém a sessão e avisa (senão a conta seguiria acessível no servidor).
+      logout()
+        .then(() => navigate("/auth/login"))
+        .catch(() => window.dispatchEvent(new CustomEvent("apiError", {
+          detail: { message: "Não foi possível sair agora. Tente de novo." },
+        })))
+    } },
   ]
 
   return (
