@@ -236,12 +236,11 @@ public class AuthController : ControllerBase
             return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
 
         var auth = result.Auth!;
-        // Login frio (tela de login, sem sessão) = começa limpo; login já autenticado = adicionar conta.
-        var adicionandoConta = User.Identity?.IsAuthenticated == true;
-        if (!adicionandoConta)
-            await RevogarSessoesAnterioresAsync();
-        else if (!PodeParquearConta(auth.UsuarioId))
-            return LimiteContasResult(); // cap só vale ao ADICIONAR (blast-radius). Re-login da mesma não conta.
+        // Login pela tela de login SEMPRE começa do zero: revoga no banco + apaga os cookies de
+        // qualquer conta parqueada de quem usou o navegador antes. NUNCA inferir "adicionar conta"
+        // do cookie ambiente (uma sessão anterior ainda viva mascararia isso e deixaria a conta
+        // acessível — o furo). "Adicionar conta" é OUTRO endpoint: POST /auth/add-account [Authorize].
+        await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(auth);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
@@ -265,12 +264,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
-        // Login frio com MFA (passo 2) também começa limpo; se já autenticado, é adicionar conta.
-        var adicionandoConta = User.Identity?.IsAuthenticated == true;
-        if (!adicionandoConta)
-            await RevogarSessoesAnterioresAsync();
-        else if (!PodeParquearConta(result.UsuarioId))
-            return LimiteContasResult();
+        // Passo 2 do login pela tela = também começa limpo (mesma regra do /login).
+        await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(result);
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
@@ -284,6 +279,44 @@ public class AuthController : ControllerBase
             Token = string.Empty,
             RefreshToken = string.Empty,
             RefreshTokenExpiresAt = result.RefreshTokenExpiresAt
+        });
+    }
+
+    /// <summary>
+    /// Adiciona OUTRA conta ao navegador (multi-conta) SEM encerrar as já conectadas. Exige sessão
+    /// ativa ([Authorize]) — só o dono do "pacote" de contas adiciona. É o gesto separado do /login
+    /// (que sempre começa limpo). Parqueia a conta nova e a torna ativa; NÃO mexe nas outras.
+    /// </summary>
+    [Authorize]
+    [HttpPost("add-account")]
+    [EnableRateLimiting("auth-login")]
+    public async Task<IActionResult> AddAccount([FromBody] LoginDto dto)
+    {
+        var result = await _authService.LoginAsync(dto);
+
+        if (result.MfaRequerido)
+            // Conta com MFA ainda não é suportada no "adicionar conta" (o fluxo de 2 passos precisa
+            // preservar o pacote atual). Limitação conhecida — entra por ela na tela de login.
+            return Conflict(new { code = "mfa_add_nao_suportado", message = "Conta com verificação em duas etapas: entre por ela na tela de login." });
+
+        if (result.ContaMarcadaExclusao)
+            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
+
+        var auth = result.Auth!;
+        if (!PodeParquearConta(auth.UsuarioId))
+            return LimiteContasResult();
+        SetLoggedInCookies(auth); // parqueia a nova + torna ativa; NÃO limpa as outras
+
+        await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
+
+        return Ok(new AuthResponseDto
+        {
+            UsuarioId = auth.UsuarioId,
+            Email = auth.Email,
+            Nome = auth.Nome,
+            Token = string.Empty,
+            RefreshToken = string.Empty,
+            RefreshTokenExpiresAt = auth.RefreshTokenExpiresAt
         });
     }
 
