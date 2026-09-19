@@ -173,6 +173,24 @@ public class AuthController : ControllerBase
             DeleteCookie(name, AuthPath);
     }
 
+    // Login "frio" (feito pela tela de login, SEM sessão ativa) começa do ZERO: revoga no banco e
+    // apaga do navegador qualquer conta parqueada de quem usou o dispositivo antes. Sem isso, num
+    // PC compartilhado o próximo usuário herdava as contas do anterior no switcher e conseguia
+    // entrar nelas (cookie rt_ ainda válido). Login ESTANDO autenticado = "adicionar conta": aí NÃO
+    // limpa (é o mesmo dono anexando outra conta).
+    private async Task RevogarSessoesAnterioresAsync()
+    {
+        var tokens = Request.Cookies
+            .Where(c => c.Key.StartsWith("rt_", StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToList();
+        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
+            tokens.Add(legacy);
+        if (tokens.Count > 0)
+            await _authService.LogoutAllAsync(tokens);
+        ClearAllSessions();
+    }
+
     // Refresh da conta ativa (slot novo) com fallback pro cookie legado "refreshToken".
     private (string? Refresh, Guid? AccountId) ReadActiveRefresh()
     {
@@ -218,9 +236,12 @@ public class AuthController : ControllerBase
             return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
 
         var auth = result.Auth!;
-        // Cap de contas conectadas no navegador (blast-radius). Re-login da mesma conta não conta.
-        if (!PodeParquearConta(auth.UsuarioId))
-            return LimiteContasResult();
+        // Login frio (tela de login, sem sessão) = começa limpo; login já autenticado = adicionar conta.
+        var adicionandoConta = User.Identity?.IsAuthenticated == true;
+        if (!adicionandoConta)
+            await RevogarSessoesAnterioresAsync();
+        else if (!PodeParquearConta(auth.UsuarioId))
+            return LimiteContasResult(); // cap só vale ao ADICIONAR (blast-radius). Re-login da mesma não conta.
         SetLoggedInCookies(auth);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
@@ -244,7 +265,11 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
         var result = await _authService.VerificarMfaLoginAsync(dto.ChallengeToken, dto.Codigo);
-        if (!PodeParquearConta(result.UsuarioId))
+        // Login frio com MFA (passo 2) também começa limpo; se já autenticado, é adicionar conta.
+        var adicionandoConta = User.Identity?.IsAuthenticated == true;
+        if (!adicionandoConta)
+            await RevogarSessoesAnterioresAsync();
+        else if (!PodeParquearConta(result.UsuarioId))
             return LimiteContasResult();
         SetLoggedInCookies(result);
 
