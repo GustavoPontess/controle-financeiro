@@ -15,6 +15,20 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-19 — Multi-conta: fecha vazamento em navegador compartilhado (PR #246) + roster de agentes
+
+1. **Fix do vazamento multi-conta (P0/P1) — PR #246** (branch `fix/multiconta-logout-vazamento`). Furo: sair/relogar como outra pessoa no mesmo navegador deixava as contas anteriores acessíveis. **Reproduzido e validado fechado ao vivo** (switch pra conta anterior: era 200, agora 401). Correções: `/auth/login` + `/auth/mfa/verificar-login` **sempre começam limpos** (revogam anteriores); novo **`POST /auth/add-account` `[Authorize]`** pro "adicionar conta"; **`logout()` async** com `await` no `/auth/logout-all` (revoga no servidor antes de limpar). Achado do **P1 pelo agente `auditor-seguranca`** (a heurística `IsAuthenticated` tinha brecha). Testes: `AuthHttpTests` 12/12 (+ regressão do P1), front multiconta 5/5, front 365/365, **back 562/562** (flakiness resolvida por um fork: `[Collection("PasswordHasherEnv")]`).
+2. **Roster multi-agente montado** (mergeado #244): `.claude/agents/` builder + auditor-seguranca + escritor-de-teste. Regra: multi-agente **só pra tarefa grande**, Claude orquestra (`PROMPT_NOVA_SESSAO.md` §8.7).
+3. **.NET 10** já na main (#243).
+
+**Próxima ação:**
+- **UI:** `PontesEmptyState` deve ocupar largura total + ícone/texto centralizado (pedido 2026-09-19; hoje `max-width:480px` fica estreito) — afeta ~8 telas (Cartões/Transferências/Parcelamentos/Contas/Categorias/Famílias/Metas/Limites), fix no componente DS.
+- **Auth (gated no fix acima):** trusted-device MFA (P1) + roster "conta reaparece" (P1) — pesquisas prontas no ROADMAP.
+- **Produto:** Conferência de caixa (P1, tem spec).
+- Limpar contas de teste `teste-a`/`teste-b` do dev DB.
+
+---
+
 ### 📌 Sessão 2026-09-17b — Upgrade .NET 8 → 10 (branch `feature/upgrade-net10`, EM PR) · verde local: back 559/559, 0 warnings
 
 Migração de plataforma, precedida de **auditoria de risco multi-agente** (5 frentes). Detalhe em `docs/history/ROADMAP_CONCLUIDO.md`.
