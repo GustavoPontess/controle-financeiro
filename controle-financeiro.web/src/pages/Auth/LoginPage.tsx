@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft, Trash2, UserRound } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox } from '@/components/pontes'
+import { Eye, EyeOff, ArrowLeft, Trash2 } from 'lucide-react'
+import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox, PontesAvatar } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import contaService from '@/services/minhaContaService'
 import rosterService, { type ContaLembrada } from '@/services/rosterService'
@@ -298,7 +298,7 @@ export default function LoginPage() {
                       className={styles.chooserPick}
                       onClick={() => handleSelecionarConta(c.usuarioId)}
                     >
-                      <span className={styles.chooserAvatar}><UserRound size={18} /></span>
+                      <PontesAvatar name={c.nome} size={36} />
                       <span className={styles.chooserInfo}>
                         <span className={styles.chooserNome}>{c.nome}</span>
                         <span className={styles.chooserEmail}>{c.emailMascarado}</span>
