@@ -14,6 +14,13 @@ namespace ControleFinanceiro.Api.Tests.Infrastructure;
 /// middlewares, GlobalExceptionHandler). Complementa os testes unitários de service — cobre a camada
 /// que só era validada à mão no pentest. Banco InMemory via CustomWebApplicationFactory.
 /// </summary>
+// Cada login faz seed (PasswordHasher.HashPassword) + verify (VerifyPassword), e ambos leem a env
+// var global PASSWORD_PEPPER. Sem esta coleção, a classe rodava em paralelo com PasswordHasherTests
+// (que liga/desliga PASSWORD_PEPPER): um seed caía na janela com pepper ligado e o verify seguinte,
+// já sem pepper, recusava a senha certa → 401 intermitente em LoginClientAsync sob carga da suíte
+// completa. [Collection] serializa com o togglador; IClassFixture continua valendo (fixture por
+// classe é ortogonal à coleção).
+[Collection("PasswordHasherEnv")]
 public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;
