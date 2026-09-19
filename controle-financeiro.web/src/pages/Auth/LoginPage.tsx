@@ -383,6 +383,17 @@ export default function LoginPage() {
             >
               Entrar
             </PontesButton>
+
+            {/* Veio do chooser (há contas salvas) → deixa voltar pra lista sem sair da tela de login. */}
+            {roster.length > 0 && (
+              <PontesButton
+                type="button" variant="ghost" size="md" fullWidth
+                iconStart={<ArrowLeft size={16} />}
+                onClick={() => { setUsarOutra(false); setPassword(''); setErrors({}); setError('') }}
+              >
+                Escolher uma conta salva
+              </PontesButton>
+            )}
           </form>
           )}
 
