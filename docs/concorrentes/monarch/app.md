@@ -115,12 +115,19 @@ Monarch modela **patrimônio líquido** (ativos − passivos), não só conta ba
 - **Couple aparece aqui:** as contas alocadas são de **duas pessoas** ("Jon's" + "Melanie's") → household de casal alimentando metas em conjunto.
 - **⭐ O QUE ISSO RESOLVE PRO NOSSO (ROADMAP Metas):** nosso `ContribuirAsync` hoje só incrementa um contador fictício (P2 no ROADMAP). O Monarch mostra o caminho: **meta = alocação de saldo real de conta(s)**, com "disponível pra alocar" = saldo não-comprometido. Não precisa gerar transação (o dinheiro não sai da conta) — só marca. Isso casa com casal (aloca de contas de ambos). **Forte candidato pro redesign do nosso Metas.**
 
+### Conta manual criada (app destravado) ✅
+- Criei conta manual de teste: **"Conta Teste Pontes" · Cash → Checking · $1.000** → nudge "connect an account" **sumiu**, app destravou (menu completo liberado).
+- **Cookie banner BR:** ao destravar apareceu banner de cookie **em português** ("Este site utiliza tecnologias como cookies… Aceitar / Negar não essencial") — Monarch **detecta locale BR** e localiza o consentimento (mas o app é 100% em inglês). Escolhi **"Negar não essencial"** (opção mais privada). *Data point: eles já fazem i18n de consentimento pra BR — mas nada mais é traduzido.*
+
+## Menu completo do app (nav lateral) — mapa das seções
+Ordem no menu esquerdo: **Dashboard · Accounts · Transactions · Cash Flow · Reports · Budget · Recurring · Goals · Investments · Forecasting · Advice** + rodapé: **Free trial (7 days left) · AI Assistant · Help & Support · Get 45% discount · [avatar Gustavo]**.
+Rotas: `/dashboard` `/accounts` `/transactions` `/cash-flow` `/reports` `/plan` (=Budget) `/recurring` `/goals/savings` `/investments` `/forecast` `/advice`.
+
 ## ⏸️ Onde paramos — RETOMAR AQUI (2026-09-20)
 **Estado da exploração do app Monarch (tab-2 do browser, trial ativo, conta do Gustavo):**
-- ✅ **Já documentado:** navegação/menu, checklist de ativação 0/6, Dashboard (widgets), 2 popups (nudge + vídeo-tour), Transactions, Cash Flow, Goals (⭐ modelo de alocação), Reports (parcial), **Add Manual Account completo** (tabela de todos os 10 tipos + subtipos + padrão ativo/passivo).
-- ⏸️ **Parado no meio de:** criar uma conta manual pra fechar o nudge "connect an account" e destravar o app. Form "Add Cash Account" estava aberto com **Name = "Conta Teste Pontes"** preenchido; faltou preencher Balance + Save (parou por classifier temporariamente fora + pedido de ponto verde).
-- ▶️ **Retomar assim:** (1) terminar de criar a conta manual (Balance + Save) OU criar do zero via "Add account → Add manual account → Cash → Checking"; (2) com o app destravado, explorar e documentar as seções que faltam: **Budget (detalhe da tabela Planned/Actual/Remaining), Recurring, Investments, Forecasting, Advice, Accounts**, + **AI Assistant**, **notificações (sino)**, **Settings**, upsell "Get 45% discount", "What's New". Capturar popups/modais também.
-- **Nav confiável:** `window.location.href='https://app.monarch.com/<rota>'` via javascript_tool (o `navigate` dropa o path). Rotas: /dashboard /accounts /transactions /cash-flow /reports /plan (Budget) /recurring /goals/savings /investments /forecast /advice.
+- ✅ **Já documentado:** navegação/menu completo, checklist de ativação 0/6, Dashboard (widgets), 2 popups (nudge + vídeo-tour), Transactions, Cash Flow, Goals (⭐ modelo de alocação), Reports (parcial), **Add Manual Account completo** (10 tipos + subtipos + padrão ativo/passivo), **conta manual criada + app destravado + cookie banner BR**.
+- ▶️ **Documentando agora (em sequência):** Accounts, Budget (/plan), Recurring, Investments, Forecasting, Advice, AI Assistant, Settings, upsell "Get 45% discount", notificações (sino). Capturar popups/modais também.
+- **Nav confiável:** `window.location.href='https://app.monarch.com/<rota>'` via javascript_tool (o `navigate` dropa o path).
 - **Dica de UI:** no modal de conta, subtipos aparecem como `menuitem` (não `option`); a setinha **← (Back)** volta pra lista de tipos; **Escape fecha o modal inteiro** (evitar). Cliques por coordenada desalinham (viewport escalado) — usar refs de `find`/`read_page`.
 
 <!-- próximas seções (Budget detalhe, Recurring, Investments, Forecasting, Advice, Accounts, AI, Settings) entram aqui -->
