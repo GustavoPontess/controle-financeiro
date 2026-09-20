@@ -385,16 +385,23 @@ public class ParcelaTransacaoService
     {
         var parcela = await _context.ParcelasTransacao
             .Include(p => p.Parcelamento)
-            .Include(p => p.Fatura)
-                .ThenInclude(f => f!.Transacoes)
-            .Include(p => p.Fatura)
-                .ThenInclude(f => f!.ParcelasTransacao)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == parcelaId
                                       && p.Parcelamento!.CriadoPor == usuarioId)
             ?? throw new InvalidOperationException("Parcela não encontrada.");
 
-        var fatura = parcela.Fatura!;
+        // Fatura numa query PRÓPRIA (raiz Faturas): encadear a partir de ParcelaTransacao
+        // com Include(Fatura).ThenInclude(ParcelasTransacao) formava um ciclo de Include do
+        // MESMO tipo (ParcelaTransacao→Fatura→ParcelasTransacao) que o EF Core rejeita em
+        // VerifyNoCycles sob AsNoTracking → InvalidOperationException lançada APÓS o commit
+        // (débito + fechamento da fatura já gravados) devolvendo 500 num pagamento que deu certo.
+        var fatura = await _context.Faturas
+            .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == parcela.FaturaId)
+            ?? throw new InvalidOperationException("Fatura não encontrada.");
+
         var valorTotal = CalcularValorTotalFatura(fatura);
         var snapshot = await _limiteCalc.CalcularAsync(
             parcela.Parcelamento!.CartaoCreditoId, usuarioId);
