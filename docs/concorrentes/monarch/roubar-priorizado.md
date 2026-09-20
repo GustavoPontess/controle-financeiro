@@ -85,19 +85,33 @@
 **Gap:** ❌ zero IA. **Roubar ([ai-assistant.md](./paginas/ai-assistant.md)):** Claude (modelo mais capaz) com **tool-use sobre NOSSOS endpoints** (query transações/saldos/metas/orçamento) — nunca dump, sempre função → **não alucina** (como o Monarch fez ao vivo). Consentimento LGPD explícito + disclaimer "não é aconselhamento". Feedback 👍/👎.
 **⭐ Nosso diferencial:** **IA de casal/household** — "quanto gastamos juntos?", "como dividir a meta da casa?", "quem pagou mais?". Ninguém (nem Monarch) faz. **Esforço:** L. Alto impacto de marketing.
 
-### 14. Forecasting (projeção de vida) — nossa isca grátis ⭐⭐⭐
-**Gap:** ❌. É o que o Gustavo mais quer ("comprar casa ano que vem → impacto"). **Roubar ([forecasting.md](./paginas/forecasting.md)):** `ForecastService` **determinístico** (sem IA): saldos + recorrentes + eventos + assumções (retorno/inflação/idade aposentadoria) → série de net worth. Eventos: Buy home/Have kid/Income/Expense/Retire (drag na timeline). `recharts` linha + markers.
-**Jogada:** Monarch **cobra** (Plus $199,99/ano). A gente pode usar versão simples **grátis** como isca de aquisição + avançado no pago. **Casal** deixa mais forte (2 patrimônios, "ter filho" é decisão do casal). **Esforço:** L.
+### 14. Forecasting (projeção de vida) — nossa isca grátis ⭐⭐⭐ (mapeado por dentro)
+**Gap:** ❌. É o que o Gustavo mais quer ("comprar casa ano que vem → impacto"). **Roubar ([forecasting.md](./paginas/forecasting.md) — spec completo lá):** `ForecastService` **determinístico** (sem IA): saldos + recorrentes + **9 tipos de evento** (params exatos no doc) + premissas (growth 7%/inflação 3%/withdrawal order/savings split) → série de net worth ano a ano. `recharts` linha + markers arrastáveis + múltiplos cenários.
+**Jogada:** Monarch **cobra** (Plus $199,99/ano). Versão simples **grátis** (1 evento "comprar casa" + 1 cenário) como isca; avançado (multi-cenário/todos eventos/drawdown) no pago. **Casal** deixa mais forte (household, "ter filho" = decisão do casal → liga no nosso rateio). **BR:** Social Security→INSS, financiamento SAC/Price. **Esforço:** L.
+
+### 15. Pay down (quitação de dívida) → liga no nosso módulo de Empréstimo ⭐
+**Gap:** temos módulo de Empréstimo, mas sem projeção de quitação. **Roubar ([goals.md](./paginas/goals.md#pay-down)):** KPIs Current Principal · Projected Interest · **Debt Free Date** + chart Timeline/Principal&Interest, data-driven das dívidas. Avatar "sair das dívidas" (grande no BR). **Esforço:** M (reusa Empréstimo).
+
+### 16. Businesses / PJ (Plus) → eixo B2B contador
+**Gap:** ❌. Monarch cobra rastreio de negócio separado (P&L PJ) no Plus. **Roubar:** visão de negócio separada do pessoal (casa com nosso eixo contadores/`docs/features/b2b-contadores`). **Esforço:** L. Tier pago.
 
 ---
 
 ## P3 — local BR (nossa brecha, Monarch não tem)
 - **PIX/boleto** no billing + **settle-up do casal via PIX** (Monarch só cartão/Stripe — [notificacoes-e-topo.md](./paginas/notificacoes-e-topo.md)).
 - **Receipts via NFC-e/QR** (SEFAZ) — Monarch faz "Retail Sync" US; BR tem QR de graça em toda nota → anexar/itemizar ([transactions.md](./paginas/transactions.md)).
+- ⭐ **Tax lots → DARF/IR ganho de capital** — Monarch tem "Add tax lots" (cost basis) no Investments Advanced. No BR = apuração mensal de IR de ações/FIIs/cripto + DARF. **Dor real do investidor PF, ninguém faz bem** → feature matadora + casa com eixo contador ([investments.md](./paginas/investments.md)).
 - **Open Finance BR** — sync automático (holdings/transações) vs. manual.
 - **Benchmarks BR** (CDI/IBOV/IPCA) nos investimentos ([investments.md](./paginas/investments.md)).
-- **Categorias BR** — trocar US-específicas (401k/Student Loans) por BR no `CategoriaSeeder`.
+- **Categorias BR** — trocar US-específicas (401k/Student Loans) por BR no `CategoriaSeeder`. Seedar **tags padrão** (deles: Tax/Reimburse/Split/Business/Subscription → BR: Reembolsável/Dividir/Trabalho/Assinatura).
 - **Disclaimers regulatórios** (advice/forecasting/goals): "estimativa, não é recomendação" — obrigatório p/ conformidade (CONFORMIDADE_BR).
+
+## Achados do deep-dive Plus (registro estratégico)
+- ⭐ **Monarch tem MCP** (Model Context Protocol, em Settings→Integrations, pausado) — apostam em **ecossistema de IA/agentes** conectando aos dados do usuário. Reforça #13 (nossa IA) + eventual MCP nosso.
+- **Credit via Spinwheel** (parceiro) = credit score + saldos/vencimentos de cartão. BR = Serasa/SPC/Open Finance (modelo e regulamentação diferentes).
+- **Estate Planning** (testamento/procuração/beneficiários) vira menu pós-questionário — Plus. Baixa prioridade BR agora.
+- **Notifications** = matriz tipo×canal (in-app/email/push) com valor-mínimo por alerta — bom padrão pro nosso.
+- **Preferences "Needs Review"** (marcar transação nova/sem-categoria pra revisão) — casa com Merchant+Rules+IA (fila de curadoria).
 
 ---
 
