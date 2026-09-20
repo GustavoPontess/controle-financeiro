@@ -1,6 +1,10 @@
 # Monarch (Monarch Money) — resumo executivo
 
-> `monarch.com`, analisado em 2026-05-31 (site público — sem free perpétuo, deep-dive logado exigiria assinatura, não feito). **Concorrente real do nosso espaço** (finanças pessoais B2C) e **o benchmark global de finanças de casal**. US-only, inglês, USD.
+> `monarch.com`, analisado em 2026-05-31 (site público) + **deep-dive logado completo em 2026-09-20** (conta de teste paga, trial ativo, dados fictícios inseridos, zero compra — engenharia reversa de TODAS as telas/forms/gráficos). **Concorrente real do nosso espaço** (finanças pessoais B2C) e **o benchmark global de finanças de casal**. US-only, inglês, USD.
+>
+> ⭐ **Deep-dive logado (2026-09-20):** mapeamento tela a tela em [`paginas/`](./paginas/README.md) — Dashboard, Accounts, Transactions, modal de transação, Cash Flow (Sankey), Reports, Budget, Recurring, Goals (modelo de alocação), **Forecasting** (projeção de vida — gated no Plus), Investments, AI Assistant, Household/casal, Settings/Rules, pricing completo. Backlog priorizado do "que roubar" → [`roubar-priorizado.md`](./roubar-priorizado.md).
+>
+> **Achado central:** o produto deles é um **loop fechado** — Forecasting (futuro) → Goals (alvo+data→mensalidade) → Budget (mês) → Transações (real) → Allocation (reserva de saldo real). Não são features soltas. **Nenhum concorrente BR tem esse nível** (tese do Gustavo confirmada).
 
 ## O que é
 
