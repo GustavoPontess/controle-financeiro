@@ -68,10 +68,20 @@ public class RosterService
             .Select(c => new ContaLembradaDto
             {
                 UsuarioId = c.UsuarioId,
-                Nome = c.Nome,
+                Nome = PrimeiroNome(c.Nome),          // só o 1º nome: menor exposição em navegador compartilhado
                 EmailMascarado = MascararEmail(c.Email),
             })
             .ToList();
+    }
+
+    /// <summary>Só o primeiro nome — a lista pré-login não expõe o nome completo do usuário anterior
+    /// num navegador compartilhado (o inteiro nem sai do servidor).</summary>
+    internal static string PrimeiroNome(string nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome)) return nome ?? string.Empty;
+        var t = nome.Trim();
+        var sp = t.IndexOf(' ');
+        return sp <= 0 ? t : t[..sp];
     }
 
     /// <summary>E-mail REAL de uma conta do roster deste navegador — pra pré-preencher o campo quando
