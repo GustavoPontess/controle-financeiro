@@ -34,21 +34,23 @@ Por pessoa + global:
 - **Chart:** linha de net worth do ano atual até ~90 anos (ex.: 2026→2077). Markers de eventos na timeline (🏠🎂🏖…). **Arrastável** — mover evento muda a data → recomputa ao vivo.
 - **Tabela** (abas **Accounts / Cash Flow / Events**): valores **ano a ano** (Net Worth → Assets → Cash/cada conta; Cash Flow = renda/despesa/poupança por ano; Events = eventos por ano).
 
-## ⭐⭐ Eventos de vida (Add event) — 9 tipos
-Cada evento = **Year** + params específicos + Name/icon. Aplica na hora (recalcula KPIs + curva) e vira **marker/região** na timeline (arrastável, deletável via ··· → Delete event).
+## ⭐⭐ Eventos de vida (Add event) — 9 tipos (+3 coming soon)
+Cada evento = **Year** + params específicos + Name/icon. Aplica na hora (recalcula KPIs + curva) e vira **marker/região** na timeline (arrastável, deletável via ··· → Delete event). **Todos mapeados por dentro:**
 
-| Evento | Modela |
+| Evento | Params (mapeados ao vivo) |
 |---|---|
-| **Income** | entrada extra: herança, bônus, venda de ações |
-| **Expense** | gasto: comprar carro, abrir negócio, reforma |
-| **Retire** | transição pra renda de aposentadoria |
-| **Buy a home** | compra de imóvel + financiamento (detalhe abaixo) |
-| **Social Security** | começar a receber previdência (INSS no BR) |
-| **New job** | mudança de renda por novo emprego |
-| **Have a kid** | custo de criar filho (detalhe abaixo) |
-| **Career break** | pausa na carreira (tempo sem renda) |
-| **Windfall** | ganho único |
-| *(Coming soon)* | mais tipos anunciados |
+| **Income** | Year · **One-time × Recurring** (recorrente: Yearly amount + **Repeat every (years)** + **End year** opcional) · Change over time · "Events that affect income" (liga a Retirement) |
+| **Expense** | Year · **One-time × Recurring** · Expense amount (recorrente = + repeat/end-year) |
+| **Retire** | Year (mostra a idade) · **Living expenses** slider (Spend less↔more) · **Additional yearly expenses** (ex.: $6.500 saúde) + change over time · **Income reduction** (reduz fontes de renda por %) |
+| **Buy a home** | (detalhe completo abaixo) |
+| **Social Security** | Year (idade) · **Monthly benefit amount** + link p/ calculadora SSA · Change over time. **BR = INSS** |
+| **New job** | Year · **Yearly take-home income** (nova) + change over time · **Signing bonus** (única) · **Income reduction** (reduz renda antiga; 100% = substitui) |
+| **Have a kid** | (detalhe completo abaixo) |
+| **Career break** | **Start year + End year** (duração) · **Living expenses** slider · **Income reduction** |
+| **Windfall** | Year · **Income amount** (única) |
+| *(coming soon)* | **Get married** (casamento) · **Education** (mensalidade/educação) · **Emergency** (despesa inesperada) |
+
+**Padrão dos eventos:** ou **pontual** (Year + valor) ou **recorrente/duração** (start/end ou repeat). Muitos afetam **renda** (reduction %) ou **despesa** (slider/additional). O motor combina todos por ordem cronológica.
 
 ### ⭐ "Buy a home" (o cenário do Gustavo) — params completos
 - **Year** (quando compra).
@@ -65,6 +67,17 @@ Cada evento = **Year** + params específicos + Name/icon. Aplica na hora (recalc
 
 ### ⭐ "Have a kid" — params
 - **Year** · **Years of child expenses** (duração, ex.: 13) · **Yearly child expenses** ($18.000 — creche/comida/saúde/educação) · **Change over time** · **Upfront child costs** ($4.500 — parto/adoção/licença). Chart mostra **região sombreada** pela duração; net worth caiu $2.34M→$2.10M.
+
+## Sub-fluxos de premissas (drawers)
+- **Withdrawal order** ("Change withdrawal order") — lista **arrastável** de contas = ordem de saque pra cobrir despesas na aposentadoria/déficit. Ex.: Extra Savings → Conta Teste → Corretora. Top-to-bottom.
+- **Split extra savings** ("Change savings splits") — toggle + distribui o **excedente** (renda > despesa) entre contas por **% ou $**, top-to-bottom; conta virtual **"Extra Savings" (Remainder)** pega o resto. "Cada conta puxa do que sobra."
+
+## Tabela ano a ano (Accounts / Cash Flow / Events)
+- **Accounts:** Net Worth → **Assets** → por conta (Cash, Taxable Investments, e a virtual **Extra Savings**). Cada conta expande em sub-linhas: **Starting balance · Inflation adjustment · Growth (ex.: 3%/7%) · Deposits**. Mostra a matemática ano a ano.
+- **Cash Flow:** renda/despesa/poupança por ano. **Events:** eventos por ano.
+
+## Cenários (comparar planos)
+- Abas no topo. **"+"** → **Start from scratch** ou **Duplicate existing scenario** (toast "Scenario duplicated"). Cada cenário é editável independente; alterna entre abas pra comparar. **Auto-save**. + **Watch walkthrough** (tutorial).
 
 ## ⭐⭐⭐ COMO FAZER NO NOSSO (spec de implementação)
 Motor **determinístico** (NÃO é IA), testável:
