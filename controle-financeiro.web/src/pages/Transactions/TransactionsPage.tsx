@@ -40,12 +40,13 @@ const monthWindow = (d: Date) => {
 
 // Filtros avançados (#1.1) — vivem no PontesDrawer. Vazios = inativos.
 type AdvFilters = {
+  categoriaId: string // "" = todas
   contaId: string; cartaoId: string
   valorMin: string; valorMax: string
   status: string      // "" = qualquer | "1" = efetivado | "0" = previsto
   ordenacao: string   // "" = data desc (default) | data_asc | valor_desc | valor_asc
 }
-const EMPTY_ADV: AdvFilters = { contaId: "", cartaoId: "", valorMin: "", valorMax: "", status: "", ordenacao: "" }
+const EMPTY_ADV: AdvFilters = { categoriaId: "", contaId: "", cartaoId: "", valorMin: "", valorMax: "", status: "", ordenacao: "" }
 const ORDENACAO_OPTS = [
   { value: "", label: "Mais recentes" },
   { value: "data_asc", label: "Mais antigas" },
@@ -71,7 +72,6 @@ export default function TransactionsPage() {
   const [monthStats, setMonthStats] = useState({ entradas: 0, saidas: 0, saldoMes: 0 })
   const [saldoTotal, setSaldoTotal] = useState(0)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [filterCategoryId, setFilterCategoryId] = useState("")
   const [filterTipo, setFilterTipo] = useState<0 | 1 | 2>(0) // 0=todos, 1=despesa, 2=receita
   const [searchInput, setSearchInput] = useState("") // valor digitado (imediato)
   const [search, setSearch] = useState("")             // valor com debounce (query)
@@ -129,7 +129,7 @@ export default function TransactionsPage() {
       const { from, to } = monthWindow(currentDate)
       const result = await listTransactionsPage(page, pageSize, {
         from, to,
-        categoriaId: filterCategoryId || undefined,
+        categoriaId: adv.categoriaId || undefined,
         q: search || undefined,
         tipo: filterTipo || undefined,
         contaId: adv.contaId || undefined,
@@ -145,7 +145,7 @@ export default function TransactionsPage() {
       console.error("Erro ao carregar transações:", error)
       notify({ open: true, message: "Erro ao carregar transações", severity: "error" })
     }
-  }, [currentDate, page, pageSize, filterCategoryId, search, filterTipo, adv, notify])
+  }, [currentDate, page, pageSize, search, filterTipo, adv, notify])
 
   // KPIs do topo — endpoint /stats dedicado, calculado no banco. Exato em qualquer
   // volume (#179 — antes agregava 1ª página de 100 e perdia acurácia >100/mês).
@@ -172,7 +172,7 @@ export default function TransactionsPage() {
 
   // Filtro/mês muda → volta pra página 1 (senão usuário fica preso em página 5
   // de um filtro que só tem 2 páginas).
-  useEffect(() => { setPage(1) }, [currentDate, filterCategoryId, filterTipo, search, pageSize, adv])
+  useEffect(() => { setPage(1) }, [currentDate, filterTipo, search, pageSize, adv])
 
   // Atalho "/" foca a busca (fora de input). N abre nova transação.
   useEffect(() => {
@@ -217,12 +217,13 @@ export default function TransactionsPage() {
     () => Object.values(adv).filter((v) => v !== "").length,
     [adv]
   )
+  // Tipo (Tudo/Receitas/Despesas) é toggle de VISÃO, não filtro → não conta pro "Limpar".
   const hasFilters = useMemo(
-    () => !!(search || filterCategoryId || filterTipo || advCount),
-    [search, filterCategoryId, filterTipo, advCount]
+    () => !!(search || advCount),
+    [search, advCount]
   )
   const clearFilters = () => {
-    setSearchInput(""); setSearch(""); setFilterCategoryId(""); setFilterTipo(0)
+    setSearchInput(""); setSearch("")
     setAdv(EMPTY_ADV); setDraft(EMPTY_ADV)
   }
 
@@ -330,17 +331,6 @@ export default function TransactionsPage() {
             </button>
           ))}
         </div>
-        <div className={styles.catField}>
-          <PontesSelect
-            value={filterCategoryId}
-            onChange={(v) => setFilterCategoryId(v)}
-            placeholder="Categoria"
-            options={[
-              { value: "", label: "Todas as categorias" },
-              ...categories.map((c) => ({ value: c.id, label: c.descricao })),
-            ]}
-          />
-        </div>
         <PontesButton
           size="sm"
           variant={advCount ? "primary" : "outline"}
@@ -445,6 +435,14 @@ export default function TransactionsPage() {
             no DOM (evita colisão de locators e foco em campos invisíveis). */}
         {filtersOpen && (
         <div className={styles.drawerBody}>
+          <label className={styles.drawerLabel}>Categoria
+            <PontesSelect
+              value={draft.categoriaId}
+              onChange={(v) => setDraft((d) => ({ ...d, categoriaId: v }))}
+              placeholder="Todas as categorias"
+              options={[{ value: "", label: "Todas as categorias" }, ...categories.map((c) => ({ value: c.id, label: c.descricao }))]}
+            />
+          </label>
           <label className={styles.drawerLabel}>Conta
             <PontesSelect
               value={draft.contaId}
