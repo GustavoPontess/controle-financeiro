@@ -24,6 +24,9 @@ export * from "./overlayStyles"
 export * from "./useBodyScrollbar"
 export * from "./ScrollArea"
 
+// ── Layout (primitivos: empilhar / lado a lado) ──────────────────────────────
+export * from "./layout/Layout"
+
 // ── Botões ───────────────────────────────────────────────────────────────────
 export * from "./buttons/Button"
 export * from "./buttons/ChoiceCards"
@@ -73,6 +76,7 @@ export * from "./feedback/Popover"
 // ── Navegação ────────────────────────────────────────────────────────────────
 export * from "./nav/Breadcrumb"
 export * from "./nav/Tabs"
+export * from "./nav/Segmented"
 export * from "./nav/Stepper"
 export * from "./nav/Pagination"
 export * from "./nav/CommandPalette"

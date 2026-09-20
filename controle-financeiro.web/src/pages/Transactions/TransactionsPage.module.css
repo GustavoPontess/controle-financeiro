@@ -78,7 +78,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.catField { min-width: 200px; flex: 0 1 220px; }
 
 /* Filtros/Limpar (PontesButton) — mesma altura dos demais controles da toolbar (42px). */
 .toolbar > button { height: 42px; box-sizing: border-box; }

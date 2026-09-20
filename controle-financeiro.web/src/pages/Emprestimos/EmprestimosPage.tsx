@@ -104,48 +104,44 @@ export default function EmprestimosPage() {
       )}
 
       <div className={styles.toolbar}>
-        <div className={styles.toolbarFilters}>
-          <div className={styles.segmented} role="tablist">
-            {([["todos", "Tudo"], ["receber", "A receber"], ["pagar", "A pagar"]] as const).map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                role="tab"
-                aria-selected={l.direcao === val}
-                data-active={l.direcao === val ? "true" : undefined}
-                className={styles.segBtn}
-                onClick={() => l.setDirecao(val)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            aria-pressed={l.mostrarArquivados}
-            data-active={l.mostrarArquivados ? "true" : undefined}
-            className={styles.toggleArquivados}
-            onClick={() => { l.setMostrarArquivados(!l.mostrarArquivados); l.setPage(1) }}
-          >
-            <Archive size={14} strokeWidth={2.5} /> Arquivados
-          </button>
+        <div className={styles.searchGrow}>
+          <PontesInput
+            value={l.busca}
+            onChange={(e) => l.setBusca(e.target.value)}
+            placeholder="Buscar por descrição ou pessoa…"
+            iconStart={<Search size={14} />}
+          />
         </div>
-        <div className={styles.toolbarActions}>
-          <div className={styles.searchGrow}>
-            <PontesInput
-              value={l.busca}
-              onChange={(e) => l.setBusca(e.target.value)}
-              placeholder="Buscar por descrição ou pessoa…"
-              iconStart={<Search size={14} />}
-            />
-          </div>
-          {l.candidatosConsolidacao.length > 0 && (
-            <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}
-              onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
-              Consolidar
-            </PontesButton>
-          )}
+        <div className={styles.segmented} role="tablist">
+          {([["todos", "Tudo"], ["receber", "A receber"], ["pagar", "A pagar"]] as const).map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              role="tab"
+              aria-selected={l.direcao === val}
+              data-active={l.direcao === val ? "true" : undefined}
+              className={styles.segBtn}
+              onClick={() => l.setDirecao(val)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+        <button
+          type="button"
+          aria-pressed={l.mostrarArquivados}
+          data-active={l.mostrarArquivados ? "true" : undefined}
+          className={styles.toggleArquivados}
+          onClick={() => { l.setMostrarArquivados(!l.mostrarArquivados); l.setPage(1) }}
+        >
+          <Archive size={14} strokeWidth={2.5} /> Arquivados
+        </button>
+        {l.candidatosConsolidacao.length > 0 && (
+          <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}
+            onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
+            Consolidar
+          </PontesButton>
+        )}
       </div>
 
       <PontesCard padding={0} radius={16}>
