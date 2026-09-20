@@ -130,7 +130,9 @@ export default function ParcelamentosPage() {
         dataCompra: form.dataCompra,
         parcelas: form.parcelas,
         primeiraParcelaMes: form.primeiraParcelaMes,
-        taxaJuroMensal: form.taxaJuroMensal ?? 0,
+        // Taxa só é válida em PIX Crédito (tipo "1"); o backend rejeita (409) qualquer taxa
+        // — inclusive 0 — em Compra Parcelada. Enviar undefined pros demais tipos.
+        taxaJuroMensal: form.tipo === "1" ? (form.taxaJuroMensal ?? 0) : undefined,
         idempotencyKey: crypto.randomUUID(),
       }
       await ParcelamentoService.criar(payload)
