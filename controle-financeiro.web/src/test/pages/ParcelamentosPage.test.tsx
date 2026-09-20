@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import ParcelamentosPage from "../../pages/Parcelamentos/index"
@@ -81,5 +81,53 @@ describe("ParcelamentosPage (#153)", () => {
     expect(screen.getByText("Informe o valor")).toBeInTheDocument()
     expect(screen.getAllByText("Selecione o cartão").length).toBeGreaterThan(0)
     expect(criar).not.toHaveBeenCalled()
+  })
+
+  // Regressão do 409: o form mandava `taxaJuroMensal: 0` INCONDICIONAL, e o backend rejeita
+  // qualquer taxa fora de PIX Crédito → criar Compra Parcelada era impossível pela UI.
+  // O mock antigo aceitava qualquer payload e nunca conferia — por isso passava batido.
+  it("Compra Parcelada NÃO envia taxaJuroMensal (regressão do 409)", async () => {
+    renderPage()
+    await screen.findByText("Notebook")
+    fireEvent.click(screen.getByText("Novo Parcelamento"))
+    await screen.findByText("Novo parcelamento")
+
+    fireEvent.change(screen.getByPlaceholderText("Ex: Notebook, Monitor"), { target: { value: "Geladeira" } })
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "300000" } })
+    fireEvent.click(screen.getByText("Selecione o cartão"))
+    fireEvent.click(await screen.findByText("Nubank"))
+    fireEvent.click(screen.getByText("Criar"))
+
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(1))
+    const payload = criar.mock.calls[0][0] as { tipo: number; taxaJuroMensal?: number }
+    expect(payload.tipo).toBe(0)                     // CompraParcelada
+    expect(payload.taxaJuroMensal).toBeUndefined()   // não manda 0 → não dispara 409
+  })
+
+  it("PIX Crédito continua enviando a taxaJuroMensal informada", async () => {
+    renderPage()
+    await screen.findByText("Notebook")
+    fireEvent.click(screen.getByText("Novo Parcelamento"))
+    await screen.findByText("Novo parcelamento")
+
+    fireEvent.change(screen.getByPlaceholderText("Ex: Notebook, Monitor"), { target: { value: "PIX compra" } })
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "300000" } })
+    fireEvent.click(screen.getByText("Selecione o cartão"))
+    fireEvent.click(await screen.findByText("Nubank"))
+
+    // Tipo → PIX Crédito. O 1º "Compra Parcelada" é o badge do card; o trigger do select é o último.
+    const triggers = screen.getAllByText("Compra Parcelada")
+    fireEvent.click(triggers[triggers.length - 1])
+    fireEvent.click(await screen.findByText("PIX Crédito"))
+
+    // Campo de taxa aparece: 2º spinbutton (o 1º é Parcelas).
+    const spins = screen.getAllByRole("spinbutton")
+    fireEvent.change(spins[spins.length - 1], { target: { value: "2.5" } })
+    fireEvent.click(screen.getByText("Criar"))
+
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(1))
+    const payload = criar.mock.calls[0][0] as { tipo: number; taxaJuroMensal?: number }
+    expect(payload.tipo).toBe(1)                 // PIXCredito
+    expect(payload.taxaJuroMensal).toBe(2.5)
   })
 })
