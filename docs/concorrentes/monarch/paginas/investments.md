@@ -5,10 +5,10 @@
 ## Sub-abas
 - **Holdings** (grátis) · **Advanced** (⭐ **Plus** — gated, mais um upsell).
 
-## Backtested performance (chart)
+## Backtested performance (chart) — Holdings (grátis)
 - Abas **Market / Allocation** + range (3 Months…) + download.
 - **Market:** linha de retorno % comparando **Your Portfolio** com benchmarks **S&P 500 · US Stocks · US Bonds** no período. Legenda mostra retorno de cada (ex.: S&P 500 +2.38%, US Bonds −2.71%). Eixo % (−3% a +9%).
-- **Allocation:** breakdown da alocação da carteira (por classe de ativo).
+- **Allocation:** "Portfolio allocation" = **donut** (por asset class) + tabela **Asset class · Percent · Value** (ex.: Stocks 100%). Agrupável By asset class. *(A treemap + Gains&Losses + Funds ficam no Advanced/Plus.)*
 
 ## Holdings (tabela)
 - Colunas: **Security · Price · Quantity · Value · Weight · Past 3 Months** (retorno).

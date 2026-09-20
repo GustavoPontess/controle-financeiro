@@ -37,3 +37,6 @@
 4. **Forecasting como isca grátis** (eles cobram no Plus).
 
 > Backlog priorizado da engenharia reversa: ver [../roubar-priorizado.md](../roubar-priorizado.md).
+
+## Cobertura (sweep exaustivo)
+Mapeado por completo: todas as telas do Core + **Plus** (Forecasting: setup, premissas, 9 eventos + params, sub-fluxos, cenários; Investments Advanced: Allocation/Gains&Losses/Funds/tax lots), Goals (Save up + **Pay down** + Allocate + Manage), Reports (Cash Flow/Spending/**Income**), **todas as sub-páginas de Settings** (Profile/Display/Notifications/Security/Early Access/Integrations-MCP/General/Businesses/Members/Preferences/Institutions/Categories/Merchants/Rules/Tags/Data), questionário de Advice completo. **Fora do escopo:** app **mobile** (só web foi acessado) — iOS/Android podem ter UX própria a checar depois.

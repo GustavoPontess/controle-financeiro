@@ -20,8 +20,8 @@ Dropdown com 4 opções (cada um pra um ângulo):
 - **Transactions** (lista filtrada pelo relatório: Edit multiple · Sort · Columns).
 - **Summary** (painel): **Total transactions · Largest transaction · Average transaction · Total spending**.
 
-## Income tab
-Espelho do Spending pro lado da receita (mesmos tipos de gráfico, breakdown por fonte de renda).
+## Income tab (confirmado ao vivo)
+Espelho exato do Spending pro lado da receita: mesmos controles (Date/Filters/Reports/Save), chart Pie/donut ($ Total no centro, breakdown por **fonte de renda** — ex.: Paychecks 100%), grouping By category, download + **Summary** (Total transactions · Largest · Average · **Total income**).
 
 ## Cash Flow tab
 = a página [Cash Flow](./cash-flow.md) embutida (bar + Sankey).

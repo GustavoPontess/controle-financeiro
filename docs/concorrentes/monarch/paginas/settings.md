@@ -2,26 +2,30 @@
 
 > Mapa completo do painel de configurações. Casal/contador em doc próprio ([household-casal](./household-casal.md)).
 
-## Estrutura do menu
+## Estrutura do menu (todas as sub-páginas mapeadas)
 ### Account (do usuário)
-- **Profile** — dados pessoais.
-- **Display** — tema/exibição, moeda, formato.
-- **Notifications** — preferências de alerta (email/push) — ver sino em [notificacoes-topo](./notificacoes-e-topo.md).
-- **Security** — senha, **2FA**, sessões/dispositivos (relevante pro nosso baseline de segurança [[feedback_baseline_seguranca_qualidade]]).
-- **Early Access** — features beta opt-in.
-- **Integrations** (badge Beta) — integrações de terceiros.
+- **Profile** — avatar · Full Name · **Display Name** ("we'll address you by this name") · Birthday · Timezone.
+- **Display** — **Visual Appearance** (Light/Dark).
+- **Notifications** — **matriz tipo × canal** (canais: **Monarch in-app · Email · Push**, cada um "Turn all off"). Tipos: Account disconnected · **Deposit alert** (valor mín) · **Expense alert** (valor mín) · Transactions that need review · **Receipt** import error/imported · (+ Accounts/Budgets/Goals). Ver sino em [notificacoes-topo](./notificacoes-e-topo.md).
+- **Security** — Email (verified, Edit) · Password (Edit) · **MFA** (Disabled → Enable) · **Grant support access** (agente de suporte, **auto-desabilita 14 dias**, revogável) · **Delete account** (permanente, exige cancelar sub/trial antes). *(relevante pro baseline [[feedback_baseline_seguranca_qualidade]].)*
+- **Early Access** — toggles de features experimentais (ex.: **Investment Transactions** Beta).
+- **Integrations** (Beta) — ⭐ **"Monarch MCP"** (Model Context Protocol pra IA/ferramentas conectarem aos dados) — **pausado** por acordo de portabilidade. *Data point: eles apostam em MCP pra ecossistema de IA.*
 
 ### Household (compartilhado)
-- **General** — nome/config do household.
-- **Businesses** — contas de negócio (eixo PJ; casa com nosso B2B).
+- **General** — Household Name · Country · Address/City/State/Zip.
+- **Businesses** ⭐ (**Plus**) — rastreio financeiro **separado de negócios/PJ** ("clear financials for your businesses"). = o ângulo P&L/PJ; casa com nosso eixo B2B contadores.
 - **Members** ⭐ — casal/família + acesso a profissional/contador → [household-casal](./household-casal.md).
-- **Preferences** — preferências do household.
-- **Institutions** — bancos/instituições conectadas (sync).
-- **Categories** — gerenciar taxonomia (grupos + categorias + emoji; ver [transacao-modal](./transacao-modal.md)).
-- **Merchants** — gerenciar comerciantes (entidade Merchant).
+- **Preferences** — **"How transactions work":** Mark new/uncategorized transactions as **Needs Review** · **Allow edits to pending transactions** (read-only × incluído em budget/reports) · matching de pending.
+- **Institutions** — bancos conectados (Refresh all / Add account) via agregador.
+- **Categories** — gestão da taxonomia: **Create group** + grupos (Income/Expenses→subgrupos), cada um **Edit** + **Create Category**. Emoji por item (ver [transacao-modal](./transacao-modal.md)).
+- **Merchants** — lista de comerciantes do histórico (All/Recommended, por contagem), **Edit** (como exibe) / **Delete**. Confirma **Merchant como entidade 1ª classe** (nós não temos).
 - **Rules** ⭐ — motor de automação (abaixo).
-- **Tags** — gerenciar tags.
-- **Data** — export/import/portabilidade (LGPD: portabilidade é direito do titular).
+- **Tags** — New tag + lista (contagem, Edit/Delete). **Tags padrão seedadas: Tax · Reimburse · Split · Business · Subscription**.
+- **Data** — **Download transactions** (CSV) · **Download account balances** (CSV) · **Remove credit data access** (via **Spinwheel** = credit score + saldos/vencimentos de cartão no Recurring) · **Delete transaction history** (LGPD: portabilidade + eliminação = direitos do titular).
+
+### Billing / Estate Planning / Gift / Referrals
+- **Estate Planning** (aparece após o questionário de sucessório — Plus) — testamento/procuração/beneficiários.
+- Billing/Gift/Referrals — ver [notificacoes-topo](./notificacoes-e-topo.md).
 
 ### Billing / Gift Monarch / Referrals
 - **Billing** — assinatura/plano/pagamento (preços em [onboarding](../onboarding.md): ~$14,99/mês ou ~$99,99/ano; **Plus** é tier acima que libera Forecasting + Investments Advanced).

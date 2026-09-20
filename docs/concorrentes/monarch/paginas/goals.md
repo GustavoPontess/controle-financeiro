@@ -90,6 +90,14 @@ Header: imagem hero (Customize image) + card (status · data · $atual · % do a
 ## Painel lateral "$X Available for goals"
 Na lista de Goals: **"$X Available for goals"** = Σ (saldo das contas − alocações). Expande por conta. Botões **Allocate funds** (realocar) e **Edit goal accounts**. É o "não-comprometido" — quanto ainda dá pra reservar.
 
-## Ainda pendente
-- **Allocate funds** / **Manage** (fluxo de realocar entre metas depois de criadas).
-- **Pay down** (metas de dívida) — provável espelho (alvo = zerar saldo devedor).
+## Allocate funds (realocar) + Manage
+- **Allocate funds** (modal): **From** (conta OU meta) → **To** (conta OU meta) · **Amount** · **Date** · toggle **"Include in budget"** (a alocação entra nos actuals do orçamento). = **transferir earmark** entre conta↔meta↔meta, datado. Confirma o modelo: alocação é movível, não um lançamento fixo.
+- **Manage** (dropdown): **Edit goal accounts** (quais contas alimentam as metas) · **Reconciliation history** (auditoria das alocações — histórico de reconciliação).
+- Painel lateral "**$X Available for goals**" (não-comprometido) + **Allocate funds** + **Edit goal accounts**.
+
+## Pay down (metas de dívida) — `/goals/debt-paydown`
+- Aba irmã do Save up. **Data-driven das contas de dívida** (não é alvo manual).
+- **4 KPIs:** Current Debt Principal · **Projected Interest** · Total Principal & Interest · **Debt Free Date** (projeção de quitação).
+- **Overview chart** (abas **Timeline** / **Principal & Interest**).
+- Conecta **contas de passivo** (Add account); "No debt accounts" = "parabéns, sem dívida".
+- → No nosso: liga com módulo de **Empréstimo** que já temos (projetar quitação + juros + data livre-de-dívida = feature de alto valor, avatar de "sair das dívidas").
