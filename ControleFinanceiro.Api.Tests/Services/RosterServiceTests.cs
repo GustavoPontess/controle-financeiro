@@ -83,6 +83,19 @@ public class RosterServiceTests
     }
 
     [Fact]
+    public async Task Listar_mostraSoOPrimeiroNome_naoONomeCompleto()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "gnp@test.com", "Gustavo Nunes Pontes");
+        var svc = new RosterService(ctx);
+        await svc.LembrarAsync("device-1", u.Id);
+
+        var lista = await svc.ListarAsync("device-1");
+
+        Assert.Equal("Gustavo", lista[0].Nome); // menor exposição em navegador compartilhado
+    }
+
+    [Fact]
     public async Task Listar_soContasAtivas()
     {
         using var ctx = CreateContext();

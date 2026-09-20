@@ -160,7 +160,9 @@ describe('LoginPage', () => {
     // Selecionar → revela o e-mail real e vai pro form (só falta a senha).
     fireEvent.click(screen.getByText('Gustavo'))
     await waitFor(() => expect(mockRosterObterEmail).toHaveBeenCalledWith('u1'))
-    await waitFor(() => expect(screen.getByLabelText(/e-mail/i)).toHaveValue('gustavo@gmail.com'))
+    // Chip da conta no topo (mascarado) e o campo de e-mail some — só falta a senha.
+    await waitFor(() => expect(screen.getByText('gu•••@gmail.com')).toBeInTheDocument())
+    expect(screen.queryByLabelText(/e-mail/i)).not.toBeInTheDocument()
   })
 
   it('do form dá pra voltar pra lista de contas salvas sem sair da tela de login', async () => {
@@ -175,7 +177,7 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument())
 
     // …e consegue VOLTAR pra lista direto do form.
-    fireEvent.click(screen.getByRole('button', { name: /escolher uma conta salva/i }))
+    fireEvent.click(screen.getByRole('button', { name: /escolher conta salva/i }))
     await waitFor(() => expect(screen.getByText('Gustavo')).toBeInTheDocument())
   })
 
