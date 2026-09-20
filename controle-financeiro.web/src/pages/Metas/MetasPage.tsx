@@ -158,8 +158,8 @@ export default function MetasPage() {
 
   async function handleContribuir() {
     const v = parseFloat(contribValor.replace(",", "."))
-    if (!contribValor || isNaN(v) || v === 0) {
-      setContribError("Informe um valor válido (positivo para adicionar, negativo para remover).")
+    if (!contribValor || isNaN(v) || v <= 0) {
+      setContribError("Informe um valor positivo.")
       return
     }
     setContribSaving(true)
@@ -338,14 +338,15 @@ export default function MetasPage() {
             <PontesField
               label="Valor (R$)"
               required
-              helper="Use valor positivo para adicionar, negativo para remover."
+              helper="Quanto você guardou para esta meta."
               error={contribError}
             >
               <PontesInput
                 value={contribValor}
                 onChange={e => { setContribValor(e.target.value); setContribError("") }}
-                placeholder="Ex: 500 ou -100"
+                placeholder="Ex: 500"
                 type="number"
+                min={0.01}
                 step={0.01}
                 invalid={!!contribError}
               />
