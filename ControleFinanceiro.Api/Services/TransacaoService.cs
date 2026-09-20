@@ -271,7 +271,14 @@ namespace ControleFinanceiro.Api.Services
             if (dados.Valor <= 0)
                 throw new ArgumentException("O valor da transação deve ser positivo.");
 
-            if (dados.Data.Date > DateTime.UtcNow.Date)
+            // Mesma regra do CriarTransacaoAsync: data futura só é proibida pra lançamento
+            // JÁ efetivado em CONTA. Previsão (salário do próximo mês) e compra de CRÉDITO
+            // pós-datada podem ser futuras — de propósito. O update não altera CartaoCreditoId
+            // nem StatusTransacao, então usa o estado atual do registro + a data nova.
+            // (Editar qualquer campo desses lançamentos legítimos não pode voltar a dar 400.)
+            if (!transacao.CartaoCreditoId.HasValue
+                && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
+                && dados.Data.Date > DateTime.UtcNow.Date)
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             transacao.Descricao = dados.Descricao;

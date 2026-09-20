@@ -286,6 +286,87 @@ public class TransacaoServiceTests
         Assert.Contains("futura", ex.Message);
     }
 
+    [Fact] // Regressão: editar PREVISÃO com data futura (salário do próximo mês) — antes dava 400
+    public async Task AtualizarAsync_PrevisaoComDataFutura_Permite()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            Descricao = "Salário previsto",
+            Valor = 5000,
+            Tipo = TipoTransacao.Receita,
+            Data = DateTime.UtcNow.AddDays(20),
+            StatusTransacao = StatusTransacao.Previsao,
+            CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(transacao);
+        await ctx.SaveChangesAsync();
+
+        // Edita só a descrição, mantendo a data futura da previsão
+        var dados = new Transacao
+        {
+            Descricao = "Salário (editado)",
+            Valor = 5000,
+            Tipo = TipoTransacao.Receita,
+            Data = transacao.Data,
+            StatusTransacao = StatusTransacao.Previsao,
+        };
+
+        var ok = await svc.AtualizarAsync(transacao.Id, dados, usuarioId);
+        Assert.True(ok);
+        var atualizada = await ctx.Transacoes.FindAsync(transacao.Id);
+        Assert.Equal("Salário (editado)", atualizada!.Descricao);
+    }
+
+    [Fact] // Regressão: editar compra de CRÉDITO pós-datada — antes dava 400
+    public async Task AtualizarAsync_CreditoComDataFutura_Permite()
+    {
+        var (ctx, svc) = Build();
+        var usuarioId = Guid.NewGuid();
+
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Cartão",
+            TemCredito = true,
+            LimiteTotal = 5000,
+            DiaFechamento = 10,
+            DiaVencimento = 20,
+            CriadoPor = usuarioId,
+            Ativo = true,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            CartaoCreditoId = cartao.Id,
+            Descricao = "Compra pós-datada",
+            Valor = 200,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow.AddDays(10),
+            CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(transacao);
+        await ctx.SaveChangesAsync();
+
+        var dados = new Transacao
+        {
+            Descricao = "Compra pós-datada (editada)",
+            Valor = 200,
+            Tipo = TipoTransacao.Despesa,
+            Data = transacao.Data,
+        };
+
+        var ok = await svc.AtualizarAsync(transacao.Id, dados, usuarioId);
+        Assert.True(ok);
+    }
+
     [Fact]
     public async Task CriarTransacaoAsync_ComSubcategoriaValida_Persiste()
     {
