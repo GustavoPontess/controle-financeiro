@@ -25,10 +25,13 @@ Sessão de fechamento: trusted-device, login-experience e UX das toolbars/DS ent
 
 **⚠️ Aprendizado (processo):** squash-merge de PR **empilhado** quebra o PR de baixo — o GitHub FECHA o de baixo ao deletar a branch base, e o branch fica com os commits soltos conflitando com o commit squashado (`CONFLICTING` → CI nem roda). Fix aplicado: recriar o PR (#250→#252) + `git rebase --onto main <commit-que-virou-squash>` pra dropar os commits já absorvidos. Lição: evitar PR empilhado, ou mergear o de baixo com o de cima ainda aberto e retargetar ANTES de deletar a base.
 
+**Feito nesta continuação:**
+- ✅ **Fix P1 `pagar-antecipado`** (500 pós-débito) — `MontarPagarResultadoAsync` lia a Fatura por Include cíclico sob `AsNoTracking` (`VerifyNoCycles` estourava após o commit). Fix: Fatura numa query própria (raiz `Faturas`). **12 testes novos** de `ParcelaTransacaoService` (pagar/cancelar/idempotência/IDOR/saldo + **regressão do 500**, provada falhando contra o bug). Back **704/704**. Branch `fix/pagar-antecipado-500`. _(Os 23 testes do fan-out se perderam — worktree limpa; reescritos.)_
+
 **Próxima ação:**
 - **Migrar Transações + Empréstimos pro `PontesSegmented`** — o componente entrou (#251) mas as telas ainda usam CSS duplicado (`.tipoChips`/`.segmented`). Plugar + apagar a duplicação fecha o refactor de consistência.
 - **Trusted-device — tela "Dispositivos confiáveis"** (Configurações): listar/revogar 1/esquecer todos (P1, `GET/DELETE /auth/trusted-devices`, anti-IDOR). Par imediato da parte do login.
-- **Fix P1 `pagar-antecipado`** (500 pós-débito) + entrar os 23 testes segurados do `ParcelaTransacaoService`.
+- **P2 `BancosController` sem `[Authorize]`** na escrita (fix trivial, junto do próximo toque em auth).
 
 **Ambiente:** main `b482c93`, working tree limpo, zero PR aberto. API :5293 reiniciada (`ba6mrb8vn`) — aplica migrations `AddTrustedDevice`+`AddRosterEManterSessao` no dev DB no boot. Postgres up.
 
