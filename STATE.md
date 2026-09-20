@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-17
+last_reviewed: 2026-09-19
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. Back 558/558, front 363/363. TUDO MERGEADO na `main` (`42d45d5`): empréstimos (#236), P1 auditoria server-side/admin (#237), P1 multi-conta + revogação instantânea (#238), P1 testes HTTP de integração (#239), doc ponto verde (#240), P2 MFA baixar backup codes em `.txt` (#241). Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated). Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
+foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
 
 # STATE — onde parei
@@ -14,6 +14,25 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-09-19 (fecha) — 3 PRs empacotados mergeados na `main` (`b482c93`) · zero PR aberto
+
+Sessão de fechamento: trusted-device, login-experience e UX das toolbars/DS entraram na main, todos verdes no CI.
+
+1. **#249 trusted-device MFA** (era `feat/trusted-device-mfa`) — checkbox opt-in "confiar neste dispositivo 30d" pula o 2º fator (NUNCA a senha) só pra a conta DONA do device (anti-cross-account, fail-closed). `TrustedDevice` + cookie `td` + revogação em troca/reset de senha, desativar MFA, marcar exclusão. Back 675/675, front 366/366.
+2. **#252 login-experience** (era `feat/login-experience`) — "manter-me conectado" (cookies persistentes × sessão OWASP + **fix do silent refresh no `/auth/me`**) + roster "escolher conta" (chooser tipo Google, cookie opaco `rd` SameSite=Strict, e-mail mascarado + reveal deliberado, `ContaLembrada` só hash). Back 691/691, front 368/368.
+3. **#251 ux-toolbars-ds** — Empréstimos toolbar em linha única (igual Transações, alturas 42px) + categoria no drawer de filtros das Transações + chip Tudo/Receitas/Despesas vira view-toggle (não dispara "Limpar"). Primitivos DS novos: `PontesSegmented` + `PontesStack`/`PontesInline`.
+
+**⚠️ Aprendizado (processo):** squash-merge de PR **empilhado** quebra o PR de baixo — o GitHub FECHA o de baixo ao deletar a branch base, e o branch fica com os commits soltos conflitando com o commit squashado (`CONFLICTING` → CI nem roda). Fix aplicado: recriar o PR (#250→#252) + `git rebase --onto main <commit-que-virou-squash>` pra dropar os commits já absorvidos. Lição: evitar PR empilhado, ou mergear o de baixo com o de cima ainda aberto e retargetar ANTES de deletar a base.
+
+**Próxima ação:**
+- **Migrar Transações + Empréstimos pro `PontesSegmented`** — o componente entrou (#251) mas as telas ainda usam CSS duplicado (`.tipoChips`/`.segmented`). Plugar + apagar a duplicação fecha o refactor de consistência.
+- **Trusted-device — tela "Dispositivos confiáveis"** (Configurações): listar/revogar 1/esquecer todos (P1, `GET/DELETE /auth/trusted-devices`, anti-IDOR). Par imediato da parte do login.
+- **Fix P1 `pagar-antecipado`** (500 pós-débito) + entrar os 23 testes segurados do `ParcelaTransacaoService`.
+
+**Ambiente:** main `b482c93`, working tree limpo, zero PR aberto. API :5293 reiniciada (`ba6mrb8vn`) — aplica migrations `AddTrustedDevice`+`AddRosterEManterSessao` no dev DB no boot. Postgres up.
+
+---
 
 ### 📌 Sessão 2026-09-19 (cont.) — Testes de 5 services (#248, multi-agente) + trusted-device MFA (parte do login)
 
