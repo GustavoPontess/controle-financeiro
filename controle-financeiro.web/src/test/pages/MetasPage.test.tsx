@@ -174,7 +174,7 @@ describe("MetasPage", () => {
     fireEvent.click(screen.getByText("Contribuir"))
     await screen.findByText("Contribuir para a meta")
 
-    const input = screen.getByPlaceholderText("Ex: 500 ou -100")
+    const input = screen.getByPlaceholderText("Ex: 500")
     fireEvent.change(input, { target: { value: "500" } })
 
     getMetas.mockResolvedValue({ data: [atualizada] })
@@ -194,8 +194,23 @@ describe("MetasPage", () => {
     await screen.findByText("Contribuir para a meta")
     fireEvent.click(screen.getByText("Registrar"))
 
-    expect(await screen.findByText(/Informe um valor válido/)).toBeInTheDocument()
+    expect(await screen.findByText(/Informe um valor positivo/)).toBeInTheDocument()
     expect(contribuirMeta).not.toHaveBeenCalled()
+  })
+
+  it("bloqueia contribuição com valor negativo (não aceita negativo)", async () => {
+    getMetas.mockResolvedValue({ data: [makeMeta()] })
+    renderPage()
+    await screen.findByText("Viagem para Europa")
+
+    fireEvent.click(screen.getByText("Contribuir"))
+    await screen.findByText("Contribuir para a meta")
+
+    fireEvent.change(screen.getByPlaceholderText("Ex: 500"), { target: { value: "-100" } })
+    fireEvent.click(screen.getByText("Registrar"))
+
+    expect(await screen.findByText(/Informe um valor positivo/)).toBeInTheDocument()
+    expect(contribuirMeta).not.toHaveBeenCalled()  // nunca manda negativo pro backend
   })
 
   // ── Excluir ──
