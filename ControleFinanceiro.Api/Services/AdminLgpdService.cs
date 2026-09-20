@@ -144,6 +144,10 @@ public class AdminLgpdService
         var devices = await _context.TrustedDevices.Where(d => d.UsuarioId == usuarioId).ToListAsync();
         _context.TrustedDevices.RemoveRange(devices);
 
+        // Tira a conta de qualquer chooser (roster) onde ela apareça neste ou noutro navegador.
+        var rosters = await _context.ContasLembradas.Where(c => c.UsuarioId == usuarioId).ToListAsync();
+        _context.ContasLembradas.RemoveRange(rosters);
+
         _audit.Registrar(adminId, adminEmail, AcaoAdmin.MarcarExclusao, "Usuario", u.Id, u.Email);
         await _context.SaveChangesAsync();
         return UsuarioAdminDto.De(u);

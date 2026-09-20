@@ -38,7 +38,7 @@
 .logoMobile { margin-bottom: 32px; text-align: center; }
 @media (min-width: 900px) { .logoMobile { display: none; } }
 
-.backLink { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; color: var(--pontes-text-muted); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 24px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.backLink { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; cursor: pointer; font-family: var(--pontes-font); color: var(--pontes-text-muted); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 24px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); transition: color .15s ease, border-color .15s ease, background .15s ease; }
 .backLink:hover { color: var(--pontes-primary); border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
 
 .head { margin-bottom: 32px; }
@@ -78,3 +78,49 @@
 .devHintLabel { font-size: 10px; color: var(--pontes-text-muted); }
 .devHintCreds { font-size: 12px; font-weight: 600; color: var(--pontes-text); }
 @media (max-width: 480px) { .devHintPanel { left: 16px; right: 16px; } }
+
+/* ── Chooser (roster / escolher conta) ─────────────────────────────────────── */
+.chooser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chooserItem { display: flex; align-items: stretch; gap: 4px; }
+.chooserPick {
+  flex: 1; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pontes-border);
+  background: var(--pontes-surface); font-family: var(--pontes-font);
+  transition: border-color .15s ease, background .15s ease;
+}
+.chooserPick:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
+.chooserInfo { display: flex; flex-direction: column; min-width: 0; }
+.chooserNome { font-size: 14px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chooserEmail { font-size: 12px; color: var(--pontes-text-muted); }
+.chooserRemove {
+  flex-shrink: 0; width: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  border-radius: 12px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text-muted);
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.chooserRemove:hover { color: var(--pontes-danger); border-color: var(--pontes-danger); background: var(--pontes-danger-soft, var(--pontes-primary-soft)); }
+
+/* "Entrar em outra conta" — linha da lista (padrão Google), não botão fantasma */
+.chooserOther {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
+  padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--pontes-border);
+  background: transparent; font-family: var(--pontes-font);
+  transition: border-color .15s ease, background .15s ease;
+}
+.chooserOther:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
+.chooserOtherIcon {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--pontes-bg); color: var(--pontes-text-muted);
+}
+.chooserOther:hover .chooserOtherIcon { color: var(--pontes-primary); }
+.chooserOtherText { font-size: 14px; font-weight: 600; color: var(--pontes-text); }
+
+/* Chip da conta no topo do form (padrão Google: clica pra trocar de conta) */
+.acctChip {
+  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; cursor: pointer; max-width: 100%;
+  margin-bottom: 24px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--pontes-border);
+  background: var(--pontes-surface); font-family: var(--pontes-font);
+  transition: border-color .15s ease, background .15s ease;
+}
+.acctChip:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
+.acctChipEmail { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acctChipCaret { color: var(--pontes-text-muted); flex-shrink: 0; }

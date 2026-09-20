@@ -49,6 +49,10 @@ public class MfaVerificarLoginDto
     /// e os próximos logins NESTE navegador (só desta conta) pulam o 2º fator até expirar. Default
     /// false (opt-in explícito, LGPD).</summary>
     public bool ConfiarDispositivo { get; set; }
+
+    /// <summary>"Manter-me conectado" (opt-in): decidido no passo 1 (tela de login), mas a sessão do
+    /// usuário com MFA só nasce aqui no passo 2 — por isso o flag viaja de novo. Ver <see cref="LoginDto.ManterConectado"/>.</summary>
+    public bool ManterConectado { get; set; }
 }
 
 public class MfaStatusDto

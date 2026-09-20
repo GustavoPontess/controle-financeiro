@@ -14,8 +14,9 @@
 .knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: left .2s; }
 .control[data-checked="true"] .knob { left: 20px; }
 
-/* checkbox */
-.checkbox { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+/* checkbox — box-sizing:border-box pra a borda do estado desmarcado não aumentar o box (senão
+   marcar/desmarcar muda o tamanho 20→24 e empurra o layout). */
+.checkbox { box-sizing: border-box; width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .checkbox[data-checked="true"] { background: var(--pontes-primary); color: #fff; font-size: 14px; font-weight: 700; }
 .checkbox[data-checked="false"] { border: 2px solid var(--pontes-border); }
 

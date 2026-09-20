@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox } from '@/components/pontes'
+import { Eye, EyeOff, ArrowLeft, Trash2, UserPlus, ChevronDown } from 'lucide-react'
+import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox, PontesAvatar } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import contaService from '@/services/minhaContaService'
+import rosterService, { type ContaLembrada } from '@/services/rosterService'
 import styles from './LoginPage.module.css'
 
 const DEV_SENHA = 'Dev@123456'
@@ -51,6 +52,17 @@ export default function LoginPage() {
   const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
   const [reativarErro, setReativarErro] = useState<string | undefined>()
 
+  // "Manter-me conectado" (opt-in): sessão persistente + entra no chooser deste navegador.
+  const [manterConectado, setManterConectado] = useState(false)
+  // Roster / chooser pré-login (server-side, por device).
+  const [roster, setRoster] = useState<ContaLembrada[]>([])
+  const [usarOutra, setUsarOutra] = useState(false) // "entrar em outra conta" → mostra o form
+  const [contaSelecionada, setContaSelecionada] = useState<ContaLembrada | null>(null) // conta escolhida no chooser
+
+  useEffect(() => {
+    rosterService.listar().then(setRoster).catch(() => setRoster([]))
+  }, [])
+
   const validate = (): boolean => {
     const e: { email?: string; password?: string } = {}
     if (!email.trim()) e.email = 'Informe o e-mail'
@@ -66,7 +78,7 @@ export default function LoginPage() {
     if (!validate()) return
     setIsLoading(true)
     try {
-      const result = await login(email, password)
+      const result = await login(email, password, manterConectado)
       if (result.mfaRequerido) {
         setMfaChallenge(result.challengeToken) // troca pra tela do código
         return
@@ -90,7 +102,7 @@ export default function LoginPage() {
       await contaService.reativarConta(email, password)
       // Reativada → loga normalmente (respeita MFA se estiver ativo).
       setMarcada(null)
-      const result = await login(email, password)
+      const result = await login(email, password, manterConectado)
       if (result.mfaRequerido) { setMfaChallenge(result.challengeToken); return }
       navigate('/')
     } catch (err) {
@@ -106,7 +118,7 @@ export default function LoginPage() {
     if (!mfaCodigo.trim()) { setMfaErro('Informe o código'); return }
     setIsLoading(true)
     try {
-      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim(), confiarDispositivo)
+      await verificarMfaLogin(mfaChallenge!, mfaCodigo.trim(), confiarDispositivo, manterConectado)
       navigate('/')
     } catch (err) {
       setMfaErro(err instanceof Error ? err.message : 'Código inválido')
@@ -114,6 +126,30 @@ export default function LoginPage() {
       setIsLoading(false)
     }
   }
+
+  // Selecionar uma conta do chooser: revela o e-mail real (a lista só tem mascarado), guarda a conta
+  // pra mostrar o chip no topo e vai pro form (a pessoa só digita a senha).
+  const handleSelecionarConta = async (conta: ContaLembrada) => {
+    try {
+      setEmail(await rosterService.obterEmail(conta.usuarioId))
+      setContaSelecionada(conta)
+    } catch {
+      setContaSelecionada(null) // reveal falhou → form normal com o campo de e-mail
+    }
+    setErrors({}); setError('')
+    setUsarOutra(true)
+  }
+
+  // "Entrar em outra conta" → form limpo (campo de e-mail visível). Voltar → volta pra lista.
+  const irParaOutraConta = () => { setContaSelecionada(null); setEmail(''); setErrors({}); setError(''); setUsarOutra(true) }
+  const voltarProChooser = () => { setUsarOutra(false); setContaSelecionada(null); setPassword(''); setErrors({}); setError('') }
+
+  const handleRemoverConta = async (usuarioId: string) => {
+    try { await rosterService.remover(usuarioId) } catch { /* ignore */ }
+    setRoster((prev) => prev.filter((c) => c.usuarioId !== usuarioId))
+  }
+
+  const mostrarChooser = roster.length > 0 && !usarOutra && !mfaChallenge && !marcada
 
   return (
     <div className={styles.root}>
@@ -180,9 +216,25 @@ export default function LoginPage() {
       <div className={styles.form}>
         <div className={styles.formInner}>
           {/* Voltar para homepage */}
-          <Link to="/" className={styles.backLink}>
-            <ArrowLeft size={16} /> Voltar à página inicial
-          </Link>
+          {/* Um único "voltar" no topo, contextual. Veio do chooser → volta pra lista (ou o chip da
+             conta selecionada). Home fica no logo. Senão → voltar pra página inicial. */}
+          {roster.length > 0 && usarOutra ? (
+            contaSelecionada ? (
+              <button type="button" className={styles.acctChip} onClick={voltarProChooser} title="Trocar de conta">
+                <PontesAvatar name={contaSelecionada.nome} size={28} />
+                <span className={styles.acctChipEmail}>{contaSelecionada.emailMascarado}</span>
+                <ChevronDown size={16} className={styles.acctChipCaret} />
+              </button>
+            ) : (
+              <button type="button" className={styles.backLink} onClick={voltarProChooser}>
+                <ArrowLeft size={16} /> Escolher conta salva
+              </button>
+            )
+          ) : (
+            <Link to="/" className={styles.backLink}>
+              <ArrowLeft size={16} /> Voltar à página inicial
+            </Link>
+          )}
 
           {/* Logo mobile */}
           <div className={styles.logoMobile}>
@@ -192,18 +244,20 @@ export default function LoginPage() {
           {/* Header form */}
           <div className={styles.head}>
             <h1 className={styles.title}>
-              {marcada ? 'Reativar conta' : mfaChallenge ? 'Verificação em duas etapas' : 'Bem-vindo de volta'}
+              {marcada ? 'Reativar conta' : mfaChallenge ? 'Verificação em duas etapas' : mostrarChooser ? 'Escolha sua conta' : 'Bem-vindo de volta'}
             </h1>
-            <p className={styles.sub}>
-              {marcada ? (
-                'Sua conta está marcada para exclusão. Você ainda pode reativá-la.'
-              ) : mfaChallenge ? (
-                'Digite o código do seu app autenticador (ou um código de recuperação).'
-              ) : (
-                <>Não tem conta?{' '}
-                <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></>
-              )}
-            </p>
+            {!mostrarChooser && (
+              <p className={styles.sub}>
+                {marcada ? (
+                  'Sua conta está marcada para exclusão. Você ainda pode reativá-la.'
+                ) : mfaChallenge ? (
+                  'Digite o código do seu app autenticador (ou um código de recuperação).'
+                ) : (
+                  <>Não tem conta?{' '}
+                  <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></>
+                )}
+              </p>
+            )}
           </div>
 
           {marcada ? (
@@ -257,6 +311,42 @@ export default function LoginPage() {
                 Voltar
               </PontesButton>
             </form>
+          ) : mostrarChooser ? (
+            /* Chooser — escolher conta (roster, opt-in). Só nome + e-mail mascarado. */
+            <div className={styles.formBody}>
+              <ul className={styles.chooser}>
+                {roster.map((c) => (
+                  <li key={c.usuarioId} className={styles.chooserItem}>
+                    <button
+                      type="button"
+                      className={styles.chooserPick}
+                      onClick={() => handleSelecionarConta(c)}
+                    >
+                      <PontesAvatar name={c.nome} size={36} />
+                      <span className={styles.chooserInfo}>
+                        <span className={styles.chooserNome}>{c.nome}</span>
+                        <span className={styles.chooserEmail}>{c.emailMascarado}</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.chooserRemove}
+                      title="Remover desta lista"
+                      aria-label={`Remover ${c.nome} desta lista`}
+                      onClick={() => handleRemoverConta(c.usuarioId)}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </li>
+                ))}
+                <li className={styles.chooserItem}>
+                  <button type="button" className={styles.chooserOther} onClick={irParaOutraConta}>
+                    <span className={styles.chooserOtherIcon}><UserPlus size={18} /></span>
+                    <span className={styles.chooserOtherText}>Entrar em outra conta</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
           ) : (
           /* Passo 1 — email + senha */
           <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
@@ -264,16 +354,18 @@ export default function LoginPage() {
               <PontesAlert tone="error">{error}</PontesAlert>
             )}
 
-            <PontesField label="E-mail" htmlFor="login-email" required error={errors.email}>
-              <PontesInput
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
-                invalid={!!errors.email}
-                autoComplete="email"
-              />
-            </PontesField>
+            {!contaSelecionada && (
+              <PontesField label="E-mail" htmlFor="login-email" required error={errors.email}>
+                <PontesInput
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
+                  invalid={!!errors.email}
+                  autoComplete="email"
+                />
+              </PontesField>
+            )}
 
             <PontesField label="Senha" htmlFor="login-senha" required error={errors.password}>
               <PontesInput
@@ -300,6 +392,12 @@ export default function LoginPage() {
             <div className={styles.forgotRow}>
               <Link to="/auth/forgot-password" className={styles.forgotLink}>Esqueci a senha</Link>
             </div>
+
+            <PontesCheckbox
+              checked={manterConectado}
+              onChange={setManterConectado}
+              label="Manter-me conectado neste dispositivo"
+            />
 
             <PontesButton
               type="submit"

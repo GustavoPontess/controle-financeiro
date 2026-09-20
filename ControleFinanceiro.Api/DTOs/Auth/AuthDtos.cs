@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using ControleFinanceiro.Api.Domain.Enums;
 
 namespace ControleFinanceiro.Api.DTOs.Auth;
@@ -15,6 +16,11 @@ public class LoginDto
     [Required]
     [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>"Manter-me conectado" (opt-in, default false): true = sessão persistente (cookies
+    /// sobrevivem ao fechar o navegador, reabrir já entra logado). false = cookies de sessão (morrem
+    /// ao fechar — OWASP default, seguro em PC compartilhado).</summary>
+    public bool ManterConectado { get; set; }
 }
 
 public class RegisterDto
@@ -49,6 +55,12 @@ public class AuthResponseDto
     public string Token { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
     public DateTime RefreshTokenExpiresAt { get; set; }
+
+    /// <summary>Uso INTERNO (controller) — nunca no corpo da resposta ([JsonIgnore]): diz se a sessão
+    /// é "manter conectado" (cookies persistentes) ou de sessão. Em login/verify vem do checkbox; em
+    /// refresh/switch é herdado do refresh token que rotacionou.</summary>
+    [JsonIgnore]
+    public bool LembrarSessao { get; set; }
 }
 
 /// <summary>
