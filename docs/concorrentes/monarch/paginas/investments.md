@@ -15,8 +15,36 @@
 - Agrupável **By asset class**.
 - **Add Holding:** "Search for an investment and enter the quantity you own to track the value" — busca um security (ticker) + quantidade → rastreia valor. Suporta conta de investimento conectada OU manual (ver "Track: manually" no [add-account](../app.md)).
 
+## ⭐ Aba Advanced (Plus) — mapeada por dentro
+Análise sofisticada de carteira, 3 views (dropdown de agrupamento + chart-type + download em cada):
+
+### 1. Allocation — "Allocation breakdown"
+- **Treemap por Asset class** (blocos proporcionais): ex.: **U.S. stocks 99.44%** + Cash + outros. Mostra **diversificação**.
+- Tabela por classe: Price · Quantity · Value · **Weight (%)**.
+- (Agrupável por outras dimensões além de asset class.)
+
+### 2. Gains & Losses — "Unrealized gains & losses"
+- **4 KPIs:** Portfolio value · **Portfolio cost (cost basis)** · **Gain/loss value ($)** · **Gain/loss percent (%)**.
+- **Chart empilhado** (Cost Basis + Gain + Loss) por grupo de classe.
+- Tabela por holding: Security · Quantity · **Total cost basis** · Current value · **Gain/loss $** · **Gain/loss %**.
+- = ganho/perda **não-realizado** (marcação a mercado vs. custo).
+
+### 3. Funds — "Fund analysis" (look-through)
+- Só **ETFs e fundos mútuos** ("individual stocks/bonds not included").
+- **Donut** + tabela por **Broad asset class** (ex.: US Equity 100%) — **olha DENTRO dos fundos** (o ETF VOO → US Equity). Sofisticado: revela a exposição real através dos fundos.
+- Agrupável (Broad asset class / detalhado / setor…).
+
+### + Add tax lots
+No menu **Add**: **Add holding** · **Add tax lots** — lotes de custo (cost basis por lote) pra cálculo de **imposto** (ganho de capital). Avançado/US.
+
 ## Monetização
-- **Advanced = Plus** (análise mais profunda de investimento é paga). Padrão: base grátis + avançado pago (igual Forecasting).
+- **Advanced = Plus** (análise mais profunda de investimento é paga). Padrão: base grátis (Holdings + benchmark) + avançado pago (Allocation/Gains&Losses/Funds/tax lots) — igual Forecasting.
+
+## Como fazer no nosso — Advanced (BR)
+- **Allocation treemap:** `@nivo/treemap`; classe de ativo BR (Ações/FIIs/RF/Tesouro/Cripto/Exterior).
+- **Gains & Losses:** guardar **preço médio (cost basis)** por holding → ganho não-realizado = valor atual − custo. KPI + tabela. (No BR liga com IR sobre ganho de capital / DARF — oportunidade forte pro eixo contador.)
+- **Funds look-through:** exige base de composição de FIIs/ETFs BR (mais difícil; fase 2).
+- **Tax lots → DARF BR:** rastrear lotes pra apuração de IR mensal de ações/cripto = **feature matadora BR** (ninguém faz bem; dor real do investidor PF).
 
 ## Como fazer no nosso (BR)
 - Benchmark BR: **CDI · IBOV · IPCA · Tesouro** (não S&P 500). Retorno % vs benchmark é KPI forte.

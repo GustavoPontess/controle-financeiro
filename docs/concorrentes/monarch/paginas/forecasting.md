@@ -1,56 +1,92 @@
-# Monarch — **Forecasting** (`/forecast`) ⭐⭐⭐ a joia da coroa ("comprar casa ano que vem → ver impacto")
+# Monarch — **Forecasting** (`/forecast`) ⭐⭐⭐ CARRO-CHEFE (Gustavo vai fazer no nosso)
 
-> É a feature que o Gustavo mais quer. **Atenção: é gated no Monarch Plus (upsell pago).** Não comprei (regra: não comprar). Documentado pelo intro grátis + modal de upsell + demo chart.
+> Mapeado POR DENTRO (Plus ativado, trial 7d). Projeta o **patrimônio (net worth) do HOUSEHOLD** ao longo da vida e deixa você **modelar eventos de vida** (comprar casa, ter filho, aposentar…) e ver o impacto ao vivo. É a feature "wow" que o Gustavo mais quer.
 
-## O conceito (headline deles)
-> **"See how your future plays out"** — "Use your real Monarch data to model life events, then drag and play with scenarios to see exactly how each decision shapes your future."
+## Gate / posicionamento
+- **Monarch Plus** ($199,99/ano). Grátis = só teaser (chart de demo). O motor real é pago.
+- É **household** (casal-aware): usa renda/despesa/patrimônio combinados das duas pessoas + idade de cada uma.
+- Disclaimer forte (estimativas, não é aconselhamento).
 
-Projeta o **patrimônio (net worth) no futuro** (demo vai de ~$500k em 2026 até ~$2.5M em 2050) a partir dos **dados reais** (saldos das contas conectadas + recorrentes + crescimento de investimento). Você **coloca eventos de vida** na linha do tempo e **arrasta** pra ver o impacto ao vivo.
+## Setup wizard (6 passos) — "Build my forecast"
+1. **Review your household's forecast** — por pessoa: **Birthday** (obrigatório → calcula idade/aposentadoria) + **Assumptions** auto (take-home income/ano = média 12m, living expenses/ano = média 12m, assets, liabilities dos linked accounts). Botão **Edit assumptions**.
+2. **Add take-home income** — Name+icon · **Yearly take-home income** (hoje, líquido) · **"Add another income source"** (= *multiple income streams*, feature Plus).
+3. **Choose your forecast accounts** — quais contas participam ("save into, pay down, draw from during retirement").
+4. **Choose a retirement age** — por pessoa, slider + dropdown de ano (ex.: 2055 / age 65).
+5. **You're good to go** — dicas (add events, drag no chart, edit assumptions). Defaults revelados: **Inflation 3% · Growth rate 7% · Withdraw during retirement ✓**.
+6. → **Go to forecast**.
 
-## Eventos de vida modeláveis (na timeline)
-| Evento | Ícone | O que modela (inferido) |
-|---|---|---|
-| **Buy a home** | 🏠 | entrada (despesa lump) + financiamento (passivo recorrente) + imóvel (ativo) — "Plan for home ownership" |
-| **Have a kid** | 👶 | despesas recorrentes de criança — "Model the impact of raising children" |
-| **Expense** | 🏷 | custo pontual ou recorrente arbitrário |
-| **Income** | 📈 | mudança de renda (aumento, novo emprego) |
-| **Retire** | 🏆 | para a renda + começa saque; tem **slider de idade de aposentadoria** |
+## ⭐ Premissas globais (Edit assumptions) — o motor
+Por pessoa + global:
+- **Birthday / Age**.
+- **Use actuals as baseline** (toggle) — usa últimos 12m de renda/despesa como ponto de partida.
+- **Yearly take-home income** / **Yearly living expenses** (em hoje).
+- **Change over time** — "Match inflation (3%)" ou custom (crescimento de renda/despesa).
+- **Yearly inflation rate** — slider **3%** (default; "plans use 2-3%").
+- **Growth rate** — **7%** default (retorno de investimento por conta).
+- **Show future values in** — **Today's dollars** (recomendado, inflação-ajustado) × **Future dollars** (nominal).
+- **Expense withdrawal order** — ordem de sacar de poupança/investimentos na aposentadoria (drawdown strategy) → "Change withdrawal order".
+- **Split extra savings** — quando sobra (renda > despesa), distribui o excedente entre contas → "Change savings splits".
 
-## Os 3 casos de uso (cards do intro)
-1. **When can I retire?** — slider **"Choose a retirement age" (default 65)** → "Test different assumptions to land on a plan you understand and trust, grounded in real numbers." (modal preview: *"Net worth at retirement $3.00M / Retirement age 58"*).
-2. **Can I afford this house?** — combina Buy a home + Have a kid → "Understand how big decisions affect your long-term picture. Weigh the trade-offs and choose what fits the future you want." ← **exatamente o cenário do Gustavo.**
-3. **How does my future look?** — projeção base → "See where your money is headed based on your actual habits and life plans."
+## A ferramenta (tela principal)
+- **Cenários em abas** no topo: **Baseline forecast** + **"+"** (novo). "+" → **Start from scratch** OU **Duplicate existing scenario** → múltiplos cenários pra **comparar** planos. **Auto-save** ("Saved just now").
+- Header: nome do cenário + **···** + **Watch walkthrough** + **Edit assumptions** + **Add event**.
+- **4 KPIs:** Net worth (EOY) · **Net worth at retirement** · Retirement age · Net worth at end.
+- **Chart:** linha de net worth do ano atual até ~90 anos (ex.: 2026→2077). Markers de eventos na timeline (🏠🎂🏖…). **Arrastável** — mover evento muda a data → recomputa ao vivo.
+- **Tabela** (abas **Accounts / Cash Flow / Events**): valores **ano a ano** (Net Worth → Assets → Cash/cada conta; Cash Flow = renda/despesa/poupança por ano; Events = eventos por ano).
 
-## Modelo mental (motor de projeção — determinístico, NÃO é IA)
+## ⭐⭐ Eventos de vida (Add event) — 9 tipos
+Cada evento = **Year** + params específicos + Name/icon. Aplica na hora (recalcula KPIs + curva) e vira **marker/região** na timeline (arrastável, deletável via ··· → Delete event).
+
+| Evento | Modela |
+|---|---|
+| **Income** | entrada extra: herança, bônus, venda de ações |
+| **Expense** | gasto: comprar carro, abrir negócio, reforma |
+| **Retire** | transição pra renda de aposentadoria |
+| **Buy a home** | compra de imóvel + financiamento (detalhe abaixo) |
+| **Social Security** | começar a receber previdência (INSS no BR) |
+| **New job** | mudança de renda por novo emprego |
+| **Have a kid** | custo de criar filho (detalhe abaixo) |
+| **Career break** | pausa na carreira (tempo sem renda) |
+| **Windfall** | ganho único |
+| *(Coming soon)* | mais tipos anunciados |
+
+### ⭐ "Buy a home" (o cenário do Gustavo) — params completos
+- **Year** (quando compra).
+- **Home value** ($400.000, em hoje).
+- Abas **Finance** (financiar) × **Pay Cash** (à vista).
+- **Down payment** ($ e **%**; "20% recomendado p/ evitar PMI").
+- **Mortgage:** prazo (30 year…) + **taxa (6.5%)**.
+- **Property tax** (1%) · **Home insurance** (0.5%).
+- → **Monthly payment calculado** ($2.522,62) com breakdown: **Principal+interest · Property tax · Home insurance**.
+- **Yearly home ownership costs** ($4.000 / 1% = manutenção).
+- **Change over time** (valorização do imóvel = Match inflation 3%).
+- **Replace existing Housing expenses** (toggle — troca o aluguel atual, evita contar em dobro).
+- **Impacto ao vivo:** net worth na aposentadoria caiu $2.34M → $2.06M ao adicionar a casa.
+
+### ⭐ "Have a kid" — params
+- **Year** · **Years of child expenses** (duração, ex.: 13) · **Yearly child expenses** ($18.000 — creche/comida/saúde/educação) · **Change over time** · **Upfront child costs** ($4.500 — parto/adoção/licença). Chart mostra **região sombreada** pela duração; net worth caiu $2.34M→$2.10M.
+
+## ⭐⭐⭐ COMO FAZER NO NOSSO (spec de implementação)
+Motor **determinístico** (NÃO é IA), testável:
 ```
-saldo_futuro(t) = saldo_hoje
-                + Σ (renda_recorrente − despesa_recorrente) até t
-                + crescimento_investimento (APY/retorno assumido) capitalizado
-                + Σ efeito de cada evento de vida com data <= t
-status/afford  = trajetória fica positiva / bate meta na data?
+Para cada ano t de hoje até (idade_max):
+  saldo(t) = saldo(t-1)
+           + renda_liquida(t)                 // por pessoa, cresce por "change over time"
+           - despesa_vida(t)                   // idem
+           + rendimento(saldo_investivel, growth_rate 7%)   // capitaliza
+           ± Σ efeito dos eventos com data <= t // cada evento é um delta parametrizado
+  aplica inflação(3%) conforme "today's vs future dollars"
+  na aposentadoria: para renda de trabalho, começa drawdown na ordem definida
+KPIs: net worth EOY, net worth na aposentadoria, net worth ao fim
 ```
-- Base vem dos **recorrentes** (ver [recurring](./recurring.md)) + **saldos/net worth** (ver [accounts](./accounts.md)) + **APY por conta** + retorno de investimento.
-- Cada **evento** é um delta parametrizado (data + valor + se é lump/recorrente + ativo/passivo).
-- **Arrastar** o evento = mudar a data → recomputa a curva. Interação drag-and-drop na timeline.
-- Disclaimer forte (como em Goals): estimativas, não é aconselhamento.
+- **Entidades:** `Cenario { Usuario/HouseholdId, Nome, Premissas(json) }` + `EventoForecast { CenarioId, Tipo, Ano, Parametros(json) }`. Múltiplos cenários por household.
+- **Premissas:** inflação, growth rate, income/expense por pessoa, retirement age, withdrawal order, savings split, today/future dollars.
+- **Eventos:** cada tipo tem um sub-form (Buy a home = valor/entrada/prazo/taxa/tax/seguro/manutenção/valorização/replace-housing; Have a kid = duração/anual/upfront; etc). Efeito calculado no motor.
+- **Chart:** `recharts LineChart` (net worth por ano) + markers/regiões custom por evento + **drag** (onDrag muda `Ano` → recomputa). Tabela ano-a-ano (Accounts/Cash Flow/Events).
+- **Base vem de:** recorrentes (renda/despesa) + saldos + APY/growth por conta ([recurring](./recurring.md), [accounts](./accounts.md)).
 
-## ⭐ Monetização (data point estratégico)
-- **Forecasting = Monarch Plus** (tier pago acima do base). Modal: *"Plus — See further. Plan smarter. Build with confidence. Plan for retirement, track your business, go deeper on your investments."* + **Explore Plus**.
-- O intro/demo é **teaser** (chart bonito, eventos), mas o motor interativo é **paywall**.
-- **Leitura pro nosso produto:** a feature "wow" mais impressionante deles é **premium**, não base. Duas jogadas possíveis pra gente:
-  - (a) usar Forecasting simplificado como **isca grátis** (diferenciação de aquisição) e cobrar o avançado; ou
-  - (b) espelhar o modelo deles (base grátis + Forecasting no nosso tier pago).
-- Combina com nosso eixo: **casal/família** deixa o Forecasting mais forte (dois patrimônios, "ter filho" é decisão de casal).
-
-## Como fazer no nosso (stack)
-- **Chart:** `recharts` — `LineChart` da projeção (linha tracejada) + `ReferenceDot`/markers custom por evento na timeline; drag via `onMouseDown` no marker + recomputo.
-- **Motor:** serviço backend `ForecastService` puro (sem IA): recebe saldos atuais + recorrentes + eventos + assumções (retorno, inflação, idade aposentadoria) → devolve série mensal/anual de net worth. Determinístico e testável.
-- **Eventos:** entidade `EventoFinanceiro { Tipo(BuyHome/Kid/Expense/Income/Retire), Data, Parametros(json) }` por cenário; cenários salvos por usuário/household.
-- **Casal:** projeção do household soma patrimônios; eventos podem ser marcados por pessoa.
-- **Conformidade:** disclaimer obrigatório ("estimativa, não é recomendação de investimento") — ver CONFORMIDADE_BR + [[feedback_baseline_seguranca_qualidade]].
-
-## Pendente (bloqueado por paywall)
-- Parâmetros exatos de cada evento (campos do form "Buy a home": preço, entrada %, taxa, prazo?).
-- Assumções globais (retorno de investimento, inflação) — onde se configura.
-- Se dá pra salvar múltiplos cenários e comparar.
-> Se o Gustavo quiser, dá pra assinar o Plus (decisão dele — é compra, não faço sozinho) pra mapear o motor por dentro.
+### Jogada estratégica (nossa)
+- **Isca grátis:** Monarch cobra no Plus. A gente pode dar uma versão simples **grátis** (1 evento tipo "comprar casa", 1 cenário) como aquisição, e o avançado (multi-cenário, todos os eventos, drawdown) no nosso tier pago.
+- **Fosso casal:** o forecast já é **household** no Monarch, mas eles não têm rateio. Nosso: "ter filho" e "comprar casa" como **decisão do casal**, com quem contribui quanto (liga no nosso rateio/acerto que já temos).
+- **BR:** Social Security → **INSS**; benchmarks/growth → CDI/IBOV; "Buy a home" → financiamento SAC/Price BR (não só 30-year fixed US).
+- **Conformidade:** disclaimer obrigatório "estimativa, não é recomendação de investimento" (CONFORMIDADE_BR).
