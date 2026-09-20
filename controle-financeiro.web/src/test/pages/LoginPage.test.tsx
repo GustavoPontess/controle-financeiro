@@ -96,8 +96,28 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/código/i), { target: { value: '123456' } })
     fireEvent.submit(screen.getByRole('button', { name: /verificar/i }).closest('form')!)
 
-    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-123', '123456'))
+    // Checkbox "confiar" desmarcado por padrão (opt-in) → 3º arg false.
+    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-123', '123456', false))
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
+
+  it('marca "confiar neste dispositivo" e envia o opt-in (3º arg true) ao verificar o MFA', async () => {
+    mockLogin.mockResolvedValueOnce({ mfaRequerido: true, challengeToken: 'chal-xyz' })
+    mockVerificarMfaLogin.mockResolvedValueOnce(undefined)
+    renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'senha123' } })
+    fireEvent.submit(screen.getByRole('button', { name: /entrar/i }).closest('form')!)
+
+    await waitFor(() => expect(screen.getByText(/verificação em duas etapas/i)).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText(/código/i), { target: { value: '123456' } })
+    // Opt-in: marca o "confiar neste dispositivo" (é um botão com o rótulo).
+    fireEvent.click(screen.getByRole('button', { name: /confiar neste dispositivo/i }))
+    fireEvent.submit(screen.getByRole('button', { name: /verificar/i }).closest('form')!)
+
+    await waitFor(() => expect(mockVerificarMfaLogin).toHaveBeenCalledWith('chal-xyz', '123456', true))
   })
 
   it('exibe mensagem de erro quando login falha', async () => {

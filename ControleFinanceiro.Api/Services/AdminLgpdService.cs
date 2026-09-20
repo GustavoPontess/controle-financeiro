@@ -140,6 +140,10 @@ public class AdminLgpdService
         var tokens = await _context.RefreshTokens.Where(t => t.UsuarioId == usuarioId).ToListAsync();
         _context.RefreshTokens.RemoveRange(tokens);
 
+        // Esquece os dispositivos confiáveis da conta (não deixa device pular MFA numa conta em exclusão).
+        var devices = await _context.TrustedDevices.Where(d => d.UsuarioId == usuarioId).ToListAsync();
+        _context.TrustedDevices.RemoveRange(devices);
+
         _audit.Registrar(adminId, adminEmail, AcaoAdmin.MarcarExclusao, "Usuario", u.Id, u.Email);
         await _context.SaveChangesAsync();
         return UsuarioAdminDto.De(u);

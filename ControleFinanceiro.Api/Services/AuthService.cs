@@ -19,6 +19,7 @@ public class AuthService
 
     private const int RefreshTokenDays = 7;
     private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
+    private const int TrustedDeviceDias = 30;  // "lembrar este dispositivo" — janela do skip do 2º fator (OWASP: curto)
 
     // Proteção contra força bruta por CONTA (OWASP Authentication Cheat Sheet) —
     // complementa o rate-limit por IP (Program.cs), que sozinho é contornável trocando de IP.
@@ -99,6 +100,56 @@ public class AuthService
         if (ua.Length > 256) ua = ua[..256];
         var ip = ctx.Connection.RemoteIpAddress?.ToString();
         return (string.IsNullOrWhiteSpace(ua) ? null : ua, string.IsNullOrWhiteSpace(ip) ? null : ip);
+    }
+
+    // ── Trusted devices (MFA "lembrar este dispositivo por X dias") ─────────────
+
+    /// <summary>Device confiável VÁLIDO pra esta conta, ou null. Fail-closed + anti-cross-account: o
+    /// token tem que existir, pertencer a ESTE usuário (<c>UsuarioId</c>), não estar revogado e não ter
+    /// expirado. Num navegador compartilhado, device confiado por outra conta NUNCA casa aqui — é a
+    /// razão de o trusted-device ter esperado o fix do multi-conta.</summary>
+    private async Task<TrustedDevice?> ObterDispositivoConfiavelAsync(Guid usuarioId, string? tokenBruto)
+    {
+        if (string.IsNullOrWhiteSpace(tokenBruto)) return null;
+
+        var hash = OpaqueTokenHasher.Hash(tokenBruto);
+        var device = await _context.TrustedDevices.FirstOrDefaultAsync(d => d.TokenHash == hash);
+        if (device is null || device.UsuarioId != usuarioId || device.Revogado || device.ExpiraEm <= DateTime.UtcNow)
+            return null;
+
+        return device;
+    }
+
+    /// <summary>Cria um device confiável pra este usuário e devolve o token BRUTO (vai pro cookie
+    /// httpOnly `td`; o banco guarda só o hash). Chamado no 2º passo do login quando o usuário marcou
+    /// "confiar neste dispositivo". Captura UA/IP só pra exibição.</summary>
+    public async Task<string> CriarTrustedDeviceAsync(Guid usuarioId)
+    {
+        var tokenBruto = GerarTokenOpaco();
+        var (dispositivo, ip) = CapturarDispositivo();
+        _context.TrustedDevices.Add(new TrustedDevice
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId,
+            TokenHash = OpaqueTokenHasher.Hash(tokenBruto),
+            ExpiraEm = DateTime.UtcNow.AddDays(TrustedDeviceDias),
+            CriadoEm = DateTime.UtcNow,
+            DispositivoInfo = dispositivo,
+            IpCriacao = ip,
+        });
+        await _context.SaveChangesAsync();
+        return tokenBruto;
+    }
+
+    /// <summary>Revoga (soft) todos os devices confiáveis vivos do usuário. NÃO salva — o caller salva
+    /// na mesma transação do evento de segurança (troca/reset de senha, desativar MFA).</summary>
+    private async Task RevogarDevicesConfiaveisAsync(Guid usuarioId)
+    {
+        var devices = await _context.TrustedDevices
+            .Where(d => d.UsuarioId == usuarioId && !d.Revogado)
+            .ToListAsync();
+        foreach (var d in devices)
+            d.Revogado = true;
     }
 
     // Reuse-detection (RFC 9700 §4.14): um refresh JÁ ROTACIONADO reapresentado indica replay/roubo.
@@ -194,7 +245,7 @@ public class AuthService
                  + "Você receberá acesso assim que for liberada.",
     };
 
-    public async Task<LoginResultDto> LoginAsync(LoginDto dto)
+    public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null)
     {
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
@@ -276,17 +327,28 @@ public class AuthService
         // VerificarMfaLoginAsync confirmar o código é que a sessão de verdade nasce.
         if (usuario.MfaAtivo)
         {
-            var challengeBruto = GerarTokenOpaco();
-            _context.MfaLoginChallenges.Add(new MfaLoginChallenge
+            var deviceConfiavel = await ObterDispositivoConfiavelAsync(usuario.Id, trustedDeviceToken);
+            if (deviceConfiavel is null)
             {
-                Id = Guid.NewGuid(),
-                UsuarioId = usuario.Id,
-                TokenHash = OpaqueTokenHasher.Hash(challengeBruto),
-                ExpiresAt = DateTime.UtcNow.AddMinutes(MfaChallengeMinutos),
-            });
-            await _context.SaveChangesAsync();
+                // Sem device confiável → exige o 2º fator: cria o desafio de curta duração e para aqui.
+                var challengeBruto = GerarTokenOpaco();
+                _context.MfaLoginChallenges.Add(new MfaLoginChallenge
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = usuario.Id,
+                    TokenHash = OpaqueTokenHasher.Hash(challengeBruto),
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(MfaChallengeMinutos),
+                });
+                await _context.SaveChangesAsync();
 
-            return new LoginResultDto { MfaRequerido = true, MfaChallengeToken = challengeBruto };
+                return new LoginResultDto { MfaRequerido = true, MfaChallengeToken = challengeBruto };
+            }
+
+            // Device confiável válido PRA ESTA conta → pula o 2º fator (nunca a senha). Marca o uso do
+            // device e o último acesso (que, com MFA, só seria marcado no 2º passo). Persistido no
+            // SaveChanges da criação de sessão abaixo.
+            deviceConfiavel.UltimoUsoEm = DateTime.UtcNow;
+            usuario.UltimoAcessoEm = DateTime.UtcNow;
         }
 
         var (rt, refreshBruto) = await CriarRefreshTokenAsync(usuario.Id);
@@ -630,6 +692,9 @@ public class AuthService
         foreach (var r in refreshTokens)
             r.Revogado = true;
 
+        // Reset de senha também esquece os dispositivos confiáveis → força re-MFA em todos.
+        await RevogarDevicesConfiaveisAsync(prt.UsuarioId);
+
         await _context.SaveChangesAsync();
     }
 
@@ -689,6 +754,9 @@ public class AuthService
 
         usuario.PasswordHash = PasswordHasher.HashPassword(novaSenha);
         usuario.AtualizadoEm = DateTime.UtcNow;
+
+        // Trocar a senha (evento sensível) esquece os dispositivos confiáveis → re-MFA em todos.
+        await RevogarDevicesConfiaveisAsync(usuarioId);
 
         _context.Usuarios.Update(usuario);
         await _context.SaveChangesAsync();

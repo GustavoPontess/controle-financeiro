@@ -34,7 +34,7 @@ export interface AuthContextType {
   accountKey: number
   savedAccounts: StoredAccount[]
   login: (email: string, password: string) => Promise<LoginResult>
-  verificarMfaLogin: (challengeToken: string, codigo: string) => Promise<void>
+  verificarMfaLogin: (challengeToken: string, codigo: string, confiarDispositivo?: boolean) => Promise<void>
   register: (email: string, nome: string, dataNascimento: string | null, password: string) => Promise<string>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
@@ -144,9 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const verificarMfaLogin = async (challengeToken: string, codigo: string) => {
+  const verificarMfaLogin = async (challengeToken: string, codigo: string, confiarDispositivo = false) => {
     try {
-      await api.post('/auth/mfa/verificar-login', { challengeToken, codigo })
+      await api.post('/auth/mfa/verificar-login', { challengeToken, codigo, confiarDispositivo })
       await carregarSessao(true) // login frio com MFA → reseta a lista de contas
     } catch (error) {
       throw new Error((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Código inválido')
