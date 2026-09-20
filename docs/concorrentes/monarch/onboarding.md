@@ -6,6 +6,17 @@
 
 ---
 
+## 🎯 Tese (por que documentar isso)
+**Nenhum concorrente brasileiro tem o nível de software do Monarch.** O Monarch é a **barra de qualidade** — onboarding polido, sem fricção, cada detalhe pensado (progresso, 1 pergunta por tela, interstitials de valor, prova social no lugar certo, transparência de cobrança, personalização com nome). Os apps BR (Mobills, Organizze, Minhas Economias, etc.) ficam MUITO atrás dessa régua de produto/UX.
+
+**A oportunidade do Pontes:** ser o **1º produto BR nesse nível de software** — e com **fosso mais fundo** que o próprio Monarch:
+1. **Casal/família de verdade** — Monarch só "junta a visão"; a gente resolve **rateio (quem paga o quê) + acerto (quem deve a quem) + papéis + dependentes** (a treta real do dinheiro do casal BR).
+2. **Local:** pagamento em BRL (PIX/boleto, não só cartão) + **Open Finance BR** (o agregador deles é US-only, 0 banco BR).
+
+Ou seja: **igualar a régua de software deles + ganhar no que é BR e no fosso casal.** Este doc existe pra a gente **mirar nessa régua**, não pra copiar features soltas.
+
+---
+
 ## Padrões gerais (o que o Monarch acerta)
 - **Barra de progresso** fina no topo (laranja) durante todo o onboarding — mostra que tem N passos e onde você está. Corta a ansiedade de "quanto falta".
 - **Uma pergunta por tela**, centralizada: título grande + subtítulo curto com o *porquê* ("...and we'll help you achieve them in Monarch").
@@ -153,10 +164,72 @@ _(Descrito pelo Gustavo — essas telas passam antes da tela 1; não recapturada
 
 ---
 
-## ⛔ Onde parei (zona proibida)
-Cheguei no **checkout** (tela 9). O único passo que falta é **digitar o cartão** e clicar "Start your free 7-day trial" — **não faço** (dado de pagamento). O **onboarding + funil de conversão inteiro** (cadastro → 6 perguntas/valor → trial → planos → checkout) está todo capturado acima.
+## Nota de pagamento
+No checkout (tela 9) **eu não digitei o cartão** (dado de pagamento — não faço). **O Gustavo iniciou o trial** e seguimos capturando o **pós-pagamento** (telas 10-13, abaixo). O único passo que EU não executo é conectar banco (credencial) — parei no seletor de instituições (tela 13).
 
 ---
+
+## Depois do pagamento (Gustavo assinou o trial — capturando o app)
+_(O Gustavo digitou o cartão e iniciou o trial; eu não fiz o pagamento. Daqui em diante é o 1º contato com o produto pago.)_
+
+### Tela 10 — "Welcome to Monarch!" (boas-vindas + depoimentos, pós-pagamento)
+- **Copy:** "Welcome to Monarch! You now have one of the best tools to help make your money work harder for you. Here is what a few other people have said about Monarch:"
+- **6 depoimentos** com nome (Paul W., Aaron V., Miten M., Joshua W., themidnighteagle, Stephen C.) — prova social forte, incluindo **ataque a concorrente**: _"I tried YNAB, I tried Mint, I use Monarch. Soooo much more intuitive..."_ e _"no ads and no unwanted advisors calling me"_.
+- Botão **Continue**.
+- **Padrão:** logo APÓS pagar, uma tela de **reforço da decisão** (reduz arrependimento de comprador) com depoimentos reais. Não pede nada — só valida a escolha.
+- **O que roubar pro nosso:** tela de boas-vindas pós-conversão com depoimentos (quando tivermos) + reforço do diferencial. No começo, sem depoimentos, dá pra usar reforço do valor ("agora vocês dois veem tudo no mesmo lugar").
+
+### Tela 11 — "Invite your partner" (CASAL/HOUSEHOLD) ⭐⭐⭐ o nosso fosso, do jeito deles
+- **Título:** "Invite your partner to join your household for free"
+- **Sub:** "They'll receive a secure login and can connect their accounts, helping you both stay in sync with your money—together."
+- **Campo:** Partner's email. Botões: **Continue** + **Skip for now** (opcional).
+- **3 bullets de valor (a copy do modelo de casal deles):**
+  - **"One place for yours, mine, and ours"** — Bring separate and shared accounts together into one clear view.
+  - **"See your finances, solo and together"** — Switch between personal and shared views of spending, net worth, and more.
+  - **"Reach your goals as a team"** — Track progress on shared goals and grow your net worth together.
+- **Modelo de casal do Monarch (o que dá pra extrair):**
+  - Conceito de **"household"** (lar) — você convida o parceiro **de graça**.
+  - Parceiro recebe **login próprio e seguro** e **conecta as contas dele** (cada um tem sua conta, não é senha compartilhada).
+  - **Views separadas: pessoal × compartilhada** ("solo and together") — dá pra ver só o seu OU o de vocês, alternando.
+  - **"yours, mine, and ours"** — contas separadas + compartilhadas num só lugar.
+  - **Metas compartilhadas** + patrimônio do casal juntos.
+  - Posicionado **logo após o pagamento/boas-vindas** (destaque máximo), mas com **"Skip for now"** (não obriga).
+- **⭐ ONDE A GENTE GANHA (nosso fosso é MAIS fundo):** o Monarch para em "junta as contas + view solo/junto + metas". **O que eles NÃO têm e é o nosso diferencial BR:** **rateio explícito "quem paga o quê"** (50/50, %, valor fixo), **acerto de contas** ("quem deve a quem", a acertar/a receber — [[feedback_copy_sensivel_casal]]), **papéis/permissões** na família, **dependentes**. O Monarch valida o mercado (casal é passo #1 pós-pagamento), mas trata como "visão compartilhada"; a gente resolve a **treta real do dinheiro do casal** (divisão + acerto), não só juntar a visão.
+- **O que roubar direto:** o convite por e-mail com **login próprio pro parceiro** (não senha compartilhada), a ideia **"yours/mine/ours"** com **toggle pessoal↔compartilhado**, e pôr o convite de parceiro **cedo e com destaque** no onboarding (mas opcional/Skip).
+
+### Tela 12 — priming pra conectar ("Start feeling in control now")
+- **Copy:** "Start feeling in control of your finances now" / "Users who connect their accounts within 10 minutes report a greater sense of financial control."
+- Só **Continue**. É um interstitial de **urgência/priming** com estatística, ANTES do connect, pra empurrar a conectar já.
+- **O que roubar:** usar um dado/gatilho ("quem conecta em X min sente mais controle") pra reduzir a procrastinação no passo mais importante (conectar/cadastrar contas).
+
+### Tela 13 — "Connect spending account" (agregador — o STOP do walkthrough) 🏦
+- **Copy:** "Let's begin by connecting the account where most of your spending happens" + "Securely give Monarch **read-only** access to automatically keep track of your accounts. **We don't sell or share your data.**"
+- **UI:** busca **"Search 13,000+ institutions"** + grid de bancos populares: **Chase · Capital One · Wells Fargo · Bank of America · American Express · Citi** (todos **US**). Botão **Skip for now**.
+- **Intel:** agregador (tipo Plaid/MX) com **13.000+ instituições**, mas **100% US** — nenhum banco BR. Reforço de segurança bem no passo (read-only + não vende dado). Começa pedindo **a conta onde a pessoa mais gasta** (a mais útil primeiro).
+- **⛔ PAREI AQUI:** clicar num banco abre o **login do banco (credencial)** — não faço. O walkthrough do onboarding+app até a conexão está capturado.
+- **⭐ BRECHA BR (nossa):** o agregador deles é **US-only**. No Brasil o caminho é **Open Finance** (via Pluggy/Belvo) — nenhum concorrente gringo cobre banco BR. Cadastro manual + Open Finance BR é vantagem local direta.
+
+
+## 🧩 Mecânica dos campos — por tela (como cada campo funciona)
+| Tela | Campo(s) | Tipo / comportamento |
+|---|---|---|
+| 0a e-mail | E-mail | input de e-mail (só e-mail, **sem senha** nessa etapa) |
+| 0b código | Código de verificação | input do código enviado por e-mail (dígitos); confirma → entra |
+| 1 prioridades | 8 opções | **checkbox multi-select** (pílulas toggláveis); "Continue" avança **mesmo sem seleção** (observado) |
+| 2 landscape | 9 opções | **checkbox multi-select**; **← voltar** disponível; "Continue" |
+| 3 value prop | — | sem campo; só "Continue" |
+| 4 atribuição | pílulas + texto | **single-select** (pílulas) + **input texto livre** ("How did you hear about us?"); **Skip** (topo dir) + "Continue" |
+| 5 segurança | — | sem campo; só "Continue" |
+| 6 perfil | Full name / Country / 3× Yes-No | **texto** (nome) + **dropdown** país (default 🇺🇸) + **3 pares Yes/No** (single-select cada) + "Continue" |
+| 7 trial explainer | 1 checkbox | checkbox "email me a reminder before trial ends" + "Continue" |
+| 8 planos | dropdown billing + CTAs | **dropdown Annual/Monthly** (só no card Core; **troca o preço na hora**), "See more" expande features, **"Try for $0.00"** por card |
+| 9 checkout | cartão (Stripe) / promo | **campo Stripe em iframe** ("Número do cartão" → expande validade/CVC) + botão **"Usar" (Stripe Link)** + link "Add a promo code" + "Start your free 7-day trial" |
+| 10 welcome | — | sem campo; depoimentos + "Continue" |
+| 11 parceiro | E-mail do parceiro | **input e-mail** ("Partner's email") + "Continue" + **"Skip for now"** |
+| 12 priming | — | sem campo; "Continue" |
+| 13 conectar | busca + bancos | **input de busca live** ("Search 13,000+ institutions", filtra conforme digita) + **botões quick-pick** de banco + "Skip for now"; clicar num banco → **login do agregador** (OAuth/credencial) |
+
+**Padrão de campo que vale copiar:** validação/feedback no próprio campo, defaults inteligentes (país, billing anual pré-selecionado), opcional explícito ("Skip"), e o CTA principal sempre habilitado e único por tela.
 
 ## 🎯 Síntese — como fazer o NOSSO onboarding (destilado do Monarch)
 1. **Cadastro progressivo:** e-mail → código de verificação → onboarding. Pede o mínimo pra começar.
