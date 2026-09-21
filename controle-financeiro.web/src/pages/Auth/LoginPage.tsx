@@ -218,7 +218,17 @@ export default function LoginPage() {
           {/* Voltar para homepage */}
           {/* Um único "voltar" no topo, contextual. Veio do chooser → volta pra lista (ou o chip da
              conta selecionada). Home fica no logo. Senão → voltar pra página inicial. */}
-          {roster.length > 0 && usarOutra ? (
+          {mfaChallenge ? (
+            <button type="button" className={styles.backLink}
+              onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined); setConfiarDispositivo(false) }}>
+              <ArrowLeft size={16} /> Voltar ao login
+            </button>
+          ) : marcada ? (
+            <button type="button" className={styles.backLink}
+              onClick={() => { setMarcada(null); setReativarErro(undefined); setPassword('') }}>
+              <ArrowLeft size={16} /> Voltar ao login
+            </button>
+          ) : roster.length > 0 && usarOutra ? (
             contaSelecionada ? (
               <button type="button" className={styles.acctChip} onClick={voltarProChooser} title="Trocar de conta">
                 <PontesAvatar name={contaSelecionada.nome} size={28} />
@@ -273,10 +283,6 @@ export default function LoginPage() {
                 onClick={handleReativar}>
                 Reativar conta
               </PontesButton>
-              <PontesButton type="button" variant="ghost" size="md" fullWidth
-                onClick={() => { setMarcada(null); setReativarErro(undefined); setPassword('') }}>
-                Voltar
-              </PontesButton>
             </div>
           ) : mfaChallenge ? (
             /* Passo 2 — código MFA */
@@ -303,12 +309,6 @@ export default function LoginPage() {
 
               <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
                 Verificar
-              </PontesButton>
-              <PontesButton
-                type="button" variant="ghost" size="md" fullWidth
-                onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined); setConfiarDispositivo(false) }}
-              >
-                Voltar
               </PontesButton>
             </form>
           ) : mostrarChooser ? (
