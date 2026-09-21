@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-20
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,26 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-09-20 (fecha em ponto verde) — Análise do concorrente Monarch (docs-only) · PR #259 aberto
+
+Sessão **não-código**: engenharia reversa completa do **Monarch Money** (líder US de finanças de casal). Conta de teste paga (trial Core + **Plus ativado**), dados fictícios inseridos, zero compra além do trial. Tudo em `docs/concorrentes/monarch/` na branch `docs/concorrente-monarch-onboarding` (**PR #259, docs-only**).
+
+**Feito:**
+- **16 relatórios por página** (`docs/concorrentes/monarch/paginas/`) — Core + Plus, tela a tela: Dashboard, Accounts, Transactions+modal, Cash Flow (Sankey), Reports, Budget, Recurring, Goals (Save up+Pay down+Allocate), **Forecasting** (setup, premissas, 9 eventos+params, cenários), Investments (Holdings+Advanced), AI Assistant, Household/casal, Settings (todas sub-páginas), Advice.
+- **Backlog priorizado** (`docs/concorrentes/monarch/roubar-priorizado.md`) — placar nós×Monarch + P1-P3 cruzado com scan do nosso código.
+
+**Achado central:** já **estamos à frente** no fosso casal (rateio+acerto+dependentes; Monarch nem tem). Atrás em: Metas→alocação, Recorrente (3→11 freq), Sankey, Merchant, Rules, IA, Forecasting.
+
+**Próxima ação (código) — inalterada da sessão anterior + do backlog Monarch:**
+- **Recorrente 3→11 frequências** (gap fácil, alto ROI) OU **Metas: modelo de alocação + meta-por-data** (maior valor, resolve P2 do ROADMAP).
+- Segue valendo: migrar Transações+Empréstimos pro `PontesSegmented`; tela "Dispositivos confiáveis"; `BancosController` sem `[Authorize]` na escrita.
+
+**Pendências do Gustavo (não-código):** (1) cancelar trial do **Plus** antes de cobrar ($199,99/ano) se não for manter; (2) dados de teste na conta Monarch podem ser apagados; (3) mergear #259 quando quiser.
+
+**Ambiente:** main inalterada (`b482c93` + PRs #253-#258 já mergeados na sessão anterior desta data). Working tree limpo, PR #259 aberto (docs). Nenhum código tocado nesta sessão.
+
+---
 
 ### 📌 Sessão 2026-09-19 (fecha) — 3 PRs empacotados mergeados na `main` (`b482c93`) · zero PR aberto
 
