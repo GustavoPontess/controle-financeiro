@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
-  listEmprestimosPage, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
+  listEmprestimosPage, getEmprestimo, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
   arquivarEmprestimo, desarquivarEmprestimo,
   vincularEmprestimo, listConvitesPendentesEmprestimo,
   aceitarVinculoEmprestimoPorId, recusarVinculoEmprestimoPorId,
@@ -98,7 +98,11 @@ export type Errors = Partial<Record<
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-export function useEmprestimosLogic() {
+// `focusId` (opcional): id de um empréstimo aberto por URL (tela de detalhe). Garante que ele esteja
+// sempre em `emprestimos` mesmo que caia fora da página carregada (>100 ou arquivado) — os handlers
+// dos modais fazem `emprestimos.find(id)`, então sem isso as ações quebrariam no detalhe. A lista real
+// não passa nada e segue idêntica.
+export function useEmprestimosLogic(focusId?: string) {
   const { notify } = useOutletContext<OutletContextType>()
   const { currentUser } = useAuth()
 
@@ -234,7 +238,16 @@ export function useEmprestimosLogic() {
         listCandidatosConsolidacao(),
         listConsolidacoes(),
       ])
-      setEmprestimos(pageResult.items)
+      // Tela de detalhe: se o empréstimo focado não veio na página, busca-o e prepende — assim os
+      // handlers dos modais (que fazem emprestimos.find) sempre o acham, mesmo após um reload.
+      let itens = pageResult.items
+      if (focusId && !itens.some((e) => e.id === focusId)) {
+        try {
+          const focado = await getEmprestimo(focusId)
+          if (focado) itens = [focado, ...itens]
+        } catch { /* detalhe faz o próprio tratamento de erro/404 */ }
+      }
+      setEmprestimos(itens)
       setTotal(pageResult.total)
       setStats(statsResult)
       setPendentes(pendentesResult)
@@ -246,7 +259,7 @@ export function useEmprestimosLogic() {
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao])
+  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao, focusId])
 
   useEffect(() => { void loadData() }, [loadData])
 

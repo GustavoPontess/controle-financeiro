@@ -46,6 +46,12 @@ export const getEmprestimos = async (): Promise<Emprestimo[]> => {
   return res.data.items
 }
 
+/** Detalhe de um empréstimo por id (aplica multa de atraso no servidor). Usado pela tela de detalhe. */
+export const getEmprestimo = async (id: string): Promise<Emprestimo> => {
+  const res = await api.get(`/emprestimos/${id}`)
+  return res.data
+}
+
 export const createEmprestimo = async (dto: CriarEmprestimo): Promise<Emprestimo> => {
   const res = await api.post("/emprestimos", dto)
   return res.data
