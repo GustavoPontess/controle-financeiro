@@ -46,7 +46,10 @@ namespace ControleFinanceiro.Api.Controllers
             _ => string.Empty
         };
 
-        private static ContaDto ToDto(Conta c) => new()
+        // Saldo = movimento real (Ativo + Executado): exclui canceladas (soft delete) e previsões;
+        // inclui transferência/saldo inicial/pagamento (movem dinheiro). Calculado no banco pela
+        // regra única (RegrasFinanceiras via ContaService.ObterSaldosAsync) e só repassado aqui.
+        private static ContaDto ToDto(Conta c, decimal saldoAtual) => new()
         {
             Id = c.Id,
             Nome = c.Nome,
@@ -56,10 +59,7 @@ namespace ControleFinanceiro.Api.Controllers
             TipoDescricao = DescricaoTipo(c.Tipo),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
-            // Saldo = movimento real (Ativo + Executado): exclui canceladas (soft delete) e
-            // previsões; inclui transferência/saldo inicial/pagamento (movem dinheiro).
-            SaldoAtual = c.Transacoes.Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor)
-                       - c.Transacoes.Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
+            SaldoAtual = saldoAtual,
             IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome ?? string.Empty
@@ -83,7 +83,8 @@ namespace ControleFinanceiro.Api.Controllers
         {
             var usuarioId = GetUserId();
             var lista = await _service.ListarAsync(usuarioId);
-            return Ok(lista.Select(ToDto));
+            var saldos = await _service.ObterSaldosAsync(lista.Select(c => c.Id), usuarioId);
+            return Ok(lista.Select(c => ToDto(c, saldos[c.Id].Saldo)));
         }
 
         [HttpGet("{id}")]
@@ -92,7 +93,8 @@ namespace ControleFinanceiro.Api.Controllers
             var usuarioId = GetUserId();
             var conta = await _service.BuscarPorIdAsync(id, usuarioId);
             if (conta == null) return NotFound();
-            return Ok(ToDto(conta));
+            var saldos = await _service.ObterSaldosAsync(new[] { conta.Id }, usuarioId);
+            return Ok(ToDto(conta, saldos[conta.Id].Saldo));
         }
 
         [HttpPost]
@@ -115,7 +117,9 @@ namespace ControleFinanceiro.Api.Controllers
             };
 
             var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
-            return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
+            // Saldo lido do banco (já com o lançamento de saldo inicial gravado) pela mesma regra.
+            var saldos = await _service.ObterSaldosAsync(new[] { criada.Id }, usuarioId);
+            return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada, saldos[criada.Id].Saldo));
         }
 
         [HttpPut("{id}")]

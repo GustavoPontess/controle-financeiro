@@ -103,25 +103,21 @@ public class DashboardService
 
         // Saldo conta = movimento real (Ativo + Executado). Inclui transferência/saldo
         // inicial/pagamento (movem dinheiro); exclui canceladas (soft delete) e previsões.
-        static bool EhSaldo(Domain.Entities.Transacao t) =>
-            t.Ativo && t.StatusTransacao == StatusTransacao.Executado;
+        // Regra única, agregada no banco — o mesmo número da tela de contas.
+        var saldosPorConta = await RegrasFinanceiras.SaldosDasContasAsync(
+            _context, contas.Select(c => c.Id), usuarioId);
 
-        var saldoContas = contas.Select(c =>
+        var saldoContas = contas.Select(c => new SaldoContaDto
         {
-            var receitas = c.Transacoes.Where(t => EhSaldo(t) && t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
-            var despesas = c.Transacoes.Where(t => EhSaldo(t) && t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
-            return new SaldoContaDto
-            {
-                Id = c.Id,
-                Nome = c.Nome,
-                Saldo = receitas - despesas,
-                Tipo = (int)c.Tipo,
-                TipoDescricao = c.Tipo.ToString(),
-                IsCarteira = c.IsCarteira,
-                BancoNome = c.Banco?.NomeFantasia,
-                LogoUrl = c.Banco?.LogoUrl,
-                Cor = c.Banco?.Cor
-            };
+            Id = c.Id,
+            Nome = c.Nome,
+            Saldo = saldosPorConta[c.Id].Saldo,
+            Tipo = (int)c.Tipo,
+            TipoDescricao = c.Tipo.ToString(),
+            IsCarteira = c.IsCarteira,
+            BancoNome = c.Banco?.NomeFantasia,
+            LogoUrl = c.Banco?.LogoUrl,
+            Cor = c.Banco?.Cor
         }).ToList();
 
         var saldoTotal = saldoContas.Sum(c => c.Saldo);

@@ -204,6 +204,10 @@ namespace ControleFinanceiro.Api.Controllers
             _ => null
         };
 
+        /// <summary>
+        /// Entradas, saídas e saldo REAL da conta (lançamentos ativos e efetivados — sem previsões),
+        /// o mesmo saldo da listagem de contas e do dashboard.
+        /// </summary>
         [HttpGet("resumo/{contaId}")]
         [ProducesResponseType(typeof(ResumoFinanceiroDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> ObterResumo(Guid contaId)

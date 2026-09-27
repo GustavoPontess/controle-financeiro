@@ -21,12 +21,8 @@ namespace ControleFinanceiro.Api.Services;
 ///   <item>Soft delete — cancelar marca <c>Status=Cancelada</c>; nunca <c>Remove()</c>.</item>
 /// </list>
 /// <para>
-/// Cálculo de saldo da conta: dinâmico (SUM Receitas - SUM Despesas em Transacoes Ativo+Executado),
-/// conforme convenção do projeto (Conta.Saldo não é persistido).
-/// </para>
-/// <para>
-/// Cálculo do total da fatura: soma de transações legacy <c>UsadoComoCredito=true</c>
-/// (crédito à vista) mais <see cref="ParcelaTransacao"/> da nova arquitetura — evita dupla contagem.
+/// Saldo da conta e total da fatura vêm de <see cref="RegrasFinanceiras"/> (regra única do projeto:
+/// saldo = Ativo+Executado agregado no banco; total = crédito à vista + parcelas não canceladas).
 /// A transação de pagamento criada aqui tem <c>FaturaPagaId</c> (não <c>FaturaId</c>) e portanto
 /// não polui o total da fatura.
 /// </para>
@@ -97,24 +93,11 @@ public class ParcelaTransacaoService
                                       && c.UsuarioIdProprietario == usuarioId)
             ?? throw new InvalidOperationException("Conta de pagamento não encontrada.");
 
-        // 4. Validar saldo dinâmico da conta (Receitas - Despesas; Conta.Saldo não é persistido)
+        // 4. Validar saldo dinâmico da conta (Conta.Saldo não é persistido) — mesmo saldo que a
+        //    tela de contas e o dashboard mostram, pela regra única.
         var valorParcela = parcela.ValorComJuros ?? parcela.Valor;
 
-        var receitas = await _context.Transacoes
-            .Where(t => t.ContaId == conta.Id
-                        && t.Ativo
-                        && t.StatusTransacao == StatusTransacao.Executado
-                        && t.Tipo == TipoTransacao.Receita)
-            .SumAsync(t => (decimal?)t.Valor) ?? 0m;
-
-        var despesas = await _context.Transacoes
-            .Where(t => t.ContaId == conta.Id
-                        && t.Ativo
-                        && t.StatusTransacao == StatusTransacao.Executado
-                        && t.Tipo == TipoTransacao.Despesa)
-            .SumAsync(t => (decimal?)t.Valor) ?? 0m;
-
-        var saldo = receitas - despesas;
+        var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, conta.Id, usuarioId)).Saldo;
         if (saldo < valorParcela)
             throw new InvalidOperationException(
                 $"Saldo insuficiente. Necessário {valorParcela:C}, disponível {saldo:C}.");
@@ -163,7 +146,7 @@ public class ParcelaTransacaoService
 
             // 6c. Atualizar Fatura — acumula ValorPago e recalcula EstadoPagamento
             fatura.ValorPago += valorParcela;
-            var valorTotalFatura = CalcularValorTotalFatura(fatura);
+            var valorTotalFatura = RegrasFinanceiras.ValorTotalFatura(fatura);
             var novoEstado = RecalcularEstadoPagamento(fatura.ValorPago, valorTotalFatura);
             fatura.EstadoPagamento = novoEstado;
             if (novoEstado == EstadoPagamentoFatura.Pago)
@@ -344,25 +327,6 @@ public class ParcelaTransacaoService
     // ── Helpers privados ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Valor total de uma fatura = legacy UsadoComoCredito + parcelas do novo sistema.
-    /// Transações de pagamento (FaturaPagaId) são excluídas automaticamente porque
-    /// não têm UsadoComoCredito=true e não aparecem em Fatura.ParcelasTransacao.
-    /// </summary>
-    private static decimal CalcularValorTotalFatura(Fatura fatura)
-    {
-        // Transações de crédito à vista (sistema legado — ParcelamentoId = null)
-        var legacyTotal = fatura.Transacoes
-            .Where(t => t.UsadoComoCredito && t.Ativo)
-            .Sum(t => t.Valor);
-
-        // Parcelas do sistema novo (ValorComJuros quando há juros PIX, senão Valor)
-        var parcelasTotal = fatura.ParcelasTransacao
-            .Sum(p => p.ValorComJuros ?? p.Valor);
-
-        return legacyTotal + parcelasTotal;
-    }
-
-    /// <summary>
     /// Recalcula <see cref="EstadoPagamentoFatura"/> a partir dos valores atualizados.
     /// </summary>
     private static EstadoPagamentoFatura RecalcularEstadoPagamento(
@@ -402,7 +366,7 @@ public class ParcelaTransacaoService
             .FirstOrDefaultAsync(f => f.Id == parcela.FaturaId)
             ?? throw new InvalidOperationException("Fatura não encontrada.");
 
-        var valorTotal = CalcularValorTotalFatura(fatura);
+        var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
         var snapshot = await _limiteCalc.CalcularAsync(
             parcela.Parcelamento!.CartaoCreditoId, usuarioId);
 
@@ -417,7 +381,7 @@ public class ParcelaTransacaoService
                 EstadoPagamento = fatura.EstadoPagamento,
                 ValorPago = fatura.ValorPago,
                 ValorTotal = valorTotal,
-                ValorRestante = Math.Max(0m, valorTotal - fatura.ValorPago),
+                ValorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, fatura.ValorPago),
             },
             NovoLimite = new LimiteSnapshotDto
             {

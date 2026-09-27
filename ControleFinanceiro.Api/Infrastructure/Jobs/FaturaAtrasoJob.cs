@@ -1,6 +1,6 @@
-using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
+using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Api.Infrastructure.Jobs;
@@ -25,7 +25,8 @@ public class FaturaAtrasoJob
 
         foreach (var fatura in faturas)
         {
-            var valorTotal = CalcularValorTotal(fatura);
+            // Mesma regra de total da tela/pagamento (parcela cancelada não gera juros nem multa).
+            var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
             fatura.EstaAtrasada = true;
             // Juros de mora: 1% ao mês + multa de 2% (simplificado)
             var diasAtraso = (hoje - fatura.DataVencimento).Days;
@@ -36,15 +37,5 @@ public class FaturaAtrasoJob
 
         if (faturas.Any())
             await _context.SaveChangesAsync();
-    }
-
-    private static decimal CalcularValorTotal(Fatura f)
-    {
-        var legacyTotal = f.Transacoes
-            .Where(t => t.UsadoComoCredito && t.Ativo)
-            .Sum(t => t.Valor);
-        var parcelasTotal = f.ParcelasTransacao
-            .Sum(p => p.ValorComJuros ?? p.Valor);
-        return legacyTotal + parcelasTotal;
     }
 }

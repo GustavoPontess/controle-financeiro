@@ -219,10 +219,10 @@ public class FaturaService
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
 
-        // Inclui crédito à vista (legacy) + parcelas do sistema novo
-        var valorTotal = CalcularValorTotal(fatura);
+        // Crédito à vista (legacy) + parcelas do sistema novo — regra única (parcela cancelada fora)
+        var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
 
-        var valorRestante = valorTotal - fatura.ValorPago;
+        var valorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, fatura.ValorPago);
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
             throw new ArgumentException($"Valor inválido. Restante a pagar: {valorRestante:C}.");
 
@@ -348,7 +348,7 @@ public class FaturaService
 
     private static void PreencherDto(FaturaDto dto, Fatura f, string cartaoNome)
     {
-        var valorTotal = CalcularValorTotal(f);
+        var valorTotal = RegrasFinanceiras.ValorTotalFatura(f);
         dto.Id = f.Id;
         dto.CartaoCreditoId = f.CartaoCreditoId;
         dto.CartaoCreditoNome = cartaoNome;
@@ -362,22 +362,8 @@ public class FaturaService
         dto.DataPagamentoTotal = f.DataPagamentoTotal;
         dto.ValorTotal    = valorTotal;
         dto.ValorPago     = f.ValorPago;
-        dto.ValorRestante = Math.Max(0m, valorTotal - f.ValorPago);
+        dto.ValorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, f.ValorPago);
         dto.Vencida = f.EstadoPagamento != EstadoPagamentoFatura.Pago
                       && DateTime.UtcNow.Date > f.DataVencimento.Date;
-    }
-
-    /// <summary>
-    /// Total da fatura = crédito à vista (legacy) + parcelas do sistema novo.
-    /// Sem dupla contagem: transações de pagamento têm FaturaPagaId, não FaturaId.
-    /// </summary>
-    private static decimal CalcularValorTotal(Fatura f)
-    {
-        var legacyTotal = f.Transacoes
-            .Where(t => t.UsadoComoCredito && t.Ativo)
-            .Sum(t => t.Valor);
-        var parcelasTotal = f.ParcelasTransacao
-            .Sum(p => p.ValorComJuros ?? p.Valor);
-        return legacyTotal + parcelasTotal;
     }
 }
