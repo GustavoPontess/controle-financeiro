@@ -32,6 +32,7 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 | Arquivo | Quando consultar |
 |---|---|
 | [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | Resumo de stack/comandos/padrões — primeira leitura |
+| [ARQUITETURA.md](./ARQUITETURA.md) | Nome honesto da arquitetura + avaliação (notas, forças, fraquezas, o que NÃO fazer) |
 | [STANDARDS.md](./STANDARDS.md) | Convenções de código (C#, TS, naming, error handling, paginação) |
 | [DATABASE.md](./DATABASE.md) | Schema, ER, delete behavior, descrição das entidades |
 | [FLOWS.md](./FLOWS.md) | Fluxos de negócio (transação, parcelamento, fatura) |

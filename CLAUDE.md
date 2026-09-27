@@ -82,10 +82,10 @@ npm run lint
 **Categoria** — has `Finalidade` (Despesa/Receita/Ambas) that must be compatible with the transaction type.
 
 ### Auth Flow
-- JWT Bearer (HS256), 60-minute expiration, configured in `appsettings.json`
-- Claims: `NameIdentifier` (user ID), `Email`, `Name`
-- CORS allows only `http://localhost:5173`
-- All endpoints except `/auth/login` and `/auth/register` require `[Authorize]`
+- JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection
+- Claims: `NameIdentifier` (user ID), `Email`, `Name`, `sid`
+- CORS allows only `http://localhost:5173` em dev (produção via `CORS_ALLOWED_ORIGINS`)
+- **API nega por padrão** (`FallbackPolicy`): tudo exige login, exceto o que declara `[AllowAnonymous]` — os endpoints públicos do `AuthController` (login, registro, MFA do login, refresh, switch, logout, roster, reativar conta, esqueci/redefinir senha) e `/health`, `/health/ready`
 
 ### Database
 - **Postgres único** (SQLite removido no #114): `DATABASE_URL` deve conter connection string Npgsql (`Host=...`). Rodar a API **exige** Postgres no ar (`docker compose up -d postgres`)
