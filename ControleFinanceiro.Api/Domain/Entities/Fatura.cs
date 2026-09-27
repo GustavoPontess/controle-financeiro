@@ -15,6 +15,14 @@ public class Fatura
     // Quanto já foi pago (para pagamento parcial → EstadoPagamento permanece Parcial até quitar)
     public decimal ValorPago { get; set; }
 
+    /// <summary>
+    /// Token de concorrência otimista. No Postgres é a coluna de sistema <c>xmin</c> (muda a cada
+    /// UPDATE da linha) — não existe coluna nova. Sem isto, dois pagamentos simultâneos liam o mesmo
+    /// ValorPago e o segundo sobrescrevia o primeiro (lost update → pagamento acima do restante).
+    /// Com o token, o UPDATE perdedor afeta 0 linhas → DbUpdateConcurrencyException → 409.
+    /// </summary>
+    public uint Versao { get; set; }
+
     public Guid CriadoPor { get; set; }
 
     public ICollection<Transacao> Transacoes { get; set; } = new List<Transacao>();

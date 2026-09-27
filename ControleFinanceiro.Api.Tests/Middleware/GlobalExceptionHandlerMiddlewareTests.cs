@@ -1,9 +1,12 @@
 using System.Text;
 using System.Text.Json;
+using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.DTOs.Common;
+using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Middleware;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -65,6 +68,70 @@ public class GlobalExceptionHandlerMiddlewareTests
         Assert.Equal(413, status);
         Assert.Equal("BAD_REQUEST", body.Code);
         Assert.Equal("Requisição grande demais.", body.Message);
+    }
+
+    /// <summary>
+    /// DbUpdateConcurrencyException REAL do EF, com <c>Entries</c> preenchido como em produção: apagar
+    /// uma linha que não existe afeta 0 linhas — o InMemory lança a mesma exceção que o Postgres daria.
+    /// (O construtor público só aceita IUpdateEntry, API interna do EF; assim não precisa dela.)
+    /// </summary>
+    private static async Task<DbUpdateConcurrencyException> ConcorrenciaReal(object entidadeQueSumiu)
+    {
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.Remove(entidadeQueSumiu);
+        return await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task ConflitoDeConcorrenciaNaFatura_retorna409_comMensagemDaFatura_semVazarDetalheDoEf()
+    {
+        // Concorrência otimista (xmin da Fatura): outra operação alterou a linha no meio. É conflito
+        // recuperável pelo cliente (recarregar e refazer) → 409, não 500. A mensagem do EF cita
+        // linhas/entidades (detalhe interno) e é trocada por uma fixa e segura.
+        var ex = await ConcorrenciaReal(new Fatura { Id = Guid.NewGuid() });
+        Assert.Contains(ex.Entries, e => e.Entity is Fatura); // pré-condição: é o formato real do EF
+
+        var (status, body) = await Invoke(ex);
+
+        Assert.Equal(409, status);
+        Assert.Equal("CONCURRENCY_CONFLICT", body.Code);
+        Assert.Equal(GlobalExceptionHandlerMiddleware.MensagemConflitoFatura, body.Message);
+        Assert.Equal("Esta fatura foi alterada por outra operação. Recarregue e tente de novo.", body.Message);
+        Assert.DoesNotContain("row(s)", body.Message);
+    }
+
+    [Fact]
+    public async Task ConflitoDeConcorrenciaEmOutraEntidade_retorna409_comMensagemGenerica_naoDeFatura()
+    {
+        // O EF lança a mesma exceção em QUALQUER UPDATE/DELETE que afeta 0 linhas — ex.: duplo POST do
+        // MFA faz Remove(challenge) 2x. Falar "esta fatura" aí confundiria o usuário.
+        var ex = await ConcorrenciaReal(new MfaLoginChallenge { Id = Guid.NewGuid() });
+
+        var (status, body) = await Invoke(ex);
+
+        Assert.Equal(409, status);
+        Assert.Equal("CONCURRENCY_CONFLICT", body.Code);
+        Assert.Equal("Este registro foi alterado por outra operação. Recarregue e tente de novo.", body.Message);
+        Assert.DoesNotContain("fatura", body.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ConflitoDeConcorrenciaSemEntries_retorna409_comMensagemGenerica_semVazarDetalheDoEf()
+    {
+        // Sem Entries não dá pra saber a entidade → genérica. E a mensagem interna do EF (que aqui até
+        // cita "Fatura" e "xmin") nunca vai pro cliente.
+        const string internoEf = "The database operation was expected to affect 1 row(s), but actually affected 0 row(s); entity Fatura xmin";
+        var ex = new DbUpdateConcurrencyException(internoEf);
+
+        var (status, body) = await Invoke(ex);
+
+        Assert.Equal(409, status);
+        Assert.Equal("CONCURRENCY_CONFLICT", body.Code);
+        Assert.Equal(GlobalExceptionHandlerMiddleware.MensagemConflitoConcorrencia, body.Message);
+        Assert.DoesNotContain("row(s)", body.Message);
+        Assert.DoesNotContain("xmin", body.Message);
     }
 
     [Fact]

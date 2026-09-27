@@ -20,6 +20,7 @@ import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
 import { dataComHora } from "../../utils/dateTime"
+import { notificacaoDeErro } from "../../utils/apiError"
 import { getRecorrentes } from "../../services/recorrenteService"
 import type { Recorrente } from "../../types/Recorrente"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
@@ -164,7 +165,7 @@ const emptyForm: FormState = {
 type CartaoErrors = { nome?: string; bancoId?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
 
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 export default function CreditCardsPage() {
@@ -194,6 +195,9 @@ export default function CreditCardsPage() {
   })
   const [pagarErrors, setPagarErrors] = useState<{ conta?: string; valor?: string }>({})
   const [pagarLoading, setPagarLoading] = useState(false)
+  // Idempotency-Key da tentativa de pagamento: nasce ao abrir o modal e é reusada nos retries
+  // (erro de rede, 409) — a API nunca paga 2x a mesma chave. Reabrir o modal gera outra.
+  const [pagarIdemKey, setPagarIdemKey] = useState("")
 
   const [delId, setDelId] = useState<string | null>(null)
 
@@ -264,14 +268,27 @@ export default function CreditCardsPage() {
     setPagarFaturaId(faturaId)
     setPagarCartaoId(cartaoId)
     setPagarErrors({})
+    setPagarIdemKey(crypto.randomUUID())
     setPagarForm({
       contaId: contaId ?? "", valor: String(valorRestante.toFixed(2)),
       dataPagamento: new Date().toISOString().split("T")[0], meioPagamento: "4",
     })
   }
 
+  // Recarrega o que o pagamento mexe: limite do cartão, lista de faturas e o detalhe (timeline de
+  // pagamentos). Fica FORA do try do pagamento: se a recarga falhar depois de um pagamento que deu
+  // certo, isso não pode virar "Erro ao registrar pagamento" — o usuário tentaria pagar de novo.
+  const recarregarFaturaDoPagamento = async (cartaoId: string, faturaId: string) => {
+    await loadData() // tem catch próprio (toast de carregamento, não de pagamento)
+    try {
+      if (faturasCartaoId) await refreshFaturas(faturasCartaoId)
+    } catch { /* lista fica como estava; o pagamento já está registrado */ }
+    await refreshDetalhe(cartaoId, faturaId) // tem catch próprio
+  }
+
   const handlePagar = async () => {
     if (!pagarFaturaId || !pagarCartaoId) return
+    const cartaoId = pagarCartaoId, faturaId = pagarFaturaId
     const e: { conta?: string; valor?: string } = {}
     if (!pagarForm.contaId) e.conta = "Selecione a conta"
     if (!pagarForm.valor || Number(pagarForm.valor) <= 0) e.valor = "Informe um valor válido"
@@ -284,16 +301,23 @@ export default function CreditCardsPage() {
         // Pagamento é ação real: grava a hora (hoje → agora) pra aparecer na lista.
         dataPagamento: dataComHora(pagarForm.dataPagamento), meioPagamento: Number(pagarForm.meioPagamento),
       }
-      await pagarFatura(pagarCartaoId, pagarFaturaId, payload)
-      notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
-      setPagarFaturaId(null)
-      await loadData()
-      if (faturasCartaoId) await refreshFaturas(faturasCartaoId)
-      // Invalida o detalhe da fatura paga pra timeline mostrar o pagamento.
-      await refreshDetalhe(pagarCartaoId, pagarFaturaId)
-    } catch {
-      notify({ open: true, message: "Erro ao registrar pagamento", severity: "error" })
+      await pagarFatura(cartaoId, faturaId, payload, pagarIdemKey)
+    } catch (err) {
+      // 4xx com mensagem do servidor vira AVISO com essa mensagem (ex.: "Valor inválido. Restante
+      // a pagar: …"); rede/5xx segue como erro genérico e o modal fica aberto pro retry (mesma chave).
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao registrar pagamento") })
+      // 409 = o que está na tela ficou velho: chave já usada com outros dados, fatura alterada por
+      // outra operação ou já quitada. Fecha o modal e recarrega a fatura — pagar de novo exige
+      // reabrir o modal, que parte do restante atualizado e com chave nova.
+      if ((err as { response?: { status?: number } })?.response?.status === 409) {
+        setPagarFaturaId(null)
+        await recarregarFaturaDoPagamento(cartaoId, faturaId)
+      }
+      return
     } finally { setPagarLoading(false) }
+    notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
+    setPagarFaturaId(null)
+    await recarregarFaturaDoPagamento(cartaoId, faturaId)
   }
 
   const openCreate = () => { setForm(emptyForm); setFormErrors({}); setEditingId(null); setDialogOpen(true) }

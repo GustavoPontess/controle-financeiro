@@ -119,7 +119,8 @@ public class FaturaAposCancelamentoTests
 
     private static Task PagarFaturaAsync(AppDbContext ctx, Cenario c, decimal valor) =>
         new FaturaService(ctx).PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = DateTime.UtcNow }, c.UsuarioId);
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            Guid.NewGuid().ToString());
 
     private static Task CancelarParcelaAsync(AppDbContext ctx, Cenario c) =>
         Parcelas(ctx).CancelarAsync(c.ParcelaNaFaturaId, new CancelarParcelaDto

@@ -229,10 +229,12 @@ public class RegrasFinanceirasTests
 
         // Restante é 400: cobrar a parcela cancelada (ex.: pagar 900) é recusado.
         await Assert.ThrowsAsync<ArgumentException>(() => faturaService.PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = 401m, DataPagamento = DateTime.UtcNow }, c.UsuarioId));
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = 401m, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            Guid.NewGuid().ToString()));
 
         await faturaService.PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = 400m, DataPagamento = DateTime.UtcNow }, c.UsuarioId);
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = 400m, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            Guid.NewGuid().ToString());
 
         var fatura = await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == c.FaturaId);
         Assert.Equal(EstadoPagamentoFatura.Pago, fatura.EstadoPagamento);

@@ -332,7 +332,8 @@ public class AdminLgpdService
         await _context.SaveChangesAsync();
 
         // 8. Usuário — o cascade cuida do resto (Conta+Compartilhamento, Orcamento, Meta, Notificacao,
-        //    RefreshToken, PasswordResetToken, MfaBackupCode, MfaLoginChallenge, Relacionamento próprio).
+        //    RefreshToken, PasswordResetToken, MfaBackupCode, MfaLoginChallenge, Relacionamento próprio,
+        //    RegistroIdempotencia).
         var usuario = await _context.Usuarios.FirstAsync(x => x.Id == id);
         _context.Usuarios.Remove(usuario);
 
