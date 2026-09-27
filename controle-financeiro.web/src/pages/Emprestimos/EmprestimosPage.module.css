@@ -87,8 +87,6 @@
 .table tbody tr[data-clickable] { cursor: pointer; }
 .tDesc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 /* Caret de expandir parcelas ao clicar na linha (aponta pra baixo quando aberto). */
-.expandCaret { display: inline-block; vertical-align: middle; margin-right: 6px; color: var(--pontes-text-muted); transition: transform .15s ease; }
-.expandCaret[data-open="true"] { transform: rotate(90deg); }
 .pessoaBanco { display: inline-flex; align-items: center; gap: 8px; }
 .tRight { text-align: right; }
 .tValor[data-tone="danger"] { color: var(--pontes-danger); }

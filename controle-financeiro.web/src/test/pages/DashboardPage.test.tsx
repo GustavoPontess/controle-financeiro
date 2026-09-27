@@ -156,8 +156,9 @@ describe("DashboardPage (#81)", () => {
 
   it("QuickActions renderiza 4 atalhos com dicas N/T/C/F", async () => {
     renderDash()
-    await screen.findByText("Olá, Gabriel")
-    expect(screen.getByText("Nova transação")).toBeInTheDocument()
+    // A saudação vem do usuário logado e aparece na hora; os atalhos só depois que os dados do
+    // dashboard chegam. Esperar a saudação e checar o atalho síncrono era corrida (flaky no CI).
+    expect(await screen.findByText("Nova transação")).toBeInTheDocument()
     expect(screen.getByText("Transações")).toBeInTheDocument()
     expect(screen.getByText("Cartões")).toBeInTheDocument()
     expect(screen.getByText("Transferir")).toBeInTheDocument()
@@ -181,7 +182,9 @@ describe("DashboardPage (#81)", () => {
 
   it("seção Cartões só aparece quando cartoesResumo > 0", async () => {
     renderDash()
-    await screen.findByText("Olá, Gabriel")
+    // Espera os dados carregarem ANTES de checar ausência — senão a asserção passa sempre
+    // (a seção ainda não existiria de qualquer jeito).
+    await screen.findByText("Nova transação")
     // mockData padrão tem cartoesResumo=[], então não renderiza
     expect(screen.queryByText("Seus cartões")).not.toBeInTheDocument()
 

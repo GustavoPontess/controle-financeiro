@@ -2,14 +2,15 @@
 // paginação real, ações no menu kebab (⋮), wizard de novo empréstimo e de consolidação.
 // Lógica no hook compartilhado useEmprestimosLogic; modais em EmprestimosLabModals.
 // (Vencedora da bancada B, promovida a tela real em 2026-09-13.)
-import React, { useEffect } from "react"
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { formatMoney } from "@/utils/money"
-import { Plus, Layers, Ban, Search, ChevronRight, ArrowDownLeft, ArrowUpRight, Archive } from "lucide-react"
+import { Plus, Layers, Ban, Search, ArrowDownLeft, ArrowUpRight, Archive } from "lucide-react"
 import {
   PontesButton, PontesAlert, PontesCard, PontesInput, PontesBadge,
   PontesTablePagination, PontesBankBadge,
 } from "@/components/pontes"
-import { FormaPagamentoEmprestimo, StatusParcelaEmprestimo, TipoEmprestimo } from "../../types/Emprestimo"
+import { FormaPagamentoEmprestimo, TipoEmprestimo } from "../../types/Emprestimo"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
@@ -17,6 +18,7 @@ import styles from "./EmprestimosPage.module.css"
 
 export default function EmprestimosPage() {
   const l = useEmprestimosLogic()
+  const navigate = useNavigate()
 
   // Densidade de admin — 10 por página pra paginação real aparecer.
   useEffect(() => { l.setPageSize(10) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -160,110 +162,41 @@ export default function EmprestimosPage() {
                 {visiveis.map((e) => {
                   const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
                   return (
-                    <React.Fragment key={e.id}>
-                      <tr
-                        data-quitado={e.quitado ? "true" : undefined}
-                        data-clickable=""
-                        onClick={() => void l.toggleExpand(e.id)}
-                      >
-                        <td className={styles.tDesc} title={e.descricao}>
-                          <ChevronRight
-                            size={14} strokeWidth={2.5} className={styles.expandCaret}
-                            data-open={l.expandedId === e.id ? "true" : undefined} aria-hidden="true"
-                          />
-                          {e.descricao}
-                        </td>
-                        <td>
-                          {e.bancoId ? (
-                            <span className={styles.pessoaBanco}>
-                              <PontesBankBadge name={e.bancoNome ?? "Banco"} logoUrl={e.bancoLogoUrl} cor={e.bancoCor} size={22} />
-                              {e.bancoNome}
-                            </span>
-                          ) : (e.contraparteNome ?? e.pessoa)}
-                        </td>
-                        <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
-                        <td>
-                          <div className={styles.tBadges}>
-                            <PontesBadge size="sm" tone={e.tipo === TipoEmprestimo.Emprestei ? "success" : "danger"}>
-                              {e.tipo === TipoEmprestimo.Emprestei
-                                ? <><ArrowDownLeft size={11} strokeWidth={2.5} /> A receber</>
-                                : <><ArrowUpRight size={11} strokeWidth={2.5} /> A pagar</>}
-                            </PontesBadge>
-                            <StatusBadges e={e} />
-                          </div>
-                        </td>
-                        <td className={styles.tRight}>
-                          <strong data-tone={e.tipo === 1 ? undefined : "danger"} className={styles.tValor}>{formatMoney(e.valorRestante)}</strong>
-                        </td>
-                        <td className={styles.tRight} onClick={(ev) => ev.stopPropagation()}>
-                          <ActionIcons e={e} size={24} logic={l} className={styles.rowActions} />
-                        </td>
-                      </tr>
-                      {l.expandedId === e.id && (
-                        <tr>
-                          <td colSpan={6} style={{ padding: 0 }}>
-                            <table className={styles.parcelasTable}>
-                              <thead>
-                                <tr>
-                                  {isParcelado && <th>Parcela</th>}
-                                  <th>Vencimento</th><th>Status</th>
-                                  <th className={styles.tRight}>Pago</th><th className={styles.tRight}>Valor</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {isParcelado ? (
-                                  l.parcelasLoadingId === e.id ? (
-                                    <tr><td colSpan={5}>Carregando…</td></tr>
-                                  ) : (l.parcelasPorEmprestimo[e.id] ?? []).map((p) => {
-                                    const podeAprovar = e.souCredor && !!p.solicitacaoPendenteId
-                                    const valorDevido = p.valorComMulta ?? p.valorComJuros ?? p.valor
-                                    const parcialPaga = p.status === StatusParcelaEmprestimo.Pendente && p.valorPago > 0 && p.valorPago < valorDevido
-                                    return (
-                                      <tr key={p.id}>
-                                        <td>{p.numero}/{p.quantidadeTotal}</td>
-                                        <td>{new Date(p.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td>
-                                        <td>
-                                          <PontesBadge size="sm" tone={
-                                            podeAprovar ? "warning"
-                                              : p.status === StatusParcelaEmprestimo.Paga ? "success"
-                                              : parcialPaga ? "accent"
-                                              : p.atrasada ? "danger" : "neutral"
-                                          }>
-                                            {podeAprovar ? "Aguardando aprovação" : p.statusDescricao}
-                                          </PontesBadge>
-                                        </td>
-                                        <td className={styles.tRight}>{p.valorPago > 0 ? formatMoney(p.valorPago) : "—"}</td>
-                                        <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
-                                      </tr>
-                                    )
-                                  })
-                                ) : (() => {
-                                  // À vista não tem parcela — 1 linha só, construída do próprio empréstimo.
-                                  const podeAprovar = e.souCredor && e.valorPendente > 0
-                                  const valorDevido = e.valorComMulta ?? e.valorComJuros ?? e.valorTotal
-                                  return (
-                                    <tr>
-                                      <td>{e.dataVencimento ? new Date(e.dataVencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</td>
-                                      <td>
-                                        <PontesBadge size="sm" tone={
-                                          podeAprovar ? "warning"
-                                            : e.quitado ? "success"
-                                            : e.vencido ? "danger" : "neutral"
-                                        }>
-                                          {podeAprovar ? "Aguardando aprovação" : e.quitado ? "Quitado" : e.vencido ? "Vencido" : "Pendente"}
-                                        </PontesBadge>
-                                      </td>
-                                      <td className={styles.tRight}>{e.valorPago > 0 ? formatMoney(e.valorPago) : "—"}</td>
-                                      <td className={styles.tRight}>{formatMoney(valorDevido)}</td>
-                                    </tr>
-                                  )
-                                })()}
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                    <tr
+                      key={e.id}
+                      data-quitado={e.quitado ? "true" : undefined}
+                      data-clickable=""
+                      onClick={() => navigate(`/emprestimos/${e.id}`)}
+                    >
+                      <td className={styles.tDesc} title={e.descricao}>
+                        {e.descricao}
+                      </td>
+                      <td>
+                        {e.bancoId ? (
+                          <span className={styles.pessoaBanco}>
+                            <PontesBankBadge name={e.bancoNome ?? "Banco"} logoUrl={e.bancoLogoUrl} cor={e.bancoCor} size={22} />
+                            {e.bancoNome}
+                          </span>
+                        ) : (e.contraparteNome ?? e.pessoa)}
+                      </td>
+                      <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
+                      <td>
+                        <div className={styles.tBadges}>
+                          <PontesBadge size="sm" tone={e.tipo === TipoEmprestimo.Emprestei ? "success" : "danger"}>
+                            {e.tipo === TipoEmprestimo.Emprestei
+                              ? <><ArrowDownLeft size={11} strokeWidth={2.5} /> A receber</>
+                              : <><ArrowUpRight size={11} strokeWidth={2.5} /> A pagar</>}
+                          </PontesBadge>
+                          <StatusBadges e={e} />
+                        </div>
+                      </td>
+                      <td className={styles.tRight}>
+                        <strong data-tone={e.tipo === 1 ? undefined : "danger"} className={styles.tValor}>{formatMoney(e.valorRestante)}</strong>
+                      </td>
+                      <td className={styles.tRight} onClick={(ev) => ev.stopPropagation()}>
+                        <ActionIcons e={e} size={24} logic={l} mode="management" className={styles.rowActions} />
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
