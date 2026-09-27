@@ -15,6 +15,7 @@ namespace ControleFinanceiro.Api.Infrastructure.Middleware;
 /// - <see cref="KeyNotFoundException"/>         → 404 Not Found     (NOT_FOUND)
 /// - <see cref="InvalidOperationException"/>    → 409 Conflict      (BUSINESS_RULE_VIOLATION)
 /// - <see cref="ControleFinanceiro.Api.Services.ForbiddenAccessException"/> → 403 Forbidden (FORBIDDEN)
+/// - <see cref="ControleFinanceiro.Api.Services.RefreshEmCorridaException"/> → 401 Unauthorized (REFRESH_EM_CORRIDA)
 /// - <see cref="UnauthorizedAccessException"/>  → 401 Unauthorized  (UNAUTHORIZED)
 /// - Qualquer outra                             → 500 Internal      (INTERNAL_ERROR)
 /// </summary>
@@ -83,6 +84,9 @@ public sealed class GlobalExceptionHandlerMiddleware
             KeyNotFoundException        => (StatusCodes.Status404NotFound,             "NOT_FOUND"),
             InvalidOperationException   => (StatusCodes.Status409Conflict,             "BUSINESS_RULE_VIOLATION"),
             ForbiddenAccessException    => (StatusCodes.Status403Forbidden,            "FORBIDDEN"),
+            // Subtipo do 401: TEM que vir antes do UnauthorizedAccessException (o compilador acusa se
+            // não vier). Code próprio pra o front distinguir "outra aba já renovou" de "sessão morta".
+            RefreshEmCorridaException   => (StatusCodes.Status401Unauthorized,         "REFRESH_EM_CORRIDA"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized,         "UNAUTHORIZED"),
             _                          => (StatusCodes.Status500InternalServerError,   "INTERNAL_ERROR")
         };

@@ -74,6 +74,36 @@ function getCookie(name: string): string | null {
   return null
 }
 
+// Refresh SINGLE-FLIGHT: no máximo UMA renovação em voo, compartilhada por todos os 401 que chegam
+// enquanto ela não termina. Por quê: o backend rotaciona o refresh a cada uso e trata a reapresentação
+// de um refresh já rotacionado como roubo (reuse-detection → derruba a sessão inteira e alerta o
+// admin). Quando o jwt de 15min expira, uma tela que dispara vários GETs no mount (a de transações faz
+// ~5) recebe vários 401 juntos; sem isto cada um mandava o MESMO refresh e, do 2º em diante, o backend
+// via "replay" → usuário deslogado + alerta falso de roubo de sessão.
+let refreshEmVoo: Promise<unknown> | null = null
+
+function renovarSessao(): Promise<unknown> {
+  if (!refreshEmVoo) {
+    // Solta ao terminar (sucesso OU falha): um 401 que chegar DEPOIS é expiração nova e merece um
+    // refresh novo (com o cookie já rotacionado), não o resultado velho em cache.
+    refreshEmVoo = api.post("/auth/refresh").finally(() => {
+      refreshEmVoo = null
+    })
+  }
+  return refreshEmVoo
+}
+
+// O single-flight vale por ABA. Duas abas restauradas juntas (jwt vencido) mandam o MESMO refresh; a
+// que perde a corrida recebe do backend um 401 com este code (RefreshEmCorridaException): o token dela
+// acabou de ser rotacionado pela outra aba, no mesmo dispositivo, e NADA foi revogado — os cookies
+// novos da vencedora já estão no navegador (o jar é compartilhado entre abas). Não é sessão morta.
+const REFRESH_EM_CORRIDA = "REFRESH_EM_CORRIDA"
+
+function codigoDoErro(error: unknown): string | undefined {
+  const code = (error as { response?: { data?: { code?: unknown } } })?.response?.data?.code
+  return typeof code === "string" ? code : undefined
+}
+
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
@@ -88,18 +118,28 @@ api.interceptors.response.use(
     // login = senha errada, não sessão expirada).
     const podeSilentRefresh = !isAuthEndpoint || url.includes("/auth/me")
 
-    // Silent refresh: o access token (jwt) expira em 1h, o refresh vive 7d. Num 401, tenta UMA vez
-    // renovar via /auth/refresh (rotaciona os cookies httpOnly) e refaz a request original — sem
-    // isso, o refresh de 7d era inútil e o usuário caía no login após 1h. Não tenta pra endpoints de
-    // auth (evita recursão) nem repete (_retry).
+    // Silent refresh: o access token (jwt) expira em 15min, o refresh vive 7d. Num 401, renova via
+    // /auth/refresh (rotaciona os cookies httpOnly — single-flight, ver renovarSessao) e refaz a
+    // request original UMA vez — sem isso, o refresh de 7d era inútil e o usuário caía no login quando
+    // o jwt vencia. Não tenta pra endpoints de auth (evita recursão) nem repete (_retry).
     if (status === 401 && original && !original._retry && podeSilentRefresh) {
       original._retry = true
+      let sessaoRenovada = false
       try {
-        await api.post("/auth/refresh")
-        return await api(original)
-      } catch {
-        // Refresh falhou (refresh expirado/revogado) → segue pro fluxo de redirect abaixo.
+        await renovarSessao()
+        sessaoRenovada = true
+      } catch (erroRefresh) {
+        // Perdeu a corrida pra OUTRA aba (ver REFRESH_EM_CORRIDA): a sessão já está renovada, então
+        // refaz a request original uma vez, SEM novo refresh (o _retry já marcado impede). Mandar pro
+        // login aqui era pior que inútil: relogar (login frio) revoga os rt_* e derruba a outra aba.
+        // Qualquer outro 401 do refresh (expirado/revogado/família comprometida) → redirect abaixo.
+        sessaoRenovada = codigoDoErro(erroRefresh) === REFRESH_EM_CORRIDA
       }
+      // Renovada → o que vale é o resultado da re-tentativa. Se ELA falhar, o erro já passou por este
+      // interceptor na própria volta (toast, ou redirect se for 401 de novo — sem loop, por causa do
+      // _retry) e só propaga — antes, um 404/409/500 na re-tentativa caía no redirect abaixo e jogava
+      // o usuário no login à toa.
+      if (sessaoRenovada) return api(original)
     }
 
     if (status === 401) {
