@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -116,6 +117,72 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
         req.Headers.Add("X-CSRF-Token", csrf);
         var resp = await client.SendAsync(req);
         return resp.StatusCode;
+    }
+
+    private const string UaNavegador = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TesteHttp/1.0";
+
+    // POST /auth/refresh "cru" (client sem cookie jar) como um navegador faria: active_acct + o rt_<slot>
+    // informado + par CSRF, de um dispositivo (User-Agent + IP) escolhido. O TestServer não tem IP de
+    // conexão; o IP entra pelo X-Forwarded-For, que o ForwardedHeaders aceita de QUALQUER peer porque o
+    // Program.cs limpa KnownProxies — exatamente o limite documentado em SEGURANCA_BEST_PRACTICES §9.
+    private async Task<HttpResponseMessage> RefreshCru(Guid accountId, KeyValuePair<string, string> rt, string ip)
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        const string csrf = "csrf-fixo-de-teste";
+        var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/refresh");
+        req.Headers.Add("Cookie", $"active_acct={accountId}; {rt.Key}={rt.Value}; X-CSRF-Token={csrf}");
+        req.Headers.Add("X-CSRF-Token", csrf);
+        req.Headers.Add("X-Forwarded-For", ip);
+        req.Headers.UserAgent.ParseAdd(UaNavegador);
+        return await client.SendAsync(req);
+    }
+
+    [Fact]
+    public async Task Refresh_reapresentadoEmCorrida_mesmoDispositivo_retorna401RefreshEmCorrida_eSessaoSegueViva()
+    {
+        // Duas abas restauradas depois do jwt vencer, cada uma com o seu single-flight: as duas mandam o
+        // MESMO refresh. A que perde precisa de um 401 DISTINGUÍVEL (o front refaz a request com os
+        // cookies da vencedora) — com o 401 genérico ela ia pro login e, relogando, derrubava a outra.
+        var usuario = SeedUsuario("corrida-refresh@test.com", "SenhaForte!2026");
+        var login = await _factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "corrida-refresh@test.com", password = "SenhaForte!2026" });
+        login.EnsureSuccessStatusCode();
+        var rtLogin = ExtrairCookiesPorPrefixo(login, "rt_").Single();
+
+        var vencedora = await RefreshCru(usuario.Id, rtLogin, "203.0.113.10");
+        Assert.Equal(HttpStatusCode.OK, vencedora.StatusCode);
+        var rtNovo = ExtrairCookiesPorPrefixo(vencedora, "rt_").Single();
+
+        var perdedora = await RefreshCru(usuario.Id, rtLogin, "203.0.113.10");
+        Assert.Equal(HttpStatusCode.Unauthorized, perdedora.StatusCode);
+        var erro = await perdedora.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        Assert.Equal("REFRESH_EM_CORRIDA", erro!.Code);
+
+        // Nada foi revogado: o refresh que a vencedora entregou segue renovando.
+        Assert.Equal(HttpStatusCode.OK, (await RefreshCru(usuario.Id, rtNovo, "203.0.113.10")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_reapresentadoDeOutroIp_retorna401Generico_eDerrubaAFamilia()
+    {
+        // Fora da tolerância (aqui: outro IP, ainda dentro dos 30s) o comportamento estrito não mudou:
+        // 401 genérico UNAUTHORIZED (o front manda pro login) e a família inteira revogada.
+        var usuario = SeedUsuario("corrida-outroip@test.com", "SenhaForte!2026");
+        var login = await _factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "corrida-outroip@test.com", password = "SenhaForte!2026" });
+        login.EnsureSuccessStatusCode();
+        var rtLogin = ExtrairCookiesPorPrefixo(login, "rt_").Single();
+
+        var legitimo = await RefreshCru(usuario.Id, rtLogin, "203.0.113.10");
+        Assert.Equal(HttpStatusCode.OK, legitimo.StatusCode);
+        var rtNovo = ExtrairCookiesPorPrefixo(legitimo, "rt_").Single();
+
+        var replay = await RefreshCru(usuario.Id, rtLogin, "198.51.100.77");
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+        var erro = await replay.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        Assert.Equal("UNAUTHORIZED", erro!.Code);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshCru(usuario.Id, rtNovo, "203.0.113.10")).StatusCode);
     }
 
     [Fact]

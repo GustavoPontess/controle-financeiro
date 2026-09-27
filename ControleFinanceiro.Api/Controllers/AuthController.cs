@@ -539,7 +539,9 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Troca um refresh token válido por um novo par (JWT + refresh token).
-    /// O refresh token antigo é revogado (rotação).
+    /// O refresh token antigo é revogado (rotação). 401 com code <c>REFRESH_EM_CORRIDA</c> = o token
+    /// acabou de ser rotacionado por outra request do mesmo dispositivo (outra aba): a sessão segue
+    /// viva e o cliente deve só refazer a request original; qualquer outro 401 = sessão encerrada.
     /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]

@@ -17,6 +17,24 @@ Desenho produzido por investigação + revisão adversarial de segurança (2026-
 > - **Fase 2 (B):** reuse-detection (RFC 9700 §4.14 — `FamiliaId`/`SubstituidoPorId`; replay de
 >   token rotacionado revoga a família + alerta admin), tela **Sessões e dispositivos** (listar/
 >   encerrar/"sair dos outros"), device/IP por sessão.
+> - **Corrida de refresh (2026-09-27, `fix/refresh-single-flight`):** o silent refresh do front é
+>   **single-flight por aba** (uma promise em voo; os 401 concorrentes da aba esperam ela e refazem a
+>   request 1x). Sobra a corrida ENTRE abas (duas abas restauradas com o jwt vencido, cada uma com o
+>   seu single-flight → o mesmo refresh sai 2x). No back, a reuse-detection ganhou **janela de
+>   tolerância de 30s** (`SegundosToleranciaReuso`): token já rotacionado reapresentado até 30s
+>   depois da rotação **E do mesmo dispositivo** (UA + IP iguais aos do sucessor) não revoga nada, não
+>   alerta o admin e **não ganha token novo** — leva **401 com code `REFRESH_EM_CORRIDA`**
+>   (`RefreshEmCorridaException`), distinto do 401 genérico `UNAUTHORIZED`. O front
+>   (`axiosConfig.ts`) lê esse code como "outra aba já renovou" (os cookies da vencedora já estão no
+>   jar do navegador) e **refaz a request original 1x, sem novo refresh e sem ir pro login** — ir pro
+>   login era o bug: relogar (login frio) revoga os `rt_*` e derrubava a outra aba. Se a re-tentativa
+>   ainda der 401, segue o redirect normal (sem loop, por causa do `_retry`). Cada reapresentação
+>   (tolerada ou não) gera um **Warning de segurança** no log (UsuarioId, FamiliaId, idade da
+>   rotação, se IP/UA bateram — sem token, sem IP/UA em claro). Fora da janela (mais tarde, outro
+>   IP/UA, ou sem contexto HTTP) segue a regra estrita do RFC 9700: família revogada + alerta + 401
+>   genérico. Desvio consciente do RFC (que não prevê janela), no molde do "reuse interval" do Auth0,
+>   porém mais conservador (a tolerada não ganha token). Limite: "mesmo IP" depende de X-Forwarded-For
+>   confiável — ver `docs/SEGURANCA_BEST_PRACTICES.md` §9. `/auth/switch` segue estrito.
 > - **Revogação INSTANTÂNEA (2026-09-16):** access token curto (**15min**, era 60) + claim `sid`
 >   (FamiliaId da sessão) no JWT + `JwtBearerEvents.OnTokenValidated` que, por request, valida se a
 >   sessão ainda tem refresh vivo E se o usuário está Ativo — senão 401 na hora. Fecha a janela de
