@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<Parcelamento> Parcelamentos => Set<Parcelamento>();
     public DbSet<ParcelaTransacao> ParcelasTransacao => Set<ParcelaTransacao>();
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
+    public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
 
     // ── Issue #5 Autenticação Robusta ──
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -207,6 +208,26 @@ public class AppDbContext : DbContext
             .HasIndex(e => e.CorrelationId);
         modelBuilder.Entity<FinancialEventLog>()
             .HasIndex(e => new { e.EntidadeAfetada, e.EntidadeId });
+
+        // Fatura: concorrência otimista via xmin. O Npgsql mapeia `uint` + IsRowVersion() pra coluna
+        // de sistema xmin (não cria coluna): o UPDATE sai com `WHERE xmin = @original` e, se outra
+        // operação alterou a fatura no meio, afeta 0 linhas → DbUpdateConcurrencyException (→ 409).
+        modelBuilder.Entity<Fatura>()
+            .Property(f => f.Versao)
+            .IsRowVersion();
+
+        // RegistroIdempotencia: o índice ÚNICO é o que torna a idempotência atômica — a segunda
+        // requisição concorrente com a mesma chave estoura aqui (23505) em vez de pagar de novo.
+        modelBuilder.Entity<RegistroIdempotencia>()
+            .HasIndex(r => new { r.UsuarioId, r.Operacao, r.Chave })
+            .IsUnique();
+
+        // RegistroIdempotencia → Usuario (Cascade: chaves somem com o usuário na purga LGPD).
+        modelBuilder.Entity<RegistroIdempotencia>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Unique constraints
         modelBuilder.Entity<Usuario>()

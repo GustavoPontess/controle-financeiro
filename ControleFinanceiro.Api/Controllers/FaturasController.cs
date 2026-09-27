@@ -61,15 +61,27 @@ public class FaturasController : ControllerBase
     /// Paga uma fatura (total ou parcialmente).
     /// Cria uma transação de débito na conta informada.
     /// Atualiza EstadoPagamento (e possivelmente EstadoCiclo se pagamento total antecipado).
-    /// Idempotência via header Idempotency-Key.
+    /// Requer header Idempotency-Key (UUID gerado no cliente por tentativa de pagamento): repetir a
+    /// mesma chave com os mesmos dados devolve 204 de novo sem pagar 2x; com OUTROS dados (conta,
+    /// valor, data ou meio) → 409. Sem chave → 400. Fatura inexistente ou de outro usuário → 404
+    /// (mesma resposta). Fatura alterada por outra operação no meio do pagamento → 409 (recarregar
+    /// e tentar de novo).
     /// </summary>
     [HttpPost("{faturaId}/pagar")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Pagar(Guid cartaoCreditoId, Guid faturaId, [FromBody] PagarFaturaDto dto)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Pagar(
+        Guid cartaoCreditoId,
+        Guid faturaId,
+        [FromBody] PagarFaturaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
     {
         var usuarioId = GetUserId();
-        await _service.PagarFaturaAsync(faturaId, dto, usuarioId);
+        // Chave lida aqui e passada explícita (não via HttpContext.Items do IdempotencyAttribute
+        // global): o service fica testável sem HTTP e a obrigatoriedade é validada nele.
+        await _service.PagarFaturaAsync(faturaId, dto, usuarioId, idempotencyKey);
         return NoContent();
     }
 }
