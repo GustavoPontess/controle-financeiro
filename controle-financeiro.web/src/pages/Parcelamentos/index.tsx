@@ -12,6 +12,7 @@ import { getCartoes } from "../../services/cartaoCreditoService"
 import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
+import { notificacaoDeErro } from "@/utils/apiError"
 import styles from "./ParcelamentosPage.module.css"
 
 
@@ -51,7 +52,7 @@ type FormState = {
 }
 type Errors = Partial<Record<"descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "taxaJuroMensal", string>>
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const emptyForm = (proximoMes: string): FormState => ({
@@ -140,8 +141,9 @@ export default function ParcelamentosPage() {
       notify({ open: true, message: "Parcelamento criado", severity: "success" })
       setDialogOpen(false)
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao criar parcelamento", severity: "error" })
+    } catch (err) {
+      // Ex.: limite do cartão insuficiente → aviso com a mensagem do servidor, não erro genérico.
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao criar parcelamento") })
     } finally { setLoading(false) }
   }
 
@@ -154,8 +156,8 @@ export default function ParcelamentosPage() {
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao cancelar parcelamento", severity: "error" })
+    } catch (err) {
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
     } finally { setCancelarId(null) }
   }
 
