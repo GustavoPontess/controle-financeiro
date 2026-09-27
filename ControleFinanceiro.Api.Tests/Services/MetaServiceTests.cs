@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.DTOs.Meta;
 using ControleFinanceiro.Api.Infrastructure;
@@ -270,5 +271,41 @@ public class MetaServiceTests
 
         Assert.Equal(100m, result.PercentualConcluido);
         Assert.True(result.Concluida);
+    }
+
+    // ── Isolamento entre usuários (fix P0 — DonoRecursos) ────────────────────────
+
+    [Fact]
+    public async Task CriarAsync_CategoriaDeOutroUsuario_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var outro = SeedUsuario(ctx, "outro@test.com");
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outro };
+        ctx.Categorias.Add(categoriaDeOutro);
+        ctx.SaveChanges();
+        var svc = new MetaService(ctx);
+
+        var dto = new CriarMetaDto("Viagem", null, 1000m, null, null, categoriaDeOutro.Id);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarAsync(dto, user));
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_CategoriaDeOutroUsuario_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var outro = SeedUsuario(ctx, "outro@test.com");
+        var svc = new MetaService(ctx);
+        var criada = await svc.CriarAsync(MetaDto("Original", 1000m), user);
+
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outro };
+        ctx.Categorias.Add(categoriaDeOutro);
+        ctx.SaveChanges();
+
+        var dto = new CriarMetaDto("Editado", null, 2000m, null, null, categoriaDeOutro.Id);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(criada.Id, dto, user));
     }
 }

@@ -92,6 +92,10 @@ public class FaturaService
     {
         var cartao = await _context.CartoesCredito.FindAsync(cartaoCreditoId)
             ?? throw new KeyNotFoundException("Cartão de crédito não encontrado.");
+        // Defesa em profundidade: todo chamador passa o dono do cartão; se um dia não passar, a fatura
+        // (e o lançamento nela) não nasce no cartão de outro usuário. Mesma mensagem do não-encontrado.
+        if (cartao.CriadoPor != usuarioId)
+            throw new KeyNotFoundException("Cartão de crédito não encontrado.");
 
         var (inicio, fechamento) = CalcularPeriodo(dataTransacao.Date, cartao.DiaFechamento);
 
