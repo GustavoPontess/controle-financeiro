@@ -363,7 +363,10 @@ public class FaturaService
         dto.ValorTotal    = valorTotal;
         dto.ValorPago     = f.ValorPago;
         dto.ValorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, f.ValorPago);
-        dto.Vencida = f.EstadoPagamento != EstadoPagamentoFatura.Pago
+        // "Vencida" (badge da tela) = passou do vencimento e AINDA RESTA pagar. Deriva do restante, não
+        // do EstadoPagamento: fatura coberta que ficou Parcial após cancelamento, ou zerada sem
+        // pagamento, não deve nada — mesma regra do FaturaAtrasoJob.
+        dto.Vencida = dto.ValorRestante > 0
                       && DateTime.UtcNow.Date > f.DataVencimento.Date;
     }
 }

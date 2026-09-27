@@ -23,19 +23,26 @@ public class FaturaAtrasoJob
             .Include(f => f.ParcelasTransacao)
             .ToListAsync();
 
+        var marcouAlguma = false;
         foreach (var fatura in faturas)
         {
-            // Mesma regra de total da tela/pagamento (parcela cancelada não gera juros nem multa).
-            var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
+            // Atraso deriva do RESTANTE (regra única), não do EstadoPagamento: fatura coberta que ficou
+            // Parcial depois de um cancelamento, ou zerada sem pagamento (parcelamento cancelado), não
+            // deve nada — marcar atrasada gravava juros/multa sobre dívida inexistente.
+            var restante = RegrasFinanceiras.ValorRestanteFatura(fatura);
+            if (restante <= 0) continue;
+
             fatura.EstaAtrasada = true;
-            // Juros de mora: 1% ao mês + multa de 2% (simplificado)
+            // Juros de mora: 1% ao mês + multa de 2% (simplificado), sobre o que FALTA pagar — o já pago
+            // não está em atraso.
             var diasAtraso = (hoje - fatura.DataVencimento).Days;
             var mesesAtraso = Math.Max(1, diasAtraso / 30);
-            fatura.JurosDeMora = valorTotal * (decimal)mesesAtraso * 0.01m;
-            fatura.Multa = valorTotal * 0.02m;
+            fatura.JurosDeMora = restante * (decimal)mesesAtraso * 0.01m;
+            fatura.Multa = restante * 0.02m;
+            marcouAlguma = true;
         }
 
-        if (faturas.Any())
+        if (marcouAlguma)
             await _context.SaveChangesAsync();
     }
 }

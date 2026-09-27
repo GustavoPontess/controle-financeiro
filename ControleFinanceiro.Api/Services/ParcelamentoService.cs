@@ -270,7 +270,9 @@ public class ParcelamentoService
 
     /// <summary>
     /// Cancela parcelamento (soft delete). Parcelas Pendentes viram Canceladas.
-    /// Parcelas Pagas são preservadas — response sinaliza requerEstorno=true.
+    /// Parcelas Pagas são preservadas — response sinaliza requerEstorno=true. Pendente cuja fatura
+    /// já está Pago conta como Paga (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
+    /// As faturas das canceladas têm o estado de pagamento reconciliado com o novo total.
     /// Idempotente via dto.IdempotencyKey.
     /// </summary>
     public async Task<CancelamentoResultadoDto> CancelarAsync(
@@ -293,19 +295,29 @@ public class ParcelamentoService
             return await MontarCancelamentoResultadoAsync(parcelamentoId, usuarioId);
         }
 
+        // Fatura de cada parcela: decide se a Pendente já foi quitada pelo pagamento da fatura.
         var parcelamento = await _context.Parcelamentos
             .Include(p => p.Parcelas)
+                .ThenInclude(par => par.Fatura)
             .FirstOrDefaultAsync(p => p.Id == parcelamentoId && p.CriadoPor == usuarioId)
             ?? throw new InvalidOperationException("Parcelamento não encontrado.");
 
         if (!parcelamento.Ativo)
             throw new InvalidOperationException("Parcelamento já está cancelado.");
 
-        var pendentes = parcelamento.Parcelas
-            .Where(p => p.Status == StatusParcela.Pendente)
+        // Pendente em fatura Pago já foi paga (invariante em RegrasFinanceiras): vira Paga — preservada e
+        // sinalizando estorno — em vez de Cancelada. Cancelar tiraria do total um valor já pago e o
+        // dinheiro sumia (fatura R$ 0 com R$ 300 pagos, requerEstorno=false).
+        var quitadasPelaFatura = parcelamento.Parcelas
+            .Where(RegrasFinanceiras.ParcelaQuitadaPelaFatura)
             .ToList();
-        var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga);
-        var valorBloqueadoLiberado = pendentes.Sum(p => p.ValorComJuros ?? p.Valor);
+        var pendentes = parcelamento.Parcelas
+            .Where(p => p.Status == StatusParcela.Pendente && !quitadasPelaFatura.Contains(p))
+            .ToList();
+        var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga) + quitadasPelaFatura.Count;
+        // Limite liberado = tudo que o LimiteCalculator bloqueava (toda Pendente do parcelamento ativo,
+        // inclusive a quitada pela fatura): com o parcelamento inativo, nenhuma bloqueia mais.
+        var valorBloqueadoLiberado = pendentes.Concat(quitadasPelaFatura).Sum(p => p.ValorComJuros ?? p.Valor);
 
         var correlationId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
@@ -324,6 +336,19 @@ public class ParcelamentoService
                 p.MotivoCancelamento = dto.Motivo;
             }
 
+            // Grava a quitação que a fatura já fez: sem isso a parcela seguiria "Pendente" num
+            // parcelamento cancelado, e o replay idempotente (que conta pelo Status) perderia o estorno.
+            foreach (var p in quitadasPelaFatura)
+            {
+                p.Status = StatusParcela.Paga;
+                p.PagoEm = p.Fatura!.DataPagamentoTotal ?? agora;
+            }
+
+            // O total das faturas das canceladas caiu sem pagamento novo: reconcilia o estado (fatura já
+            // coberta vira Pago se fechada; zerada sem pagamento fica NaoPago, nunca vencida).
+            await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                _context, _eventLog, pendentes.Select(p => p.FaturaId), usuarioId, correlationId, agora);
+
             _eventLog.Registrar(
                 usuarioId: usuarioId,
                 tipo: FinancialEventType.ParcelamentoCancelado,
@@ -339,6 +364,7 @@ public class ParcelamentoService
                     motivo = dto.Motivo,
                     pendentesCanceladas = pendentes.Count,
                     pagasPreservadas = pagas,
+                    quitadasPelaFatura = quitadasPelaFatura.Count,
                 });
 
             foreach (var p in pendentes)

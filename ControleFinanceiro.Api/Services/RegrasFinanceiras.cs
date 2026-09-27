@@ -8,7 +8,8 @@ namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
 /// Fonte ÚNICA das regras de dinheiro que antes estavam copiadas (e divergiam) entre services,
-/// controller e jobs: <b>saldo de conta</b> e <b>total/restante de fatura</b>.
+/// controller e jobs: <b>saldo de conta</b>, <b>total/restante de fatura</b> e o <b>estado de
+/// pagamento</b> da fatura quando o total cai sem pagamento (cancelamento, fechamento).
 /// Cada cópia tinha uma variação: o total da fatura somava parcela cancelada em 3 lugares (e o
 /// cálculo de limite não), o resumo por conta somava previsão, o saldo carregava o histórico inteiro
 /// em memória. Quem precisa dessas contas chama daqui — mesmo molde de <see cref="DonoRecursos"/>:
@@ -94,7 +95,8 @@ public static class RegrasFinanceiras
     /// Parcela de parcelamento que entra no total: Pendente ou Paga. A Paga continua no total porque o
     /// pagamento antecipado soma em <c>Fatura.ValorPago</c> — tirar ela do total descontaria duas vezes.
     /// A Cancelada SAI: o cancelamento mantém o <c>FaturaId</c> (histórico), e sem este filtro a fatura
-    /// seguia cobrando o que não é mais devido.
+    /// seguia cobrando o que não é mais devido. Por isso só pode ser cancelada parcela ainda devida —
+    /// a quitada pela fatura conta como Paga (<see cref="ParcelaQuitadaPelaFatura"/>).
     /// </summary>
     public static bool CompoeTotalFatura(ParcelaTransacao p) => p.Status != StatusParcela.Cancelada;
 
@@ -122,4 +124,123 @@ public static class RegrasFinanceiras
     /// </summary>
     public static decimal ValorRestanteFatura(decimal valorTotal, decimal valorPago) =>
         Math.Max(0m, valorTotal - valorPago);
+
+    /// <summary>Restante a partir das navegações carregadas (mesmo requisito de <see cref="ValorTotalFatura(Fatura)"/>).</summary>
+    public static decimal ValorRestanteFatura(Fatura fatura) =>
+        ValorRestanteFatura(ValorTotalFatura(fatura), fatura.ValorPago);
+
+    // ── Parcela quitada pela fatura ───────────────────────────────────────────
+
+    /// <summary>
+    /// INVARIANTE: parcela <c>Pendente</c> numa fatura com <c>EstadoPagamento == Pago</c> JÁ FOI PAGA.
+    /// Pagar a fatura (<c>FaturaService.PagarFaturaAsync</c>) só soma em <c>Fatura.ValorPago</c> — não
+    /// mexe no Status das parcelas dela —, então ali "Pendente" quer dizer "paga via fatura", não
+    /// "a pagar". Tudo que decide se a parcela ainda é devida (cancelar, sinalizar estorno) tem que
+    /// tratá-la como Paga: antes o cancelamento do parcelamento a tirava do total e o dinheiro sumia
+    /// (fatura de R$ 0 com R$ 300 pagos, <c>requerEstorno=false</c>).
+    /// Exige a navegação <c>Fatura</c> carregada: sem ela a resposta seria "não quitada" em silêncio —
+    /// justamente o bug —, então falha alto.
+    /// </summary>
+    public static bool ParcelaQuitadaPelaFatura(ParcelaTransacao p)
+    {
+        if (p.Status != StatusParcela.Pendente) return false;
+        var fatura = p.Fatura ?? throw new InvalidOperationException(
+            "Carregue a Fatura da parcela (Include) antes de avaliar se ela foi quitada pela fatura.");
+        return fatura.EstadoPagamento == EstadoPagamentoFatura.Pago;
+    }
+
+    // ── Estado de pagamento depois que o total cai ────────────────────────────
+
+    /// <summary>
+    /// Reconcilia o estado de pagamento com o total ATUAL quando ele muda SEM pagamento novo — parcela
+    /// ou parcelamento cancelado — ou quando o ciclo fecha. Sem isso a fatura travava: pagava R$ 100 de
+    /// 300, a parcela de 200 era cancelada, o restante ia a 0 e o estado ficava Parcial pra sempre —
+    /// limite das compras à vista preso (o LimiteCalculator só solta fatura Pago), job de atraso cobrando
+    /// juros de fatura coberta e todo pagamento recusado ("Restante a pagar: R$ 0,00").
+    /// <list type="bullet">
+    ///   <item>Ainda resta pagar → nada muda (estado e atraso seguem valendo).</item>
+    ///   <item>Nada resta → sai do atraso (<c>EstaAtrasada=false</c>). Juros/multa já lançados ficam como
+    ///   histórico (o job lança uma vez só e ninguém cobra a partir deles).</item>
+    ///   <item>Nada resta, houve pagamento e o ciclo está FECHADO → <c>Pago</c>.</item>
+    ///   <item>Ciclo ABERTO fica como está (Parcial com restante 0) até o fechamento, quando o
+    ///   <c>FaturaFechamentoJob</c> aplica esta mesma regra. DECISÃO: marcar Pago com o ciclo aberto
+    ///   travaria a próxima compra do ciclo — <c>ObterOuCriarFaturaAsync</c> põe a compra na fatura sem
+    ///   olhar o estado, <c>PagarFaturaAsync</c> recusa fatura Pago ("já foi paga integralmente") e o
+    ///   LimiteCalculator não bloqueia compra em fatura Pago. Parcial com restante 0 só segura o limite
+    ///   das compras à vista até o fechamento: conservador, nunca libera limite a mais.</item>
+    ///   <item>Total 0 sem nada pago (todas as parcelas canceladas) fica <c>NaoPago</c> com restante 0:
+    ///   não vira Pago (nada foi pago, e Pago travaria uma compra retroativa no ciclo) e não fica
+    ///   vencida/atrasada, que derivam do restante. É o que a tela já mostra pra mês sem lançamento
+    ///   (estado 0, restante 0, sem "Vencida", sem botão Pagar); fechada, aparece como "Paga" porque a
+    ///   tela olha o restante, não o EstadoPagamento.</item>
+    /// </list>
+    /// Só avança (Parcial → Pago, atrasada → em dia): total que cai nunca faz a fatura dever mais.
+    /// Exige <c>Include(Transacoes)</c> e <c>Include(ParcelasTransacao)</c>.
+    /// </summary>
+    /// <returns><c>true</c> se a fatura virou Pago agora (o chamador registra no FinancialEventLog).</returns>
+    public static bool ReconciliarEstadoPagamento(Fatura fatura, DateTime agora)
+    {
+        if (ValorRestanteFatura(fatura) > 0) return false;
+
+        fatura.EstaAtrasada = false;
+
+        if (fatura.ValorPago <= 0
+            || fatura.EstadoCiclo != EstadoCicloFatura.Fechada
+            || fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
+            return false;
+
+        fatura.EstadoPagamento = EstadoPagamentoFatura.Pago;
+        fatura.DataPagamentoTotal = agora;
+        return true;
+    }
+
+    /// <summary>
+    /// Depois de cancelar parcela(s): recarrega as faturas afetadas (com Transacoes e ParcelasTransacao),
+    /// aplica <see cref="ReconciliarEstadoPagamento"/> e registra <c>FaturaPagaTotal</c> no audit log pra
+    /// cada uma que virou Pago (a mudança libera o limite das compras à vista dela). Parcela avulsa e
+    /// parcelamento inteiro passam por aqui — um lugar só.
+    /// Consulta RASTREADA de propósito: a parcela já marcada Cancelada em memória no mesmo contexto volta
+    /// como a mesma instância (o EF não sobrescreve entidade rastreada), então o total já sai sem ela
+    /// antes do SaveChanges. Filtra pelo dono do cartão (defesa em profundidade, mesmo molde do saldo).
+    /// Não salva — o chamador grava na mesma transação.
+    /// </summary>
+    /// <returns>As faturas que viraram Pago.</returns>
+    public static async Task<List<Fatura>> ReconciliarFaturasAposCancelamentoAsync(
+        AppDbContext context,
+        FinancialEventLogService eventLog,
+        IEnumerable<Guid> faturaIds,
+        Guid usuarioId,
+        Guid correlationId,
+        DateTime agora)
+    {
+        var ids = faturaIds.Distinct().ToArray();
+        if (ids.Length == 0) return new List<Fatura>();
+
+        var faturas = await context.Faturas
+            .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
+            .Where(f => ids.Contains(f.Id) && f.CartaoCredito.CriadoPor == usuarioId)
+            .ToListAsync();
+
+        var quitadas = faturas.Where(f => ReconciliarEstadoPagamento(f, agora)).ToList();
+        foreach (var f in quitadas)
+        {
+            eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.FaturaPagaTotal,
+                entidade: "Fatura",
+                entidadeId: f.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: f.ValorPago,
+                valorDepois: f.ValorPago, // nenhum dinheiro novo: foi o total que caiu até o já pago
+                payload: new
+                {
+                    motivo = "CancelamentoZerouRestante",
+                    valorTotal = ValorTotalFatura(f),
+                    estadoPagamento = f.EstadoPagamento.ToString(),
+                });
+        }
+        return quitadas;
+    }
 }

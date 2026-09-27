@@ -229,7 +229,9 @@ public class ParcelaTransacaoService
     /// <summary>
     /// Cancela uma parcela individual (soft delete).
     /// NÃO cancela o parcelamento inteiro — use ParcelamentoService.CancelarAsync pra isso.
-    /// Libera o valor da parcela no LimiteBloqueado do cartão.
+    /// Libera o valor da parcela no LimiteBloqueado do cartão e reconcilia o estado de pagamento da
+    /// fatura (<see cref="RegrasFinanceiras.ReconciliarEstadoPagamento"/>). Recusa parcela já quitada
+    /// pelo pagamento da fatura (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
     /// Idempotente via <paramref name="dto"/>.IdempotencyKey.
     /// </summary>
     public async Task<CancelarParcelaResultadoDto> CancelarAsync(
@@ -252,9 +254,10 @@ public class ParcelaTransacaoService
             return await MontarCancelarResultadoAsync(parcelaId, usuarioId);
         }
 
-        // 2. Carregar parcela
+        // 2. Carregar parcela (com a Fatura: decide se ela já foi quitada pelo pagamento da fatura)
         var parcela = await _context.ParcelasTransacao
             .Include(p => p.Parcelamento)
+            .Include(p => p.Fatura)
             .FirstOrDefaultAsync(p => p.Id == parcelaId
                                       && p.Parcelamento!.CriadoPor == usuarioId)
             ?? throw new InvalidOperationException("Parcela não encontrada.");
@@ -267,6 +270,12 @@ public class ParcelaTransacaoService
             throw new InvalidOperationException(
                 "Parcelamento já cancelado — todas as parcelas Pendentes já foram canceladas junto com ele.");
 
+        // Pendente numa fatura Pago já foi paga (invariante em RegrasFinanceiras): cancelar tiraria do
+        // total um valor já pago e o dinheiro sumiria. Mesma recusa da parcela Paga.
+        if (RegrasFinanceiras.ParcelaQuitadaPelaFatura(parcela))
+            throw new InvalidOperationException(
+                "A fatura desta parcela já foi paga — a parcela conta como paga e não pode ser cancelada individualmente.");
+
         var valorParcela = parcela.ValorComJuros ?? parcela.Valor;
         var correlationId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
@@ -278,6 +287,11 @@ public class ParcelaTransacaoService
             parcela.Status = StatusParcela.Cancelada;
             parcela.CanceladoEm = agora;
             parcela.MotivoCancelamento = dto.Motivo;
+
+            // O total da fatura caiu sem pagamento novo: reconcilia o estado (senão fatura já coberta
+            // ficava Parcial pra sempre — limite preso, atraso indevido, pagamento recusado).
+            await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                _context, _eventLog, new[] { parcela.FaturaId }, usuarioId, correlationId, agora);
 
             _eventLog.Registrar(
                 usuarioId: usuarioId,
