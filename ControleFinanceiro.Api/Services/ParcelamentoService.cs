@@ -271,7 +271,7 @@ public class ParcelamentoService
     /// <summary>
     /// Cancela parcelamento (soft delete). Parcelas Pendentes viram Canceladas.
     /// Parcelas Pagas são preservadas — response sinaliza requerEstorno=true. Pendente cuja fatura
-    /// já está Pago conta como Paga (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
+    /// já está coberta pelo pagamento conta como Paga (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
     /// As faturas das canceladas têm o estado de pagamento reconciliado com o novo total.
     /// Idempotente via dto.IdempotencyKey.
     /// </summary>
@@ -295,21 +295,27 @@ public class ParcelamentoService
             return await MontarCancelamentoResultadoAsync(parcelamentoId, usuarioId);
         }
 
-        // Fatura de cada parcela: decide se a Pendente já foi quitada pelo pagamento da fatura.
+        // Fatura de cada parcela COM o total dela (Transacoes + ParcelasTransacao): decide se a Pendente
+        // já foi quitada pelo pagamento da fatura, pela cobertura real (ValorPago ≥ total).
         var parcelamento = await _context.Parcelamentos
             .Include(p => p.Parcelas)
                 .ThenInclude(par => par.Fatura)
+                    .ThenInclude(f => f!.Transacoes)
+            .Include(p => p.Parcelas)
+                .ThenInclude(par => par.Fatura)
+                    .ThenInclude(f => f!.ParcelasTransacao)
             .FirstOrDefaultAsync(p => p.Id == parcelamentoId && p.CriadoPor == usuarioId)
             ?? throw new InvalidOperationException("Parcelamento não encontrado.");
 
         if (!parcelamento.Ativo)
             throw new InvalidOperationException("Parcelamento já está cancelado.");
 
-        // Pendente em fatura Pago já foi paga (invariante em RegrasFinanceiras): vira Paga — preservada e
-        // sinalizando estorno — em vez de Cancelada. Cancelar tiraria do total um valor já pago e o
-        // dinheiro sumia (fatura R$ 0 com R$ 300 pagos, requerEstorno=false).
+        // Pendente em fatura coberta pelo pagamento já foi paga (invariante em RegrasFinanceiras): vira
+        // Paga — preservada e sinalizando estorno — em vez de Cancelada. Cancelar tiraria do total um valor
+        // já pago e o dinheiro sumia (fatura R$ 0 com R$ 300 pagos, requerEstorno=false). Avaliado ANTES de
+        // mexer em qualquer parcela: o total de cada fatura ainda é o de antes do cancelamento.
         var quitadasPelaFatura = parcelamento.Parcelas
-            .Where(RegrasFinanceiras.ParcelaQuitadaPelaFatura)
+            .Where(p => RegrasFinanceiras.ParcelaQuitadaPelaFatura(_context, p))
             .ToList();
         var pendentes = parcelamento.Parcelas
             .Where(p => p.Status == StatusParcela.Pendente && !quitadasPelaFatura.Contains(p))
@@ -341,7 +347,11 @@ public class ParcelamentoService
             foreach (var p in quitadasPelaFatura)
             {
                 p.Status = StatusParcela.Paga;
-                p.PagoEm = p.Fatura!.DataPagamentoTotal ?? agora;
+                // Quitação da fatura, se é dela mesmo; senão agora. Fatura Parcial coberta (ciclo aberto) não
+                // tem DataPagamentoTotal, e a quitação anterior à própria parcela (a fatura foi quitada, a
+                // parcela entrou depois e outro cancelamento a cobriu) não é o momento em que ela foi paga.
+                var quitadaEm = p.Fatura!.DataPagamentoTotal;
+                p.PagoEm = quitadaEm is { } q && q >= p.CriadoEm ? q : agora;
             }
 
             // O total das faturas das canceladas caiu sem pagamento novo: reconcilia o estado (fatura já

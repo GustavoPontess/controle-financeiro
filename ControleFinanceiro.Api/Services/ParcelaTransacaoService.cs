@@ -48,7 +48,8 @@ public class ParcelaTransacaoService
     /// <summary>
     /// Paga uma parcela individual debitando da conta informada.
     /// Atualiza Fatura.ValorPago e recalcula EstadoPagamento.
-    /// Libera a parcela do LimiteBloqueado do cartão.
+    /// Libera a parcela do LimiteBloqueado do cartão. Recusa quando o restante da fatura é menor que a
+    /// parcela (o já pago cobre ela, no todo ou em parte).
     /// Idempotente via <paramref name="dto"/>.IdempotencyKey.
     /// </summary>
     public async Task<PagarParcelaResultadoDto> PagarAntecipadoAsync(
@@ -107,6 +108,20 @@ public class ParcelaTransacaoService
         if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
             throw new InvalidOperationException(
                 "A fatura desta parcela já está integralmente paga.");
+
+        // 5b. Nem coberta pelo que já foi pago, olhando o RESTANTE e não só o rótulo: com o ciclo aberto a
+        //     fatura coberta fica Parcial com restante 0 até o fechamento (decisão em
+        //     RegrasFinanceiras.ReconciliarEstadoPagamento), e pagamento parcial da fatura pode já cobrir
+        //     parte da parcela. Pagar a parcela inteira aí debitava a conta de novo por dinheiro já pago
+        //     (fatura total 150 com 200 pagos). O que falta vai pela fatura, que aceita até o restante.
+        var restanteFatura = RegrasFinanceiras.ValorRestanteFatura(fatura);
+        if (restanteFatura <= 0)
+            throw new InvalidOperationException(
+                "A fatura desta parcela já está coberta pelos pagamentos feitos — não há o que antecipar.");
+        if (restanteFatura < valorParcela)
+            throw new InvalidOperationException(
+                $"A fatura desta parcela já foi paga em parte e resta {restanteFatura:C}, menos que a parcela " +
+                $"({valorParcela:C}). Pague o restante pela fatura.");
 
         // 6. Transação ACID
         var correlationId = Guid.NewGuid();
@@ -231,7 +246,7 @@ public class ParcelaTransacaoService
     /// NÃO cancela o parcelamento inteiro — use ParcelamentoService.CancelarAsync pra isso.
     /// Libera o valor da parcela no LimiteBloqueado do cartão e reconcilia o estado de pagamento da
     /// fatura (<see cref="RegrasFinanceiras.ReconciliarEstadoPagamento"/>). Recusa parcela já quitada
-    /// pelo pagamento da fatura (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
+    /// pelo pagamento da fatura — fatura coberta (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
     /// Idempotente via <paramref name="dto"/>.IdempotencyKey.
     /// </summary>
     public async Task<CancelarParcelaResultadoDto> CancelarAsync(
@@ -254,10 +269,14 @@ public class ParcelaTransacaoService
             return await MontarCancelarResultadoAsync(parcelaId, usuarioId);
         }
 
-        // 2. Carregar parcela (com a Fatura: decide se ela já foi quitada pelo pagamento da fatura)
+        // 2. Carregar parcela com a Fatura e o total dela (mesmas Includes do pagamento antecipado): decide
+        //    se a parcela já foi quitada pelo pagamento da fatura, pela cobertura real.
         var parcela = await _context.ParcelasTransacao
             .Include(p => p.Parcelamento)
             .Include(p => p.Fatura)
+                .ThenInclude(f => f!.Transacoes)
+            .Include(p => p.Fatura)
+                .ThenInclude(f => f!.ParcelasTransacao)
             .FirstOrDefaultAsync(p => p.Id == parcelaId
                                       && p.Parcelamento!.CriadoPor == usuarioId)
             ?? throw new InvalidOperationException("Parcela não encontrada.");
@@ -270,9 +289,10 @@ public class ParcelaTransacaoService
             throw new InvalidOperationException(
                 "Parcelamento já cancelado — todas as parcelas Pendentes já foram canceladas junto com ele.");
 
-        // Pendente numa fatura Pago já foi paga (invariante em RegrasFinanceiras): cancelar tiraria do
-        // total um valor já pago e o dinheiro sumiria. Mesma recusa da parcela Paga.
-        if (RegrasFinanceiras.ParcelaQuitadaPelaFatura(parcela))
+        // Pendente numa fatura coberta pelo pagamento já foi paga (invariante em RegrasFinanceiras):
+        // cancelar tiraria do total um valor já pago e o dinheiro sumiria. Mesma recusa da parcela Paga.
+        // Cobertura, não rótulo: parcela que caiu numa fatura já Pago segue devida e pode ser cancelada.
+        if (RegrasFinanceiras.ParcelaQuitadaPelaFatura(_context, parcela))
             throw new InvalidOperationException(
                 "A fatura desta parcela já foi paga — a parcela conta como paga e não pode ser cancelada individualmente.");
 

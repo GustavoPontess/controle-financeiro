@@ -18,6 +18,9 @@ namespace ControleFinanceiro.Api.Tests.Services;
 /// preso, job de atraso cobrando juros de fatura coberta, "Vencida" na tela, pagamento recusado;
 /// (2) parcela quitada pelo pagamento da FATURA segue Pendente, e cancelar o parcelamento a tirava do
 /// total — o dinheiro pago sumia sem sinalizar estorno.
+/// Revisão da correção: "quitada pela fatura" olha a COBERTURA real (ValorPago ≥ total), não o rótulo
+/// Pago — parcela que caiu numa fatura já Pago não foi paga; a do ciclo aberto coberto (Parcial com
+/// restante 0) foi. E o fechamento pelo job registra a quitação no audit log como o cancelamento.
 /// </summary>
 public class FaturaAposCancelamentoTests
 {
@@ -233,13 +236,22 @@ public class FaturaAposCancelamentoTests
         aFechar.DataFechamento = DateTime.UtcNow.Date;
         await ctx.SaveChangesAsync();
 
-        await new FaturaFechamentoJob(ctx).ExecuteAsync();
+        await new FaturaFechamentoJob(ctx, new FinancialEventLogService(ctx)).ExecuteAsync();
 
         var fechada = await FaturaAsync(ctx, c.FaturaId);
         Assert.Equal(EstadoCicloFatura.Fechada, fechada.EstadoCiclo);
         Assert.Equal(EstadoPagamentoFatura.Pago, fechada.EstadoPagamento);
         Assert.NotNull(fechada.DataPagamentoTotal);
         Assert.Equal(200m, await BloqueadoAsync(ctx, c));
+        // Virar Pago soltou limite: fica no audit log igual ao caminho do cancelamento (antes o job não
+        // registrava nada). O cancelamento com o ciclo aberto não registrou — a fatura seguia Parcial.
+        var quitacao = Assert.Single(await ctx.FinancialEventLogs.AsNoTracking()
+            .Where(e => e.Tipo == FinancialEventType.FaturaPagaTotal && e.EntidadeId == c.FaturaId)
+            .ToListAsync());
+        Assert.Equal("Job:FecharFaturas", quitacao.OrigemAcao);
+        Assert.Equal(c.UsuarioId, quitacao.CriadoPor);
+        Assert.Equal(100m, quitacao.ValorDepois);
+        Assert.Contains("FechamentoComRestanteZero", quitacao.PayloadJson);
         // A seguinte (ciclo futuro, sem pagamento) não é tocada.
         var seguinte = await FaturaAsync(ctx, c.FaturaSeguinteId);
         Assert.Equal(EstadoCicloFatura.Aberta, seguinte.EstadoCiclo);
@@ -265,7 +277,7 @@ public class FaturaAposCancelamentoTests
         seguinte.DataVencimento = hoje.AddDays(-5);
         await ctx.SaveChangesAsync();
 
-        await new FaturaFechamentoJob(ctx).ExecuteAsync();
+        await new FaturaFechamentoJob(ctx, new FinancialEventLogService(ctx)).ExecuteAsync();
         await new FaturaAtrasoJob(ctx).ExecuteAsync();
 
         var zerada = await FaturaAsync(ctx, c.FaturaSeguinteId);
@@ -360,17 +372,208 @@ public class FaturaAposCancelamentoTests
     }
 
     [Fact]
-    public void ParcelaQuitadaPelaFatura_SemFaturaCarregada_FalhaAltoEmVezDeResponderNao()
+    public async Task ParcelaQuitadaPelaFatura_SemOTotalDaFaturaCarregado_FalhaAltoEmVezDeResponder()
     {
-        var pendente = new ParcelaTransacao { Status = StatusParcela.Pendente };
-        var paga = new ParcelaTransacao { Status = StatusParcela.Paga };
+        // Banco com nome fixo pra abrir contextos NOVOS (nada rastreado): no mesmo contexto do seed a
+        // navegação viria preenchida pelo fixup e esconderia o Include que faltou.
+        var opcoes = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(
+                Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        Cenario c;
+        await using (var seed = new AppDbContext(opcoes))
+        {
+            c = await SeedAsync(seed, cicloFechado: true);
+            await PagarFaturaAsync(seed, c, 300m); // F coberta: a parcela 1/2 foi paga pela fatura
+        }
 
-        Assert.Throws<InvalidOperationException>(() => RegrasFinanceiras.ParcelaQuitadaPelaFatura(pendente));
-        Assert.False(RegrasFinanceiras.ParcelaQuitadaPelaFatura(paga)); // Paga de verdade não é "quitada pela fatura"
+        await using (var ctx = new AppDbContext(opcoes))
+        {
+            var semFatura = await ctx.ParcelasTransacao.SingleAsync(p => p.Id == c.ParcelaNaFaturaId);
+            Assert.Throws<InvalidOperationException>(() => RegrasFinanceiras.ParcelaQuitadaPelaFatura(ctx, semFatura));
+        }
+        await using (var ctx = new AppDbContext(opcoes))
+        {
+            // Fatura sem Transacoes/ParcelasTransacao: o total sairia menor e a parcela pareceria quitada.
+            var semTotal = await ctx.ParcelasTransacao.Include(p => p.Fatura)
+                .SingleAsync(p => p.Id == c.ParcelaNaFaturaId);
+            Assert.Throws<InvalidOperationException>(() => RegrasFinanceiras.ParcelaQuitadaPelaFatura(ctx, semTotal));
+        }
+        await using (var ctx = new AppDbContext(opcoes))
+        {
+            var completa = await ctx.ParcelasTransacao
+                .Include(p => p.Fatura).ThenInclude(f => f!.Transacoes)
+                .Include(p => p.Fatura).ThenInclude(f => f!.ParcelasTransacao)
+                .SingleAsync(p => p.Id == c.ParcelaNaFaturaId);
+            Assert.True(RegrasFinanceiras.ParcelaQuitadaPelaFatura(ctx, completa));
 
-        pendente.Fatura = new Fatura { EstadoPagamento = EstadoPagamentoFatura.Pago };
-        Assert.True(RegrasFinanceiras.ParcelaQuitadaPelaFatura(pendente));
-        pendente.Fatura.EstadoPagamento = EstadoPagamentoFatura.Parcial;
-        Assert.False(RegrasFinanceiras.ParcelaQuitadaPelaFatura(pendente));
+            completa.Status = StatusParcela.Paga; // Paga de verdade não é "quitada pela fatura"
+            Assert.False(RegrasFinanceiras.ParcelaQuitadaPelaFatura(ctx, completa));
+        }
+    }
+
+    [Theory]
+    [InlineData(EstadoPagamentoFatura.Pago, 300, 300, true)]
+    [InlineData(EstadoPagamentoFatura.Pago, 300, 500, false)]   // compra nova caiu na fatura Pago: não foi paga
+    [InlineData(EstadoPagamentoFatura.Parcial, 150, 150, true)] // ciclo aberto coberto após cancelamento
+    [InlineData(EstadoPagamentoFatura.Parcial, 150, 350, false)]
+    [InlineData(EstadoPagamentoFatura.Parcial, 150, 100, true)] // pago a mais: coberta (o excedente é crédito)
+    [InlineData(EstadoPagamentoFatura.NaoPago, 0, 0, false)]    // zerada sem pagamento: nada foi pago
+    public void FaturaCobertaPeloPagamento_OlhaACoberturaReal_NaoORotulo(
+        EstadoPagamentoFatura estado, int valorPago, int total, bool esperado)
+    {
+        var fatura = new Fatura { EstadoPagamento = estado, ValorPago = valorPago };
+        if (total > 0)
+            fatura.Transacoes.Add(new Transacao
+            {
+                Descricao = "compra", Valor = total, Tipo = TipoTransacao.Despesa, UsadoComoCredito = true, Ativo = true,
+            });
+
+        Assert.Equal(esperado, RegrasFinanceiras.FaturaCobertaPeloPagamento(fatura));
+    }
+
+    // ══ Revisão das correções — cobertura real, não o rótulo Pago ══════════════
+
+    /// <summary>
+    /// Compra parcelada em 2× com a 1ª parcela no ciclo de HOJE: cai na fatura aberta F do cenário
+    /// <c>cicloFechado: false</c> (mesmo cálculo de período de <c>ObterOuCriarFaturaAsync</c>).
+    /// </summary>
+    private static Task<ParcelamentoDetalheDto> CriarParcelamentoNoCicloDeHojeAsync(
+        AppDbContext ctx, Cenario c, string descricao, decimal valor)
+    {
+        var hoje = DateTime.UtcNow.Date;
+        return Parcelamentos(ctx).CriarAsync(new CriarParcelamentoDto
+        {
+            Descricao = descricao, Valor = valor, Tipo = TipoParcelamento.CompraParcelada,
+            CartaoCreditoId = c.CartaoId, DataCompra = hoje, Parcelas = 2,
+            PrimeiraParcelaMes = hoje.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+            IdempotencyKey = Guid.NewGuid().ToString(),
+        }, c.UsuarioId);
+    }
+
+    private static Guid PrimeiraParcela(ParcelamentoDetalheDto p) => p.Parcelas.Single(x => x.Numero == 1).Id;
+
+    [Fact]
+    public async Task CancelarParcelamento_CaiuEmFaturaJaPaga_ParcelaNaoPagaViraCancelada_SemEstorno()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: false);
+        await PagarFaturaAsync(ctx, c, 300m); // F quitada: Pago
+
+        var sofa = await CriarParcelamentoNoCicloDeHojeAsync(ctx, c, "Sofá", 400m); // 2 × 200, a 1/2 em F
+        var comSofa = await DtoAsync(ctx, c, c.FaturaId);
+        Assert.Equal(500m, comSofa.ValorTotal);
+        Assert.Equal(200m, comSofa.ValorRestante);
+        // Causa raiz (ROADMAP): a cobrança nova não reabre o estado — F segue Pago devendo 200.
+        Assert.Equal(EstadoPagamentoFatura.Pago, (EstadoPagamentoFatura)comSofa.EstadoPagamento);
+
+        var resultado = await Parcelamentos(ctx).CancelarAsync(sofa.Id, new CancelarParcelamentoDto
+        {
+            Motivo = "Desisti", IdempotencyKey = Guid.NewGuid().ToString(),
+        }, c.UsuarioId);
+
+        // Antes: a 1/2 contava como "quitada pela fatura" só por F ser Pago — virava Paga com PagoEm falso,
+        // sinalizava estorno de dinheiro que nunca saiu e F ficava devendo 200 sem poder ser paga.
+        Assert.Equal(2, resultado.Canceladas);
+        Assert.Equal(0, resultado.JaPagas);
+        Assert.False(resultado.RequerEstorno);
+        var parcela = await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == PrimeiraParcela(sofa));
+        Assert.Equal(StatusParcela.Cancelada, parcela.Status);
+        Assert.Null(parcela.PagoEm);
+
+        var depois = await DtoAsync(ctx, c, c.FaturaId);
+        Assert.Equal(300m, depois.ValorTotal);
+        Assert.Equal(300m, depois.ValorPago);
+        Assert.Equal(0m, depois.ValorRestante);
+        Assert.Equal(EstadoPagamentoFatura.Pago, (EstadoPagamentoFatura)depois.EstadoPagamento);
+        // A TV 1/2 volta a estar coberta: segue Pendente (paga pela fatura), não foi tocada.
+        Assert.Equal(StatusParcela.Pendente,
+            (await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == c.ParcelaNaFaturaId)).Status);
+    }
+
+    [Fact]
+    public async Task CancelarParcelaIndividual_CaiuEmFaturaJaPaga_Cancela()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: false);
+        await PagarFaturaAsync(ctx, c, 300m);
+        var sofa = await CriarParcelamentoNoCicloDeHojeAsync(ctx, c, "Sofá", 400m);
+
+        // Antes: recusava ("a fatura desta parcela já foi paga") e F ficava devendo 200 pra sempre.
+        await Parcelas(ctx).CancelarAsync(PrimeiraParcela(sofa), new CancelarParcelaDto
+        {
+            Motivo = "Devolvido", IdempotencyKey = Guid.NewGuid().ToString(),
+        }, c.UsuarioId);
+
+        Assert.Equal(StatusParcela.Cancelada,
+            (await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == PrimeiraParcela(sofa))).Status);
+        var f = await DtoAsync(ctx, c, c.FaturaId);
+        Assert.Equal(300m, f.ValorTotal);
+        Assert.Equal(0m, f.ValorRestante);
+    }
+
+    [Fact]
+    public async Task CicloAbertoCoberto_PagarAntecipadoRecusa_ECancelarOutroParcelamentoSinalizaEstorno()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: false);
+        var fone = await CriarParcelamentoNoCicloDeHojeAsync(ctx, c, "Fone", 100m); // 2 × 50, a 1/2 em F
+        await PagarFaturaAsync(ctx, c, 150m);  // F: 100 à vista + TV 200 + fone 50 = 350 → Parcial
+        await CancelarParcelaAsync(ctx, c);    // TV 1/2 sai: total 150 = pago 150
+
+        var coberta = await DtoAsync(ctx, c, c.FaturaId);
+        Assert.Equal(150m, coberta.ValorTotal);
+        Assert.Equal(0m, coberta.ValorRestante);
+        // Janela da decisão do ciclo aberto: coberta, mas Parcial até o fechamento.
+        Assert.Equal(EstadoPagamentoFatura.Parcial, (EstadoPagamentoFatura)coberta.EstadoPagamento);
+
+        // Pagar antecipado o fone 1/2, que o já pago cobre: antes debitava mais 50 (total 150, pago 200).
+        var saldoAntes = (await RegrasFinanceiras.SaldoDaContaAsync(ctx, c.ContaId, c.UsuarioId)).Saldo;
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Parcelas(ctx).PagarAntecipadoAsync(PrimeiraParcela(fone), new PagarParcelaDto
+            {
+                ContaPagamentoId = c.ContaId, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, c.UsuarioId));
+        Assert.Contains("coberta", ex.Message);
+        Assert.Equal(saldoAntes, (await RegrasFinanceiras.SaldoDaContaAsync(ctx, c.ContaId, c.UsuarioId)).Saldo);
+        Assert.Equal(150m, (await FaturaAsync(ctx, c.FaturaId)).ValorPago);
+
+        // Cancelar o parcelamento do fone: a 1/2 já foi paga pela fatura. Antes virava Cancelada — total
+        // 100 com 150 pagos, requerEstorno=false, e os R$ 50 sumiam.
+        var resultado = await Parcelamentos(ctx).CancelarAsync(fone.Id, new CancelarParcelamentoDto
+        {
+            Motivo = "Devolvido", IdempotencyKey = Guid.NewGuid().ToString(),
+        }, c.UsuarioId);
+
+        Assert.Equal(1, resultado.Canceladas); // só a 2/2, ainda devida
+        Assert.Equal(1, resultado.JaPagas);
+        Assert.True(resultado.RequerEstorno);
+        var parcela = await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == PrimeiraParcela(fone));
+        Assert.Equal(StatusParcela.Paga, parcela.Status);
+        Assert.NotNull(parcela.PagoEm);
+        var depois = await DtoAsync(ctx, c, c.FaturaId);
+        Assert.Equal(150m, depois.ValorTotal);
+        Assert.Equal(150m, depois.ValorPago);
+    }
+
+    [Fact]
+    public async Task PagarAntecipado_PagamentoDaFaturaJaCobreParteDaParcela_Recusa()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: false);
+        await PagarFaturaAsync(ctx, c, 150m); // 100 à vista + TV 200 = 300: resta 150, menos que a parcela
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Parcelas(ctx).PagarAntecipadoAsync(c.ParcelaNaFaturaId, new PagarParcelaDto
+            {
+                ContaPagamentoId = c.ContaId, IdempotencyKey = Guid.NewGuid().ToString(),
+            }, c.UsuarioId));
+
+        // Pagar os 200 inteiros deixaria 350 pagos numa fatura de 300: o que falta (150) vai pela fatura.
+        Assert.Contains("resta", ex.Message);
+        Assert.Equal(150m, (await FaturaAsync(ctx, c.FaturaId)).ValorPago);
+        Assert.Equal(StatusParcela.Pendente,
+            (await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == c.ParcelaNaFaturaId)).Status);
     }
 }

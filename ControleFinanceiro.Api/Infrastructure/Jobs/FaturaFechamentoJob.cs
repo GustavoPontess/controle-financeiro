@@ -8,10 +8,12 @@ namespace ControleFinanceiro.Api.Infrastructure.Jobs;
 public class FaturaFechamentoJob
 {
     private readonly AppDbContext _context;
+    private readonly FinancialEventLogService _eventLog;
 
-    public FaturaFechamentoJob(AppDbContext context)
+    public FaturaFechamentoJob(AppDbContext context, FinancialEventLogService eventLog)
     {
         _context = context;
+        _eventLog = eventLog;
     }
 
     public async Task ExecuteAsync()
@@ -25,6 +27,8 @@ public class FaturaFechamentoJob
             .ToListAsync();
 
         var agora = DateTime.UtcNow;
+        // Uma execução do job = uma operação: os eventos dela compartilham o CorrelationId.
+        var correlationId = Guid.NewGuid();
         foreach (var fatura in faturas)
         {
             fatura.EstadoCiclo = EstadoCicloFatura.Fechada;
@@ -32,7 +36,12 @@ public class FaturaFechamentoJob
             // Ciclo que fecha já coberto vira Pago. Cobre a fatura em que uma parcela foi cancelada com o
             // ciclo ABERTO: ela fica Parcial com restante 0 até aqui (ver a decisão em
             // RegrasFinanceiras.ReconciliarEstadoPagamento) — sem este passo o limite ficava preso.
-            RegrasFinanceiras.ReconciliarEstadoPagamento(fatura, agora);
+            // Virar Pago solta o limite das compras à vista: registra no audit log como o caminho do
+            // cancelamento faz (a trilha não pode depender de por onde a fatura foi quitada).
+            if (RegrasFinanceiras.ReconciliarEstadoPagamento(fatura, agora))
+                RegrasFinanceiras.RegistrarQuitacaoSemPagamentoNovo(
+                    _eventLog, fatura, fatura.CriadoPor, correlationId,
+                    origemAcao: "Job:FecharFaturas", motivo: "FechamentoComRestanteZero");
         }
 
         if (faturas.Any())
