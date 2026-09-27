@@ -13,34 +13,32 @@
 .emptyWrap { padding: 32px 20px; }
 
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--pontes-border); transition: background-color .15s ease, opacity .2s ease; }
+.item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); transition: background-color .15s ease, opacity .2s ease; }
 .item:last-child { border-bottom: none; }
 .item:hover { background: var(--pontes-bg); }
 .item[data-inactive="true"] { opacity: 0.5; }
 
-.itemMain { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
-.itemHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.itemMain { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1; }
+
+/* Linha 1: descrição + (badge PIX) + parcelas/pago ... valor total (empurrado pra direita) */
+.itemHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .itemDesc { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.itemPills { font-size: 11px; color: var(--pontes-text-muted); }
+.itemPills { font-size: 12px; color: var(--pontes-text-muted); }
+.itemAmount { margin-left: auto; font-size: 16px; font-weight: 800; color: var(--pontes-text); }
 
-.itemRowMid { display: flex; align-items: center; gap: 8px; }
-.itemAmount { font-size: 16px; font-weight: 800; color: var(--pontes-text); }
-.itemMuted { font-size: 12px; color: var(--pontes-text-muted); }
-.itemMuted strong { color: var(--pontes-text); font-weight: 700; }
-
-.progressWrap { display: flex; flex-direction: column; gap: 4px; max-width: 320px; }
-.progressMeta { display: flex; justify-content: space-between; font-size: 11px; color: var(--pontes-text-muted); }
-.progressPct { font-weight: 700; color: var(--pontes-text); }
-.bar { height: 6px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
+/* Linha 2: barra de progresso ocupando a largura cheia */
+.progressWrap { display: flex; align-items: center; gap: 10px; }
+.bar { flex: 1; height: 6px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
 .barFill { height: 100%; border-radius: 99px; background: var(--pontes-primary); transition: width .3s ease; }
+.progressPct { font-size: 12px; font-weight: 700; color: var(--pontes-text); min-width: 32px; text-align: right; }
 
-.proxima { padding: 10px 12px; border-radius: 10px; background: var(--pontes-primary-soft); display: flex; flex-direction: column; gap: 4px; max-width: 320px; }
-.proximaLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); }
-.proximaRow { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--pontes-text); }
+/* Linha 3: próxima parcela (esq.) + restante (dir.) */
+.itemFoot { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.footItem { font-size: 13px; color: var(--pontes-text); display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.footItem strong { font-weight: 700; }
+.metricLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); }
 
-.itemRowBot { display: flex; align-items: center; gap: 8px; }
-
-.itemActions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.itemActions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .formCol { display: flex; flex-direction: column; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
