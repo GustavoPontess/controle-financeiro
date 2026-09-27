@@ -162,4 +162,38 @@ describe("CreditCardsPage (#84)", () => {
     expect(faturaId).toBe("f1")
     expect(payload).toMatchObject({ contaId: "a1", valor: 150 })
   })
+
+  it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {
+    // 27/set com fechamento dia 20 → o mês atual é o ciclo que fecha em OUTUBRO. O bug antigo
+    // abria em Jan/2027 rotulado "atual" (caía na fatura mais recente por não ter uma cobrindo hoje).
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-09-27T12:00:00Z").getTime())
+    getFaturasByCartao.mockReset().mockResolvedValue([
+      { ...fatura, id: "dez", dataInicio: "2026-11-20", dataFechamento: "2026-12-20", dataVencimento: "2026-12-28" },
+      { ...fatura, id: "jan", dataInicio: "2026-12-20", dataFechamento: "2027-01-20", dataVencimento: "2027-01-28" },
+    ])
+    renderPage()
+    expect(await screen.findByText(/Outubro de 2026 · atual/)).toBeInTheDocument()
+    expect(screen.getByText("Sem lançamentos neste mês.")).toBeInTheDocument()
+    expect(screen.getByLabelText("Mês anterior")).toBeDisabled()
+    // Pra frente: novembro (vazio) → dezembro (fatura real).
+    fireEvent.click(screen.getByLabelText("Próximo mês"))
+    expect(await screen.findByText("Novembro de 2026")).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Próximo mês"))
+    expect(await screen.findByText("Dezembro de 2026")).toBeInTheDocument()
+  })
+
+  it("anda pra trás até faturas passadas; mês sem fatura no meio aparece vazio", async () => {
+    getFaturasByCartao.mockReset().mockResolvedValue([
+      fatura, // jun/2026 — atual (agora = 10/jun)
+      { ...fatura, id: "abr", dataInicio: "2026-03-20", dataFechamento: "2026-04-20", dataVencimento: "2026-04-28" },
+    ])
+    renderPage()
+    expect(await screen.findByText(/Junho de 2026 · atual/)).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Maio de 2026")).toBeInTheDocument()
+    expect(screen.getByText("Sem lançamentos neste mês.")).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Mês anterior"))
+    expect(await screen.findByText("Abril de 2026")).toBeInTheDocument()
+    expect(screen.getByLabelText("Mês anterior")).toBeDisabled()
+  })
 })
