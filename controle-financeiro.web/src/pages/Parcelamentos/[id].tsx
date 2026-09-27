@@ -10,6 +10,7 @@ import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getContas } from "../../services/contaService"
 import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
+import { notificacaoDeErro } from "@/utils/apiError"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
 
@@ -27,7 +28,7 @@ const formatarMesAno = (data: string) => {
 const statusLabel: Record<number, string> = { 0: "Pendente", 1: "Paga", 2: "Cancelada" }
 const statusTone: Record<number, "warning" | "success" | "neutral"> = { 0: "warning", 1: "success", 2: "neutral" }
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 export default function ParcelamentoDetalhePage() {
@@ -85,8 +86,9 @@ export default function ParcelamentoDetalhePage() {
       setModalPagar(false)
       setErroPagar(undefined)
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao pagar parcela", severity: "error" })
+    } catch (err) {
+      // Ex.: saldo insuficiente na conta → aviso com a mensagem do servidor.
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao pagar parcela") })
     } finally {
       setLoadingPagar(false)
     }
@@ -106,8 +108,8 @@ export default function ParcelamentoDetalhePage() {
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
       navigate("/parcelamentos")
-    } catch {
-      notify({ open: true, message: "Erro ao cancelar parcelamento", severity: "error" })
+    } catch (err) {
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
     } finally {
       setLoadingCancelar(false)
     }

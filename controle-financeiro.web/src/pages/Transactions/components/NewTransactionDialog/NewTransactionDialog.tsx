@@ -16,7 +16,7 @@ import type { Conta } from "../../../../types/Conta"
 import type { CartaoCredito } from "../../../../types/CartaoCredito"
 
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type Props = {
   open: boolean
   onClose: () => void

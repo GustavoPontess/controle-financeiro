@@ -25,7 +25,10 @@ import { getCategories } from "../../services/categoryService"
 const DRAWER_WIDTH = 248
 const RAIL_WIDTH = 72
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
+
+// "warning" = aviso de regra de negócio (o usuário resolve); "error" = algo quebrou.
+const TITULO_TOAST: Record<Notification["severity"], string> = { success: "Sucesso", warning: "Aviso", error: "Erro" }
 
 const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} strokeWidth={2} /> },
@@ -163,7 +166,7 @@ export default function DefaultLayout() {
         <div className={styles.toastWrap}>
           <PontesToast
             tone={notification.severity}
-            title={notification.severity === "success" ? "Sucesso" : "Erro"}
+            title={TITULO_TOAST[notification.severity]}
             description={notification.message}
             onClose={() => setNotification((n) => ({ ...n, open: false }))}
           />

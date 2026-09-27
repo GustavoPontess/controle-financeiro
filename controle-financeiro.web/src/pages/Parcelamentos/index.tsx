@@ -12,6 +12,7 @@ import { getCartoes } from "../../services/cartaoCreditoService"
 import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
+import { notificacaoDeErro } from "@/utils/apiError"
 import styles from "./ParcelamentosPage.module.css"
 
 
@@ -36,6 +37,7 @@ const TIPOS_OPTS = [
 const tiposLabel: Record<number, string> = {
   0: "Compra Parcelada",
   1: "PIX Crédito",
+  2: "Recorrente",
 }
 
 type FormState = {
@@ -50,7 +52,7 @@ type FormState = {
 }
 type Errors = Partial<Record<"descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "taxaJuroMensal", string>>
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const emptyForm = (proximoMes: string): FormState => ({
@@ -139,8 +141,9 @@ export default function ParcelamentosPage() {
       notify({ open: true, message: "Parcelamento criado", severity: "success" })
       setDialogOpen(false)
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao criar parcelamento", severity: "error" })
+    } catch (err) {
+      // Ex.: limite do cartão insuficiente → aviso com a mensagem do servidor, não erro genérico.
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao criar parcelamento") })
     } finally { setLoading(false) }
   }
 
@@ -153,8 +156,8 @@ export default function ParcelamentosPage() {
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
       await loadData()
-    } catch {
-      notify({ open: true, message: "Erro ao cancelar parcelamento", severity: "error" })
+    } catch (err) {
+      notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
     } finally { setCancelarId(null) }
   }
 
@@ -200,33 +203,30 @@ export default function ParcelamentosPage() {
                   <div className={styles.itemMain}>
                     <div className={styles.itemHead}>
                       <span className={styles.itemDesc}>{p.descricao}</span>
-                      <PontesBadge tone="neutral" size="sm">{tiposLabel[p.tipo] ?? "Desconhecido"}</PontesBadge>
-                      <span className={styles.itemPills}>{p.quantidadeParcelas} parcelas</span>
-                    </div>
-                    <div className={styles.itemRowMid}>
+                      {/* Badge só pra exceção — "Compra Parcelada" é o padrão e já é óbvio na página. */}
+                      {p.tipo !== TipoParcelamento.CompraParcelada && (
+                        <PontesBadge tone="neutral" size="sm">{tiposLabel[p.tipo] ?? "—"}</PontesBadge>
+                      )}
+                      <span className={styles.itemPills}>{p.quantidadeParcelas}× · {p.parcelasPagas}/{p.quantidadeParcelas} pago</span>
                       <span className={styles.itemAmount}>{formatMoney(p.valorOriginal)}</span>
-                      <span className={styles.itemMuted}>{p.parcelasPagas}/{p.quantidadeParcelas} pago</span>
                     </div>
                     <div className={styles.progressWrap}>
-                      <div className={styles.progressMeta}>
-                        <span>Progresso</span>
-                        <span className={styles.progressPct}>{pct.toFixed(0)}%</span>
-                      </div>
                       <div className={styles.bar}>
                         <div className={styles.barFill} style={{ width: `${pct}%` }} />
                       </div>
+                      <span className={styles.progressPct}>{pct.toFixed(0)}%</span>
                     </div>
-                    {p.proximaParcela && (
-                      <div className={styles.proxima}>
-                        <span className={styles.proximaLabel}>Próxima parcela</span>
-                        <div className={styles.proximaRow}>
-                          <span>Fatura {formatarMesAno(p.proximaParcela.dataVencimento.split("T")[0].substring(0, 7))}</span>
-                          <strong>{formatMoney(p.proximaParcela.valor)}</strong>
-                        </div>
-                      </div>
-                    )}
-                    <div className={styles.itemRowBot}>
-                      <span className={styles.itemMuted}>Restante: <strong>{formatMoney(p.valorRestante)}</strong></span>
+                    <div className={styles.itemFoot}>
+                      {p.proximaParcela && (
+                        <span className={styles.footItem}>
+                          <span className={styles.metricLabel}>Próxima</span>
+                          Fatura {formatarMesAno(p.proximaParcela.dataVencimento.split("T")[0].substring(0, 7))} · <strong>{formatMoney(p.proximaParcela.valor)}</strong>
+                        </span>
+                      )}
+                      <span className={styles.footItem}>
+                        <span className={styles.metricLabel}>Restante</span>
+                        <strong>{formatMoney(p.valorRestante)}</strong>
+                      </span>
                     </div>
                   </div>
 

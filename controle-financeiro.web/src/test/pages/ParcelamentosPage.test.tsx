@@ -6,9 +6,10 @@ import ParcelamentosPage from "../../pages/Parcelamentos/index"
 import type { Parcelamento } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
 
+const notifySpy = vi.hoisted(() => vi.fn())
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
-  useOutletContext: () => ({ notify: vi.fn() }),
+  useOutletContext: () => ({ notify: notifySpy }),
   useNavigate: () => vi.fn(),
 }))
 
@@ -56,6 +57,7 @@ describe("ParcelamentosPage (#153)", () => {
     listarPaginado.mockReset().mockResolvedValue(paged([p1]))
     criar.mockReset().mockResolvedValue(undefined)
     cancelar.mockReset().mockResolvedValue(undefined)
+    notifySpy.mockReset()
   })
 
   it("lista parcelamentos + stats", async () => {
@@ -115,7 +117,8 @@ describe("ParcelamentosPage (#153)", () => {
     fireEvent.click(screen.getByText("Selecione o cartão"))
     fireEvent.click(await screen.findByText("Nubank"))
 
-    // Tipo → PIX Crédito. O 1º "Compra Parcelada" é o badge do card; o trigger do select é o último.
+    // Tipo → PIX Crédito. O trigger do select mostra "Compra Parcelada" (o padrão). O card da lista
+    // não tem mais essa tag, mas pega o último por segurança caso volte a aparecer.
     const triggers = screen.getAllByText("Compra Parcelada")
     fireEvent.click(triggers[triggers.length - 1])
     fireEvent.click(await screen.findByText("PIX Crédito"))
@@ -129,5 +132,31 @@ describe("ParcelamentosPage (#153)", () => {
     const payload = criar.mock.calls[0][0] as { tipo: number; taxaJuroMensal?: number }
     expect(payload.tipo).toBe(1)                 // PIXCredito
     expect(payload.taxaJuroMensal).toBe(2.5)
+  })
+
+  it("card da lista não mostra a tag 'Compra Parcelada' (tipo padrão)", async () => {
+    renderPage()
+    await screen.findByText("Notebook")
+    expect(screen.queryByText("Compra Parcelada")).not.toBeInTheDocument()
+  })
+
+  // Caso real (dogfooding): parcelamento maior que o limite do cartão. O backend responde 409 com
+  // uma mensagem clara; antes a tela mostrava "Erro ao criar parcelamento" em vermelho e escondia o motivo.
+  it("limite insuficiente vira AVISO com a mensagem do servidor, não erro genérico", async () => {
+    const msg = "Limite insuficiente. Precisa de R$ 1.000.000,00, disponível R$ 1.500,00."
+    criar.mockReset().mockRejectedValue({
+      response: { status: 409, data: { message: msg, code: "BUSINESS_RULE_VIOLATION" } },
+    })
+    renderPage()
+    await screen.findByText("Notebook")
+    fireEvent.click(screen.getByText("Novo Parcelamento"))
+    await screen.findByText("Novo parcelamento")
+    fireEvent.change(screen.getByPlaceholderText("Ex: Notebook, Monitor"), { target: { value: "Geladeira" } })
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "100000000" } })
+    fireEvent.click(screen.getByText("Selecione o cartão"))
+    fireEvent.click(await screen.findByText("Nubank"))
+    fireEvent.click(screen.getByText("Criar"))
+
+    await waitFor(() => expect(notifySpy).toHaveBeenCalledWith({ open: true, severity: "warning", message: msg }))
   })
 })
