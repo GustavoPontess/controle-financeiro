@@ -11,10 +11,16 @@ export const getFaturaDetalhe = async (cartaoCreditoId: string, faturaId: string
   return res.data
 }
 
+// Pagar debita a conta: a API exige o header Idempotency-Key (400 sem ele). Quem chama gera a
+// chave uma vez por tentativa de pagamento e a REUSA no retry — assim duplo clique/retry de rede
+// não paga 2x (o backend devolve o mesmo sucesso pra chave repetida).
 export const pagarFatura = async (
   cartaoCreditoId: string,
   faturaId: string,
-  payload: PagarFaturaPayload
+  payload: PagarFaturaPayload,
+  idempotencyKey: string,
 ): Promise<void> => {
-  await api.post(`/cartoes/${cartaoCreditoId}/faturas/${faturaId}/pagar`, payload)
+  await api.post(`/cartoes/${cartaoCreditoId}/faturas/${faturaId}/pagar`, payload, {
+    headers: { "Idempotency-Key": idempotencyKey },
+  })
 }

@@ -3,16 +3,21 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Fatura;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ControleFinanceiro.Api.Services;
 
 public class FaturaService
 {
     private readonly AppDbContext _context;
+    private readonly FinancialEventLogService _eventLog;
 
     public FaturaService(AppDbContext context)
     {
         _context = context;
+        // Helper sem estado próprio (só escreve no mesmo contexto) — instanciado aqui pra não mudar
+        // a assinatura do construtor, usada por vários services, jobs e testes.
+        _eventLog = new FinancialEventLogService(context);
     }
 
     // ── Cálculo de período ────────────────────────────────────────────────────
@@ -195,13 +200,30 @@ public class FaturaService
 
     // ── Pagamento de fatura ───────────────────────────────────────────────────
 
+    /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves do pagamento de fatura).</summary>
+    public const string OperacaoPagarFatura = "PagarFatura";
+
     /// <summary>
     /// Paga total ou parcialmente uma fatura.
     /// Debita o valor da conta informada e atualiza o status da fatura.
     /// Invariante: só impacta o saldo da conta no momento do pagamento.
+    /// Idempotente por <paramref name="idempotencyKey"/> (header Idempotency-Key, obrigatório): a
+    /// mesma chave nunca paga 2x — o replay devolve o pagamento original. Concorrência otimista na
+    /// Fatura (xmin): pagamento simultâneo com outra chave → DbUpdateConcurrencyException (409).
     /// </summary>
-    public async Task<Transacao> PagarFaturaAsync(Guid faturaId, PagarFaturaDto dto, Guid usuarioId)
+    public async Task<Transacao> PagarFaturaAsync(
+        Guid faturaId, PagarFaturaDto dto, Guid usuarioId, string? idempotencyKey)
     {
+        // Pagar fatura debita a conta → operação transacional (CLAUDE.md): sem chave, um duplo clique
+        // ou um retry de rede pagaria (e debitaria) 2x. O único chamador (modal do front) sempre manda
+        // o header, então ele é obrigatório. Valida antes de tocar no banco; o limite evita estourar
+        // a coluna (varchar 100) e virar 500.
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para pagar a fatura.");
+        if (idempotencyKey.Length > RegistroIdempotencia.ChaveMaxLength)
+            throw new ArgumentException(
+                $"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
+
         var fatura = await _context.Faturas
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
@@ -211,6 +233,12 @@ public class FaturaService
 
         if (fatura.CartaoCredito.CriadoPor != usuarioId)
             throw new ForbiddenAccessException("Você não tem permissão para pagar esta fatura.");
+
+        // Replay ANTES das regras de negócio: se o 1º pagamento quitou a fatura, o retry cairia em
+        // "já foi paga" (409) e o cliente acharia que falhou — o certo é devolver o mesmo sucesso.
+        var pagamentoAnterior = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId);
+        if (pagamentoAnterior != null)
+            return pagamentoAnterior;
 
         if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
             throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
@@ -244,6 +272,7 @@ public class FaturaService
             CriadoPor = usuarioId,
         };
 
+        var valorPagoAntes = fatura.ValorPago;
         fatura.ValorPago += dto.Valor;
         if (fatura.ValorPago >= valorTotal)
         {
@@ -257,9 +286,98 @@ public class FaturaService
         }
 
         _context.Transacoes.Add(pagamento);
-        await _context.SaveChangesAsync();
+
+        // Chave gravada no MESMO SaveChanges do pagamento: ou os dois existem, ou nenhum. Uma
+        // tentativa que falhou (validação, 409) não "gasta" a chave — o retry pode seguir normal.
+        var registro = new RegistroIdempotencia
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId,
+            Operacao = OperacaoPagarFatura,
+            Chave = idempotencyKey,
+            ReferenciaId = pagamento.Id,
+            CriadoEm = DateTime.UtcNow,
+        };
+        _context.RegistrosIdempotencia.Add(registro);
+
+        // FinancialEventLog (CLAUDE.md: toda operação que afeta saldo) — mesmo evento que o
+        // pagamento de parcela já grava. Sem idempotencyKey no payload de propósito: a chave deste
+        // fluxo mora no RegistroIdempotencia, e o LIKE dos outros fluxos não deve enxergá-la.
+        var log = _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: fatura.EstadoPagamento == EstadoPagamentoFatura.Pago
+                ? FinancialEventType.FaturaPagaTotal
+                : FinancialEventType.FaturaPagaParcial,
+            entidade: "Fatura",
+            entidadeId: fatura.Id,
+            correlationId: Guid.NewGuid(),
+            origemAcao: "API",
+            valorAntes: valorPagoAntes,
+            valorDepois: fatura.ValorPago,
+            payload: new
+            {
+                pagamentoId = pagamento.Id,
+                contaId = dto.ContaId,
+                valor = dto.Valor,
+                valorTotal,
+                estadoPagamento = fatura.EstadoPagamento.ToString(),
+            });
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || EhViolacaoDeUnicidade(ex))
+        {
+            // Corrida: entre a nossa leitura e o nosso UPDATE, outra requisição alterou esta fatura
+            // (xmin mudou → concorrência) ou gravou a MESMA chave antes (índice único → 23505). Nada
+            // desta tentativa foi persistido (SaveChanges é atômico). Se quem ganhou usou a mesma
+            // chave, é o duplo clique/retry → replay com o pagamento dela. Senão foi outra operação
+            // (outro pagamento, parcela, job) → propaga; o middleware devolve 409 e o cliente recarrega.
+            foreach (var pendente in new object[] { pagamento, registro, log, fatura })
+                _context.Entry(pendente).State = EntityState.Detached;
+
+            var vencedor = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId);
+            if (vencedor != null)
+                return vencedor;
+            throw;
+        }
+
         return pagamento;
     }
+
+    /// <summary>
+    /// Pagamento já feito com esta chave (replay) ou null se a chave é nova pra este usuário.
+    /// </summary>
+    private async Task<Transacao?> BuscarPagamentoPorChaveAsync(Guid usuarioId, string chave, Guid faturaId)
+    {
+        var registro = await _context.RegistrosIdempotencia
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId
+                                      && r.Operacao == OperacaoPagarFatura
+                                      && r.Chave == chave);
+        if (registro == null)
+            return null;
+
+        // IgnoreQueryFilters: se o pagamento foi estornado depois (soft delete), a chave continua
+        // consumida — o retry dela não pode virar um pagamento novo.
+        var pagamento = await _context.Transacoes
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId);
+
+        // Mesma chave reaproveitada em OUTRA fatura (bug de cliente): não dá pra devolver o pagamento
+        // de outra fatura como se fosse desta, nem pagar de novo com uma chave já consumida.
+        if (pagamento == null || pagamento.FaturaPagaId != faturaId)
+            throw new InvalidOperationException(
+                "Esta Idempotency-Key já foi usada em outra operação. Gere uma nova chave e tente de novo.");
+
+        return pagamento;
+    }
+
+    /// <summary>Violação de índice único no Postgres (SqlState 23505) dentro do DbUpdateException.</summary>
+    private static bool EhViolacaoDeUnicidade(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 

@@ -9,6 +9,7 @@ namespace ControleFinanceiro.Api.Infrastructure.Middleware;
 /// respostas HTTP padronizadas usando <see cref="ErrorResponseDto"/>.
 ///
 /// Mapeamento de exceções:
+/// - <see cref="Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"/> → 409 Conflict (CONCURRENCY_CONFLICT, mensagem fixa)
 /// - <see cref="ArgumentException"/>           → 400 Bad Request   (VALIDATION_ERROR)
 /// - <see cref="KeyNotFoundException"/>         → 404 Not Found     (NOT_FOUND)
 /// - <see cref="InvalidOperationException"/>    → 409 Conflict      (BUSINESS_RULE_VIOLATION)
@@ -46,10 +47,25 @@ public sealed class GlobalExceptionHandlerMiddleware
         }
     }
 
+    /// <summary>
+    /// Mensagem fixa do 409 de concorrência otimista. A mensagem do EF (DbUpdateConcurrencyException)
+    /// cita contagem de linhas/entidades — detalhe interno que não vai pro cliente. Fala de "fatura"
+    /// porque hoje a Fatura é a única entidade com token de concorrência (xmin); ao estender pra
+    /// outras (Emprestimo, EmprestimoParcela, Meta), generalizar ou escolher a mensagem pela entidade.
+    /// </summary>
+    public const string MensagemConflitoConcorrencia =
+        "Esta fatura foi alterada por outra operação. Recarregue e tente de novo.";
+
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var (statusCode, code) = exception switch
         {
+            // Concorrência otimista (xmin): outra operação alterou o registro entre a leitura e o
+            // UPDATE — o nosso afetou 0 linhas. É conflito do cliente (recarregar e refazer), não
+            // erro do servidor; sem isto caía no default e virava 500. Não herda de nenhum tipo
+            // mapeado abaixo, mas fica no topo pra deixar explícito que tem prioridade.
+            Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException
+                                        => (StatusCodes.Status409Conflict,             "CONCURRENCY_CONFLICT"),
             // Corpo acima do limite (Kestrel MaxRequestBodySize) ou request malformado: o Kestrel
             // lança BadHttpRequestException com o StatusCode certo (413/400). Sem isto caía no default
             // e virava 500 — request JÁ é rejeitado (protege DoS), mas o status/log ficavam errados.
@@ -77,7 +93,9 @@ public sealed class GlobalExceptionHandlerMiddleware
             ? "Erro interno do servidor. Tente novamente mais tarde."
             : statusCode == StatusCodes.Status413PayloadTooLarge
                 ? "Requisição grande demais."
-                : exception.Message;
+                : exception is Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException
+                    ? MensagemConflitoConcorrencia
+                    : exception.Message;
 
         var response = new ErrorResponseDto
         {

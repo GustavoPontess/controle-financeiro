@@ -194,6 +194,9 @@ export default function CreditCardsPage() {
   })
   const [pagarErrors, setPagarErrors] = useState<{ conta?: string; valor?: string }>({})
   const [pagarLoading, setPagarLoading] = useState(false)
+  // Idempotency-Key da tentativa de pagamento: nasce ao abrir o modal e é reusada nos retries
+  // (erro de rede, 409) — a API nunca paga 2x a mesma chave. Reabrir o modal gera outra.
+  const [pagarIdemKey, setPagarIdemKey] = useState("")
 
   const [delId, setDelId] = useState<string | null>(null)
 
@@ -264,6 +267,7 @@ export default function CreditCardsPage() {
     setPagarFaturaId(faturaId)
     setPagarCartaoId(cartaoId)
     setPagarErrors({})
+    setPagarIdemKey(crypto.randomUUID())
     setPagarForm({
       contaId: contaId ?? "", valor: String(valorRestante.toFixed(2)),
       dataPagamento: new Date().toISOString().split("T")[0], meioPagamento: "4",
@@ -284,7 +288,7 @@ export default function CreditCardsPage() {
         // Pagamento é ação real: grava a hora (hoje → agora) pra aparecer na lista.
         dataPagamento: dataComHora(pagarForm.dataPagamento), meioPagamento: Number(pagarForm.meioPagamento),
       }
-      await pagarFatura(pagarCartaoId, pagarFaturaId, payload)
+      await pagarFatura(pagarCartaoId, pagarFaturaId, payload, pagarIdemKey)
       notify({ open: true, message: "Pagamento registrado com sucesso", severity: "success" })
       setPagarFaturaId(null)
       await loadData()

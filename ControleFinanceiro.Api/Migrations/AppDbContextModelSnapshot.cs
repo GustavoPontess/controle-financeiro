@@ -852,6 +852,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("ValorPago")
                         .HasColumnType("numeric");
 
+                    b.Property<uint>("Versao")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CartaoCreditoId");
@@ -1507,6 +1513,39 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("RegistrosAcesso");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RegistroIdempotencia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Chave")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Operacao")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("ReferenciaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Operacao", "Chave")
+                        .IsUnique();
+
+                    b.ToTable("RegistrosIdempotencia");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>
@@ -2340,6 +2379,15 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RegistroIdempotencia", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Relacionamento", b =>

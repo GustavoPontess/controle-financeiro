@@ -68,6 +68,24 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     [Fact]
+    public async Task ConflitoDeConcorrencia_retorna409_comMensagemFixa_semVazarDetalheDoEf()
+    {
+        // Concorrência otimista (xmin da Fatura): outra operação alterou a linha no meio. É conflito
+        // recuperável pelo cliente (recarregar e refazer) → 409, não 500. A mensagem do EF cita
+        // linhas/entidades (detalhe interno) e é trocada por uma fixa e segura.
+        const string internoEf = "The database operation was expected to affect 1 row(s), but actually affected 0 row(s); entity Fatura xmin";
+        var ex = new Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException(internoEf);
+
+        var (status, body) = await Invoke(ex);
+
+        Assert.Equal(409, status);
+        Assert.Equal("CONCURRENCY_CONFLICT", body.Code);
+        Assert.Equal("Esta fatura foi alterada por outra operação. Recarregue e tente de novo.", body.Message);
+        Assert.DoesNotContain("row(s)", body.Message);
+        Assert.DoesNotContain("xmin", body.Message);
+    }
+
+    [Fact]
     public async Task ExcecaoNaoMapeada_retorna500Generico_semVazarMensagemInterna()
     {
         const string segredo = "Npgsql: relation \"usuarios\" violates FK constraint xyz_secreto";

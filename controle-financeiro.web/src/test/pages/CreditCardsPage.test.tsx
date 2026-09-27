@@ -150,17 +150,47 @@ describe("CreditCardsPage (#84)", () => {
     expect(payload).toMatchObject({ ultimosDigitos: "1234", bandeira: 3 }) // Elo
   })
 
-  it("paga fatura: chama pagarFatura com conta e valor", async () => {
+  it("paga fatura: chama pagarFatura com conta, valor e Idempotency-Key", async () => {
     renderPage()
     // Cartão único → auto-foco; aguarda Pagar aparecer (fatura carregada).
     fireEvent.click(await screen.findByText("Pagar"))
     await screen.findByText("Pagar fatura")
     fireEvent.click(screen.getByText("Confirmar pagamento"))
     await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(1))
-    const [cartaoId, faturaId, payload] = pagarFatura.mock.calls[0]
+    const [cartaoId, faturaId, payload, idemKey] = pagarFatura.mock.calls[0]
     expect(cartaoId).toBe("c1")
     expect(faturaId).toBe("f1")
     expect(payload).toMatchObject({ contaId: "a1", valor: 150 })
+    // A API exige a chave (400 sem ela) — tem que ir preenchida.
+    expect(idemKey).toEqual(expect.any(String))
+    expect(idemKey).not.toBe("")
+  })
+
+  it("pagar fatura: retry reusa a mesma Idempotency-Key; reabrir o modal gera outra", async () => {
+    // 1ª tentativa falha (ex.: rede caiu depois de o servidor pagar) → o retry TEM que mandar a
+    // mesma chave, senão a API pagaria 2x.
+    pagarFatura.mockReset()
+      .mockRejectedValueOnce(new Error("Network Error"))
+      .mockResolvedValue(undefined)
+    renderPage()
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+    await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(1))
+    // Falhou → modal continua aberto; confirma de novo (retry).
+    await waitFor(() => expect(screen.getByText("Confirmar pagamento")).not.toBeDisabled())
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+    await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(2))
+    expect(pagarFatura.mock.calls[1][3]).toBe(pagarFatura.mock.calls[0][3])
+
+    // Sucesso fecha o modal; um NOVO pagamento (modal reaberto) é outra operação → outra chave.
+    await waitFor(() => expect(screen.queryByText("Pagar fatura")).not.toBeInTheDocument())
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+    await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(3))
+    expect(pagarFatura.mock.calls[2][3]).not.toBe(pagarFatura.mock.calls[0][3])
   })
 
   it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {
