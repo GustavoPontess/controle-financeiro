@@ -25,15 +25,19 @@ export function StatusBadges({ e }: { e: Emprestimo }) {
 
 /** Mesmas ações da tela real (Ver parcelas/Registrar/Quitar/Histórico/Vincular/Arquivar/Remover),
  * agora num menu kebab (⋮) — ligado no MESMO hook, com as mesmas confirmações de sempre. */
-export function ActionIcons({ e, size = 32, logic, className }: {
+export function ActionIcons({ e, size = 32, logic, className, mode = "full" }: {
   e: Emprestimo; size?: 24 | 32; logic: EmprestimosLogic; className?: string
+  /** "full" (padrão): todas as ações. "management": só arquivar/desarquivar/remover — pra lista
+   *  enxuta, onde as ações ricas (registrar/quitar/vincular/histórico) vivem na tela de detalhe. */
+  mode?: "full" | "management"
 }) {
   const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
   const semVinculo = e.statusVinculo === StatusVinculoEmprestimo.SemVinculo || e.statusVinculo === StatusVinculoEmprestimo.Recusado
 
   const aberto = logic.expandedId === e.id
+  const full = mode === "full"
   const items: PontesPopoverItem[] = [
-    {
+    full && {
       key: "detalhe", icon: <ChevronDown size={16} />,
       // Parcelado abre as parcelas; à vista abre o detalhe (pago/atrasado/vencido).
       label: isParcelado
@@ -41,19 +45,19 @@ export function ActionIcons({ e, size = 32, logic, className }: {
         : (aberto ? "Recolher detalhe" : "Ver detalhe"),
       onClick: () => void logic.toggleExpand(e.id),
     },
-    !e.quitado && {
+    full && !e.quitado && {
       key: "registrar", icon: <Receipt size={16} />, label: "Registrar pagamento",
       onClick: () => logic.openSolicitar(e.id),
     },
-    !e.quitado && e.souCredor && {
+    full && !e.quitado && e.souCredor && {
       key: "quitar", icon: <Handshake size={16} />, label: "Marcar como quitado",
       onClick: () => logic.setQuitarId(e.id),
     },
-    e.statusVinculo === StatusVinculoEmprestimo.Vinculado && {
+    full && e.statusVinculo === StatusVinculoEmprestimo.Vinculado && {
       key: "historico", icon: <History size={16} />, label: "Ver histórico de pagamentos",
       onClick: () => logic.openHistorico(e.id),
     },
-    semVinculo && {
+    full && semVinculo && {
       key: "vincular", icon: <Link2 size={16} />, label: "Vincular a uma pessoa",
       onClick: () => logic.openVincular(e.id),
     },
