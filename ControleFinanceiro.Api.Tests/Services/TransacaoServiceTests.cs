@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -587,5 +588,153 @@ public class TransacaoServiceTests
 
         Assert.Empty(await ctx.Transacoes.ToListAsync());
         Assert.Single(await ctx.Transacoes.IgnoreQueryFilters().ToListAsync());
+    }
+
+    // ── Isolamento entre usuários (fix P0 — DonoRecursos) ────────────────────────
+
+    [Fact]
+    public async Task CriarTransacaoAsync_CategoriaDeOutroUsuario_LancaKeyNotFoundException()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var outroUsuarioId = Guid.NewGuid();
+
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outroUsuarioId };
+        ctx.Categorias.Add(categoriaDeOutro);
+        await ctx.SaveChangesAsync();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            CategoriaId = categoriaDeOutro.Id,
+            Descricao = "Tentativa",
+            Valor = 100,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
+        Assert.Equal(0, await ctx.Transacoes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarTransacaoAsync_CategoriaGlobal_PersisteSucesso()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+
+        var categoriaGlobal = new Categoria { Id = Guid.NewGuid(), Descricao = "Mercado", Finalidade = Finalidade.Despesa, UsuarioId = null };
+        ctx.Categorias.Add(categoriaGlobal);
+        await ctx.SaveChangesAsync();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            CategoriaId = categoriaGlobal.Id,
+            Descricao = "Compra",
+            Valor = 80,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow,
+        };
+
+        var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
+
+        Assert.Equal(categoriaGlobal.Id, resultado.CategoriaId);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_CategoriaDeOutroUsuario_LancaKeyNotFoundException_NaoPersisteAlteracao()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var outroUsuarioId = Guid.NewGuid();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            Descricao = "Original",
+            Valor = 100,
+            Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow,
+            CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(transacao);
+        await ctx.SaveChangesAsync();
+
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outroUsuarioId };
+        ctx.Categorias.Add(categoriaDeOutro);
+        await ctx.SaveChangesAsync();
+
+        var dados = new Transacao
+        {
+            Descricao = "Editada", Valor = 999m, Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow, CategoriaId = categoriaDeOutro.Id,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
+
+        var naoAlterada = await ctx.Transacoes.FindAsync(transacao.Id);
+        Assert.Equal("Original", naoAlterada!.Descricao);
+        Assert.Equal(100, naoAlterada.Valor);
+        Assert.Null(naoAlterada.CategoriaId);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_SubcategoriaDeOutroUsuario_LancaKeyNotFoundException()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var outroUsuarioId = Guid.NewGuid();
+
+        var transacao = new Transacao
+        {
+            Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Original", Valor = 100,
+            Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow, CriadoPor = usuarioId,
+        };
+        ctx.Transacoes.Add(transacao);
+
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Cat", Finalidade = Finalidade.Despesa, UsuarioId = outroUsuarioId };
+        var subcategoriaDeOutro = new Subcategoria { Id = Guid.NewGuid(), Nome = "Sub", CategoriaId = categoriaDeOutro.Id, UsuarioId = outroUsuarioId };
+        ctx.Categorias.Add(categoriaDeOutro);
+        ctx.Subcategorias.Add(subcategoriaDeOutro);
+        await ctx.SaveChangesAsync();
+
+        var dados = new Transacao
+        {
+            Descricao = "Editada", Valor = 100, Tipo = TipoTransacao.Despesa,
+            Data = DateTime.UtcNow, SubcategoriaId = subcategoriaDeOutro.Id,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
+    }
+
+    [Fact]
+    public async Task CriarParcelamentoAsync_CategoriaDeOutroUsuario_LancaKeyNotFoundException()
+    {
+        var (ctx, svc) = Build();
+        var usuarioId = Guid.NewGuid();
+        var outroUsuarioId = Guid.NewGuid();
+
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = usuarioId, Ativo = true, TemCredito = true };
+        ctx.CartoesCredito.Add(cartao);
+        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outroUsuarioId };
+        ctx.Categorias.Add(categoriaDeOutro);
+        await ctx.SaveChangesAsync();
+
+        var dto = new CriarTransacaoDto
+        {
+            CartaoCreditoId = cartao.Id,
+            CategoriaId = categoriaDeOutro.Id,
+            Descricao = "Notebook",
+            Valor = 300m,
+            Parcelas = 3,
+            Data = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarParcelamentoAsync(dto, usuarioId));
+        Assert.Equal(0, await ctx.Transacoes.CountAsync());
     }
 }

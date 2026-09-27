@@ -21,6 +21,8 @@ public class MetaService
     {
         if (dto.FamiliaId.HasValue)
             await ExigirMembroAsync(dto.FamiliaId.Value, usuarioId);
+        if (dto.CategoriaId.HasValue)
+            await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
 
         var meta = new Meta
         {
@@ -74,6 +76,8 @@ public class MetaService
     public async Task<MetaDto> AtualizarAsync(Guid metaId, CriarMetaDto dto, Guid usuarioId)
     {
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        if (dto.CategoriaId.HasValue)
+            await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
 
         meta.Nome = dto.Nome;
         meta.Descricao = dto.Descricao;

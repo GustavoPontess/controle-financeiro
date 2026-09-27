@@ -320,6 +320,13 @@ builder.Services.AddAuthorization(options =>
         p.RequireAuthenticatedUser();
         p.AddRequirements(new AdminRequirement());
     });
+
+    // Negar por padrão: endpoint sem [Authorize]/[AllowAnonymous] exige login. Antes, um endpoint
+    // novo esquecido nascia público (foi assim que o BancosController ficou com escrita anônima).
+    // O que é público de propósito declara [AllowAnonymous] (login, registro, refresh, /health...).
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
 
@@ -530,16 +537,17 @@ if (!isTesting)
 app.MapControllers();
 
 // /health — liveness: responde se o processo está de pé (sem checar deps)
+// Público de propósito (probe do orquestrador/CI) — isento da FallbackPolicy.
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => false
-});
+}).AllowAnonymous();
 
 // /health/ready — readiness: checa banco e Hangfire
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
-});
+}).AllowAnonymous();
 
 app.Run();
 

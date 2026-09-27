@@ -38,6 +38,14 @@ public class RecorrenteService
         _ => freq.ToString()
     };
 
+    // Conta, cartão e categoria vêm do cliente: todos têm que ser do usuário (categoria pode ser global).
+    private async Task ExigirReferenciasDoUsuarioAsync(Guid? contaId, Guid? cartaoId, Guid? categoriaId, Guid usuarioId)
+    {
+        if (contaId.HasValue) await DonoRecursos.ExigirContaAsync(_context, contaId.Value, usuarioId);
+        if (cartaoId.HasValue) await DonoRecursos.ExigirCartaoAsync(_context, cartaoId.Value, usuarioId);
+        if (categoriaId.HasValue) await DonoRecursos.ExigirCategoriaAsync(_context, categoriaId.Value, usuarioId);
+    }
+
     private string? ObterIdempotencyKey()
     {
         var idempotencyKey = _httpContextAccessor.HttpContext?.Items["IdempotencyKey"] as string;
@@ -190,21 +198,8 @@ public class RecorrenteService
                         ?? throw new InvalidOperationException("Idempotência: evento anterior encontrado mas recorrente não existe.");
             }
 
-            // Validar origem
-            if (dto.ContaId.HasValue)
-            {
-                var conta = await _context.Contas.FindAsync(dto.ContaId)
-                    ?? throw new KeyNotFoundException("Conta não encontrada.");
-                if (conta.UsuarioIdProprietario != usuarioId)
-                    throw new ForbiddenAccessException("Conta não pertence ao usuário.");
-            }
-            else if (dto.CartaoCreditoId.HasValue)
-            {
-                var cartao = await _context.CartoesCredito.FindAsync(dto.CartaoCreditoId)
-                    ?? throw new KeyNotFoundException("Cartão não encontrado.");
-                if (cartao.CriadoPor != usuarioId)
-                    throw new ForbiddenAccessException("Cartão não pertence ao usuário.");
-            }
+            // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
+            await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
 
             // Criar recorrente com janela de 3 meses
             var dataFimJanela = dataInicio.AddMonths(3);
@@ -311,7 +306,10 @@ public class RecorrenteService
         if (dto.Descricao != null)
             proxima.Descricao = dto.Descricao;
         if (dto.CategoriaId.HasValue)
+        {
+            await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
             proxima.CategoriaId = dto.CategoriaId;
+        }
 
         await _context.SaveChangesAsync();
     }
@@ -388,6 +386,13 @@ public class RecorrenteService
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
             throw new ForbiddenAccessException("Sem permissão.");
+
+        // Mesmas regras do CriarAsync. Sem isso, editar a recorrente trocava a conta/cartão por um de
+        // OUTRO usuário e a geração de ocorrências lançava no saldo dele.
+        if ((dto.ContaId == null && dto.CartaoCreditoId == null) ||
+            (dto.ContaId != null && dto.CartaoCreditoId != null))
+            throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
+        await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;

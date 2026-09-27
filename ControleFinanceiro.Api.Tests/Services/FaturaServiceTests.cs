@@ -141,6 +141,26 @@ public class FaturaServiceTests
     }
 
     [Fact]
+    public async Task ObterOuCriarFaturaAsync_CartaoDeOutroUsuario_LancaKeyNotFoundException_NaoCriaFatura()
+    {
+        // Isolamento entre usuários (fix P0): cartão EXISTE, mas pertence a outro usuário —
+        // defesa em profundidade além do dono já ser sempre passado pelos chamadores.
+        var ctx = CreateContext();
+        var donoId = Guid.NewGuid();
+        var atacanteId = Guid.NewGuid();
+        var cartao = CriarCartao(donoId, diaFechamento: 10, diaVencimento: 20);
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+
+        var service = new FaturaService(ctx);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 5), atacanteId));
+
+        Assert.Empty(ctx.Faturas);
+    }
+
+    [Fact]
     public async Task ObterOuCriarFaturaAsync_SemFaturaExistente_CriaNovaFaturaAberta()
     {
         var ctx = CreateContext();

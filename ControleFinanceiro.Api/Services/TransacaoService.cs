@@ -45,8 +45,9 @@ namespace ControleFinanceiro.Api.Services
 
             if (transacao.CategoriaId.HasValue)
             {
+                // Global (UsuarioId nulo) ou do próprio usuário — nunca de outro.
                 var categoria = await _context.Categorias
-                    .FirstOrDefaultAsync(c => c.Id == transacao.CategoriaId);
+                    .FirstOrDefaultAsync(c => c.Id == transacao.CategoriaId && (c.UsuarioId == null || c.UsuarioId == usuarioId));
 
                 if (categoria == null)
                     throw new KeyNotFoundException("Categoria não encontrada.");
@@ -104,6 +105,11 @@ namespace ControleFinanceiro.Api.Services
             var cartao = await _context.CartoesCredito
                 .FirstOrDefaultAsync(c => c.Id == dto.CartaoCreditoId && c.CriadoPor == usuarioId)
                 ?? throw new KeyNotFoundException("Cartão não encontrado.");
+
+            if (dto.CategoriaId != Guid.Empty)
+                await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId, usuarioId);
+            if (dto.SubcategoriaId.HasValue)
+                await DonoRecursos.ExigirSubcategoriaAsync(_context, dto.SubcategoriaId.Value, usuarioId);
 
             return await _faturaService.CriarParcelamentoAsync(
                 cartao.Id,
@@ -280,6 +286,12 @@ namespace ControleFinanceiro.Api.Services
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
                 && dados.Data.Date > DateTime.UtcNow.Date)
                 throw new ArgumentException("A data da transação não pode ser futura.");
+
+            // Categoria/subcategoria vêm do cliente: global ou do próprio usuário.
+            if (dados.CategoriaId.HasValue)
+                await DonoRecursos.ExigirCategoriaAsync(_context, dados.CategoriaId.Value, usuarioId);
+            if (dados.SubcategoriaId.HasValue)
+                await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
 
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;

@@ -10,11 +10,13 @@ public class ExpandirRecorrentesJob
 {
     private readonly AppDbContext _context;
     private readonly FaturaService _faturaService;
+    private readonly ILogger<ExpandirRecorrentesJob> _logger;
 
-    public ExpandirRecorrentesJob(AppDbContext context, FaturaService faturaService)
+    public ExpandirRecorrentesJob(AppDbContext context, FaturaService faturaService, ILogger<ExpandirRecorrentesJob> logger)
     {
         _context = context;
         _faturaService = faturaService;
+        _logger = logger;
     }
 
     public async Task ExecuteAsync()
@@ -30,46 +32,62 @@ public class ExpandirRecorrentesJob
 
         foreach (var r in recorrentes)
         {
-            var proxima = (r.DataProximaGeracao ?? r.DataInicio).Date;
-
-            while (proxima < dataProximaJanela && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
+            try
             {
-                Guid? faturaId = null;
-                if (r.CartaoCreditoId.HasValue)
-                {
-                    var fatura = await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, proxima, r.CriadoPor);
-                    faturaId = fatura.Id;
-                }
-
-                var transacao = new Transacao
-                {
-                    Id = Guid.NewGuid(),
-                    Descricao = r.Descricao,
-                    Valor = r.Valor,
-                    Tipo = r.Tipo,
-                    CategoriaId = r.CategoriaId,
-                    ContaId = r.ContaId,
-                    CartaoCreditoId = r.CartaoCreditoId,
-                    FaturaId = faturaId,
-                    UsadoComoCredito = r.CartaoCreditoId.HasValue, // sem isso DetalheAsync exclui o lançamento da fatura
-                    StatusTransacao = StatusTransacao.Previsao,
-                    Ativo = true,
-                    CriadoPor = r.CriadoPor,
-                    Data = proxima,
-                    RecorrenteOrigemId = r.Id,
-                    CriadoEm = DateTime.UtcNow
-                };
-
-                _context.Transacoes.Add(transacao);
-                proxima = ProximaData(proxima, r.Frequencia);
-                houveMudanca = true;
+                houveMudanca |= await ExpandirAsync(r, dataProximaJanela);
             }
-
-            r.DataProximaGeracao = proxima;
+            catch (KeyNotFoundException ex)
+            {
+                // Referência inválida (ex.: cartão de outro usuário gravado antes da checagem de dono, ou
+                // cartão apagado). Pula só esta recorrente — sem isso uma linha ruim derrubava a expansão
+                // de todos os usuários. O cartão falha já na 1ª iteração, então nada dela ficou pendente.
+                _logger.LogWarning(ex, "Recorrente {RecorrenteId} ignorada na expansão: {Motivo}", r.Id, ex.Message);
+            }
         }
 
         if (houveMudanca)
             await _context.SaveChangesAsync();
+    }
+
+    // Gera as previsões desta recorrente até o fim da janela. Retorna se criou alguma.
+    private async Task<bool> ExpandirAsync(Recorrente r, DateTime dataProximaJanela)
+    {
+        var criou = false;
+        var proxima = (r.DataProximaGeracao ?? r.DataInicio).Date;
+
+        while (proxima < dataProximaJanela && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
+        {
+            Guid? faturaId = null;
+            if (r.CartaoCreditoId.HasValue)
+            {
+                var fatura = await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, proxima, r.CriadoPor);
+                faturaId = fatura.Id;
+            }
+
+            _context.Transacoes.Add(new Transacao
+            {
+                Id = Guid.NewGuid(),
+                Descricao = r.Descricao,
+                Valor = r.Valor,
+                Tipo = r.Tipo,
+                CategoriaId = r.CategoriaId,
+                ContaId = r.ContaId,
+                CartaoCreditoId = r.CartaoCreditoId,
+                FaturaId = faturaId,
+                UsadoComoCredito = r.CartaoCreditoId.HasValue, // sem isso DetalheAsync exclui o lançamento da fatura
+                StatusTransacao = StatusTransacao.Previsao,
+                Ativo = true,
+                CriadoPor = r.CriadoPor,
+                Data = proxima,
+                RecorrenteOrigemId = r.Id,
+                CriadoEm = DateTime.UtcNow
+            });
+            proxima = ProximaData(proxima, r.Frequencia);
+            criou = true;
+        }
+
+        r.DataProximaGeracao = proxima;
+        return criou;
     }
 
     private static DateTime ProximaData(DateTime atual, FrequenciaRecorrencia freq) => freq switch
