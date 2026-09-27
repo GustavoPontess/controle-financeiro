@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-20
+last_reviewed: 2026-09-27
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,34 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-09-27 (fecha em ponto verde) — avaliação de arquitetura + P0s + fixes de dogfooding · 7 PRs mergeados
+
+**Mergeado na `main` (`bdaa51d`), CI verde em todos:**
+- **#259** docs Monarch · **#260** login: "← Voltar ao login" nas etapas MFA/reativação · **#261** empréstimos: lista enxuta → detalhe rico `/emprestimos/:id`.
+- **#262** o CI **passa a rodar os testes de backend** — a `.sln` não tinha o projeto de testes, então o check "Backend (.NET 10)" ficava verde sem testar nada. + teste instável do Dashboard (corrida saudação × dados).
+- **#264** 🔴 **P0 segurança** — Recorrente/Transação/Meta aceitavam conta/cartão/categoria de **outro usuário** (a Recorrente lançava no saldo da vítima). Helper `Services/DonoRecursos.cs`; API **nega por padrão** (`FallbackPolicy` + `[AllowAnonymous]` explícito nos públicos); Bancos: ler exige login, escrever só admin. +24 testes cross-user/HTTP.
+- **#263** cartão: a fatura **sempre abre no mês de hoje** (mesmo sem fatura) e navega mês a mês, pra trás e pra frente. `ciclosFatura.ts` espelha `FaturaService.CalcularPeriodo`.
+- **#265** parcelamentos: card empilhado reorganizado, sem a tag "Compra Parcelada"; limite estourado vira **aviso** amarelo com a mensagem do servidor (`utils/apiError.ts`, toast "Aviso").
+
+**Avaliação de arquitetura** (6 agentes): monólito em camadas + transaction script + domínio anêmico, nota **5,5/10**, **não reescrever**. Registro completo em `docs/ARQUITETURA.md`; achados no ROADMAP (seção "Auditoria de arquitetura").
+
+**Próxima ação — os 3 P1 (retomar):**
+1. Pagar fatura idempotente (tabela com índice único) + concorrência otimista (`xmin`) na Fatura + chave no front.
+2. Unificar regras de dinheiro: total da fatura sem parcela cancelada; saldo único agregado no banco.
+3. Refresh single-flight no `axiosConfig.ts` + janela de tolerância na reuse-detection.
+
+O workflow com as 3 specs foi lançado e **parado antes de qualquer commit** (pra compactar a conversa). Script salvo em `C:\Users\Gustavo Pontes\.claude\projects\E--VSCode-controle-financeiro\084505b1-1ba6-4a45-bda6-786e5724a8d3\workflows\scripts\p1-dinheiro-e-sessao-wf_02f5dca0-b09.js` — relançar com `Workflow({scriptPath})`. Depois: corrigir o que o revisor apontar, 1 PR por P1 (esperar conflito no `FaturaService` entre o 1 e o 2).
+
+**Decisões pendentes do Gustavo:** parcelamento no dashboard/relatórios (regra contábil, risco de contar em dobro); cartão com dia 29-31; roster mostra nome/e-mail em navegador compartilhado.
+
+**Produto (próximo passo do Gustavo):** importar o extrato OFX/CSV do banco dele — falta dizer qual banco.
+
+**⚠️ Aprendizado (worktree):** worktree com `node_modules` ligado por junção → remover a junção com `cmd /c rmdir <caminho>` **antes** do `git worktree remove` (remoção recursiva pode seguir a junção e apagar o `node_modules` real).
+
+**Ambiente:** `main` limpa em `bdaa51d`; API e front de dev parados; nenhum worktree de trabalho aberto além do de docs.
+
+---
 
 ### 📌 Sessão 2026-09-20 (fecha em ponto verde) — Análise do concorrente Monarch (docs-only) · PR #259 aberto
 

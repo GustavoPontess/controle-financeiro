@@ -122,8 +122,8 @@ npm run lint
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`. Nunca `_context.Remove()` nessas entidades.
 - **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`
 - **`FinancialEventLog`** registra mudanças de saldo/limite — usar em qualquer operação que afete saldo
-- **Dono do recurso nas escritas:** toda escrita que recebe id de recurso vindo do cliente (conta, cartão, categoria, subcategoria) valida o dono via `Services/DonoRecursos.cs` antes de gravar — de outro usuário ou inexistente → 404. Filtrar a leitura por `UsuarioId` não basta. (Helper chega com o PR de `fix/isolamento-usuario-p0`.)
-- **API nega por padrão:** `FallbackPolicy` exige usuário autenticado; endpoint público declara `[AllowAnonymous]` explicitamente, nunca "sem atributo". (Chega com o PR de `fix/isolamento-usuario-p0`.)
+- **Dono do recurso nas escritas:** toda escrita que recebe id de recurso vindo do cliente (conta, cartão, categoria, subcategoria) valida o dono via `Services/DonoRecursos.cs` antes de gravar — de outro usuário ou inexistente → 404. Filtrar a leitura por `UsuarioId` não basta.
+- **API nega por padrão:** `FallbackPolicy` exige usuário autenticado; endpoint público declara `[AllowAnonymous]` explicitamente, nunca "sem atributo".
 - **Testes de backend rodam no CI via `.sln`:** o job faz `dotnet test controle-financeiro.sln`. Projeto de teste novo **precisa estar na solution** — senão o CI passa verde sem rodar nada (foi o caso até o #262).
 
 ---

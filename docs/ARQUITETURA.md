@@ -90,7 +90,7 @@ Pra ninguém vender o projeto como outra coisa (nem tentar "consertar" pra virar
 1. **Testes de backend não rodavam no CI.** A `.sln` só tinha o projeto da API; `dotnet test` passava vazio e o check ficava verde.
    **✅ CORRIGIDO no #262** — o projeto de testes entrou na `.sln`; o CI agora executa 706 testes.
 2. **Furos de isolamento entre usuários.** Recorrente aceitava conta/cartão/categoria de outro usuário, e o job lançava no saldo da vítima. Categoria sem checagem de dono em Transação e Meta. `BancosController` com escrita anônima. Sem `FallbackPolicy`.
-   **🔴 EM CORREÇÃO** no PR da branch `fix/isolamento-usuario-p0`.
+   **✅ CORRIGIDO** no #264 (helper `DonoRecursos` + `FallbackPolicy` + 24 testes cross-user).
 3. **Pagar fatura sem idempotência e sem controle de concorrência.** Duplo clique paga 2x. O XML doc do endpoint diz "Idempotência via header Idempotency-Key", mas nada lê o header. Zero tokens de concorrência no projeto inteiro.
    **Aberto** (P1).
 4. **Regras de dinheiro duplicadas e divergentes.** Total da fatura soma parcelas canceladas. Saldo calculado em 4 lugares. Parcelamento fica fora do dashboard e dos relatórios.
