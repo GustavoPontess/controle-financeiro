@@ -39,6 +39,8 @@ public class GlobalExceptionHandlerMiddlewareTests
     [InlineData(typeof(KeyNotFoundException), 404, "NOT_FOUND")]
     [InlineData(typeof(InvalidOperationException), 409, "BUSINESS_RULE_VIOLATION")]
     [InlineData(typeof(ForbiddenAccessException), 403, "FORBIDDEN")]
+    // Subtipo do 401 com code próprio (corrida de refresh entre abas) — e o genérico segue UNAUTHORIZED.
+    [InlineData(typeof(RefreshEmCorridaException), 401, "REFRESH_EM_CORRIDA")]
     [InlineData(typeof(UnauthorizedAccessException), 401, "UNAUTHORIZED")]
     public async Task ExcecaoMapeada_status_codigo_e_mensagemDeDominioPreservada(
         Type tipo, int statusEsperado, string codeEsperado)

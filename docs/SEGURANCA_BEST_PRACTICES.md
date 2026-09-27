@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-08-23
+last_reviewed: 2026-09-27
 status: ATIVO
 ---
 
@@ -135,6 +135,14 @@ reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
 - **Desativar** exige senha atual + código (defense-in-depth) e apaga todos os backup codes.
 - `verificar-login` é isento de CSRF (faz parte do login, ainda sem sessão/cookie CSRF — igual `/auth/login`); protegido pelo challenge de uso único + TTL + rate-limit.
 - _Fontes: OWASP MFA Cheat Sheet + Credential Stuffing Prevention ("MFA is by far the best defense") + RFC 6238._
+
+## 9. Sessão — refresh rotativo + reuse-detection ✅ (2026-09-16; janela de corrida 2026-09-27)
+
+- **Modelo:** jwt de **15min** em cookie HttpOnly (claim `sid` = família, conferida a cada request) + refresh **opaco rotativo** de 7d (só o hash SHA-256 no banco). Cada uso rotaciona: o antigo fica revogado com `SubstituidoPorId` apontando o sucessor, na mesma `FamiliaId`. Desenho completo: `docs/features/auth/multi-conta.md`.
+- **Reuse-detection (RFC 9700 §4.14.2):** refresh já rotacionado reapresentado = replay → revoga a **família inteira** + alerta admin (`NotificacaoAdmin` Segurança) + 401 genérico `UNAUTHORIZED`.
+- **Desvio consciente — janela de corrida (30s, `AuthService.SegundosToleranciaReuso`):** se a reapresentação chega até 30s depois da rotação **e** do mesmo dispositivo (User-Agent + IP iguais aos gravados no sucessor), é tratada como corrida do próprio cliente (duas abas restauradas juntas): não revoga, não alerta, **não emite token novo** e responde 401 com code próprio `REFRESH_EM_CORRIDA` — o front refaz a request original 1x com os cookies da aba vencedora. Toda reapresentação (tolerada ou não) gera **Warning estruturado** no log (UsuarioId, FamiliaId, idade da rotação, `MesmoIp`/`MesmoUserAgent` — nunca o token, nunca IP/UA em claro), pra o desvio não ser silencioso. `/auth/switch` segue estrito (sem janela).
+- **⚠️ Limite: "outro IP compromete mesmo dentro dos 30s" só vale com X-Forwarded-For confiável.** O IP comparado é `Connection.RemoteIpAddress`, que o `ForwardedHeadersMiddleware` sobrescreve com o X-Forwarded-For. Hoje o `Program.cs` **limpa `KnownProxies`/`KnownIPNetworks`**, então o header é aceito de **qualquer** peer; com o `ForwardLimit` default (1) vale o valor **mais à direita**. A Microsoft é explícita: *"Only allow trusted proxies and networks to forward headers. Otherwise, IP spoofing attacks are possible."* A garantia só se sustenta se **(a)** a API só for alcançável por um proxy que acrescenta/sobrescreve o X-Forwarded-For com o IP real do cliente (o valor mais à direita é o que o próprio proxy escreveu — não forjável pelo cliente) **ou (b)** `KnownProxies`/`KnownIPNetworks` estiver configurado com o IP/rede do proxy. Exposta direto ou atrás de proxy que repassa o header do cliente sem tratar, um atacante com o refresh roubado forja IP + UA da vítima e cai na janela nas duas ordens: **depois** da rotação legítima não ganha token, mas o reuso **deixa de ser detectado** (sem revogação/alerta); **antes** dela, fica com a sessão que rotacionou e a reapresentação legítima dentro dos 30s não revoga a família (a vítima vê login em vez do alarme). Mesmo com proxy confiável, sobra o risco residual de mesma rede NAT + mesmo UA. Com mais de um salto de proxy (ex.: CDN → nginx → API) e ForwardLimit 1, o IP visto é o do salto intermediário — muitos usuários com o "mesmo IP", a checagem enfraquece. **Configurar `KnownProxies`/`KnownIPNetworks` (e `ForwardLimit` conforme os saltos) antes de produção.**
+- _Fontes: RFC 9700 (OAuth 2.0 Security BCP) §4.14.2; Microsoft Learn — "Configure ASP.NET Core to work with proxy servers and load balancers" (Forwarded Headers Middleware: ordem direita→esquerda, `ForwardLimit` default 1, KnownProxies/KnownNetworks); OWASP Logging Cheat Sheet (não logar token/PII)._
 
 ---
 

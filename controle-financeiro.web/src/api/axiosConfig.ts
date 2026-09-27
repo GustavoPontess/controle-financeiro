@@ -93,6 +93,17 @@ function renovarSessao(): Promise<unknown> {
   return refreshEmVoo
 }
 
+// O single-flight vale por ABA. Duas abas restauradas juntas (jwt vencido) mandam o MESMO refresh; a
+// que perde a corrida recebe do backend um 401 com este code (RefreshEmCorridaException): o token dela
+// acabou de ser rotacionado pela outra aba, no mesmo dispositivo, e NADA foi revogado — os cookies
+// novos da vencedora já estão no navegador (o jar é compartilhado entre abas). Não é sessão morta.
+const REFRESH_EM_CORRIDA = "REFRESH_EM_CORRIDA"
+
+function codigoDoErro(error: unknown): string | undefined {
+  const code = (error as { response?: { data?: { code?: unknown } } })?.response?.data?.code
+  return typeof code === "string" ? code : undefined
+}
+
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
@@ -113,17 +124,22 @@ api.interceptors.response.use(
     // o jwt vencia. Não tenta pra endpoints de auth (evita recursão) nem repete (_retry).
     if (status === 401 && original && !original._retry && podeSilentRefresh) {
       original._retry = true
-      let renovou = false
+      let sessaoRenovada = false
       try {
         await renovarSessao()
-        renovou = true
-      } catch {
-        // Refresh falhou (refresh expirado/revogado) → segue pro fluxo de redirect abaixo.
+        sessaoRenovada = true
+      } catch (erroRefresh) {
+        // Perdeu a corrida pra OUTRA aba (ver REFRESH_EM_CORRIDA): a sessão já está renovada, então
+        // refaz a request original uma vez, SEM novo refresh (o _retry já marcado impede). Mandar pro
+        // login aqui era pior que inútil: relogar (login frio) revoga os rt_* e derruba a outra aba.
+        // Qualquer outro 401 do refresh (expirado/revogado/família comprometida) → redirect abaixo.
+        sessaoRenovada = codigoDoErro(erroRefresh) === REFRESH_EM_CORRIDA
       }
-      // Renovou → o que vale é o resultado da re-tentativa. Se ELA falhar, o erro já passou por este
-      // interceptor na própria volta (toast, ou redirect se for 401 de novo) e só propaga — antes, um
-      // 404/409/500 na re-tentativa caía no redirect abaixo e jogava o usuário no login à toa.
-      if (renovou) return api(original)
+      // Renovada → o que vale é o resultado da re-tentativa. Se ELA falhar, o erro já passou por este
+      // interceptor na própria volta (toast, ou redirect se for 401 de novo — sem loop, por causa do
+      // _retry) e só propaga — antes, um 404/409/500 na re-tentativa caía no redirect abaixo e jogava
+      // o usuário no login à toa.
+      if (sessaoRenovada) return api(original)
     }
 
     if (status === 401) {

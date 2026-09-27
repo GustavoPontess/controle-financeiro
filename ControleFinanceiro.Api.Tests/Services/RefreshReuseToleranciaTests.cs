@@ -7,6 +7,7 @@ using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -16,10 +17,14 @@ namespace ControleFinanceiro.Api.Tests.Services;
 /// Janela de tolerância da reuse-detection do refresh. Bug que motivou: com o jwt de 15min expirado, a
 /// tela disparava vários GETs → vários 401 → vários /auth/refresh com o MESMO token; o 2º em diante era
 /// tratado como replay → família comprometida → usuário deslogado + alerta falso de roubo. Agora a
-/// reapresentação logo após a rotação, do MESMO dispositivo, só falha aquela request; fora disso (tarde
-/// demais ou de outro dispositivo) a regra estrita segue valendo. O replay sem contexto HTTP (fail-closed)
-/// já é coberto por <c>AuthServiceTests.Refresh_replayDeTokenJaRotacionado_comprometeAFamiliaInteira</c>.
+/// reapresentação logo após a rotação, do MESMO dispositivo, só falha aquela request — com o 401 próprio
+/// <see cref="RefreshEmCorridaException"/> (code REFRESH_EM_CORRIDA), pra o front refazer a request em vez
+/// de ir pro login; fora disso (tarde demais ou de outro dispositivo) a regra estrita segue valendo, com
+/// o 401 genérico. O replay sem contexto HTTP (fail-closed) já é coberto por
+/// <c>AuthServiceTests.Refresh_replayDeTokenJaRotacionado_comprometeAFamiliaInteira</c>.
 /// Semeia o refresh direto no banco (sem hash de senha) → não precisa da coleção PasswordHasherEnv.
+/// Obs.: <c>Assert.ThrowsAsync&lt;T&gt;</c> exige o tipo EXATO — nos casos estritos, ThrowsAsync de
+/// UnauthorizedAccessException já prova que NÃO saiu o subtipo da corrida (401 genérico).
 /// </summary>
 public class RefreshReuseToleranciaTests
 {
@@ -30,6 +35,25 @@ public class RefreshReuseToleranciaTests
     private sealed class AcessorFixo(HttpContext contexto) : IHttpContextAccessor
     {
         public HttpContext? HttpContext { get; set; } = contexto;
+    }
+
+    // Captura o que o AuthService loga (nível, texto final e campos estruturados) pra conferir o log de
+    // segurança da reapresentação — e que ele NÃO carrega token nem IP/UA em claro.
+    private sealed class LoggerDeTeste : ILogger<AuthService>
+    {
+        public List<(LogLevel Nivel, string Texto, Dictionary<string, object?> Campos)> Entradas { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            var campos = state is IEnumerable<KeyValuePair<string, object?>> kvs
+                ? kvs.ToDictionary(kv => kv.Key, kv => kv.Value)
+                : new Dictionary<string, object?>();
+            Entradas.Add((logLevel, formatter(state, exception), campos));
+        }
     }
 
     private static AppDbContext CreateContext()
@@ -43,7 +67,8 @@ public class RefreshReuseToleranciaTests
     }
 
     // AuthService "atendendo" requests de um dispositivo (User-Agent + IP) — é o que a janela compara.
-    private static AuthService ServicoNoDispositivo(AppDbContext ctx, string ip, string userAgent = UaNavegador)
+    private static AuthService ServicoNoDispositivo(AppDbContext ctx, string ip, string userAgent = UaNavegador,
+        ILogger<AuthService>? logger = null)
     {
         var http = new DefaultHttpContext();
         http.Request.Headers.UserAgent = userAgent;
@@ -51,7 +76,7 @@ public class RefreshReuseToleranciaTests
 
         var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
         return new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx),
-            TestHelpers.NotifAdmin(ctx), new AcessorFixo(http));
+            TestHelpers.NotifAdmin(ctx), new AcessorFixo(http), logger);
     }
 
     // Usuário ativo + refresh de login (família nova). Devolve o token BRUTO (o que vai no cookie).
@@ -87,8 +112,10 @@ public class RefreshReuseToleranciaTests
         // Request A ganha a corrida e rotaciona.
         var vencedora = await auth.RefreshAsync(tokenLogin);
 
-        // Request B (paralela, mesmo navegador) chega com o token já rotacionado → 401 só pra ela.
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => auth.RefreshAsync(tokenLogin));
+        // Request B (paralela, mesmo navegador — ex.: a outra aba) chega com o token já rotacionado → 401
+        // só pra ela, e com o subtipo da corrida (vira code REFRESH_EM_CORRIDA): o front refaz a request
+        // original com os cookies da vencedora em vez de mandar pro login.
+        await Assert.ThrowsAsync<RefreshEmCorridaException>(() => auth.RefreshAsync(tokenLogin));
 
         // Nada foi revogado além da rotação normal e o admin NÃO recebeu alerta falso de roubo.
         Assert.Single(ctx.RefreshTokens, r => !r.Revogado);
@@ -155,5 +182,54 @@ public class RefreshReuseToleranciaTests
 
         Assert.All(ctx.RefreshTokens, r => Assert.True(r.Revogado));
         Assert.True(TemAlertaDeSeguranca(ctx));
+    }
+
+    [Fact]
+    public async Task Replay_tolerado_registraWarningDeSeguranca_semTokenNemIpOuUa()
+    {
+        using var ctx = CreateContext();
+        var tokenLogin = SeedSessao(ctx);
+        var log = new LoggerDeTeste();
+        var auth = ServicoNoDispositivo(ctx, "203.0.113.10", logger: log);
+        var rtLogin = await ctx.RefreshTokens.SingleAsync();
+
+        var vencedora = await auth.RefreshAsync(tokenLogin);
+        await Assert.ThrowsAsync<RefreshEmCorridaException>(() => auth.RefreshAsync(tokenLogin));
+
+        // O desvio consciente do RFC 9700 não pode ser silencioso: um Warning estruturado por tolerância.
+        var entrada = Assert.Single(log.Entradas, e => e.Nivel == LogLevel.Warning);
+        Assert.Contains("tolerado", (string)entrada.Campos["Desfecho"]!);
+        Assert.Equal(rtLogin.UsuarioId, entrada.Campos["UsuarioId"]);
+        Assert.Equal(rtLogin.FamiliaId, entrada.Campos["FamiliaId"]);
+        Assert.True((bool)entrada.Campos["MesmoIp"]!);
+        Assert.True((bool)entrada.Campos["MesmoUserAgent"]!);
+        var idade = (double)entrada.Campos["IdadeRotacaoSegundos"]!;
+        Assert.InRange(idade, 0, 30);
+
+        // Minimização: nem o refresh (bruto ou o da vencedora) nem IP/UA em claro vão pro log.
+        Assert.DoesNotContain(tokenLogin, entrada.Texto);
+        Assert.DoesNotContain(vencedora.RefreshToken, entrada.Texto);
+        Assert.DoesNotContain("203.0.113.10", entrada.Texto);
+        Assert.DoesNotContain(UaNavegador, entrada.Texto);
+    }
+
+    [Fact]
+    public async Task Replay_deOutroDispositivo_logaFamiliaComprometida_comIpDivergente()
+    {
+        using var ctx = CreateContext();
+        var tokenLogin = SeedSessao(ctx);
+        var log = new LoggerDeTeste();
+        var legitimo = ServicoNoDispositivo(ctx, "203.0.113.10", logger: log);
+        var atacante = ServicoNoDispositivo(ctx, "198.51.100.77", logger: log);
+
+        await legitimo.RefreshAsync(tokenLogin);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => atacante.RefreshAsync(tokenLogin));
+
+        // No desfecho estrito o log diz POR QUE não foi tolerado (aqui: IP diferente, dentro da janela).
+        var entrada = Assert.Single(log.Entradas, e => e.Nivel == LogLevel.Warning);
+        Assert.Contains("comprometida", (string)entrada.Campos["Desfecho"]!);
+        Assert.False((bool)entrada.Campos["MesmoIp"]!);
+        Assert.True((bool)entrada.Campos["MesmoUserAgent"]!);
+        Assert.DoesNotContain("198.51.100.77", entrada.Texto);
     }
 }

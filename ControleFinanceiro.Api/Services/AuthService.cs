@@ -5,6 +5,7 @@ using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ControleFinanceiro.Api.Services;
 
@@ -16,6 +17,7 @@ public class AuthService
     private readonly MfaService _mfaService;
     private readonly NotificacaoAdminService _notificacaoAdmin;
     private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly ILogger<AuthService> _logger;
 
     private const int RefreshTokenDays = 7;
     private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
@@ -28,15 +30,20 @@ public class AuthService
     private const int SegundosDelayMaximo = 300;        // teto de 5min — depois disso só o bloqueio permanente conta
     private const int FalhasParaBloqueioPermanente = 10; // "after that permanent account lockout" — exige reset de senha
 
-    // Tolerância da reuse-detection pra CORRIDA do próprio cliente (ver ReapresentacaoEmCorridaAsync).
-    // Cenário real: o jwt de 15min expira, a tela dispara vários GETs, todos tomam 401 e cada um manda
-    // o MESMO refresh (duas abas abertas, ou um front sem single-flight). O 1º rotaciona; os outros
-    // chegam com o token já rotacionado e a regra estrita comprometia a família → usuário deslogado +
-    // alerta falso de roubo. 30s cobre com folga latência + fila do servidor numa rajada dessas.
+    // Tolerância da reuse-detection pra CORRIDA do próprio cliente (ver AvaliarReapresentacaoAsync).
+    // Cenário real: o jwt de 15min expira e mais de um refresh sai com o MESMO token — hoje, com o
+    // single-flight do front, isso sobra pra duas abas restauradas juntas (cada uma com o seu). O 1º
+    // rotaciona; o outro chega com o token já rotacionado e a regra estrita comprometia a família →
+    // usuário deslogado + alerta falso de roubo. 30s cobre com folga latência + fila do servidor.
+    // O que acontece com a request tolerada: NÃO revoga nada nem alerta o admin, NÃO ganha token novo
+    // e leva 401 com code REFRESH_EM_CORRIDA (RefreshEmCorridaException). O front lê esse code como
+    // "outra aba já renovou" (os cookies novos da vencedora já estão no navegador) e refaz a request
+    // original uma vez, sem ir pro login. Cada tolerância gera um Warning de segurança no log.
     // Tradeoff consciente: o RFC 9700 §4.14.2 revoga a família em QUALQUER reapresentação e não prevê
     // janela; a janela é decisão de risco nossa, no molde do "reuse interval" do Auth0 — só que mais
-    // estreita (exige o mesmo dispositivo) e mais conservadora (a reapresentação tolerada NÃO ganha
-    // token novo, só leva 401). Fora dela, a regra estrita do RFC vale inteira.
+    // estreita (exige o mesmo dispositivo) e mais conservadora (a tolerada não ganha token). Fora dela,
+    // a regra estrita do RFC vale inteira. Limite: "mesmo IP" só vale se o X-Forwarded-For for
+    // confiável (docs/SEGURANCA_BEST_PRACTICES.md §9).
     private const int SegundosToleranciaReuso = 30;
 
     public AuthService(
@@ -45,7 +52,8 @@ public class AuthService
         IPasswordResetDispatcher resetDispatcher,
         MfaService mfaService,
         NotificacaoAdminService notificacaoAdmin,
-        IHttpContextAccessor? httpContextAccessor = null)
+        IHttpContextAccessor? httpContextAccessor = null,
+        ILogger<AuthService>? logger = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -53,6 +61,8 @@ public class AuthService
         _mfaService = mfaService;
         _notificacaoAdmin = notificacaoAdmin;
         _httpContextAccessor = httpContextAccessor;
+        // Opcional (igual ao accessor) pra não quebrar quem constrói na mão (testes); o DI injeta o real.
+        _logger = logger ?? NullLogger<AuthService>.Instance;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -184,28 +194,35 @@ public class AuthService
             "/admin/usuarios");
     }
 
+    // Resultado da avaliação de uma reapresentação — o veredito + o que o log de segurança precisa.
+    // Minimização (LGPD): o log leva SE o IP/UA bateram, nunca os valores nem o token.
+    private readonly record struct AvaliacaoReapresentacao(
+        bool EmCorrida, double? IdadeRotacaoSegundos, bool MesmoIp, bool MesmoUserAgent);
+
     // Reapresentação de refresh já rotacionado que tem cara de CORRIDA do próprio cliente, não de
     // replay: o sucessor nasceu há menos de SegundosToleranciaReuso E no mesmo dispositivo (User-Agent
     // + IP desta request = os gravados na criação do sucessor). Mesmo dispositivo não prova identidade
-    // (UA é forjável, IP pode ser NAT compartilhado), mas tira da janela o caso típico de roubo — token
-    // usado de outra máquina/rede —, que segue comprometendo a família mesmo dentro dos 30s, em
-    // qualquer ordem (atacante antes ou depois do legítimo). Sem dispositivo pra comparar (fora de
-    // request HTTP) ou sem sucessor → fail-closed: trata como replay.
-    private async Task<bool> ReapresentacaoEmCorridaAsync(RefreshToken rt)
+    // (UA é forjável, IP pode ser NAT compartilhado — ou forjado via X-Forwarded-For sem proxy
+    // confiável), mas tira da janela o caso típico de roubo — token usado de outra máquina/rede —, que
+    // segue comprometendo a família mesmo dentro dos 30s, em qualquer ordem (atacante antes ou depois
+    // do legítimo). Sem dispositivo pra comparar (fora de request HTTP) ou sem sucessor → fail-closed:
+    // não é corrida, trata como replay.
+    private async Task<AvaliacaoReapresentacao> AvaliarReapresentacaoAsync(RefreshToken rt)
     {
-        if (rt.SubstituidoPorId is not Guid sucessorId) return false;
-
-        var (dispositivo, ip) = CapturarDispositivo();
-        if (dispositivo is null || ip is null) return false;
+        if (rt.SubstituidoPorId is not Guid sucessorId) return default;
 
         var sucessor = await _context.RefreshTokens.FirstOrDefaultAsync(r => r.Id == sucessorId);
-        if (sucessor is null) return false;
+        if (sucessor is null) return default;
+
+        var (dispositivo, ip) = CapturarDispositivo();
+        var mesmoUserAgent = dispositivo is not null && sucessor.DispositivoInfo == dispositivo;
+        var mesmoIp = ip is not null && sucessor.IpCriacao == ip;
 
         // Duration(): com mais de uma instância, relógio levemente adiantado não pode virar "fora da janela".
         var idadeDaRotacao = (DateTime.UtcNow - sucessor.CriadoEm).Duration();
-        return idadeDaRotacao < TimeSpan.FromSeconds(SegundosToleranciaReuso)
-            && sucessor.DispositivoInfo == dispositivo
-            && sucessor.IpCriacao == ip;
+        var emCorrida = idadeDaRotacao < TimeSpan.FromSeconds(SegundosToleranciaReuso) && mesmoUserAgent && mesmoIp;
+
+        return new AvaliacaoReapresentacao(emCorrida, Math.Round(idadeDaRotacao.TotalSeconds, 1), mesmoIp, mesmoUserAgent);
     }
 
     public async Task<RegisterResponseDto> RegisterAsync(RegisterDto dto)
@@ -474,11 +491,27 @@ public class AuthService
         // Reuse-detection: um refresh JÁ ROTACIONADO (SubstituidoPorId != null) reapresentado =
         // replay/roubo → compromete a família inteira. Revogado sem substituto (logout/reset) só falha.
         // Exceção: corrida do próprio cliente (mesmo dispositivo, rotação de segundos atrás) só falha ESTA
-        // request (401), sem revogar nada — quem entrega os cookies novos é a request paralela que ganhou.
+        // request, sem revogar nada, com o 401 próprio REFRESH_EM_CORRIDA — quem entregou os cookies
+        // novos foi a request que ganhou, e o front refaz a request original com eles.
         if (rt.Revogado)
         {
-            if (rt.SubstituidoPorId != null && !await ReapresentacaoEmCorridaAsync(rt))
+            if (rt.SubstituidoPorId != null)
+            {
+                var avaliacao = await AvaliarReapresentacaoAsync(rt);
+
+                // Log de segurança nos DOIS desfechos: o tolerado é o desvio consciente do RFC 9700 e não
+                // pode ser silencioso; no comprometido, MesmoIp/MesmoUserAgent dizem se foi outro
+                // dispositivo ou só fora da janela. Sem token, sem IP/UA em claro.
+                _logger.LogWarning(
+                    "Segurança/refresh: token já rotacionado reapresentado — {Desfecho}. UsuarioId={UsuarioId} FamiliaId={FamiliaId} IdadeRotacaoSegundos={IdadeRotacaoSegundos} MesmoIp={MesmoIp} MesmoUserAgent={MesmoUserAgent}",
+                    avaliacao.EmCorrida ? "tolerado como corrida do cliente (sem revogar)" : "família comprometida",
+                    rt.UsuarioId, rt.FamiliaId, avaliacao.IdadeRotacaoSegundos, avaliacao.MesmoIp, avaliacao.MesmoUserAgent);
+
+                if (avaliacao.EmCorrida)
+                    throw new RefreshEmCorridaException("Sessão já renovada por outra requisição.");
+
                 await ComprometerFamiliaAsync(rt);
+            }
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
         }
 

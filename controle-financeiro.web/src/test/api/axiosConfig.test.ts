@@ -5,9 +5,13 @@ import { api } from "../../api/axiosConfig"
 // Servidor falso no nível do ADAPTER do axios: os interceptors reais (request + response) rodam de
 // verdade, só a rede é trocada. Modela o backend: sem sessão válida → 401; POST /auth/refresh renova
 // (ou falha) e, a partir daí, as rotas respondem 200 (ou o status forçado em `statusAposRenovar`).
+// `refreshPerdeCorrida` modela OUTRA aba ganhando a corrida: o refresh desta aba leva o 401
+// REFRESH_EM_CORRIDA e, se `cookiesDaVencedoraChegaram`, a sessão já vale (jar compartilhado).
 let chamadas: string[] = []
 let sessaoValida = false
 let refreshOk = true
+let refreshPerdeCorrida = false
+let cookiesDaVencedoraChegaram = true
 let segurarRefresh: Promise<void> = Promise.resolve()
 let statusAposRenovar: Record<string, number> = {}
 
@@ -15,8 +19,8 @@ function resposta(config: InternalAxiosRequestConfig, status: number, data: unkn
   return { data, status, statusText: String(status), headers: {}, config }
 }
 
-function erroHttp(config: InternalAxiosRequestConfig, status: number): AxiosError {
-  return new AxiosError(`HTTP ${status}`, AxiosError.ERR_BAD_REQUEST, config, null, resposta(config, status))
+function erroHttp(config: InternalAxiosRequestConfig, status: number, data: unknown = {}): AxiosError {
+  return new AxiosError(`HTTP ${status}`, AxiosError.ERR_BAD_REQUEST, config, null, resposta(config, status, data))
 }
 
 async function adapterFalso(config: InternalAxiosRequestConfig): Promise<AxiosResponse> {
@@ -24,7 +28,12 @@ async function adapterFalso(config: InternalAxiosRequestConfig): Promise<AxiosRe
   chamadas.push(`${(config.method ?? "get").toUpperCase()} ${url}`)
   if (url === "/auth/refresh") {
     await segurarRefresh
-    if (!refreshOk) throw erroHttp(config, 401)
+    if (refreshPerdeCorrida) {
+      if (cookiesDaVencedoraChegaram) sessaoValida = true
+      throw erroHttp(config, 401, { code: "REFRESH_EM_CORRIDA", message: "Sessão já renovada por outra requisição." })
+    }
+    // Corpo igual ao do GlobalExceptionHandlerMiddleware pro 401 genérico (sessão morta de verdade).
+    if (!refreshOk) throw erroHttp(config, 401, { code: "UNAUTHORIZED", message: "Refresh token inválido ou expirado." })
     sessaoValida = true
     return resposta(config, 200)
   }
@@ -46,6 +55,8 @@ describe("axiosConfig — silent refresh single-flight", () => {
     chamadas = []
     sessaoValida = false
     refreshOk = true
+    refreshPerdeCorrida = false
+    cookiesDaVencedoraChegaram = true
     segurarRefresh = Promise.resolve()
     statusAposRenovar = {}
     api.defaults.adapter = adapterFalso
@@ -80,7 +91,7 @@ describe("axiosConfig — silent refresh single-flight", () => {
     expect(window.location.href).toBe("http://localhost/transacoes") // ninguém foi pro login
   })
 
-  it("refresh falhou → nada é refeito, todas rejeitam com o 401 e redireciona pro login (fluxo de hoje)", async () => {
+  it("refresh falhou com 401 genérico → nada é refeito, todas rejeitam com o 401 e redireciona pro login", async () => {
     refreshOk = false
 
     const resultados = await Promise.allSettled(ROTAS_DA_TELA.map((u) => api.get(u)))
@@ -147,5 +158,39 @@ describe("axiosConfig — silent refresh single-flight", () => {
     expect(contar("POST /auth/refresh")).toBe(1)
     expect(toast).toHaveBeenCalledTimes(1) // o erro da re-tentativa ainda vira toast
     expect(window.location.href).toBe("http://localhost/transacoes")
+  })
+
+  it("refresh perdeu a corrida pra outra aba (401 REFRESH_EM_CORRIDA) → requests refeitas com sucesso, sem novo refresh nem redirect", async () => {
+    refreshPerdeCorrida = true
+    // Segura o refresh até TODOS os 401 desta aba entrarem no single-flight (igual ao 1º teste).
+    let liberar!: () => void
+    segurarRefresh = new Promise<void>((r) => { liberar = r })
+
+    const pendentes = Promise.all(ROTAS_DA_TELA.map((u) => api.get(u)))
+    await vi.waitFor(() => {
+      expect(chamadas.filter((c) => c.startsWith("GET ")).length).toBe(ROTAS_DA_TELA.length)
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    liberar()
+    const respostas = await pendentes
+
+    expect(contar("POST /auth/refresh")).toBe(1) // o single-flight desta aba + NENHUM refresh extra
+    for (const [i, url] of ROTAS_DA_TELA.entries()) {
+      expect(respostas[i].status).toBe(200)
+      expect(respostas[i].data).toEqual({ url })
+      expect(contar(`GET ${url}`)).toBe(2) // o 401 original + UMA re-tentativa com os cookies da vencedora
+    }
+    expect(window.location.href).toBe("http://localhost/transacoes") // ninguém foi pro login
+  })
+
+  it("corrida, mas a re-tentativa ainda dá 401 → redireciona pro login normalmente, sem loop", async () => {
+    refreshPerdeCorrida = true
+    cookiesDaVencedoraChegaram = false // ex.: a vencedora falhou depois / cookie não chegou
+
+    await expect(api.get("/transacoes")).rejects.toMatchObject({ response: { status: 401 } })
+
+    expect(contar("POST /auth/refresh")).toBe(1)
+    expect(contar("GET /transacoes")).toBe(2) // refeita UMA vez só
+    expect(window.location.href).toBe("/auth/login")
   })
 })
