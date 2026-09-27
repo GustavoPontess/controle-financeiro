@@ -15,7 +15,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 
 - **Backend:** .NET 10 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
 - **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
-- **Banco de dados:** 39 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
+- **Banco de dados:** 40 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
@@ -48,8 +48,8 @@ npm run lint
 
 ### Backend Structure
 - **Controllers/** — thin HTTP layer; 23 controllers mapping to each domain area
-- **Services/** — all business logic; 38 services, each registered Scoped (+ helpers estáticos `FamiliaPermissoes`, `PasswordPolicyService`)
-- **Domain/Entities/** — 39 EF Core entity models, todas com `Guid Id` (never exposed directly in responses)
+- **Services/** — all business logic; 38 services, each registered Scoped (+ helpers estáticos `FamiliaPermissoes`, `PasswordPolicyService`, `DonoRecursos`, `RegrasFinanceiras`)
+- **Domain/Entities/** — 40 EF Core entity models, todas com `Guid Id` (never exposed directly in responses)
 - **Domain/Enums/** — vários enums (TipoTransacao, Finalidade, TipoConta, StatusFatura, MeioPagamento, etc.)
 - **DTOs/** — request/response contracts; services map entities ↔ DTOs. `DTOs/Common/PagedResult<T>` é o envelope padrão de listagens paginadas.
 - **Infrastructure/AppDbContext.cs** — EF Core DbContext com DbSets e configuração de delete behavior
@@ -82,14 +82,14 @@ npm run lint
 **Categoria** — has `Finalidade` (Despesa/Receita/Ambas) that must be compatible with the transaction type.
 
 ### Auth Flow
-- JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection
+- JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection. O front renova **single-flight** (N 401 → 1 refresh, `axiosConfig.ts`); o back tolera reapresentação do token recém-rotacionado **< 30s e do mesmo dispositivo** (401 `REFRESH_EM_CORRIDA`, sem derrubar a família, com log de segurança) — fora disso, reuse-detection estrita
 - Claims: `NameIdentifier` (user ID), `Email`, `Name`, `sid`
 - CORS allows only `http://localhost:5173` em dev (produção via `CORS_ALLOWED_ORIGINS`)
 - **API nega por padrão** (`FallbackPolicy`): tudo exige login, exceto o que declara `[AllowAnonymous]` — os endpoints públicos do `AuthController` (login, registro, MFA do login, refresh, switch, logout, roster, reativar conta, esqueci/redefinir senha) e `/health`, `/health/ready`
 
 ### Database
 - **Postgres único** (SQLite removido no #114): `DATABASE_URL` deve conter connection string Npgsql (`Host=...`). Rodar a API **exige** Postgres no ar (`docker compose up -d postgres`)
-- **Schema via migrations versionadas** em `Migrations/` (41 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
+- **Schema via migrations versionadas** em `Migrations/` (42 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
 - `Npgsql.EnableLegacyTimestampBehavior` ativo — `DateTime` mapeia para `timestamp without time zone`
 - Não há mais DDL cru no startup do `Program.cs` — schema muda **só** via migration
 
@@ -120,7 +120,8 @@ npm run lint
 - User ID é extraído via `User.FindFirstValue(ClaimTypes.NameIdentifier)` e passado pelos serviços para isolamento de dados (multi-tenancy manual em cada query)
 - **API Docs:** Swagger em `http://localhost:5293/swagger` — gerado a partir dos comentários XML dos controllers
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`. Nunca `_context.Remove()` nessas entidades.
-- **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`
+- **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`. **Padrão novo (#268, pagar fatura):** tabela `RegistroIdempotencia` com índice **único** (usuário + operação + chave), gravada no **mesmo** `SaveChanges` da operação; replay com os mesmos dados devolve o resultado original, com outros dados → 409. Fluxos novos seguem esse padrão — o `BuscarPorIdempotencyKeyAsync` (busca `Contains` no JSON do `FinancialEventLog`, usado por Parcelamento, ParcelaTransacao, Acerto, Empréstimo e Recorrente) é legado e deixa passar duas requisições simultâneas.
+- **Concorrência otimista:** `Fatura.Versao` é o `xmin` do Postgres (`.IsRowVersion()`); `DbUpdateConcurrencyException` → 409. Job que salva lote de faturas refaz uma a uma no conflito (ver `FaturaAtrasoJob`) — um pagamento no meio não pode travar o lote de todos os usuários.
 - **`FinancialEventLog`** registra mudanças de saldo/limite — usar em qualquer operação que afete saldo
 - **Dono do recurso nas escritas:** toda escrita que recebe id de recurso vindo do cliente (conta, cartão, categoria, subcategoria) valida o dono via `Services/DonoRecursos.cs` antes de gravar — de outro usuário ou inexistente → 404. Filtrar a leitura por `UsuarioId` não basta.
 - **API nega por padrão:** `FallbackPolicy` exige usuário autenticado; endpoint público declara `[AllowAnonymous]` explicitamente, nunca "sem atributo".

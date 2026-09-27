@@ -15,6 +15,21 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-27 (parte 2) — os 3 P1 da auditoria · #267, #268, #269
+
+Feitos por workflow (3 builders em worktree → revisor adversarial → correções → 2ª revisão até ficar `ok`), mergeados em sequência:
+- **#267** refresh **single-flight** no front + janela de 30s (mesmo dispositivo) na reuse-detection; a aba que perde a corrida recebe 401 `REFRESH_EM_CORRIDA` e só refaz a request. Log de segurança em todo uso da janela.
+- **#268** pagar fatura **idempotente** (tabela `RegistroIdempotencia` com índice único, chave obrigatória, replay com outros dados → 409) + **`xmin`** na `Fatura` (409 em conflito) + fatura de outro usuário → 404 + aviso com a mensagem do servidor no modal.
+- **#269** `Services/RegrasFinanceiras.cs`: total/restante da fatura sem parcela cancelada (5 cópias → 1) + saldo único agregado no banco (4 → 1) + **fatura travada após cancelar parcela** (reconciliação, atraso/"Vencida" pelo restante, juros sobre o restante) + jobs de fatura refazem uma a uma no conflito de `xmin`. Inclui a consolidação de docs (ROADMAP, ARQUITETURA, CLAUDE, DATABASE, FLOWS, regras do cartão).
+
+**Próxima ação (sugerida):** os P1 que os PRs deixaram no ROADMAP (seção "Auditoria de arquitetura") — compra nova em fatura `Pago` não reabre (trava a fatura); `xmin` em Empréstimo/Meta + transação no `ImportacaoService`; hard delete em cascata da conta. Antes de produção: `KnownProxies` do `X-Forwarded-For`.
+
+**Decisões pendentes do Gustavo:** parcelamento no dashboard/relatórios (regra anti-dupla-contagem proposta no ROADMAP); cartão com dia 29-31; roster mostra nome/e-mail em navegador compartilhado; previsão de recorrente no cartão entra no total pagável?
+
+**Produto (próximo passo do Gustavo):** importar o extrato OFX/CSV do banco dele — falta dizer qual banco.
+
+---
+
 ### 📌 Sessão 2026-09-27 (fecha em ponto verde) — avaliação de arquitetura + P0s + fixes de dogfooding · 7 PRs mergeados
 
 **Mergeado na `main` (`bdaa51d`), CI verde em todos:**
@@ -26,16 +41,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Avaliação de arquitetura** (6 agentes): monólito em camadas + transaction script + domínio anêmico, nota **5,5/10**, **não reescrever**. Registro completo em `docs/ARQUITETURA.md`; achados no ROADMAP (seção "Auditoria de arquitetura").
 
-**Próxima ação — os 3 P1 (retomar):**
-1. Pagar fatura idempotente (tabela com índice único) + concorrência otimista (`xmin`) na Fatura + chave no front.
-2. Unificar regras de dinheiro: total da fatura sem parcela cancelada; saldo único agregado no banco.
-3. Refresh single-flight no `axiosConfig.ts` + janela de tolerância na reuse-detection.
-
-O workflow com as 3 specs foi lançado e **parado antes de qualquer commit** (pra compactar a conversa). Script salvo em `C:\Users\Gustavo Pontes\.claude\projects\E--VSCode-controle-financeiro\084505b1-1ba6-4a45-bda6-786e5724a8d3\workflows\scripts\p1-dinheiro-e-sessao-wf_02f5dca0-b09.js` — relançar com `Workflow({scriptPath})`. Depois: corrigir o que o revisor apontar, 1 PR por P1 (esperar conflito no `FaturaService` entre o 1 e o 2).
-
-**Decisões pendentes do Gustavo:** parcelamento no dashboard/relatórios (regra contábil, risco de contar em dobro); cartão com dia 29-31; roster mostra nome/e-mail em navegador compartilhado.
-
-**Produto (próximo passo do Gustavo):** importar o extrato OFX/CSV do banco dele — falta dizer qual banco.
+**Próxima ação:** os 3 P1 — ✅ feitos na parte 2 (acima).
 
 **⚠️ Aprendizado (worktree):** worktree com `node_modules` ligado por junção → remover a junção com `cmd /c rmdir <caminho>` **antes** do `git worktree remove` (remoção recursiva pode seguir a junção e apagar o `node_modules` real).
 

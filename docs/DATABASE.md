@@ -275,6 +275,7 @@ Faturas de cartão de crédito. Auto-criadas.
 | `JurosDeMora` | DECIMAL | DEFAULT 0 | Juros por atraso (ETAPA 8) |
 | `Multa` | DECIMAL | DEFAULT 0 | Multa por atraso (ETAPA 8) |
 | `DataCriacao` | DateTime | NOT NULL | |
+| `xmin` (prop. `Versao`) | xid | coluna de sistema do Postgres | Token de concorrência otimista (`.IsRowVersion()`, #268) — não é coluna criada por migration |
 
 **Fluxo (NEW — ETAPA 2+):**
 1. User cria transação com CartãoCredito → auto-cria Fatura (EstadoCiclo=Aberta, EstadoPagamento=NaoPago)
@@ -285,10 +286,28 @@ Faturas de cartão de crédito. Auto-criadas.
 
 **Delete Behavior:** ParcelasTransacao linkadas → Restrict
 
+**Total/restante:** calculados (não armazenados) por `RegrasFinanceiras` — parcela `Cancelada` fora do total. `EstaAtrasada`/"Vencida" dependem do **restante > 0**, não só do `EstadoPagamento`.
+
 **3 Flags (Ortogonais):**
 - `EstadoCiclo`: Aberta (pode receber transações) vs Fechada (read-only)
 - `EstadoPagamento`: NaoPago (0 pago) vs PagoParcial (parcialmente pago) vs Pago (100%)
 - `EstaAtrasada`: true se passou vencimento sem pagar
+
+---
+
+### REGISTROS_IDEMPOTENCIA (#268)
+Chave de idempotência de operação transacional. Hoje só o pagamento de fatura (`Operacao = "PagarFatura"`); padrão pros fluxos novos.
+
+| Coluna | Tipo | Constraints | Descrição |
+|--------|------|-------------|-----------|
+| `Id` | UUID | PK | |
+| `UsuarioId` | UUID | FK(Usuarios) NOT NULL, **ON DELETE CASCADE** | Sai na purga LGPD (a chave não tem valor de auditoria) |
+| `Operacao` | VARCHAR(50) | NOT NULL | Espaço de chaves (ex.: `PagarFatura`) |
+| `Chave` | VARCHAR(100) | NOT NULL | Header `Idempotency-Key` |
+| `ReferenciaId` | UUID | NULL | Resultado da operação (ex.: a `Transacao` de pagamento) |
+| `CriadoEm` | DateTime | NOT NULL | |
+
+**Índice ÚNICO** `(UsuarioId, Operacao, Chave)` — gravado no **mesmo** `SaveChanges` da operação; duplicata concorrente → 23505 → tratada como replay. Sem janela de expiração: chave usada é consumida pra sempre.
 
 ---
 
