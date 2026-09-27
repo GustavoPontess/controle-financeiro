@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
@@ -26,6 +26,7 @@ import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredit
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
 import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
+import { montarCiclos, indiceMes, indiceMesDeHoje, type FaturaView } from "./ciclosFatura"
 import styles from "./CreditCardsPage.module.css"
 
 // Máscara de moeda pro input de limite: dígitos → número (centavos) e volta.
@@ -162,9 +163,6 @@ const emptyForm: FormState = {
 
 type CartaoErrors = { nome?: string; bancoId?: string; ultimosDigitos?: string; limite?: string; diaFechamento?: string; diaVencimento?: string }
 
-// Fatura real OU prevista (projetada das assinaturas, com lançamentos locais).
-type ProjLancamento = { id: string; descricao: string; valor: number; data: string }
-type FaturaView = Fatura & { prevista?: boolean; projLancamentos?: ProjLancamento[] }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -365,71 +363,11 @@ export default function CreditCardsPage() {
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
-  // Faturas ordenadas da mais recente (índice 0 = atual) para a mais antiga.
+  // Faturas reais ordenadas da mais recente para a mais antiga.
   const faturasSorted = [...faturas].sort((a, b) => new Date(b.dataFechamento).getTime() - new Date(a.dataFechamento).getTime())
 
   // "Agora" capturado uma vez no mount — puro (sem Date.now no render).
   const [now] = useState(() => Date.now())
-  // Índice da fatura ATUAL = a que contém hoje. Faturas futuras podem existir
-  // como reais (geradas pelo job de recorrentes), então não dá pra assumir que
-  // faturasSorted[0] é a atual.
-  const atualIdx = useMemo(() => {
-    const i = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now && now <= new Date(f.dataFechamento).getTime())
-    if (i >= 0) return i
-    const j = faturasSorted.findIndex((f) => new Date(f.dataInicio).getTime() <= now)
-    return j >= 0 ? j : 0
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faturas, now])
-
-  // Quando acabou de abrir o cartão, posiciona na fatura atual (não na [0]).
-  useEffect(() => {
-    if (!justOpenedRef.current || faturasSorted.length === 0) return
-    justOpenedRef.current = false
-    setFaturaIdx(atualIdx)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faturas])
-
-  // Navegação iniciada pelo usuário cancela o auto-foco pendente — senão o effect
-  // de "abrir → fatura atual" pode disparar atrasado e sobrescrever a escolha.
-  const irParaFatura = useCallback((updater: number | ((i: number) => number)) => {
-    justOpenedRef.current = false
-    setFaturaIdx(updater)
-  }, [])
-
-  // Atalhos teclado ← → pra navegar entre meses quando o painel está aberto.
-  // Ignora quando foco está num campo de texto/select (não atrapalha digitação).
-  useEffect(() => {
-    if (!faturasCartaoId) return
-    const onKey = (ev: KeyboardEvent) => {
-      const tgt = ev.target as HTMLElement | null
-      if (tgt && /input|textarea|select/i.test(tgt.tagName)) return
-      if (tgt && tgt.isContentEditable) return
-      if (ev.key === "ArrowLeft") { ev.preventDefault(); irParaFatura((i) => i + 1) }
-      else if (ev.key === "ArrowRight") { ev.preventDefault(); irParaFatura((i) => i - 1) }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [faturasCartaoId, irParaFatura])
-
-  // IDs das faturas a carregar = mês selecionado + vizinhos (janela de 3) ainda
-  // não cacheados. Calculado fora do effect → deps são só primitivos estáveis.
-  const idsParaCarregar = (() => {
-    if (!faturasCartaoId || faturasSorted.length === 0) return [] as string[]
-    const sel = Math.max(0, Math.min(faturaIdx, faturasSorted.length - 1))
-    return [sel - 1, sel, sel + 1]
-      .filter((i) => i >= 0 && i < faturasSorted.length)
-      .map((i) => faturasSorted[i].id)
-      .filter((id) => !faturaDetalhes[id])
-  })()
-  const idsKey = idsParaCarregar.join(",")
-  useEffect(() => {
-    if (!faturasCartaoId || !idsKey) return
-    idsKey.split(",").forEach((id) => {
-      getFaturaDetalhe(faturasCartaoId, id)
-        .then((d) => setFaturaDetalhes((prev) => (prev[id] ? prev : { ...prev, [id]: d })))
-        .catch(() => { /* ignore */ })
-    })
-  }, [faturasCartaoId, idsKey])
 
   // Faturas previstas das assinaturas (recorrentes mensais no cartão) — até 12 meses
   // a partir de hoje (sem ultrapassar, sem duplicar com faturas reais já criadas).
@@ -465,6 +403,81 @@ export default function CreditCardsPage() {
     }
   }
 
+  // Sequência contínua de meses pro navegador — reais + previstas + meses vazios, mais recente
+  // primeiro (índice 0), SEMPRE incluindo o mês de hoje. Ver ciclosFatura.ts.
+  const ciclos = cartaoAtivo
+    ? montarCiclos({
+        reais: faturas, previstas, hoje: new Date(now),
+        cartaoId: cartaoAtivo.id, cartaoNome: cartaoAtivo.nome,
+        diaFechamento: cartaoAtivo.diaFechamento, diaVencimento: cartaoAtivo.diaVencimento,
+      })
+    : []
+  // Mês ATUAL = o ciclo que contém hoje (sempre existe em `ciclos`, com ou sem fatura real).
+  const mesHoje = cartaoAtivo ? indiceMesDeHoje(new Date(now), cartaoAtivo.diaFechamento) : -1
+  const atualIdx = Math.max(0, ciclos.findIndex((f) => indiceMes(f.dataFechamento) === mesHoje))
+  const ultimoIdx = Math.max(0, ciclos.length - 1)
+
+  // Quando acabou de abrir o cartão, posiciona no mês atual — só depois das faturas carregarem
+  // (antes, com a lista ainda vazia/velha, o índice apontaria pro mês errado).
+  useEffect(() => {
+    if (!justOpenedRef.current || loadingFaturas || !cartaoAtivo) return
+    justOpenedRef.current = false
+    setFaturaIdx(atualIdx)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturas, loadingFaturas])
+
+  // Limite atual da navegação, lido pelo irParaFatura (o teclado dispara vários passos seguidos).
+  const ultimoIdxRef = useRef(0)
+  useEffect(() => { ultimoIdxRef.current = ultimoIdx }, [ultimoIdx])
+
+  // Navegação iniciada pelo usuário cancela o auto-foco pendente — senão o effect
+  // de "abrir → fatura atual" pode disparar atrasado e sobrescrever a escolha.
+  // Clampa no intervalo válido: sem isso, apertar → além do fim acumulava passos invisíveis.
+  const irParaFatura = useCallback((updater: number | ((i: number) => number)) => {
+    justOpenedRef.current = false
+    setFaturaIdx((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      return Math.max(0, Math.min(next, ultimoIdxRef.current))
+    })
+  }, [])
+
+  // Atalhos teclado ← → pra navegar entre meses quando o painel está aberto.
+  // Ignora quando foco está num campo de texto/select (não atrapalha digitação).
+  useEffect(() => {
+    if (!faturasCartaoId) return
+    const onKey = (ev: KeyboardEvent) => {
+      const tgt = ev.target as HTMLElement | null
+      if (tgt && /input|textarea|select/i.test(tgt.tagName)) return
+      if (tgt && tgt.isContentEditable) return
+      if (ev.key === "ArrowLeft") { ev.preventDefault(); irParaFatura((i) => i + 1) }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); irParaFatura((i) => i - 1) }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [faturasCartaoId, irParaFatura])
+
+  // IDs das faturas REAIS a carregar = mês selecionado + vizinhos (janela de 3) ainda não
+  // cacheados. Prevista/vazia não existem no backend. Calculado fora do effect → deps estáveis.
+  const idsParaCarregar = (() => {
+    if (!faturasCartaoId || ciclos.length === 0) return [] as string[]
+    const sel = Math.max(0, Math.min(faturaIdx, ultimoIdx))
+    return [sel - 1, sel, sel + 1]
+      .filter((i) => i >= 0 && i < ciclos.length)
+      .map((i) => ciclos[i])
+      .filter((f) => !f.prevista && !f.vazia)
+      .map((f) => f.id)
+      .filter((id) => !faturaDetalhes[id])
+  })()
+  const idsKey = idsParaCarregar.join(",")
+  useEffect(() => {
+    if (!faturasCartaoId || !idsKey) return
+    idsKey.split(",").forEach((id) => {
+      getFaturaDetalhe(faturasCartaoId, id)
+        .then((d) => setFaturaDetalhes((prev) => (prev[id] ? prev : { ...prev, [id]: d })))
+        .catch(() => { /* ignore */ })
+    })
+  }, [faturasCartaoId, idsKey])
+
   const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
     const ids = new Set<string>()
     if (!detalhe?.transacoes?.length) return ids
@@ -475,6 +488,21 @@ export default function CreditCardsPage() {
   }
 
   const renderDetalhe = (f: FaturaView) => {
+    // Mês sem fatura (nenhum lançamento caiu nele). Sem fatura nenhuma no cartão, orienta o 1º uso.
+    if (f.vazia) {
+      if (faturas.length === 0) {
+        return (
+          <div className={styles.faturaEmpty}>
+            <PontesEmptyState
+              icon={<ReceiptText size={26} />}
+              title="Nenhuma fatura ainda"
+              description="Registre uma compra no crédito pra criar a primeira fatura."
+            />
+          </div>
+        )
+      }
+      return <div className={styles.detailMuted}>Sem lançamentos neste mês.</div>
+    }
     // Fatura prevista: lançamentos vêm das assinaturas projetadas (sem ir ao backend).
     if (f.prevista) {
       const proj = f.projLancamentos ?? []
@@ -703,34 +731,25 @@ export default function CreditCardsPage() {
       {/* Painel de faturas */}
       {faturasCartaoId && cartaoAtivo && (
         <PontesCard padding={0} radius={16}>
-          {loadingFaturas ? (
+          {loadingFaturas || ciclos.length === 0 ? (
             <div className={styles.faturaSkeleton}><PontesSkeletonList rows={4} /></div>
-          ) : faturasSorted.length === 0 ? (
-            <div className={styles.faturaEmpty}>
-              <PontesEmptyState
-                icon={<ReceiptText size={26} />}
-                title="Nenhuma fatura ainda"
-                description="Registre uma compra no crédito pra criar a primeira fatura."
-              />
-            </div>
           ) : (() => {
-            const clampLo = -previstas.length
-            const clampHi = faturasSorted.length - 1
-            const idx = Math.max(clampLo, Math.min(faturaIdx, clampHi))
-            const ehPrevista = idx < 0
-            const f: FaturaView = ehPrevista ? previstas[-idx - 1] : faturasSorted[idx]
+            const idx = Math.max(0, Math.min(faturaIdx, ultimoIdx))
+            const f = ciclos[idx]
+            const ehPrevista = !!f.prevista
+            const ehVazia = !!f.vazia
             const st = STATUS[statusKey(f, now)]
             const open = f.valorRestante > 0
             const ehAtual = idx === atualIdx
             // Ciclo ainda não começou (dataInicio > hoje) — fatura "Futura".
             // Bancos reais não permitem pagar fatura futura inteira; bloqueia botão.
-            const ehFutura = !ehPrevista && new Date(f.dataInicio).getTime() > now
+            const ehFutura = !ehPrevista && !ehVazia && new Date(f.dataInicio).getTime() > now
             return (
               <div className={styles.faturaBody}>
                 {/* Navegação por mês: ‹ anterior | (Hoje?) | mês | (Hoje?) | próximo › */}
                 <div className={styles.monthNav}>
                   <button type="button" className={styles.monthArrow} aria-label="Mês anterior"
-                    disabled={idx >= clampHi} onClick={() => irParaFatura(idx + 1)}>
+                    disabled={idx >= ultimoIdx} onClick={() => irParaFatura(idx + 1)}>
                     <ChevronLeft size={18} />
                   </button>
                   {idx < atualIdx && (
@@ -746,7 +765,7 @@ export default function CreditCardsPage() {
                       onClick={() => irParaFatura(atualIdx)}>Hoje</PontesButton>
                   )}
                   <button type="button" className={styles.monthArrow} aria-label="Próximo mês"
-                    disabled={idx <= clampLo} onClick={() => irParaFatura(idx - 1)}>
+                    disabled={idx <= 0} onClick={() => irParaFatura(idx - 1)}>
                     <ChevronRight size={18} />
                   </button>
                 </div>
@@ -757,13 +776,15 @@ export default function CreditCardsPage() {
                     <div>
                       <div className={styles.atualValor}>{formatMoney(open ? f.valorRestante : f.valorTotal)}</div>
                       <div className={styles.atualMeta}>
-                        {ehPrevista
+                        {!ehVazia && (ehPrevista
                           ? <PontesBadge tone="neutral" size="sm">Prevista</PontesBadge>
-                          : <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>}
-                        {!ehPrevista && f.vencida && <PontesBadge tone="danger" size="sm">Vencida</PontesBadge>}
-                        <span className={styles.muted}>
-                          {f.vencida ? "Venceu " : "Vence "}{formatDate(f.dataVencimento)}
-                        </span>
+                          : <PontesBadge tone={st.tone} size="sm">{st.label}</PontesBadge>)}
+                        {!ehPrevista && !ehVazia && f.vencida && <PontesBadge tone="danger" size="sm">Vencida</PontesBadge>}
+                        {!ehVazia && (
+                          <span className={styles.muted}>
+                            {f.vencida ? "Venceu " : "Vence "}{formatDate(f.dataVencimento)}
+                          </span>
+                        )}
                         {f.valorPago > 0 && open && <span className={styles.muted}>Pago {formatMoney(f.valorPago)} de {formatMoney(f.valorTotal)}</span>}
                       </div>
                     </div>

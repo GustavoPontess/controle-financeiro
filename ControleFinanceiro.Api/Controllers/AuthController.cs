@@ -264,6 +264,7 @@ public class AuthController : ControllerBase
     /// `docs/features/admin/spec.md` §3). Responde 201 com a mensagem de "aguardando aprovação".
     /// </summary>
     [HttpPost("register")]
+    [AllowAnonymous]
     [EnableRateLimiting("auth-register")]
     public async Task<ActionResult<RegisterResponseDto>> Register([FromBody] RegisterDto dto)
     {
@@ -277,6 +278,7 @@ public class AuthController : ControllerBase
     /// <c>POST /mfa/verificar-login</c> com o código do 2º fator pra completar.
     /// </summary>
     [HttpPost("login")]
+    [AllowAnonymous]
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
@@ -318,6 +320,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Passo 2 do login com MFA — código TOTP ou backup code + o challenge do passo 1.</summary>
     [HttpPost("mfa/verificar-login")]
+    [AllowAnonymous]
     [EnableRateLimiting("auth-mfa")]
     public async Task<ActionResult<AuthResponseDto>> VerificarMfaLogin([FromBody] MfaVerificarLoginDto dto)
     {
@@ -414,6 +417,7 @@ public class AuthController : ControllerBase
     /// <summary>Lista as contas lembradas NESTE navegador (nome + e-mail mascarado). Sem cookie
     /// `rd` → lista vazia.</summary>
     [HttpGet("roster")]
+    [AllowAnonymous]
     public async Task<ActionResult<List<ContaLembradaDto>>> Roster()
     {
         Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
@@ -423,6 +427,7 @@ public class AuthController : ControllerBase
     /// <summary>E-mail real de uma conta do roster (pra pré-preencher ao selecionar). 404 se a conta
     /// não estiver no roster deste navegador.</summary>
     [HttpGet("roster/{usuarioId:guid}/email")]
+    [AllowAnonymous]
     public async Task<IActionResult> RosterEmail(Guid usuarioId)
     {
         Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
@@ -432,6 +437,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Remove UMA conta do chooser deste navegador ("remover desta lista").</summary>
     [HttpDelete("roster/{usuarioId:guid}")]
+    [AllowAnonymous]
     public async Task<IActionResult> RemoverDoRoster(Guid usuarioId)
     {
         Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
@@ -441,6 +447,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Esquece TODAS as contas deste navegador ("esquecer todas").</summary>
     [HttpDelete("roster")]
+    [AllowAnonymous]
     public async Task<IActionResult> EsquecerRoster()
     {
         Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
@@ -504,6 +511,7 @@ public class AuthController : ControllerBase
     /// <summary>Reativa a própria conta na carência (público: o usuário não está logado). Depois, loga
     /// normalmente. Rate-limited + isento de CSRF (sem sessão), como o login.</summary>
     [HttpPost("conta/reativar")]
+    [AllowAnonymous]
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> ReativarConta([FromBody] ReativarContaRequest dto)
     {
@@ -534,6 +542,7 @@ public class AuthController : ControllerBase
     /// O refresh token antigo é revogado (rotação).
     /// </summary>
     [HttpPost("refresh")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh()
@@ -563,6 +572,7 @@ public class AuthController : ControllerBase
     /// Protegido por CSRF (não é público) — o cookie CSRF vive 7d, então sobrevive à ociosidade.
     /// </summary>
     [HttpPost("switch")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Switch([FromBody] SwitchAccountDto dto)
@@ -586,6 +596,7 @@ public class AuthController : ControllerBase
     /// Revoga o refresh token (logout). Silencioso se o token não for encontrado.
     /// </summary>
     [HttpPost("logout")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout()
     {
@@ -603,6 +614,7 @@ public class AuthController : ControllerBase
     /// banco e limpa todos os cookies de sessão. Protegido por CSRF.
     /// </summary>
     [HttpPost("logout-all")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> LogoutAll()
     {
@@ -655,6 +667,7 @@ public class AuthController : ControllerBase
     /// existir, um link com o token é enviado por e-mail (o token nunca volta na resposta).
     /// </summary>
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     [EnableRateLimiting("auth-forgot-password")]
     [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
@@ -667,6 +680,7 @@ public class AuthController : ControllerBase
     /// Redefine a senha usando o token de reset. Revoga todos os refresh tokens do usuário.
     /// </summary>
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)

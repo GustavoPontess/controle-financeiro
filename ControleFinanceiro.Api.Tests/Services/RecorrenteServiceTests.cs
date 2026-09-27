@@ -49,6 +49,22 @@ public class RecorrenteServiceTests
         return c.Id;
     }
 
+    private static Guid SeedCartao(AppDbContext ctx, Guid userId)
+    {
+        var c = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = userId, Ativo = true, TemCredito = true };
+        ctx.CartoesCredito.Add(c);
+        ctx.SaveChanges();
+        return c.Id;
+    }
+
+    private static Guid SeedCategoria(AppDbContext ctx, Guid? userId, Finalidade finalidade = Finalidade.Despesa)
+    {
+        var cat = new Categoria { Id = Guid.NewGuid(), Descricao = "Categoria", Finalidade = finalidade, UsuarioId = userId };
+        ctx.Categorias.Add(cat);
+        ctx.SaveChanges();
+        return cat.Id;
+    }
+
     private static Recorrente SeedRecorrente(AppDbContext ctx, Guid userId, Guid contaId, bool ativo = true)
     {
         var r = new Recorrente
@@ -479,5 +495,177 @@ public class RecorrenteServiceTests
         Assert.Equal(0m, stats.CustoMensalDespesas);
         Assert.Equal(0, stats.Proximas30Dias);
         Assert.Equal(0, stats.QtdTotal);
+    }
+
+    // ── Isolamento entre usuários (fix P0 — DonoRecursos) ────────────────────────
+
+    [Fact]
+    public async Task AtualizarAsync_ContaDeOutroUsuario_LancaKeyNotFound_MantemContaAntiga()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var c2DeOutro = SeedConta(ctx, u2);
+        var rec = SeedRecorrente(ctx, u1, c1);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "Tentativa de redirecionar", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = c2DeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
+
+        var atual = await ctx.Recorrentes.FindAsync(rec.Id);
+        Assert.Equal(c1, atual!.ContaId);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_CartaoDeOutroUsuario_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var cartaoDeOutro = SeedCartao(ctx, u2);
+        var rec = SeedRecorrente(ctx, u1, c1);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
+            CartaoCreditoId = cartaoDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_CategoriaDeOutroUsuario_LancaKeyNotFound()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var categoriaDeOutro = SeedCategoria(ctx, u2);
+        var rec = SeedRecorrente(ctx, u1, c1);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = c1, CategoriaId = categoriaDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_SemOrigem_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var rec = SeedRecorrente(ctx, u1, c1);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = null, CartaoCreditoId = null, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_DuasOrigens_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var cartao1 = SeedCartao(ctx, u1);
+        var rec = SeedRecorrente(ctx, u1, c1);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = c1, CartaoCreditoId = cartao1, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
+    }
+
+    [Fact]
+    public async Task CriarAsync_CategoriaDeOutroUsuario_LancaKeyNotFound_NadaEhCriado()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var categoriaDeOutro = SeedCategoria(ctx, u2);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "Assinatura", Valor = 50m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = c1, CategoriaId = categoriaDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarAsync(dto, u1));
+        Assert.Equal(0, await ctx.Recorrentes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_CategoriaGlobal_Funciona()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var categoriaGlobal = SeedCategoria(ctx, null);
+
+        var svc = CreateService(ctx);
+        var dto = new CriarRecorrenteDto
+        {
+            Descricao = "Streaming", Valor = 30m, Tipo = (int)TipoTransacao.Despesa,
+            ContaId = c1, CategoriaId = categoriaGlobal, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
+            DataInicio = DateTime.UtcNow.Date,
+        };
+
+        var resultado = await svc.CriarAsync(dto, u1);
+
+        Assert.Equal(categoriaGlobal, resultado.CategoriaId);
+        Assert.Equal(1, await ctx.Recorrentes.CountAsync());
+    }
+
+    [Fact]
+    public async Task EditarProximaOcorrenciaAsync_CategoriaDeOutroUsuario_LancaKeyNotFound_MantemCategoriaAntiga()
+    {
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var c1 = SeedConta(ctx, u1);
+        var categoriaAntiga = SeedCategoria(ctx, u1);
+        var categoriaDeOutro = SeedCategoria(ctx, u2);
+        var rec = SeedRecorrente(ctx, u1, c1);
+        var transacao = SeedTransacaoPrevisao(ctx, u1, rec.Id, c1);
+        transacao.CategoriaId = categoriaAntiga;
+        ctx.SaveChanges();
+
+        var svc = CreateService(ctx);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.EditarProximaOcorrenciaAsync(rec.Id, new EditarProximaOcorrenciaDto { CategoriaId = categoriaDeOutro }, u1));
+
+        var atualizada = await ctx.Transacoes.FindAsync(transacao.Id);
+        Assert.Equal(categoriaAntiga, atualizada!.CategoriaId);
     }
 }

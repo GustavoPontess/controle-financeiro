@@ -7,10 +7,13 @@ import {
   type Emprestimo, type EmprestimoConvitePendente,
 } from "../../types/Emprestimo"
 
-// Tela real = ex-bancada B (promovida 2026-09-13): tabela + kebab de ações + wizard de criação.
+// Tela real = ex-bancada B (promovida 2026-09-13): tabela enxuta (linha navega pro detalhe) +
+// kebab slim (só gestão) + wizard de criação.
+const navigateSpy = vi.hoisted(() => vi.fn())
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
   useOutletContext: () => ({ notify: vi.fn() }),
+  useNavigate: () => navigateSpy,
 }))
 
 vi.mock("../../hooks/useAuth", () => ({
@@ -146,6 +149,7 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     cancelarConsolidacao.mockReset()
     reenviarPagamentoEmprestimo.mockReset()
     listParcelasEmprestimo.mockReset().mockResolvedValue([])
+    navigateSpy.mockReset()
   })
 
   it("lista empréstimos + hero (A receber / A pagar)", async () => {
@@ -230,40 +234,34 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     })
   })
 
-  it("credor vê ações Registrar pagamento + Marcar como quitado no kebab", async () => {
+  it("lista: kebab é slim (só gestão) — ações ricas vão pro detalhe", async () => {
     renderPage()
     await screen.findByText("Viagem")
     abrirAcoes()
-    expect(await screen.findByText("Registrar pagamento")).toBeInTheDocument()
-    expect(screen.getByText("Marcar como quitado")).toBeInTheDocument()
-    expect(screen.getByText("Vincular a uma pessoa")).toBeInTheDocument()
+    expect(await screen.findByText("Remover")).toBeInTheDocument()
+    expect(screen.queryByText("Registrar pagamento")).not.toBeInTheDocument()
+    expect(screen.queryByText("Marcar como quitado")).not.toBeInTheDocument()
+    expect(screen.queryByText("Vincular a uma pessoa")).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ver parcelas|Ver detalhe/)).not.toBeInTheDocument()
   })
 
-  it("kebab do à vista tem 'Ver detalhe' (não 'Ver parcelas')", async () => {
-    renderPage()
-    await screen.findByText("Viagem") // emp = à vista
-    abrirAcoes()
-    expect(await screen.findByText("Ver detalhe")).toBeInTheDocument()
-    expect(screen.queryByText("Ver parcelas")).not.toBeInTheDocument()
-  })
-
-  it("kebab do parcelado tem 'Ver parcelas'", async () => {
+  it("clicar na linha navega pro detalhe do empréstimo", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
     renderPage()
     await screen.findByText("Carro")
-    abrirAcoes()
-    expect(await screen.findByText("Ver parcelas")).toBeInTheDocument()
-    expect(screen.queryByText("Ver detalhe")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("Carro"))
+    expect(navigateSpy).toHaveBeenCalledWith("/emprestimos/e3")
   })
 
-  it("devedor vinculado não vê 'Marcar como quitado'", async () => {
+  it("devedor vinculado: badge Vinculado na linha + kebab slim sem quitar", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empDevedorVinculado]))
     renderPage()
     await screen.findByText("Aluguel")
-    abrirAcoes()
-    expect(await screen.findByText("Registrar pagamento")).toBeInTheDocument()
-    expect(screen.queryByText("Marcar como quitado")).not.toBeInTheDocument()
     expect(screen.getByText("Vinculado")).toBeInTheDocument()
+    abrirAcoes()
+    expect(await screen.findByText("Remover")).toBeInTheDocument()
+    expect(screen.queryByText("Registrar pagamento")).not.toBeInTheDocument()
+    expect(screen.queryByText("Marcar como quitado")).not.toBeInTheDocument()
   })
 
   it("quitado: kebab tem Arquivar e dispara o service", async () => {
@@ -280,20 +278,6 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     renderPage()
     await screen.findByText("Financiamento carro")
     expect(screen.getByText("NU Pagamentos")).toBeInTheDocument()
-  })
-
-  it("expande parcelado e carrega as parcelas ao clicar na linha", async () => {
-    listEmprestimosPage.mockReset().mockResolvedValue(paged([empParcelado]))
-    listParcelasEmprestimo.mockResolvedValue([{
-      id: "pa1", emprestimoId: "e3", numero: 1, quantidadeTotal: 3,
-      dataVencimento: "2026-09-01T00:00:00Z", valor: 100,
-      status: 1, statusDescricao: "Pendente", atrasada: false, valorPago: 0,
-    }])
-    renderPage()
-    await screen.findByText("Carro")
-    fireEvent.click(screen.getByText("Carro"))
-    expect(await screen.findByText("1/3")).toBeInTheDocument()
-    expect(listParcelasEmprestimo).toHaveBeenCalledWith("e3")
   })
 
   it("lista convite pendente e aceita", async () => {
