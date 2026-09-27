@@ -92,13 +92,13 @@ Pra ninguém vender o projeto como outra coisa (nem tentar "consertar" pra virar
 2. **Furos de isolamento entre usuários.** Recorrente aceitava conta/cartão/categoria de outro usuário, e o job lançava no saldo da vítima. Categoria sem checagem de dono em Transação e Meta. `BancosController` com escrita anônima. Sem `FallbackPolicy`.
    **✅ CORRIGIDO** no #264 (helper `DonoRecursos` + `FallbackPolicy` + 24 testes cross-user).
 3. **Pagar fatura sem idempotência e sem controle de concorrência.** Duplo clique paga 2x. O XML doc do endpoint diz "Idempotência via header Idempotency-Key", mas nada lê o header. Zero tokens de concorrência no projeto inteiro.
-   **Aberto** (P1).
+   **✅ CORRIGIDO na Fatura** no #268 — tabela `RegistroIdempotencia` com índice único (padrão novo pra idempotência; substitui o `LIKE` no JSON do `FinancialEventLog` daqui em diante) + `xmin` na `Fatura`. **Aberto (P1):** `xmin` em `Emprestimo`/`EmprestimoParcela`/`Meta`.
 4. **Regras de dinheiro duplicadas e divergentes.** Total da fatura soma parcelas canceladas. Saldo calculado em 4 lugares. Parcelamento fica fora do dashboard e dos relatórios.
-   **Aberto** (P1).
+   **✅ CORRIGIDO (total + saldo)** no #269 — `Services/RegrasFinanceiras.cs`, saldo agregado no banco. **Aberto (P1, decisão contábil):** parcelamento no dashboard/relatórios — regra anti-dupla-contagem no ROADMAP.
 5. **Suspeita não reproduzida: logout aleatório.** O refresh silencioso do front não é single-flight; duas requisições que tomam 401 juntas mandam o mesmo refresh token duas vezes, e a reuse-detection estrita pode tratar a segunda como replay e derrubar a sessão.
-   **Aberto** (P1) — hipótese, não reproduzida.
+   **✅ CORRIGIDO** no #267 — refresh single-flight no front + janela de 30s (mesmo dispositivo) na reuse-detection, com 401 `REFRESH_EM_CORRIDA` pra aba que perde a corrida.
 6. **Operações multi-commit sem transação e hard deletes.** Excluir conta apaga as transações em cascata (contradiz a regra de soft delete). Importação pode parar pela metade.
-   **Aberto** — a transação que falta (`EmprestimoService.CriarAsync`, `ImportacaoService`) entra no P1 do item 3. O hard delete em cascata da conta ainda não tem item próprio no ROADMAP.
+   **Aberto** — a transação que falta (`EmprestimoService.CriarAsync`, `ImportacaoService`) é o resto do P1 do item 3; o hard delete em cascata é o P1 "Hard delete em entidade financeira" do ROADMAP.
 7. **God-classes.** `EmprestimoService` com ~1.800 linhas. GET que grava (listar/buscar empréstimo aplica multa e salva). Multa **substitui** juros em vez de somar — o valor devido lê `ValorComMulta ?? ValorComJuros ?? Valor`, e a multa é calculada sobre o `Valor` sem juros. Suspeita de bug, confirmar com teste.
    **Aberto** (P2) — quebrar no boy-scout, não em mutirão.
 8. **Mapeamento exceção → HTTP por tipo genérico.** Qualquer `InvalidOperationException` vira 409 e vaza a mensagem (inclusive do EF). Violação de índice único vira 500.

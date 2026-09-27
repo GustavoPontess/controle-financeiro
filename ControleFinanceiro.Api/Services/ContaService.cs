@@ -29,12 +29,13 @@ namespace ControleFinanceiro.Api.Services
                 throw new ArgumentException("Número da conta deve conter só números, com dígito verificador opcional após um hífen (ex: 91205195-5).");
         }
 
+        // Sem Include(Transacoes): o saldo não é mais somado em memória sobre o histórico inteiro
+        // da conta — vem agregado no banco por ObterSaldosAsync (RegrasFinanceiras).
         public async Task<List<Conta>> ListarAsync(Guid usuarioId)
         {
             return await _context.Contas
                 .Where(c => c.UsuarioIdProprietario == usuarioId)
                 .Include(c => c.Banco)
-                .Include(c => c.Transacoes)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -44,9 +45,17 @@ namespace ControleFinanceiro.Api.Services
             return await _context.Contas
                 .Where(c => c.Id == id && c.UsuarioIdProprietario == usuarioId)
                 .Include(c => c.Banco)
-                .Include(c => c.Transacoes)
                 .FirstOrDefaultAsync();
         }
+
+        /// <summary>
+        /// Saldo real (Ativo + Executado) das contas do usuário, agregado no banco pela regra única
+        /// de <see cref="RegrasFinanceiras"/> — o mesmo número do dashboard e da validação de saldo
+        /// do pagamento de parcela. Conta sem lançamento volta com saldo zero.
+        /// </summary>
+        public Task<Dictionary<Guid, RegrasFinanceiras.MovimentoConta>> ObterSaldosAsync(
+            IEnumerable<Guid> contaIds, Guid usuarioId) =>
+            RegrasFinanceiras.SaldosDasContasAsync(_context, contaIds, usuarioId);
 
         public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0)
         {

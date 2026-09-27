@@ -20,6 +20,7 @@ public class FaturaDto
     public decimal ValorTotal { get; set; }
     public decimal ValorPago { get; set; }
     public decimal ValorRestante { get; set; }
+    /// <summary>Passou do vencimento e ainda resta pagar (ValorRestante &gt; 0). Fatura coberta ou zerada nunca é vencida.</summary>
     public bool Vencida { get; set; }
 }
 

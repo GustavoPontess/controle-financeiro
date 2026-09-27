@@ -36,7 +36,7 @@ public class FaturaAtualizadaDto
     /// <summary>Total acumulado de pagamentos nesta fatura.</summary>
     public decimal ValorPago { get; set; }
 
-    /// <summary>Soma de todas as parcelas + transações à vista nesta fatura.</summary>
+    /// <summary>Parcelas não canceladas + transações à vista nesta fatura (RegrasFinanceiras.ValorTotalFatura).</summary>
     public decimal ValorTotal { get; set; }
 
     /// <summary>ValorTotal - ValorPago (sempre >= 0).</summary>

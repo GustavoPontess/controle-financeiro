@@ -328,6 +328,12 @@ namespace ControleFinanceiro.Api.Services
             return true;
         }
 
+        /// <summary>
+        /// Entradas, saídas e saldo REAL da conta — mesma regra (e mesmo número) da tela de contas e
+        /// do dashboard. Antes somava também as previsões: o método é anterior ao StatusTransacao e
+        /// nunca foi atualizado, então o "Saldo" daqui divergia do saldo real sem ninguém querer.
+        /// Saldo projetado (com previsões), se um dia for preciso, ganha função com nome próprio.
+        /// </summary>
         public async Task<ResumoFinanceiroDto> ObterResumoPorContaAsync(Guid contaId, Guid usuarioId)
         {
             var conta = await _context.Contas
@@ -336,15 +342,13 @@ namespace ControleFinanceiro.Api.Services
             if (conta == null)
                 throw new KeyNotFoundException("Conta não encontrada.");
 
-            var transacoes = await _context.Transacoes
-                .Where(t => t.ContaId == contaId)
-                .ToListAsync();
+            var movimento = await RegrasFinanceiras.SaldoDaContaAsync(_context, contaId, usuarioId);
 
             return new ResumoFinanceiroDto
             {
                 ContaId = contaId,
-                TotalReceitas = transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor),
-                TotalDespesas = transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
+                TotalReceitas = movimento.Receitas,
+                TotalDespesas = movimento.Despesas,
             };
         }
     }

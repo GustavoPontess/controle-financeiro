@@ -145,20 +145,22 @@ Replaced by: Parcelamento + ParcelaTransacao (flexible, per-month parcelas).
 
 ```mermaid
 sequenceDiagram
-    User->>Frontend: Select fatura + click "Pagar"
-    Frontend->>API: POST /faturas/{id}/pagar {dataPagamento}
-    API->>Service: PagarFaturaAsync(faturaId, dataPagamento)
-    Service->>DB: Query Fatura + all linked Transacoes
-    Service->>DB: Update Fatura.status = "Paga"
-    Service->>DB: Update Fatura.dataPagamento
-    Service->>DB: Commit
-    API-->>Frontend: 200 OK + updated FaturaDto
-    Frontend->>Frontend: Update UI (show "Paga")
+    User->>Frontend: Abre o modal "Pagar" (gera Idempotency-Key = crypto.randomUUID())
+    Frontend->>API: POST /cartoes/{cartaoId}/faturas/{id}/pagar {contaId, valor, dataPagamento, meioPagamento} + header Idempotency-Key
+    API->>Service: PagarFaturaAsync(faturaId, dto, usuarioId, idempotencyKey)
+    Service->>DB: Fatura do usuário (+ Transacoes + ParcelasTransacao) — de outro usuário/inexistente → 404
+    Service->>DB: RegistroIdempotencia (usuário, "PagarFatura", chave) já existe? → replay
+    Service->>Service: restante = RegrasFinanceiras.ValorRestanteFatura (sem parcela cancelada)
+    Service->>DB: INSERT Transacao de pagamento (EhPagamentoFatura, FaturaPagaId) + UPDATE Fatura.ValorPago/EstadoPagamento + INSERT RegistroIdempotencia + FinancialEventLog — UM SaveChanges
+    API-->>Frontend: 204 No Content
+    Frontend->>API: recarrega faturas/detalhe (falha aqui NÃO vira "erro ao pagar")
 ```
 
-**Behavior:**
-- Only `Status=Aberta` can be paid
-- Auto-updates linked `Transacoes` implicitly
+**Regras:**
+- `Idempotency-Key` **obrigatória** (sem ela → 400). Mesma chave + mesmos dados (conta, valor, data, meio) → 204 sem pagar de novo (replay vem antes do "já paga"). Mesma chave + outros dados, ou em outra fatura → 409. Tentativa que falha não gasta a chave.
+- `0 < valor <= restante`; fatura `Pago` recusa (409).
+- Concorrência: `Fatura.Versao` = `xmin`. Outro pagamento/operação na mesma fatura entre a leitura e o save → 409 `CONCURRENCY_CONFLICT`; corrida com a **mesma** chave (23505 no índice único ou `xmin`) → replay.
+- Front: 4xx com mensagem vira **aviso** com a mensagem do servidor; no 409 o modal fecha e a fatura recarrega (reabrir gera chave nova).
 
 ---
 
@@ -226,19 +228,7 @@ graph TD
 
 **Not Stored:** Conta.Saldo is NOT a table column.
 
-**Calculated On-the-fly:**
-```csharp
-var saldo = transacoes
-    .Where(t => t.ContaId == contaId)
-    .GroupBy(t => t.Tipo)
-    .ToDictionary(g => g.Key, g => g.Sum(t => t.Valor));
-
-var receitas = saldo.GetValueOrDefault(TipoTransacao.Receita, 0);
-var despesas = saldo.GetValueOrDefault(TipoTransacao.Despesa, 0);
-var saldoFinal = receitas - despesas;
-```
-
-**Performance Note:** Consider indexing `transacoes(conta_id, tipo)` for large datasets.
+**Regra única (#269):** `RegrasFinanceiras` — saldo = Σ receitas − Σ despesas das transações `Ativo` + `Executado` da conta (inclui transferência, saldo inicial e pagamento de fatura; **exclui previsão** e excluídas). Agregado **no banco** numa query só pra todas as contas (`GROUP BY ContaId` + `SUM(CASE ...)`), filtrando pelo dono da conta. Consumidores (`ContasController` via `ContaService.ObterSaldosAsync`, `DashboardService`, `ParcelaTransacaoService`, `TransacaoService.ObterResumoPorContaAsync`) não recalculam na mão.
 
 ---
 

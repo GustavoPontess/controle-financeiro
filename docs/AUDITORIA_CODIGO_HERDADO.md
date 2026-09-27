@@ -51,7 +51,7 @@ Varredura completa (READ-ONLY) de tudo que os ex-colaboradores mergearam, feita 
 
 **Backend**
 - `TransacaoService.cs:46-59`: categoria validada **sem filtro de dono** — possível anexar transação a categoria custom alheia (leve). Add `(c.UsuarioId == null || c.UsuarioId == usuarioId)`.
-- `TransacaoService.cs:294-296`: `ObterResumoPorContaAsync` não filtra `Ativo` — resumo diverge do saldo real.
+- ✅ `TransacaoService.ObterResumoPorContaAsync` divergia do saldo real (somava previsão; `Ativo` já vinha do filtro global) — agora usa a regra única `RegrasFinanceiras` (Ativo + Executado, agregado no banco), igual contas/dashboard (2026-09-27).
 - `OrcamentosController`: endpoints transacionais sem `Idempotency-Key` (mitigado por unique-guard categoria+mês+ano).
 
 **Infra (higiene dev)**

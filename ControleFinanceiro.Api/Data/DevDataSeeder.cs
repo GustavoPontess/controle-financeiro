@@ -296,7 +296,9 @@ public static class DevDataSeeder
             // Fatura passada (já fechou) → paga; gera a transação de pagamento (debita a conta).
             foreach (var f in porFechamento.Values)
             {
-                var total = transacoes.Where(t => t.FaturaId == f.Id).Sum(t => t.Valor);
+                // Mesma regra de total da API (o seed ainda não tem parcelas nesta fatura).
+                var total = RegrasFinanceiras.ValorTotalFatura(
+                    transacoes.Where(t => t.FaturaId == f.Id), Array.Empty<ParcelaTransacao>());
                 if (f.DataFechamento.Date <= hoje)
                 {
                     f.EstadoCiclo = EstadoCicloFatura.Fechada;

@@ -35,7 +35,10 @@ public class Fatura
     /// <summary>Dimensão "pagamento": NaoPago, Parcial, Pago.</summary>
     public EstadoPagamentoFatura EstadoPagamento { get; set; } = EstadoPagamentoFatura.NaoPago;
 
-    /// <summary>Dimensão "atraso": true se DataVencimento passou e EstadoPagamento != Pago.</summary>
+    /// <summary>
+    /// Dimensão "atraso": true se DataVencimento passou e ainda resta pagar
+    /// (<c>RegrasFinanceiras.ValorRestanteFatura</c> &gt; 0) — não basta EstadoPagamento != Pago.
+    /// </summary>
     public bool EstaAtrasada { get; set; }
 
     /// <summary>Quando o ciclo virou Fechada (snapshot pra auditoria).</summary>

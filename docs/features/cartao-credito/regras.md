@@ -113,8 +113,13 @@ Fechada + Pago                → estado final, fatura arquivada
 
 ```
 valorTotal = Σ transacoes WHERE UsadoComoCredito = true AND Ativo = true
-           + Σ parcelasTransacao.ValorComJuros (ou Valor se sem juros)
+           + Σ parcelasTransacao WHERE Status != Cancelada (ValorComJuros, ou Valor se sem juros)
+valorRestante = max(0, valorTotal − ValorPago)
 ```
+
+Fonte única: `Services/RegrasFinanceiras.cs` (`ValorTotalFatura` / `ValorRestanteFatura`) — nunca recalcular em outro lugar (#269). Parcela `Paga` antecipadamente **continua** no total (o pagamento antecipado soma em `ValorPago`; tirá-la descontaria 2x).
+
+**Depois de cancelar parcela/parcelamento** o total cai sem dinheiro novo, então o estado é reconciliado (`ReconciliarFaturasAposCancelamentoAsync`): ciclo **fechado** coberto (`ValorPago > 0` e restante 0) → `Pago` + `FaturaPagaTotal` no audit log; ciclo **aberto** fica `Parcial` com restante 0 até o `FaturaFechamentoJob` quitar no fechamento (marcar `Pago` antes travaria a próxima compra do ciclo). Parcela `Pendente` numa fatura **coberta pelo pagamento** já foi paga: o cancelamento a preserva (`requerEstorno`) e pagar antecipado recusa.
 
 Transações de pagamento da fatura **não entram** no total — elas têm `ContaId` preenchido e `UsadoComoCredito = false`.
 
@@ -148,6 +153,7 @@ Quando uma fatura é paga integralmente (`EstadoPagamento = Pago`), suas transa�
 - Pagamento parcial permitido: `0 < valorPagamento <= valorRestante`.
 - Pagamento total: `EstadoPagamento = Pago`, `DataPagamentoTotal = now`, `EstaAtrasada = false`.
 - Uma fatura com `EstadoPagamento = Pago` **não pode** ser paga novamente via API (guard no service).
+- **Idempotência + concorrência (#268):** header `Idempotency-Key` obrigatório (400 sem ele); a chave vai pra `RegistroIdempotencia` (índice único) no mesmo `SaveChanges` do pagamento. Retry com os mesmos dados → 204 sem pagar de novo; com outros dados → 409. `xmin` na `Fatura`: pagamento concorrente → 409. Detalhe do fluxo em `docs/FLOWS.md` §4.
 
 ### 5.1 Coloração no histórico detalhado
 
@@ -163,8 +169,10 @@ Na listagem de transações dentro de uma fatura, a cor do valor indica cobertur
 
 | Job | Gatilho | Ação |
 |-----|---------|------|
-| `FaturaFechamentoJob` | Cron diário | Fecha faturas cujo `DataFechamento <= hoje` e `EstadoCiclo = Aberta` |
-| `FaturaAtrasoJob` | Cron diário | Marca `EstaAtrasada = true` onde `DataVencimento < hoje` e `EstadoPagamento != Pago` |
+| `FaturaFechamentoJob` | Cron diário | Fecha faturas cujo `DataFechamento <= hoje` e `EstadoCiclo = Aberta`; se o ciclo fecha coberto (`ValorPago > 0` e restante 0) vira `Pago` e registra `FaturaPagaTotal` |
+| `FaturaAtrasoJob` | Cron diário | Marca `EstaAtrasada = true` onde `DataVencimento < hoje`, `EstadoPagamento != Pago` **e restante > 0**; juros (1%/mês) e multa (2%) sobre o **restante** |
+
+Os dois salvam o lote num `SaveChanges`; com o `xmin` na `Fatura`, um conflito (pagamento no meio) faz o job refazer **uma a uma**, relendo cada fatura — a que conflitar de novo fica pra próxima execução. "Vencida" no DTO também deriva do restante (`FaturaDto.Vencida`).
 
 ---
 

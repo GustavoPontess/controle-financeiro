@@ -1024,12 +1024,52 @@ public class FaturaServiceTests
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Faturas.Add(fatura);
+        // Vencida exige restante > 0: uma compra a pagar (fatura vazia não vence — teste abaixo).
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 80, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
+            Data = DateTime.UtcNow.AddDays(-20), CriadoPor = usuarioId,
+        });
         await ctx.SaveChangesAsync();
 
         var service = new FaturaService(ctx);
         var resultado = await service.ListarPorCartaoAsync(cartao.Id, usuarioId);
 
         Assert.True(resultado.Single().Vencida);
+    }
+
+    [Fact]
+    public async Task ListarPorCartaoAsync_FaturaSemRestanteAposVencimento_NaoMarcaVencida()
+    {
+        // Parcial com restante 0 (coberta depois de um cancelamento) e zerada sem pagamento (todas as
+        // parcelas canceladas): nenhuma deve nada, nenhuma é "Vencida" — deriva do restante.
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = CriarCartao(usuarioId);
+        Fatura Vencida(EstadoPagamentoFatura estado, decimal valorPago) => new()
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
+            DataInicio = DateTime.UtcNow.AddDays(-40), DataFechamento = DateTime.UtcNow.AddDays(-10),
+            DataVencimento = DateTime.UtcNow.AddDays(-5), CriadoPor = usuarioId,
+            EstadoCiclo = EstadoCicloFatura.Fechada, EstadoPagamento = estado, ValorPago = valorPago,
+        };
+        var coberta = Vencida(EstadoPagamentoFatura.Parcial, 100);
+        var zerada = Vencida(EstadoPagamentoFatura.NaoPago, 0);
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.AddRange(coberta, zerada);
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = cartao.Id, FaturaId = coberta.Id, UsadoComoCredito = true,
+            Data = DateTime.UtcNow.AddDays(-20), CriadoPor = usuarioId,
+        });
+        await ctx.SaveChangesAsync();
+
+        var resultado = await new FaturaService(ctx).ListarPorCartaoAsync(cartao.Id, usuarioId);
+
+        Assert.All(resultado, f => Assert.Equal(0m, f.ValorRestante));
+        Assert.All(resultado, f => Assert.False(f.Vencida));
     }
 
     [Fact]
