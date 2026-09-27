@@ -208,8 +208,9 @@ public class FaturaService
     /// Debita o valor da conta informada e atualiza o status da fatura.
     /// Invariante: só impacta o saldo da conta no momento do pagamento.
     /// Idempotente por <paramref name="idempotencyKey"/> (header Idempotency-Key, obrigatório): a
-    /// mesma chave nunca paga 2x — o replay devolve o pagamento original. Concorrência otimista na
-    /// Fatura (xmin): pagamento simultâneo com outra chave → DbUpdateConcurrencyException (409).
+    /// mesma chave nunca paga 2x — o replay devolve o pagamento original; mesma chave com OUTROS
+    /// dados → InvalidOperationException (409). Concorrência otimista na Fatura (xmin): pagamento
+    /// simultâneo com outra chave → DbUpdateConcurrencyException (409).
     /// </summary>
     public async Task<Transacao> PagarFaturaAsync(
         Guid faturaId, PagarFaturaDto dto, Guid usuarioId, string? idempotencyKey)
@@ -224,19 +225,19 @@ public class FaturaService
             throw new ArgumentException(
                 $"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
 
+        // Dono já no filtro da busca: fatura de OUTRO usuário e fatura inexistente dão o MESMO 404
+        // (CLAUDE.md, "dono do recurso"). Antes a de outro usuário dava 403 — a diferença de status
+        // confirmava pra quem chuta ids que aquela fatura existe.
         var fatura = await _context.Faturas
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
             .Include(f => f.ParcelasTransacao)
-            .FirstOrDefaultAsync(f => f.Id == faturaId)
+            .FirstOrDefaultAsync(f => f.Id == faturaId && f.CartaoCredito.CriadoPor == usuarioId)
             ?? throw new KeyNotFoundException("Fatura não encontrada.");
-
-        if (fatura.CartaoCredito.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Você não tem permissão para pagar esta fatura.");
 
         // Replay ANTES das regras de negócio: se o 1º pagamento quitou a fatura, o retry cairia em
         // "já foi paga" (409) e o cliente acharia que falhou — o certo é devolver o mesmo sucesso.
-        var pagamentoAnterior = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId);
+        var pagamentoAnterior = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId, dto);
         if (pagamentoAnterior != null)
             return pagamentoAnterior;
 
@@ -332,12 +333,13 @@ public class FaturaService
             // Corrida: entre a nossa leitura e o nosso UPDATE, outra requisição alterou esta fatura
             // (xmin mudou → concorrência) ou gravou a MESMA chave antes (índice único → 23505). Nada
             // desta tentativa foi persistido (SaveChanges é atômico). Se quem ganhou usou a mesma
-            // chave, é o duplo clique/retry → replay com o pagamento dela. Senão foi outra operação
-            // (outro pagamento, parcela, job) → propaga; o middleware devolve 409 e o cliente recarrega.
+            // chave, é o duplo clique/retry → replay com o pagamento dela (se os dados baterem — senão
+            // 409, igual ao replay normal). Senão foi outra operação (outro pagamento, parcela, job)
+            // → propaga; o middleware devolve 409 e o cliente recarrega.
             foreach (var pendente in new object[] { pagamento, registro, log, fatura })
                 _context.Entry(pendente).State = EntityState.Detached;
 
-            var vencedor = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId);
+            var vencedor = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId, dto);
             if (vencedor != null)
                 return vencedor;
             throw;
@@ -347,9 +349,19 @@ public class FaturaService
     }
 
     /// <summary>
-    /// Pagamento já feito com esta chave (replay) ou null se a chave é nova pra este usuário.
+    /// Mensagem do 409 quando a chave já pagou com OUTROS dados (conta, valor, data ou meio).
+    /// Segura pro cliente: não revela os dados do pagamento original.
     /// </summary>
-    private async Task<Transacao?> BuscarPagamentoPorChaveAsync(Guid usuarioId, string chave, Guid faturaId)
+    public const string MensagemChaveComOutrosDados =
+        "Este pagamento já foi registrado com outros dados. Recarregue a fatura antes de pagar de novo.";
+
+    /// <summary>
+    /// Pagamento já feito com esta chave (replay) ou null se a chave é nova pra este usuário.
+    /// Lança <see cref="InvalidOperationException"/> (409) se a chave já foi usada em outra fatura ou
+    /// com dados diferentes dos de <paramref name="dto"/>.
+    /// </summary>
+    private async Task<Transacao?> BuscarPagamentoPorChaveAsync(
+        Guid usuarioId, string chave, Guid faturaId, PagarFaturaDto dto)
     {
         var registro = await _context.RegistrosIdempotencia
             .AsNoTracking()
@@ -372,8 +384,29 @@ public class FaturaService
             throw new InvalidOperationException(
                 "Esta Idempotency-Key já foi usada em outra operação. Gere uma nova chave e tente de novo.");
 
+        // Mesma chave com dados DIFERENTES não é o mesmo pedido: ex.: pagou R$300 da conta A, a
+        // resposta se perdeu, o usuário trocou pra R$100 da conta B no modal ainda aberto (mesma
+        // chave) e confirmou. Devolver 204 diria "pago" pra algo que NÃO foi feito — saíram R$300 da
+        // A. Draft IETF httpapi-idempotency-key e Stripe tratam payload divergente como erro, não
+        // replay. Sem coluna de hash do payload: a própria Transacao original guarda o que foi pedido.
+        if (!MesmosDadosDoPagamento(pagamento, dto))
+            throw new InvalidOperationException(MensagemChaveComOutrosDados);
+
         return pagamento;
     }
+
+    /// <summary>
+    /// O retry traz o mesmo pedido que gerou <paramref name="original"/>? Compara com os valores
+    /// como foram GRAVADOS no INSERT (mesmas conversões), pra um retry legítimo não virar 409.
+    /// </summary>
+    private static bool MesmosDadosDoPagamento(Transacao original, PagarFaturaDto dto) =>
+        original.ContaId == dto.ContaId
+        && original.Valor == dto.Valor
+        // Só a data: o front grava a hora do clique ("hoje → agora"), então o retry do mesmo pedido
+        // chega com outro horário no mesmo dia. ToUniversalTime = a mesma conversão do INSERT.
+        && original.Data.Date == dto.DataPagamento.ToUniversalTime().Date
+        // Nullable na Transacao: pagamento sem meio gravado não tem o que comparar.
+        && (original.MeioPagamento == null || (int)original.MeioPagamento.Value == dto.MeioPagamento);
 
     /// <summary>Violação de índice único no Postgres (SqlState 23505) dentro do DbUpdateException.</summary>
     private static bool EhViolacaoDeUnicidade(DbUpdateException ex) =>

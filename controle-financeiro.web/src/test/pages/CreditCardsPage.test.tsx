@@ -6,9 +6,12 @@ import type { CartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Fatura, FaturaDetalhe } from "../../types/Fatura"
 
+// notify estável e observável: os testes do modal de pagar checam QUAL toast saiu (sucesso, aviso
+// com a mensagem do servidor, erro genérico).
+const notify = vi.fn()
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
-  useOutletContext: () => ({ notify: vi.fn() }),
+  useOutletContext: () => ({ notify }),
 }))
 
 const getCartoes = vi.fn()
@@ -22,6 +25,9 @@ vi.mock("../../services/cartaoCreditoService", () => ({
 vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve(contas) }))
 const getBancos = vi.fn()
 vi.mock("../../services/bancoService", () => ({ getBancos: (...a: unknown[]) => getBancos(...a) }))
+// Sem este mock a página fazia HTTP de verdade (jsdom) e o 1º loadData demorava até a rede falhar;
+// só passava porque o notify instável recriava o loadData a cada render e disparava outra carga.
+vi.mock("../../services/recorrenteService", () => ({ getRecorrentes: () => Promise.resolve([]) }))
 
 const getFaturasByCartao = vi.fn()
 const getFaturaDetalhe = vi.fn()
@@ -75,6 +81,7 @@ describe("CreditCardsPage (#84)", () => {
     pagarFatura.mockReset().mockResolvedValue(undefined)
     getBancos.mockReset().mockResolvedValue(bancos)
     createCartao.mockReset().mockResolvedValue(cartao)
+    notify.mockReset()
   })
 
   afterEach(() => {
@@ -83,7 +90,9 @@ describe("CreditCardsPage (#84)", () => {
 
   it("lista cartão + resumo e limite", async () => {
     renderPage()
-    expect(await screen.findByText("Nubank")).toBeInTheDocument()
+    // Consulta e asserção no MESMO callback: com cartão único a página auto-abre o modo foco logo
+    // depois de listar e remonta o card — um elemento guardado do findByText pode já ter saído do DOM.
+    await waitFor(() => expect(screen.getByText("Nubank")).toBeInTheDocument())
     expect(screen.getByText("Limite total")).toBeInTheDocument()
     expect(screen.getAllByText(/R\$\s?4\.850,00/).length).toBeGreaterThan(0) // disponível
   })
@@ -191,6 +200,56 @@ describe("CreditCardsPage (#84)", () => {
     fireEvent.click(screen.getByText("Confirmar pagamento"))
     await waitFor(() => expect(pagarFatura).toHaveBeenCalledTimes(3))
     expect(pagarFatura.mock.calls[2][3]).not.toBe(pagarFatura.mock.calls[0][3])
+  })
+
+  it("pagar fatura: recarga falhando DEPOIS do pagamento ok não vira 'Erro ao registrar pagamento'", async () => {
+    // O pagamento foi registrado; só a recarga da tela falhou. Antes caía no mesmo catch e o usuário
+    // via "Erro ao registrar pagamento" — e tentava pagar de novo.
+    getCartoes.mockReset().mockResolvedValueOnce([cartao]).mockRejectedValue(new Error("Network Error"))
+    getFaturasByCartao.mockReset().mockResolvedValueOnce([fatura]).mockRejectedValue(new Error("Network Error"))
+    renderPage()
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+
+    await waitFor(() => expect(getFaturasByCartao).toHaveBeenCalledTimes(2)) // a recarga rodou (e falhou)
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "success", message: "Pagamento registrado com sucesso" }))
+    expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ message: "Erro ao registrar pagamento" }))
+    expect(screen.queryByText("Pagar fatura")).not.toBeInTheDocument()
+  })
+
+  it("pagar fatura: 409 do servidor vira AVISO com a mensagem dele, fecha o modal e recarrega a fatura", async () => {
+    // Ex.: mesma chave reenviada com outros dados — o pagamento original existe; a tela está velha.
+    const msg = "Este pagamento já foi registrado com outros dados. Recarregue a fatura antes de pagar de novo."
+    pagarFatura.mockReset().mockRejectedValue({ response: { status: 409, data: { code: "BUSINESS_RULE_VIOLATION", message: msg } } })
+    renderPage()
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+    const faturasAntes = getFaturasByCartao.mock.calls.length
+    const detalheAntes = getFaturaDetalhe.mock.calls.length
+
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith({ open: true, severity: "warning", message: msg }))
+    expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ severity: "success" }))
+    await waitFor(() => expect(getFaturasByCartao.mock.calls.length).toBeGreaterThan(faturasAntes))
+    await waitFor(() => expect(getFaturaDetalhe.mock.calls.length).toBeGreaterThan(detalheAntes))
+    expect(getFaturaDetalhe).toHaveBeenLastCalledWith("c1", "f1")
+    expect(screen.queryByText("Pagar fatura")).not.toBeInTheDocument()
+  })
+
+  it("pagar fatura: 400 com mensagem vira aviso e o modal fica aberto pra corrigir", async () => {
+    const msg = "Valor inválido. Restante a pagar: R$ 150,00."
+    pagarFatura.mockReset().mockRejectedValue({ response: { status: 400, data: { code: "VALIDATION_ERROR", message: msg } } })
+    renderPage()
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith({ open: true, severity: "warning", message: msg }))
+    expect(screen.getByText("Pagar fatura")).toBeInTheDocument()
   })
 
   it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {

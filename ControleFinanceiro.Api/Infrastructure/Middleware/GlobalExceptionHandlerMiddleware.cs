@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Services;
 using System.Text.Json;
@@ -9,7 +10,7 @@ namespace ControleFinanceiro.Api.Infrastructure.Middleware;
 /// respostas HTTP padronizadas usando <see cref="ErrorResponseDto"/>.
 ///
 /// Mapeamento de exceções:
-/// - <see cref="Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"/> → 409 Conflict (CONCURRENCY_CONFLICT, mensagem fixa)
+/// - <see cref="Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"/> → 409 Conflict (CONCURRENCY_CONFLICT, mensagem fixa por entidade)
 /// - <see cref="ArgumentException"/>           → 400 Bad Request   (VALIDATION_ERROR)
 /// - <see cref="KeyNotFoundException"/>         → 404 Not Found     (NOT_FOUND)
 /// - <see cref="InvalidOperationException"/>    → 409 Conflict      (BUSINESS_RULE_VIOLATION)
@@ -48,13 +49,21 @@ public sealed class GlobalExceptionHandlerMiddleware
     }
 
     /// <summary>
-    /// Mensagem fixa do 409 de concorrência otimista. A mensagem do EF (DbUpdateConcurrencyException)
-    /// cita contagem de linhas/entidades — detalhe interno que não vai pro cliente. Fala de "fatura"
-    /// porque hoje a Fatura é a única entidade com token de concorrência (xmin); ao estender pra
-    /// outras (Emprestimo, EmprestimoParcela, Meta), generalizar ou escolher a mensagem pela entidade.
+    /// Mensagem fixa do 409 de concorrência quando o conflito foi numa Fatura (token xmin). A
+    /// mensagem do EF (DbUpdateConcurrencyException) cita contagem de linhas/entidades — detalhe
+    /// interno que não vai pro cliente.
+    /// </summary>
+    public const string MensagemConflitoFatura =
+        "Esta fatura foi alterada por outra operação. Recarregue e tente de novo.";
+
+    /// <summary>
+    /// Mensagem fixa do 409 de concorrência nas demais entidades. O EF lança
+    /// DbUpdateConcurrencyException em QUALQUER UPDATE/DELETE que afeta 0 linhas, não só onde há
+    /// token de concorrência — ex.: duplo POST do MFA faz Remove(challenge) duas vezes, duplo
+    /// excluir transferência. Falar de "fatura" nesses casos confundiria o usuário.
     /// </summary>
     public const string MensagemConflitoConcorrencia =
-        "Esta fatura foi alterada por outra operação. Recarregue e tente de novo.";
+        "Este registro foi alterado por outra operação. Recarregue e tente de novo.";
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
@@ -93,8 +102,8 @@ public sealed class GlobalExceptionHandlerMiddleware
             ? "Erro interno do servidor. Tente novamente mais tarde."
             : statusCode == StatusCodes.Status413PayloadTooLarge
                 ? "Requisição grande demais."
-                : exception is Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException
-                    ? MensagemConflitoConcorrencia
+                : exception is Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException concorrencia
+                    ? MensagemDeConcorrencia(concorrencia)
                     : exception.Message;
 
         var response = new ErrorResponseDto
@@ -108,4 +117,11 @@ public sealed class GlobalExceptionHandlerMiddleware
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(response, _jsonOptions));
     }
+
+    /// <summary>
+    /// Escolhe a mensagem pela entidade que conflitou (<c>Entries</c> = as linhas cujo UPDATE/DELETE
+    /// afetou 0 linhas). Sem entrada de Fatura → mensagem genérica, nunca a da fatura por engano.
+    /// </summary>
+    private static string MensagemDeConcorrencia(Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex) =>
+        ex.Entries.Any(e => e.Entity is Fatura) ? MensagemConflitoFatura : MensagemConflitoConcorrencia;
 }

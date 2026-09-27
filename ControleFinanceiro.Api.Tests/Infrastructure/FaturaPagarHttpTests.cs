@@ -85,6 +85,10 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
         return (client, csrf);
     }
 
+    // Data fixa pra todas as requisições: o replay compara a DATA do pagamento com a da 1ª tentativa,
+    // e DateTime.UtcNow por requisição tornaria o teste frágil se virasse a meia-noite no meio dele.
+    private static readonly DateTime DataPagamento = DateTime.UtcNow.Date.AddHours(12);
+
     private static HttpRequestMessage PagarRequest(
         Guid cartaoId, Guid faturaId, Guid contaId, decimal valor, string csrf, string? idempotencyKey)
     {
@@ -92,7 +96,7 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
         {
             Content = JsonContent.Create(new
             {
-                contaId, valor, dataPagamento = DateTime.UtcNow, meioPagamento = (int)MeioPagamento.Pix,
+                contaId, valor, dataPagamento = DataPagamento, meioPagamento = (int)MeioPagamento.Pix,
             }),
         };
         req.Headers.Add("X-CSRF-Token", csrf);
@@ -138,5 +142,48 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.NoContent, primeira.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, retry.StatusCode);
         Assert.Equal((100m, 1), EstadoDaFatura(faturaId));
+    }
+
+    [Fact]
+    public async Task Pagar_MesmaIdempotencyKeyComValorDiferente_Retorna409_ENaoPagaDeNovo()
+    {
+        // Pagou R$300, a resposta se perdeu e o modal (mesma chave) foi reenviado com R$100 — valor
+        // que sozinho seria válido (restante R$200). Não é o mesmo pedido: 409 com a mensagem segura
+        // e a fatura fica só com o pagamento original.
+        const string email = "pagar-chave-outros-dados@test.com";
+        var (cartaoId, faturaId, contaId) = SeedUsuarioComFatura(email, 500m);
+        var (client, csrf) = await LoginClientAsync(email);
+        var chave = Guid.NewGuid().ToString();
+
+        var primeira = await client.SendAsync(PagarRequest(cartaoId, faturaId, contaId, 300m, csrf, chave));
+        var outroValor = await client.SendAsync(PagarRequest(cartaoId, faturaId, contaId, 100m, csrf, chave));
+
+        Assert.Equal(HttpStatusCode.NoContent, primeira.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, outroValor.StatusCode);
+        var corpo = await outroValor.Content.ReadAsStringAsync();
+        Assert.Contains("\"code\":\"BUSINESS_RULE_VIOLATION\"", corpo);
+        Assert.Contains("outros dados", corpo);
+        Assert.Equal((300m, 1), EstadoDaFatura(faturaId));
+    }
+
+    [Fact]
+    public async Task Pagar_FaturaDeOutroUsuario_Retorna404IgualAInexistente()
+    {
+        // Antes: 403 pra fatura de outro usuário e 404 pra inexistente — a diferença confirmava que o
+        // id existe. Agora as duas respostas são idênticas e nada é pago.
+        var (_, faturaDoDono, _) = SeedUsuarioComFatura("pagar-dono@test.com", 300m);
+        const string emailAtacante = "pagar-atacante@test.com";
+        var (cartaoAtacante, _, contaAtacante) = SeedUsuarioComFatura(emailAtacante, 300m);
+        var (client, csrf) = await LoginClientAsync(emailAtacante);
+
+        var deOutro = await client.SendAsync(
+            PagarRequest(cartaoAtacante, faturaDoDono, contaAtacante, 100m, csrf, Guid.NewGuid().ToString()));
+        var inexistente = await client.SendAsync(
+            PagarRequest(cartaoAtacante, Guid.NewGuid(), contaAtacante, 100m, csrf, Guid.NewGuid().ToString()));
+
+        Assert.Equal(HttpStatusCode.NotFound, deOutro.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, inexistente.StatusCode);
+        Assert.Equal(await inexistente.Content.ReadAsStringAsync(), await deOutro.Content.ReadAsStringAsync());
+        Assert.Equal((0m, 0), EstadoDaFatura(faturaDoDono));
     }
 }

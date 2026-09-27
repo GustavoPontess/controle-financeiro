@@ -412,9 +412,10 @@ public class FaturaServiceTests
     }
 
     [Fact]
-    public async Task PagarFaturaAsync_CartaoDeOutroUsuario_LancaForbiddenAccessException()
+    public async Task PagarFaturaAsync_CartaoDeOutroUsuario_Lanca404IgualAInexistente_NaoPaga()
     {
-        // Cross-tenant / IDOR: fatura pertence a um cartão de outro usuário.
+        // Cross-tenant / IDOR: fatura pertence a um cartão de outro usuário. Tem que dar o MESMO 404
+        // (tipo e mensagem) da fatura inexistente — antes era 403, o que confirmava que o id existe.
         var ctx = CreateContext();
         var donoId = Guid.NewGuid();
         var atacanteId = Guid.NewGuid();
@@ -428,7 +429,14 @@ public class FaturaServiceTests
         var service = new FaturaService(ctx);
         var dto = new PagarFaturaDto { ContaId = contaAtacante.Id, Valor = 100, DataPagamento = DateTime.UtcNow };
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => service.PagarFaturaAsync(fatura.Id, dto, atacanteId, Chave()));
+        var deOutro = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.PagarFaturaAsync(fatura.Id, dto, atacanteId, Chave()));
+        var inexistente = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.PagarFaturaAsync(Guid.NewGuid(), dto, atacanteId, Chave()));
+
+        Assert.Equal(inexistente.Message, deOutro.Message);
+        Assert.Equal(0m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(0m, await DebitadoDaContaAsync(ctx, contaAtacante.Id));
     }
 
     [Fact]
@@ -713,6 +721,68 @@ public class FaturaServiceTests
         Assert.Equal(50m, await DebitadoDaContaAsync(ctx, contaB.Id));
     }
 
+    [Theory]
+    [InlineData("valor")]
+    [InlineData("conta")]
+    [InlineData("data")]
+    [InlineData("meio")]
+    public async Task PagarFaturaAsync_MesmaChaveComOutrosDados_Lanca409_NaoPagaDeNovo(string campoAlterado)
+    {
+        // O bug: pagou R$300 da conta A, a resposta se perdeu, o usuário trocou pra R$100 da conta B
+        // no modal ainda aberto (MESMA chave) e confirmou → 204 "sucesso", mas o que saiu foram os
+        // R$300 da A. Payload diferente com a mesma chave não é replay: é 409, e nada é pago de novo.
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, contaA) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 500m);
+        var contaB = CriarConta(usuarioId);
+        ctx.Contas.Add(contaB);
+        await ctx.SaveChangesAsync();
+        var chave = Chave();
+        var hoje = DateTime.UtcNow;
+        await service.PagarFaturaAsync(fatura.Id, new PagarFaturaDto
+        {
+            ContaId = contaA.Id, Valor = 300m, DataPagamento = hoje, MeioPagamento = (int)MeioPagamento.Pix,
+        }, usuarioId, chave);
+
+        var outrosDados = new PagarFaturaDto
+        {
+            ContaId = campoAlterado == "conta" ? contaB.Id : contaA.Id,
+            Valor = campoAlterado == "valor" ? 100m : 300m,
+            DataPagamento = campoAlterado == "data" ? hoje.AddDays(-1) : hoje,
+            MeioPagamento = campoAlterado == "meio" ? (int)MeioPagamento.Boleto : (int)MeioPagamento.Pix,
+        };
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.PagarFaturaAsync(fatura.Id, outrosDados, usuarioId, chave));
+
+        Assert.Equal(FaturaService.MensagemChaveComOutrosDados, ex.Message);
+        Assert.Equal(300m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Single(await ctx.Transacoes.Where(t => t.FaturaPagaId == fatura.Id).ToListAsync());
+        Assert.Equal(300m, await DebitadoDaContaAsync(ctx, contaA.Id));
+        Assert.Equal(0m, await DebitadoDaContaAsync(ctx, contaB.Id));
+        Assert.Single(await ctx.FinancialEventLogs.ToListAsync());
+    }
+
+    [Fact]
+    public async Task PagarFaturaAsync_MesmaChaveMesmosDadosOutroHorarioNoMesmoDia_ViraReplay()
+    {
+        // O front grava a hora do clique ("hoje → agora"): o retry do MESMO pedido chega com outro
+        // horário. Só a data conta na comparação — senão todo retry legítimo viraria 409.
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
+        var chave = Chave();
+        var manha = DateTime.UtcNow.Date.AddHours(9);
+
+        var primeiro = await service.PagarFaturaAsync(fatura.Id,
+            new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = manha }, usuarioId, chave);
+        var retry = await service.PagarFaturaAsync(fatura.Id,
+            new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = manha.AddHours(3) }, usuarioId, chave);
+
+        Assert.Equal(primeiro.Id, retry.Id);
+        Assert.Equal(100m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(100m, await DebitadoDaContaAsync(ctx, conta.Id));
+    }
+
     // ── PagarFaturaAsync — corrida entre requisições simultâneas ────────────
 
     [Fact]
@@ -776,6 +846,40 @@ public class FaturaServiceTests
         Assert.Equal(pagamentoDaGemea!.Id, resultado.Id);
         await using var leitura = CreateContext(root, nome);
         Assert.Equal(100m, (await leitura.Faturas.SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(100m, await DebitadoDaContaAsync(leitura, conta.Id));
+    }
+
+    [Fact]
+    public async Task PagarFaturaAsync_CorridaMesmaChaveComOutrosDados_Lanca409_NaoViraReplay()
+    {
+        // A comparação de dados vale também no caminho da corrida (dentro do catch): a gêmea com a
+        // mesma chave commitou R$100; a nossa pedia R$50 → 409, não o pagamento dela como se fosse o nosso.
+        var root = new InMemoryDatabaseRoot();
+        var nome = Guid.NewGuid().ToString();
+        var corrida = new SimulaCorridaNoPagamento();
+        var ctx = CreateContext(root, nome, corrida);
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
+        var chave = Chave();
+        var hoje = DateTime.UtcNow;
+
+        corrida.Concorrente = async () =>
+        {
+            await using var outraConexao = CreateContext(root, nome);
+            await new FaturaService(outraConexao).PagarFaturaAsync(fatura.Id,
+                new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = hoje }, usuarioId, chave);
+            return new DbUpdateException("duplicate key",
+                new PostgresException("duplicate key value violates unique constraint", "ERROR", "ERROR",
+                    PostgresErrorCodes.UniqueViolation));
+        };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PagarFaturaAsync(fatura.Id,
+            new PagarFaturaDto { ContaId = conta.Id, Valor = 50m, DataPagamento = hoje }, usuarioId, chave));
+
+        Assert.Equal(FaturaService.MensagemChaveComOutrosDados, ex.Message);
+        await using var leitura = CreateContext(root, nome);
+        Assert.Equal(100m, (await leitura.Faturas.SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Single(await leitura.Transacoes.Where(t => t.FaturaPagaId == fatura.Id).ToListAsync());
         Assert.Equal(100m, await DebitadoDaContaAsync(leitura, conta.Id));
     }
 
