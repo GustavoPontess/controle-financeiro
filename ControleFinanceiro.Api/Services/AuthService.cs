@@ -28,6 +28,17 @@ public class AuthService
     private const int SegundosDelayMaximo = 300;        // teto de 5min — depois disso só o bloqueio permanente conta
     private const int FalhasParaBloqueioPermanente = 10; // "after that permanent account lockout" — exige reset de senha
 
+    // Tolerância da reuse-detection pra CORRIDA do próprio cliente (ver ReapresentacaoEmCorridaAsync).
+    // Cenário real: o jwt de 15min expira, a tela dispara vários GETs, todos tomam 401 e cada um manda
+    // o MESMO refresh (duas abas abertas, ou um front sem single-flight). O 1º rotaciona; os outros
+    // chegam com o token já rotacionado e a regra estrita comprometia a família → usuário deslogado +
+    // alerta falso de roubo. 30s cobre com folga latência + fila do servidor numa rajada dessas.
+    // Tradeoff consciente: o RFC 9700 §4.14.2 revoga a família em QUALQUER reapresentação e não prevê
+    // janela; a janela é decisão de risco nossa, no molde do "reuse interval" do Auth0 — só que mais
+    // estreita (exige o mesmo dispositivo) e mais conservadora (a reapresentação tolerada NÃO ganha
+    // token novo, só leva 401). Fora dela, a regra estrita do RFC vale inteira.
+    private const int SegundosToleranciaReuso = 30;
+
     public AuthService(
         AppDbContext context,
         JwtTokenProvider tokenProvider,
@@ -171,6 +182,30 @@ public class AuthService
             "Refresh token reutilizado (possível roubo)",
             $"Um refresh token já rotacionado da conta de {quem} foi reapresentado. A sessão foi encerrada por segurança (reuse-detection).",
             "/admin/usuarios");
+    }
+
+    // Reapresentação de refresh já rotacionado que tem cara de CORRIDA do próprio cliente, não de
+    // replay: o sucessor nasceu há menos de SegundosToleranciaReuso E no mesmo dispositivo (User-Agent
+    // + IP desta request = os gravados na criação do sucessor). Mesmo dispositivo não prova identidade
+    // (UA é forjável, IP pode ser NAT compartilhado), mas tira da janela o caso típico de roubo — token
+    // usado de outra máquina/rede —, que segue comprometendo a família mesmo dentro dos 30s, em
+    // qualquer ordem (atacante antes ou depois do legítimo). Sem dispositivo pra comparar (fora de
+    // request HTTP) ou sem sucessor → fail-closed: trata como replay.
+    private async Task<bool> ReapresentacaoEmCorridaAsync(RefreshToken rt)
+    {
+        if (rt.SubstituidoPorId is not Guid sucessorId) return false;
+
+        var (dispositivo, ip) = CapturarDispositivo();
+        if (dispositivo is null || ip is null) return false;
+
+        var sucessor = await _context.RefreshTokens.FirstOrDefaultAsync(r => r.Id == sucessorId);
+        if (sucessor is null) return false;
+
+        // Duration(): com mais de uma instância, relógio levemente adiantado não pode virar "fora da janela".
+        var idadeDaRotacao = (DateTime.UtcNow - sucessor.CriadoEm).Duration();
+        return idadeDaRotacao < TimeSpan.FromSeconds(SegundosToleranciaReuso)
+            && sucessor.DispositivoInfo == dispositivo
+            && sucessor.IpCriacao == ip;
     }
 
     public async Task<RegisterResponseDto> RegisterAsync(RegisterDto dto)
@@ -438,9 +473,11 @@ public class AuthService
 
         // Reuse-detection: um refresh JÁ ROTACIONADO (SubstituidoPorId != null) reapresentado =
         // replay/roubo → compromete a família inteira. Revogado sem substituto (logout/reset) só falha.
+        // Exceção: corrida do próprio cliente (mesmo dispositivo, rotação de segundos atrás) só falha ESTA
+        // request (401), sem revogar nada — quem entrega os cookies novos é a request paralela que ganhou.
         if (rt.Revogado)
         {
-            if (rt.SubstituidoPorId != null)
+            if (rt.SubstituidoPorId != null && !await ReapresentacaoEmCorridaAsync(rt))
                 await ComprometerFamiliaAsync(rt);
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
         }

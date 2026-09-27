@@ -17,6 +17,14 @@ Desenho produzido por investigação + revisão adversarial de segurança (2026-
 > - **Fase 2 (B):** reuse-detection (RFC 9700 §4.14 — `FamiliaId`/`SubstituidoPorId`; replay de
 >   token rotacionado revoga a família + alerta admin), tela **Sessões e dispositivos** (listar/
 >   encerrar/"sair dos outros"), device/IP por sessão.
+> - **Corrida de refresh (2026-09-27, `fix/refresh-single-flight`):** o silent refresh do front é
+>   **single-flight** (uma promise em voo; os 401 concorrentes esperam ela e refazem a request 1x).
+>   No back, a reuse-detection ganhou **janela de tolerância de 30s** (`SegundosToleranciaReuso`):
+>   token já rotacionado reapresentado até 30s depois da rotação **E do mesmo dispositivo** (UA + IP
+>   iguais aos do sucessor) só leva 401, sem revogar nem alertar — cobre 2 abas / rajada de 401.
+>   Fora disso (mais tarde, outro IP/UA, ou sem contexto HTTP) segue a regra estrita do RFC 9700.
+>   Desvio consciente do RFC (que não prevê janela), no molde do "reuse interval" do Auth0, porém
+>   mais conservador: a reapresentação tolerada não ganha token novo. `/auth/switch` segue estrito.
 > - **Revogação INSTANTÂNEA (2026-09-16):** access token curto (**15min**, era 60) + claim `sid`
 >   (FamiliaId da sessão) no JWT + `JwtBearerEvents.OnTokenValidated` que, por request, valida se a
 >   sessão ainda tem refresh vivo E se o usuário está Ativo — senão 401 na hora. Fecha a janela de
