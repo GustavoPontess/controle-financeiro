@@ -15,7 +15,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 
 - **Backend:** .NET 10 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
 - **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
-- **Banco de dados:** 18 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
+- **Banco de dados:** 39 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
@@ -44,17 +44,19 @@ npm run lint
 
 ## Architecture
 
+> **Nome honesto:** monólito em camadas (N-tier: Controllers → Services → EF Core) com Service Layer + Transaction Script e domínio anêmico; o `AppDbContext` faz o papel de Repository/Unit of Work. Front: SPA React organizada por página + design system Pontes. **Não é** Clean/Onion, DDD, CQRS nem monólito modular — e não é pra virar. Avaliação completa (notas, forças, fraquezas, o que NÃO fazer): **`docs/ARQUITETURA.md`**.
+
 ### Backend Structure
-- **Controllers/** — thin HTTP layer; 16 controllers mapping to each domain area
-- **Services/** — all business logic; 19 services, each registered Scoped
-- **Domain/Entities/** — 18 EF Core entity models (never exposed directly in responses)
+- **Controllers/** — thin HTTP layer; 23 controllers mapping to each domain area
+- **Services/** — all business logic; 38 services, each registered Scoped (+ helpers estáticos `FamiliaPermissoes`, `PasswordPolicyService`)
+- **Domain/Entities/** — 39 EF Core entity models, todas com `Guid Id` (never exposed directly in responses)
 - **Domain/Enums/** — vários enums (TipoTransacao, Finalidade, TipoConta, StatusFatura, MeioPagamento, etc.)
 - **DTOs/** — request/response contracts; services map entities ↔ DTOs. `DTOs/Common/PagedResult<T>` é o envelope padrão de listagens paginadas.
 - **Infrastructure/AppDbContext.cs** — EF Core DbContext com DbSets e configuração de delete behavior
-- **Infrastructure/Identity/** — JWT generation + PBKDF2 password hashing + refresh/reset tokens
+- **Infrastructure/Identity/** — JWT generation + hash de senha Argon2id (+ pepper; PBKDF2 legado migra no login) + refresh/reset tokens
 - **Infrastructure/Middleware/GlobalExceptionHandlerMiddleware.cs** — captura exceções e mapeia para `ErrorResponseDto { code, message }`
 - **Data/** — seeders: `BancoSeeder` (BCB live API), `CategoriaSeeder`
-- **Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`)
+- **Infrastructure/Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`, `PasswordResetEmail`, `PurgaExclusaoExpirada`, `PurgaRegistroAcessoExpirado`)
 
 ### Frontend Structure
 - **src/api/axiosConfig.ts** — single Axios instance; request interceptor injects CSRF token; response interceptor redirects to `/auth/login` on 401 (exceto em paths públicos: `/auth/`, `/site`, `/design-system`, `/logo-concepts`)
@@ -80,16 +82,16 @@ npm run lint
 **Categoria** — has `Finalidade` (Despesa/Receita/Ambas) that must be compatible with the transaction type.
 
 ### Auth Flow
-- JWT Bearer (HS256), 60-minute expiration, configured in `appsettings.json`
-- Claims: `NameIdentifier` (user ID), `Email`, `Name`
-- CORS allows only `http://localhost:5173`
-- All endpoints except `/auth/login` and `/auth/register` require `[Authorize]`
+- JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection
+- Claims: `NameIdentifier` (user ID), `Email`, `Name`, `sid`
+- CORS allows only `http://localhost:5173` em dev (produção via `CORS_ALLOWED_ORIGINS`)
+- **API nega por padrão** (`FallbackPolicy`): tudo exige login, exceto o que declara `[AllowAnonymous]` — os endpoints públicos do `AuthController` (login, registro, MFA do login, refresh, switch, logout, roster, reativar conta, esqueci/redefinir senha) e `/health`, `/health/ready`
 
 ### Database
 - **Postgres único** (SQLite removido no #114): `DATABASE_URL` deve conter connection string Npgsql (`Host=...`). Rodar a API **exige** Postgres no ar (`docker compose up -d postgres`)
-- **Schema via migrations versionadas** em `Migrations/` (25 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
+- **Schema via migrations versionadas** em `Migrations/` (41 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
 - `Npgsql.EnableLegacyTimestampBehavior` ativo — `DateTime` mapeia para `timestamp without time zone`
-- Some schema patches for the Fatura system are applied via raw DDL in `Program.cs` startup (check for column existence before executing)
+- Não há mais DDL cru no startup do `Program.cs` — schema muda **só** via migration
 
 ## API Documentation
 
@@ -120,6 +122,9 @@ npm run lint
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`. Nunca `_context.Remove()` nessas entidades.
 - **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`
 - **`FinancialEventLog`** registra mudanças de saldo/limite — usar em qualquer operação que afete saldo
+- **Dono do recurso nas escritas:** toda escrita que recebe id de recurso vindo do cliente (conta, cartão, categoria, subcategoria) valida o dono via `Services/DonoRecursos.cs` antes de gravar — de outro usuário ou inexistente → 404. Filtrar a leitura por `UsuarioId` não basta.
+- **API nega por padrão:** `FallbackPolicy` exige usuário autenticado; endpoint público declara `[AllowAnonymous]` explicitamente, nunca "sem atributo".
+- **Testes de backend rodam no CI via `.sln`:** o job faz `dotnet test controle-financeiro.sln`. Projeto de teste novo **precisa estar na solution** — senão o CI passa verde sem rodar nada (foi o caso até o #262).
 
 ---
 
@@ -223,9 +228,9 @@ export default NovaFuncionalidadeService;
 ```csharp
 public class NovaEntidade
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Nome { get; set; }
-    public int UsuarioId { get; set; }
+    public Guid UsuarioId { get; set; }
     
     // Relacionamentos
     public Usuario Usuario { get; set; }
@@ -240,7 +245,7 @@ public class NovaEntidadeService
 {
     private readonly AppDbContext _context;
 
-    public async Task<NovaEntidadeDto> ObterPorId(int id, int usuarioId)
+    public async Task<NovaEntidadeDto> ObterPorId(Guid id, Guid usuarioId)
     {
         var entidade = await _context.NovaEntidades
             .FirstOrDefaultAsync(x => x.Id == id && x.UsuarioId == usuarioId);
@@ -261,10 +266,10 @@ public class NovaEntidadeController : ControllerBase
 
     [HttpGet("{id}")]
     [Authorize]
-    public async Task<ActionResult<NovaEntidadeDto>> GetById(int id)
+    public async Task<ActionResult<NovaEntidadeDto>> GetById(Guid id)
     {
         var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var result = await _service.ObterPorId(id, int.Parse(usuarioId));
+        var result = await _service.ObterPorId(id, Guid.Parse(usuarioId));
         return Ok(result);
     }
 }
@@ -325,6 +330,7 @@ dotnet ef database update
 └── docs/
     ├── README.md                ← índice da documentação
     ├── QUICK_REFERENCE.md       ← resumo de stack/comandos/padrões
+    ├── ARQUITETURA.md           ← nome honesto da arquitetura + avaliação (notas, fraquezas, o que NÃO fazer)
     ├── STANDARDS.md             ← convenções de código (naming, error handling, etc.)
     ├── DATABASE.md              ← schema, ER, delete behavior
     ├── FLOWS.md                 ← fluxos de negócio
