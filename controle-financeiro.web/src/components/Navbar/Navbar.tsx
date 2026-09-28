@@ -23,6 +23,9 @@ type Props = {
   /** Rótulo do "Início" no breadcrumb + destino. Default = Início/dashboard. */
   homeLabel?: string
   homePath?: string
+  /** Nome do item numa tela de detalhe (ex.: "Fone Teste") — vira o último nível do caminho:
+   *  "Início / Parcelamentos / Fone Teste", com "Parcelamentos" clicável de volta à lista. */
+  detalhe?: string
   /** Sino de notificações. Se omitido, usa o financeiro (só quando `showFinance`). O painel admin
    *  injeta o SEU próprio sino aqui — assim o stream do admin não se mistura com o do usuário, e o
    *  componente do sino admin não entra no bundle comum. */
@@ -35,10 +38,10 @@ const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/transactions": "Transações",
   "/credit-cards": "Cartões de Crédito",
+  "/credit-cards/parcelamentos": "Parcelamentos",
   "/reports": "Relatórios",
   "/transferencias": "Transferências",
   "/assinaturas": "Contas Fixas",
-  "/parcelamentos": "Parcelamentos",
   "/emprestimos": "Empréstimos",
   "/importacao": "Importar Extrato",
   "/accounts": "Bancos",
@@ -47,21 +50,39 @@ const TITLES: Record<string, string> = {
   "/settings": "Configurações",
 }
 
-function resolveTitle(path: string): string {
-  if (TITLES[path]) return TITLES[path]
-  const k = Object.keys(TITLES).find((key) => path.startsWith(key + "/"))
-  return k ? TITLES[k] : "Pontes"
+// Seção que mora dentro de outra (Parcelamentos é parte de Cartões): o caminho mostra as duas.
+const PAI: Record<string, string> = { "/credit-cards/parcelamentos": "/credit-cards" }
+
+// Seção da rota: título e path da lista. Vale o prefixo MAIS LONGO — "/credit-cards/parcelamentos/abc"
+// é Parcelamentos, não Cartões.
+function resolveSecao(path: string): { title: string; path: string | null } {
+  const k = Object.keys(TITLES)
+    .filter((key) => path === key || path.startsWith(key + "/"))
+    .sort((a, b) => b.length - a.length)[0]
+  return k ? { title: TITLES[k], path: k } : { title: "Pontes", path: null }
 }
+
+type Crumb = { label: string; to?: string }
 
 export default function Navbar({
   toggleDrawer, sidebarOpen, showFinance = true,
   openTransaction, canCreateTransaction, openCommandPalette,
-  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle,
+  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle, detalhe,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
-  const title = titleProp ?? resolveTitle(location.pathname)
+  const secao = resolveSecao(location.pathname)
+  const title = titleProp ?? secao.title
   const isHome = location.pathname === homePath
+  // Início / [seção-pai] / seção / [detalhe]. Todo nível é link, menos o último (onde você está).
+  const crumbs: Crumb[] = [{ label: homeLabel, to: homePath }]
+  if (titleProp) crumbs.push({ label: titleProp })
+  else {
+    const pai = secao.path ? PAI[secao.path] : undefined
+    if (pai) crumbs.push({ label: TITLES[pai], to: pai })
+    if (detalhe && secao.path) crumbs.push({ label: title, to: secao.path }, { label: detalhe })
+    else crumbs.push({ label: title })
+  }
   const [hideBalance, toggleBalance] = useHideBalance()
 
   return (
@@ -73,9 +94,17 @@ export default function Navbar({
         <div className={styles.titleBox}>
           {!isHome && (
             <div className={styles.crumb}>
-              <span onClick={() => navigate(homePath)} className={styles.crumbHome}>{homeLabel}</span>
-              <span className={styles.crumbSep}> / </span>
-              <span className={styles.crumbCur}>{title}</span>
+              {crumbs.map((c, i) => {
+                const ultimo = i === crumbs.length - 1
+                return (
+                  <span key={`${i}-${c.label}`}>
+                    {i > 0 && <span className={styles.crumbSep}> / </span>}
+                    {ultimo || !c.to
+                      ? <span className={styles.crumbCur}>{c.label}</span>
+                      : <span onClick={() => navigate(c.to!)} className={styles.crumbHome}>{c.label}</span>}
+                  </span>
+                )
+              })}
             </div>
           )}
           <h1 className={styles.title}>{title}</h1>

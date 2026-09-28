@@ -3,7 +3,7 @@ import { formatMoney } from "@/utils/money"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
 import { ChevronLeft } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge, PontesStatCard,
+  PontesButton, PontesCard, PontesBadge, PontesStatCard, PontesAlert,
   PontesModal, PontesField, PontesSelect, PontesTextarea,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
@@ -11,6 +11,7 @@ import { getContas } from "../../services/contaService"
 import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
 import { notificacaoDeErro } from "@/utils/apiError"
+import { useDetalheNoCaminho } from "../../layouts/Default/useDetalheNoCaminho"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
 
@@ -18,6 +19,11 @@ import styles from "./ParcelamentoDetalhePage.module.css"
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
+
+// Instante (ex.: CanceladoEm) sai do banco em UTC sem o "Z" (timestamp without time zone); sem ele o
+// JS lê como hora local e, à noite, mostra o dia seguinte. Marca como UTC e formata no fuso local.
+const formatInstante = (d: string) =>
+  new Date(/[zZ]|[+-]\d\d:\d\d$/.test(d) ? d : `${d}Z`).toLocaleDateString("pt-BR")
 
 const formatarMesAno = (data: string) => {
   const [ano, mes] = data.substring(0, 7).split("-")
@@ -36,6 +42,7 @@ export default function ParcelamentoDetalhePage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
   const [parcelamento, setParcelamento] = useState<ParcelamentoDetalhe | null>(null)
+  useDetalheNoCaminho(parcelamento?.descricao)
   const [contas, setContas] = useState<Conta[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState("")
@@ -107,7 +114,7 @@ export default function ParcelamentoDetalhePage() {
         idempotencyKey: crypto.randomUUID(),
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
-      navigate("/parcelamentos")
+      navigate("/credit-cards/parcelamentos")
     } catch (err) {
       notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
     } finally {
@@ -124,15 +131,23 @@ export default function ParcelamentoDetalhePage() {
 
   return (
     <div className={styles.root}>
-      <button type="button" className={styles.back} onClick={() => navigate("/parcelamentos")}>
+      <button type="button" className={styles.back} onClick={() => navigate("/credit-cards/parcelamentos")}>
         <ChevronLeft size={16} /> Voltar
       </button>
+
+      {!parcelamento.ativo && (
+        <PontesAlert tone="warning" title="Parcelamento cancelado">
+          {parcelamento.canceladoEm ? `em ${formatInstante(parcelamento.canceladoEm)}` : ""}
+          {parcelamento.motivoCancelamento ? ` · ${parcelamento.motivoCancelamento}` : ""}
+        </PontesAlert>
+      )}
 
       <PontesCard padding={24} radius={16}>
         <div className={styles.headerRow}>
           <div className={styles.headerLeft}>
             <h1 className={styles.title}>{parcelamento.descricao}</h1>
             <div className={styles.headerMeta}>
+              {!parcelamento.ativo && <PontesBadge tone="danger" size="sm">Cancelado</PontesBadge>}
               <PontesBadge tone="neutral" size="sm">{tipoLabel}</PontesBadge>
               <span className={styles.muted}>{parcelamento.quantidadeParcelas} parcelas</span>
             </div>
@@ -218,11 +233,13 @@ export default function ParcelamentoDetalhePage() {
         </div>
       </PontesCard>
 
-      <div className={styles.bottomActions}>
-        <PontesButton variant="danger-outline" onClick={() => { setMotivo(""); setMotivoErr(undefined); setModalCancelar(true) }}>
-          Cancelar Parcelamento
-        </PontesButton>
-      </div>
+      {parcelamento.ativo && (
+        <div className={styles.bottomActions}>
+          <PontesButton variant="danger-outline" onClick={() => { setMotivo(""); setMotivoErr(undefined); setModalCancelar(true) }}>
+            Cancelar Parcelamento
+          </PontesButton>
+        </div>
+      )}
 
       <PontesModal
         open={modalPagar}

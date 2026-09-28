@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../hooks/useAuth"
 import { PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
 import styles from "./DefaultLayout.module.css"
+import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
 import Navbar from "../../components/Navbar/Navbar"
 import Sidebar from "../../components/Sidebar/Sidebar"
@@ -37,7 +38,7 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
   { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
   { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={18} strokeWidth={2} /> },
-  { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
+  { to: "/credit-cards/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
   { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },
   { to: "/importacao", label: "Importar Extrato", icon: <Upload size={18} strokeWidth={2} /> },
   { to: "/accounts", label: "Bancos", icon: <Landmark size={18} strokeWidth={2} /> },
@@ -61,6 +62,12 @@ export default function DefaultLayout() {
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
 
   // Command palette (Ctrl/Cmd+K)
+  // Nome do item aberto numa tela de detalhe, pro caminho do topo (ver useDetalheNoCaminho).
+  const [detalheNoCaminho, setDetalheNoCaminho] = useState<DetalheNoCaminho | null>(null)
+  const definirDetalheNoCaminho = useCallback(
+    (label: string | null) => setDetalheNoCaminho(label ? { path: location.pathname, label } : null),
+    [location.pathname],
+  )
   const [cmdOpen, setCmdOpen] = useState(false)
   const [cmdQuery, setCmdQuery] = useState("")
 
@@ -143,11 +150,15 @@ export default function DefaultLayout() {
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
+          detalhe={detalheNoCaminho?.path === location.pathname ? detalheNoCaminho.label : undefined}
         />
 
         <main className={styles.main}>
           <div key={location.pathname} className={styles.page}>
-            <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
+            <Outlet key={accountKey} context={{
+              notify: setNotification, refreshTransactionRequirements: checkRequirements,
+              definirDetalheNoCaminho,
+            }} />
           </div>
         </main>
       </div>

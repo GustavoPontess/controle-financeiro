@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import CreditCardsPage from "../../pages/CreditCards/CreditCardsPage"
 import type { CartaoCredito } from "../../types/CartaoCredito"
@@ -67,7 +68,8 @@ const fFechadaComSaldo = {
 } as unknown as Fatura
 
 function renderPage() {
-  return render(<PontesThemeProvider><CreditCardsPage /></PontesThemeProvider>)
+  // Router: as abas Cartões | Parcelamentos do topo navegam por rota.
+  return render(<MemoryRouter initialEntries={["/credit-cards"]}><PontesThemeProvider><CreditCardsPage /></PontesThemeProvider></MemoryRouter>)
 }
 
 describe("CreditCardsPage (#84)", () => {
