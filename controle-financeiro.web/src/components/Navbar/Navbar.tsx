@@ -23,6 +23,9 @@ type Props = {
   /** Rótulo do "Início" no breadcrumb + destino. Default = Início/dashboard. */
   homeLabel?: string
   homePath?: string
+  /** Nome do item numa tela de detalhe (ex.: "Fone Teste") — vira o último nível do caminho:
+   *  "Início / Parcelamentos / Fone Teste", com "Parcelamentos" clicável de volta à lista. */
+  detalhe?: string
   /** Sino de notificações. Se omitido, usa o financeiro (só quando `showFinance`). O painel admin
    *  injeta o SEU próprio sino aqui — assim o stream do admin não se mistura com o do usuário, e o
    *  componente do sino admin não entra no bundle comum. */
@@ -47,21 +50,25 @@ const TITLES: Record<string, string> = {
   "/settings": "Configurações",
 }
 
-function resolveTitle(path: string): string {
-  if (TITLES[path]) return TITLES[path]
+// Seção da rota: o título e o path da lista (pra "/parcelamentos/abc" → Parcelamentos, /parcelamentos).
+function resolveSecao(path: string): { title: string; path: string | null } {
+  if (TITLES[path]) return { title: TITLES[path], path }
   const k = Object.keys(TITLES).find((key) => path.startsWith(key + "/"))
-  return k ? TITLES[k] : "Pontes"
+  return k ? { title: TITLES[k], path: k } : { title: "Pontes", path: null }
 }
 
 export default function Navbar({
   toggleDrawer, sidebarOpen, showFinance = true,
   openTransaction, canCreateTransaction, openCommandPalette,
-  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle,
+  title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle, detalhe,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
-  const title = titleProp ?? resolveTitle(location.pathname)
+  const secao = resolveSecao(location.pathname)
+  const title = titleProp ?? secao.title
   const isHome = location.pathname === homePath
+  // Seção só vira link quando há um nível abaixo dela (o detalhe) — na própria lista é o nível atual.
+  const secaoPath = detalhe && !titleProp ? secao.path : null
   const [hideBalance, toggleBalance] = useHideBalance()
 
   return (
@@ -75,7 +82,15 @@ export default function Navbar({
             <div className={styles.crumb}>
               <span onClick={() => navigate(homePath)} className={styles.crumbHome}>{homeLabel}</span>
               <span className={styles.crumbSep}> / </span>
-              <span className={styles.crumbCur}>{title}</span>
+              {secaoPath ? (
+                <>
+                  <span onClick={() => navigate(secaoPath)} className={styles.crumbHome}>{title}</span>
+                  <span className={styles.crumbSep}> / </span>
+                  <span className={styles.crumbCur}>{detalhe}</span>
+                </>
+              ) : (
+                <span className={styles.crumbCur}>{title}</span>
+              )}
             </div>
           )}
           <h1 className={styles.title}>{title}</h1>

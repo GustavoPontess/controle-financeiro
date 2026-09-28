@@ -53,6 +53,27 @@ describe("Shell interno (#118)", () => {
     expect(screen.getByRole("heading", { name: "Transações" })).toBeInTheDocument()
   })
 
+  it("Navbar no detalhe: caminho Início / Parcelamentos / <item>, com a seção clicável", () => {
+    withProviders(
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}}
+        detalhe="Fone Teste" />,
+      "/parcelamentos/abc"
+    )
+    expect(screen.getByText("Fone Teste")).toBeInTheDocument()
+    // "Parcelamentos" aparece 2x: link no caminho + título da página.
+    expect(screen.getAllByText("Parcelamentos")).toHaveLength(2)
+    expect(screen.getByRole("heading", { name: "Parcelamentos" })).toBeInTheDocument()
+  })
+
+  it("Navbar sem detalhe: caminho só com a seção atual", () => {
+    withProviders(
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />,
+      "/parcelamentos/abc"
+    )
+    expect(screen.queryByText("Fone Teste")).not.toBeInTheDocument()
+    expect(screen.getAllByText("Parcelamentos")).toHaveLength(2) // caminho (atual) + título
+  })
+
   it("Navbar abre o command palette pelo botão de busca", () => {
     const openCmd = vi.fn()
     withProviders(

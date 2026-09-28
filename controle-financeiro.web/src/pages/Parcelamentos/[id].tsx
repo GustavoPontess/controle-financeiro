@@ -11,6 +11,7 @@ import { getContas } from "../../services/contaService"
 import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
 import { notificacaoDeErro } from "@/utils/apiError"
+import { useDetalheNoCaminho } from "../../layouts/Default/useDetalheNoCaminho"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
 
@@ -36,6 +37,7 @@ export default function ParcelamentoDetalhePage() {
   const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
   const [parcelamento, setParcelamento] = useState<ParcelamentoDetalhe | null>(null)
+  useDetalheNoCaminho(parcelamento?.descricao)
   const [contas, setContas] = useState<Conta[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState("")

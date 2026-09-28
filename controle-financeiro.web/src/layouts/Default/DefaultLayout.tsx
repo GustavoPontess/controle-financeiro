@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../hooks/useAuth"
 import { PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
 import styles from "./DefaultLayout.module.css"
+import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
 import Navbar from "../../components/Navbar/Navbar"
 import Sidebar from "../../components/Sidebar/Sidebar"
@@ -61,6 +62,12 @@ export default function DefaultLayout() {
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
 
   // Command palette (Ctrl/Cmd+K)
+  // Nome do item aberto numa tela de detalhe, pro caminho do topo (ver useDetalheNoCaminho).
+  const [detalheNoCaminho, setDetalheNoCaminho] = useState<DetalheNoCaminho | null>(null)
+  const definirDetalheNoCaminho = useCallback(
+    (label: string | null) => setDetalheNoCaminho(label ? { path: location.pathname, label } : null),
+    [location.pathname],
+  )
   const [cmdOpen, setCmdOpen] = useState(false)
   const [cmdQuery, setCmdQuery] = useState("")
 
@@ -143,11 +150,15 @@ export default function DefaultLayout() {
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
+          detalhe={detalheNoCaminho?.path === location.pathname ? detalheNoCaminho.label : undefined}
         />
 
         <main className={styles.main}>
           <div key={location.pathname} className={styles.page}>
-            <Outlet key={accountKey} context={{ notify: setNotification, refreshTransactionRequirements: checkRequirements }} />
+            <Outlet key={accountKey} context={{
+              notify: setNotification, refreshTransactionRequirements: checkRequirements,
+              definirDetalheNoCaminho,
+            }} />
           </div>
         </main>
       </div>
