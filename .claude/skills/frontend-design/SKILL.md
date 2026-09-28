@@ -1,6 +1,7 @@
 ---
 name: frontend-design
-description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics.
+description: Design criativo SÓ para o site PÚBLICO/institucional do Pontes (controle-financeiro.web/src/pages/Site — home, casais, contadores, recursos, sobre). NUNCA usar em telas internas do app nem no DS Pontes — lá vale a skill pontes-telas (consistência, não variação).
+paths: "controle-financeiro.web/src/pages/Site/**"
 license: Complete terms in LICENSE.txt
 ---
 

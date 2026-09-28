@@ -132,6 +132,8 @@ npm run lint
 
 ## Frontend Patterns & Conventions
 
+> ⭐ **Tela interna = receita, não criatividade.** Antes de criar/alterar tela: skill **`pontes-telas`** (`.claude/skills/pontes-telas/SKILL.md` — 4 blocos, anatomia do item, lista/tabela/cards, proibidos) + ficha da entidade (`docs/features/padrao-telas/ficha-por-entidade.md`). Antes do PR: skill **`/revisar-usabilidade`**. Trava automática: ESLint barra `<table>` cru, `<h1>`, `PontesTable` antigo, MUI e import interno do DS em `src/pages/**` (telas antigas listadas em `eslint-legado-telas.js` — lista só encolhe, teste `eslintLegadoTelas.test.ts`), e o hook `.claude/hooks/padrao-tela.cjs` roda esse lint a cada edição e devolve o erro na hora. A skill `frontend-design` vale **só** pro site público (`pages/Site`). Plano completo: `docs/features/padrao-telas/plano.md`.
+
 ### Estilização — CSS Modules + CSS variables (PADRÃO OBRIGATÓRIO Q5+) ⭐
 
 **Decidido na #122. Daqui em diante, toda tela nova ou refatorada segue:**

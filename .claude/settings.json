@@ -7,7 +7,7 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/form-rule.cjs" }
+          { "type": "command", "command": "node .claude/hooks/padrao-tela.cjs" }
         ]
       }
     ]
