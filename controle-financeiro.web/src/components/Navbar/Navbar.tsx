@@ -38,10 +38,10 @@ const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/transactions": "Transações",
   "/credit-cards": "Cartões de Crédito",
+  "/credit-cards/parcelamentos": "Parcelamentos",
   "/reports": "Relatórios",
   "/transferencias": "Transferências",
   "/assinaturas": "Contas Fixas",
-  "/parcelamentos": "Parcelamentos",
   "/emprestimos": "Empréstimos",
   "/importacao": "Importar Extrato",
   "/accounts": "Bancos",
@@ -50,12 +50,19 @@ const TITLES: Record<string, string> = {
   "/settings": "Configurações",
 }
 
-// Seção da rota: o título e o path da lista (pra "/parcelamentos/abc" → Parcelamentos, /parcelamentos).
+// Seção que mora dentro de outra (Parcelamentos é parte de Cartões): o caminho mostra as duas.
+const PAI: Record<string, string> = { "/credit-cards/parcelamentos": "/credit-cards" }
+
+// Seção da rota: título e path da lista. Vale o prefixo MAIS LONGO — "/credit-cards/parcelamentos/abc"
+// é Parcelamentos, não Cartões.
 function resolveSecao(path: string): { title: string; path: string | null } {
-  if (TITLES[path]) return { title: TITLES[path], path }
-  const k = Object.keys(TITLES).find((key) => path.startsWith(key + "/"))
+  const k = Object.keys(TITLES)
+    .filter((key) => path === key || path.startsWith(key + "/"))
+    .sort((a, b) => b.length - a.length)[0]
   return k ? { title: TITLES[k], path: k } : { title: "Pontes", path: null }
 }
+
+type Crumb = { label: string; to?: string }
 
 export default function Navbar({
   toggleDrawer, sidebarOpen, showFinance = true,
@@ -67,8 +74,15 @@ export default function Navbar({
   const secao = resolveSecao(location.pathname)
   const title = titleProp ?? secao.title
   const isHome = location.pathname === homePath
-  // Seção só vira link quando há um nível abaixo dela (o detalhe) — na própria lista é o nível atual.
-  const secaoPath = detalhe && !titleProp ? secao.path : null
+  // Início / [seção-pai] / seção / [detalhe]. Todo nível é link, menos o último (onde você está).
+  const crumbs: Crumb[] = [{ label: homeLabel, to: homePath }]
+  if (titleProp) crumbs.push({ label: titleProp })
+  else {
+    const pai = secao.path ? PAI[secao.path] : undefined
+    if (pai) crumbs.push({ label: TITLES[pai], to: pai })
+    if (detalhe && secao.path) crumbs.push({ label: title, to: secao.path }, { label: detalhe })
+    else crumbs.push({ label: title })
+  }
   const [hideBalance, toggleBalance] = useHideBalance()
 
   return (
@@ -80,17 +94,17 @@ export default function Navbar({
         <div className={styles.titleBox}>
           {!isHome && (
             <div className={styles.crumb}>
-              <span onClick={() => navigate(homePath)} className={styles.crumbHome}>{homeLabel}</span>
-              <span className={styles.crumbSep}> / </span>
-              {secaoPath ? (
-                <>
-                  <span onClick={() => navigate(secaoPath)} className={styles.crumbHome}>{title}</span>
-                  <span className={styles.crumbSep}> / </span>
-                  <span className={styles.crumbCur}>{detalhe}</span>
-                </>
-              ) : (
-                <span className={styles.crumbCur}>{title}</span>
-              )}
+              {crumbs.map((c, i) => {
+                const ultimo = i === crumbs.length - 1
+                return (
+                  <span key={`${i}-${c.label}`}>
+                    {i > 0 && <span className={styles.crumbSep}> / </span>}
+                    {ultimo || !c.to
+                      ? <span className={styles.crumbCur}>{c.label}</span>
+                      : <span onClick={() => navigate(c.to!)} className={styles.crumbHome}>{c.label}</span>}
+                  </span>
+                )
+              })}
             </div>
           )}
           <h1 className={styles.title}>{title}</h1>

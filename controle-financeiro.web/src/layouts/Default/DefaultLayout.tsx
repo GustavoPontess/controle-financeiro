@@ -38,7 +38,7 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
   { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
   { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={18} strokeWidth={2} /> },
-  { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
+  { to: "/credit-cards/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
   { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },
   { to: "/importacao", label: "Importar Extrato", icon: <Upload size={18} strokeWidth={2} /> },
   { to: "/accounts", label: "Bancos", icon: <Landmark size={18} strokeWidth={2} /> },

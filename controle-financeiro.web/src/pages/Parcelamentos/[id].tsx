@@ -114,7 +114,7 @@ export default function ParcelamentoDetalhePage() {
         idempotencyKey: crypto.randomUUID(),
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
-      navigate("/parcelamentos")
+      navigate("/credit-cards/parcelamentos")
     } catch (err) {
       notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
     } finally {
@@ -131,7 +131,7 @@ export default function ParcelamentoDetalhePage() {
 
   return (
     <div className={styles.root}>
-      <button type="button" className={styles.back} onClick={() => navigate("/parcelamentos")}>
+      <button type="button" className={styles.back} onClick={() => navigate("/credit-cards/parcelamentos")}>
         <ChevronLeft size={16} /> Voltar
       </button>
 
