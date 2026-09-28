@@ -1,12 +1,6 @@
 .root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
 
-.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
-.listHead { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); }
-.listHeadTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.listHeadMeta { font-size: 12px; color: var(--pontes-text-muted); }
-
-.emptyWrap { padding: 32px 20px; }
+/* Topo (sem título — mora na Navbar), toolbar, esqueleto e vazio vêm do DS (padrão de tela). */
 
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); transition: background-color .15s ease; }

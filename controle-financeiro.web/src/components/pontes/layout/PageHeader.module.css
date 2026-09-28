@@ -1,0 +1,5 @@
+/* PageHeader — abas/período à esquerda, botão primário à direita. Sem título (mora na Navbar). */
+.header { width: 100%; }
+.start { min-width: 0; }
+/* margin-left:auto: sem slot à esquerda o botão continua colado à direita. */
+.action { margin-left: auto; flex-shrink: 0; }

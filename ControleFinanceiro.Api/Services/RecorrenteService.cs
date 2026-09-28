@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace ControleFinanceiro.Api.Services;
 
@@ -118,8 +119,13 @@ public class RecorrenteService
     /// </summary>
     public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
     {
+        var hoje = DateTime.UtcNow.Date;
         var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
-        var ativas = query.Where(r => r.Ativo);
+        // "Ativas" do hero = em vigor (MESMA regra da aba Ativas / do rótulo Situacao) e não pausada
+        // (pausada não gera cobrança nem pesa no custo). Só `Ativo` não bastava: ninguém desliga o
+        // Ativo quando a DataFim passa, e o hero somava no custo mensal uma conta fixa que a lista
+        // logo abaixo já mostrava como "Encerrada".
+        var ativas = query.Where(EmVigor(hoje)).Where(r => r.Ativo);
 
         var qtdAtivas = await ativas.CountAsync();
         var custoMensal = await ativas
@@ -143,13 +149,67 @@ public class RecorrenteService
         };
     }
 
-    public async Task<PagedResult<RecorrenteDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
+    // Regra ÚNICA de "em vigor" (não cancelada e a DataFim não passou): filtro ?status= do
+    // ListarAsync, rótulo Situacao do DTO e KPIs do hero saem TODOS daqui — eram cópias e divergiram
+    // (o hero contava como ativa a que a lista já mostrava "Encerrada"). Expression pra o EF
+    // traduzir em SQL; em memória, compilada. `hoje` à meia-noite UTC: DataFim < hoje ⇔ o último dia
+    // já passou (igual ao GerarPendentesAsync, que ainda gera no próprio dia da DataFim).
+    private static Expression<Func<Recorrente, bool>> EmVigor(DateTime hoje) =>
+        r => r.CanceladoEm == null && (r.DataFim == null || r.DataFim >= hoje);
+
+    // Aba "Encerradas" = negação exata do EmVigor, montada da MESMA árvore (não reescrita à mão).
+    private static Expression<Func<Recorrente, bool>> NaoEmVigor(DateTime hoje)
+    {
+        var emVigor = EmVigor(hoje);
+        return Expression.Lambda<Func<Recorrente, bool>>(Expression.Not(emVigor.Body), emVigor.Parameters);
+    }
+
+    // Situação de UMA conta fixa (rótulo do DTO), a partir do EmVigor já compilado.
+    private static string CalcularSituacao(Recorrente r, Func<Recorrente, bool> emVigor) =>
+        r.CanceladoEm != null ? SituacaoRecorrente.Cancelada
+        : !emVigor(r) ? SituacaoRecorrente.Encerrada
+        : !r.Ativo ? SituacaoRecorrente.Pausada
+        : SituacaoRecorrente.Ativa;
+
+    /// <summary>
+    /// Lista paginada das contas fixas do usuário. `status` opcional: "ativas" (ativas + pausadas) ou
+    /// "encerradas" (canceladas + DataFim passada); ausente = todas (compatível com quem já chamava sem
+    /// filtro); outro valor → 400. `busca` opcional: contém (sem diferenciar maiúsculas) na descrição,
+    /// categoria, conta ou cartão.
+    /// </summary>
+    public async Task<PagedResult<RecorrenteDto>> ListarAsync(
+        Guid usuarioId, int page = 1, int pageSize = 25, string? status = null, string? busca = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
+        var hoje = DateTime.UtcNow.Date;
 
-        var query = _context.Recorrentes
-            .Where(r => r.CriadoPor == usuarioId)
+        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
+
+        // Filtro de situação no SERVIDOR: a lista é paginada, então filtrar só a página carregada
+        // no front esconderia itens das outras páginas e o total ficaria errado.
+        var statusNormalizado = status?.Trim().ToLowerInvariant();
+        if (statusNormalizado == SituacaoRecorrente.FiltroAtivas)
+            query = query.Where(EmVigor(hoje));
+        else if (statusNormalizado == SituacaoRecorrente.FiltroEncerradas)
+            query = query.Where(NaoEmVigor(hoje));
+        else if (!string.IsNullOrEmpty(statusNormalizado))
+            throw new ArgumentException("Status inválido. Use 'ativas' ou 'encerradas'.");
+
+        // Busca server-side. ToLower().Contains() é portável (InMemory nos testes + lower()/LIKE no
+        // Postgres); termo limitado pra não virar vetor de custo; EF parametriza (sem SQL injection).
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim().ToLower();
+            if (termo.Length > 100) termo = termo[..100];
+            query = query.Where(r =>
+                r.Descricao.ToLower().Contains(termo)
+                || (r.Categoria != null && r.Categoria.Descricao.ToLower().Contains(termo))
+                || (r.Conta != null && r.Conta.Nome.ToLower().Contains(termo))
+                || (r.CartaoCredito != null && r.CartaoCredito.Nome.ToLower().Contains(termo)));
+        }
+
+        query = query
             .Include(r => r.Categoria)
             .Include(r => r.Conta)
             .Include(r => r.CartaoCredito)
@@ -162,6 +222,7 @@ public class RecorrenteService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+        var emVigor = EmVigor(hoje).Compile();
 
         return new PagedResult<RecorrenteDto>
         {
@@ -186,7 +247,8 @@ public class RecorrenteService
                 Ativo = r.Ativo,
                 DataProximaGeracao = r.DataProximaGeracao,
                 CanceladoEm = r.CanceladoEm,
-                MotivoCancelamento = r.MotivoCancelamento
+                MotivoCancelamento = r.MotivoCancelamento,
+                Situacao = CalcularSituacao(r, emVigor)
             }),
             Total = total,
             Page = page,
@@ -437,6 +499,12 @@ public class RecorrenteService
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
         if (r.CriadoPor != usuarioId)
             throw new ForbiddenAccessException("Sem permissão.");
+
+        // Cancelar é definitivo (as previsões futuras já foram canceladas junto): só a PAUSADA volta.
+        // Antes a tela oferecia "Ativar" numa cancelada e este toggle a religava — voltava a gerar
+        // cobrança com o cancelamento ainda registrado. A tela já não oferece; aqui é a 2ª camada.
+        if (r.CanceladoEm != null)
+            throw new InvalidOperationException("Conta fixa cancelada não pode ser pausada nem retomada.");
 
         r.Ativo = !r.Ativo;
         await _context.SaveChangesAsync();

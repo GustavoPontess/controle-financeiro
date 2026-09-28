@@ -1,15 +1,23 @@
 import { api } from "../api/axiosConfig"
-import type { Recorrente, CriarRecorrente, EditarProximaDto, CancelarRecorrenteDto } from "../types/Recorrente"
+import type { Recorrente, CriarRecorrente, EditarProximaDto, CancelarRecorrenteDto, FiltroStatusRecorrente } from "../types/Recorrente"
 import type { PagedResult } from "../types/Paged"
 
 const BASE = "recorrentes"
 
-/** Lista paginada — backend clampa pageSize em 1..100. */
+/**
+ * Lista paginada — backend clampa pageSize em 1..100. `status` e `busca` são filtrados NO SERVIDOR
+ * (o total já vem filtrado); omitidos = todas, sem busca.
+ */
 export const listRecorrentesPage = async (
   page: number,
   pageSize: number,
+  filtro: { status?: FiltroStatusRecorrente; busca?: string } = {},
 ): Promise<PagedResult<Recorrente>> => {
-  const res = await api.get(BASE, { params: { page, pageSize } })
+  const params: Record<string, unknown> = { page, pageSize }
+  if (filtro.status) params.status = filtro.status
+  const busca = filtro.busca?.trim()
+  if (busca) params.busca = busca
+  const res = await api.get(BASE, { params })
   return res.data
 }
 

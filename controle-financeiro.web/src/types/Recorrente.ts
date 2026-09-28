@@ -19,7 +19,17 @@ export interface Recorrente {
   dataProximaGeracao?: string
   canceladoEm?: string
   motivoCancelamento?: string
+  /**
+   * Calculada no servidor (regra única): pausada ≠ cancelada. Pausada segue entre as ativas e pode
+   * ser retomada; cancelada (definitiva) e encerrada (data fim passou) vão pra "Encerradas".
+   */
+  situacao: SituacaoRecorrente
 }
+
+export type SituacaoRecorrente = "ativa" | "pausada" | "cancelada" | "encerrada"
+
+/** Filtro da listagem (?status=): "ativas" = ativa + pausada; "encerradas" = cancelada + encerrada. */
+export type FiltroStatusRecorrente = "ativas" | "encerradas"
 
 export interface EditarProximaDto {
   valor?: number

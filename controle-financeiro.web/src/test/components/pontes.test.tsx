@@ -11,6 +11,7 @@ import {
   PontesTable, PontesTablePagination,
   PONTES_TABLE_PAGE_SIZE_DEFAULT, PONTES_TABLE_PAGE_SIZE_MAX, PONTES_TABLE_PAGE_SIZES,
   PontesMaskedValue, PontesMaskToggle, useMaskData, setMaskData, maskEmail,
+  PontesPageHeader, PontesToolbar, PontesRowActions,
 } from "../../components/pontes"
 
 const p = palettes[0]
@@ -428,5 +429,27 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
     fireEvent.click(screen.getByRole("button", { name: /revelar dados/i }))
     expect(screen.getByTestId("estado")).toHaveTextContent("revelado")
     setMaskData(true)
+  })
+
+  // Padrão de tela interna — smoke. Comportamento detalhado em PontesPadraoTela.test.tsx.
+  it("PontesPageHeader renderiza o botão primário e dispara onAction", () => {
+    let clicked = 0
+    render(<PontesPageHeader actionLabel="Nova conta fixa" onAction={() => clicked++} />)
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    expect(clicked).toBe(1)
+  })
+
+  it("PontesToolbar renderiza a busca e os filtros", () => {
+    render(<PontesToolbar search={{ value: "", onChange: () => undefined, placeholder: "Buscar" }}><span>filtro</span></PontesToolbar>)
+    expect(screen.getByRole("searchbox", { name: "Buscar" })).toBeInTheDocument()
+    expect(screen.getByText("filtro")).toBeInTheDocument()
+  })
+
+  it("PontesRowActions abre o menu ⋮ e dispara a ação", () => {
+    let clicked = 0
+    render(<PontesRowActions actions={[{ key: "editar", label: "Editar", onClick: () => clicked++ }]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Ações" }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }))
+    expect(clicked).toBe(1)
   })
 })

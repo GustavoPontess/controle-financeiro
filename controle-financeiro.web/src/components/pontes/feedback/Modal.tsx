@@ -3,11 +3,25 @@
  * `p`/`font` override escopado opcional (#122) aplicado na caixa.
  */
 
-import { useEffect, type ReactNode, type CSSProperties } from "react"
+import { useEffect, useRef, type ReactNode, type CSSProperties, type RefObject } from "react"
 import { X, Info, AlertTriangle } from "lucide-react"
 import { PontesButton } from "../buttons/Button"
 import { scopedThemeVars, type Palette } from "../theme"
 import styles from "./Modal.module.css"
+
+// Foco ao abrir/fechar (padrão WAI-ARIA de diálogo): ao abrir, o foco entra no overlay; ao fechar,
+// volta pra quem abriu. Sem isso o foco ficava ATRÁS do overlay — ex.: escolher "Excluir" no menu ⋮
+// devolvia o foco pro ⋮, e um Enter reabria o menu por baixo da confirmação. Roda em useEffect (depois do
+// foco síncrono que o menu devolve ao gatilho), então quem abriu o diálogo não precisa fazer nada.
+function useFocoDoDialogo(open: boolean, alvo: RefObject<HTMLElement | null>, seletor?: string) {
+  useEffect(() => {
+    if (!open) return
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const el = seletor ? alvo.current?.querySelector<HTMLElement>(seletor) : alvo.current
+    el?.focus()
+    return () => { if (anterior?.isConnected) anterior.focus() }
+  }, [open, alvo, seletor])
+}
 
 // =============================================================================
 // PontesModal
@@ -28,6 +42,8 @@ export type PontesModalProps = {
 export function PontesModal({
   p, font, open, title, onClose, header, footer, children, maxWidth = 480,
 }: PontesModalProps) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  useFocoDoDialogo(open, boxRef)
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
@@ -39,6 +55,11 @@ export function PontesModal({
   return (
     <div onClick={onClose} className={styles.overlay}>
       <div
+        ref={boxRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={styles.box}
         data-pontes-overlay-boundary
@@ -83,16 +104,36 @@ export function PontesDialog({
   confirmLabel = "Confirmar", cancelLabel = "Cancelar",
   onConfirm, onCancel,
 }: PontesDialogProps) {
+  // Foco no CANCELAR (1º botão das ações), nunca no confirmar destrutivo: um Enter distraído não pode
+  // excluir nada.
+  const acoesRef = useRef<HTMLDivElement>(null)
+  useFocoDoDialogo(open, acoesRef, "button")
+  useEffect(() => {
+    if (!open) return
+    // Captura + stopPropagation: confirmação aberta EM CIMA de um modal — o Esc fecha só ela, não os dois.
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onCancel() } }
+    document.addEventListener("keydown", onKey, true)
+    return () => document.removeEventListener("keydown", onKey, true)
+  }, [open, onCancel])
+
   if (!open) return null
   const Icon = tone === "info" ? Info : AlertTriangle
 
   return (
     <div onClick={onCancel} className={styles.overlay}>
-      <div onClick={(e) => e.stopPropagation()} className={styles.dialogBox} data-pontes-overlay-boundary style={scopedThemeVars(p, font) as CSSProperties}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+        className={styles.dialogBox}
+        data-pontes-overlay-boundary
+        style={scopedThemeVars(p, font) as CSSProperties}
+      >
         <div className={styles.dialogIcon} data-tone={tone}><Icon size={26} strokeWidth={2.5} /></div>
         <div className={styles.dialogTitle}>{title}</div>
         {description && <div className={styles.dialogDesc}>{description}</div>}
-        <div className={styles.dialogActions}>
+        <div ref={acoesRef} className={styles.dialogActions}>
           <PontesButton variant="outline" fullWidth onClick={onCancel}>{cancelLabel}</PontesButton>
           <PontesButton variant={tone === "danger" ? "danger" : "primary"} fullWidth onClick={onConfirm}>
             {confirmLabel}

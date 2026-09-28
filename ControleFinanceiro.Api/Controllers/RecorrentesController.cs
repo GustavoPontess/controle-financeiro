@@ -28,13 +28,21 @@ public class RecorrentesController : ControllerBase
         return id;
     }
 
+    /// <summary>
+    /// Lista paginada das contas fixas. `status` opcional: "ativas" (ativas + pausadas) ou
+    /// "encerradas" (canceladas + data fim passada); sem ele, todas. `busca` opcional filtra por
+    /// descrição/categoria/conta/cartão. Filtro e busca são server-side (o total já vem filtrado).
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<RecorrenteDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Listar(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 25,
+        [FromQuery] string? status = null, [FromQuery] string? busca = null)
     {
         var uid = GetUserId();
         await _service.GerarPendentesAsync(uid);
-        var resultado = await _service.ListarAsync(uid, page, pageSize);
+        var resultado = await _service.ListarAsync(uid, page, pageSize, status, busca);
         return Ok(resultado);
     }
 
