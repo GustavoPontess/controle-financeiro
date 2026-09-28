@@ -74,6 +74,7 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 - [ ] **3.2 Ferramentas grátis + comparações** — `pages/Site/ferramentas/`: juros compostos, CLT×PJ. SEO "sem cadastro". _Despezzas, Monarch, Qive._
 - [ ] **3.3 Fotografia lifestyle de casal/família** em `/casais` e `/contadores`. _Monarch._
 - [ ] **3.4 Programa de indicação (referral)** — código por usuário + "Convide e ganhe". _Despezzas + Monarch._
+- [ ] **3.5 Vídeo promocional (no lançamento)** (Gustavo, 2026-09-28) — quando o produto estiver pronto pra lançar, gerar um vídeo promocional usando o repositório **"brag"** (gera vídeo do projeto). **Primeiro passo:** achar o repositório certo (nome exato, dono, licença, o que ele precisa como entrada — telas, roteiro, marca) e avaliar se roda com o nosso front. Não fazer antes do beta.
 
 ### Lote 4 — eixo PJ / contador (futuro)
 - [ ] **4.1 Wedge PJ leve + ponte contador** — separar PF/PJ, módulo NF simples, conexão com contador (ref. Conta Azul). Spec antes de codar. `docs/features/b2b-contadores/visao.md`.
