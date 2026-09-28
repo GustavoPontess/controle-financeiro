@@ -1,7 +1,7 @@
 /* LoginPage.module.css — refator #122 (inline -> CSS vars).
    Painel de marca usa branco fixo (sempre sobre gradiente primário). */
 
-.root { min-height: 100vh; display: flex; font-family: var(--pontes-font); }
+.root { min-height: 100vh; display: flex; flex-wrap: wrap; font-family: var(--pontes-font); }
 
 /* Painel esquerdo — marca (gradiente primário) */
 .brand {
@@ -54,30 +54,43 @@
 .footer { margin-top: 32px; text-align: center; font-size: 12px; color: var(--pontes-text-muted); }
 .footerMuted { color: var(--pontes-text-muted); }
 
-/* Atalho de DEV — canto inferior direito (só em desenvolvimento) */
+/* Atalho de DEV — coluna própria à direita do form (só em desenvolvimento). Não flutua sobre o
+   form: é uma 3ª coluna do layout. Rola por dentro se tiver muita conta. Em tela estreita, desce
+   pra baixo do form (o root usa flex-wrap) em vez de cobrir. */
 .devHintPanel {
-  position: fixed; right: 16px; bottom: 16px; z-index: 50;
+  flex: 0 0 240px; align-self: stretch;
   display: flex; flex-direction: column; gap: 4px;
-  padding: 8px; border-radius: 10px; max-width: 260px;
-  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
+  padding: 20px 14px;
+  border-left: 1px solid var(--pontes-border);
+  background: var(--pontes-bg);
+  overflow-y: auto; max-height: 100vh;
   font-family: var(--pontes-font);
 }
 .devHintTag {
+  position: sticky; top: 0;
   font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
   color: var(--pontes-primary); background: var(--pontes-primary-soft);
-  padding: 3px 7px; border-radius: 6px; align-self: flex-start; margin-bottom: 2px;
+  padding: 4px 8px; border-radius: 6px; align-self: flex-start; margin-bottom: 4px;
 }
 .devHintRow {
   display: flex; flex-direction: column; gap: 1px; text-align: left;
-  padding: 5px 8px; border-radius: 8px; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px; cursor: pointer;
   background: transparent; border: none; width: 100%;
   transition: background-color .12s ease;
 }
-.devHintRow:hover { background: var(--pontes-bg); }
+.devHintRow:hover { background: var(--pontes-surface); }
 .devHintLabel { font-size: 10px; color: var(--pontes-text-muted); }
-.devHintCreds { font-size: 12px; font-weight: 600; color: var(--pontes-text); }
-@media (max-width: 480px) { .devHintPanel { left: 16px; right: 16px; } }
+.devHintCreds { font-size: 12px; font-weight: 600; color: var(--pontes-text); word-break: break-all; }
+/* Estreito: o painel desce pra baixo do form (não cobre). Precisa do flex-wrap no root (abaixo). */
+@media (max-width: 1099px) {
+  .devHintPanel {
+    flex-basis: 100%; max-height: none;
+    border-left: none; border-top: 1px solid var(--pontes-border);
+    flex-direction: row; flex-wrap: wrap; align-items: stretch; gap: 8px;
+  }
+  .devHintTag { position: static; flex-basis: 100%; }
+  .devHintRow { flex: 1 1 200px; background: var(--pontes-surface); border: 1px solid var(--pontes-border); }
+}
 
 /* ── Chooser (roster / escolher conta) ─────────────────────────────────────── */
 .chooser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
