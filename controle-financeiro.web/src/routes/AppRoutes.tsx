@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom"
 
 import DefaultLayout from "../layouts/Default/DefaultLayout"
 import ProtectedRoute from "../components/Auth/ProtectedRoute"
@@ -42,6 +42,12 @@ import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
 import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
+
+// /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
+function RedirecionarParcelamento() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/credit-cards/parcelamentos/${id ?? ""}`} replace />
+}
 
 export default function AppRoutes() {
   return (
@@ -98,8 +104,12 @@ export default function AppRoutes() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/transferencias" element={<TransferenciasPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
-          <Route path="/parcelamentos" element={<ParcelamentosPage />} />
-          <Route path="/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
+          {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.
+              Os endereços antigos redirecionam, pra link salvo/notificação não quebrar. */}
+          <Route path="/credit-cards/parcelamentos" element={<ParcelamentosPage />} />
+          <Route path="/credit-cards/parcelamentos/:id" element={<ParcelamentoDetalhePage />} />
+          <Route path="/parcelamentos" element={<Navigate to="/credit-cards/parcelamentos" replace />} />
+          <Route path="/parcelamentos/:id" element={<RedirecionarParcelamento />} />
           <Route path="/emprestimos" element={<EmprestimosPage />} />
           <Route path="/emprestimos/:id" element={<EmprestimoDetalhePage />} />
           <Route path="/accounts" element={<AccountsPage />} />

@@ -15,6 +15,7 @@ import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcela
 import type { CartaoCredito } from "../../types/CartaoCredito"
 import { notificacaoDeErro } from "@/utils/apiError"
 import styles from "./ParcelamentosPage.module.css"
+import CartoesAbas from "../CreditCards/CartoesAbas"
 
 
 const formatarMesAno = (mesAno: string) => {
@@ -152,10 +153,8 @@ export default function ParcelamentosPage() {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Parcelamentos</h1>
-          <div className={styles.subtitle}>Acompanhe suas compras parceladas no cartão</div>
-        </div>
+        {/* Parcelamento mora dentro de Cartões — mesmas abas da tela de cartões. */}
+        <CartoesAbas />
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Parcelamento
         </PontesButton>
@@ -220,7 +219,7 @@ export default function ParcelamentosPage() {
 
                   <div className={styles.itemActions}>
                     <PontesButton variant="outline" size="sm" iconEnd={<ChevronRight size={14} />}
-                      onClick={() => navigate(`/parcelamentos/${p.id}`)}>
+                      onClick={() => navigate(`/credit-cards/parcelamentos/${p.id}`)}>
                       Detalhes
                     </PontesButton>
                     {/* Cancelar só no detalhe: lá a pessoa vê as parcelas (pagas × pendentes) antes de

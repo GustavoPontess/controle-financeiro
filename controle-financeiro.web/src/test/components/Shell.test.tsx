@@ -53,25 +53,38 @@ describe("Shell interno (#118)", () => {
     expect(screen.getByRole("heading", { name: "Transações" })).toBeInTheDocument()
   })
 
-  it("Navbar no detalhe: caminho Início / Parcelamentos / <item>, com a seção clicável", () => {
+  it("Navbar no detalhe: Início / Cartões de Crédito / Parcelamentos / <item>, níveis de cima clicáveis", () => {
     withProviders(
       <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}}
         detalhe="Fone Teste" />,
-      "/parcelamentos/abc"
+      "/credit-cards/parcelamentos/abc"
     )
     expect(screen.getByText("Fone Teste")).toBeInTheDocument()
+    // Prefixo mais longo vence: é Parcelamentos (dentro de Cartões), não Cartões.
+    expect(screen.getByRole("heading", { name: "Parcelamentos" })).toBeInTheDocument()
+    expect(screen.getByText("Cartões de Crédito")).toBeInTheDocument()
     // "Parcelamentos" aparece 2x: link no caminho + título da página.
     expect(screen.getAllByText("Parcelamentos")).toHaveLength(2)
-    expect(screen.getByRole("heading", { name: "Parcelamentos" })).toBeInTheDocument()
   })
 
-  it("Navbar sem detalhe: caminho só com a seção atual", () => {
+  it("Navbar na lista de parcelamentos: caminho com a seção-pai Cartões de Crédito", () => {
     withProviders(
       <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />,
-      "/parcelamentos/abc"
+      "/credit-cards/parcelamentos"
     )
-    expect(screen.queryByText("Fone Teste")).not.toBeInTheDocument()
+    expect(screen.getByText("Cartões de Crédito")).toBeInTheDocument()
     expect(screen.getAllByText("Parcelamentos")).toHaveLength(2) // caminho (atual) + título
+  })
+
+  it("Navbar no detalhe de empréstimo: Início / Empréstimos / <item>", () => {
+    withProviders(
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}}
+        detalhe="Empréstimo do João" />,
+      "/emprestimos/abc"
+    )
+    expect(screen.getByText("Empréstimo do João")).toBeInTheDocument()
+    expect(screen.getAllByText("Empréstimos")).toHaveLength(2)
+    expect(screen.queryByText("Cartões de Crédito")).not.toBeInTheDocument()
   })
 
   it("Navbar abre o command palette pelo botão de busca", () => {
