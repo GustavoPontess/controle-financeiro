@@ -22,11 +22,7 @@ Feitos por workflow (3 builders em worktree → revisor adversarial → correç�
 - **#268** pagar fatura **idempotente** (tabela `RegistroIdempotencia` com índice único, chave obrigatória, replay com outros dados → 409) + **`xmin`** na `Fatura` (409 em conflito) + fatura de outro usuário → 404 + aviso com a mensagem do servidor no modal.
 - **#269** `Services/RegrasFinanceiras.cs`: total/restante da fatura sem parcela cancelada (5 cópias → 1) + saldo único agregado no banco (4 → 1) + **fatura travada após cancelar parcela** (reconciliação, atraso/"Vencida" pelo restante, juros sobre o restante) + jobs de fatura refazem uma a uma no conflito de `xmin`. Inclui a consolidação de docs (ROADMAP, ARQUITETURA, CLAUDE, DATABASE, FLOWS, regras do cartão).
 
-**Próxima ação (sugerida):** os P1 que os PRs deixaram no ROADMAP (seção "Auditoria de arquitetura") — compra nova em fatura `Pago` não reabre (trava a fatura); `xmin` em Empréstimo/Meta + transação no `ImportacaoService`; hard delete em cascata da conta. Antes de produção: `KnownProxies` do `X-Forwarded-For`.
-
-**Decisões pendentes do Gustavo:** parcelamento no dashboard/relatórios (regra anti-dupla-contagem proposta no ROADMAP); cartão com dia 29-31; roster mostra nome/e-mail em navegador compartilhado; previsão de recorrente no cartão entra no total pagável?
-
-**Produto (próximo passo do Gustavo):** importar o extrato OFX/CSV do banco dele — falta dizer qual banco.
+**Próxima ação:** seguir a **🎯 Fila no topo do `ROADMAP.md`** — ordem de ataque, decisões pendentes do Gustavo (uma de cada vez), verificação manual pendente e gate de produção, tudo num lugar só. Item 1: CSRF antes do CORS no `Program.cs`.
 
 ---
 
