@@ -298,6 +298,14 @@ public class AuthService
                  + "Você receberá acesso assim que for liberada.",
     };
 
+    /// <summary>Todas as contas do banco (e-mail + nome), pro painel DEV do login. O controller
+    /// só chama isto em Development — nunca expõe em produção.</summary>
+    public async Task<List<DevContaDto>> ListarContasDevAsync() =>
+        await _context.Usuarios
+            .OrderBy(u => u.CriadoEm)
+            .Select(u => new DevContaDto(u.Email, u.Nome))
+            .ToListAsync();
+
     public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null, bool manterConectado = false)
     {
         // Validate input

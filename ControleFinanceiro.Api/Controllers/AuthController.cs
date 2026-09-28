@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Hosting;
 using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Services;
 using ControleFinanceiro.Api.Infrastructure.Identity;
@@ -20,11 +21,12 @@ public class AuthController : ControllerBase
     private readonly RegistroAcessoService _registroAcesso;
     private readonly MinhaContaService _contaService;
     private readonly RosterService _rosterService;
+    private readonly IHostEnvironment _env;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider,
         CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, MinhaContaService contaService,
-        RosterService rosterService, ILogger<AuthController> logger)
+        RosterService rosterService, IHostEnvironment env, ILogger<AuthController> logger)
     {
         _authService = authService;
         _mfaService = mfaService;
@@ -33,7 +35,20 @@ public class AuthController : ControllerBase
         _registroAcesso = registroAcesso;
         _contaService = contaService;
         _rosterService = rosterService;
+        _env = env;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// SÓ EM DEVELOPMENT: lista as contas do banco (e-mail + nome) pro painel de atalho do login.
+    /// Em qualquer outro ambiente responde 404 — nunca expõe e-mails em produção.
+    /// </summary>
+    [HttpGet("dev/contas")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DevContas()
+    {
+        if (!_env.IsDevelopment()) return NotFound();
+        return Ok(await _authService.ListarContasDevAsync());
     }
 
     /// <summary>

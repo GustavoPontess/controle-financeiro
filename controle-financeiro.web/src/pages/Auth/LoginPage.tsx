@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft, Trash2, UserPlus, ChevronDown } from 'lucide-react'
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox, PontesAvatar } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
+import { api } from '@/api/axiosConfig'
 import contaService from '@/services/minhaContaService'
 import rosterService, { type ContaLembrada } from '@/services/rosterService'
 import styles from './LoginPage.module.css'
@@ -31,9 +32,12 @@ function contasExtras(): { email: string; label: string }[] {
   }).filter((c) => c.email)
 }
 
-// Base + extras do .env, sem repetir e-mail (o .env pode redefinir uma conta já listada).
-const DEV_ACCOUNTS = [...DEV_ACCOUNTS_BASE, ...contasExtras()]
-  .filter((c, i, todas) => todas.findIndex((o) => o.email.toLowerCase() === c.email.toLowerCase()) === i)
+// Base + extras do .env, sem repetir e-mail (o .env pode redefinir uma conta já listada). É só o
+// fallback: em dev, o painel busca a lista REAL do banco (endpoint /auth/dev/contas) — assim toda
+// conta de teste que eu criar aparece sozinha, sem editar esta lista.
+const dedupePorEmail = (contas: { email: string; label: string }[]) =>
+  contas.filter((c, i, todas) => todas.findIndex((o) => o.email.toLowerCase() === c.email.toLowerCase()) === i)
+const DEV_ACCOUNTS = dedupePorEmail([...DEV_ACCOUNTS_BASE, ...contasExtras()])
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -66,6 +70,20 @@ export default function LoginPage() {
 
   useEffect(() => {
     rosterService.listar().then(setRoster).catch(() => setRoster([]))
+  }, [])
+
+  // Painel DEV: lista TODAS as contas do banco (endpoint só-de-dev). Rótulo bonito quando é uma
+  // conta conhecida (base/.env); senão, o nome do usuário. Cai no fallback estático se falhar.
+  const [devContas, setDevContas] = useState(DEV_ACCOUNTS)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    api.get<{ email: string; nome: string }[]>('/auth/dev/contas')
+      .then((r) => {
+        const rotulo = (email: string) => DEV_ACCOUNTS.find((c) => c.email.toLowerCase() === email.toLowerCase())?.label
+        const doBanco = r.data.map((c) => ({ email: c.email, label: rotulo(c.email) ?? c.nome }))
+        setDevContas(dedupePorEmail([...doBanco, ...DEV_ACCOUNTS]))
+      })
+      .catch(() => { /* mantém o fallback estático */ })
   }, [])
 
   const validate = (): boolean => {
@@ -431,7 +449,7 @@ export default function LoginPage() {
       {import.meta.env.DEV && (
         <div className={styles.devHintPanel}>
           <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
-          {DEV_ACCOUNTS.map((conta) => (
+          {devContas.map((conta) => (
             <button
               key={conta.email}
               type="button"
