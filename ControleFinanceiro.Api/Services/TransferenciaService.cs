@@ -108,13 +108,28 @@ public class TransferenciaService
         };
     }
 
-    public async Task<PagedResult<TransferenciaDto>> ListarAsync(Guid usuarioId, int page = 1, int pageSize = 25)
+    public async Task<PagedResult<TransferenciaDto>> ListarAsync(
+        Guid usuarioId, int page = 1, int pageSize = 25, string? busca = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var query = _context.Transferencias
-            .Where(t => t.CriadoPor == usuarioId)
+        var filtrada = _context.Transferencias.Where(t => t.CriadoPor == usuarioId);
+
+        // Busca SERVER-SIDE (a lista é paginada: filtrar só a página carregada no front esconderia
+        // o resto). ToLower().Contains() é portável (InMemory nos testes + lower()/LIKE no Postgres);
+        // termo limitado pra não virar vetor de custo; EF parametriza (sem SQL injection).
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim().ToLower();
+            if (termo.Length > 100) termo = termo[..100];
+            filtrada = filtrada.Where(t =>
+                t.Descricao.ToLower().Contains(termo)
+                || (t.ContaOrigem != null && t.ContaOrigem.Nome.ToLower().Contains(termo))
+                || (t.ContaDestino != null && t.ContaDestino.Nome.ToLower().Contains(termo)));
+        }
+
+        var query = filtrada
             .Include(t => t.ContaOrigem)
             .Include(t => t.ContaDestino)
             .OrderByDescending(t => t.Data);

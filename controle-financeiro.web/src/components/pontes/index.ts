@@ -26,10 +26,14 @@ export * from "./ScrollArea"
 
 // ── Layout (primitivos: empilhar / lado a lado) ──────────────────────────────
 export * from "./layout/Layout"
+// Padrão de tela interna: topo (abas + botão "Novo…") e faixa de filtros (busca + status).
+export * from "./layout/PageHeader"
+export * from "./layout/Toolbar"
 
 // ── Botões ───────────────────────────────────────────────────────────────────
 export * from "./buttons/Button"
 export * from "./buttons/ChoiceCards"
+export * from "./buttons/RowActions"
 
 // ── Formulário & Inputs ──────────────────────────────────────────────────────
 export * from "./form/Field"

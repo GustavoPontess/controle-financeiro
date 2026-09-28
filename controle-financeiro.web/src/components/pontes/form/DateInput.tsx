@@ -103,6 +103,7 @@ export function PontesDateInput({
           ref={popoverRef}
           className={styles.popover}
           role="dialog"
+          aria-label="Escolher data"
           style={{ position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom, ...scopedThemeVars(p, font) } as CSSProperties}
         >
           <PontesDatePicker value={isoToDate(value)} onChange={handlePick} />

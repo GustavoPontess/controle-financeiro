@@ -48,11 +48,11 @@ describe("popover de campo dentro do PontesModal — Esc", () => {
     const campo = screen.getByRole("button", { name: "28/09/2026" })
     campo.focus()
     fireEvent.click(campo)
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Escolher data" })).toBeInTheDocument()
 
     fireEvent.keyDown(campo, { key: "Escape" })
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: "Escolher data" })).not.toBeInTheDocument()
     expect(estado()).toHaveTextContent("modal-aberto")
   })
 
@@ -64,7 +64,7 @@ describe("popover de campo dentro do PontesModal — Esc", () => {
 
     fireEvent.keyDown(dia, { key: "Escape" })
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: "Escolher data" })).not.toBeInTheDocument()
     expect(estado()).toHaveTextContent("modal-aberto")
     expect(screen.getByRole("button", { name: "28/09/2026" })).toHaveFocus()
   })

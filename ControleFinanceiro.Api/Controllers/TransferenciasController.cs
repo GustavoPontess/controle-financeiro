@@ -27,12 +27,17 @@ public class TransferenciasController : ControllerBase
         return userId;
     }
 
+    /// <summary>
+    /// Lista paginada das transferências, mais recentes primeiro. `busca` opcional filtra
+    /// (server-side) por descrição ou nome da conta de origem/destino.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<TransferenciaDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    public async Task<IActionResult> Listar(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? busca = null)
     {
         var usuarioId = GetUserId();
-        var resultado = await _service.ListarAsync(usuarioId, page, pageSize);
+        var resultado = await _service.ListarAsync(usuarioId, page, pageSize, busca);
         return Ok(resultado);
     }
 
