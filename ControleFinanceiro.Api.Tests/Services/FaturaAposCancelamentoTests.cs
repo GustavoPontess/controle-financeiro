@@ -581,4 +581,65 @@ public class FaturaAposCancelamentoTests
         Assert.Equal(StatusParcela.Pendente,
             (await ctx.ParcelasTransacao.AsNoTracking().SingleAsync(p => p.Id == c.ParcelaNaFaturaId)).Status);
     }
+
+    // ══ Fatura marcada Pago que recebe compra nova (achado da revisão da regra única de limite) ════════
+    // Antes, pagar e pagar antecipado recusavam pelo RÓTULO Pago e o job de atraso pulava a fatura: a compra
+    // nova ficava devendo sem saída e o limite dela nunca voltava. Agora quem decide é o restante.
+
+    private static async Task<Guid> CompraNaFaturaAsync(AppDbContext ctx, Cenario c, decimal valor)
+    {
+        var compra = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Farmácia", Valor = valor, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = c.CartaoId, FaturaId = c.FaturaId, UsadoComoCredito = true,
+            MeioPagamento = MeioPagamento.Credito, Data = DateTime.UtcNow.Date, CriadoPor = c.UsuarioId,
+        };
+        ctx.Transacoes.Add(compra);
+        await ctx.SaveChangesAsync();
+        return compra.Id;
+    }
+
+    [Fact]
+    public async Task FaturaPagaQueRecebeCompraNova_AceitaPagamentoDoRestante_EVoltaAPago()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 300m);
+        Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+
+        await CompraNaFaturaAsync(ctx, c, 50m);
+        Assert.Equal(50m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);
+
+        await PagarFaturaAsync(ctx, c, 50m); // antes: "Esta fatura já foi paga integralmente."
+
+        var fatura = await FaturaAsync(ctx, c.FaturaId);
+        Assert.Equal(350m, fatura.ValorPago);
+        Assert.Equal(EstadoPagamentoFatura.Pago, fatura.EstadoPagamento);
+    }
+
+    [Fact]
+    public async Task FaturaPagaSemRestante_SegueRecusandoPagamento()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 300m);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => PagarFaturaAsync(ctx, c, 1m));
+        Assert.Contains("já foi paga", ex.Message);
+    }
+
+    [Fact]
+    public async Task FaturaPagaQueRecebeCompraNova_EVenceSemPagar_Atrasa()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true); // venceu há 10 dias
+        await PagarFaturaAsync(ctx, c, 300m);
+        await CompraNaFaturaAsync(ctx, c, 50m);
+
+        await new FaturaAtrasoJob(ctx).ExecuteAsync();
+
+        var fatura = await FaturaAsync(ctx, c.FaturaId);
+        Assert.True(fatura.EstaAtrasada); // antes o job pulava a fatura pelo rótulo Pago
+        Assert.Equal(1.00m, fatura.Multa); // 2% sobre os 50 que faltam
+    }
 }

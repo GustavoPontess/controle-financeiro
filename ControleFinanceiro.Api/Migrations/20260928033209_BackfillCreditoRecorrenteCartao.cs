@@ -17,6 +17,9 @@ namespace ControleFinanceiro.Api.Migrations
     /// (<c>PagarFaturaAsync</c> recusa Pago) e o limite preso sem saída. Ela segue como sempre esteve, fora
     /// do total. Mesmo tratamento do <c>ExpandirRecorrentesJob</c> ao pôr na fatura as ocorrências antigas
     /// que nem fatura tinham (essas precisam da regra de período em C#, por isso não estão aqui).
+    /// Fatura que JÁ VENCEU também fica de fora: ela foi mostrada (e talvez paga) sem essa ocorrência;
+    /// cobrá-la agora faria uma fatura antiga passar a dever de repente, e o FaturaAtrasoJob somaria juros
+    /// e multa sobre dinheiro que ninguém mostrou como devido. Só as faturas ainda a vencer ganham a flag.
     /// </remarks>
     public partial class BackfillCreditoRecorrenteCartao : Migration
     {
@@ -34,6 +37,7 @@ namespace ControleFinanceiro.Api.Migrations
                 WHERE f.""Id"" = t.""FaturaId""
                   AND f.""CartaoCreditoId"" = t.""CartaoCreditoId""
                   AND f.""EstadoPagamento"" <> 2
+                  AND f.""DataVencimento"" >= CURRENT_DATE
                   AND t.""RecorrenteOrigemId"" IS NOT NULL
                   AND t.""CartaoCreditoId"" IS NOT NULL
                   AND t.""ContaId"" IS NULL

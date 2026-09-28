@@ -103,11 +103,9 @@ public class ParcelaTransacaoService
             throw new InvalidOperationException(
                 $"Saldo insuficiente. Necessário {valorParcela:C}, disponível {saldo:C}.");
 
-        // 5. Fatura não pode estar integralmente paga
+        // 5. Fatura da parcela — "já paga" é decidido pelo RESTANTE no passo 5b, não pelo rótulo Pago
+        //    (compra nova numa fatura marcada Pago volta a ter restante).
         var fatura = parcela.Fatura!;
-        if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
-            throw new InvalidOperationException(
-                "A fatura desta parcela já está integralmente paga.");
 
         // 5b. Nem coberta pelo que já foi pago, olhando o RESTANTE e não só o rótulo: com o ciclo aberto a
         //     fatura coberta fica Parcial com restante 0 até o fechamento (decisão em

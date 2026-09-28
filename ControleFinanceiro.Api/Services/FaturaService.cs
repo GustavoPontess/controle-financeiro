@@ -241,9 +241,6 @@ public class FaturaService
         if (pagamentoAnterior != null)
             return pagamentoAnterior;
 
-        if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
-            throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
-
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
@@ -252,6 +249,11 @@ public class FaturaService
         var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
 
         var valorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, fatura.ValorPago);
+        // "Já paga" pelo RESTANTE, não pelo rótulo: compra nova que cai numa fatura marcada Pago (ciclo
+        // aberto quitado, compra retroativa, recorrente) deixa restante > 0 — recusar pelo rótulo travava
+        // a fatura pra sempre (não pagava, e o limite dessa compra nunca voltava).
+        if (valorRestante <= 0)
+            throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
             throw new ArgumentException($"Valor inválido. Restante a pagar: {valorRestante:C}.");
 
