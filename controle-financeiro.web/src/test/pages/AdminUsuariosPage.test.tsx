@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import AdminUsuariosPage from "../../pages/Admin/AdminUsuariosPage"
 import { StatusUsuario } from "../../types/Admin"
@@ -32,6 +32,12 @@ function renderPage() {
   )
 }
 
+// Abre o ⋮ da 1ª linha e devolve o menu (as ações agora moram no menu, não soltas na linha).
+async function abrirMenu(i = 0) {
+  fireEvent.click((await screen.findAllByRole("button", { name: "Ações" }))[i])
+  return screen.findByRole("menu")
+}
+
 describe("AdminUsuariosPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -50,35 +56,37 @@ describe("AdminUsuariosPage", () => {
     renderPage()
     await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
 
-    fireEvent.change(screen.getByPlaceholderText("Nome ou e-mail"), { target: { value: "ativo" } })
+    fireEvent.change(screen.getByPlaceholderText("Buscar por nome ou e-mail…"), { target: { value: "ativo" } })
     // debounce (350ms) → chamada server-side com a busca, página 1
     await waitFor(() =>
       expect(mockService.usuarios).toHaveBeenCalledWith("ativo", 1, expect.any(Number))
     )
   })
 
-  it("bloquear pede confirmação e só então chama o serviço", async () => {
+  it("bloquear (no ⋮) pede confirmação e só então chama o serviço", async () => {
     mockService.usuarios.mockResolvedValue(paged([ativo]))
     mockService.bloquear.mockResolvedValueOnce({ ...ativo, status: StatusUsuario.Bloqueado })
     renderPage()
     await waitFor(() => expect(screen.getByText("Ativo User")).toBeInTheDocument())
 
-    fireEvent.click(screen.getByRole("button", { name: /bloquear/i }))
+    const menu = await abrirMenu()
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /bloquear/i }))
     expect(mockService.bloquear).not.toHaveBeenCalled()
 
-    const confirmar = screen.getAllByRole("button", { name: /bloquear/i }).at(-1)!
-    fireEvent.click(confirmar)
+    // Confirma no diálogo.
+    fireEvent.click(screen.getByRole("button", { name: "Bloquear" }))
     await waitFor(() => expect(mockService.bloquear).toHaveBeenCalledWith("u1"))
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "success" }))
   })
 
-  it("reativar chama o serviço direto", async () => {
+  it("reativar (no ⋮) chama o serviço direto", async () => {
     mockService.usuarios.mockResolvedValue(paged([bloqueado]))
     mockService.reativar.mockResolvedValueOnce({ ...bloqueado, status: StatusUsuario.Ativo })
     renderPage()
     await waitFor(() => expect(screen.getByText("Blocked User")).toBeInTheDocument())
 
-    fireEvent.click(screen.getByRole("button", { name: /reativar/i }))
+    const menu = await abrirMenu()
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /reativar/i }))
     await waitFor(() => expect(mockService.reativar).toHaveBeenCalledWith("u2"))
   })
 
@@ -87,8 +95,9 @@ describe("AdminUsuariosPage", () => {
     mockService.usuarios.mockResolvedValue(paged([adminRow]))
     renderPage()
     await waitFor(() => expect(screen.getByText("Adm")).toBeInTheDocument())
-    // Forçar reset aparece, Bloquear não (é a própria conta).
-    expect(screen.getByRole("button", { name: /forçar reset/i })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /bloquear/i })).not.toBeInTheDocument()
+    // Forçar reset aparece no ⋮, Bloquear não (é a própria conta).
+    const menu = await abrirMenu()
+    expect(within(menu).getByRole("menuitem", { name: /forçar reset/i })).toBeInTheDocument()
+    expect(within(menu).queryByRole("menuitem", { name: /bloquear/i })).not.toBeInTheDocument()
   })
 })

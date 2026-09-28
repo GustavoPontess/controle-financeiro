@@ -39,7 +39,8 @@ export type PontesTabelaFiltroRapido = {
 }
 
 export type PontesTabelaProps<T> = {
-  titulo: string
+  /** Nome da tela no cabeçalho. Omita quando o layout já mostra o título (ex.: painel admin). */
+  titulo?: string
   descricao?: string
   /** Botão primário do cabeçalho; também vira a ação do estado vazio. */
   acao?: { label: string; onClick: () => void }
@@ -143,7 +144,7 @@ export function PontesTabela<T>({
 
   return (
     <div className={styles.tela}>
-      <PontesPageHeader titulo={titulo} descricao={descricao} actionLabel={acao?.label} onAction={acao?.onClick} />
+      {(titulo || acao) && <PontesPageHeader titulo={titulo} descricao={descricao} actionLabel={acao?.label} onAction={acao?.onClick} />}
       {resumo}
       {temToolbar && (
         <div className={styles.toolbar}>

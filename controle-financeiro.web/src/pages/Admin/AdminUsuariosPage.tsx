@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import { Ban, RotateCcw, KeyRound, Search } from "lucide-react"
+import { Ban, RotateCcw, KeyRound, Users } from "lucide-react"
 import {
-  PontesTable, PontesButton, PontesBadge, PontesDialog, PontesInput, PontesField,
-  PontesSkeleton, PontesEmptyState, PontesMaskedValue, useMaskData, maskEmail,
+  PontesBadge, PontesDialog, PontesMaskedValue, useMaskData, maskEmail,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
-  type PontesTableColumn,
+  PontesTabela, type PontesTabelaColuna, type PontesTabelaTag,
 } from "@/components/pontes"
+import type { PontesRowAction } from "@/components/pontes"
 import { useAuth } from "../../hooks/useAuth"
 import adminService from "@/services/adminService"
 import { StatusUsuario, STATUS_LABEL, STATUS_TONE, type UsuarioAdmin } from "@/types/Admin"
-import styles from "./AdminPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -87,73 +86,53 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  const colunas: PontesTableColumn<UsuarioAdmin>[] = [
+  const colunas: PontesTabelaColuna<UsuarioAdmin>[] = [
     { key: "nome", header: "Nome", render: (u) => <strong>{u.nome}</strong> },
     { key: "email", header: "E-mail", render: (u) => <PontesMaskedValue value={u.email} /> },
     { key: "status", header: "Situação", render: (u) => <PontesBadge tone={STATUS_TONE[u.status]} size="sm">{STATUS_LABEL[u.status]}</PontesBadge> },
     { key: "ultimoAcesso", header: "Último acesso", render: (u) => formatarData(u.ultimoAcessoEm) },
-    {
-      key: "acoes",
-      header: "Ações",
-      align: "right",
-      render: (u) => {
-        const euMesmo = u.id === currentUser?.id
-        const emAcao = processando === u.id
-        return (
-          <div className={styles.acoes}>
-            {u.status === StatusUsuario.Ativo && (
-              <>
-                <PontesButton variant="ghost" size="sm" disabled={emAcao} onClick={() => setConfirm({ tipo: "reset", alvo: u })}>
-                  <KeyRound size={14} strokeWidth={2.5} /> Forçar reset
-                </PontesButton>
-                {!euMesmo && (
-                  <PontesButton variant="ghost" size="sm" disabled={emAcao} onClick={() => setConfirm({ tipo: "bloquear", alvo: u })}>
-                    <Ban size={14} strokeWidth={2.5} /> Bloquear
-                  </PontesButton>
-                )}
-              </>
-            )}
-            {u.status === StatusUsuario.Bloqueado && (
-              <PontesButton variant="primary" size="sm" loading={emAcao} onClick={() => reativar(u)}>
-                <RotateCcw size={14} strokeWidth={2.5} /> Reativar
-              </PontesButton>
-            )}
-          </div>
-        )
-      },
-    },
   ]
 
-  return (
-    <div className={styles.wrap}>
-      <PontesField label="Buscar" htmlFor="busca-usuario">
-        <PontesInput
-          id="busca-usuario"
-          placeholder="Nome ou e-mail"
-          value={buscaInput}
-          onChange={(e) => setBuscaInput(e.target.value)}
-          iconStart={<Search size={16} strokeWidth={2} />}
-        />
-      </PontesField>
+  // Ações no ⋮ (padrão): Forçar reset / Bloquear (Ativo) ou Reativar (Bloqueado). Não bloqueio a mim mesmo.
+  const acoes = (u: UsuarioAdmin): PontesRowAction[] => {
+    const emAcao = processando === u.id
+    if (u.status === StatusUsuario.Ativo) {
+      const lista: PontesRowAction[] = [
+        { key: "reset", label: "Forçar reset de senha", icon: <KeyRound size={16} strokeWidth={2.5} />, onClick: () => setConfirm({ tipo: "reset", alvo: u }) },
+      ]
+      if (u.id !== currentUser?.id) {
+        lista.push({ key: "bloquear", label: "Bloquear", danger: true, icon: <Ban size={16} strokeWidth={2.5} />, onClick: () => setConfirm({ tipo: "bloquear", alvo: u }) })
+      }
+      return lista
+    }
+    if (u.status === StatusUsuario.Bloqueado) {
+      return [{ key: "reativar", label: "Reativar", icon: <RotateCcw size={16} strokeWidth={2.5} />, onClick: () => { if (!emAcao) void reativar(u) } }]
+    }
+    return []
+  }
 
-      {carregando ? (
-        <PontesSkeleton height={200} />
-      ) : total === 0 ? (
-        <PontesEmptyState title="Nenhum usuário" description={busca ? "Nada bate com a busca." : "Ainda não há usuários cadastrados."} />
-      ) : (
-        <>
-          <PontesTable columns={colunas} rows={usuarios} rowKey={(u) => u.id} />
+  const tags: PontesTabelaTag[] = []
+  if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBuscaInput("") })
+
+  return (
+    <>
+      <PontesTabela
+        busca={{ value: buscaInput, onChange: setBuscaInput, placeholder: "Buscar por nome ou e-mail…", ariaLabel: "Buscar usuário" }}
+        tags={tags}
+        colunas={colunas}
+        itens={usuarios}
+        chave={(u) => u.id}
+        acoes={acoes}
+        carregando={carregando}
+        vazio={{ icone: <Users size={28} strokeWidth={2.5} />, titulo: "Nenhum usuário", descricao: busca ? "Nada bate com a busca." : "Ainda não há usuários cadastrados." }}
+        paginacao={
           <PontesTablePagination
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-            itemLabel="usuários"
-            itemLabelSingular="usuário"
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="usuários" itemLabelSingular="usuário"
           />
-        </>
-      )}
+        }
+      />
 
       <PontesDialog
         open={!!confirm}
@@ -169,6 +148,6 @@ export default function AdminUsuariosPage() {
         onConfirm={confirmar}
         onCancel={() => setConfirm(null)}
       />
-    </div>
+    </>
   )
 }
