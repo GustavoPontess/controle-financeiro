@@ -7,7 +7,7 @@ import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
-  CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
+  Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
   Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
 } from "lucide-react"
 import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
@@ -38,7 +38,6 @@ const NAV: SidebarNavGroup[] = [
       { to: "/reports", label: "Relatórios", icon: <BarChart3 size={19} strokeWidth={2} /> },
       { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={19} strokeWidth={2} /> },
       { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={19} strokeWidth={2} /> },
-      { to: "/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={19} strokeWidth={2} /> },
       { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
       { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
     ],
