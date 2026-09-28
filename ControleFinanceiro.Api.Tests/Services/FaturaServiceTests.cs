@@ -1181,4 +1181,138 @@ public class FaturaServiceTests
         Assert.Equal((int)MeioPagamento.Pix, pagamentoDto.MeioPagamento);
         Assert.Equal("Pix", pagamentoDto.MeioPagamentoDescricao);
     }
+
+    // ── DetalheAsync — parcelas de parcelamento na lista ─────────────────────
+
+    private static Fatura NovaFatura(CartaoCredito cartao, Guid usuarioId, int mesesAFrente = 0) => new()
+    {
+        Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
+        DataInicio = DateTime.UtcNow.Date.AddMonths(mesesAFrente).AddDays(-30),
+        DataFechamento = DateTime.UtcNow.Date.AddMonths(mesesAFrente),
+        DataVencimento = DateTime.UtcNow.Date.AddMonths(mesesAFrente).AddDays(10),
+        CriadoPor = usuarioId,
+    };
+
+    private static Parcelamento NovoParcelamento(CartaoCredito cartao, Guid usuarioId, string descricao,
+        DateTime dataCompra, Guid? categoriaId = null) => new()
+    {
+        Id = Guid.NewGuid(), CriadoPor = usuarioId, Tipo = TipoParcelamento.CompraParcelada,
+        Descricao = descricao, DataCompra = dataCompra, ValorTotal = 900, QuantidadeParcelas = 3,
+        CartaoCreditoId = cartao.Id, CategoriaId = categoriaId, Ativo = true,
+        CriadoEm = dataCompra.AddHours(10),
+    };
+
+    private static ParcelaTransacao NovaParcela(Parcelamento pa, Fatura fatura, int numero, decimal valor,
+        StatusParcela status = StatusParcela.Pendente, decimal? valorComJuros = null) => new()
+    {
+        Id = Guid.NewGuid(), ParcelamentoId = pa.Id, Numero = numero, QuantidadeTotal = pa.QuantidadeParcelas,
+        DataVencimento = fatura.DataFechamento.AddDays(-5), Valor = valor, ValorComJuros = valorComJuros,
+        FaturaId = fatura.Id, Status = status, CriadoPor = pa.CriadoPor, CriadoEm = pa.CriadoEm,
+    };
+
+    [Fact]
+    public async Task DetalheAsync_TrazParcelasDaFaturaComCamposDoParcelamento_CanceladaEOutraFaturaFora()
+    {
+        // O bug visto na tela: fatura de R$ 450 só com parcelas e a lista dizendo "Nenhuma transação".
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = CriarCartao(usuarioId);
+        var categoria = new Categoria { Id = Guid.NewGuid(), Descricao = "Eletrodomésticos", Finalidade = Finalidade.Despesa };
+        var fatura = NovaFatura(cartao, usuarioId);
+        var proxima = NovaFatura(cartao, usuarioId, mesesAFrente: 1);
+        var dataCompra = DateTime.UtcNow.Date.AddMonths(-1);
+        var geladeira = NovoParcelamento(cartao, usuarioId, "Geladeira", dataCompra, categoria.Id);
+        var sofa = NovoParcelamento(cartao, usuarioId, "Sofá", dataCompra);
+
+        var p2 = NovaParcela(geladeira, fatura, 2, 300m, valorComJuros: 312.5m); // com juros: vale o ValorComJuros
+        var p3 = NovaParcela(geladeira, proxima, 3, 300m);                       // outra fatura → fora
+        var sofaPaga = NovaParcela(sofa, fatura, 1, 150m, StatusParcela.Paga);   // paga antecipada: segue no total
+        var sofaCancelada = NovaParcela(sofa, fatura, 2, 999m, StatusParcela.Cancelada); // não é devida → fora
+        var compra = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 40, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
+            Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Categorias.Add(categoria);
+        ctx.Faturas.AddRange(fatura, proxima);
+        ctx.Parcelamentos.AddRange(geladeira, sofa);
+        ctx.ParcelasTransacao.AddRange(p2, p3, sofaPaga, sofaCancelada);
+        ctx.Transacoes.Add(compra);
+        await ctx.SaveChangesAsync();
+
+        var detalhe = await new FaturaService(ctx).DetalheAsync(fatura.Id, usuarioId);
+
+        Assert.Equal(new[] { p2.Id, sofaPaga.Id }.OrderBy(i => i), detalhe.Parcelas.Select(p => p.Id).OrderBy(i => i));
+        var dto = detalhe.Parcelas.Single(p => p.Id == p2.Id);
+        Assert.Equal(geladeira.Id, dto.ParcelamentoId);
+        Assert.Equal("Geladeira", dto.Descricao);
+        Assert.Equal(2, dto.Numero);
+        Assert.Equal(3, dto.QuantidadeTotal);
+        Assert.Equal(312.5m, dto.Valor);
+        Assert.Equal(dataCompra, dto.Data);
+        Assert.Equal(geladeira.CriadoEm, dto.CriadoEm);
+        Assert.Equal(categoria.Id, dto.CategoriaId);
+        Assert.Equal("Eletrodomésticos", dto.CategoriaDescricao);
+        Assert.Equal((int)StatusParcela.Pendente, dto.Status);
+        var paga = detalhe.Parcelas.Single(p => p.Id == sofaPaga.Id);
+        Assert.Equal((int)StatusParcela.Paga, paga.Status);
+        Assert.Null(paga.CategoriaDescricao);
+
+        // A lista bate com o total: 40 (compra) + 312,50 + 150 = 502,50 — a cancelada (999) fora dos dois.
+        Assert.Equal(502.5m, detalhe.ValorTotal);
+        Assert.Equal(detalhe.ValorTotal, detalhe.Transacoes.Sum(t => t.Valor) + detalhe.Parcelas.Sum(p => p.Valor));
+    }
+
+    [Fact]
+    public async Task DetalheAsync_ParcelaDeOutroUsuarioNaoApareceNaMinhaFatura()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var outroId = Guid.NewGuid();
+        var meuCartao = CriarCartao(usuarioId);
+        var cartaoDoOutro = CriarCartao(outroId);
+        var minhaFatura = NovaFatura(meuCartao, usuarioId);
+        var faturaDoOutro = NovaFatura(cartaoDoOutro, outroId);
+        var meu = NovoParcelamento(meuCartao, usuarioId, "Notebook", DateTime.UtcNow.Date);
+        var doOutro = NovoParcelamento(cartaoDoOutro, outroId, "TV do outro", DateTime.UtcNow.Date);
+        var minhaParcela = NovaParcela(meu, minhaFatura, 1, 200m);
+        var parcelaDoOutro = NovaParcela(doOutro, faturaDoOutro, 1, 500m);
+        ctx.CartoesCredito.AddRange(meuCartao, cartaoDoOutro);
+        ctx.Faturas.AddRange(minhaFatura, faturaDoOutro);
+        ctx.Parcelamentos.AddRange(meu, doOutro);
+        ctx.ParcelasTransacao.AddRange(minhaParcela, parcelaDoOutro);
+        await ctx.SaveChangesAsync();
+        var service = new FaturaService(ctx);
+
+        var detalhe = await service.DetalheAsync(minhaFatura.Id, usuarioId);
+
+        Assert.Equal(minhaParcela.Id, Assert.Single(detalhe.Parcelas).Id);
+        // A fatura do outro (com a parcela dele) continua inacessível: mesmo 404 de fatura inexistente.
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.DetalheAsync(faturaDoOutro.Id, usuarioId));
+    }
+
+    [Fact]
+    public async Task DetalheAsync_FaturaSoComParcelas_ListaNaoFicaVazia()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = CriarCartao(usuarioId);
+        var fatura = NovaFatura(cartao, usuarioId);
+        var celular = NovoParcelamento(cartao, usuarioId, "Celular", DateTime.UtcNow.Date);
+        var fone = NovoParcelamento(cartao, usuarioId, "Fone", DateTime.UtcNow.Date.AddMonths(-1));
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.Add(fatura);
+        ctx.Parcelamentos.AddRange(celular, fone);
+        ctx.ParcelasTransacao.AddRange(NovaParcela(celular, fatura, 1, 300m), NovaParcela(fone, fatura, 2, 150m));
+        await ctx.SaveChangesAsync();
+
+        var detalhe = await new FaturaService(ctx).DetalheAsync(fatura.Id, usuarioId);
+
+        Assert.Empty(detalhe.Transacoes);
+        Assert.Equal(2, detalhe.Parcelas.Count);
+        Assert.Equal(450m, detalhe.ValorTotal);
+        Assert.Equal(450m, detalhe.Parcelas.Sum(p => p.Valor));
+    }
 }

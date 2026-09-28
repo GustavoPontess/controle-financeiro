@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import CreditCardsPage from "../../pages/CreditCards/CreditCardsPage"
 import type { CartaoCredito } from "../../types/CartaoCredito"
@@ -67,7 +68,8 @@ const fFechadaComSaldo = {
 } as unknown as Fatura
 
 function renderPage() {
-  return render(<PontesThemeProvider><CreditCardsPage /></PontesThemeProvider>)
+  // Router: a parcela na lista da fatura é link pro parcelamento (<Link> exige contexto de rota).
+  return render(<MemoryRouter><PontesThemeProvider><CreditCardsPage /></PontesThemeProvider></MemoryRouter>)
 }
 
 describe("CreditCardsPage (#84)", () => {
@@ -276,6 +278,38 @@ describe("CreditCardsPage (#84)", () => {
     // Antes, a compra "coberta" pelo valor pago ganhava check verde (data-paid) — parecia paga
     // mesmo com a fatura ainda devendo.
     expect(container.querySelector("[data-paid]")).toBeNull()
+  })
+
+  it("parcela de parcelamento aparece na lista da fatura como 'Descrição (n/N)', com link pro parcelamento", async () => {
+    // O bug: fatura de R$ 450 só com parcelas mostrava "Nenhuma transação nesta fatura."
+    getFaturasByCartao.mockReset().mockResolvedValue([{ ...fatura, valorTotal: 450, valorRestante: 450 }])
+    getFaturaDetalhe.mockReset().mockResolvedValue({
+      transacoes: [],
+      parcelas: [
+        { id: "p1", parcelamentoId: "pa1", descricao: "Geladeira", numero: 2, quantidadeTotal: 3, valor: 300,
+          data: "2026-04-15", criadoEm: "2026-04-15T10:00:00Z", categoriaDescricao: "Casa", status: 0 },
+        { id: "p2", parcelamentoId: "pa2", descricao: "Fone", numero: 1, quantidadeTotal: 2, valor: 150,
+          data: "2026-06-02", criadoEm: "2026-06-02T09:00:00Z", status: 1 },
+      ],
+      pagamentos: [],
+    })
+    const { container } = renderPage()
+
+    const geladeira = await screen.findByText("Geladeira (2/3)")
+    expect(geladeira.closest("a")).toHaveAttribute("href", "/parcelamentos/pa1")
+    expect(screen.getByText("Fone (1/2)")).toBeInTheDocument()
+    expect(screen.getAllByLabelText("Parcelado")).toHaveLength(2)
+    expect(screen.getByText(/15\/04\/2026 · .* · Casa/)).toBeInTheDocument() // data da compra + categoria
+    expect(screen.queryByText("Nenhuma transação nesta fatura.")).not.toBeInTheDocument()
+    // Mesmo visual de compra: nem linha verde de pagamento, nem "paga" (mesmo a parcela com status Paga).
+    expect(container.querySelector('[data-parcela="true"][data-pagamento]')).toBeNull()
+    expect(container.querySelector("[data-paid]")).toBeNull()
+    expect(screen.queryByText("Paga")).not.toBeInTheDocument()
+  })
+
+  it("'Nenhuma transação nesta fatura.' só quando não há compra, parcela nem pagamento", async () => {
+    renderPage() // detalhe padrão: nada
+    expect(await screen.findByText("Nenhuma transação nesta fatura.")).toBeInTheDocument()
   })
 
   it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {

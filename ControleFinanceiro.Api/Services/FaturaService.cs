@@ -438,15 +438,21 @@ public class FaturaService
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
                 .ThenInclude(t => t.Categoria)
+            // Parcelamento (descrição/data da compra) e categoria vêm na MESMA consulta — sem N+1 por parcela.
             .Include(f => f.ParcelasTransacao)
+                .ThenInclude(p => p.Parcelamento!)
+                    .ThenInclude(pa => pa.Categoria)
             .AsNoTracking()
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("Fatura não encontrada.");
 
         var dto = new FaturaDetalheDto();
         PreencherDto(dto, fatura, fatura.CartaoCredito.Nome);
+        // A lista usa o MESMO filtro do total (RegrasFinanceiras): compras + parcelas listadas somam
+        // exatamente o ValorTotal. Previsão (assinatura expandida pelo job, UsadoComoCredito) entra nos
+        // dois lados — a regra do total não olha StatusTransacao.
         dto.Transacoes = fatura.Transacoes
-            .Where(t => t.UsadoComoCredito)
+            .Where(RegrasFinanceiras.CompoeTotalFatura)
             .OrderByDescending(t => t.CriadoEm)
             .Select(t => new FaturaTransacaoDto
             {
@@ -457,6 +463,29 @@ public class FaturaService
                 CriadoEm = t.CriadoEm,
                 CategoriaId = t.CategoriaId,
                 CategoriaDescricao = t.Categoria?.Descricao,
+            }).ToList();
+
+        // Parcelas do parcelamento que caíram nesta fatura. Antes só entravam no total: a fatura cobrava
+        // R$ 450 e a lista dizia "nenhuma transação". Isolamento: vêm pela fatura, já filtrada pelo dono
+        // do cartão (mesmo critério das compras acima). Data = compra do parcelamento (convenção do
+        // extrato de cartão); a linha do tempo ordena por CriadoEm, como as compras.
+        dto.Parcelas = fatura.ParcelasTransacao
+            .Where(RegrasFinanceiras.CompoeTotalFatura)
+            .OrderByDescending(p => p.CriadoEm)
+            .ThenBy(p => p.Numero)
+            .Select(p => new FaturaParcelaDto
+            {
+                Id = p.Id,
+                ParcelamentoId = p.ParcelamentoId,
+                Descricao = p.Parcelamento?.Descricao ?? string.Empty,
+                Numero = p.Numero,
+                QuantidadeTotal = p.QuantidadeTotal,
+                Valor = RegrasFinanceiras.ValorDevidoParcela(p),
+                Data = p.Parcelamento?.DataCompra ?? p.DataVencimento,
+                CriadoEm = p.CriadoEm,
+                CategoriaId = p.Parcelamento?.CategoriaId,
+                CategoriaDescricao = p.Parcelamento?.Categoria?.Descricao,
+                Status = (int)p.Status,
             }).ToList();
 
         // Pagamentos: transações de pagamento desta fatura (FaturaPagaId, não FaturaId).
