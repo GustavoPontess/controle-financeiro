@@ -5,8 +5,8 @@ import { useNavigate, useOutletContext } from "react-router-dom"
 import { Plus, ChevronRight, Layers } from "lucide-react"
 import {
   PontesButton, PontesCard, PontesBadge, PontesStatCard,
-  PontesModal, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
-  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesModal, PontesField, PontesInput, PontesDateInput, PontesMonthInput, PontesSelect,
+  PontesEmptyState, PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 import { getCartoes } from "../../services/cartaoCreditoService"
@@ -14,15 +14,10 @@ import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
 import { notificacaoDeErro } from "@/utils/apiError"
+import { mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura } from "../CreditCards/ciclosFatura"
 import styles from "./ParcelamentosPage.module.css"
 import CartoesAbas from "../CreditCards/CartoesAbas"
 
-
-const formatarMesAno = (mesAno: string) => {
-  const [ano, mes] = mesAno.split("-")
-  const meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
-  return `${meses[parseInt(mes) - 1]}/${ano}`
-}
 
 const parseMoney = (masked: string): number | undefined => {
   const digits = masked.replace(/\D/g, "")
@@ -52,16 +47,24 @@ type FormState = {
   primeiraParcelaMes: string
   taxaJuroMensal?: number
 }
-type Errors = Partial<Record<"descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "taxaJuroMensal", string>>
+type Errors = Partial<Record<
+  "descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "primeiraParcelaMes" | "taxaJuroMensal", string
+>>
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const emptyForm = (proximoMes: string): FormState => ({
-  descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
-  dataCompra: dataLocalISO(),
-  parcelas: 3, primeiraParcelaMes: proximoMes, taxaJuroMensal: undefined,
-})
+// "Primeira parcela: outubro" = a fatura que FECHA em outubro (o rótulo da tela Cartões). A sugestão é
+// a mais cedo que o banco cobraria: a fatura em que a compra cai ou, se a compra é antiga, a aberta
+// hoje. Sem cartão escolhido ainda, mês calendário.
+const emptyForm = (): FormState => {
+  const dataCompra = dataLocalISO()
+  return {
+    descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
+    dataCompra,
+    parcelas: 3, primeiraParcelaMes: mesMinimoPrimeiraParcela(dataCompra, dataCompra), taxaJuroMensal: undefined,
+  }
+}
 
 export default function ParcelamentosPage() {
   const navigate = useNavigate()
@@ -75,10 +78,10 @@ export default function ParcelamentosPage() {
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState<FormState>(() => {
-    const d = new Date(); d.setMonth(d.getMonth() + 1)
-    return emptyForm(dataLocalISO(d).substring(0, 7))
-  })
+  const [form, setForm] = useState<FormState>(emptyForm)
+  // Usuário escolheu o mês da 1ª parcela à mão: mudar a data da compra ou o cartão não sobrescreve
+  // a escolha (se ela ficar antes do mínimo, a validação do submit avisa no campo).
+  const [mesEscolhido, setMesEscolhido] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
 
   const loadData = useCallback(async () => {
@@ -102,9 +105,30 @@ export default function ParcelamentosPage() {
   const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
+  const diaFechamentoDo = (cartaoId: string) => cartoes.find((c) => c.id === cartaoId)?.diaFechamento
+  const diaVencimentoDo = (cartaoId: string) => cartoes.find((c) => c.id === cartaoId)?.diaVencimento
+  // Primeira parcela mais cedo possível no cartão escolhido (o backend recusa antes dela): a fatura em
+  // que a compra cai ou, compra antiga, a 1ª que ainda não venceu — as anteriores já venceram. Mínimo do seletor e
+  // sugestão enquanto o usuário não escolhe o mês.
+  const diaFechamento = diaFechamentoDo(form.cartaoCreditoId)
+  const mesMinimo = mesMinimoPrimeiraParcela(form.dataCompra, dataLocalISO(), diaFechamento, diaVencimentoDo(form.cartaoCreditoId))
+  const minimoEhAFaturaDaCompra = mesMinimo === mesDaFaturaDoDia(form.dataCompra, diaFechamento)
+
+  const mudarCompra = (patch: Partial<Pick<FormState, "dataCompra" | "cartaoCreditoId">>) => {
+    setForm((f) => {
+      const next = { ...f, ...patch }
+      if (mesEscolhido) return next
+      return {
+        ...next,
+        primeiraParcelaMes: mesMinimoPrimeiraParcela(next.dataCompra, dataLocalISO(), diaFechamentoDo(next.cartaoCreditoId), diaVencimentoDo(next.cartaoCreditoId)),
+      }
+    })
+    clearErr("primeiraParcelaMes")
+  }
+
   const openCreate = () => {
-    const d = new Date(); d.setMonth(d.getMonth() + 1)
-    setForm(emptyForm(dataLocalISO(d).substring(0, 7)))
+    setForm(emptyForm())
+    setMesEscolhido(false)
     setErrors({})
     setDialogOpen(true)
   }
@@ -116,6 +140,11 @@ export default function ParcelamentosPage() {
     else if (form.valor <= 0) e.valor = "Valor deve ser maior que zero"
     if (!form.cartaoCreditoId) e.cartaoCreditoId = "Selecione o cartão"
     if (form.parcelas < 2 || form.parcelas > 36) e.parcelas = "Entre 2 e 36 parcelas"
+    if (!form.primeiraParcelaMes) e.primeiraParcelaMes = "Informe o mês da primeira parcela"
+    else if (mesMinimo && form.primeiraParcelaMes < mesMinimo)
+      e.primeiraParcelaMes = minimoEhAFaturaDaCompra
+        ? `Não pode ser antes da fatura da compra (${rotuloMesFatura(`${mesMinimo}-01`)})`
+        : `Não pode ser antes da fatura de ${rotuloMesFatura(`${mesMinimo}-01`)} — as anteriores já venceram`
     if (form.tipo === "1") {
       const t = form.taxaJuroMensal ?? 0
       if (t < 1.99 || t > 11.99) e.taxaJuroMensal = "PIX Crédito exige juros entre 1,99 e 11,99%"
@@ -207,7 +236,7 @@ export default function ParcelamentosPage() {
                       {p.proximaParcela && (
                         <span className={styles.footItem}>
                           <span className={styles.metricLabel}>Próxima</span>
-                          Fatura {formatarMesAno(p.proximaParcela.dataVencimento.split("T")[0].substring(0, 7))} · <strong>{formatMoney(p.proximaParcela.valor)}</strong>
+                          Fatura {rotuloMesFatura(p.proximaParcela.faturaMesReferencia)} · <strong>{formatMoney(p.proximaParcela.valor)}</strong>
                         </span>
                       )}
                       <span className={styles.footItem}>
@@ -283,10 +312,15 @@ export default function ParcelamentosPage() {
 
           <div className={styles.grid2}>
             <PontesField label="Data da compra" required>
-              <PontesDateInput value={form.dataCompra} onChange={(v) => setF("dataCompra", v)} />
+              <PontesDateInput value={form.dataCompra} onChange={(v) => mudarCompra({ dataCompra: v })} />
             </PontesField>
-            <PontesField label="Primeira parcela (mês)" required>
-              <PontesInput type="month" value={form.primeiraParcelaMes} onChange={(e) => setF("primeiraParcelaMes", e.target.value)} />
+            <PontesField label="Primeira parcela (mês)" required error={errors.primeiraParcelaMes}>
+              <PontesMonthInput
+                value={form.primeiraParcelaMes}
+                min={mesMinimo || undefined}
+                onChange={(v) => { setF("primeiraParcelaMes", v); setMesEscolhido(true); clearErr("primeiraParcelaMes") }}
+                invalid={!!errors.primeiraParcelaMes}
+              />
             </PontesField>
           </div>
 
@@ -297,7 +331,7 @@ export default function ParcelamentosPage() {
           <PontesField label="Cartão" required error={errors.cartaoCreditoId}>
             <PontesSelect
               value={form.cartaoCreditoId}
-              onChange={(v) => { setF("cartaoCreditoId", v); clearErr("cartaoCreditoId") }}
+              onChange={(v) => { mudarCompra({ cartaoCreditoId: v }); clearErr("cartaoCreditoId") }}
               invalid={!!errors.cartaoCreditoId}
               placeholder="Selecione o cartão"
               options={cartoes.map((c) => ({ value: c.id, label: c.nome }))}

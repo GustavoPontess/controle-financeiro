@@ -30,18 +30,36 @@ public class ParcelamentoService
     private readonly FinancialEventLogService _eventLog;
     private readonly LimiteCalculatorService _limiteCalc;
     private readonly FaturaService _faturaService;
+    private readonly TimeProvider _relogio;
 
     public ParcelamentoService(
         AppDbContext context,
         FinancialEventLogService eventLog,
         LimiteCalculatorService limiteCalc,
-        FaturaService faturaService)
+        FaturaService faturaService,
+        TimeProvider? relogio = null)
     {
         _context = context;
         _eventLog = eventLog;
         _limiteCalc = limiteCalc;
         _faturaService = faturaService;
+        // Opcional só pra testar com um "hoje" fixo a regra da fatura aberta (a 1ª parcela depende do
+        // dia). O Program.cs não registra TimeProvider → vale o default (relógio do sistema); os
+        // chamadores não mudam.
+        _relogio = relogio ?? TimeProvider.System;
     }
+
+    // Nome do mês sem CultureInfo("pt-BR"): a imagem de produção (alpine) roda com globalização
+    // invariante, e lá o construtor lança CultureNotFoundException — o usuário veria um 400 técnico em
+    // inglês no lugar da mensagem da regra.
+    private static readonly string[] MesesPtBr =
+    {
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+    };
+
+    private static string RotuloMesFatura(DateTime fechamento) =>
+        $"{MesesPtBr[fechamento.Month - 1]} de {fechamento.Year}";
 
     // ── Criar ─────────────────────────────────────────────────────────────────
 
@@ -69,29 +87,24 @@ public class ParcelamentoService
         if (dto.Parcelas < 2 || dto.Parcelas > 36)
             throw new InvalidOperationException("Quantidade de parcelas deve estar entre 2 e 36.");
 
-        if (dto.DataCompra.Date > DateTime.UtcNow.Date)
+        var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
+        if (dto.DataCompra.Date > agoraUtc.Date)
             throw new InvalidOperationException("Data da compra não pode ser futura.");
 
         if (dto.Tipo != TipoParcelamento.CompraParcelada && dto.Tipo != TipoParcelamento.PIXCredito)
             throw new InvalidOperationException(
                 "Tipo deve ser CompraParcelada ou PIXCredito (Recorrente segue fluxo próprio).");
 
-        // 3. Parse primeiraParcelaMes (yyyy-MM)
+        // 3. Parse primeiraParcelaMes (yyyy-MM) — o mês em que FECHA a fatura da 1ª parcela.
         if (!DateTime.TryParseExact(
                 dto.PrimeiraParcelaMes + "-01",
                 "yyyy-MM-dd",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
-                out var primeiroDiaPrimeiraParcela))
+                out var mesPrimeiraParcela))
         {
             throw new InvalidOperationException("primeiraParcelaMes deve estar no formato yyyy-MM.");
         }
-
-        var hoje = DateTime.UtcNow.Date;
-        var primeiroDiaMesAtual = new DateTime(hoje.Year, hoje.Month, 1);
-        if (primeiroDiaPrimeiraParcela < primeiroDiaMesAtual)
-            throw new InvalidOperationException(
-                "primeiraParcelaMes não pode ser anterior ao mês atual.");
 
         // 4. Cartão — valida existência, posse, modalidade crédito e ativo
         var cartao = await _context.CartoesCredito
@@ -103,6 +116,33 @@ public class ParcelamentoService
 
         if (!cartao.Ativo)
             throw new InvalidOperationException("Cartão inativo.");
+
+        // 4b. Piso da 1ª parcela = a MAIS TARDE entre:
+        //  (a) a fatura em que a compra cai (a que fecha depois da DataCompra, mesma regra do lançamento
+        //      à vista) — o banco não cobra parcela numa fatura que fechou antes da compra;
+        //  (b) a 1ª fatura que ainda NÃO VENCEU — é a mais antiga que ainda pode receber cobrança.
+        //      Compra retroativa (ex.: de junho, lançada em setembro) com parcela numa fatura vencida
+        //      nascia Pendente lá: o FaturaAtrasoJob cobrava juros e multa dela e uma fatura já paga
+        //      voltava a ter restante. Mas a fatura que JÁ FECHOU e ainda não venceu é válida: compra do
+        //      dia 24 (fecha 25, vence 5) lançada no dia 28 é cobrada justamente nela — travar na aberta
+        //      jogava a 1ª parcela uma fatura depois do banco (o bug que motivou esta regra).
+        // "Hoje" = o dia mais cedo possível no Brasil agora (UTC-5, Acre): o form usa o dia LOCAL de
+        // quem usa, e o back não pode ser mais estrito que ele — com o dia UTC, das 21h à meia-noite
+        // de Brasília na véspera do fechamento, a fatura que o form sugere seria recusada.
+        var hojeNoBrasil = agoraUtc.AddHours(-5).Date;
+        var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dto.DataCompra.Date, cartao.DiaFechamento);
+        var (fechamentoDaAnterior, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
+        // A fatura anterior à aberta (fechou em fechamentoDaAnterior) ainda aceita cobrança se não venceu.
+        var fechamentoNaoVencido =
+            FaturaService.CalcularVencimento(fechamentoDaAnterior, cartao.DiaVencimento) >= hojeNoBrasil
+                ? fechamentoDaAnterior
+                : fechamentoDaAberta;
+        var pisoEhACompra = fechamentoDaCompra >= fechamentoNaoVencido;
+        var piso = pisoEhACompra ? fechamentoDaCompra : fechamentoNaoVencido;
+        if (mesPrimeiraParcela < new DateTime(piso.Year, piso.Month, 1))
+            throw new InvalidOperationException(pisoEhACompra
+                ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
+                : $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)} — as anteriores já venceram.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa
         if (dto.CategoriaId.HasValue)
@@ -154,17 +194,7 @@ public class ParcelamentoService
         if (valorComJurosTotal.HasValue)
             valoresComJuros = RatearValor(valorComJurosTotal.Value, dto.Parcelas);
 
-        // 9. Calcular datas de vencimento — dia da DataCompra, mês = primeiraParcelaMes + i
-        var diaCompra = dto.DataCompra.Day;
-        var datasVencimento = new DateTime[dto.Parcelas];
-        for (int i = 0; i < dto.Parcelas; i++)
-        {
-            var mesAlvo = primeiroDiaPrimeiraParcela.AddMonths(i);
-            int diaEfetivo = Math.Min(diaCompra, DateTime.DaysInMonth(mesAlvo.Year, mesAlvo.Month));
-            datasVencimento[i] = new DateTime(mesAlvo.Year, mesAlvo.Month, diaEfetivo);
-        }
-
-        // 10. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
+        // 9. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
         var correlationId = Guid.NewGuid();
         var parcelamentoId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
@@ -192,10 +222,15 @@ public class ParcelamentoService
 
             for (int i = 0; i < dto.Parcelas; i++)
             {
-                // ObterOuCriarFaturaAsync pertence ao FaturaService — reaproveitamos
-                // a lógica de cálculo de período/fechamento/vencimento já existente.
+                // Parcela N na fatura que FECHA em primeiraParcelaMes + N-1 (o rótulo da tela Cartões).
+                // Antes a parcela ganhava o DIA DA COMPRA naquele mês e a fatura saía do ciclo dessa
+                // data: compra depois do fechamento pulava uma fatura ("outubro" caía na que fecha em
+                // novembro). Achar pelo mês de fechamento não depende do dia da compra.
+                var mesDaParcela = mesPrimeiraParcela.AddMonths(i);
                 var fatura = await _faturaService.ObterOuCriarFaturaAsync(
-                    dto.CartaoCreditoId, datasVencimento[i], usuarioId);
+                    dto.CartaoCreditoId,
+                    FaturaService.DataNoCicloQueFechaEm(mesDaParcela.Year, mesDaParcela.Month, cartao.DiaFechamento),
+                    usuarioId);
 
                 var parcela = new ParcelaTransacao
                 {
@@ -203,7 +238,10 @@ public class ParcelamentoService
                     ParcelamentoId = parcelamentoId,
                     Numero = i + 1,
                     QuantidadeTotal = dto.Parcelas,
-                    DataVencimento = datasVencimento[i],
+                    // Vencimento REAL da fatura (o que a tela Cartões mostra), não uma data inventada:
+                    // a parcela é cobrada quando a fatura vence. Juros do PIX Crédito não usam essa data
+                    // (juros simples × N), então o valor não muda.
+                    DataVencimento = fatura.DataVencimento,
                     Valor = valoresPorParcela[i],
                     ValorComJuros = valoresComJuros?[i],
                     TaxaJuro = dto.TaxaJuroMensal,
@@ -477,7 +515,10 @@ public class ParcelamentoService
             .Where(p => p.CriadoPor == usuarioId
                         && (!ativo.HasValue || p.Ativo == ativo.Value))
             .Include(p => p.CartaoCredito)
+            // Fatura de cada parcela no mesmo SELECT (join, sem N+1): o card mostra a próxima parcela
+            // pelo mês de fechamento da fatura dela — o rótulo da tela Cartões.
             .Include(p => p.Parcelas)
+                .ThenInclude(par => par.Fatura)
             .OrderByDescending(p => p.CriadoEm)
             .AsNoTracking();
 
@@ -529,6 +570,9 @@ public class ParcelamentoService
                 Status = par.Status,
                 FaturaId = par.FaturaId,
                 FaturaMesReferencia = par.Fatura?.DataFechamento ?? par.DataVencimento,
+                // Da fatura, não da parcela: parcelas criadas antes da regra do mês de fechamento
+                // guardam o dia da compra como DataVencimento — a fatura sabe quando vence de fato.
+                FaturaDataVencimento = par.Fatura?.DataVencimento ?? par.DataVencimento,
                 PagoEm = par.PagoEm,
                 CanceladoEm = par.CanceladoEm,
                 MotivoCancelamento = par.MotivoCancelamento,
@@ -599,6 +643,8 @@ public class ParcelamentoService
             Valor = proxima.Valor,
             ValorComJuros = proxima.ValorComJuros,
             FaturaId = proxima.FaturaId,
+            FaturaMesReferencia = proxima.Fatura?.DataFechamento ?? proxima.DataVencimento,
+            FaturaDataVencimento = proxima.Fatura?.DataVencimento ?? proxima.DataVencimento,
         };
         dto.Ativo = p.Ativo;
         dto.CanceladoEm = p.CanceladoEm;

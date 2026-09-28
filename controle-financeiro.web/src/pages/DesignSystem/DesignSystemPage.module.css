@@ -134,6 +134,9 @@
 .tokenLine { display: flex; gap: 16px; align-items: baseline; }
 .tokenLine .tokenName { width: 60px; }
 
+/* Campos com popover (date/month input) na largura de um campo de form. */
+.fieldDemo { max-width: 260px; }
+
 /* Demo do padrão de tela interna (PageHeader + Toolbar + RowActions). */
 .demoRow { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--pontes-border); }
 .demoRow:last-child { border-bottom: none; }

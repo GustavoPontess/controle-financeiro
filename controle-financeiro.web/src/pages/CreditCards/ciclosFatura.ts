@@ -41,6 +41,42 @@ export function cicloDoDia(ano: number, mes0: number, dia: number, diaFechamento
   return mes0 === 11 ? cicloQueFechaEm(ano + 1, 0, diaFechamento) : cicloQueFechaEm(ano, mes0 + 1, diaFechamento)
 }
 
+/** Mês "YYYY-MM" da fatura em que cai uma compra do dia `iso` ("YYYY-MM-DD"): o mês em que essa fatura
+ * FECHA, que é o rótulo dela na tela Cartões. Antes do dia de fechamento → mês da compra; no dia ou
+ * depois → mês seguinte; sem dia de fechamento → mês da compra. Com o dia de hoje, é a fatura aberta.
+ * "" se a data for inválida. */
+export function mesDaFaturaDoDia(iso: string, diaFechamento?: number): string {
+  const [ano, mes, dia] = iso.split("-").map(Number)
+  if (!ano || !mes || !dia) return ""
+  return cicloDoDia(ano, mes - 1, dia, diaFechamento).fechamento.toISOString().slice(0, 7)
+}
+
+/** Primeira parcela mais cedo que o parcelamento aceita ("YYYY-MM") — espelha o piso do
+ * ParcelamentoService: a MAIS TARDE entre a fatura em que a compra cai e a 1ª fatura que ainda NÃO
+ * VENCEU (`hojeIso` = dia LOCAL de quem usa). A fatura que já fechou mas ainda não venceu vale — é nela
+ * que o banco cobra a compra feita antes do fechamento e lançada depois. Fatura vencida não: a parcela
+ * nasceria pendente numa fatura vencida (juros/multa) ou já paga. "" se a data da compra for inválida. */
+export function mesMinimoPrimeiraParcela(
+  dataCompraIso: string, hojeIso: string, diaFechamento?: number, diaVencimento?: number,
+): string {
+  const daCompra = mesDaFaturaDoDia(dataCompraIso, diaFechamento)
+  const [ano, mes, dia] = hojeIso.split("-").map(Number)
+  if (!daCompra || !ano || !mes || !dia) return ""
+  const aberta = cicloDoDia(ano, mes - 1, dia, diaFechamento)
+  const hoje = new Date(Date.UTC(ano, mes - 1, dia))
+  // A anterior à aberta fechou em `aberta.inicio`; ainda aceita cobrança se não venceu.
+  const naoVencida = vencimentoDe(aberta.inicio, diaVencimento) >= hoje ? aberta.inicio : aberta.fechamento
+  const piso = naoVencida.toISOString().slice(0, 7)
+  return piso > daCompra ? piso : daCompra
+}
+
+/** Rótulo da fatura pelo mês de fechamento ("Outubro de 2026") — o mesmo em Cartões e Parcelamentos.
+ * Formata em UTC: o backend manda a data como meia-noite UTC e o fuso local jogaria pro mês anterior. */
+export function rotuloMesFatura(dataFechamento: string): string {
+  const m = new Date(dataFechamento).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
+
 /** Vencimento: dia de vencimento no mês do fechamento se cair depois dele; senão, no mês seguinte.
  * Sem dia de vencimento → fechamento + 10 dias. */
 export function vencimentoDe(fechamento: Date, diaVencimento?: number): Date {

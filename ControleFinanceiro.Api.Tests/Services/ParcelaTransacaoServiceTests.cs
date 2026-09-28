@@ -105,7 +105,7 @@ public class ParcelaTransacaoServiceTests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = parcelas,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = categoria.Id,
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, usuarioId);

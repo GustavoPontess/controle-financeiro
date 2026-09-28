@@ -76,7 +76,9 @@ public class LimiteCartaoRegraUnicaTests
         {
             Descricao = "Geladeira", Valor = valor, Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = c.CartaoId, DataCompra = DateTime.UtcNow.Date, Parcelas = parcelas,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+            // 1ª parcela na fatura em que a compra cai (regra do #275) — "o mês de hoje" é recusado
+            // quando o dia de hoje já passou do fechamento.
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
 

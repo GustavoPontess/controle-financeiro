@@ -30,8 +30,10 @@ public class CriarParcelamentoDto
     public int Parcelas { get; set; }
 
     /// <summary>
-    /// Mês (yyyy-MM) em que cai a primeira parcela. Ex: "2026-07".
-    /// Não pode ser anterior ao mês atual.
+    /// Mês (yyyy-MM) da fatura da primeira parcela — o mês em que essa fatura FECHA (rótulo da
+    /// tela Cartões). Ex: "2026-10" = fatura que fecha em outubro. A parcela N cai na fatura que
+    /// fecha N-1 meses depois. Não pode ser anterior à fatura em que a compra cai nem à fatura
+    /// aberta hoje (as anteriores já fecharam).
     /// </summary>
     [Required]
     [RegularExpression(@"^\d{4}-(0[1-9]|1[0-2])$", ErrorMessage = "Formato deve ser yyyy-MM.")]

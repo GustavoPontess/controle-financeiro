@@ -151,6 +151,45 @@ public class FaturaServiceTests
         Assert.Equal(new DateTime(2026, 3, 31), fechamento);
     }
 
+    // ── DataNoCicloQueFechaEm ────────────────────────────────────────────────
+
+    /// <summary>
+    /// A data devolvida tem que cair, pelo CalcularPeriodo, no ciclo que FECHA no mês pedido — em
+    /// qualquer dia de fechamento, inclusive dia 1 (véspera no mês anterior), dia 31 em fevereiro
+    /// (fecha no último dia) e cartão sem dia de fechamento (mês calendário).
+    /// </summary>
+    [Theory]
+    [InlineData(2026, 10, 10, 2026, 9, 10, 2026, 10, 10)]
+    [InlineData(2026, 10, 1, 2026, 9, 1, 2026, 10, 1)]
+    [InlineData(2026, 1, 1, 2025, 12, 1, 2026, 1, 1)]
+    [InlineData(2027, 2, 31, 2027, 1, 31, 2027, 2, 28)]
+    [InlineData(2028, 2, 30, 2028, 1, 30, 2028, 2, 29)]
+    [InlineData(2027, 3, 31, 2027, 2, 28, 2027, 3, 31)]
+    [InlineData(2026, 12, 15, 2026, 11, 15, 2026, 12, 15)]
+    public void DataNoCicloQueFechaEm_CaiNoCicloQueFechaNoMes(
+        int ano, int mes, int diaFechamento,
+        int inicioAno, int inicioMes, int inicioDia,
+        int fechAno, int fechMes, int fechDia)
+    {
+        var data = FaturaService.DataNoCicloQueFechaEm(ano, mes, diaFechamento);
+        var (inicio, fechamento) = FaturaService.CalcularPeriodo(data, diaFechamento);
+
+        Assert.Equal(new DateTime(inicioAno, inicioMes, inicioDia), inicio);
+        Assert.Equal(new DateTime(fechAno, fechMes, fechDia), fechamento);
+    }
+
+    [Theory]
+    [InlineData(2026, 9, 30)]
+    [InlineData(2027, 2, 28)]
+    public void DataNoCicloQueFechaEm_SemDiaFechamento_MesCalendario(int ano, int mes, int ultimoDia)
+    {
+        var data = FaturaService.DataNoCicloQueFechaEm(ano, mes, null);
+        var (inicio, fechamento) = FaturaService.CalcularPeriodo(data, null);
+
+        Assert.Equal(new DateTime(ano, mes, 1), inicio);
+        Assert.Equal(new DateTime(ano, mes, ultimoDia), fechamento);
+    }
+
     // ── CalcularVencimento ───────────────────────────────────────────────────
 
     [Fact]

@@ -452,7 +452,8 @@ public class FaturaAposCancelamentoTests
         {
             Descricao = descricao, Valor = valor, Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = c.CartaoId, DataCompra = hoje, Parcelas = 2,
-            PrimeiraParcelaMes = hoje.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+            // Mês em que FECHA a fatura de hoje = a fatura aberta F do cenário.
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(hoje, DiaFechamento),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
     }

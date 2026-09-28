@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using ControleFinanceiro.Api.Tests.Services;
 using Xunit;
 
 namespace ControleFinanceiro.Api.Tests.Integration;
@@ -58,7 +59,7 @@ public class ParcelamentoE2ETests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 3,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
             CategoriaId = categoria.Id,
             IdempotencyKey = Guid.NewGuid().ToString()
         };
@@ -137,7 +138,7 @@ public class ParcelamentoE2ETests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 2,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
             CategoriaId = categoria.Id,
             IdempotencyKey = idempotencyKey
         };
@@ -210,7 +211,7 @@ public class ParcelamentoE2ETests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 2,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
             CategoriaId = categoria.Id,
             IdempotencyKey = Guid.NewGuid().ToString()
         };

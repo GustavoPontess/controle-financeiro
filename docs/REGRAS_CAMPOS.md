@@ -114,8 +114,9 @@ mensagem — você NÃO precisa checar na mão no controller/service. Só anotar
 - **`maxLength`** no input, igual ao limite do DTO (defesa em profundidade + UX: o usuário não digita
   além do que o backend aceita).
 - **Controle certo da biblioteca Pontes pelo tipo:** `PontesMoneyInput` pra dinheiro, `PontesDateInput`
-  pra data, `PontesSelect` pra opção fixa, `type="number"`/`inputMode` pra número. Nunca um input de
-  texto solto pra o que é número/data.
+  pra data, `PontesMonthInput` pra mês (`YYYY-MM`), `PontesSelect` pra opção fixa, `type="number"`/`inputMode`
+  pra número. Nunca um input de texto solto pra o que é número/data, nem `type="date"`/`type="month"`
+  nativo (o seletor é o do navegador, fora do DS).
 - **Validação por campo** (obrigatório, já é padrão do projeto): `PontesField error=` + `invalid` no
   controle, bloqueia submit, erro inline (nunca toast pra campo). Detalhe em `STANDARDS.md` →
   "Validação de formulários".
