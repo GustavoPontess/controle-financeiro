@@ -1,7 +1,7 @@
 /**
  * SANDBOX FUNCIONAL — /demo-emprestimos. Empréstimos no padrão novo, de verdade: hook real
  * (useEmprestimosLogic) + ações reais no ⋮ + modais reais + paginação. Só o layout é o padrão novo.
- * A tela monta só o resumo, as colunas e as ações; todo o resto vem do TabelaPadrao.
+ * A tela monta só o resumo, as colunas e as ações; todo o resto vem do PontesTabela.
  */
 
 import { HandCoins } from "lucide-react"
@@ -12,7 +12,7 @@ import type { Emprestimo } from "@/types/Emprestimo"
 import { useEmprestimosLogic } from "../Emprestimos/useEmprestimosLogic"
 import { ActionIcons } from "../Emprestimos/EmprestimosLabItemParts"
 import EmprestimosLabModals from "../Emprestimos/EmprestimosLabModals"
-import { TabelaPadrao, CelulaIdentidade, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
+import { PontesTabela, PontesCelulaIdentidade, PontesBadge, type PontesTabelaColuna, type PontesTabelaTag } from "@/components/pontes"
 import styles from "./DemoPadrao.module.css"
 
 export default function DemoEmprestimosPage() {
@@ -20,31 +20,31 @@ export default function DemoEmprestimosPage() {
   const navigate = useNavigate()
   const primeiraCarga = l.loading && l.emprestimos.length === 0
 
-  const colunas: ColunaPadrao<Emprestimo>[] = [
+  const colunas: PontesTabelaColuna<Emprestimo>[] = [
     {
       key: "desc", header: "Empréstimo",
-      render: (e) => <CelulaIdentidade icone={<HandCoins size={17} strokeWidth={2.2} />} tom={e.tipo === 1 ? "saida" : "entrada"} nome={e.descricao} sub={e.pessoa} />,
+      render: (e) => <PontesCelulaIdentidade icone={<HandCoins size={17} strokeWidth={2.2} />} tom={e.tipo === 1 ? "saida" : "entrada"} nome={e.descricao} sub={e.pessoa} />,
     },
     { key: "forma", header: "Forma", render: (e) => e.tipoDescricao },
     {
       key: "status", header: "Status",
       render: (e) => e.quitado
-        ? <StatusPadrao tone="neutral">Quitado</StatusPadrao>
+        ? <PontesBadge tone="neutral" size="sm">Quitado</PontesBadge>
         : e.vencido
-          ? <StatusPadrao tone="danger">Vencido</StatusPadrao>
-          : <StatusPadrao tone={e.tipo === 1 ? "warning" : "success"}>{e.tipo === 1 ? "A pagar" : "A receber"}</StatusPadrao>,
+          ? <PontesBadge tone="danger" size="sm">Vencido</PontesBadge>
+          : <PontesBadge tone={e.tipo === 1 ? "warning" : "success"} size="sm">{e.tipo === 1 ? "A pagar" : "A receber"}</PontesBadge>,
     },
     { key: "restante", header: "Restante", numerica: true, render: (e) => formatMoney(e.valorRestante) },
   ]
 
-  const tags: TagFiltro[] = []
+  const tags: PontesTabelaTag[] = []
   if (l.busca) tags.push({ label: `Busca: "${l.busca}"`, onRemover: () => l.setBusca("") })
   if (l.direcao !== "todos") tags.push({ label: l.direcao === "receber" ? "A receber" : "A pagar", onRemover: () => l.setDirecao("todos") })
 
   return (
     <>
       <div className={styles.aviso}>Tela de teste FUNCIONAL — Empréstimos no padrão novo. Cria, quita, arquiva e exclui de verdade (mesmos dados de /emprestimos).</div>
-      <TabelaPadrao
+      <PontesTabela
         titulo="Empréstimos"
         descricao="Dinheiro que você emprestou ou pegou emprestado"
         acao={{ label: "Novo empréstimo", onClick: l.openCreate }}

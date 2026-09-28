@@ -1,45 +1,44 @@
 /**
- * SANDBOX (validação em /demo-*) — a TELA DE LISTA padrão num componente só. A página declara só
- * colunas, filtros, ações e de onde vêm os dados; cabeçalho, resumo, busca, filtro, tags, tabela,
- * paginação, vazio e carregando vêm daqui, IGUAL em todas — não tem como cada tela sair diferente.
- * (Quando o Gustavo aprovar, isto vira componente do DS e as telas reais passam a usar.)
+ * PontesTabela — a TELA DE LISTA padrão do Pontes num componente só. A página declara colunas,
+ * filtros, ações e de onde vêm os dados; cabeçalho, resumo, busca, filtros, tags, tabela, paginação,
+ * vazio e carregando vêm daqui, IGUAL em todas — padroniza a visualização de dados.
+ *
+ * Busca/filtro/paginação são NO SERVIDOR (a página passa os handlers). Ações da linha SEMPRE no ⋮
+ * (`acoes`) ou num slot próprio (`renderAcoes`); clicar na linha abre o detalhe.
  */
 
 import { type ReactNode } from "react"
 import { AlertTriangle, X } from "lucide-react"
-import {
-  PontesPageHeader, PontesToolbar, PontesSegmented, PontesSkeletonList, PontesEmptyState,
-  PontesButton, PontesRowActions, PontesBadge, type PontesRowAction,
-} from "@/components/pontes"
-import { PainelFiltros } from "./FiltrosAvancados"
-import { tagsDeFiltrosAvancados, type FiltroAvancado } from "./filtrosAvancadosCore"
-import styles from "./DemoPadrao.module.css"
+import { PontesPageHeader } from "../layout/PageHeader"
+import { PontesToolbar } from "../layout/Toolbar"
+import { PontesSegmented } from "../nav/Segmented"
+import { PontesSkeletonList } from "../feedback/Skeleton"
+import { PontesEmptyState } from "../feedback/EmptyState"
+import { PontesButton } from "../buttons/Button"
+import { PontesRowActions, type PontesRowAction } from "../buttons/RowActions"
+import { PontesTabelaPainelFiltros } from "./TabelaFiltros"
+import { tagsDeFiltrosAvancados, type PontesFiltroAvancado, type PontesTabelaTag } from "./tabelaFiltrosCore"
+import styles from "./Tabela.module.css"
 
-export type { FiltroAvancado }
+export type { PontesFiltroAvancado, PontesTabelaTag }
 
-export type ColunaPadrao<T> = {
+export type PontesTabelaColuna<T> = {
   key: string
   header: string
   align?: "left" | "right"
-  /** Número/dinheiro: alinhamento tabular pra coluna não "dançar". */
+  /** Número/dinheiro: à direita + tabular (a coluna não "dança"). */
   numerica?: boolean
   render: (item: T) => ReactNode
 }
 
-export type TagFiltro = { label: string; onRemover: () => void }
-
-export type FiltroSegmentado = {
+export type PontesTabelaFiltroRapido = {
   value: string
   ariaLabel: string
   options: { value: string; label: ReactNode }[]
   onChange: (v: string) => void
 }
 
-export function TabelaPadrao<T>({
-  titulo, descricao, acao, resumo, busca, filtros, filtrosAvancados, tags,
-  colunas, itens, chave, acoes, renderAcoes, onLinhaClick,
-  carregando, erro, onTentarDeNovo, vazio, paginacao,
-}: {
+export type PontesTabelaProps<T> = {
   titulo: string
   descricao?: string
   /** Botão primário do cabeçalho; também vira a ação do estado vazio. */
@@ -48,12 +47,12 @@ export function TabelaPadrao<T>({
   resumo?: ReactNode
   busca?: { value: string; onChange: (v: string) => void; placeholder: string; ariaLabel?: string }
   /** Filtros rápidos inline (segmented). */
-  filtros?: FiltroSegmentado[]
-  /** Filtros avançados no botão "Filtros" (status, faixa de valor, período). As tags saem sozinhas. */
-  filtrosAvancados?: FiltroAvancado[]
-  /** Tags do que está filtrado (busca/segmented). As dos filtros avançados são adicionadas sozinhas. */
-  tags?: TagFiltro[]
-  colunas: ColunaPadrao<T>[]
+  filtros?: PontesTabelaFiltroRapido[]
+  /** Filtros avançados no botão "Filtros" (select, faixa de valor, período). Tags saem sozinhas. */
+  filtrosAvancados?: PontesFiltroAvancado[]
+  /** Tags de busca/segmented (as dos filtros avançados são adicionadas sozinhas). */
+  tags?: PontesTabelaTag[]
+  colunas: PontesTabelaColuna<T>[]
   itens: T[]
   chave: (item: T) => string
   acoes?: (item: T) => PontesRowAction[]
@@ -66,9 +65,14 @@ export function TabelaPadrao<T>({
   vazio: { icone: ReactNode; titulo: string; descricao?: string }
   /** Rodapé de paginação (PontesTablePagination), dentro do cartão. */
   paginacao?: ReactNode
-}) {
+}
+
+export function PontesTabela<T>({
+  titulo, descricao, acao, resumo, busca, filtros, filtrosAvancados, tags,
+  colunas, itens, chave, acoes, renderAcoes, onLinhaClick,
+  carregando, erro, onTentarDeNovo, vazio, paginacao,
+}: PontesTabelaProps<T>) {
   const temAcoes = !!(acoes || renderAcoes)
-  // Tags de busca/segmented (da tela) + as dos filtros avançados (automáticas).
   const tagsTodas = [...(tags ?? []), ...tagsDeFiltrosAvancados(filtrosAvancados ?? [])]
   const temFiltroAtivo = tagsTodas.length > 0
   const botaoCriar = acao && <PontesButton size="sm" onClick={acao.onClick}>{acao.label}</PontesButton>
@@ -138,29 +142,27 @@ export function TabelaPadrao<T>({
   }
 
   return (
-    <div className={styles.pagina}>
-      <section className={styles.secao}>
-        <PontesPageHeader titulo={titulo} descricao={descricao} actionLabel={acao?.label} onAction={acao?.onClick} />
-        {resumo}
-        {temToolbar && (
-          <div className={styles.toolbar}>
-            <div className={styles.toolbarBusca}>
-              {busca && <PontesToolbar search={{ value: busca.value, onChange: busca.onChange, placeholder: busca.placeholder, ariaLabel: busca.ariaLabel ?? busca.placeholder.replace(/…$/, "") }} />}
-            </div>
-            {filtros?.map((f, i) => (
-              <PontesSegmented key={i} ariaLabel={f.ariaLabel} options={f.options} value={f.value} onChange={f.onChange} />
-            ))}
-            {filtrosAvancados && filtrosAvancados.length > 0 && <PainelFiltros filtros={filtrosAvancados} />}
+    <div className={styles.tela}>
+      <PontesPageHeader titulo={titulo} descricao={descricao} actionLabel={acao?.label} onAction={acao?.onClick} />
+      {resumo}
+      {temToolbar && (
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarBusca}>
+            {busca && <PontesToolbar search={{ value: busca.value, onChange: busca.onChange, placeholder: busca.placeholder, ariaLabel: busca.ariaLabel ?? busca.placeholder.replace(/…$/, "") }} />}
           </div>
-        )}
-        <div aria-live="polite" aria-busy={carregando || undefined}>{conteudo}</div>
-      </section>
+          {filtros?.map((f, i) => (
+            <PontesSegmented key={i} ariaLabel={f.ariaLabel} options={f.options} value={f.value} onChange={f.onChange} />
+          ))}
+          {filtrosAvancados && filtrosAvancados.length > 0 && <PontesTabelaPainelFiltros filtros={filtrosAvancados} />}
+        </div>
+      )}
+      <div aria-live="polite" aria-busy={carregando || undefined}>{conteudo}</div>
     </div>
   )
 }
 
 /** Célula "identidade" padrão da 1ª coluna: quadradinho do ícone + nome (+ sub em cinza). */
-export function CelulaIdentidade({
+export function PontesCelulaIdentidade({
   icone, tom = "info", nome, sub,
 }: { icone: ReactNode; tom?: "info" | "entrada" | "saida" | "neutro"; nome: string; sub?: ReactNode }) {
   return (
@@ -172,9 +174,4 @@ export function CelulaIdentidade({
       </span>
     </span>
   )
-}
-
-/** Badge de status no vocabulário único — verde/amarelo/vermelho/cinza conforme o estado. */
-export function StatusPadrao({ tone, children }: { tone: "success" | "warning" | "danger" | "neutral"; children: ReactNode }) {
-  return <PontesBadge tone={tone} size="sm">{children}</PontesBadge>
 }

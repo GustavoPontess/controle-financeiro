@@ -1,7 +1,7 @@
 /**
  * SANDBOX FUNCIONAL — /demo-transacoes. Transações no padrão novo, de verdade: paginação no servidor
  * + criar/editar/excluir com os modais reais. Só o layout é o padrão novo. A tela monta só o resumo,
- * as colunas e as ações; todo o resto vem do TabelaPadrao.
+ * as colunas e as ações; todo o resto vem do PontesTabela.
  */
 
 import { useCallback, useEffect, useState } from "react"
@@ -16,7 +16,7 @@ import { listTransactionsPage, getTransactionStats, deleteTransaction } from "@/
 import type { Transaction } from "@/types/Transaction"
 import NewTransactionDialog from "../Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import EditTransactionDialog, { type EditableTransaction } from "../Transactions/components/EditTransactionDialog/EditTransactionDialog"
-import { TabelaPadrao, CelulaIdentidade, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
+import { PontesTabela, PontesCelulaIdentidade, PontesBadge, type PontesTabelaColuna, type PontesTabelaTag } from "@/components/pontes"
 import styles from "./DemoPadrao.module.css"
 
 const fmtData = (s?: string) => (s ? new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—")
@@ -92,17 +92,17 @@ export default function DemoTransacoesPage() {
     }
   }
 
-  const colunas: ColunaPadrao<Transaction>[] = [
+  const colunas: PontesTabelaColuna<Transaction>[] = [
     {
       key: "desc", header: "Transação",
-      render: (t) => <CelulaIdentidade icone={t.tipo === 1 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />} tom={t.tipo === 1 ? "entrada" : "saida"} nome={t.descricao} sub={t.contaNome} />,
+      render: (t) => <PontesCelulaIdentidade icone={t.tipo === 1 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />} tom={t.tipo === 1 ? "entrada" : "saida"} nome={t.descricao} sub={t.contaNome} />,
     },
     { key: "data", header: "Data", render: (t) => fmtData(t.data) },
     {
       key: "status", header: "Status",
       render: (t) => t.statusTransacao === 0
-        ? <StatusPadrao tone="warning">Previsto</StatusPadrao>
-        : <StatusPadrao tone="neutral">{t.tipo === 1 ? "Recebido" : "Pago"}</StatusPadrao>,
+        ? <PontesBadge tone="warning" size="sm">Previsto</PontesBadge>
+        : <PontesBadge tone="neutral" size="sm">{t.tipo === 1 ? "Recebido" : "Pago"}</PontesBadge>,
     },
     {
       key: "valor", header: "Valor", numerica: true,
@@ -115,14 +115,14 @@ export default function DemoTransacoesPage() {
     { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) },
   ]
 
-  const tags: TagFiltro[] = []
+  const tags: PontesTabelaTag[] = []
   if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBusca("") })
   if (tipo !== "tudo") tags.push({ label: tipo === "1" ? "Receitas" : "Despesas", onRemover: () => setTipo("tudo") })
 
   return (
     <>
       <div className={styles.aviso}>Tela de teste FUNCIONAL — Transações no padrão novo. Cria, edita e exclui de verdade (mesmos dados de /transactions).</div>
-      <TabelaPadrao
+      <PontesTabela
         titulo="Transações"
         descricao="Todos os seus lançamentos, mês a mês"
         acao={{ label: "Nova transação", onClick: () => setNovoAberto(true) }}

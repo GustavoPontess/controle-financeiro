@@ -1,38 +1,37 @@
 /**
- * SANDBOX — botão "Filtros" (com contador) que abre um painel lateral (PontesDrawer) com status,
- * faixa de valor e período. Aplica de uma vez; o que ficou ativo vira tag (ver filtrosAvancadosCore).
- * A tela só DECLARA os filtros; a montagem é sempre igual.
+ * Botão "Filtros" (com contador) que abre um painel lateral (PontesDrawer) com os filtros avançados
+ * da PontesTabela: select, faixa de valor e período. Aplica de uma vez; o ativo vira tag.
  */
 
 import { useState } from "react"
 import { SlidersHorizontal } from "lucide-react"
+import { PontesButton } from "../buttons/Button"
+import { PontesDrawer } from "../feedback/Drawer"
+import { PontesField } from "../form/Field"
+import { PontesSelect } from "../form/Select"
+import { PontesInput } from "../form/Input"
+import { PontesDateInput } from "../form/DateInput"
 import {
-  PontesButton, PontesDrawer, PontesField, PontesSelect, PontesDateInput, PontesInput,
-} from "@/components/pontes"
-import {
-  type FiltroAvancado, filtroAtivo, numeroParaMasked, maskedParaNumero,
-} from "./filtrosAvancadosCore"
-import styles from "./DemoPadrao.module.css"
-
-// Máscara de dinheiro pro input normal (dígitos → "1.234,56"), sem o campo grande de destaque.
-const mascararDinheiro = (raw: string) => numeroParaMasked(maskedParaNumero(raw))
+  type PontesFiltroAvancado, filtroAvancadoAtivo, numeroParaMascara, mascaraParaNumero, mascararDinheiro,
+} from "./tabelaFiltrosCore"
+import styles from "./Tabela.module.css"
 
 type Rascunho = Record<string, { value?: string; minMasked?: string; maxMasked?: string; de?: string; ate?: string }>
 
-function rascunhoInicial(filtros: FiltroAvancado[]): Rascunho {
+function rascunhoInicial(filtros: PontesFiltroAvancado[]): Rascunho {
   const r: Rascunho = {}
   for (const f of filtros) {
     if (f.tipo === "select") r[f.id] = { value: f.value }
-    else if (f.tipo === "faixaValor") r[f.id] = { minMasked: numeroParaMasked(f.min), maxMasked: numeroParaMasked(f.max) }
+    else if (f.tipo === "faixaValor") r[f.id] = { minMasked: numeroParaMascara(f.min), maxMasked: numeroParaMascara(f.max) }
     else r[f.id] = { de: f.de ?? "", ate: f.ate ?? "" }
   }
   return r
 }
 
-export function PainelFiltros({ filtros }: { filtros: FiltroAvancado[] }) {
+export function PontesTabelaPainelFiltros({ filtros }: { filtros: PontesFiltroAvancado[] }) {
   const [aberto, setAberto] = useState(false)
   const [rasc, setRasc] = useState<Rascunho>({})
-  const ativos = filtros.filter(filtroAtivo).length
+  const ativos = filtros.filter(filtroAvancadoAtivo).length
 
   const abrir = () => { setRasc(rascunhoInicial(filtros)); setAberto(true) }
   const setR = (id: string, patch: Partial<Rascunho[string]>) => setRasc((r) => ({ ...r, [id]: { ...r[id], ...patch } }))
@@ -41,7 +40,7 @@ export function PainelFiltros({ filtros }: { filtros: FiltroAvancado[] }) {
     for (const f of filtros) {
       const d = rasc[f.id] ?? {}
       if (f.tipo === "select") f.onChange(d.value ?? (f.neutro ?? ""))
-      else if (f.tipo === "faixaValor") f.onChange(maskedParaNumero(d.minMasked ?? ""), maskedParaNumero(d.maxMasked ?? ""))
+      else if (f.tipo === "faixaValor") f.onChange(mascaraParaNumero(d.minMasked ?? ""), mascaraParaNumero(d.maxMasked ?? ""))
       else f.onChange(d.de || undefined, d.ate || undefined)
     }
     setAberto(false)
