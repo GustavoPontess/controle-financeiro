@@ -27,7 +27,7 @@ import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredit
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
 import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
-import { montarCiclos, indiceMes, indiceMesDeHoje, type FaturaView } from "./ciclosFatura"
+import { montarCiclos, indiceMes, indiceMesDeHoje, rotuloMesFatura, type FaturaView } from "./ciclosFatura"
 import styles from "./CreditCardsPage.module.css"
 
 // Máscara de moeda pro input de limite: dígitos → número (centavos) e volta.
@@ -39,11 +39,6 @@ const fmtMoneyInput = (n?: number): string =>
   n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 // Datas de ciclo vêm como UTC (meia-noite) — formata em UTC pra não cair pro dia anterior.
 const formatDate = (s: string) => new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" })
-// Mês de referência da fatura (ex.: "Junho 2026") — usa o fechamento.
-const mesLabel = (s: string) => {
-  const m = new Date(s).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
-  return m.charAt(0).toUpperCase() + m.slice(1)
-}
 
 // Só 6 bandeiras — poucas o bastante pra virar chips visuais (3 por linha) em vez
 // de select. 1 toque, sem digitar número nenhum (nem completo, nem mascarado).
@@ -777,7 +772,7 @@ export default function CreditCardsPage() {
                       onClick={() => irParaFatura(atualIdx)}>Hoje</PontesButton>
                   )}
                   <div className={styles.monthLabel}>
-                    <span className={styles.monthName}>{mesLabel(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
+                    <span className={styles.monthName}>{rotuloMesFatura(f.dataFechamento)}{ehAtual ? " · atual" : ehPrevista ? " · prevista" : ""}</span>
                     <span className={styles.monthRange}>{formatDate(f.dataInicio)} – {formatDate(f.dataFechamento)}</span>
                   </div>
                   {idx > atualIdx && (

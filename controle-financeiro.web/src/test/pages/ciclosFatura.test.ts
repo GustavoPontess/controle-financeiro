@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   cicloDoDia, cicloQueFechaEm, vencimentoDe, montarCiclos, indiceMes, indiceMesDeHoje,
+  mesDaFaturaDoDia, rotuloMesFatura,
   type FaturaView,
 } from "../../pages/CreditCards/ciclosFatura"
 import type { Fatura } from "../../types/Fatura"
@@ -95,5 +96,31 @@ describe("montarCiclos", () => {
     expect(ciclos).toHaveLength(1)
     expect(ciclos[0].vazia).toBe(true)
     expect(ciclos[0].dataFechamento.slice(0, 10)).toBe("2026-10-20")
+  })
+})
+
+// Primeira parcela do parcelamento = mês em que FECHA a fatura (o rótulo de Cartões). Espelha a
+// validação do ParcelamentoService: a sugestão/mínimo do form é a fatura em que a compra cai.
+describe("mesDaFaturaDoDia / rotuloMesFatura", () => {
+  it("compra antes do fechamento → fatura do mês; no dia ou depois → mês seguinte", () => {
+    expect(mesDaFaturaDoDia("2026-09-05", 10)).toBe("2026-09")
+    expect(mesDaFaturaDoDia("2026-09-10", 10)).toBe("2026-10")
+    expect(mesDaFaturaDoDia("2026-09-28", 10)).toBe("2026-10")
+    expect(mesDaFaturaDoDia("2026-12-15", 10)).toBe("2027-01")
+  })
+
+  it("sem dia de fechamento → mês calendário; fecha dia 31 em mês curto → último dia", () => {
+    expect(mesDaFaturaDoDia("2026-09-28")).toBe("2026-09")
+    expect(mesDaFaturaDoDia("2027-02-27", 31)).toBe("2027-02")
+    expect(mesDaFaturaDoDia("2027-02-28", 31)).toBe("2027-03")
+  })
+
+  it("data inválida → vazio", () => {
+    expect(mesDaFaturaDoDia("", 10)).toBe("")
+  })
+
+  it("rótulo pelo fechamento, em UTC (meia-noite do backend não volta pro mês anterior)", () => {
+    expect(rotuloMesFatura("2026-10-01T00:00:00Z")).toBe("Outubro de 2026")
+    expect(rotuloMesFatura("2026-10-10T00:00:00")).toBe("Outubro de 2026")
   })
 })

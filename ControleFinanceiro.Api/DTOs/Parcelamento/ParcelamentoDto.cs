@@ -50,6 +50,12 @@ public class ProximaParcelaDto
     public decimal Valor { get; set; }
     public decimal? ValorComJuros { get; set; }
     public Guid FaturaId { get; set; }
+
+    /// <summary>Fechamento da fatura da parcela — o mês dela é o rótulo da fatura na tela Cartões.</summary>
+    public DateTime FaturaMesReferencia { get; set; }
+
+    /// <summary>Vencimento real da fatura da parcela.</summary>
+    public DateTime FaturaDataVencimento { get; set; }
 }
 
 /// <summary>Detalhe de um parcelamento — inclui todas as parcelas.</summary>
@@ -72,8 +78,11 @@ public class ParcelaDto
     public StatusParcela Status { get; set; }
     public Guid FaturaId { get; set; }
 
-    /// <summary>Mês de referência da fatura (DataFechamento).</summary>
+    /// <summary>Mês de referência da fatura (DataFechamento) — o rótulo da fatura na tela Cartões.</summary>
     public DateTime FaturaMesReferencia { get; set; }
+
+    /// <summary>Vencimento real da fatura da parcela (Fatura.DataVencimento).</summary>
+    public DateTime FaturaDataVencimento { get; set; }
 
     public DateTime? PagoEm { get; set; }
     public DateTime? CanceladoEm { get; set; }

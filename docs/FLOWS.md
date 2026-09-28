@@ -67,14 +67,13 @@ sequenceDiagram
     Frontend->>API: POST /api/parcelamentos {CriarParcelamentoDto}
     API->>Service: CriarAsync(dto, usuarioId)
     Service->>Service: Check Idempotency-Key (header)
-    Service->>DB: Validar: cartão, categoria, limite
+    Service->>DB: Validar: cartão, categoria, limite, primeiraParcelaMes >= fatura da compra
     Service->>DB: BEGIN TRANSACTION
     Service->>DB: INSERT Parcelamento (QuantidadeParcelas=N, ValorTotal, TipoParcelamento)
     Service->>Service: Loop i=1 to N:
-    Service->>Service: Calc DataVencimento = primeiraParcelaMes + i meses
+    Service->>DB: GET/CREATE Fatura que FECHA em primeiraParcelaMes + (i-1) meses
     Service->>Service: Calc RateiovalorComJuros (incluindo juros PIX se aplicável)
-    Service->>DB: INSERT ParcelaTransacao (numero=i, DataVencimento, ValorComJuros, Status=Pendente)
-    Service->>DB: GET/CREATE Fatura para DataVencimento
+    Service->>DB: INSERT ParcelaTransacao (numero=i, DataVencimento = vencimento da fatura, ValorComJuros, Status=Pendente)
     Service->>DB: UPDATE Fatura.ParcelasTransacao += ParcelaTransacao
     Service->>DB: INSERT Transacao (ParcelamentoId, StatusTransacao=Previsao) — materializar quando vencer
     Service->>DB: REGISTRAR FinancialEventLog (ParcelamentoCriado + LimiteBloqueado)
@@ -86,7 +85,8 @@ sequenceDiagram
 **Key Points (ETAPA 2):**
 - `TipoParcelamento`: 0=CompraParcelada (à vista no cartão), 1=PIXCredito (com juros)
 - `QuantidadeParcelas`: 2-36, flexível
-- `primeiraParcelaMes`: pode pular meses (ex: JUL, SET, NOV = semestral)
+- `primeiraParcelaMes` (yyyy-MM) = o mês em que **fecha** a fatura da 1ª parcela (o rótulo da fatura na tela Cartões: "Outubro de 2026 · 10/09–10/10"); não depende do dia da compra. Não pode ser antes da fatura em que a compra cai (a que fecha depois da `DataCompra`); o form sugere essa fatura e usa como mínimo do `PontesMonthInput`
+- Parcela N → fatura que fecha em `primeiraParcelaMes + N-1`; `DataVencimento` da parcela = vencimento real dessa fatura (`FaturaService.DataNoCicloQueFechaEm` + `CalcularPeriodo`/`CalcularVencimento`)
 - Cada ParcelaTransacao = 1 Fatura diferente
 - Idempotência via `Idempotency-Key` header + `FinancialEventLogService`
 - Limite bloqueado imediatamente (`LimiteBloqueado += ValorComJuros`)

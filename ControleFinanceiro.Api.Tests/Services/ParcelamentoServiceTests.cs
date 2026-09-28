@@ -63,7 +63,7 @@ public class ParcelamentoServiceTests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 3,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id,
             IdempotencyKey = Guid.NewGuid().ToString()
         };
@@ -104,7 +104,7 @@ public class ParcelamentoServiceTests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 3,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             IdempotencyKey = Guid.NewGuid().ToString()
         };
 
@@ -134,7 +134,7 @@ public class ParcelamentoServiceTests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 1,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             IdempotencyKey = Guid.NewGuid().ToString()
         };
 
@@ -165,7 +165,7 @@ public class ParcelamentoServiceTests
             CartaoCreditoId = cartaoId,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 3,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id,
             IdempotencyKey = Guid.NewGuid().ToString()
         };
@@ -236,5 +236,235 @@ public class ParcelamentoServiceTests
         // Assert
         Assert.Single(resultado.Items);
         Assert.Equal(parcelamento.Id, resultado.Items.First().Id);
+    }
+
+    // ══ Primeira parcela = mês em que FECHA a fatura (rótulo da tela Cartões) ════════════
+    //
+    // Bug (dogfooding 2026-09-28): a parcela ganhava o DIA DA COMPRA no mês escolhido e a fatura saía do
+    // ciclo dessa data. Cartão que fecha dia 10, compra 28/09, "primeira parcela: outubro" → parcela em
+    // 28/10 → fatura que fecha 10/11 (Novembro na tela Cartões); a mesma escolha com compra no dia 5
+    // caía em outubro. Datas fixas no passado: a regra não depende de hoje (compra futura é recusada).
+
+    private sealed record Ctx(AppDbContext Db, ParcelamentoService Service, Guid UsuarioId, CartaoCredito Cartao);
+
+    private static async Task<Ctx> CriarCtxAsync(int? diaFechamento, int? diaVencimento)
+    {
+        var db = CreateInMemoryContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Cartão", TemCredito = true, LimiteTotal = 100_000,
+            DiaFechamento = diaFechamento, DiaVencimento = diaVencimento, CriadoPor = usuarioId, Ativo = true,
+        };
+        db.CartoesCredito.Add(cartao);
+        await db.SaveChangesAsync();
+        var service = new ParcelamentoService(
+            db, new FinancialEventLogService(db), new LimiteCalculatorService(db), new FaturaService(db));
+        return new Ctx(db, service, usuarioId, cartao);
+    }
+
+    private static Task<ParcelamentoDetalheDto> CriarAsync(
+        Ctx c, DateTime dataCompra, string primeiraParcelaMes, int parcelas = 3,
+        TipoParcelamento tipo = TipoParcelamento.CompraParcelada, decimal? taxa = null, decimal valor = 900) =>
+        c.Service.CriarAsync(new CriarParcelamentoDto
+        {
+            Descricao = "Geladeira", Valor = valor, Tipo = tipo, CartaoCreditoId = c.Cartao.Id,
+            DataCompra = dataCompra, Parcelas = parcelas, PrimeiraParcelaMes = primeiraParcelaMes,
+            TaxaJuroMensal = taxa, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, c.UsuarioId);
+
+    private static async Task<List<Fatura>> FaturasDasParcelasAsync(Ctx c, ParcelamentoDetalheDto p)
+    {
+        var faturas = new List<Fatura>();
+        foreach (var parcela in p.Parcelas.OrderBy(x => x.Numero))
+            faturas.Add(await c.Db.Faturas.AsNoTracking().SingleAsync(f => f.Id == parcela.FaturaId));
+        return faturas;
+    }
+
+    [Theory]
+    [InlineData(5)]  // antes do fechamento: a compra cai na fatura de setembro
+    [InlineData(10)] // no dia do fechamento: já é a fatura de outubro
+    [InlineData(28)] // depois do fechamento: fatura de outubro (o caso do bug)
+    public async Task CriarAsync_MesmoMesEscolhido_CaiSempreNaFaturaQueFechaNesseMes_EmFaturasConsecutivas(int diaCompra)
+    {
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, diaCompra), "2025-10", parcelas: 3);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new[] { new DateTime(2025, 10, 10), new DateTime(2025, 11, 10), new DateTime(2025, 12, 10) },
+            faturas.Select(f => f.DataFechamento));
+        Assert.Equal(new[] { new DateTime(2025, 9, 10), new DateTime(2025, 10, 10), new DateTime(2025, 11, 10) },
+            faturas.Select(f => f.DataInicio));
+        Assert.Equal(3, faturas.Select(f => f.Id).Distinct().Count());
+        // Vencimento da parcela = vencimento real da fatura (dia 20), não o dia da compra.
+        Assert.Equal(new[] { new DateTime(2025, 10, 20), new DateTime(2025, 11, 20), new DateTime(2025, 12, 20) },
+            p.Parcelas.OrderBy(x => x.Numero).Select(x => x.DataVencimento));
+        Assert.All(p.Parcelas, x =>
+        {
+            var f = faturas.Single(f => f.Id == x.FaturaId);
+            Assert.Equal(f.DataFechamento, x.FaturaMesReferencia);
+            Assert.Equal(f.DataVencimento, x.FaturaDataVencimento);
+        });
+    }
+
+    [Fact]
+    public async Task CriarAsync_VencimentoNoMesSeguinteAoFechamento_ParcelaVenceNoVencimentoRealDaFatura()
+    {
+        // Fecha dia 28, vence dia 5: a fatura "de setembro" fecha 28/09 e vence 05/10.
+        var c = await CriarCtxAsync(diaFechamento: 28, diaVencimento: 5);
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, 15), "2025-09", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2025, 9, 28), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2025, 10, 28), faturas[1].DataFechamento);
+        var parcelas = p.Parcelas.OrderBy(x => x.Numero).ToList();
+        Assert.Equal(FaturaService.CalcularVencimento(new DateTime(2025, 9, 28), 5), parcelas[0].DataVencimento);
+        Assert.Equal(new DateTime(2025, 10, 5), parcelas[0].DataVencimento);
+        Assert.Equal(new DateTime(2025, 11, 5), parcelas[1].DataVencimento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_FaturaJaExistente_UsaAMesmaEOVencimentoGravadoNela()
+    {
+        // Fatura de outubro já existe (ex.: o dia de vencimento do cartão mudou depois): a parcela entra
+        // nela e vence quando ELA vence — o que a tela Cartões mostra.
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var existente = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = c.Cartao.Id, CriadoPor = c.UsuarioId,
+            DataInicio = new DateTime(2025, 9, 10), DataFechamento = new DateTime(2025, 10, 10),
+            DataVencimento = new DateTime(2025, 10, 17),
+            EstadoCiclo = EstadoCicloFatura.Aberta, EstadoPagamento = EstadoPagamentoFatura.NaoPago,
+        };
+        c.Db.Faturas.Add(existente);
+        await c.Db.SaveChangesAsync();
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, 28), "2025-10", parcelas: 2);
+
+        var primeira = p.Parcelas.Single(x => x.Numero == 1);
+        Assert.Equal(existente.Id, primeira.FaturaId);
+        Assert.Equal(new DateTime(2025, 10, 17), primeira.DataVencimento);
+        Assert.Equal(1, await c.Db.Faturas.CountAsync(f => f.DataFechamento == new DateTime(2025, 10, 10)));
+    }
+
+    [Fact]
+    public async Task CriarAsync_PrimeiraParcelaAntesDaFaturaDaCompra_Recusa_SemGravarNada()
+    {
+        // Compra 28/09 com fechamento dia 10 cai na fatura de outubro: setembro já fechou antes da compra.
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2025, 9, 28), "2025-09"));
+
+        Assert.Contains("outubro de 2025", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+        Assert.Empty(c.Db.ParcelasTransacao);
+        Assert.Empty(c.Db.Faturas);
+    }
+
+    [Fact]
+    public async Task CriarAsync_PrimeiraParcelaNaFaturaDaCompraAntesDoFechamento_Aceita()
+    {
+        // Compra 05/09 (antes do fechamento dia 10) ainda cai na fatura de setembro: é a mais cedo aceita.
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, 5), "2025-09", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2025, 9, 10), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2025, 9, 20), p.Parcelas.Single(x => x.Numero == 1).DataVencimento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CartaoSemDiaFechamento_FaturaDoMesCalendario()
+    {
+        var c = await CriarCtxAsync(diaFechamento: null, diaVencimento: 10);
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, 28), "2025-09", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2025, 9, 1), faturas[0].DataInicio);
+        Assert.Equal(new DateTime(2025, 9, 30), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2025, 10, 31), faturas[1].DataFechamento);
+        Assert.Equal(new DateTime(2025, 10, 10), p.Parcelas.Single(x => x.Numero == 1).DataVencimento);
+
+        // Agosto fechou antes da compra de setembro.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CriarAsync(c, new DateTime(2025, 9, 28), "2025-08"));
+    }
+
+    [Fact]
+    public async Task CriarAsync_DiaFechamento31EmMesCurto_FechaNoUltimoDiaDoMes()
+    {
+        var c = await CriarCtxAsync(diaFechamento: 31, diaVencimento: 10);
+
+        var p = await CriarAsync(c, new DateTime(2025, 1, 15), "2025-02", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2025, 1, 31), faturas[0].DataInicio);
+        Assert.Equal(new DateTime(2025, 2, 28), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2025, 2, 28), faturas[1].DataInicio);
+        Assert.Equal(new DateTime(2025, 3, 31), faturas[1].DataFechamento);
+        var parcelas = p.Parcelas.OrderBy(x => x.Numero).ToList();
+        Assert.Equal(new DateTime(2025, 3, 10), parcelas[0].DataVencimento);
+        Assert.Equal(new DateTime(2025, 4, 10), parcelas[1].DataVencimento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_PIXCredito_MesmaRegraDeFatura_JurosInalterados()
+    {
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+
+        var p = await CriarAsync(c, new DateTime(2025, 9, 28), "2025-10", parcelas: 3,
+            tipo: TipoParcelamento.PIXCredito, taxa: 2.5m, valor: 1000);
+
+        // Juros simples: 1000 × 2,5% × 3 = 75 — não dependem da data de vencimento.
+        Assert.Equal(1075m, p.ValorComJuros);
+        Assert.Equal(1075m, p.Parcelas.Sum(x => x.ValorComJuros));
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new[] { new DateTime(2025, 10, 10), new DateTime(2025, 11, 10), new DateTime(2025, 12, 10) },
+            faturas.Select(f => f.DataFechamento));
+        Assert.Equal(new DateTime(2025, 10, 20), p.Parcelas.Single(x => x.Numero == 1).DataVencimento);
+    }
+
+    [Fact]
+    public async Task ListarEDetalhe_ProximaParcela_TrazFaturaPeloFechamentoEVencimentoReal()
+    {
+        // Parcela antiga (antes da regra) guarda o dia da compra como DataVencimento: a tela usa a fatura.
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = c.Cartao.Id, CriadoPor = c.UsuarioId,
+            DataInicio = new DateTime(2025, 9, 10), DataFechamento = new DateTime(2025, 10, 10),
+            DataVencimento = new DateTime(2025, 10, 20),
+            EstadoCiclo = EstadoCicloFatura.Aberta, EstadoPagamento = EstadoPagamentoFatura.NaoPago,
+        };
+        var parcelamento = new Parcelamento
+        {
+            Id = Guid.NewGuid(), CriadoPor = c.UsuarioId, Tipo = TipoParcelamento.CompraParcelada, Descricao = "TV",
+            DataCompra = new DateTime(2025, 9, 28), ValorTotal = 100, QuantidadeParcelas = 1,
+            CartaoCreditoId = c.Cartao.Id, Ativo = true, CriadoEm = DateTime.UtcNow,
+        };
+        c.Db.Faturas.Add(fatura);
+        c.Db.Parcelamentos.Add(parcelamento);
+        c.Db.ParcelasTransacao.Add(new ParcelaTransacao
+        {
+            Id = Guid.NewGuid(), ParcelamentoId = parcelamento.Id, Numero = 1, QuantidadeTotal = 1,
+            DataVencimento = new DateTime(2025, 9, 28), Valor = 100, FaturaId = fatura.Id,
+            Status = StatusParcela.Pendente, CriadoPor = c.UsuarioId, CriadoEm = DateTime.UtcNow,
+        });
+        await c.Db.SaveChangesAsync();
+
+        var lista = await c.Service.ListarAsync(c.UsuarioId);
+        var detalhe = await c.Service.ObterDetalheAsync(parcelamento.Id, c.UsuarioId);
+
+        var proxima = lista.Items.Single().ProximaParcela!;
+        Assert.Equal(new DateTime(2025, 10, 10), proxima.FaturaMesReferencia);
+        Assert.Equal(new DateTime(2025, 10, 20), proxima.FaturaDataVencimento);
+        Assert.Equal(new DateTime(2025, 10, 10), detalhe.ProximaParcela!.FaturaMesReferencia);
+        var parcela = detalhe.Parcelas.Single();
+        Assert.Equal(new DateTime(2025, 10, 10), parcela.FaturaMesReferencia);
+        Assert.Equal(new DateTime(2025, 10, 20), parcela.FaturaDataVencimento);
     }
 }

@@ -42,6 +42,10 @@ export interface ProximaParcela {
   valor: number
   valorComJuros?: number
   faturaId: string
+  /** Fechamento da fatura da parcela — o mês dela é o rótulo da fatura em Cartões. */
+  faturaMesReferencia: string
+  /** Vencimento real da fatura da parcela. */
+  faturaDataVencimento: string
 }
 
 export interface ParcelaDto {
@@ -55,7 +59,10 @@ export interface ParcelaDto {
   iof?: number
   status: StatusParcela
   faturaId: string
+  /** Fechamento da fatura da parcela — o mês dela é o rótulo da fatura em Cartões. */
   faturaMesReferencia: string
+  /** Vencimento real da fatura da parcela. */
+  faturaDataVencimento: string
   pagoEm?: string
   canceladoEm?: string
   motivoCancelamento?: string

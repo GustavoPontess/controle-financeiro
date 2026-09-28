@@ -119,7 +119,7 @@ public class RegrasFinanceirasTests
 
     /// <summary>
     /// Fatura do mês com: compra à vista no crédito (100) + parcela 1 de P1 (2×300) + parcela 1 de
-    /// P2 (2×500). Os dois parcelamentos começam no mês atual → a 1ª parcela de ambos cai na MESMA
+    /// P2 (2×500). Os dois parcelamentos começam na fatura aberta hoje → a 1ª parcela de ambos cai na MESMA
     /// fatura; a 2ª de ambos, na fatura seguinte. Conta com saldo folgado pra pagar.
     /// </summary>
     private static async Task<CenarioFatura> SeedFaturaAsync(AppDbContext ctx)
@@ -152,7 +152,7 @@ public class RegrasFinanceirasTests
                 CartaoCreditoId = cartao.Id,
                 DataCompra = DateTime.UtcNow.Date,
                 Parcelas = 2,
-                PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+                PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
                 IdempotencyKey = Guid.NewGuid().ToString(),
             }, usuarioId);
 
@@ -456,7 +456,7 @@ public class RegrasFinanceirasTests
             CartaoCreditoId = cartao.Id,
             DataCompra = DateTime.UtcNow.Date,
             Parcelas = 2,
-            PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
 

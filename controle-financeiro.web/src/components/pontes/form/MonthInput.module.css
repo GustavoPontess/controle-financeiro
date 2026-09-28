@@ -1,0 +1,50 @@
+/* MonthInput — painel do popover (grade de meses). O trigger e o anchor do popover reusam o
+   DateInput.module.css: os dois campos têm que ter a mesma cara lado a lado num form.
+   Painel no mesmo molde do PontesDatePicker (surface + borda + radius 14 + padding 18). */
+
+.panel {
+  background: var(--pontes-surface);
+  border: 1px solid var(--pontes-border);
+  border-radius: 14px;
+  padding: 18px;
+  width: 280px;
+  box-sizing: border-box;
+  font-family: var(--pontes-font);
+}
+
+.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+
+.nav {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--pontes-text);
+  cursor: pointer;
+}
+.nav:hover:not(:disabled) { background: var(--pontes-bg); }
+.nav:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--pontes-primary-soft); }
+.nav:disabled { cursor: not-allowed; opacity: 0.35; }
+
+.title { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+.month {
+  padding: 10px 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pontes-text);
+  font-family: var(--pontes-font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.month:hover:not(:disabled) { background: var(--pontes-bg); }
+.month:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--pontes-primary-soft); }
+.month[data-current="true"] { color: var(--pontes-primary); font-weight: 700; }
+.month[data-selected="true"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); font-weight: 700; }
+.month:disabled { cursor: not-allowed; opacity: 0.35; }

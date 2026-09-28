@@ -65,6 +65,22 @@ public class FaturaService
     }
 
     /// <summary>
+    /// Um dia DENTRO do ciclo que fecha no mês (<paramref name="ano"/>, <paramref name="mes"/>): a véspera
+    /// do fechamento. Serve pra achar/criar "a fatura de outubro" passando por <see cref="CalcularPeriodo"/>
+    /// — o rótulo da fatura na tela Cartões é o mês em que ela FECHA, e a regra de período continua num
+    /// lugar só. Véspera porque o próprio dia do fechamento já cai no ciclo seguinte. O dia é limitado ao
+    /// fim do mês (fecha dia 31 → em fevereiro fecha dia 28/29); sem dia de fechamento, mês calendário
+    /// (a véspera do último dia está dentro dele). Fecha dia 1 → a véspera é o último dia do mês anterior,
+    /// que pertence ao ciclo que fecha no dia 1 deste mês.
+    /// </summary>
+    public static DateTime DataNoCicloQueFechaEm(int ano, int mes, int? diaFechamento)
+    {
+        int diasNoMes = DateTime.DaysInMonth(ano, mes);
+        int diaDoFechamento = Math.Min(diaFechamento ?? diasNoMes, diasNoMes);
+        return new DateTime(ano, mes, diaDoFechamento).AddDays(-1);
+    }
+
+    /// <summary>
     /// Calcula a data de vencimento com base no fechamento e no dia de vencimento do cartão.
     /// O vencimento é sempre APÓS o fechamento (mesmo mês ou próximo mês).
     /// </summary>

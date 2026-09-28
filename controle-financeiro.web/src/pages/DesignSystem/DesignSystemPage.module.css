@@ -133,3 +133,6 @@
 .shadowBox { width: 100%; height: 72px; background: var(--pontes-surface); border-radius: 12px; }
 .tokenLine { display: flex; gap: 16px; align-items: baseline; }
 .tokenLine .tokenName { width: 60px; }
+
+/* Campos com popover (date/month input) na largura de um campo de form. */
+.fieldDemo { max-width: 260px; }

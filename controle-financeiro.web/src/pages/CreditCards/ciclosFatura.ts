@@ -41,6 +41,23 @@ export function cicloDoDia(ano: number, mes0: number, dia: number, diaFechamento
   return mes0 === 11 ? cicloQueFechaEm(ano + 1, 0, diaFechamento) : cicloQueFechaEm(ano, mes0 + 1, diaFechamento)
 }
 
+/** Mês "YYYY-MM" da fatura em que cai uma compra do dia `iso` ("YYYY-MM-DD"): o mês em que essa fatura
+ * FECHA, que é o rótulo dela na tela Cartões. Antes do dia de fechamento → mês da compra; no dia ou
+ * depois → mês seguinte; sem dia de fechamento → mês da compra. É a primeira parcela mais cedo que o
+ * parcelamento aceita (espelha a validação do ParcelamentoService). "" se a data for inválida. */
+export function mesDaFaturaDoDia(iso: string, diaFechamento?: number): string {
+  const [ano, mes, dia] = iso.split("-").map(Number)
+  if (!ano || !mes || !dia) return ""
+  return cicloDoDia(ano, mes - 1, dia, diaFechamento).fechamento.toISOString().slice(0, 7)
+}
+
+/** Rótulo da fatura pelo mês de fechamento ("Outubro de 2026") — o mesmo em Cartões e Parcelamentos.
+ * Formata em UTC: o backend manda a data como meia-noite UTC e o fuso local jogaria pro mês anterior. */
+export function rotuloMesFatura(dataFechamento: string): string {
+  const m = new Date(dataFechamento).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
+
 /** Vencimento: dia de vencimento no mês do fechamento se cair depois dele; senão, no mês seguinte.
  * Sem dia de vencimento → fechamento + 10 dias. */
 export function vencimentoDe(fechamento: Date, diaVencimento?: number): Date {

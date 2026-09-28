@@ -11,6 +11,7 @@ import { getContas } from "../../services/contaService"
 import type { ParcelamentoDetalhe } from "../../types/Parcelamento"
 import type { Conta } from "../../types/Conta"
 import { notificacaoDeErro } from "@/utils/apiError"
+import { rotuloMesFatura } from "../CreditCards/ciclosFatura"
 import styles from "./ParcelamentoDetalhePage.module.css"
 
 
@@ -18,12 +19,6 @@ import styles from "./ParcelamentoDetalhePage.module.css"
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
-
-const formatarMesAno = (data: string) => {
-  const [ano, mes] = data.substring(0, 7).split("-")
-  const meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
-  return `${meses[parseInt(mes) - 1]}/${ano}`
-}
 
 const statusLabel: Record<number, string> = { 0: "Pendente", 1: "Paga", 2: "Cancelada" }
 const statusTone: Record<number, "warning" | "success" | "neutral"> = { 0: "warning", 1: "success", 2: "neutral" }
@@ -163,8 +158,8 @@ export default function ParcelamentoDetalhePage() {
             <span className={styles.proximaLabel}>Próxima parcela</span>
             <div className={styles.proximaBody}>
               <div>
-                <div className={styles.proximaFatura}>Fatura {formatarMesAno(parcelamento.proximaParcela.dataVencimento)}</div>
-                <div className={styles.proximaData}>{formatDate(parcelamento.proximaParcela.dataVencimento)}</div>
+                <div className={styles.proximaFatura}>Fatura {rotuloMesFatura(parcelamento.proximaParcela.faturaMesReferencia)}</div>
+                <div className={styles.proximaData}>{formatDate(parcelamento.proximaParcela.faturaDataVencimento)}</div>
               </div>
               <div className={styles.proximaValor}>{formatMoney(parcelamento.proximaParcela.valor)}</div>
             </div>
@@ -192,8 +187,10 @@ export default function ParcelamentoDetalhePage() {
               {parcelamento.parcelas.map((parcela, i) => (
                 <tr key={parcela.id}>
                   <td className={styles.cellBold}>{i + 1}</td>
-                  <td>{formatarMesAno(parcela.dataVencimento)}</td>
-                  <td>{formatDate(parcela.dataVencimento)}</td>
+                  {/* Fatura pelo mês em que FECHA (o rótulo de Cartões) e o vencimento real dela — não a
+                      DataVencimento da parcela, que em parcelamentos antigos é o dia da compra. */}
+                  <td>{rotuloMesFatura(parcela.faturaMesReferencia)}</td>
+                  <td>{formatDate(parcela.faturaDataVencimento)}</td>
                   <td className={styles.alignRight + " " + styles.cellBold}>{formatMoney(parcela.valor)}</td>
                   <td>
                     <PontesBadge tone={statusTone[parcela.status] ?? "neutral"} size="sm">

@@ -26,7 +26,7 @@ import {
   // form
   PontesField, PontesInput, PontesMoneyInput, PontesTextarea,
   PontesSelect, PontesGroupedSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
-  PontesOtpInput, PontesSlider, PontesDatePicker, PontesDateInput, PontesFileDrop,
+  PontesOtpInput, PontesSlider, PontesDatePicker, PontesDateInput, PontesMonthInput, PontesFileDrop,
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
@@ -334,6 +334,12 @@ function FormSection({ p }: { p: Palette }) {
   const [otp, setOtp] = useState("835")
   const [sliderV, setSliderV] = useState(4500)
   const [date, setDate] = useState<Date | null>(new Date())
+  // Month input: mínimo = mês atual (meses anteriores aparecem desabilitados).
+  const [mesMinimo] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [mes, setMes] = useState(mesMinimo)
   const [tags, setTags] = useState(["Família", "Mensal", "Recorrente"])
   const [color, setColor] = useState(p.primary)
   const [rating, setRating] = useState(4)
@@ -466,7 +472,7 @@ function FormSection({ p }: { p: Palette }) {
       </Group>
 
       <Group title="Date input (popover) — uso em forms">
-        <div style={{ maxWidth: 260 }}>
+        <div className={styles.fieldDemo}>
           <PontesDateInput
             value={date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : ""}
             onChange={(v) => {
@@ -476,6 +482,12 @@ function FormSection({ p }: { p: Palette }) {
             }}
             placeholder="Selecione uma data"
           />
+        </div>
+      </Group>
+
+      <Group title="Month input (popover) — mês de referência, com mínimo">
+        <div className={styles.fieldDemo}>
+          <PontesMonthInput value={mes} onChange={setMes} min={mesMinimo} placeholder="Selecione o mês" />
         </div>
       </Group>
 
