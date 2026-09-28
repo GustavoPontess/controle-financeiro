@@ -205,7 +205,7 @@ public class ParcelamentoServiceTests
         var criado = await service.CriarAsync(new CriarParcelamentoDto
         {
             Descricao = "Livro", Valor = 200, Tipo = TipoParcelamento.CompraParcelada, CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date, Parcelas = 2, PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            DataCompra = DateTime.UtcNow.Date, Parcelas = 2, PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id, IdempotencyKey = Guid.NewGuid().ToString(),
         }, usuarioId);
         // Parcela 1 paga (antecipada); a 2 é cancelada junto com o parcelamento.
