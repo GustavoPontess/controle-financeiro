@@ -17,12 +17,15 @@ public class CartaoCreditoService(AppDbContext context)
             .Where(c => c.CriadoPor == usuarioId && c.Ativo)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
-            .Include(c => c.Transacoes)
-            .Include(c => c.Faturas)
             .OrderBy(c => c.Nome)
             .ToListAsync();
 
-        return cartoes.Select(ToDto).ToList();
+        // Limite usado de todos os cartões de crédito numa leva só (duas consultas agregadas, não uma
+        // por cartão nem o histórico de lançamentos em memória) — mesma regra do LimiteCalculator.
+        var usados = await RegrasFinanceiras.LimitesUsadosDosCartoesAsync(
+            _context, cartoes.Where(c => c.TemCredito).Select(c => c.Id), usuarioId);
+
+        return cartoes.Select(c => ToDto(c, usados.GetValueOrDefault(c.Id))).ToList();
     }
 
     public async Task<CartaoCreditoDto?> BuscarPorIdAsync(Guid id, Guid usuarioId)
@@ -31,11 +34,13 @@ public class CartaoCreditoService(AppDbContext context)
             .Where(c => c.Id == id && c.CriadoPor == usuarioId && c.Ativo)
             .Include(c => c.Conta)
             .Include(c => c.Banco)
-            .Include(c => c.Transacoes)
-            .Include(c => c.Faturas)
             .FirstOrDefaultAsync();
+        if (cartao is null) return null;
 
-        return cartao is null ? null : ToDto(cartao);
+        var usado = cartao.TemCredito
+            ? await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, cartao.Id, usuarioId)
+            : 0m;
+        return ToDto(cartao, usado);
     }
 
     public async Task<CartaoCreditoDto> CriarAsync(CriarCartaoCreditoDto dto, Guid usuarioId)
@@ -82,7 +87,7 @@ public class CartaoCreditoService(AppDbContext context)
         _context.CartoesCredito.Add(cartao);
         await _context.SaveChangesAsync();
 
-        return await BuscarPorIdAsync(cartao.Id, usuarioId) ?? ToDto(cartao);
+        return await BuscarPorIdAsync(cartao.Id, usuarioId) ?? ToDto(cartao, 0m);
     }
 
     public async Task<bool> AtualizarAsync(Guid id, CriarCartaoCreditoDto dto, Guid usuarioId)
@@ -148,55 +153,18 @@ public class CartaoCreditoService(AppDbContext context)
         return true;
     }
 
-    private static (DateTime inicio, DateTime fim) CicloAtual(int? diaFechamento)
+    /// <summary>
+    /// Monta o DTO. <paramref name="limiteUsado"/> vem da regra única de limite
+    /// (<see cref="RegrasFinanceiras.LimitesUsadosDosCartoesAsync"/>) — o mesmo número que o
+    /// LimiteCalculator usa na trava de compra parcelada e no dashboard. Antes o card calculava à parte
+    /// (só compra à vista do ciclo atual, sem parcela, menos o ValorPago inteiro) e mostrava 0% usado
+    /// com R$ 1.500 em parcelamentos.
+    /// </summary>
+    private static CartaoCreditoDto ToDto(CartaoCredito c, decimal limiteUsado)
     {
-        var hoje = DateTime.UtcNow.Date;
-        if (!diaFechamento.HasValue)
-            return (new DateTime(hoje.Year, hoje.Month, 1), hoje);
-
-        var dia = Math.Min(diaFechamento.Value, DateTime.DaysInMonth(hoje.Year, hoje.Month));
-        var fechamentoMesAtual = new DateTime(hoje.Year, hoje.Month, dia);
-
-        if (hoje <= fechamentoMesAtual)
-        {
-            var prev = fechamentoMesAtual.AddMonths(-1);
-            var diaAnterior = Math.Min(diaFechamento.Value, DateTime.DaysInMonth(prev.Year, prev.Month));
-            return (new DateTime(prev.Year, prev.Month, diaAnterior).AddDays(1), fechamentoMesAtual);
-        }
-        return (fechamentoMesAtual.AddDays(1), fechamentoMesAtual.AddMonths(1));
-    }
-
-    private static CartaoCreditoDto ToDto(CartaoCredito c)
-    {
-        var (inicio, fim) = CicloAtual(c.DiaFechamento);
-
-        // Gastos no ciclo = total bruto das transações de crédito no período
-        // menos o que já foi pago nas faturas correspondentes.
-        // Fatura parcialmente paga libera apenas o valor pago (não a fatura inteira).
-        var transacoesNoCiclo = c.TemCredito
-            ? c.Transacoes
-                .Where(t => t.UsadoComoCredito
-                    && t.Tipo == TipoTransacao.Despesa
-                    && t.Ativo
-                    && t.Data.Date >= inicio
-                    && t.Data.Date <= fim)
-                .ToList()
-            : new();
-
-        var totalBruto = transacoesNoCiclo.Sum(t => t.Valor);
-
-        var faturaIdsNoCiclo = transacoesNoCiclo
-            .Where(t => t.FaturaId.HasValue)
-            .Select(t => t.FaturaId!.Value)
-            .ToHashSet();
-
-        var totalPagoNasFaturas = c.Faturas
-            .Where(f => faturaIdsNoCiclo.Contains(f.Id))
-            .Sum(f => f.ValorPago);
-
-        var gastos = Math.Max(0m, totalBruto - totalPagoNasFaturas);
-
-        var limiteDisponivel = c.TemCredito && c.LimiteTotal.HasValue ? c.LimiteTotal.Value - gastos : (decimal?)null;
+        var limiteDisponivel = c.TemCredito && c.LimiteTotal.HasValue
+            ? RegrasFinanceiras.LimiteDisponivel(c.LimiteTotal.Value, limiteUsado)
+            : (decimal?)null;
 
         var bandeiraDesc = c.Bandeira switch
         {
@@ -220,7 +188,7 @@ public class CartaoCreditoService(AppDbContext context)
             EhPrePago = c.EhPrePago,
             Limite = c.TemCredito ? c.LimiteTotal : null,
             LimiteDisponivel = limiteDisponivel,
-            GastosNoCicloAtual = gastos,
+            LimiteUsado = c.TemCredito ? limiteUsado : null,
             DiaFechamento = c.DiaFechamento,
             DiaVencimento = c.DiaVencimento,
             ContaId = c.ContaId,

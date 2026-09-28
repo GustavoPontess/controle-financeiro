@@ -387,8 +387,9 @@ export default function CreditCardsPage() {
   }
 
   const totalLimite = cartoes.filter((c) => c.temCredito && c.limite).reduce((s, c) => s + (c.limite ?? 0), 0)
-  const totalGastos = cartoes.filter((c) => c.temCredito).reduce((s, c) => s + c.gastosNoCicloAtual, 0)
-  const totalDisp = Math.max(0, totalLimite - totalGastos)
+  const totalUsado = cartoes.filter((c) => c.temCredito).reduce((s, c) => s + (c.limiteUsado ?? 0), 0)
+  // Disponível somado por cartão: o estouro de um cartão (disponível negativo) não come o dos outros.
+  const totalDisp = cartoes.filter((c) => c.temCredito && c.limite).reduce((s, c) => s + Math.max(0, c.limiteDisponivel ?? 0), 0)
   const temCredito = form.modo === "credito" || form.modo === "credito_debito"
   const cartaoAtivo = cartoes.find((c) => c.id === faturasCartaoId)
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -600,7 +601,9 @@ export default function CreditCardsPage() {
   }
 
   const renderCartao = (c: CartaoCredito) => {
-    const pct = c.limite ? Math.min((c.gastosNoCicloAtual / c.limite) * 100, 100) : 0
+    // Usado do limite (faturas em aberto + parcelas futuras − pago), não só o ciclo atual: parcelado
+    // bloqueia o limite todo. Barra travada em 100% quando estoura.
+    const pct = c.limite ? Math.min(((c.limiteUsado ?? 0) / c.limite) * 100, 100) : 0
     const over = pct > 80
     const sel = faturasCartaoId === c.id
     const clickable = c.temCredito
@@ -672,7 +675,7 @@ export default function CreditCardsPage() {
                 if (c.diaFechamento || c.diaVencimento) {
                   return <span>{c.diaFechamento ? `fecha dia ${c.diaFechamento}` : ""}{c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</span>
                 }
-                return <span>{formatMoney(c.gastosNoCicloAtual)} usado</span>
+                return <span>{formatMoney(c.limiteUsado ?? 0)} usado</span>
               })()}
               <span className={styles.verFaturas}><ReceiptText size={12} /> {sel ? "Em foco" : "Faturas"}</span>
             </div>
@@ -721,8 +724,8 @@ export default function CreditCardsPage() {
           </div>
           <div className={styles.sumDiv} />
           <div className={styles.sumItem}>
-            <span className={styles.sumLabel}>Usado no ciclo</span>
-            <span className={styles.sumValue}>{formatMoney(totalGastos)}</span>
+            <span className={styles.sumLabel}>Limite usado</span>
+            <span className={styles.sumValue}>{formatMoney(totalUsado)}</span>
           </div>
         </div>
       )}

@@ -309,7 +309,7 @@ public class ParcelaTransacaoService
             parcela.MotivoCancelamento = dto.Motivo;
 
             // O total da fatura caiu sem pagamento novo: reconcilia o estado (senão fatura já coberta
-            // ficava Parcial pra sempre — limite preso, atraso indevido, pagamento recusado).
+            // ficava Parcial pra sempre — atraso indevido, pagamento recusado).
             await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
                 _context, _eventLog, new[] { parcela.FaturaId }, usuarioId, correlationId, agora);
 

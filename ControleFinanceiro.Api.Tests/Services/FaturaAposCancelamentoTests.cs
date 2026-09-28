@@ -218,7 +218,9 @@ public class FaturaAposCancelamentoTests
         var comCompra = await DtoAsync(ctx, c, c.FaturaId);
         Assert.Equal(150m, comCompra.ValorTotal);  // a compra caiu nesta fatura
         Assert.Equal(50m, comCompra.ValorRestante);
-        Assert.Equal(350m, await BloqueadoAsync(ctx, c)); // 100 + 50 à vista + parcela 2/2: compra nova bloqueia
+        // Compra nova bloqueia: F cobra 150 com 100 pagos (50) + parcela 2/2 (200). Os 100 à vista já pagos
+        // não seguram mais limite — o usado segue o pago, não o rótulo (antes: 350 até a fatura virar Pago).
+        Assert.Equal(250m, await BloqueadoAsync(ctx, c));
         await PagarFaturaAsync(ctx, c, 50m);               // e é pagável (Pago recusaria: "já foi paga")
         Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
     }
@@ -230,7 +232,9 @@ public class FaturaAposCancelamentoTests
         var c = await SeedAsync(ctx, cicloFechado: false);
         await PagarFaturaAsync(ctx, c, 100m);
         await CancelarParcelaAsync(ctx, c);
-        Assert.Equal(300m, await BloqueadoAsync(ctx, c)); // 100 à vista ainda presos + parcela 2/2
+        // Só a parcela 2/2: F está coberta (100 cobrados, 100 pagos) mesmo seguindo Parcial até o fechamento
+        // (antes os 100 à vista ficavam presos até o job marcar Pago).
+        Assert.Equal(200m, await BloqueadoAsync(ctx, c));
 
         // O tempo passa: chega o dia do fechamento.
         var aFechar = await ctx.Faturas.SingleAsync(f => f.Id == c.FaturaId);

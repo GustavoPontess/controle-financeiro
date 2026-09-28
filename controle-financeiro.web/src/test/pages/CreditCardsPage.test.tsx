@@ -40,7 +40,7 @@ vi.mock("../../services/faturaService", () => ({
 
 const cartao = {
   id: "c1", nome: "Nubank", bandeira: 2, bandeiraDescricao: "Mastercard",
-  temCredito: true, temDebito: false, ehPrePago: false, limite: 5000, gastosNoCicloAtual: 150,
+  temCredito: true, temDebito: false, ehPrePago: false, limite: 5000, limiteUsado: 150,
   limiteDisponivel: 4850, diaFechamento: 20, diaVencimento: 28, contaId: "a1",
   contaNome: "Conta Corrente", ultimosDigitos: "4218",
 } as unknown as CartaoCredito
@@ -95,6 +95,33 @@ describe("CreditCardsPage (#84)", () => {
     await waitFor(() => expect(screen.getByText("Nubank")).toBeInTheDocument())
     expect(screen.getByText("Limite total")).toBeInTheDocument()
     expect(screen.getAllByText(/R\$\s?4\.850,00/).length).toBeGreaterThan(0) // disponível
+  })
+
+  it("barra, % e resumo usam o limite USADO (parcelas futuras incluídas), não só o ciclo", async () => {
+    // Cenário visto na tela: R$ 1.500 parcelados e o card dizia 0% / "Disponível R$ 5.000 de R$ 5.000".
+    getCartoes.mockReset().mockResolvedValue([{ ...cartao, limiteUsado: 1500, limiteDisponivel: 3500 }])
+    const { container } = renderPage()
+
+    await waitFor(() => expect(screen.getByText("30%")).toBeInTheDocument())
+    const barras = container.querySelectorAll<HTMLElement>('[class*="barFill"]')
+    expect(barras.length).toBeGreaterThan(0)
+    barras.forEach((b) => expect(b.style.width).toBe("30%"))
+    expect(screen.getByText("Limite usado")).toBeInTheDocument()
+    expect(screen.queryByText("Usado no ciclo")).not.toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s?1\.500,00/).length).toBeGreaterThan(0) // resumo: usado
+    expect(screen.getAllByText(/R\$\s?3\.500,00/).length).toBeGreaterThan(0) // disponível
+  })
+
+  it("limite estourado: barra trava em 100%, disponível negativo aparece e o resumo não fica negativo", async () => {
+    getCartoes.mockReset().mockResolvedValue([{ ...cartao, limiteUsado: 5200, limiteDisponivel: -200 }])
+    const { container } = renderPage()
+
+    await waitFor(() => expect(screen.getByText("100%")).toBeInTheDocument())
+    container.querySelectorAll<HTMLElement>('[class*="barFill"]').forEach((b) => expect(b.style.width).toBe("100%"))
+    // "Disponível" aparece no card e no resumo: o card mostra o estouro, o resumo soma 0 (não −200).
+    const disponiveis = screen.getAllByText("Disponível").map((el) => el.nextElementSibling?.textContent ?? "")
+    expect(disponiveis.some((t) => /^-\s?R\$\s?200,00$/.test(t))).toBe(true)
+    expect(disponiveis.some((t) => /^R\$\s?0,00$/.test(t))).toBe(true)
   })
 
   it("abre faturas (clica no card) e destaca a fatura atual", async () => {

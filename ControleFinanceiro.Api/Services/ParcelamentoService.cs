@@ -321,8 +321,9 @@ public class ParcelamentoService
             .Where(p => p.Status == StatusParcela.Pendente && !quitadasPelaFatura.Contains(p))
             .ToList();
         var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga) + quitadasPelaFatura.Count;
-        // Limite liberado = tudo que o LimiteCalculator bloqueava (toda Pendente do parcelamento ativo,
-        // inclusive a quitada pela fatura): com o parcelamento inativo, nenhuma bloqueia mais.
+        // Limite liberado (trilha de auditoria) = valor das parcelas que o parcelamento deixa de dever.
+        // É o teto: o limite segue o pago de cada fatura (RegrasFinanceiras.LimiteUsadoDaFatura), então
+        // pagamento anterior da fatura já tinha soltado parte — o número real sai no NovoLimite do resultado.
         var valorBloqueadoLiberado = pendentes.Concat(quitadasPelaFatura).Sum(p => p.ValorComJuros ?? p.Valor);
 
         var correlationId = Guid.NewGuid();

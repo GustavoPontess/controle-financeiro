@@ -6,7 +6,8 @@ namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
 /// Calcula LimiteBloqueado / LimiteDisponivel / ExposicaoFuturaPrevisao de um cartão
-/// de crédito on-the-fly a partir do estado atual do banco.
+/// de crédito on-the-fly a partir do estado atual do banco. Bloqueado/disponível vêm da regra
+/// única <see cref="RegrasFinanceiras.LimitesUsadosDosCartoesAsync"/>.
 /// Spec: ARQUITETURA_PARCELAMENTO.md § "Cálculo de Limite de Crédito" e § "Cálculos derivados".
 /// </summary>
 /// <remarks>
@@ -49,32 +50,12 @@ public class LimiteCalculatorService
 
         var limiteTotal = cartao.LimiteTotal ?? 0m;
 
-        // Bloqueado componente A: parcelas Pendentes em Parcelamentos ativos
-        // que pertencem a esse cartão.
-        var bloqueadoParcelas = await _context.ParcelasTransacao
-            .Where(p => p.Status == StatusParcela.Pendente
-                        && p.Parcelamento!.Ativo
-                        && p.Parcelamento.CartaoCreditoId == cartaoId
-                        && p.Parcelamento.CriadoPor == usuarioId)
-            .SumAsync(p => (decimal?)(p.ValorComJuros ?? p.Valor)) ?? 0m;
-
-        // Bloqueado componente B: transações à vista no crédito (ParcelamentoId IS NULL)
-        // que ainda não foram quitadas via fatura. EhPagamentoFatura=false (não é a transação
-        // de quitação em si), Ativo=true, e a fatura associada não está paga.
-        var bloqueadoAVista = await _context.Transacoes
-            .Where(t => t.CartaoCreditoId == cartaoId
-                        && t.CriadoPor == usuarioId
-                        && t.Ativo
-                        && t.StatusTransacao == StatusTransacao.Executado
-                        && t.ParcelamentoId == null
-                        && t.ParcelaTransacaoId == null
-                        && !t.EhPagamentoFatura
-                        && t.FaturaId != null
-                        && t.Fatura!.EstadoPagamento != EstadoPagamentoFatura.Pago)
-            .SumAsync(t => (decimal?)t.Valor) ?? 0m;
-
-        var bloqueado = bloqueadoParcelas + bloqueadoAVista;
-        var disponivel = limiteTotal - bloqueado;
+        // Bloqueado = o que as faturas cobram de efetivado e ainda não foi pago (parcelas futuras
+        // incluídas) + compra no cartão fora de fatura. Regra única em RegrasFinanceiras — a mesma do
+        // card da tela de cartões. Antes eram parcelas Pendentes + à vista de fatura não Pago: pagamento
+        // parcial não liberava nada e a parcela já coberta pelo pagamento da fatura seguia bloqueando.
+        var bloqueado = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, cartaoId, usuarioId);
+        var disponivel = RegrasFinanceiras.LimiteDisponivel(limiteTotal, bloqueado);
 
         // Exposição futura prevista: transações de Recorrentes ainda em Previsao
         // (não bloqueia limite, mas dashboard mostra).
