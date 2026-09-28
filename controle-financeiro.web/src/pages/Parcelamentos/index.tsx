@@ -193,6 +193,8 @@ export default function ParcelamentosPage() {
                       {p.tipo !== TipoParcelamento.CompraParcelada && (
                         <PontesBadge tone="neutral" size="sm">{tiposLabel[p.tipo] ?? "—"}</PontesBadge>
                       )}
+                      {/* O cinza sozinho não dizia nada — cancelado precisa estar escrito. */}
+                      {!p.ativo && <PontesBadge tone="danger" size="sm">Cancelado</PontesBadge>}
                       <span className={styles.itemPills}>{p.quantidadeParcelas}× · {p.parcelasPagas}/{p.quantidadeParcelas} pago</span>
                       <span className={styles.itemAmount}>{formatMoney(p.valorOriginal)}</span>
                     </div>
