@@ -17,3 +17,6 @@
 .dialogTitle { font-family: var(--pontes-font-heading); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin-bottom: 8px; }
 .dialogDesc { font-size: 14px; color: var(--pontes-text-muted); line-height: 1.5; margin-bottom: 24px; }
 .dialogActions { display: flex; gap: 10px; }
+
+/* O foco entra na caixa ao abrir (pra sair de trás do overlay); a caixa em si não precisa de anel. */
+.box:focus { outline: none; }

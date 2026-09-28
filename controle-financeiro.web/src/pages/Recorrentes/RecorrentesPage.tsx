@@ -315,6 +315,12 @@ export default function RecorrentesPage() {
   const mudarNaBase = (id: string, mudar: (r: Recorrente) => Recorrente) =>
     setBaseProximas((b) => b.map((x) => (x.id === id ? mudar(x) : x)))
   const tirarDaBase = (id: string) => setBaseProximas((b) => b.filter((x) => x.id !== id))
+  // A LISTA também muda na hora (antes da recarga voltar): a linha velha continuava clicável com o
+  // estado de antes, e como pausar é um "inverte" no servidor, escolher Pausar de novo nessa janela
+  // reativava a conta.
+  const mudarNaLista = (id: string, mudar: (r: Recorrente) => Recorrente) =>
+    setRecorrentes((l) => l.map((x) => (x.id === id ? mudar(x) : x)))
+  const tirarDaLista = (id: string) => setRecorrentes((l) => l.filter((x) => x.id !== id))
 
   // ── pausar / retomar ─────────────────────────────────────────────────────────
   // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
@@ -325,7 +331,9 @@ export default function RecorrentesPage() {
       // Troca a situação em vez de remover: pausar e depois retomar (com a busca ligada) devolve o
       // item à faixa.
       const retomou = r.situacao === "pausada"
-      mudarNaBase(r.id, (x) => ({ ...x, ativo: retomou, situacao: retomou ? "ativa" : "pausada" }))
+      const aplicar = (x: Recorrente): Recorrente => ({ ...x, ativo: retomou, situacao: retomou ? "ativa" : "pausada" })
+      mudarNaBase(r.id, aplicar)
+      mudarNaLista(r.id, aplicar)
       recarregar()
       notify({
         open: true,
@@ -346,6 +354,7 @@ export default function RecorrentesPage() {
     try {
       await deleteRecorrente(alvo.id)
       tirarDaBase(alvo.id)
+      tirarDaLista(alvo.id)
       recarregar()
       notify({ open: true, message: "Conta fixa excluída.", severity: "success" })
     } catch {
@@ -371,6 +380,7 @@ export default function RecorrentesPage() {
       await cancelarRecorrente(cancelarTarget.id, { motivo: cancelarForm.motivo })
       setCancelarOpen(false)
       tirarDaBase(cancelarTarget.id)
+      tirarDaLista(cancelarTarget.id) // cancelada sai de "Ativas" já (vai pra "Encerradas" na recarga)
       recarregar()
       notify({ open: true, message: "Conta fixa cancelada.", severity: "success" })
     } catch {
