@@ -21,14 +21,18 @@ export type ColunaPadrao<T> = {
 export type TagFiltro = { label: string; onRemover: () => void }
 
 export function TabelaPadrao<T>({
-  colunas, itens, chave, acoes, onLinhaClick, tags,
+  colunas, itens, chave, acoes, renderAcoes, onLinhaClick, tags, paginacao,
 }: {
   colunas: ColunaPadrao<T>[]
   itens: T[]
   chave: (item: T) => string
   acoes?: (item: T) => PontesRowAction[]
+  /** Slot de ações customizado (ex.: ⋮ real com os handlers da tela). Ganha do `acoes`. */
+  renderAcoes?: (item: T) => ReactNode
   onLinhaClick?: (item: T) => void
   tags?: TagFiltro[]
+  /** Rodapé de paginação (PontesTablePagination), dentro do cartão. */
+  paginacao?: ReactNode
 }) {
   return (
     <div className={styles.caixa}>
@@ -52,7 +56,7 @@ export function TabelaPadrao<T>({
                   {c.header}
                 </th>
               ))}
-              {acoes && <th className={styles.th} data-acoes="true" aria-label="Ações" />}
+              {(acoes || renderAcoes) && <th className={styles.th} data-acoes="true" aria-label="Ações" />}
             </tr>
           </thead>
           <tbody>
@@ -68,9 +72,9 @@ export function TabelaPadrao<T>({
                     {c.render(item)}
                   </td>
                 ))}
-                {acoes && (
+                {(acoes || renderAcoes) && (
                   <td className={styles.td} data-acoes="true" onClick={(e) => e.stopPropagation()}>
-                    <PontesRowActions actions={acoes(item)} />
+                    {renderAcoes ? renderAcoes(item) : <PontesRowActions actions={acoes!(item)} />}
                   </td>
                 )}
               </tr>
@@ -78,6 +82,7 @@ export function TabelaPadrao<T>({
           </tbody>
         </table>
       </div>
+      {paginacao}
     </div>
   )
 }
