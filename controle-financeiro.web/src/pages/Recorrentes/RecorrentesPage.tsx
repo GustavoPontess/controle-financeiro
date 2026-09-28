@@ -367,7 +367,6 @@ export default function RecorrentesPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Contas Fixas</h1>
-          <p className={styles.subtitle}>Aluguel, escola, plano de saúde e outros pagamentos recorrentes</p>
         </div>
         <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
           Nova Conta Fixa

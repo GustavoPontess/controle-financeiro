@@ -89,10 +89,10 @@ describe("FamiliasPage — cards ricos (#85)", () => {
 
   // ── Render inicial ──
 
-  it("renderiza título, subtítulo e botão Nova Família", async () => {
+  it("renderiza título e botão Nova Família, sem subtítulo explicativo", async () => {
     renderPage()
     expect(await screen.findByRole("heading", { name: "Famílias" })).toBeInTheDocument()
-    expect(screen.getByText("Organize as finanças com quem você divide a vida.")).toBeInTheDocument()
+    expect(screen.queryByText("Organize as finanças com quem você divide a vida.")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Nova Família/i })).toBeInTheDocument()
   })
 
