@@ -40,19 +40,41 @@ Antes de escrever UI: leia a **ficha da entidade** em [`docs/features/padrao-tel
 
 **Teto:** título + 1 meta + 1 valor + 1 status + 1 progresso. O resto vai pro detalhe.
 
-## 4. Receita de LISTA (referência viva: `src/pages/Transferencias/TransferenciasPage.tsx`)
+## 4. Receita de LISTA = `useListaPaginada` + `PontesListPage` (não montar à mão)
 
-1. `PontesPageHeader actionLabel="Nova <coisa>"`.
-2. `PontesToolbar` com busca (`placeholder="Buscar <coisa>…"`) e, se a coisa acaba, `PontesSegmented` **Ativas | Encerradas**.
-3. Busca, filtro e paginação **no servidor** (`useDebouncedValue` + service paginado + `PontesTablePagination`). Nunca filtrar só o array carregado de uma lista paginada. Mudar busca/filtro volta pra página 1.
-4. Carregando → `PontesSkeletonList`. Vazio sem filtro → `PontesEmptyState` com ícone + título "Nenhuma <coisa> ainda" + botão de criar. Vazio com filtro → "Nada encontrado" + "Limpar filtros".
-5. Resposta velha não pode vencer (descartar resposta de busca/página antiga). Página além do fim após excluir → voltar pra última página válida.
-6. Excluir: `PontesDialog` de confirmação, botão com `loading` (sem clique duplo), toast de sucesso/erro, recarregar a lista.
+Referências vivas: `src/pages/Transferencias/TransferenciasPage.tsx` (simples) e `src/pages/Recorrentes/RecorrentesPage.tsx` (com resumo do topo, filtro e ações por situação).
+
+```tsx
+const lista = useListaPaginada<Coisa, { status: "ativas" | "encerradas" }>({
+  buscar: ({ page, pageSize, busca, filtros }) => service.listarPage(page, pageSize, { status: filtros.status, busca }),
+  filtrosPadrao: { status: "ativas" },
+  aoFalhar: () => notify({ open: true, message: "Erro ao carregar <coisas>.", severity: "error" }),
+})
+
+<PontesListPage
+  lista={lista}
+  acao={{ label: "Nova <coisa>", onClick: abrirCriar }}
+  topo={resumo}                                    // opcional, máx. 3-4 números
+  busca="Buscar <coisa>…"
+  filtros={[{ campo: "status", ariaLabel: "Situação", opcoes: [{ value: "ativas", label: "Ativas" }, { value: "encerradas", label: "Encerradas" }] }]}
+  rotulo={["<coisa>", "<coisas>"]}
+  vazio={{ icone: <Icone size={28} strokeWidth={2.5} />, titulo: "Nenhuma <coisa> ainda" }}
+  chave={(c) => c.id}
+  item={(c) => ({ icone, tom, titulo, status, meta: [fato1, fato2], valor, valorTom, inativo, acoes, onClick })}
+/>
+```
+
+O molde já garante: busca/filtro/paginação **no servidor**, página e filtros na URL (F5 e voltar preservam; texto da busca fica fora da URL), página 1 ao filtrar, resposta velha descartada, esqueleto, erro com "Tentar de novo" (nunca vazio falso), vazio com botão, "Nada encontrado" + "Limpar filtros", página além do fim. **Não reimplementar nada disso na página.**
+
+- `item(...)` segue a **ficha da entidade**: `meta` só aceita texto (fatos; `{ texto, alerta }` pra prazo ≤ 7 dias); `status` só fora do normal; `valorTom` "entrada" (verde) ou "problema" (vermelho, só pra problema).
+- Depois de criar/editar/excluir: `lista.recarregar()` (troca no lugar, sem piscar). Ajuste imediato: `lista.setItens(...)`.
+- Excluir: `PontesDialog` com `onConfirm` **assíncrono** (o diálogo trava em "carregando", sem clique duplo), toast, recarregar.
+- Variante nova (`table`, `cards`) só entra no molde quando uma tela precisar — não montar tabela/cards à mão na página.
 
 ## 5. Receita de FORMULÁRIO
 
 - `PontesModal` + `PontesField label error` + `invalid` no controle. Valida ao enviar e **bloqueia**; erro inline (nunca toast pra campo); erro limpa ao editar; mensagem ≠ placeholder. Detalhe: `docs/STANDARDS.md` → "Validação de formulários"; limites de campo: `docs/REGRAS_CAMPOS.md`.
-- Dinheiro: **sempre** `PontesMoneyInput` (nunca `PontesInput` texto + parser próprio; nunca aceitar negativo). Data: `PontesDateInput`; mês: `PontesMonthInput`; "hoje" = `dataLocalISO()` (`@/utils/dateTime`), nunca `toISOString().split("T")[0]`.
+- Dinheiro: **`PontesMoneyField`** em formulário (valor `number | undefined`; dígitos viram centavos à vista, sem negativo). `PontesMoneyInput` é só o campo grande de destaque. Nunca `PontesInput` texto + parser próprio. Data: `PontesDateInput`; mês: `PontesMonthInput`; "hoje" = `dataLocalISO()` (`@/utils/dateTime`), nunca `toISOString().split("T")[0]`.
 - Botão de enviar com `loading` e `disabled` durante o envio.
 - Operação de dinheiro com `Idempotency-Key`: gerar a chave **ao abrir** o modal/diálogo e reusar em nova tentativa após erro de rede/5xx; trocar só depois de sucesso ou erro 4xx definitivo. Nunca `crypto.randomUUID()` dentro do handler de envio.
 

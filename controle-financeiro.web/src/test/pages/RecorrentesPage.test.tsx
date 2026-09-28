@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import RecorrentesPage from "../../pages/Recorrentes/RecorrentesPage"
 import type { Recorrente } from "../../types/Recorrente"
@@ -77,9 +78,9 @@ const cancelada = () => makeRecorrente({
 
 function renderPage() {
   return render(
-    <PontesThemeProvider>
+    <MemoryRouter><PontesThemeProvider>
       <RecorrentesPage />
-    </PontesThemeProvider>,
+    </PontesThemeProvider></MemoryRouter>,
   )
 }
 
@@ -156,7 +157,7 @@ describe("RecorrentesPage", () => {
 
       listRecorrentesPage.mockResolvedValue(paged([])) // cancelada sai da aba Ativas
       fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
-      fireEvent.change(await screen.findByPlaceholderText("Ex: Não uso mais, preço alto..."), {
+      fireEvent.change(await screen.findByPlaceholderText("Ex.: não uso mais, preço alto…"), {
         target: { value: "Preço alto" },
       })
       fireEvent.click(screen.getByText("Confirmar cancelamento"))
@@ -235,7 +236,7 @@ describe("RecorrentesPage", () => {
     const botoes = screen.getAllByRole("button", { name: "Nova conta fixa" })
     expect(botoes).toHaveLength(2)
     fireEvent.click(botoes[1])
-    expect(await screen.findByPlaceholderText("Ex: Aluguel, Escola, Netflix...")).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText("Ex.: aluguel, escola, Netflix…")).toBeInTheDocument()
   })
 
   it("filtro sem resultado: 'Nada encontrado' + 'Limpar filtros' volta pra Ativas sem busca", async () => {
@@ -265,10 +266,12 @@ describe("RecorrentesPage", () => {
   it("exibe recorrente carregado + hero", async () => {
     renderPage()
     expect((await screen.findAllByText("Netflix")).length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Mensal").length).toBeGreaterThan(0)
+    // Ficha "Conta fixa": frequência normal (Mensal) não se anuncia; conta vai na meta em texto.
+    expect(screen.queryByText("Mensal")).not.toBeInTheDocument()
     expect(screen.getByText("Nubank")).toBeInTheDocument()
     expect(screen.getByText("Custo mensal em contas fixas")).toBeInTheDocument()
-    expect(screen.getByText("ativas")).toBeInTheDocument()
+    // Sem contador redundante de "ativas" no resumo.
+    expect(screen.queryByText("ativas")).not.toBeInTheDocument()
   })
 
   it("ações da ativa ficam TODAS no ⋮ (nada solto), Excluir por último", async () => {
@@ -315,11 +318,11 @@ describe("RecorrentesPage", () => {
     expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Excluir"])
   })
 
-  it("não-ativa aparece com data-inactive", async () => {
+  it("não-ativa aparece esmaecida (data-inativo)", async () => {
     listRecorrentesPage.mockResolvedValue(paged([pausada()]))
     renderPage()
     await screen.findByText("Pausada")
-    expect(document.querySelector("[data-inactive='true']")).toBeInTheDocument()
+    expect(document.querySelector("[data-inativo='true']")).toBeInTheDocument()
   })
 
   // ── Criar modal ──
@@ -328,7 +331,7 @@ describe("RecorrentesPage", () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })
     fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
-    expect(await screen.findByPlaceholderText("Ex: Aluguel, Escola, Netflix...")).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText("Ex.: aluguel, escola, Netflix…")).toBeInTheDocument()
   })
 
   it("bloqueia submit com campos vazios e mostra erros", async () => {
@@ -349,7 +352,7 @@ describe("RecorrentesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
     await screen.findByText("Criar conta fixa")
 
-    fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), {
+    fireEvent.change(screen.getByPlaceholderText("Ex.: aluguel, escola, Netflix…"), {
       target: { value: "Netflix" },
     })
     fireEvent.change(screen.getByPlaceholderText("0,00"), {
@@ -385,7 +388,7 @@ describe("RecorrentesPage", () => {
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
     await screen.findByText("Confirmar cancelamento")
 
-    fireEvent.change(screen.getByPlaceholderText("Ex: Não uso mais, preço alto..."), {
+    fireEvent.change(screen.getByPlaceholderText("Ex.: não uso mais, preço alto…"), {
       target: { value: "Preço alto" },
     })
     fireEvent.click(screen.getByText("Confirmar cancelamento"))
@@ -418,17 +421,27 @@ describe("RecorrentesPage", () => {
     })
   })
 
-  it("valida valor negativo na edição de próxima", async () => {
+  it("valor da edição de próxima não aceita negativo (o campo só lê dígitos)", async () => {
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     await screen.findByText("Novo valor (opcional)")
 
-    fireEvent.change(screen.getByPlaceholderText("R$ 45,90"), { target: { value: "-5" } })
+    const campo = screen.getByPlaceholderText("45,90")
+    fireEvent.change(campo, { target: { value: "-5" } })
+    expect(campo).toHaveValue("0,05")
     fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(editarProximaOcorrencia).toHaveBeenCalledWith("rec-001", { valor: 0.05 }))
+  })
 
-    expect(await screen.findByText("Valor deve ser positivo.")).toBeInTheDocument()
-    expect(editarProximaOcorrencia).not.toHaveBeenCalled()
+  it("criar: valor digitado vira centavos à vista (1.500 nunca vira R$ 1,50)", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    await screen.findByText("Criar conta fixa")
+    const campo = screen.getByPlaceholderText("0,00")
+    fireEvent.change(campo, { target: { value: "150000" } })
+    expect(campo).toHaveValue("1.500,00")
   })
 
   // ── Pausar (via ⋮) ──

@@ -1,35 +1,22 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
-import { Plus, Trash2, ArrowLeftRight, SearchX } from "lucide-react"
+import { Trash2, ArrowLeftRight } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
-  PontesPageHeader, PontesToolbar, PontesRowActions, PontesSkeletonList,
-  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesButton, PontesModal, PontesDialog, PontesField, PontesInput, PontesMoneyField, PontesDateInput,
+  PontesSelect, PontesListPage,
 } from "@/components/pontes"
-import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useListaPaginada } from "@/hooks/useListaPaginada"
 import { listTransferenciasPage, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
 import { getContas } from "../../services/contaService"
 import type { Transferencia } from "../../types/Transferencia"
 import type { Conta } from "../../types/Conta"
 import styles from "./TransferenciasPage.module.css"
 
-
-const today = () => dataLocalISO()
-
 // UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" })
-
-// Máscara monetária — dígitos → centavos formatados pt-BR.
-const parseMoney = (masked: string): number | undefined => {
-  const digits = masked.replace(/\D/g, "")
-  return digits ? Number(digits) / 100 : undefined
-}
-const fmtMoney = (n?: number): string =>
-  n != null ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
 
 type FormState = {
   contaOrigemId: string
@@ -43,31 +30,26 @@ type Errors = Partial<Record<"contaOrigemId" | "contaDestinoId" | "valor", strin
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const emptyForm: FormState = {
-  contaOrigemId: "", contaDestinoId: "", valor: undefined, data: today(), descricao: "",
-}
+const emptyForm = (): FormState => ({
+  contaOrigemId: "", contaDestinoId: "", valor: undefined, data: dataLocalISO(), descricao: "",
+})
 
 export default function TransferenciasPage() {
   const { notify } = useOutletContext<OutletContextType>()
-  const [transferencias, setTransferencias] = useState<Transferencia[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [contas, setContas] = useState<Conta[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<Errors>({})
-  const [delId, setDelId] = useState<string | null>(null)
-  // Esqueleto até a lista chegar — sem isso o "Nenhuma transferência" piscava antes de carregar.
-  const [carregandoLista, setCarregandoLista] = useState(true)
+  const [delAlvo, setDelAlvo] = useState<Transferencia | null>(null)
 
-  // Busca SERVER-SIDE (a lista é paginada): debounce = 1 request por pausa, não por tecla.
-  // Transferência não "acaba", então não há seletor de situação — só a busca.
-  const [busca, setBuscaState] = useState("")
-  const buscaDebounced = useDebouncedValue(busca.trim())
-  const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
-  const limparBusca = () => setBusca("")
+  // Lista no servidor (busca, página, resposta velha, esqueleto): tudo no hook + molde do DS.
+  // Transferência não "acaba", então não há filtro de situação — só a busca.
+  const lista = useListaPaginada<Transferencia, Record<string, never>>({
+    buscar: ({ page, pageSize, busca }) => listTransferenciasPage(page, pageSize, busca),
+    filtrosPadrao: {},
+    aoFalhar: () => notify({ open: true, message: "Erro ao carregar transferências", severity: "error" }),
+  })
 
   // Contas só alimentam o modal de criar — 1x na montagem.
   useEffect(() => {
@@ -76,44 +58,10 @@ export default function TransferenciasPage() {
       .catch(() => notify({ open: true, message: "Erro ao carregar contas", severity: "error" }))
   }, [notify])
 
-  // Depois de criar/excluir: sobe a versão → a lista recarrega.
-  const [versao, setVersao] = useState(0)
-  const recarregar = () => setVersao((v) => v + 1)
-
-  // Esqueleto só quando muda O QUE se vê (1ª carga, busca, página). A recarga depois de criar/excluir
-  // (versao) troca os dados no lugar: a lista não pisca e as linhas (e seus ⋮) seguem montadas.
-  const chaveListaRef = useRef<string | null>(null)
-
-  // Lista paginada NO SERVIDOR. `vivo` descarta resposta velha (busca trocada no meio).
-  useEffect(() => {
-    let vivo = true
-    const chave = `${page}|${pageSize}|${buscaDebounced}`
-    if (chave !== chaveListaRef.current) { chaveListaRef.current = chave; setCarregandoLista(true) }
-    listTransferenciasPage(page, pageSize, buscaDebounced)
-      .then((result) => {
-        if (!vivo) return
-        // Página além do fim (ex.: excluiu o último item da última página) → volta pra última
-        // válida e segue carregando (sem piscar a lista antiga no meio).
-        if (result.items.length === 0 && result.total > 0 && page > 1) {
-          setPage(Math.max(1, Math.ceil(result.total / pageSize)))
-          return
-        }
-        setTransferencias(result.items)
-        setTotal(result.total)
-        setCarregandoLista(false)
-      })
-      .catch(() => {
-        if (!vivo) return
-        notify({ open: true, message: "Erro ao carregar transferências", severity: "error" })
-        setCarregandoLista(false)
-      })
-    return () => { vivo = false }
-  }, [notify, page, pageSize, buscaDebounced, versao])
-
   const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
-  const openCreate = () => { setForm(emptyForm); setErrors({}); setDialogOpen(true) }
+  const openCreate = () => { setForm(emptyForm()); setErrors({}); setDialogOpen(true) }
 
   const handleSalvar = async () => {
     const e: Errors = {}
@@ -136,7 +84,7 @@ export default function TransferenciasPage() {
       })
       notify({ open: true, message: "Transferência criada", severity: "success" })
       setDialogOpen(false)
-      recarregar()
+      lista.recarregar()
       window.dispatchEvent(new Event("transactionCreated"))
     } catch {
       notify({ open: true, message: "Erro ao criar transferência", severity: "error" })
@@ -144,22 +92,16 @@ export default function TransferenciasPage() {
   }
 
   const handleDelete = async () => {
-    if (!delId) return
+    if (!delAlvo) return
     try {
-      await deleteTransferencia(delId)
+      await deleteTransferencia(delAlvo.id)
       notify({ open: true, message: "Transferência excluída", severity: "success" })
-      recarregar()
+      lista.recarregar()
       window.dispatchEvent(new Event("transactionCreated"))
     } catch {
       notify({ open: true, message: "Erro ao excluir transferência", severity: "error" })
-    } finally { setDelId(null) }
+    } finally { setDelAlvo(null) }
   }
-
-  const botaoCriar = (
-    <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
-      Nova transferência
-    </PontesButton>
-  )
 
   const optsOrigem = contas
     .filter((c) => c.id !== form.contaDestinoId)
@@ -169,66 +111,31 @@ export default function TransferenciasPage() {
     .map((c) => ({ value: c.id, label: c.nome }))
 
   return (
-    <div className={styles.root}>
-      <PontesPageHeader actionLabel="Nova transferência" onAction={openCreate} />
-
-      <PontesToolbar
-        search={{ value: busca, onChange: setBusca, placeholder: "Buscar transferência…", ariaLabel: "Buscar transferência" }}
+    <>
+      <PontesListPage
+        lista={lista}
+        acao={{ label: "Nova transferência", onClick: openCreate }}
+        busca="Buscar transferência…"
+        rotulo={["transferência", "transferências"]}
+        vazio={{ icone: <ArrowLeftRight size={28} strokeWidth={2.5} />, titulo: "Nenhuma transferência ainda" }}
+        chave={(t) => t.id}
+        // Ficha "Transferência": sem status/progresso; meta = rota · data; valor sem sinal (não é
+        // entrada nem saída); sem detalhe (a linha não abre nada).
+        item={(t) => {
+          const rota = `${t.contaOrigemNome} → ${t.contaDestinoNome}`
+          return {
+            icone: <ArrowLeftRight size={18} strokeWidth={2.4} />,
+            titulo: t.descricao || rota,
+            // Sem descrição a rota já é o título: não repete na meta.
+            meta: [t.descricao ? rota : null, formatDate(t.data)],
+            valor: formatMoney(t.valor),
+            acoes: [{
+              key: "excluir", label: "Excluir", danger: true,
+              icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setDelAlvo(t),
+            }],
+          }
+        }}
       />
-
-      {carregandoLista ? (
-        <PontesSkeletonList rows={4} />
-      ) : transferencias.length === 0 ? (
-        buscaDebounced || busca.trim() ? (
-          <PontesEmptyState
-            icon={<SearchX size={28} strokeWidth={2.5} />}
-            title="Nada encontrado"
-            actions={<PontesButton variant="outline" size="sm" onClick={limparBusca}>Limpar filtros</PontesButton>}
-          />
-        ) : (
-          <PontesEmptyState
-            icon={<ArrowLeftRight size={28} strokeWidth={2.5} />}
-            title="Nenhuma transferência ainda"
-            actions={botaoCriar}
-          />
-        )
-      ) : (
-        <PontesCard padding={0} radius={16}>
-          <ul className={styles.list}>
-            {transferencias.map((t) => (
-              <li key={t.id} className={styles.item}>
-                <div className={styles.itemLeft}>
-                  <div className={styles.itemIcon}><ArrowLeftRight size={16} strokeWidth={2.5} /></div>
-                  <div className={styles.itemMeta}>
-                    <span className={styles.itemDesc}>{t.descricao || "Transferência"}</span>
-                    <div className={styles.itemRoute}>
-                      <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
-                      <ArrowLeftRight size={12} className={styles.routeArrow} />
-                      <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
-                      <span className={styles.itemDate}>{formatDate(t.data)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.itemRight}>
-                  <span className={styles.itemValue}>{formatMoney(t.valor)}</span>
-                  <PontesRowActions
-                    actions={[{
-                      key: "excluir", label: "Excluir", danger: true,
-                      icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setDelId(t.id),
-                    }]}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-          <PontesTablePagination
-            total={total} page={page} pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-            itemLabel="transferências" itemLabelSingular="transferência"
-          />
-        </PontesCard>
-      )}
 
       <PontesModal
         open={dialogOpen}
@@ -261,13 +168,10 @@ export default function TransferenciasPage() {
           </PontesField>
 
           <PontesField label="Valor" required error={errors.valor}>
-            <PontesInput
-              iconStart="R$"
-              value={fmtMoney(form.valor)}
-              onChange={(e) => { setF("valor", parseMoney(e.target.value)); clearErr("valor") }}
+            <PontesMoneyField
+              value={form.valor}
+              onChange={(v) => { setF("valor", v); clearErr("valor") }}
               invalid={!!errors.valor}
-              inputMode="decimal"
-              placeholder="0,00"
             />
           </PontesField>
 
@@ -279,7 +183,8 @@ export default function TransferenciasPage() {
               <PontesInput
                 value={form.descricao}
                 onChange={(e) => setF("descricao", e.target.value)}
-                placeholder="Ex: Reserva pra emergência"
+                maxLength={255}
+                placeholder="Ex.: reserva de emergência…"
               />
             </PontesField>
           </div>
@@ -287,14 +192,16 @@ export default function TransferenciasPage() {
       </PontesModal>
 
       <PontesDialog
-        open={delId !== null}
+        open={delAlvo !== null}
         title="Excluir transferência?"
-        description="As duas transações vinculadas (saída + entrada) também serão excluídas."
+        description={delAlvo
+          ? `${formatMoney(delAlvo.valor)} de ${delAlvo.contaOrigemNome} para ${delAlvo.contaDestinoNome}. As duas transações vinculadas (saída e entrada) também serão excluídas.`
+          : undefined}
         tone="danger"
         confirmLabel="Excluir"
         onConfirm={handleDelete}
-        onCancel={() => setDelId(null)}
+        onCancel={() => setDelAlvo(null)}
       />
-    </div>
+    </>
   )
 }

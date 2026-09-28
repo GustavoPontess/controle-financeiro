@@ -1,0 +1,9 @@
+.tela { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
+
+/* Cartão da lista: borda + canto 14px, linhas separadas e a paginação no rodapé. */
+.caixa {
+  border: 1px solid var(--pontes-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--pontes-surface);
+}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import TransferenciasPage from "../../pages/Transferencias/TransferenciasPage"
 import type { Conta } from "../../types/Conta"
@@ -44,7 +45,7 @@ const transferencia: Transferencia = {
 } as unknown as Transferencia
 
 function renderPage() {
-  return render(<PontesThemeProvider><TransferenciasPage /></PontesThemeProvider>)
+  return render(<MemoryRouter><PontesThemeProvider><TransferenciasPage /></PontesThemeProvider></MemoryRouter>)
 }
 
 describe("TransferenciasPage (#151)", () => {

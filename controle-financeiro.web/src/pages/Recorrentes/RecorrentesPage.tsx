@@ -1,19 +1,16 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle, SearchX,
+  TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle,
 } from "lucide-react"
 import {
-  PontesButton, PontesBadge,
-  PontesModal, PontesDialog,
-  PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesEmptyState, PontesSkeletonList,
-  PontesPageHeader, PontesToolbar, PontesSegmented, PontesRowActions, type PontesRowAction,
-  PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesButton, PontesModal, PontesDialog,
+  PontesField, PontesInput, PontesMoneyField, PontesDateInput, PontesSelect,
+  PontesListPage, type PontesRowAction, type PontesListItemMeta, type PontesListItemProps, formatarCampoDinheiro,
 } from "@/components/pontes"
-import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useListaPaginada } from "@/hooks/useListaPaginada"
 import {
   listRecorrentesPage, getRecorrenteStats, createRecorrente, toggleRecorrente, deleteRecorrente,
   cancelarRecorrente, editarProximaOcorrencia,
@@ -57,29 +54,17 @@ const cobraLabel = (iso?: string): string => {
   if (n == null) return "—"
   if (n === 0) return "hoje"
   if (n === 1) return "amanhã"
-  if (n > 0 && n <= 30) return `em ${n} dias`
+  // Ficha: relativo só até 7 dias; depois, a data.
+  if (n > 0 && n <= 7) return `em ${n} dias`
   return formatDate(iso)
 }
 
-const parseMoneyString = (s: string) => {
-  // Handle BR format "1.234,56" and plain "45.90"/"45,90"
-  let normalized = s
-  if (s.includes(",") && s.includes(".")) {
-    // BR thousands+decimal: "1.234,56" → "1234.56"
-    normalized = s.replace(/\./g, "").replace(",", ".")
-  } else if (s.includes(",")) {
-    // BR decimal only: "45,90" → "45.90"
-    normalized = s.replace(",", ".")
-  }
-  const n = parseFloat(normalized)
-  return isNaN(n) ? 0 : n
-}
-
 // ── tipos de form ─────────────────────────────────────────────────────────────
+// Valor em número (PontesMoneyField): o leitor antigo de texto gravava "1.500" como R$ 1,50.
 
 type CriarForm = {
   descricao: string
-  valor: string
+  valor: number | undefined
   tipo: string
   categoriaId: string
   contaId: string
@@ -93,7 +78,7 @@ type CriarErrors = Partial<Record<keyof CriarForm, string>>
 
 const emptyCriarForm = (): CriarForm => ({
   descricao: "",
-  valor: "",
+  valor: undefined,
   tipo: "1",
   categoriaId: "",
   contaId: "",
@@ -106,8 +91,7 @@ const emptyCriarForm = (): CriarForm => ({
 function validateCriar(f: CriarForm): CriarErrors {
   const errs: CriarErrors = {}
   if (!f.descricao.trim()) errs.descricao = "Descrição obrigatória."
-  const v = parseMoneyString(f.valor)
-  if (!f.valor || v <= 0) errs.valor = "Informe um valor positivo."
+  if (f.valor == null || f.valor <= 0) errs.valor = "Informe um valor positivo."
   if (!f.contaId) errs.contaId = "Selecione uma conta."
   if (!f.dataInicio) errs.dataInicio = "Data de início obrigatória."
   const dia = parseInt(f.dia)
@@ -116,7 +100,7 @@ function validateCriar(f: CriarForm): CriarErrors {
 }
 
 type EditarProximaForm = {
-  valor: string
+  valor: number | undefined
   descricao: string
 }
 
@@ -124,10 +108,7 @@ type EditarProximaErrors = Partial<Record<keyof EditarProximaForm, string>>
 
 function validateEditarProxima(f: EditarProximaForm): EditarProximaErrors {
   const errs: EditarProximaErrors = {}
-  if (f.valor) {
-    const v = parseMoneyString(f.valor)
-    if (v <= 0) errs.valor = "Valor deve ser positivo."
-  }
+  if (f.valor != null && f.valor <= 0) errs.valor = "Valor deve ser positivo."
   return errs
 }
 
@@ -143,7 +124,8 @@ function validateCancelar(f: CancelarForm): CancelarErrors {
 // Badge por situação (vem do servidor). "ativa" não tem badge — é o estado normal.
 const SITUACAO_BADGE: Record<Exclude<SituacaoRecorrente, "ativa">, { label: string; tone: "warning" | "danger" | "neutral" }> = {
   pausada: { label: "Pausada", tone: "warning" },
-  cancelada: { label: "Cancelada", tone: "danger" },
+  // Cancelada é estado final, não problema: vermelho fica só pra problema (ficha).
+  cancelada: { label: "Cancelada", tone: "neutral" },
   encerrada: { label: "Encerrada", tone: "neutral" },
 }
 
@@ -158,7 +140,6 @@ const STATUS_OPTS: { value: FiltroStatusRecorrente; label: string }[] = [
 export default function RecorrentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
 
-  const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
   // Base da faixa "Próximas cobranças": a última lista carregada SEM filtro (aba Ativas, sem busca).
   // Filtrar não mexe nela — senão a faixa sumiria/mudaria a cada tecla. Não é uma 2ª consulta de
   // propósito: o GET da lista gera no servidor as ocorrências vencidas (GerarPendentesAsync), e
@@ -169,22 +150,17 @@ export default function RecorrentesPage() {
     ativas: 0, custoMensalDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
   })
   const [resumoCarregado, setResumoCarregado] = useState(false)
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
 
-  // Filtros (server-side): aba de situação + busca com debounce. Padrão = Ativas.
-  const [status, setStatusState] = useState<FiltroStatusRecorrente>("ativas")
-  const [busca, setBuscaState] = useState("")
-  const buscaDebounced = useDebouncedValue(busca.trim())
-  const setStatus = (v: FiltroStatusRecorrente) => { setStatusState(v); setPage(1) }
-  const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
-  // Conta também o termo já aplicado (debounced): logo após apagar a busca a lista ainda é a filtrada.
-  const filtrosAtivos = status !== "ativas" || busca.trim() !== "" || buscaDebounced !== ""
-  const limparFiltros = () => { setStatusState("ativas"); setBuscaState(""); setPage(1) }
+  // Lista NO SERVIDOR (situação + busca + página na URL, resposta velha, esqueleto): hook + molde.
+  const lista = useListaPaginada<Recorrente, { status: FiltroStatusRecorrente }>({
+    buscar: ({ page, pageSize, busca, filtros }) => listRecorrentesPage(page, pageSize, { status: filtros.status, busca }),
+    filtrosPadrao: { status: "ativas" },
+    // A faixa usa a última lista SEM filtro (aba Ativas, sem busca) — ver baseProximas.
+    aoCarregar: (res, q) => { if (q.filtros.status === "ativas" && !q.busca) setBaseProximas(res.items) },
+    aoFalhar: () => notify({ open: true, message: "Erro ao carregar contas fixas.", severity: "error" }),
+  })
 
   // modal criar
   const [criarOpen, setCriarOpen] = useState(false)
@@ -202,7 +178,7 @@ export default function RecorrentesPage() {
   // modal editar próxima
   const [editarOpen, setEditarOpen] = useState(false)
   const [editarTarget, setEditarTarget] = useState<Recorrente | null>(null)
-  const [editarForm, setEditarForm] = useState<EditarProximaForm>({ valor: "", descricao: "" })
+  const [editarForm, setEditarForm] = useState<EditarProximaForm>({ valor: undefined, descricao: "" })
   const [editarErrors, setEditarErrors] = useState<EditarProximaErrors>({})
   const [editarSaving, setEditarSaving] = useState(false)
 
@@ -218,9 +194,9 @@ export default function RecorrentesPage() {
       .catch(() => notify({ open: true, message: "Erro ao carregar contas e categorias.", severity: "error" }))
   }, [notify])
 
-  // Depois de qualquer mudança: sobe a versão → resumo e lista recarregam juntos (hero e aba batem).
+  // Depois de qualquer mudança: resumo e lista recarregam juntos (hero e aba batem).
   const [versao, setVersao] = useState(0)
-  const recarregar = () => setVersao((v) => v + 1)
+  const recarregar = () => { setVersao((v) => v + 1); lista.recarregar() }
 
   // KPIs do hero: não dependem da aba nem da busca (endpoint sem efeito colateral).
   useEffect(() => {
@@ -232,41 +208,8 @@ export default function RecorrentesPage() {
     return () => { vivo = false }
   }, [notify, versao])
 
-  // Esqueleto só quando muda O QUE se vê (1ª carga, aba, busca, página). A recarga depois de uma
-  // ação (versao) troca os dados no lugar: a linha e o ⋮ seguem montados — o foco volta pro ⋮ em vez
-  // de cair no topo da página — e a lista não pisca.
-  const chaveListaRef = useRef<string | null>(null)
-
-  // Lista filtrada/paginada NO SERVIDOR. `vivo` descarta resposta velha (filtro trocado no meio).
-  useEffect(() => {
-    let vivo = true
-    const chave = `${page}|${pageSize}|${status}|${buscaDebounced}`
-    if (chave !== chaveListaRef.current) { chaveListaRef.current = chave; setLoading(true) }
-    listRecorrentesPage(page, pageSize, { status, busca: buscaDebounced })
-      .then((res) => {
-        if (!vivo) return
-        // Página além do fim (ex.: excluiu o último item da última página) → volta pra última
-        // válida e segue carregando (sem piscar a lista antiga no meio).
-        if (res.items.length === 0 && res.total > 0 && page > 1) {
-          setPage(Math.max(1, Math.ceil(res.total / pageSize)))
-          return
-        }
-        setRecorrentes(res.items)
-        setTotal(res.total)
-        if (status === "ativas" && !buscaDebounced) setBaseProximas(res.items)
-        setLoading(false)
-      })
-      .catch(() => {
-        if (!vivo) return
-        notify({ open: true, message: "Erro ao carregar contas fixas.", severity: "error" })
-        setLoading(false)
-      })
-    return () => { vivo = false }
-  }, [notify, page, pageSize, status, buscaDebounced, versao])
-
   // ── stats ────────────────────────────────────────────────────────────────────
 
-  const ativas = stats.ativas
   const totalMensalDespesa = stats.custoMensalDespesas
   const proximas30 = stats.proximas30Dias
 
@@ -285,7 +228,7 @@ export default function RecorrentesPage() {
     try {
       const dto: CriarRecorrente = {
         descricao: criarForm.descricao,
-        valor: parseMoneyString(criarForm.valor),
+        valor: criarForm.valor!,
         tipo: parseInt(criarForm.tipo),
         contaId: criarForm.contaId || undefined,
         categoriaId: criarForm.categoriaId || undefined,
@@ -319,8 +262,8 @@ export default function RecorrentesPage() {
   // estado de antes, e como pausar é um "inverte" no servidor, escolher Pausar de novo nessa janela
   // reativava a conta.
   const mudarNaLista = (id: string, mudar: (r: Recorrente) => Recorrente) =>
-    setRecorrentes((l) => l.map((x) => (x.id === id ? mudar(x) : x)))
-  const tirarDaLista = (id: string) => setRecorrentes((l) => l.filter((x) => x.id !== id))
+    lista.setItens((l) => l.map((x) => (x.id === id ? mudar(x) : x)))
+  const tirarDaLista = (id: string) => lista.setItens((l) => l.filter((x) => x.id !== id))
 
   // ── pausar / retomar ─────────────────────────────────────────────────────────
   // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
@@ -347,10 +290,10 @@ export default function RecorrentesPage() {
 
   // ── excluir ───────────────────────────────────────────────────────────────────
 
+  // O diálogo fica aberto (em "carregando") até a resposta: sem clique duplo.
   async function handleExcluir() {
     const alvo = excluirAlvo
     if (!alvo) return
-    setExcluirAlvo(null)
     try {
       await deleteRecorrente(alvo.id)
       tirarDaBase(alvo.id)
@@ -359,6 +302,8 @@ export default function RecorrentesPage() {
       notify({ open: true, message: "Conta fixa excluída.", severity: "success" })
     } catch {
       notify({ open: true, message: "Erro ao excluir conta fixa.", severity: "error" })
+    } finally {
+      setExcluirAlvo(null)
     }
   }
 
@@ -394,7 +339,7 @@ export default function RecorrentesPage() {
 
   function openEditarProxima(r: Recorrente) {
     setEditarTarget(r)
-    setEditarForm({ valor: "", descricao: "" })
+    setEditarForm({ valor: undefined, descricao: "" })
     setEditarErrors({})
     setEditarOpen(true)
   }
@@ -406,7 +351,7 @@ export default function RecorrentesPage() {
     setEditarSaving(true)
     try {
       const dto: EditarProximaDto = {}
-      if (editarForm.valor) dto.valor = parseMoneyString(editarForm.valor)
+      if (editarForm.valor != null) dto.valor = editarForm.valor
       if (editarForm.descricao.trim()) dto.descricao = editarForm.descricao
       await editarProximaOcorrencia(editarTarget.id, dto)
       setEditarOpen(false)
@@ -436,8 +381,6 @@ export default function RecorrentesPage() {
     { value: "3", label: "Anual" },
   ]
 
-  const freqBadge: Record<number, "warning" | "neutral" | "primary"> = { 1: "warning", 2: "primary", 3: "neutral" }
-
   // ── render ────────────────────────────────────────────────────────────────────
 
   // Projeção anual do custo mensal (×12). Próximas cobranças: contas fixas ATIVAS (não pausadas)
@@ -448,10 +391,6 @@ export default function RecorrentesPage() {
     .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
     .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
     .slice(0, 6)
-
-  // Esqueleto até a 1ª resposta do resumo também: o vazio "Nenhuma conta fixa" depende do total
-  // geral (qtdTotal) e não pode piscar antes dele chegar.
-  const carregandoLista = loading || !resumoCarregado
 
   // Ações da linha, pela situação que o SERVIDOR calculou. Pausada ≠ cancelada: só a pausada
   // retoma; cancelada/encerrada só podem ser excluídas.
@@ -486,17 +425,39 @@ export default function RecorrentesPage() {
     return acoes
   }
 
-  const botaoCriar = (
-    <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
-      Nova conta fixa
-    </PontesButton>
-  )
+  // Linha da lista pela ficha "Conta fixa" (docs/features/padrao-telas/ficha-por-entidade.md):
+  // status só fora do normal; meta em texto — frequência só se não for mensal, conta ou cartão,
+  // próxima cobrança (aviso em até 7 dias) ou, se cancelada, o motivo.
+  function itemDaLinha(r: Recorrente): PontesListItemProps {
+    const isDespesa = r.tipo === 1
+    const ativa = r.situacao === "ativa"
+    const dias = diasAte(r.dataProximaGeracao)
+    const meta: PontesListItemMeta[] = [
+      r.frequencia !== 2 && r.frequenciaDescricao,
+      r.contaNome ?? r.cartaoCreditoNome,
+      ativa && !!r.dataProximaGeracao && {
+        texto: `próxima cobrança ${cobraLabel(r.dataProximaGeracao)}`,
+        alerta: dias != null && dias >= 0 && dias <= 7,
+      },
+      r.situacao === "cancelada" && !!r.motivoCancelamento && `Motivo: ${r.motivoCancelamento}`,
+    ]
+    return {
+      icone: isDespesa ? <TrendingDown size={18} strokeWidth={2.4} /> : <TrendingUp size={18} strokeWidth={2.4} />,
+      tom: isDespesa ? "saida" : "entrada",
+      titulo: r.descricao,
+      status: r.situacao === "ativa" ? undefined : SITUACAO_BADGE[r.situacao],
+      meta,
+      valor: `${isDespesa ? "−" : "+"}${formatMoney(r.valor)}`,
+      valorTom: isDespesa ? "neutro" : "entrada",
+      inativo: !ativa,
+      acoes: acoesDaLinha(r),
+    }
+  }
 
-  return (
-    <div className={styles.page}>
-      <PontesPageHeader actionLabel="Nova conta fixa" onAction={openCriar} />
-
-      {/* Hero de custo */}
+  // Resumo do topo (ficha): custo mensal (+ por ano) e próximas 30 dias. A faixa "Próximas
+  // cobranças" segue até o Gustavo decidir (decisão 3 da ficha).
+  const topo = (
+    <>
       <div className={styles.hero}>
         <div className={styles.heroBlob} />
         <div className={styles.heroMain}>
@@ -509,18 +470,12 @@ export default function RecorrentesPage() {
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{ativas}</span>
-            <span className={styles.heroStatLabel}>ativas</span>
-          </div>
-          <div className={styles.heroStatDivider} />
-          <div className={styles.heroStat}>
             <span className={styles.heroStatValue}>{proximas30}</span>
             <span className={styles.heroStatLabel}>próx. 30 dias</span>
           </div>
         </div>
       </div>
 
-      {/* Próximas cobranças */}
       {resumoCarregado && proximasCobrancas.length > 0 && (
         <div className={styles.proxSection}>
           <div className={styles.proxTitle}>Próximas cobranças</div>
@@ -543,94 +498,28 @@ export default function RecorrentesPage() {
           </div>
         </div>
       )}
+    </>
+  )
 
-      {/* Filtros (server-side): busca + situação */}
-      <PontesToolbar
-        search={{ value: busca, onChange: setBusca, placeholder: "Buscar conta fixa…", ariaLabel: "Buscar conta fixa" }}
-      >
-        <PontesSegmented
-          ariaLabel="Situação"
-          options={STATUS_OPTS}
-          value={status}
-          onChange={(v) => setStatus(v as FiltroStatusRecorrente)}
-        />
-      </PontesToolbar>
-
-      {/* Lista */}
-      {carregandoLista ? (
-        <PontesSkeletonList rows={4} />
-      ) : recorrentes.length === 0 ? (
-        stats.qtdTotal === 0 ? (
-          <PontesEmptyState icon={<Repeat size={32} strokeWidth={2.5} />} title="Nenhuma conta fixa" actions={botaoCriar} />
-        ) : filtrosAtivos ? (
-          <PontesEmptyState
-            icon={<SearchX size={32} strokeWidth={2.5} />}
-            title="Nada encontrado"
-            actions={<PontesButton variant="outline" size="sm" onClick={limparFiltros}>Limpar filtros</PontesButton>}
-          />
-        ) : (
-          // Tem contas fixas, mas todas já acabaram: a aba padrão (Ativas) fica vazia.
-          <PontesEmptyState icon={<Repeat size={32} strokeWidth={2.5} />} title="Nenhuma conta fixa ativa" actions={botaoCriar} />
-        )
-      ) : (
-        <div className={styles.list}>
-          <div className={styles.cards}>
-            {recorrentes.map((r) => {
-              const isDespesa = r.tipo === 1
-              const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
-              const dias = diasAte(r.dataProximaGeracao)
-              const ativa = r.situacao === "ativa"
-              const urgente = ativa && dias != null && dias >= 0 && dias <= 7
-              const badge = r.situacao !== "ativa" ? SITUACAO_BADGE[r.situacao] : undefined
-              return (
-                <div
-                  key={r.id}
-                  className={styles.card}
-                  data-inactive={!ativa ? "true" : undefined}
-                  data-situacao={r.situacao}
-                >
-                  <div className={styles.cardIcon} data-tipo={isDespesa ? "despesa" : "receita"}>
-                    {isDespesa ? <TrendingDown size={18} strokeWidth={2.4} /> : <TrendingUp size={18} strokeWidth={2.4} />}
-                  </div>
-
-                  <div className={styles.cardInfo}>
-                    <div className={styles.cardTop}>
-                      <span className={styles.cardNome}>{r.descricao}</span>
-                      {badge && <PontesBadge tone={badge.tone} size="sm">{badge.label}</PontesBadge>}
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <PontesBadge tone={tone} size="sm">{r.frequenciaDescricao}</PontesBadge>
-                      {r.categoriaNome && <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>}
-                      {r.contaNome && <span className={styles.cardSub}>{r.contaNome}</span>}
-                    </div>
-                    {ativa && r.dataProximaGeracao && (
-                      <span className={styles.cardProx} data-urgent={urgente ? "true" : undefined}>
-                        próxima cobrança {cobraLabel(r.dataProximaGeracao)}
-                      </span>
-                    )}
-                    {r.situacao === "cancelada" && r.motivoCancelamento && (
-                      <span className={styles.cardMotivo}>Motivo: {r.motivoCancelamento}</span>
-                    )}
-                  </div>
-
-                  <div className={styles.cardRight}>
-                    <span className={styles.cardValor} data-tipo={isDespesa ? "despesa" : "receita"}>
-                      {isDespesa ? "−" : "+"}{formatMoney(r.valor)}
-                    </span>
-                    <PontesRowActions actions={acoesDaLinha(r)} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <PontesTablePagination
-            total={total} page={page} pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-            itemLabel="contas fixas" itemLabelSingular="conta fixa"
-          />
-        </div>
-      )}
+  return (
+    <div className={styles.page}>
+      <PontesListPage
+        lista={lista}
+        // Esqueleto até o resumo chegar também: o título do vazio depende do total geral (qtdTotal).
+        carregando={!resumoCarregado}
+        acao={{ label: "Nova conta fixa", onClick: openCriar }}
+        topo={topo}
+        busca="Buscar conta fixa…"
+        filtros={[{ campo: "status", ariaLabel: "Situação", opcoes: STATUS_OPTS }]}
+        rotulo={["conta fixa", "contas fixas"]}
+        // Sem nenhuma conta fixa → "Nenhuma conta fixa"; tem, mas todas acabaram → a aba Ativas vazia.
+        vazio={{
+          icone: <Repeat size={32} strokeWidth={2.5} />,
+          titulo: stats.qtdTotal === 0 ? "Nenhuma conta fixa" : "Nenhuma conta fixa ativa",
+        }}
+        chave={(r) => r.id}
+        item={itemDaLinha}
+      />
 
       {/* ── Modal criar ──────────────────────────────────────────────────────── */}
       <PontesModal
@@ -650,7 +539,8 @@ export default function RecorrentesPage() {
         <div className={styles.form}>
           <PontesField label="Descrição" required error={criarErrors.descricao}>
             <PontesInput
-              placeholder="Ex: Aluguel, Escola, Netflix..."
+              placeholder="Ex.: aluguel, escola, Netflix…"
+              maxLength={400}
               value={criarForm.descricao}
               invalid={!!criarErrors.descricao}
               onChange={e => {
@@ -668,14 +558,12 @@ export default function RecorrentesPage() {
                 onChange={v => setCriarForm(f => ({ ...f, tipo: v }))}
               />
             </PontesField>
-            <PontesField label="Valor (R$)" required error={criarErrors.valor}>
-              <PontesInput
-                placeholder="0,00"
-                inputMode="decimal"
+            <PontesField label="Valor" required error={criarErrors.valor}>
+              <PontesMoneyField
                 value={criarForm.valor}
                 invalid={!!criarErrors.valor}
-                onChange={e => {
-                  setCriarForm(f => ({ ...f, valor: e.target.value }))
+                onChange={v => {
+                  setCriarForm(f => ({ ...f, valor: v }))
                   if (criarErrors.valor) setCriarErrors(e2 => ({ ...e2, valor: undefined }))
                 }}
               />
@@ -770,7 +658,8 @@ export default function RecorrentesPage() {
           </p>
           <PontesField label="Motivo do cancelamento" required error={cancelarErrors.motivo}>
             <PontesInput
-              placeholder="Ex: Não uso mais, preço alto..."
+              placeholder="Ex.: não uso mais, preço alto…"
+              maxLength={400}
               value={cancelarForm.motivo}
               invalid={!!cancelarErrors.motivo}
               onChange={e => {
@@ -798,24 +687,21 @@ export default function RecorrentesPage() {
         }
       >
         <div className={styles.form}>
-          <p className={styles.editarInfo}>
-            Altere somente a <strong>próxima ocorrência</strong>. As seguintes não serão afetadas.
-          </p>
           <PontesField label="Novo valor (opcional)" error={editarErrors.valor}>
-            <PontesInput
-              placeholder={editarTarget ? formatMoney(editarTarget.valor) : "0,00"}
-              inputMode="decimal"
+            <PontesMoneyField
+              placeholder={editarTarget ? formatarCampoDinheiro(editarTarget.valor) : "0,00"}
               value={editarForm.valor}
               invalid={!!editarErrors.valor}
-              onChange={e => {
-                setEditarForm(f => ({ ...f, valor: e.target.value }))
+              onChange={v => {
+                setEditarForm(f => ({ ...f, valor: v }))
                 if (editarErrors.valor) setEditarErrors(e2 => ({ ...e2, valor: undefined }))
               }}
             />
           </PontesField>
           <PontesField label="Nova descrição (opcional)">
             <PontesInput
-              placeholder={editarTarget?.descricao ?? "Descrição..."}
+              placeholder={editarTarget?.descricao ?? "Descrição…"}
+              maxLength={400}
               value={editarForm.descricao}
               onChange={e => setEditarForm(f => ({ ...f, descricao: e.target.value }))}
             />
@@ -830,7 +716,7 @@ export default function RecorrentesPage() {
         description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As transações já geradas serão mantidas.` : undefined}
         tone="danger"
         confirmLabel="Excluir"
-        onConfirm={() => void handleExcluir()}
+        onConfirm={handleExcluir}
         onCancel={() => setExcluirAlvo(null)}
       />
     </div>

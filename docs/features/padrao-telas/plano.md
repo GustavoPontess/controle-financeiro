@@ -1,8 +1,12 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-09-28
-status: PROPOSTA (aguardando OK do Gustavo pra começar o PR 1)
+status: EM TESTE na branch exp/padrao-telas (autorizado pelo Gustavo em 2026-09-28)
 ---
+
+> **Andamento (branch `exp/padrao-telas`):** skills `pontes-telas` + `revisar-usabilidade` (regras Vercel/UX copiadas fixas, MIT), `frontend-design` restrita ao site, trava de lint + hook que devolve o erro ao modelo, ficha por entidade (rascunho), `useListaPaginada` + `PontesListPage` + `PontesListItem` + `PontesMoneyField` + `PontesDialog` assíncrono; Transferências e Contas Fixas migradas.
+>
+> **Mudança de rota:** o **TanStack Query ficou adiado.** A revisão mostrou 3 riscos novos que ele traria (GET que grava sendo repetido, cache entre contas, evento `transactionCreated`). O hook próprio `src/hooks/useListaPaginada.ts` junta a lógica que já funcionava nas telas (resposta velha, esqueleto, página além do fim) + estado na URL, sem dependência nova. As telas só falam com o hook; se um dia precisar de cache, troca por dentro.
 
 # Front sem retrabalho — plano
 

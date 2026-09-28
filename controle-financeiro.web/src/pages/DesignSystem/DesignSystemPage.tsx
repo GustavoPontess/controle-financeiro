@@ -14,7 +14,7 @@ import { useEffect, useState } from "react"
 import {
   Plus, Download, ArrowRight, ChevronLeft, ChevronRight,
   Settings, MoreHorizontal, Bell, Search, Pencil, Copy, Share2, Trash2,
-  TrendingDown, TrendingUp, Check, X, PauseCircle, SearchX,
+  TrendingDown, TrendingUp, Check, X, PauseCircle, SearchX, Repeat,
 } from "lucide-react"
 import {
   // theme
@@ -22,15 +22,16 @@ import {
   type Palette, type FontOption,
   // botões
   PontesButton, PontesIconButton, PontesFab, PontesButtonGroup, PontesLink, PontesNavLink,
-  PontesChoiceCards,
+  PontesChoiceCards, type PontesRowAction,
   // form
-  PontesField, PontesInput, PontesMoneyInput, PontesTextarea,
+  PontesField, PontesInput, PontesMoneyInput, PontesMoneyField, PontesTextarea,
   PontesSelect, PontesGroupedSelect, PontesToggle, PontesCheckbox, PontesRadioGroup,
   PontesOtpInput, PontesSlider, PontesDatePicker, PontesDateInput, PontesMonthInput, PontesFileDrop,
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
   PontesProgress, PontesStatCard, PontesCategoryDonut, PontesCard, PontesTable,
+  PontesList, PontesListItem,
   // feedback
   PontesToast, PontesModal, PontesDialog, PontesSkeleton, PontesSkeletonList,
   PontesEmptyState, PontesLoadingDots, PontesDrawer,
@@ -39,7 +40,7 @@ import {
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
   PontesCommandPalette, PontesSidebarItem, PontesSidebarSection, PontesSegmented,
   // padrão de tela interna
-  PontesPageHeader, PontesToolbar, PontesRowActions,
+  PontesPageHeader, PontesToolbar, PontesRowActions, PontesListPage, type PontesListaEstado,
   // site
   PontesFooter, PontesLogo, PontesLogoMark,
   // util
@@ -322,6 +323,7 @@ function ButtonsSection() {
 function FormSection({ p }: { p: Palette }) {
   const [text, setText] = useState("voce@email.com")
   const [money, setMoney] = useState("1.240,00")
+  const [valorCampo, setValorCampo] = useState<number | undefined>(1500)
   const [tipoTx, setTipoTx] = useState("1")
   const [grpCat, setGrpCat] = useState("ali")
   const [grpSub, setGrpSub] = useState("merc")
@@ -404,6 +406,19 @@ function FormSection({ p }: { p: Palette }) {
 
       <Group title="Money input">
         <PontesMoneyInput value={money} onChange={setMoney} />
+      </Group>
+
+      <Group title="Money field — dinheiro em formulário (número entra e sai)">
+        <div className={styles.moneyFieldRow}>
+          <div className={styles.moneyFieldCampo}>
+            <PontesField label="Valor">
+              <PontesMoneyField value={valorCampo} onChange={setValorCampo} />
+            </PontesField>
+          </div>
+          <span className={styles.moneyFieldLido}>
+            valor = <code>{valorCampo === undefined ? "undefined" : valorCampo}</code>
+          </span>
+        </div>
       </Group>
 
       <Group title="Choice cards">
@@ -549,6 +564,12 @@ function FormSection({ p }: { p: Palette }) {
 // DATA SECTION
 // =============================================================================
 
+// ⋮ das linhas de demo (lista e tela de lista): só mostram o menu, não fazem nada.
+const DEMO_ACOES: PontesRowAction[] = [
+  { key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => undefined },
+  { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => undefined },
+]
+
 function DataSection({ p }: { p: Palette }) {
   type Row = { date: string; desc: string; cat: string; account: string; member: string; v: number }
   // Lista grande pra mostrar o paginator real funcionando (47 linhas → 5 páginas a 10/pág).
@@ -653,6 +674,43 @@ function DataSection({ p }: { p: Palette }) {
         </div>
       </Group>
 
+      <Group title="Lista — PontesList + PontesListItem (ícone · título + status · meta · valor · ⋮)">
+        <div className={styles.listaCaixa}>
+          <PontesList ariaLabel="Contas fixas">
+            <PontesListItem
+              icone={<TrendingDown size={18} strokeWidth={2.4} />} tom="saida"
+              titulo="Netflix"
+              meta={["Nubank", "próxima cobrança em 12 dias"]}
+              valor="−R$ 45,90"
+              acoes={DEMO_ACOES}
+            />
+            <PontesListItem
+              icone={<TrendingDown size={18} strokeWidth={2.4} />} tom="saida"
+              titulo="Conta de luz"
+              meta={["Itaú", { texto: "próxima cobrança amanhã", alerta: true }]}
+              valor="−R$ 182,40"
+              acoes={DEMO_ACOES}
+            />
+            <PontesListItem
+              icone={<TrendingUp size={18} strokeWidth={2.4} />} tom="entrada"
+              titulo="Salário"
+              meta={["Itaú", "próximo recebimento em 8 dias"]}
+              valor="+R$ 3.200,00" valorTom="entrada"
+              acoes={DEMO_ACOES}
+            />
+            <PontesListItem
+              icone={<TrendingDown size={18} strokeWidth={2.4} />} tom="saida"
+              titulo="Academia"
+              status={{ label: "Pausada", tone: "warning" }}
+              meta={["Nubank"]}
+              valor="−R$ 119,00"
+              inativo
+              acoes={DEMO_ACOES}
+            />
+          </PontesList>
+        </div>
+      </Group>
+
       <Group title="Tabela com paginação (padrão DS)">
         <p className={styles.helper}>
           Toda tabela do produto usa o rodapé padrão: <strong>10 / 25 / 50 / 100</strong>
@@ -694,6 +752,7 @@ function DataSection({ p }: { p: Palette }) {
 function FeedbackSection() {
   const [modalOpen, setModalOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogAsyncOpen, setDialogAsyncOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [cmdkOpen, setCmdkOpen] = useState(false)
   const [cmdkQ, setCmdkQ] = useState("luz")
@@ -713,6 +772,7 @@ function FeedbackSection() {
         <div className={styles.row}>
           <PontesButton onClick={() => setModalOpen(true)}>Abrir modal</PontesButton>
           <PontesButton variant="danger" onClick={() => setDialogOpen(true)}>Diálogo de confirmação</PontesButton>
+          <PontesButton variant="danger-outline" onClick={() => setDialogAsyncOpen(true)}>Excluir (demora 1,5s)</PontesButton>
           <PontesButton variant="outline" onClick={() => setDrawerOpen(true)}>Abrir drawer</PontesButton>
           <PontesButton variant="ghost" onClick={() => setCmdkOpen(true)}>Abrir Cmd+K</PontesButton>
         </div>
@@ -741,6 +801,17 @@ function FeedbackSection() {
           confirmLabel="Sim, excluir"
           onConfirm={() => setDialogOpen(false)}
           onCancel={() => setDialogOpen(false)}
+        />
+
+        {/* onConfirm assíncrono: devolvendo a Promise, o diálogo fica em "carregando" (sem clique
+            duplo, sem fechar) até ela terminar; quem fecha continua sendo a tela. */}
+        <PontesDialog
+          open={dialogAsyncOpen}
+          title="Excluir conta fixa?"
+          description="Esta ação não pode ser desfeita."
+          confirmLabel="Sim, excluir"
+          onConfirm={() => new Promise<void>((resolve) => { setTimeout(resolve, 1500) }).then(() => setDialogAsyncOpen(false))}
+          onCancel={() => setDialogAsyncOpen(false)}
         />
 
         <PontesDrawer
@@ -881,6 +952,85 @@ function PadraoTelaDemo() {
   )
 }
 
+// Tela de lista inteira (PontesListPage). Na tela de verdade o `lista` vem do `useListaPaginada`
+// (busca/filtro/página no SERVIDOR); aqui um estado local fake faz o papel do servidor — sem API.
+type DemoContaFixa = { id: string; nome: string; banco: string; valor: number; receita?: boolean; encerrada?: boolean }
+
+const DEMO_CONTAS_FIXAS: DemoContaFixa[] = [
+  { id: "1", nome: "Aluguel", banco: "Itaú", valor: 2400 },
+  { id: "2", nome: "Salário", banco: "Itaú", valor: 3200, receita: true },
+  { id: "3", nome: "Condomínio", banco: "Itaú", valor: 680 },
+  { id: "4", nome: "Plano de saúde", banco: "Nubank", valor: 890 },
+  { id: "5", nome: "Internet", banco: "Nubank", valor: 119.9 },
+  { id: "6", nome: "Conta de luz", banco: "Inter", valor: 182.4 },
+  { id: "7", nome: "Conta de água", banco: "Inter", valor: 96.3 },
+  { id: "8", nome: "Seguro do carro", banco: "Nubank", valor: 210 },
+  { id: "9", nome: "Celular", banco: "Nubank", valor: 59.9 },
+  { id: "10", nome: "Netflix", banco: "Nubank", valor: 45.9 },
+  { id: "11", nome: "Spotify", banco: "Nubank", valor: 21.9 },
+  { id: "12", nome: "Academia", banco: "Inter", valor: 119 },
+  { id: "13", nome: "Curso de inglês", banco: "Itaú", valor: 320, encerrada: true },
+  { id: "14", nome: "Streaming de esportes", banco: "Nubank", valor: 59.9, encerrada: true },
+  { id: "15", nome: "Revista digital", banco: "Inter", valor: 14.9, encerrada: true },
+]
+
+const formatarDemoBRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
+
+function ListPageDemo() {
+  const [busca, setBusca] = useState("")
+  const [status, setStatus] = useState("ativas")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  const filtrados = DEMO_CONTAS_FIXAS.filter((c) =>
+    (status === "encerradas") === !!c.encerrada && c.nome.toLowerCase().includes(busca.trim().toLowerCase()))
+
+  const lista: PontesListaEstado<DemoContaFixa> = {
+    itens: filtrados.slice((page - 1) * pageSize, page * pageSize),
+    total: filtrados.length,
+    page,
+    pageSize,
+    carregando: false,
+    erro: false,
+    busca,
+    filtros: { status },
+    filtrosAtivos: busca.trim() !== "" || status !== "ativas",
+    setBusca: (v) => { setBusca(v); setPage(1) },
+    setFiltro: (campo, valor) => { if (campo === "status") { setStatus(valor); setPage(1) } },
+    setPage,
+    setPageSize: (s) => { setPageSize(s); setPage(1) },
+    limparFiltros: () => { setBusca(""); setStatus("ativas"); setPage(1) },
+    recarregar: () => undefined,
+  }
+
+  return (
+    <PontesListPage
+      embutida
+      lista={lista}
+      busca="Buscar conta fixa…"
+      filtros={[{
+        campo: "status",
+        ariaLabel: "Situação",
+        opcoes: [{ value: "ativas", label: "Ativas" }, { value: "encerradas", label: "Encerradas" }],
+      }]}
+      rotulo={["conta fixa", "contas fixas"]}
+      vazio={{ icone: <Repeat size={32} strokeWidth={2.5} />, titulo: "Nenhuma conta fixa" }}
+      chave={(c) => c.id}
+      item={(c) => ({
+        icone: c.receita ? <TrendingUp size={18} strokeWidth={2.4} /> : <TrendingDown size={18} strokeWidth={2.4} />,
+        tom: c.receita ? "entrada" : "saida",
+        titulo: c.nome,
+        status: c.encerrada ? { label: "Encerrada", tone: "neutral" } : undefined,
+        meta: [c.banco],
+        valor: `${c.receita ? "+" : "−"}${formatarDemoBRL(c.valor)}`,
+        valorTom: c.receita ? "entrada" : "neutro",
+        inativo: c.encerrada,
+        acoes: DEMO_ACOES,
+      })}
+    />
+  )
+}
+
 // =============================================================================
 // NAV SECTION
 // =============================================================================
@@ -895,6 +1045,10 @@ function NavSection() {
     <div>
       <Group title="Padrão de tela interna — PageHeader + Toolbar + RowActions">
         <PadraoTelaDemo />
+      </Group>
+
+      <Group title="Tela de lista — PontesListPage (busca + filtro + lista + paginação)">
+        <ListPageDemo />
       </Group>
 
       <Group title="Breadcrumb">

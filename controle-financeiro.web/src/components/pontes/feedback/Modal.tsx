@@ -3,7 +3,7 @@
  * `p`/`font` override escopado opcional (#122) aplicado na caixa.
  */
 
-import { useEffect, useRef, type ReactNode, type CSSProperties, type RefObject } from "react"
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties, type RefObject } from "react"
 import { X, Info, AlertTriangle } from "lucide-react"
 import { PontesButton } from "../buttons/Button"
 import { scopedThemeVars, type Palette } from "../theme"
@@ -95,7 +95,9 @@ export type PontesDialogProps = {
   tone?: PontesDialogTone
   confirmLabel?: string
   cancelLabel?: string
-  onConfirm: () => void
+  /** Se devolver Promise, o diálogo trava (confirmar em "carregando", sem clique duplo, sem fechar)
+   *  até ela terminar. Quem fecha o diálogo continua sendo a tela. */
+  onConfirm: () => unknown
   onCancel: () => void
 }
 
@@ -108,19 +110,29 @@ export function PontesDialog({
   // excluir nada.
   const acoesRef = useRef<HTMLDivElement>(null)
   useFocoDoDialogo(open, acoesRef, "button")
+  const [ocupado, setOcupado] = useState(false)
+  const cancelar = () => { if (!ocupado) onCancel() }
+  const confirmar = () => {
+    if (ocupado) return
+    const r = onConfirm()
+    if (r instanceof Promise) {
+      setOcupado(true)
+      void r.catch(() => {}).finally(() => setOcupado(false))
+    }
+  }
   useEffect(() => {
     if (!open) return
     // Captura + stopPropagation: confirmação aberta EM CIMA de um modal — o Esc fecha só ela, não os dois.
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onCancel() } }
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); if (!ocupado) onCancel() } }
     document.addEventListener("keydown", onKey, true)
     return () => document.removeEventListener("keydown", onKey, true)
-  }, [open, onCancel])
+  }, [open, onCancel, ocupado])
 
   if (!open) return null
   const Icon = tone === "info" ? Info : AlertTriangle
 
   return (
-    <div onClick={onCancel} className={styles.overlay}>
+    <div onClick={cancelar} className={styles.overlay}>
       <div
         role="alertdialog"
         aria-modal="true"
@@ -134,8 +146,8 @@ export function PontesDialog({
         <div className={styles.dialogTitle}>{title}</div>
         {description && <div className={styles.dialogDesc}>{description}</div>}
         <div ref={acoesRef} className={styles.dialogActions}>
-          <PontesButton variant="outline" fullWidth onClick={onCancel}>{cancelLabel}</PontesButton>
-          <PontesButton variant={tone === "danger" ? "danger" : "primary"} fullWidth onClick={onConfirm}>
+          <PontesButton variant="outline" fullWidth onClick={cancelar} disabled={ocupado}>{cancelLabel}</PontesButton>
+          <PontesButton variant={tone === "danger" ? "danger" : "primary"} fullWidth onClick={confirmar} loading={ocupado} disabled={ocupado}>
             {confirmLabel}
           </PontesButton>
         </div>

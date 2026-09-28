@@ -92,18 +92,7 @@ const typography = {
 ### Inputs & TextFields
 Padrão minimalista com refinamentos:
 
-```typescript
-const inputSx = {
-  backgroundColor: '#f9fafb',
-  borderRadius: '8px',
-  fontSize: '14px',
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#e5e7eb' },
-    '&:hover fieldset': { borderColor: '#d1d5db' },
-    '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: '2px' },
-  },
-};
-```
+O MUI foi removido no #166: campos são `PontesField` + `PontesInput` (e demais controles de `@/components/pontes`), estilizados por CSS Modules + `var(--pontes-*)`.
 
 **Melhorias:**
 - ✅ Suporte a ícones (prefix/suffix usando Lucide)
@@ -129,6 +118,18 @@ const cardSx = {
   },
 };
 ```
+
+### Listas, dinheiro em formulário e confirmação (biblioteca Pontes)
+
+Todos importados de `@/components/pontes`; demo ao vivo em `/design-system`.
+
+| Componente | O que é | Quando usar |
+|---|---|---|
+| `PontesListItem` / `PontesList` | Linha padrão das listas internas (ícone · título + status · meta · valor · ⋮) e o `<ul>` que as agrupa | Toda lista de itens de uma entidade (conta fixa, parcelamento…). Status só quando foge do normal; meta = uma linha de fatos em texto |
+| `PontesListPage` | Tela de lista inteira da receita `pontes-telas`: cabeçalho → resumo → busca + filtros → esqueleto / erro / vazio / lista + paginação | Qualquer tela (ou aba, com `embutida`) de lista; o estado vem do `useListaPaginada` (busca, filtro e paginação no servidor) |
+| `PontesMoneyField` | Campo de dinheiro de formulário, mesma altura do `PontesInput`, prefixo "R$", valor `number \| undefined` | Dinheiro dentro de formulário. O `PontesMoneyInput` é o campo grande de destaque (valor principal de um lançamento) |
+
+**`PontesDialog` aceita `onConfirm` assíncrono:** se devolver uma Promise, o botão de confirmar fica em "carregando" (sem clique duplo, sem fechar por Cancelar/Esc/fundo) até ela terminar. Quem fecha o diálogo continua sendo a tela.
 
 ---
 
@@ -195,55 +196,9 @@ const chartColors = {
 
 ---
 
-## 🎭 Tema Material-UI
+## 🎭 Tema
 
-Configurar tema global em `main.tsx` ou em um arquivo separado:
-
-```typescript
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-
-const theme = createTheme({
-  palette: {
-    primary: { main: '#111827' },
-    secondary: { main: '#f9fafb' },
-    success: { main: '#10b981' },
-    error: { main: '#ef4444' },
-    warning: { main: '#f59e0b' },
-    info: { main: '#3b82f6' },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", sans-serif',
-    h1: { fontSize: '28px', fontWeight: 700 },
-    h2: { fontSize: '24px', fontWeight: 600 },
-    body1: { fontSize: '14px', fontWeight: 400 },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: '8px',
-          textTransform: 'none',
-          fontWeight: 600,
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
-          },
-        },
-      },
-    },
-  },
-});
-
-// Usage
-<ThemeProvider theme={theme}>
-  <App />
-</ThemeProvider>
-```
+O MUI foi removido no #166 — não há mais tema Material-UI. O tema agora é o `PontesThemeProvider` (`src/components/pontes/ThemeProvider.tsx`, tokens em `theme.ts`), que injeta as `var(--pontes-*)` lidas pelos componentes e pelos `*.module.css`.
 
 ---
 
@@ -327,9 +282,7 @@ Quando criar um novo componente, seguir:
 npm install lucide-react recharts
 ```
 
-**Já instaladas:**
-- @mui/material
-- @mui/icons-material
+**Já instaladas** (`@mui/*` removido no #166):
 - react-router-dom
 - axios
 

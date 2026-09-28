@@ -30,7 +30,6 @@
 .heroStat { display: flex; flex-direction: column; align-items: center; }
 .heroStatValue { font-size: 26px; font-weight: 800; line-height: 1; }
 .heroStatLabel { font-size: 11px; opacity: 0.8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-.heroStatDivider { width: 1px; height: 40px; background: rgba(255,255,255,0.25); }
 
 /* ── Próximas cobranças ──────────────────────────────────────────────────── */
 
@@ -49,53 +48,6 @@
 .proxCardWhen { font-size: 11px; font-weight: 600; color: var(--pontes-text-muted); white-space: nowrap; flex-shrink: 0; }
 .proxCardWhen[data-urgent="true"] { color: var(--pontes-warning); }
 .proxCardValor { font-size: 18px; font-weight: 800; color: var(--pontes-text); letter-spacing: -0.01em; }
-
-/* ── List card ───────────────────────────────────────────────────────────── */
-
-/* Só linhas + paginação (sem cabeçalho/contador — o total está na paginação). */
-.list {
-  border: 1px solid var(--pontes-border);
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--pontes-surface);
-}
-
-/* ── Cards de assinatura ─────────────────────────────────────────────────── */
-
-.cards { display: flex; flex-direction: column; }
-
-.card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--pontes-border);
-  transition: background 0.15s;
-}
-.card:last-child { border-bottom: none; }
-.card:hover { background: var(--pontes-bg); }
-.card[data-inactive="true"] { opacity: 0.55; }
-
-.cardIcon {
-  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-.cardIcon[data-tipo="despesa"] { background: color-mix(in srgb, var(--pontes-danger) 12%, transparent); color: var(--pontes-danger); }
-.cardIcon[data-tipo="receita"] { background: color-mix(in srgb, var(--pontes-success) 12%, transparent); color: var(--pontes-success); }
-
-.cardInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.cardTop { display: flex; align-items: center; gap: 8px; }
-.cardNome { font-size: 15px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cardMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cardSub { font-size: 12px; color: var(--pontes-text-muted); }
-.cardProx { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
-.cardProx[data-urgent="true"] { color: var(--pontes-warning); }
-.cardMotivo { font-size: 12px; color: var(--pontes-text-muted); }
-
-.cardRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.cardValor { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
-.cardValor[data-tipo="despesa"] { color: var(--pontes-text); }
-.cardValor[data-tipo="receita"] { color: var(--pontes-success); }
 
 /* ── Form (inside modals) ────────────────────────────────────────────────── */
 
@@ -121,10 +73,9 @@
 
 /* ── Info text in modals ─────────────────────────────────────────────────── */
 
-.cancelarInfo,
-.editarInfo {
+.cancelarInfo {
   font-size: 13px;
-  color: var(--pontes-text-secondary, #6b7280);
+  color: var(--pontes-text-muted);
   margin: 0;
   line-height: 1.5;
 }
