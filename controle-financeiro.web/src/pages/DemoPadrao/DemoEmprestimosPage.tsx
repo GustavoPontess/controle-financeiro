@@ -4,6 +4,7 @@
  * A tela monta só o resumo, as colunas e as ações; todo o resto vem do TabelaPadrao.
  */
 
+import { useEffect, useRef } from "react"
 import { HandCoins } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { PontesStatCard, PontesTablePagination } from "@/components/pontes"
@@ -18,6 +19,9 @@ import styles from "./DemoPadrao.module.css"
 export default function DemoEmprestimosPage() {
   const l = useEmprestimosLogic()
   const navigate = useNavigate()
+  // Padrão das tabelas: começa em 10/página (o hook nasce em 100). Uma vez, na montagem.
+  const iniciou = useRef(false)
+  useEffect(() => { if (!iniciou.current) { iniciou.current = true; l.setPageSize(10) } })
   const primeiraCarga = l.loading && l.emprestimos.length === 0
 
   const colunas: ColunaPadrao<Emprestimo>[] = [

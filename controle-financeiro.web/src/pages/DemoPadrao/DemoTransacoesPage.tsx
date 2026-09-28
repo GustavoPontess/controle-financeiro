@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import { TrendingUp, TrendingDown, Pencil, Trash2 } from "lucide-react"
 import {
-  PontesStatCard, PontesTablePagination, PontesDialog, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesStatCard, PontesTablePagination, PontesDialog,
 } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
@@ -36,7 +36,7 @@ export default function DemoTransacoesPage() {
   const [stats, setStats] = useState<{ entradas: number; saidas: number; saldo: number } | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
+  const [pageSize, setPageSize] = useState<number>(10) // padrão das tabelas: começa em 10/página
   const [busca, setBusca] = useState("")
   const buscaAplicada = useDebouncedValue(busca.trim())
   const [tipo, setTipo] = useState<"tudo" | "1" | "2">("tudo")
