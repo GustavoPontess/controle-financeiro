@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-28
 status: ATIVO
 ---
 
@@ -21,12 +21,14 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
 
-1. **Front sem retrabalho** (**PRIORIDADE do Gustavo**, pedida em 2026-09-28: "perco tempo acertando tela que nem precisa" e não consigo ir pra Família). Absorve o antigo "padrão de telas fase 2" (fase 1 = #279).
-   - **Plano completo, escrito pra qualquer modelo seguir:** [`docs/features/padrao-telas/plano.md`](docs/features/padrao-telas/plano.md). Pesquisa + revisão adversarial feitas em 2026-09-28. **Aguardando o OK do Gustavo pra começar o PR 1.**
-   - **Vale pra tela inteira, não só tabela** (Gustavo, 2026-09-28): 4 blocos fixos (resumo, coleção, detalhe, formulário), anatomia fixa de card/linha e uma **ficha por entidade** dizendo o que mostrar na coleção, o que fica só no detalhe e o que nunca aparece — aprovada pelo Gustavo no PR 1.
-   - **Em uma linha:** skill de projeto `pontes-telas` no lugar da `frontend-design` genérica (que mandava variar cada tela) + trava de lint + TanStack Query num hook de lista único + molde `PontesListPage` (variantes `list`/`table`) + migrar **uma tela por PR**, mantendo o visual.
-   - **PR 0 (P1, independente, antes do molde):** Idempotency-Key nova a cada envio em Parcelamentos (tentar de novo pode duplicar); Contas Fixas grava "1.500" como R$ 1,50; API da Família devolve a renda de todos os membros pra todos. Detalhe e arquivo:linha no plano.
-   - **GETs que gravam** (item P2 em "Auditoria de arquitetura") vira **pré-requisito** do PR 3 (o TanStack Query recarrega sozinho).
+1. **Bugs de dinheiro achados em 2026-09-28** (P1, conferidos no código):
+   - Parcelamentos gera `Idempotency-Key` nova a cada envio (`Parcelamentos/index.tsx` criar, `[id].tsx` pagar antecipado e cancelar): tentar de novo depois de queda de rede pode duplicar. Gerar a chave ao abrir o modal.
+   - Contas Fixas grava "1.500" como R$ 1,50 (`RecorrentesPage.tsx` `parseMoneyString`, campo de texto livre).
+   - API da Família devolve a renda (`RendaMensal`) de **todos** os membros pra todos (`FamiliaService.cs`), e a tela mostra — contra "o sistema sabe o peso, não o valor".
+   - 🟠 **P1 — Conta fixa cobra no dia errado e mostra "próxima cobrança" errada** (achado 2026-09-28, conferido no Postgres local). (a) O `Dia` da conta fixa é ignorado: Aluguel (dia 5) e Netflix (dia 15) criadas em 28/09 geraram transações em 28/09, 28/10, 28/11 e 28/12 — a materialização soma meses à `DataInicio` (`RecorrenteService.cs`, criação com "janela de 3 meses" e `GerarPendentesAsync`). (b) A tela mostra como "próxima cobrança" o `DataProximaGeracao`, que é o **fim da janela de previsão** (28/12), não a próxima cobrança (28/10) — erra a linha, a faixa "Próximas cobranças" e o "próx. 30 dias". Fazer: respeitar `Dia` (com regra de mês curto) e o DTO mandar a data da próxima ocorrência de verdade.
+   - 🟠 **P1 — Conta fixa pausada ou excluída continua debitando** (achado pela skill `revisar-usabilidade` em 2026-09-28, conferido no código). Pausar só inverte `Ativo` (`RecorrenteService.cs` `ToggleAsync`) e o `ExecutarRecorrentesJob.cs:20-22` efetiva **toda** previsão com `RecorrenteOrigemId`, sem olhar se a conta fixa está pausada. Excluir faz `_context.Recorrentes.Remove` (hard delete) e as previsões até o fim da janela ficam e são efetivadas — o diálogo ainda diz "as transações já geradas serão mantidas". Fazer: pausar desativa as previsões futuras (retomar recria) ou o job ignora conta pausada/excluída; excluir vira exclusão lógica + cancelar previsões futuras (como o Cancelar).
+   - 🟡 **P2 — "Custo mensal" das contas fixas só soma as mensais** (mesma revisão, conferido): `RecorrenteService.cs` stats filtra `Frequencia == Mensal`; semanal e anual somem do total e o "por ano" (mensal × 12) também. Fazer: normalizar no back (semanal × 52/12, anual / 12) e mandar o anual pronto.
+   - **Front:** o experimento do molde genérico (branch `exp/padrao-telas`) foi **abandonado e apagado** em 2026-09-28 — limpou demais e perdeu o visual dos cards. Ficou só: nome + descrição no topo de cada tela. Se voltar ao assunto, é **padronizar detalhes sem mexer no visual** (ações da linha sempre no ⋮; filtros iguais), tela por tela, com o Gustavo vendo cada uma.
 2. **Dashboard: "Saiu" ignora o cartão** (P1, dinheiro — **DECISÃO DO GUSTAVO**) — "Saiu" tira a compra no cartão E o pagamento da fatura, então gasto no cartão nunca aparece em "Seu mês". Proposta: "Entrou/Saiu/Sobrou" = dinheiro da conta (pagamento de fatura entra em "Saiu"); "Gastos por categoria" = compras do mês (cartão e parcelas incluídos, pagamento de fatura nunca). É a mesma regra da decisão "parcelamento no dashboard" abaixo.
 3. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
 4. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.

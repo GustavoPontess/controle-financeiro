@@ -1,7 +1,7 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-09-28
-status: PROPOSTA (aguardando OK do Gustavo pra começar o PR 1)
+status: ABANDONADO em 2026-09-28 (o molde genérico deixou as telas limpas demais; branch exp/padrao-telas apagada)
 ---
 
 # Front sem retrabalho — plano
