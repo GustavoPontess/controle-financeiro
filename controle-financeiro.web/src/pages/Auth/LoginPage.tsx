@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft, Trash2, UserPlus, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, Trash2, UserPlus, ChevronDown, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox, PontesAvatar } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import { api } from '@/api/axiosConfig'
@@ -72,16 +72,25 @@ export default function LoginPage() {
     rosterService.listar().then(setRoster).catch(() => setRoster([]))
   }, [])
 
-  // Painel DEV: lista TODAS as contas do banco (endpoint só-de-dev). Rótulo bonito quando é uma
-  // conta conhecida (base/.env); senão, o nome do usuário. Cai no fallback estático se falhar.
-  const [devContas, setDevContas] = useState(DEV_ACCOUNTS)
+  // Painel DEV: lista TODAS as contas REAIS do banco (endpoint só-de-dev). Rótulo bonito quando é
+  // conta conhecida (base/.env); senão, o nome do usuário. `senhaPadrao` = aceita a senha de dev
+  // (clica-e-entra); nas outras o clique só preenche o e-mail (a senha é própria). Fallback estático
+  // (todas tratadas como senha de dev) só se o endpoint falhar.
+  type DevConta = { email: string; label: string; senhaPadrao?: boolean }
+  const [devContas, setDevContas] = useState<DevConta[]>(DEV_ACCOUNTS)
+  const [devAberto, setDevAberto] = useState(() => {
+    try { return localStorage.getItem('devPanelRecolhido') !== '1' } catch { return true }
+  })
+  const alternarDev = (aberto: boolean) => {
+    setDevAberto(aberto)
+    try { localStorage.setItem('devPanelRecolhido', aberto ? '0' : '1') } catch { /* private mode */ }
+  }
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    api.get<{ email: string; nome: string }[]>('/auth/dev/contas')
+    api.get<{ email: string; nome: string; senhaPadrao: boolean }[]>('/auth/dev/contas')
       .then((r) => {
         const rotulo = (email: string) => DEV_ACCOUNTS.find((c) => c.email.toLowerCase() === email.toLowerCase())?.label
-        const doBanco = r.data.map((c) => ({ email: c.email, label: rotulo(c.email) ?? c.nome }))
-        setDevContas(dedupePorEmail([...doBanco, ...DEV_ACCOUNTS]))
+        setDevContas(r.data.map((c) => ({ email: c.email, label: rotulo(c.email) ?? c.nome, senhaPadrao: c.senhaPadrao })))
       })
       .catch(() => { /* mantém o fallback estático */ })
   }, [])
@@ -445,10 +454,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção) */}
-      {import.meta.env.DEV && (
+      {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção). Recolhe pro lado. */}
+      {import.meta.env.DEV && (devAberto ? (
         <div className={styles.devHintPanel}>
-          <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
+          <div className={styles.devHintHead}>
+            <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
+            <button type="button" className={styles.devHintToggle} onClick={() => alternarDev(false)}
+              aria-label="Recolher contas de teste" title="Recolher">
+              <PanelRightClose size={16} strokeWidth={2.2} />
+            </button>
+          </div>
           {devContas.map((conta) => (
             <button
               key={conta.email}
@@ -456,18 +471,27 @@ export default function LoginPage() {
               className={styles.devHintRow}
               onClick={() => {
                 setEmail(conta.email)
-                setPassword(DEV_SENHA)
+                // Senha própria (conta criada à mão): preenche só o e-mail, você digita a senha.
+                setPassword(conta.senhaPadrao === false ? '' : DEV_SENHA)
                 setErrors({})
                 setError('')
               }}
-              title={`Preencher login de ${conta.label}`}
+              title={conta.senhaPadrao === false
+                ? `Preencher e-mail de ${conta.label} (senha própria — digite)`
+                : `Entrar como ${conta.label}`}
             >
-              <span className={styles.devHintLabel}>{conta.label}</span>
+              <span className={styles.devHintLabel}>{conta.label}{conta.senhaPadrao === false ? ' · senha própria' : ''}</span>
               <span className={styles.devHintCreds}>{conta.email}</span>
             </button>
           ))}
         </div>
-      )}
+      ) : (
+        <button type="button" className={styles.devHintReabrir} onClick={() => alternarDev(true)}
+          aria-label="Mostrar contas de teste (DEV)" title="Contas de teste (DEV)">
+          <PanelRightOpen size={16} strokeWidth={2.2} />
+          <span>DEV</span>
+        </button>
+      ))}
     </div>
   )
 }

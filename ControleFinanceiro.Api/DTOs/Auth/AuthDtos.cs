@@ -171,4 +171,4 @@ public class ForgotPasswordResponseDto
 }
 
 /// <summary>Conta listada no painel DEV do login (só em Development). E-mail + nome, sem segredo.</summary>
-public record DevContaDto(string Email, string Nome);
+public record DevContaDto(string Email, string Nome, bool SenhaPadrao);
