@@ -21,13 +21,14 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
 
-1. **Cartão (dogfooding do Gustavo, 2026-09-27) — EM ANDAMENTO:** (a) barra de limite parada em "R$ 5.000 de R$ 5.000" → limite usado = o que falta pagar em todas as faturas, regra única (item P2 "Duas regras de limite"); (b) compras parceladas aparecerem na lista da fatura (item P2 "Detalhe da fatura não lista as parcelas"). Já feito no mesmo dia: sem check verde por compra, valor acima do que falta trava no campo, data "hoje" local.
-2. **Parcelamento: primeira parcela cai uma fatura depois** (P1, dinheiro) — item em "Auditoria de arquitetura".
+1. **Padrão de telas — fase 2** (aprovado pelo Gustavo em 2026-09-28; fase 1 = #279). Aplicar o mesmo padrão (sem h1/subtítulo, `PontesPageHeader`, `PontesToolbar` com busca + **Ativos | Encerrados**, menu ⋮ `PontesRowActions`, vazio com botão, esqueleto ao carregar) em: **Parcelamentos** (cancelados saem da lista padrão → "Encerrados"), **Empréstimos** ("Arquivados" vira "Encerrados" — confirmar com o Gustavo), **Transações**, depois Bancos, Categorias, Metas, Limites, Famílias e os detalhes (`PontesDetailHeader`, voltar igual). Mapa completo da auditoria no histórico da sessão de 2026-09-28 (STATE).
+2. **Dashboard: "Saiu" ignora o cartão** (P1, dinheiro — **DECISÃO DO GUSTAVO**) — "Saiu" tira a compra no cartão E o pagamento da fatura, então gasto no cartão nunca aparece em "Seu mês". Proposta: "Entrou/Saiu/Sobrou" = dinheiro da conta (pagamento de fatura entra em "Saiu"); "Gastos por categoria" = compras do mês (cartão e parcelas incluídos, pagamento de fatura nunca). É a mesma regra da decisão "parcelamento no dashboard" abaixo.
 3. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
-4. **Fatura que trava:** compra nova numa fatura já paga não reabre (P1, dinheiro) — item em "Auditoria de arquitetura".
-5. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.
-6. **Travas que faltam no miolo:** `xmin` em Empréstimo/Meta + transação no `ImportacaoService` (P1) e hard delete de conta (P1) — itens em "Auditoria de arquitetura".
-7. **Antes de produção** (só quando for publicar) — lista abaixo.
+4. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.
+5. **Travas que faltam no miolo:** `xmin` em Empréstimo/Meta + transação no `ImportacaoService` (P1) e hard delete de conta (P1) — itens em "Auditoria de arquitetura".
+6. **Antes de produção** (só quando for publicar) — lista abaixo.
+
+> ✅ Fechados em 2026-09-28: barra de limite (regra única, #277), parcelas na lista da fatura (#276), 1ª parcela na fatura do mês escolhido + `PontesMonthInput` (#275), fatura que trava com compra nova (#277), Parcelamentos dentro de Cartões (#273), sem subtítulos (#274), check verde por compra/trava de valor/data local/caminho do topo/cancelado visível (#272).
 
 ### ❓ Decisões pendentes do Gustavo
 Perguntar **uma de cada vez**, quando o item da fila chegar nela.
@@ -36,7 +37,8 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 - **Cartão com dia 29/30/31:** (a) aceitar e cair no último dia do mês curto, ou (b) travar em 28 com mensagem? (item P2 na Auditoria de forms)
 - **Roster em navegador compartilhado:** senha antes de revelar / não revelar / mascarar nome / aceitar com aviso? (item P2 em "Backend / débito técnico")
 - **Qual é o banco** pra importação do extrato (item 5 da fila).
-- **Parcelamentos dentro de Cartões?** Pesquisa (`docs/features/parcelamento/pix-no-credito.md`): Pix no crédito tem 2 modelos — no **cartão** (Nubank, Itaú; parcelas na fatura, juros + IOF) e **linha de crédito à parte** (Mercado Pago; parcelas na conta). Proposta: a tela vai pra dentro de Cartões (cobre o modelo do cartão, o único que o Pontes modela hoje) e o Pix no crédito fora do cartão vira **empréstimo bancário**. Na UI, chamar de "Pix no crédito" (o BCB vetou o nome "Pix Parcelado" pros bancos).
+- ✅ **Parcelamentos dentro de Cartões** — decidido e feito (#273). Pesquisa em `docs/features/parcelamento/pix-no-credito.md`: Pix no crédito fora do cartão (Mercado Pago etc.) entra como **empréstimo bancário** quando for modelado. Pendente só: trocar o rótulo "PIX Crédito" por "Pix no crédito" na UI.
+- **Empréstimos: "Arquivados" vira o filtro "Ativos | Encerrados"** do padrão de telas? (proposto em 2026-09-28, sem resposta)
 - **Dois jeitos de parcelar:** "Nova transação" parcelada (uma transação por parcela, aparece nos gastos) × tela de Parcelamentos (parcela separada, fica fora dos gastos). Unificar num só — junto com a decisão "parcelamento no dashboard/relatórios" acima.
 
 ### 🧪 Verificação manual
