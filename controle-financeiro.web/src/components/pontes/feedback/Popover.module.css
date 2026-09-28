@@ -19,4 +19,7 @@
 /* Ícone do item alinhado e com a cor do texto (herda danger no item destrutivo). */
 .item > span:first-child { display: inline-flex; flex-shrink: 0; }
 .item:hover { background: var(--pontes-bg); }
+/* Navegação por teclado (↑/↓): mesmo realce do hover + anel, só quando o foco veio do teclado. */
+.item:focus { outline: none; }
+.item:focus-visible { background: var(--pontes-bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pontes-primary) 35%, transparent); }
 .item[data-danger="true"] { color: var(--pontes-danger); }

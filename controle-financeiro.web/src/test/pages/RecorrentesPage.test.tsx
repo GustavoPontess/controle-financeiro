@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import RecorrentesPage from "../../pages/Recorrentes/RecorrentesPage"
 import type { Recorrente } from "../../types/Recorrente"
@@ -12,10 +12,9 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 // ── Service mocks ────────────────────────────────────────────────────────────
+const statsPadrao = { ativas: 1, custoMensalDespesas: 45.9, proximas30Dias: 1, qtdTotal: 1 }
 const listRecorrentesPage = vi.fn()
-const getRecorrenteStats = vi.fn().mockResolvedValue({
-  ativas: 1, custoMensalDespesas: 45.9, proximas30Dias: 1, qtdTotal: 1,
-})
+const getRecorrenteStats = vi.fn()
 const createRecorrente = vi.fn()
 const toggleRecorrente = vi.fn()
 const deleteRecorrente = vi.fn()
@@ -65,9 +64,16 @@ function makeRecorrente(overrides: Partial<Recorrente> = {}): Recorrente {
     dataInicio: "2026-01-01T00:00:00Z",
     ativo: true,
     dataProximaGeracao: "2026-06-10T00:00:00Z",
+    situacao: "ativa",
     ...overrides,
   }
 }
+
+const pausada = () => makeRecorrente({ id: "rec-p", descricao: "Academia", ativo: false, situacao: "pausada" })
+const cancelada = () => makeRecorrente({
+  id: "rec-c", descricao: "Spotify", ativo: false, situacao: "cancelada",
+  canceladoEm: "2026-09-01T00:00:00Z", motivoCancelamento: "Não uso mais",
+})
 
 function renderPage() {
   return render(
@@ -77,80 +83,202 @@ function renderPage() {
   )
 }
 
+// Abre o ⋮ da linha i e devolve o menu.
+async function abrirMenu(i = 0) {
+  fireEvent.click((await screen.findAllByRole("button", { name: "Ações" }))[i])
+  return screen.findByRole("menu")
+}
+
+
 beforeEach(() => {
   vi.clearAllMocks()
+  getRecorrenteStats.mockResolvedValue(statsPadrao)
+  listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
 })
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("RecorrentesPage", () => {
-  // ── Empty state ──
+  // ── Padrão de tela ──
 
-  it("mostra empty state quando não há recorrentes", async () => {
+  it("sem <h1> próprio (título mora na Navbar) e botão 'Nova conta fixa' no topo", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Nova conta fixa" })).toBeInTheDocument()
+  })
+
+  it("carrega a lista filtrada NO SERVIDOR com a aba padrão 'Ativas' — numa chamada só", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+    // O GET da lista gera as ocorrências vencidas no servidor: 2 chamadas paralelas podiam duplicar.
+    expect(listRecorrentesPage).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("'Próximas cobranças' não muda com a busca (usa a última lista sem filtro)", async () => {
+    const futura = new Date(Date.now() + 3 * 86400000).toISOString()
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ dataProximaGeracao: futura })]))
+    renderPage()
+    expect(await screen.findByText("Próximas cobranças")).toBeInTheDocument()
+
+    listRecorrentesPage.mockResolvedValue(paged([]))
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar conta fixa" }), { target: { value: "xyz" } })
+    expect(await screen.findByText("Nada encontrado")).toBeInTheDocument()
+    expect(screen.getByText("Próximas cobranças")).toBeInTheDocument()
+  })
+
+  it("trocar pra 'Encerradas' refaz a consulta com status=encerradas", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("tab", { name: "Encerradas" }))
+    await waitFor(() => {
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "encerradas", busca: "" })
+    })
+  })
+
+  it("busca vai pro servidor (com debounce), não filtra só a página carregada", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar conta fixa" }), { target: { value: "net" } })
+    await waitFor(() => {
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "net" })
+    })
+  })
+
+  it("mostra esqueleto (não o vazio) enquanto carrega", async () => {
+    listRecorrentesPage.mockReturnValue(new Promise(() => { /* nunca resolve */ }))
+    renderPage()
+    await waitFor(() => expect(listRecorrentesPage).toHaveBeenCalled())
+    expect(screen.queryByText("Nenhuma conta fixa")).not.toBeInTheDocument()
+    expect(screen.queryByText("Nada encontrado")).not.toBeInTheDocument()
+  })
+
+  // ── Vazios ──
+
+  it("sem nenhuma conta fixa: empty state com o botão de criar dentro", async () => {
+    getRecorrenteStats.mockResolvedValue({ ...statsPadrao, ativas: 0, qtdTotal: 0 })
     listRecorrentesPage.mockResolvedValue(paged([]))
     renderPage()
     expect(await screen.findByText("Nenhuma conta fixa")).toBeInTheDocument()
+    // Topo + dentro do vazio.
+    const botoes = screen.getAllByRole("button", { name: "Nova conta fixa" })
+    expect(botoes).toHaveLength(2)
+    fireEvent.click(botoes[1])
+    expect(await screen.findByPlaceholderText("Ex: Aluguel, Escola, Netflix...")).toBeInTheDocument()
+  })
+
+  it("filtro sem resultado: 'Nada encontrado' + 'Limpar filtros' volta pra Ativas sem busca", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    listRecorrentesPage.mockResolvedValue(paged([]))
+    fireEvent.click(screen.getByRole("tab", { name: "Encerradas" }))
+    expect(await screen.findByText("Nada encontrado")).toBeInTheDocument()
+
+    listRecorrentesPage.mockClear()
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
+    await waitFor(() => {
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+    })
+    expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("tem contas fixas mas nenhuma ativa: vazio próprio com o botão de criar", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([]))
+    renderPage()
+    expect(await screen.findByText("Nenhuma conta fixa ativa")).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: "Nova conta fixa" })).toHaveLength(2)
   })
 
   // ── Listagem ──
 
-  it("exibe recorrente carregado", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
+  it("exibe recorrente carregado + hero", async () => {
     renderPage()
-    await screen.findByText("Suas contas fixas")
-    // "Netflix" pode aparecer em "Próximas cobranças" E na lista — basta existir.
     expect((await screen.findAllByText("Netflix")).length).toBeGreaterThan(0)
     expect(screen.getAllByText("Mensal").length).toBeGreaterThan(0)
     expect(screen.getByText("Nubank")).toBeInTheDocument()
-  })
-
-  it("exibe hero de custo (custo mensal + ativas)", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
-    renderPage()
-    await screen.findByText("Suas contas fixas")
     expect(screen.getByText("Custo mensal em contas fixas")).toBeInTheDocument()
     expect(screen.getByText("ativas")).toBeInTheDocument()
   })
 
-  it("inativa aparece com data-inactive", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false })]))
+  it("ações da ativa ficam TODAS no ⋮ (nada solto), Excluir por último", async () => {
     renderPage()
-    await screen.findByText("Suas contas fixas")
-    const row = document.querySelector("[data-inactive='true']")
-    expect(row).toBeInTheDocument()
+    const menu = await abrirMenu()
+    const itens = within(menu).getAllByRole("menuitem").map((i) => i.textContent)
+    expect(itens).toEqual(["Editar próxima ocorrência", "Pausar", "Cancelar conta fixa", "Excluir"])
+    // Os 4 ícones soltos antigos sumiram.
+    expect(screen.queryByTitle("Excluir")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Cancelar conta fixa")).not.toBeInTheDocument()
+  })
+
+  // ── Pausada × Cancelada (bug: cancelada aparecia como "Pausada" e oferecia "Ativar") ──
+
+  it("pausada: badge 'Pausada' e ação 'Retomar' (sem 'Pausar')", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([pausada()]))
+    toggleRecorrente.mockResolvedValue(undefined)
+    renderPage()
+    expect(await screen.findByText("Pausada")).toBeInTheDocument()
+    const menu = await abrirMenu()
+    expect(within(menu).queryByRole("menuitem", { name: "Pausar" })).not.toBeInTheDocument()
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Retomar" }))
+    await waitFor(() => expect(toggleRecorrente).toHaveBeenCalledWith("rec-p"))
+  })
+
+  it("cancelada: badge 'Cancelada' (não 'Pausada'), motivo, e SEM retomar/ativar — só Excluir", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([cancelada()]))
+    renderPage()
+    expect(await screen.findByText("Cancelada")).toBeInTheDocument()
+    expect(screen.queryByText("Pausada")).not.toBeInTheDocument()
+    expect(screen.getByText("Motivo: Não uso mais")).toBeInTheDocument()
+
+    const menu = await abrirMenu()
+    const itens = within(menu).getAllByRole("menuitem").map((i) => i.textContent)
+    expect(itens).toEqual(["Excluir"])
+    expect(screen.queryByText(/Ativar|Retomar/)).not.toBeInTheDocument()
+  })
+
+  it("encerrada (data fim passou): badge 'Encerrada' e só Excluir", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ situacao: "encerrada", dataFim: "2026-08-01T00:00:00Z" })]))
+    renderPage()
+    expect(await screen.findByText("Encerrada")).toBeInTheDocument()
+    const menu = await abrirMenu()
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Excluir"])
+  })
+
+  it("não-ativa aparece com data-inactive", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([pausada()]))
+    renderPage()
+    await screen.findByText("Pausada")
+    expect(document.querySelector("[data-inactive='true']")).toBeInTheDocument()
   })
 
   // ── Criar modal ──
 
-  it("abre modal criar ao clicar em Nova Conta Fixa", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([]))
+  it("abre modal criar pelo botão do topo", async () => {
     renderPage()
-    await screen.findByText("Nenhuma conta fixa")
-    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
     expect(await screen.findByPlaceholderText("Ex: Aluguel, Escola, Netflix...")).toBeInTheDocument()
   })
 
   it("bloqueia submit com campos vazios e mostra erros", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([]))
     createRecorrente.mockResolvedValue(makeRecorrente())
     renderPage()
-    await screen.findByText("Nenhuma conta fixa")
-    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
-    await screen.findByText("Criar Conta Fixa")
-    fireEvent.click(screen.getByText("Criar Conta Fixa"))
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    fireEvent.click(await screen.findByText("Criar conta fixa"))
     expect(await screen.findByText("Descrição obrigatória.")).toBeInTheDocument()
     expect(createRecorrente).not.toHaveBeenCalled()
   })
 
-  it("chama createRecorrente com dados válidos", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([]))
+  it("sem conta selecionada, bloqueia e pede a conta", async () => {
     createRecorrente.mockResolvedValue(makeRecorrente())
-    listRecorrentesPage.mockResolvedValueOnce(paged([])).mockResolvedValueOnce(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Nenhuma conta fixa")
+    await screen.findAllByRole("button", { name: "Ações" })
 
-    fireEvent.click(screen.getAllByText("Nova Conta Fixa")[0])
-    await screen.findByText("Criar Conta Fixa")
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    await screen.findByText("Criar conta fixa")
 
     fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), {
       target: { value: "Netflix" },
@@ -158,53 +286,34 @@ describe("RecorrentesPage", () => {
     fireEvent.change(screen.getByPlaceholderText("0,00"), {
       target: { value: "45.90" },
     })
+    // Data início vem preenchida (hoje); conta não.
+    fireEvent.click(screen.getByText("Criar conta fixa"))
 
-    // Select conta (Nubank) — wait for the select to be ready
-    await waitFor(() => {
-      expect(screen.getByText("Criar Conta Fixa")).toBeInTheDocument()
-    })
-    // Data inicio is pre-filled via today()
-    fireEvent.click(screen.getByText("Criar Conta Fixa"))
-
-    // If conta not selected, error shows
     expect(await screen.findByText("Selecione uma conta.")).toBeInTheDocument()
+    expect(createRecorrente).not.toHaveBeenCalled()
   })
 
-  // ── Cancelar modal ──
+  // ── Cancelar modal (via ⋮) ──
 
   it("abre modal cancelar com campo motivo", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    // The XCircle (cancelar) button — aguarda a row renderizar (header é estático)
-    const cancelarBtn = (await screen.findAllByTitle("Cancelar conta fixa"))[0]
-    fireEvent.click(cancelarBtn)
-
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
     expect(await screen.findByText("Motivo do cancelamento")).toBeInTheDocument()
   })
 
   it("bloqueia cancelamento sem motivo", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Cancelar conta fixa"))[0])
-    await screen.findByText("Confirmar cancelamento")
-    fireEvent.click(screen.getByText("Confirmar cancelamento"))
-
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
+    fireEvent.click(await screen.findByText("Confirmar cancelamento"))
     expect(await screen.findByText("Motivo é obrigatório.")).toBeInTheDocument()
     expect(cancelarRecorrente).not.toHaveBeenCalled()
   })
 
   it("chama cancelarRecorrente com motivo preenchido", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     cancelarRecorrente.mockResolvedValue({})
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Cancelar conta fixa"))[0])
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
     await screen.findByText("Confirmar cancelamento")
 
     fireEvent.change(screen.getByPlaceholderText("Ex: Não uso mais, preço alto..."), {
@@ -217,28 +326,22 @@ describe("RecorrentesPage", () => {
     })
   })
 
-  // ── Editar próxima modal ──
+  // ── Editar próxima (via ⋮) ──
 
   it("abre modal editar próxima", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     expect(await screen.findByText("Novo valor (opcional)")).toBeInTheDocument()
     expect(screen.getByText("Nova descrição (opcional)")).toBeInTheDocument()
   })
 
   it("chama editarProximaOcorrencia ao salvar", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     await screen.findByText("Novo valor (opcional)")
 
-    // Just submit with empty (both are optional)
+    // Os dois campos são opcionais.
     fireEvent.click(screen.getByText("Salvar"))
 
     await waitFor(() => {
@@ -247,61 +350,50 @@ describe("RecorrentesPage", () => {
   })
 
   it("valida valor negativo na edição de próxima", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Editar próxima ocorrência"))[0])
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     await screen.findByText("Novo valor (opcional)")
 
-    // Find the valor input (first 0,00 placeholder)
-    const valorInput = screen.getByPlaceholderText("R$ 45,90")
-    fireEvent.change(valorInput, { target: { value: "-5" } })
+    fireEvent.change(screen.getByPlaceholderText("R$ 45,90"), { target: { value: "-5" } })
     fireEvent.click(screen.getByText("Salvar"))
 
     expect(await screen.findByText("Valor deve ser positivo.")).toBeInTheDocument()
     expect(editarProximaOcorrencia).not.toHaveBeenCalled()
   })
 
-  // ── Toggle ──
+  // ── Pausar (via ⋮) ──
 
-  it("chama toggleRecorrente ao clicar pausar", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
+  it("chama toggleRecorrente ao clicar Pausar", async () => {
     toggleRecorrente.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Pausar"))[0])
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
     await waitFor(() => {
       expect(toggleRecorrente).toHaveBeenCalledWith("rec-001")
     })
   })
 
-  // ── Delete ──
+  // ── Excluir (via ⋮ + confirmação) ──
 
-  it("abre confirm dialog ao clicar excluir", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
+  it("Excluir pede confirmação antes de apagar", async () => {
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
-    expect(await screen.findByText("Remover conta fixa")).toBeInTheDocument()
-    expect(screen.getByText(/Remover "Netflix"/)).toBeInTheDocument()
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Excluir" }))
+    expect(await screen.findByText("Excluir conta fixa?")).toBeInTheDocument()
+    expect(screen.getByText(/Excluir "Netflix"/)).toBeInTheDocument()
+    expect(deleteRecorrente).not.toHaveBeenCalled()
   })
 
-  it("chama deleteRecorrente ao confirmar exclusão", async () => {
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente()]))
+  it("chama deleteRecorrente ao confirmar exclusão e recarrega a lista", async () => {
     deleteRecorrente.mockResolvedValue(undefined)
     renderPage()
-    await screen.findByText("Suas contas fixas")
-
-    fireEvent.click((await screen.findAllByTitle("Excluir"))[0])
-    await screen.findByText("Remover conta fixa")
-    fireEvent.click(screen.getByText("Confirmar"))
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Excluir" }))
+    await screen.findByText("Excluir conta fixa?")
+    const antes = listRecorrentesPage.mock.calls.length
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }))
 
     await waitFor(() => {
       expect(deleteRecorrente).toHaveBeenCalledWith("rec-001")
     })
+    await waitFor(() => expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes))
   })
 })

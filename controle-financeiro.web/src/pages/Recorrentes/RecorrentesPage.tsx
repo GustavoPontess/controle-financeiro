@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
-  Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle,
+  Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle, SearchX,
 } from "lucide-react"
 import {
-  PontesButton, PontesIconButton, PontesBadge,
+  PontesButton, PontesBadge,
   PontesModal, PontesDialog,
   PontesField, PontesInput, PontesDateInput, PontesSelect,
-  PontesEmptyState, PontesLoadingDots,
+  PontesEmptyState, PontesSkeletonList,
+  PontesPageHeader, PontesToolbar, PontesSegmented, PontesRowActions, type PontesRowAction,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import {
   listRecorrentesPage, getRecorrenteStats, createRecorrente, toggleRecorrente, deleteRecorrente,
   cancelarRecorrente, editarProximaOcorrencia,
@@ -19,7 +21,9 @@ import {
 import type { RecorrenteStats } from "../../services/recorrenteService"
 import { getContas } from "../../services/contaService"
 import { getCategories } from "../../services/categoryService"
-import type { Recorrente, CriarRecorrente, EditarProximaDto } from "../../types/Recorrente"
+import type {
+  Recorrente, CriarRecorrente, EditarProximaDto, FiltroStatusRecorrente, SituacaoRecorrente,
+} from "../../types/Recorrente"
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import styles from "./RecorrentesPage.module.css"
@@ -136,12 +140,18 @@ function validateCancelar(f: CancelarForm): CancelarErrors {
   return errs
 }
 
-type ConfirmState = {
-  title: string
-  description: string
-  onConfirm: () => Promise<void>
-  tone?: "danger" | "warning" | "info"
-} | null
+// Badge por situação (vem do servidor). "ativa" não tem badge — é o estado normal.
+const SITUACAO_BADGE: Record<Exclude<SituacaoRecorrente, "ativa">, { label: string; tone: "warning" | "danger" | "neutral" }> = {
+  pausada: { label: "Pausada", tone: "warning" },
+  cancelada: { label: "Cancelada", tone: "danger" },
+  encerrada: { label: "Encerrada", tone: "neutral" },
+}
+
+const STATUS_OPTS: { value: FiltroStatusRecorrente; label: string }[] = [
+  { value: "ativas", label: "Ativas" },
+  { value: "encerradas", label: "Encerradas" },
+]
+
 
 // ── componente ────────────────────────────────────────────────────────────────
 
@@ -149,16 +159,32 @@ export default function RecorrentesPage() {
   const { notify } = useOutletContext<OutletContextType>()
 
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
+  // Base da faixa "Próximas cobranças": a última lista carregada SEM filtro (aba Ativas, sem busca).
+  // Filtrar não mexe nela — senão a faixa sumiria/mudaria a cada tecla. Não é uma 2ª consulta de
+  // propósito: o GET da lista gera no servidor as ocorrências vencidas (GerarPendentesAsync), e
+  // duas chamadas simultâneas podiam lançar a mesma cobrança duas vezes.
+  const [baseProximas, setBaseProximas] = useState<Recorrente[]>([])
   // KPIs exatos via /recorrentes/stats — endpoint dedicado (#179).
   const [stats, setStats] = useState<RecorrenteStats>({
     ativas: 0, custoMensalDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
   })
+  const [resumoCarregado, setResumoCarregado] = useState(false)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filtros (server-side): aba de situação + busca com debounce. Padrão = Ativas.
+  const [status, setStatusState] = useState<FiltroStatusRecorrente>("ativas")
+  const [busca, setBuscaState] = useState("")
+  const buscaDebounced = useDebouncedValue(busca.trim())
+  const setStatus = (v: FiltroStatusRecorrente) => { setStatusState(v); setPage(1) }
+  const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
+  // Conta também o termo já aplicado (debounced): logo após apagar a busca a lista ainda é a filtrada.
+  const filtrosAtivos = status !== "ativas" || busca.trim() !== "" || buscaDebounced !== ""
+  const limparFiltros = () => { setStatusState("ativas"); setBuscaState(""); setPage(1) }
 
   // modal criar
   const [criarOpen, setCriarOpen] = useState(false)
@@ -180,33 +206,57 @@ export default function RecorrentesPage() {
   const [editarErrors, setEditarErrors] = useState<EditarProximaErrors>({})
   const [editarSaving, setEditarSaving] = useState(false)
 
-  // confirm delete
-  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  // excluir (confirmado via PontesDialog)
+  const [excluirAlvo, setExcluirAlvo] = useState<Recorrente | null>(null)
 
   // ── load ────────────────────────────────────────────────────────────────────
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [pageResult, statsResult, c, cat] = await Promise.all([
-        listRecorrentesPage(page, pageSize),
-        getRecorrenteStats(),
-        getContas(),
-        getCategories(),
-      ])
-      setRecorrentes(pageResult.items)
-      setTotal(pageResult.total)
-      setStats(statsResult)
-      setContas(c)
-      setCategorias(cat)
-    } catch {
-      notify({ open: true, message: "Erro ao carregar recorrentes.", severity: "error" })
-    } finally {
-      setLoading(false)
-    }
-  }, [notify, page, pageSize])
+  // Contas/categorias só alimentam o modal de criar — 1x na montagem.
+  useEffect(() => {
+    Promise.all([getContas(), getCategories()])
+      .then(([c, cat]) => { setContas(c); setCategorias(cat) })
+      .catch(() => notify({ open: true, message: "Erro ao carregar contas e categorias.", severity: "error" }))
+  }, [notify])
 
-  useEffect(() => { void loadData() }, [loadData])
+  // Depois de qualquer mudança: sobe a versão → resumo e lista recarregam juntos (hero e aba batem).
+  const [versao, setVersao] = useState(0)
+  const recarregar = () => setVersao((v) => v + 1)
+
+  // KPIs do hero: não dependem da aba nem da busca (endpoint sem efeito colateral).
+  useEffect(() => {
+    let vivo = true
+    getRecorrenteStats()
+      .then((statsResult) => { if (vivo) setStats(statsResult) })
+      .catch(() => { if (vivo) notify({ open: true, message: "Erro ao carregar o resumo das contas fixas.", severity: "error" }) })
+      .finally(() => { if (vivo) setResumoCarregado(true) })
+    return () => { vivo = false }
+  }, [notify, versao])
+
+  // Lista filtrada/paginada NO SERVIDOR. `vivo` descarta resposta velha (filtro trocado no meio).
+  useEffect(() => {
+    let vivo = true
+    setLoading(true)
+    listRecorrentesPage(page, pageSize, { status, busca: buscaDebounced })
+      .then((res) => {
+        if (!vivo) return
+        // Página além do fim (ex.: excluiu o último item da última página) → volta pra última
+        // válida e segue carregando (sem piscar a lista antiga no meio).
+        if (res.items.length === 0 && res.total > 0 && page > 1) {
+          setPage(Math.max(1, Math.ceil(res.total / pageSize)))
+          return
+        }
+        setRecorrentes(res.items)
+        setTotal(res.total)
+        if (status === "ativas" && !buscaDebounced) setBaseProximas(res.items)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!vivo) return
+        notify({ open: true, message: "Erro ao carregar contas fixas.", severity: "error" })
+        setLoading(false)
+      })
+    return () => { vivo = false }
+  }, [notify, page, pageSize, status, buscaDebounced, versao])
 
   // ── stats ────────────────────────────────────────────────────────────────────
 
@@ -240,7 +290,7 @@ export default function RecorrentesPage() {
       }
       await createRecorrente(dto)
       setCriarOpen(false)
-      await loadData()
+      recarregar()
       window.dispatchEvent(new Event("transactionCreated"))
       notify({ open: true, message: "Conta fixa criada com sucesso.", severity: "success" })
     } catch {
@@ -250,30 +300,36 @@ export default function RecorrentesPage() {
     }
   }
 
-  // ── toggle ───────────────────────────────────────────────────────────────────
+  // ── pausar / retomar ─────────────────────────────────────────────────────────
+  // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
 
   async function handleToggle(r: Recorrente) {
     try {
       await toggleRecorrente(r.id)
-      await loadData()
+      recarregar()
+      notify({
+        open: true,
+        message: r.situacao === "pausada" ? "Conta fixa retomada." : "Conta fixa pausada.",
+        severity: "success",
+      })
     } catch {
       notify({ open: true, message: "Erro ao atualizar conta fixa.", severity: "error" })
     }
   }
 
-  // ── deletar ───────────────────────────────────────────────────────────────────
+  // ── excluir ───────────────────────────────────────────────────────────────────
 
-  function openDeletar(r: Recorrente) {
-    setConfirm({
-      title: "Remover conta fixa",
-      description: `Remover "${r.descricao}"? As transações já geradas serão mantidas.`,
-      tone: "danger",
-      onConfirm: async () => {
-        await deleteRecorrente(r.id)
-        await loadData()
-        notify({ open: true, message: "Conta fixa removida.", severity: "success" })
-      },
-    })
+  async function handleExcluir() {
+    const alvo = excluirAlvo
+    if (!alvo) return
+    setExcluirAlvo(null)
+    try {
+      await deleteRecorrente(alvo.id)
+      recarregar()
+      notify({ open: true, message: "Conta fixa excluída.", severity: "success" })
+    } catch {
+      notify({ open: true, message: "Erro ao excluir conta fixa.", severity: "error" })
+    }
   }
 
   // ── cancelar ─────────────────────────────────────────────────────────────────
@@ -293,7 +349,7 @@ export default function RecorrentesPage() {
     try {
       await cancelarRecorrente(cancelarTarget.id, { motivo: cancelarForm.motivo })
       setCancelarOpen(false)
-      await loadData()
+      recarregar()
       notify({ open: true, message: "Conta fixa cancelada.", severity: "success" })
     } catch {
       notify({ open: true, message: "Erro ao cancelar conta fixa.", severity: "error" })
@@ -322,7 +378,7 @@ export default function RecorrentesPage() {
       if (editarForm.descricao.trim()) dto.descricao = editarForm.descricao
       await editarProximaOcorrencia(editarTarget.id, dto)
       setEditarOpen(false)
-      await loadData()
+      recarregar()
       notify({ open: true, message: "Próxima ocorrência atualizada.", severity: "success" })
     } catch {
       notify({ open: true, message: "Erro ao editar próxima ocorrência.", severity: "error" })
@@ -352,26 +408,61 @@ export default function RecorrentesPage() {
 
   // ── render ────────────────────────────────────────────────────────────────────
 
-  // Projeção anual do custo mensal (×12). Próximas cobranças: assinaturas
-  // ativas da página atual com data futura, ordenadas asc, top 6.
-  // Caveat: usa só a página visível (1 página = até 25; cobre o caso comum).
+  // Projeção anual do custo mensal (×12). Próximas cobranças: contas fixas ATIVAS (não pausadas)
+  // de despesa com data futura, ordenadas asc, top 6 — da última lista sem filtro (baseProximas).
+  // Caveat (igual antes): usa só a página carregada (1 página = até 25; cobre o caso comum).
   const projecaoAnual = totalMensalDespesa * 12
-  const proximasCobrancas = recorrentes
-    .filter((r) => r.ativo && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
+  const proximasCobrancas = baseProximas
+    .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
     .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
     .slice(0, 6)
 
+  // Esqueleto até a 1ª resposta do resumo também: o vazio "Nenhuma conta fixa" depende do total
+  // geral (qtdTotal) e não pode piscar antes dele chegar.
+  const carregandoLista = loading || !resumoCarregado
+
+  // Ações da linha, pela situação que o SERVIDOR calculou. Pausada ≠ cancelada: só a pausada
+  // retoma; cancelada/encerrada só podem ser excluídas.
+  function acoesDaLinha(r: Recorrente): PontesRowAction[] {
+    const acoes: PontesRowAction[] = []
+    if (r.situacao === "ativa") {
+      acoes.push({
+        key: "editar-proxima", label: "Editar próxima ocorrência",
+        icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => openEditarProxima(r),
+      })
+      acoes.push({
+        key: "pausar", label: "Pausar",
+        icon: <PauseCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),
+      })
+    }
+    if (r.situacao === "pausada") {
+      acoes.push({
+        key: "retomar", label: "Retomar",
+        icon: <PlayCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),
+      })
+    }
+    if (r.situacao === "ativa" || r.situacao === "pausada") {
+      acoes.push({
+        key: "cancelar", label: "Cancelar conta fixa",
+        icon: <XCircle size={16} strokeWidth={2.5} />, onClick: () => openCancelar(r),
+      })
+    }
+    acoes.push({
+      key: "excluir", label: "Excluir", danger: true,
+      icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluirAlvo(r),
+    })
+    return acoes
+  }
+
+  const botaoCriar = (
+    <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
+      Nova conta fixa
+    </PontesButton>
+  )
+
   return (
     <div className={styles.page}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Contas Fixas</h1>
-        </div>
-        <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCriar}>
-          Nova Conta Fixa
-        </PontesButton>
-      </div>
+      <PontesPageHeader actionLabel="Nova conta fixa" onAction={openCriar} />
 
       {/* Hero de custo */}
       <div className={styles.hero}>
@@ -398,7 +489,7 @@ export default function RecorrentesPage() {
       </div>
 
       {/* Próximas cobranças */}
-      {!loading && proximasCobrancas.length > 0 && (
+      {resumoCarregado && proximasCobrancas.length > 0 && (
         <div className={styles.proxSection}>
           <div className={styles.proxTitle}>Próximas cobranças</div>
           <div className={styles.proxGrid}>
@@ -421,37 +512,50 @@ export default function RecorrentesPage() {
         </div>
       )}
 
-      {/* Lista */}
-      <div className={styles.list}>
-        <div className={styles.listHeader}>
-          <span className={styles.listTitle}>Suas contas fixas</span>
-          {!loading && total > 0 && (
-            <span className={styles.listMeta}>{total} {total === 1 ? "conta fixa" : "contas fixas"}</span>
-          )}
-        </div>
+      {/* Filtros (server-side): busca + situação */}
+      <PontesToolbar
+        search={{ value: busca, onChange: setBusca, placeholder: "Buscar conta fixa…", ariaLabel: "Buscar conta fixa" }}
+      >
+        <PontesSegmented
+          ariaLabel="Situação"
+          options={STATUS_OPTS}
+          value={status}
+          onChange={(v) => setStatus(v as FiltroStatusRecorrente)}
+        />
+      </PontesToolbar>
 
-        {loading ? (
-          <div className={styles.center}><PontesLoadingDots /></div>
-        ) : total === 0 ? (
-          <div className={styles.emptyWrap}>
-            <PontesEmptyState
-              icon={<Repeat size={40} />}
-              title="Nenhuma conta fixa"
-              description="Cadastre aluguel, escola, plano de saúde, assinaturas ou qualquer pagamento recorrente."
-            />
-          </div>
+      {/* Lista */}
+      {carregandoLista ? (
+        <PontesSkeletonList rows={4} />
+      ) : recorrentes.length === 0 ? (
+        stats.qtdTotal === 0 ? (
+          <PontesEmptyState icon={<Repeat size={32} strokeWidth={2.5} />} title="Nenhuma conta fixa" actions={botaoCriar} />
+        ) : filtrosAtivos ? (
+          <PontesEmptyState
+            icon={<SearchX size={32} strokeWidth={2.5} />}
+            title="Nada encontrado"
+            actions={<PontesButton variant="outline" size="sm" onClick={limparFiltros}>Limpar filtros</PontesButton>}
+          />
         ) : (
+          // Tem contas fixas, mas todas já acabaram: a aba padrão (Ativas) fica vazia.
+          <PontesEmptyState icon={<Repeat size={32} strokeWidth={2.5} />} title="Nenhuma conta fixa ativa" actions={botaoCriar} />
+        )
+      ) : (
+        <div className={styles.list}>
           <div className={styles.cards}>
             {recorrentes.map((r) => {
               const isDespesa = r.tipo === 1
               const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
               const dias = diasAte(r.dataProximaGeracao)
-              const urgente = r.ativo && dias != null && dias >= 0 && dias <= 7
+              const ativa = r.situacao === "ativa"
+              const urgente = ativa && dias != null && dias >= 0 && dias <= 7
+              const badge = r.situacao !== "ativa" ? SITUACAO_BADGE[r.situacao] : undefined
               return (
                 <div
                   key={r.id}
                   className={styles.card}
-                  data-inactive={!r.ativo ? "true" : undefined}
+                  data-inactive={!ativa ? "true" : undefined}
+                  data-situacao={r.situacao}
                 >
                   <div className={styles.cardIcon} data-tipo={isDespesa ? "despesa" : "receita"}>
                     {isDespesa ? <TrendingDown size={18} strokeWidth={2.4} /> : <TrendingUp size={18} strokeWidth={2.4} />}
@@ -460,20 +564,20 @@ export default function RecorrentesPage() {
                   <div className={styles.cardInfo}>
                     <div className={styles.cardTop}>
                       <span className={styles.cardNome}>{r.descricao}</span>
-                      {!r.ativo && <PontesBadge tone="neutral" size="sm">Pausada</PontesBadge>}
+                      {badge && <PontesBadge tone={badge.tone} size="sm">{badge.label}</PontesBadge>}
                     </div>
                     <div className={styles.cardMeta}>
                       <PontesBadge tone={tone} size="sm">{r.frequenciaDescricao}</PontesBadge>
                       {r.categoriaNome && <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>}
                       {r.contaNome && <span className={styles.cardSub}>{r.contaNome}</span>}
                     </div>
-                    {r.ativo && r.dataProximaGeracao && (
+                    {ativa && r.dataProximaGeracao && (
                       <span className={styles.cardProx} data-urgent={urgente ? "true" : undefined}>
                         próxima cobrança {cobraLabel(r.dataProximaGeracao)}
                       </span>
                     )}
-                    {!r.ativo && r.motivoCancelamento && (
-                      <span className={styles.cardCancelado}>cancelada: {r.motivoCancelamento}</span>
+                    {r.situacao === "cancelada" && r.motivoCancelamento && (
+                      <span className={styles.cardMotivo}>Motivo: {r.motivoCancelamento}</span>
                     )}
                   </div>
 
@@ -481,51 +585,32 @@ export default function RecorrentesPage() {
                     <span className={styles.cardValor} data-tipo={isDespesa ? "despesa" : "receita"}>
                       {isDespesa ? "−" : "+"}{formatMoney(r.valor)}
                     </span>
-                    <div className={styles.cardActions}>
-                      {r.ativo && (
-                        <>
-                          <PontesIconButton size={32} variant="ghost" aria-label="Editar próxima ocorrência" onClick={() => openEditarProxima(r)} title="Editar próxima ocorrência">
-                            <Pencil size={15} />
-                          </PontesIconButton>
-                          <PontesIconButton size={32} variant="ghost" aria-label="Cancelar conta fixa" onClick={() => openCancelar(r)} title="Cancelar conta fixa">
-                            <XCircle size={15} />
-                          </PontesIconButton>
-                        </>
-                      )}
-                      <PontesIconButton size={32} variant="ghost" aria-label={r.ativo ? "Pausar" : "Ativar"} onClick={() => handleToggle(r)} title={r.ativo ? "Pausar" : "Ativar"}>
-                        {r.ativo ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
-                      </PontesIconButton>
-                      <PontesIconButton size={32} variant="ghost" aria-label="Excluir conta fixa" onClick={() => openDeletar(r)} title="Excluir">
-                        <Trash2 size={15} />
-                      </PontesIconButton>
-                    </div>
+                    <PontesRowActions actions={acoesDaLinha(r)} />
                   </div>
                 </div>
               )
             })}
           </div>
-        )}
-        {!loading && total > 0 && (
           <PontesTablePagination
             total={total} page={page} pageSize={pageSize}
             onPageChange={setPage}
             onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
             itemLabel="contas fixas" itemLabelSingular="conta fixa"
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Modal criar ──────────────────────────────────────────────────────── */}
       <PontesModal
         open={criarOpen}
-        title="Nova Conta Fixa"
+        title="Nova conta fixa"
         onClose={() => setCriarOpen(false)}
         maxWidth={520}
         footer={
           <div className={styles.modalFooter}>
             <PontesButton variant="outline" size="sm" onClick={() => setCriarOpen(false)}>Cancelar</PontesButton>
             <PontesButton variant="primary" size="sm" loading={criarSaving} onClick={handleCriar}>
-              Criar Conta Fixa
+              Criar conta fixa
             </PontesButton>
           </div>
         }
@@ -706,18 +791,16 @@ export default function RecorrentesPage() {
         </div>
       </PontesModal>
 
-      {/* ── Confirm dialog ───────────────────────────────────────────────────── */}
-      {confirm && (
-        <PontesDialog
-          open
-          title={confirm.title}
-          description={confirm.description}
-          tone={confirm.tone}
-          confirmLabel="Confirmar"
-          onConfirm={() => { void confirm.onConfirm().then(() => setConfirm(null)) }}
-          onCancel={() => setConfirm(null)}
-        />
-      )}
+      {/* ── Confirmar exclusão ─────────────────────────────────────────────── */}
+      <PontesDialog
+        open={excluirAlvo !== null}
+        title="Excluir conta fixa?"
+        description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As transações já geradas serão mantidas.` : undefined}
+        tone="danger"
+        confirmLabel="Excluir"
+        onConfirm={() => void handleExcluir()}
+        onCancel={() => setExcluirAlvo(null)}
+      />
     </div>
   )
 }

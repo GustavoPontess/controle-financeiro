@@ -149,6 +149,145 @@ public class RecorrenteServiceTests
         Assert.Equal(2, p2.Items.Count());
     }
 
+    // ── ListarAsync: situação (ativa × pausada × cancelada × encerrada) + busca ──
+
+    // Um de cada situação: a tela separa Ativas (ativa + pausada) de Encerradas (cancelada + fim passado).
+    private static (Guid u, Recorrente ativa, Recorrente pausada, Recorrente cancelada, Recorrente encerrada) SeedSituacoes(AppDbContext ctx)
+    {
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+
+        var ativa = SeedRecorrente(ctx, u, c);
+        ativa.Descricao = "Netflix";
+
+        var pausada = SeedRecorrente(ctx, u, c, ativo: false);
+        pausada.Descricao = "Academia";
+
+        var cancelada = SeedRecorrente(ctx, u, c, ativo: false);
+        cancelada.Descricao = "Spotify";
+        cancelada.CanceladoEm = DateTime.UtcNow.AddDays(-2);
+        cancelada.MotivoCancelamento = "Não uso mais";
+
+        var encerrada = SeedRecorrente(ctx, u, c);
+        encerrada.Descricao = "Curso";
+        encerrada.DataFim = DateTime.UtcNow.Date.AddDays(-1);
+
+        ctx.SaveChanges();
+        return (u, ativa, pausada, cancelada, encerrada);
+    }
+
+    [Fact]
+    public async Task ListarAsync_SemStatus_TrazTodas_ComSituacaoCalculada()
+    {
+        var ctx = CreateContext();
+        var (u, ativa, pausada, cancelada, encerrada) = SeedSituacoes(ctx);
+
+        var result = await CreateService(ctx).ListarAsync(u);
+
+        Assert.Equal(4, result.Total); // sem filtro = compatível com quem já chamava
+        var porId = result.Items.ToDictionary(r => r.Id, r => r.Situacao);
+        Assert.Equal(SituacaoRecorrente.Ativa, porId[ativa.Id]);
+        Assert.Equal(SituacaoRecorrente.Pausada, porId[pausada.Id]);
+        Assert.Equal(SituacaoRecorrente.Cancelada, porId[cancelada.Id]); // NÃO "pausada" (bug antigo)
+        Assert.Equal(SituacaoRecorrente.Encerrada, porId[encerrada.Id]);
+    }
+
+    [Fact]
+    public async Task ListarAsync_StatusAtivas_TrazAtivaEPausada_SemCanceladaNemEncerrada()
+    {
+        var ctx = CreateContext();
+        var (u, ativa, pausada, _, _) = SeedSituacoes(ctx);
+
+        var result = await CreateService(ctx).ListarAsync(u, status: "ativas");
+
+        Assert.Equal(2, result.Total);
+        Assert.Equal(new[] { ativa.Id, pausada.Id }.OrderBy(x => x), result.Items.Select(r => r.Id).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task ListarAsync_StatusEncerradas_TrazCanceladaEDataFimPassada()
+    {
+        var ctx = CreateContext();
+        var (u, _, _, cancelada, encerrada) = SeedSituacoes(ctx);
+
+        var result = await CreateService(ctx).ListarAsync(u, status: "ENCERRADAS"); // sem diferenciar caixa
+
+        Assert.Equal(2, result.Total);
+        Assert.Equal(new[] { cancelada.Id, encerrada.Id }.OrderBy(x => x), result.Items.Select(r => r.Id).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task ListarAsync_DataFimHoje_AindaEhAtiva()
+    {
+        // Último dia ainda gera cobrança (GerarPendentesAsync usa DataFim >= hoje) → segue em "ativas".
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var rec = SeedRecorrente(ctx, u, c);
+        rec.DataFim = DateTime.UtcNow.Date;
+        ctx.SaveChanges();
+
+        var svc = CreateService(ctx);
+        var ativas = await svc.ListarAsync(u, status: "ativas");
+        var encerradas = await svc.ListarAsync(u, status: "encerradas");
+
+        Assert.Equal(1, ativas.Total);
+        Assert.Equal(SituacaoRecorrente.Ativa, ativas.Items.Single().Situacao);
+        Assert.Equal(0, encerradas.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_StatusInvalido_LancaArgumentException()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).ListarAsync(u, status: "todas-mesmo"));
+    }
+
+    [Fact]
+    public async Task ListarAsync_Busca_FiltraNoServidor_SemDiferenciarCaixa_ETotalFiltrado()
+    {
+        var ctx = CreateContext();
+        var (u, ativa, _, _, _) = SeedSituacoes(ctx);
+
+        var result = await CreateService(ctx).ListarAsync(u, pageSize: 1, busca: "  NETFLIX ");
+
+        Assert.Equal(1, result.Total); // total já filtrado (paginação correta)
+        Assert.Equal(ativa.Id, result.Items.Single().Id);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Busca_AchaPeloNomeDaConta_ECombinaComStatus()
+    {
+        var ctx = CreateContext();
+        var (u, _, _, cancelada, _) = SeedSituacoes(ctx);
+        // Conta de todas se chama "Conta" (SeedConta) — busca pela conta acha as 4; o status recorta.
+        var result = await CreateService(ctx).ListarAsync(u, status: "encerradas", busca: "spot");
+
+        Assert.Equal(1, result.Total);
+        Assert.Equal(cancelada.Id, result.Items.Single().Id);
+
+        var porConta = await CreateService(ctx).ListarAsync(u, busca: "conta");
+        Assert.Equal(4, porConta.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Busca_NaoVazaRecorrenteDeOutroUsuario()
+    {
+        var ctx = CreateContext();
+        var (u, _, _, _, _) = SeedSituacoes(ctx);
+        var outro = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, outro, SeedConta(ctx, outro));
+        r.Descricao = "Netflix do vizinho";
+        ctx.SaveChanges();
+
+        var result = await CreateService(ctx).ListarAsync(u, busca: "netflix");
+
+        Assert.Equal(1, result.Total);
+        Assert.DoesNotContain(result.Items, x => x.Id == r.Id);
+    }
+
     // ── CancelarAsync ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -350,6 +489,26 @@ public class RecorrenteServiceTests
         await svc.ToggleAtivoAsync(rec.Id, u);
         ctx.Entry(updated).Reload();
         Assert.True(updated.Ativo);
+    }
+
+    [Fact]
+    public async Task ToggleAtivoAsync_Cancelada_LancaInvalidOperation_ENaoReativa()
+    {
+        // Bug antigo: a tela mostrava a cancelada como "Pausada" e o "Ativar" a religava.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var rec = SeedRecorrente(ctx, u, c);
+        SeedTransacaoPrevisao(ctx, u, rec.Id, c);
+
+        var svc = CreateService(ctx);
+        await svc.CancelarAsync(rec.Id, new CancelarRecorrenteDto { Motivo = "Caro" }, u);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ToggleAtivoAsync(rec.Id, u));
+
+        var atual = await ctx.Recorrentes.FindAsync(rec.Id);
+        Assert.False(atual!.Ativo);
+        Assert.NotNull(atual.CanceladoEm);
     }
 
     [Fact]

@@ -2,12 +2,19 @@ import { api } from "../api/axiosConfig"
 import type { Transferencia, CriarTransferencia } from "../types/Transferencia"
 import type { PagedResult } from "../types/Paged"
 
-/** Lista paginada — backend clampa pageSize em 1..100. */
+/**
+ * Lista paginada — backend clampa pageSize em 1..100. `busca` (descrição ou conta) é filtrada NO
+ * SERVIDOR, então o total já vem filtrado; vazia = sem filtro.
+ */
 export const listTransferenciasPage = async (
   page: number,
   pageSize: number,
+  busca?: string,
 ): Promise<PagedResult<Transferencia>> => {
-  const res = await api.get("/transferencias", { params: { page, pageSize } })
+  const params: Record<string, unknown> = { page, pageSize }
+  const termo = busca?.trim()
+  if (termo) params.busca = termo
+  const res = await api.get("/transferencias", { params })
   return res.data
 }
 

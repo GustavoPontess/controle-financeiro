@@ -14,7 +14,7 @@ import { useEffect, useState } from "react"
 import {
   Plus, Download, ArrowRight, ChevronLeft, ChevronRight,
   Settings, MoreHorizontal, Bell, Search, Pencil, Copy, Share2, Trash2,
-  TrendingDown, TrendingUp, Check, X,
+  TrendingDown, TrendingUp, Check, X, PauseCircle, SearchX,
 } from "lucide-react"
 import {
   // theme
@@ -37,7 +37,9 @@ import {
   PontesTooltip, PontesPopover,
   // navegação
   PontesBreadcrumb, PontesTabs, PontesStepper, PontesPagination,
-  PontesCommandPalette, PontesSidebarItem, PontesSidebarSection,
+  PontesCommandPalette, PontesSidebarItem, PontesSidebarSection, PontesSegmented,
+  // padrão de tela interna
+  PontesPageHeader, PontesToolbar, PontesRowActions,
   // site
   PontesFooter, PontesLogo, PontesLogoMark,
   // util
@@ -808,6 +810,66 @@ function FeedbackSection() {
 }
 
 // =============================================================================
+// PADRÃO DE TELA INTERNA (demo)
+// =============================================================================
+
+// Composição de referência das telas internas: sem título (mora na Navbar) → PageHeader com o
+// botão "Novo…" → Toolbar (busca + situação) → lista com ⋮ por linha → vazio "Nada encontrado".
+const DEMO_LINHAS = [
+  { id: "1", nome: "Aluguel", valor: "R$ 2.400,00", encerrada: false },
+  { id: "2", nome: "Netflix", valor: "R$ 55,90", encerrada: false },
+  { id: "3", nome: "Academia", valor: "R$ 119,00", encerrada: true },
+]
+
+function PadraoTelaDemo() {
+  const [busca, setBusca] = useState("")
+  const [status, setStatus] = useState("ativas")
+  const [ultimaAcao, setUltimaAcao] = useState("—")
+
+  const linhas = DEMO_LINHAS.filter((l) =>
+    (status === "encerradas") === l.encerrada && l.nome.toLowerCase().includes(busca.trim().toLowerCase()))
+
+  return (
+    <div className={styles.colGap14}>
+      <PontesPageHeader actionLabel="Nova conta fixa" onAction={() => setUltimaAcao("Nova conta fixa")} />
+      <PontesToolbar search={{ value: busca, onChange: setBusca, placeholder: "Buscar conta fixa…" }}>
+        <PontesSegmented
+          ariaLabel="Situação"
+          value={status}
+          onChange={setStatus}
+          options={[{ value: "ativas", label: "Ativas" }, { value: "encerradas", label: "Encerradas" }]}
+        />
+      </PontesToolbar>
+      {linhas.length === 0 ? (
+        <PontesEmptyState
+          icon={<SearchX size={28} strokeWidth={2.5} />}
+          title="Nada encontrado"
+          actions={<PontesButton size="sm" variant="outline" onClick={() => { setBusca(""); setStatus("ativas") }}>Limpar filtros</PontesButton>}
+        />
+      ) : (
+        <PontesCard padding={0}>
+          {linhas.map((l) => (
+            <div key={l.id} className={styles.demoRow}>
+              <span className={styles.demoRowNome}>{l.nome}</span>
+              <span className={styles.demoRowValor}>{l.valor}</span>
+              <PontesRowActions
+                actions={[
+                  // Ordem livre: o componente joga o destrutivo pro fim (com divisor).
+                  { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setUltimaAcao(`Excluir ${l.nome}`) },
+                  { key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setUltimaAcao(`Editar ${l.nome}`) },
+                  { key: "pausar", label: "Pausar", icon: <PauseCircle size={16} strokeWidth={2.5} />, onClick: () => setUltimaAcao(`Pausar ${l.nome}`) },
+                ]}
+              />
+            </div>
+          ))}
+        </PontesCard>
+      )}
+      <div className={styles.demoUltimaAcao}>Última ação: {ultimaAcao}</div>
+    </div>
+  )
+}
+
+// =============================================================================
 // NAV SECTION
 // =============================================================================
 
@@ -819,6 +881,10 @@ function NavSection() {
 
   return (
     <div>
+      <Group title="Padrão de tela interna — PageHeader + Toolbar + RowActions">
+        <PadraoTelaDemo />
+      </Group>
+
       <Group title="Breadcrumb">
         <PontesBreadcrumb items={[
           { label: "Início" }, { label: "Família" }, { label: "Membros" }, { label: "Maria Silva" },
