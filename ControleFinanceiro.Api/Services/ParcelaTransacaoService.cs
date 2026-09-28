@@ -103,11 +103,9 @@ public class ParcelaTransacaoService
             throw new InvalidOperationException(
                 $"Saldo insuficiente. Necessário {valorParcela:C}, disponível {saldo:C}.");
 
-        // 5. Fatura não pode estar integralmente paga
+        // 5. Fatura da parcela — "já paga" é decidido pelo RESTANTE no passo 5b, não pelo rótulo Pago
+        //    (compra nova numa fatura marcada Pago volta a ter restante).
         var fatura = parcela.Fatura!;
-        if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
-            throw new InvalidOperationException(
-                "A fatura desta parcela já está integralmente paga.");
 
         // 5b. Nem coberta pelo que já foi pago, olhando o RESTANTE e não só o rótulo: com o ciclo aberto a
         //     fatura coberta fica Parcial com restante 0 até o fechamento (decisão em
@@ -131,6 +129,11 @@ public class ParcelaTransacaoService
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Limite antes da mudança, pra trilha de auditoria registrar o que REALMENTE soltou (6e).
+            var cartaoId = parcela.Parcelamento.CartaoCreditoId;
+            var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, cartaoId, usuarioId);
+            var usadoFaturaAntes = RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+
             // 6a. Marcar parcela como paga
             parcela.Status = StatusParcela.Paga;
             parcela.PagoEm = agora;
@@ -190,22 +193,29 @@ public class ParcelaTransacaoService
                     valorPago = valorParcela,
                 });
 
-            // 6e. FinancialEventLog — LimiteLiberado (parcela sai de Pendente → não bloqueia mais)
-            _eventLog.Registrar(
-                usuarioId: usuarioId,
-                tipo: FinancialEventType.LimiteLiberado,
-                entidade: "CartaoCredito",
-                entidadeId: parcela.Parcelamento.CartaoCreditoId,
-                correlationId: correlationId,
-                origemAcao: "API",
-                valorAntes: valorParcela,
-                valorDepois: 0m,
-                payload: new
-                {
-                    parcelamentoId = parcela.ParcelamentoId,
-                    parcelaId,
-                    delta = -valorParcela,
-                });
+            // 6e. FinancialEventLog — LimiteLiberado: o pagamento soma no pago da fatura, e o limite segue o
+            //     pago. Costuma ser a parcela inteira, mas a parte do pago que cobre previsão da fatura não
+            //     solta nada (previsão não usa limite). Antes/depois = limite usado do CARTÃO; só esta
+            //     fatura mudou, então a queda dela é a do cartão.
+            var limiteLiberado = usadoFaturaAntes - RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+            if (limiteLiberado > 0)
+                _eventLog.Registrar(
+                    usuarioId: usuarioId,
+                    tipo: FinancialEventType.LimiteLiberado,
+                    entidade: "CartaoCredito",
+                    entidadeId: cartaoId,
+                    correlationId: correlationId,
+                    origemAcao: "API",
+                    valorAntes: usadoCartaoAntes,
+                    valorDepois: usadoCartaoAntes - limiteLiberado,
+                    payload: new
+                    {
+                        parcelamentoId = parcela.ParcelamentoId,
+                        parcelaId,
+                        faturaId = fatura.Id,
+                        valorParcela,
+                        delta = -limiteLiberado,
+                    });
 
             // 6f. FinancialEventLog — FaturaPagaTotal ou FaturaPagaParcial
             var tipoFaturaEvento = novoEstado == EstadoPagamentoFatura.Pago
@@ -244,7 +254,7 @@ public class ParcelaTransacaoService
     /// <summary>
     /// Cancela uma parcela individual (soft delete).
     /// NÃO cancela o parcelamento inteiro — use ParcelamentoService.CancelarAsync pra isso.
-    /// Libera o valor da parcela no LimiteBloqueado do cartão e reconcilia o estado de pagamento da
+    /// Libera no limite do cartão o que a fatura ainda segurava da parcela e reconcilia o estado de pagamento da
     /// fatura (<see cref="RegrasFinanceiras.ReconciliarEstadoPagamento"/>). Recusa parcela já quitada
     /// pelo pagamento da fatura — fatura coberta (<see cref="RegrasFinanceiras.ParcelaQuitadaPelaFatura"/>).
     /// Idempotente via <paramref name="dto"/>.IdempotencyKey.
@@ -299,19 +309,30 @@ public class ParcelaTransacaoService
         var valorParcela = parcela.ValorComJuros ?? parcela.Valor;
         var correlationId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
+        var cartaoId = parcela.Parcelamento.CartaoCreditoId;
+        var fatura = parcela.Fatura!;
 
         // 3. Transação ACID
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Limite antes da mudança, pra trilha de auditoria registrar o que REALMENTE soltou (abaixo).
+            var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, cartaoId, usuarioId);
+            var usadoFaturaAntes = RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+
             parcela.Status = StatusParcela.Cancelada;
             parcela.CanceladoEm = agora;
             parcela.MotivoCancelamento = dto.Motivo;
 
             // O total da fatura caiu sem pagamento novo: reconcilia o estado (senão fatura já coberta
-            // ficava Parcial pra sempre — limite preso, atraso indevido, pagamento recusado).
+            // ficava Parcial pra sempre — atraso indevido, pagamento recusado).
             await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
                 _context, _eventLog, new[] { parcela.FaturaId }, usuarioId, correlationId, agora);
+
+            // O limite segue o pago da fatura: com ela paga em parte, cancelar solta só o que ela ainda
+            // segurava, não a parcela inteira (total 300 com 250 pagos segurava 50; sem a parcela de 200,
+            // nada). Só esta fatura mudou, então a queda dela é a queda do cartão.
+            var limiteLiberado = usadoFaturaAntes - RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
 
             _eventLog.Registrar(
                 usuarioId: usuarioId,
@@ -330,21 +351,25 @@ public class ParcelaTransacaoService
                     motivo = dto.Motivo,
                 });
 
-            _eventLog.Registrar(
-                usuarioId: usuarioId,
-                tipo: FinancialEventType.LimiteLiberado,
-                entidade: "CartaoCredito",
-                entidadeId: parcela.Parcelamento.CartaoCreditoId,
-                correlationId: correlationId,
-                origemAcao: "API",
-                valorAntes: valorParcela,
-                valorDepois: 0m,
-                payload: new
-                {
-                    parcelamentoId = parcela.ParcelamentoId,
-                    parcelaId,
-                    delta = -valorParcela,
-                });
+            // Antes/depois = limite usado do CARTÃO. Nada soltou (a fatura já não segurava nada) → sem evento.
+            if (limiteLiberado > 0)
+                _eventLog.Registrar(
+                    usuarioId: usuarioId,
+                    tipo: FinancialEventType.LimiteLiberado,
+                    entidade: "CartaoCredito",
+                    entidadeId: cartaoId,
+                    correlationId: correlationId,
+                    origemAcao: "API",
+                    valorAntes: usadoCartaoAntes,
+                    valorDepois: usadoCartaoAntes - limiteLiberado,
+                    payload: new
+                    {
+                        parcelamentoId = parcela.ParcelamentoId,
+                        parcelaId,
+                        faturaId = fatura.Id,
+                        valorParcela,
+                        delta = -limiteLiberado,
+                    });
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();

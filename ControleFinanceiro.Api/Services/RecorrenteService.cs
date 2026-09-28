@@ -64,26 +64,46 @@ public class RecorrenteService
         foreach (var r in recorrentes)
         {
             var proxima = (r.DataProximaGeracao ?? r.DataInicio).Date;
-            while (proxima <= hoje && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
+            try
             {
-                _context.Transacoes.Add(new Transacao
+                while (proxima <= hoje && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
                 {
-                    Id = Guid.NewGuid(),
-                    Descricao = r.Descricao,
-                    Valor = r.Valor,
-                    Tipo = r.Tipo,
-                    CategoriaId = r.CategoriaId,
-                    ContaId = r.ContaId,
-                    CartaoCreditoId = r.CartaoCreditoId,
-                    StatusTransacao = StatusTransacao.Executado,
-                    Ativo = true,
-                    CriadoPor = usuarioId,
-                    Data = proxima,
-                    RecorrenteOrigemId = r.Id,
-                    CriadoEm = DateTime.UtcNow
-                });
-                proxima = ProximaData(proxima, r.Frequencia);
-                houveMudanca = true;
+                    // Ocorrência no cartão é compra no crédito: entra na fatura do período, como no
+                    // ExpandirRecorrentesJob. Antes era gravada sem FaturaId — nenhuma fatura cobrava,
+                    // pagar a fatura não soltava o limite e ela ficava usada pra sempre.
+                    Guid? faturaId = null;
+                    if (r.CartaoCreditoId.HasValue)
+                        faturaId = (await _faturaService.ObterOuCriarFaturaAsync(
+                            r.CartaoCreditoId.Value, proxima, usuarioId)).Id;
+
+                    _context.Transacoes.Add(new Transacao
+                    {
+                        Id = Guid.NewGuid(),
+                        Descricao = r.Descricao,
+                        Valor = r.Valor,
+                        Tipo = r.Tipo,
+                        CategoriaId = r.CategoriaId,
+                        ContaId = r.ContaId,
+                        CartaoCreditoId = r.CartaoCreditoId,
+                        FaturaId = faturaId,
+                        UsadoComoCredito = r.CartaoCreditoId.HasValue,
+                        StatusTransacao = StatusTransacao.Executado,
+                        Ativo = true,
+                        CriadoPor = usuarioId,
+                        Data = proxima,
+                        RecorrenteOrigemId = r.Id,
+                        CriadoEm = DateTime.UtcNow
+                    });
+                    proxima = ProximaData(proxima, r.Frequencia);
+                    houveMudanca = true;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                // Cartão que não é do usuário (dado gravado antes da checagem de dono): pula a
+                // recorrente, como o ExpandirRecorrentesJob faz — sem isso uma linha ruim derrubava a
+                // listagem de recorrentes. O cartão falha já na 1ª ocorrência, então nada dela entrou.
+                continue;
             }
             r.DataProximaGeracao = proxima;
         }
@@ -246,6 +266,10 @@ public class RecorrenteService
                     ContaId = dto.ContaId,
                     CartaoCreditoId = dto.CartaoCreditoId,
                     FaturaId = faturaId,
+                    // Mesmo molde do ExpandirRecorrentesJob. Sem a flag a ocorrência ficava fora do total
+                    // da fatura (não dava pra pagar) e, efetivada pelo ExecutarRecorrentesJob, fora do
+                    // limite usado — compra feita no cartão sem usar limite.
+                    UsadoComoCredito = dto.CartaoCreditoId.HasValue,
                     StatusTransacao = StatusTransacao.Previsao,
                     Ativo = true,
                     CriadoPor = usuarioId,

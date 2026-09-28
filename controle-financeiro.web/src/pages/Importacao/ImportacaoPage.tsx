@@ -115,7 +115,6 @@ export default function ImportacaoPage() {
     <div className={styles.root}>
       <header className={styles.header}>
         <h1 className={styles.title}>Importar extrato</h1>
-        <p className={styles.subtitle}>Suba o extrato do banco (OFX ou CSV) e revise antes de salvar.</p>
       </header>
 
       {/* Passo 1 — upload */}

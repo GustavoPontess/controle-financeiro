@@ -214,7 +214,6 @@ export default function LimitesPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Limites por Categoria</h1>
-          <p className={styles.subtitle}>Defina limites mensais de gasto e receba alertas</p>
         </div>
         <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} />} onClick={openCriar}>
           Novo limite

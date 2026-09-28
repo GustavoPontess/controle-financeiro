@@ -2,8 +2,6 @@
 
 .header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 28px; }
 .title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
-.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
-
 /* Ritmo: cada domínio separado por uma hairline. Primeira seção (MFA) e a Fonte
    (agrupada à Aparência) não recebem divisória. */
 .root > section { padding-top: 26px; border-top: 1px solid var(--pontes-border); }

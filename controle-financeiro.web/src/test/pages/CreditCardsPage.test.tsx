@@ -41,7 +41,7 @@ vi.mock("../../services/faturaService", () => ({
 
 const cartao = {
   id: "c1", nome: "Nubank", bandeira: 2, bandeiraDescricao: "Mastercard",
-  temCredito: true, temDebito: false, ehPrePago: false, limite: 5000, gastosNoCicloAtual: 150,
+  temCredito: true, temDebito: false, ehPrePago: false, limite: 5000, limiteUsado: 150,
   limiteDisponivel: 4850, diaFechamento: 20, diaVencimento: 28, contaId: "a1",
   contaNome: "Conta Corrente", ultimosDigitos: "4218",
 } as unknown as CartaoCredito
@@ -97,6 +97,33 @@ describe("CreditCardsPage (#84)", () => {
     await waitFor(() => expect(screen.getByText("Nubank")).toBeInTheDocument())
     expect(screen.getByText("Limite total")).toBeInTheDocument()
     expect(screen.getAllByText(/R\$\s?4\.850,00/).length).toBeGreaterThan(0) // disponível
+  })
+
+  it("barra, % e resumo usam o limite USADO (parcelas futuras incluídas), não só o ciclo", async () => {
+    // Cenário visto na tela: R$ 1.500 parcelados e o card dizia 0% / "Disponível R$ 5.000 de R$ 5.000".
+    getCartoes.mockReset().mockResolvedValue([{ ...cartao, limiteUsado: 1500, limiteDisponivel: 3500 }])
+    const { container } = renderPage()
+
+    await waitFor(() => expect(screen.getByText("30%")).toBeInTheDocument())
+    const barras = container.querySelectorAll<HTMLElement>('[class*="barFill"]')
+    expect(barras.length).toBeGreaterThan(0)
+    barras.forEach((b) => expect(b.style.width).toBe("30%"))
+    expect(screen.getByText("Limite usado")).toBeInTheDocument()
+    expect(screen.queryByText("Usado no ciclo")).not.toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s?1\.500,00/).length).toBeGreaterThan(0) // resumo: usado
+    expect(screen.getAllByText(/R\$\s?3\.500,00/).length).toBeGreaterThan(0) // disponível
+  })
+
+  it("limite estourado: barra trava em 100%, disponível negativo aparece e o resumo não fica negativo", async () => {
+    getCartoes.mockReset().mockResolvedValue([{ ...cartao, limiteUsado: 5200, limiteDisponivel: -200 }])
+    const { container } = renderPage()
+
+    await waitFor(() => expect(screen.getByText("100%")).toBeInTheDocument())
+    container.querySelectorAll<HTMLElement>('[class*="barFill"]').forEach((b) => expect(b.style.width).toBe("100%"))
+    // "Disponível" aparece no card e no resumo: o card mostra o estouro, o resumo soma 0 (não −200).
+    const disponiveis = screen.getAllByText("Disponível").map((el) => el.nextElementSibling?.textContent ?? "")
+    expect(disponiveis.some((t) => /^-\s?R\$\s?200,00$/.test(t))).toBe(true)
+    expect(disponiveis.some((t) => /^R\$\s?0,00$/.test(t))).toBe(true)
   })
 
   it("abre faturas (clica no card) e destaca a fatura atual", async () => {
@@ -278,6 +305,38 @@ describe("CreditCardsPage (#84)", () => {
     // Antes, a compra "coberta" pelo valor pago ganhava check verde (data-paid) — parecia paga
     // mesmo com a fatura ainda devendo.
     expect(container.querySelector("[data-paid]")).toBeNull()
+  })
+
+  it("parcela de parcelamento aparece na lista da fatura como 'Descrição (n/N)', com link pro parcelamento", async () => {
+    // O bug: fatura de R$ 450 só com parcelas mostrava "Nenhuma transação nesta fatura."
+    getFaturasByCartao.mockReset().mockResolvedValue([{ ...fatura, valorTotal: 450, valorRestante: 450 }])
+    getFaturaDetalhe.mockReset().mockResolvedValue({
+      transacoes: [],
+      parcelas: [
+        { id: "p1", parcelamentoId: "pa1", descricao: "Geladeira", numero: 2, quantidadeTotal: 3, valor: 300,
+          data: "2026-04-15", criadoEm: "2026-04-15T10:00:00Z", categoriaDescricao: "Casa", status: 0 },
+        { id: "p2", parcelamentoId: "pa2", descricao: "Fone", numero: 1, quantidadeTotal: 2, valor: 150,
+          data: "2026-06-02", criadoEm: "2026-06-02T09:00:00Z", status: 1 },
+      ],
+      pagamentos: [],
+    })
+    const { container } = renderPage()
+
+    const geladeira = await screen.findByText("Geladeira (2/3)")
+    expect(geladeira.closest("a")).toHaveAttribute("href", "/credit-cards/parcelamentos/pa1")
+    expect(screen.getByText("Fone (1/2)")).toBeInTheDocument()
+    expect(screen.getAllByLabelText("Parcelado")).toHaveLength(2)
+    expect(screen.getByText(/15\/04\/2026 · .* · Casa/)).toBeInTheDocument() // data da compra + categoria
+    expect(screen.queryByText("Nenhuma transação nesta fatura.")).not.toBeInTheDocument()
+    // Mesmo visual de compra: nem linha verde de pagamento, nem "paga" (mesmo a parcela com status Paga).
+    expect(container.querySelector('[data-parcela="true"][data-pagamento]')).toBeNull()
+    expect(container.querySelector("[data-paid]")).toBeNull()
+    expect(screen.queryByText("Paga")).not.toBeInTheDocument()
+  })
+
+  it("'Nenhuma transação nesta fatura.' só quando não há compra, parcela nem pagamento", async () => {
+    renderPage() // detalhe padrão: nada
+    expect(await screen.findByText("Nenhuma transação nesta fatura.")).toBeInTheDocument()
   })
 
   it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {

@@ -8,8 +8,9 @@ namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
 /// Fonte ÚNICA das regras de dinheiro que antes estavam copiadas (e divergiam) entre services,
-/// controller e jobs: <b>saldo de conta</b>, <b>total/restante de fatura</b> e o <b>estado de
-/// pagamento</b> da fatura quando o total cai sem pagamento (cancelamento, fechamento).
+/// controller e jobs: <b>saldo de conta</b>, <b>total/restante de fatura</b>, o <b>estado de
+/// pagamento</b> da fatura quando o total cai sem pagamento (cancelamento, fechamento) e o <b>limite
+/// usado/disponível do cartão</b>.
 /// Cada cópia tinha uma variação: o total da fatura somava parcela cancelada em 3 lugares (e o
 /// cálculo de limite não), o resumo por conta somava previsão, o saldo carregava o histórico inteiro
 /// em memória. Quem precisa dessas contas chama daqui — mesmo molde de <see cref="DonoRecursos"/>:
@@ -180,8 +181,8 @@ public static class RegrasFinanceiras
     /// Reconcilia o estado de pagamento com o total ATUAL quando ele muda SEM pagamento novo — parcela
     /// ou parcelamento cancelado — ou quando o ciclo fecha. Sem isso a fatura travava: pagava R$ 100 de
     /// 300, a parcela de 200 era cancelada, o restante ia a 0 e o estado ficava Parcial pra sempre —
-    /// limite das compras à vista preso (o LimiteCalculator só solta fatura Pago), job de atraso cobrando
-    /// juros de fatura coberta e todo pagamento recusado ("Restante a pagar: R$ 0,00").
+    /// job de atraso cobrando juros de fatura coberta e todo pagamento recusado ("Restante a pagar:
+    /// R$ 0,00"). O limite não depende deste rótulo: segue o pago (<see cref="LimiteUsadoDaFatura(decimal, decimal)"/>).
     /// <list type="bullet">
     ///   <item>Ainda resta pagar → nada muda (estado e atraso seguem valendo).</item>
     ///   <item>Nada resta → sai do atraso (<c>EstaAtrasada=false</c>). Juros/multa já lançados ficam como
@@ -190,9 +191,8 @@ public static class RegrasFinanceiras
     ///   <item>Ciclo ABERTO fica como está (Parcial com restante 0) até o fechamento, quando o
     ///   <c>FaturaFechamentoJob</c> aplica esta mesma regra. DECISÃO: marcar Pago com o ciclo aberto
     ///   travaria a próxima compra do ciclo — <c>ObterOuCriarFaturaAsync</c> põe a compra na fatura sem
-    ///   olhar o estado, <c>PagarFaturaAsync</c> recusa fatura Pago ("já foi paga integralmente") e o
-    ///   LimiteCalculator não bloqueia compra em fatura Pago. Parcial com restante 0 só segura o limite
-    ///   das compras à vista até o fechamento: conservador, nunca libera limite a mais. A janela foi
+    ///   olhar o estado e <c>PagarFaturaAsync</c> recusa fatura Pago ("já foi paga integralmente").
+    ///   Parcial com restante 0 não prende limite: o usado segue o pago, não o rótulo. A janela foi
     ///   considerada: nela as parcelas Pendentes restantes JÁ estão pagas, e quem decide isso olha a
     ///   cobertura, não o rótulo — cancelar o parcelamento delas sinaliza estorno
     ///   (<see cref="ParcelaQuitadaPelaFatura"/>) e o pagamento antecipado recusa (restante menor que a
@@ -207,7 +207,7 @@ public static class RegrasFinanceiras
     /// Exige <c>Include(Transacoes)</c> e <c>Include(ParcelasTransacao)</c>.
     /// </summary>
     /// <returns><c>true</c> se a fatura virou Pago agora — o chamador registra com
-    /// <see cref="RegistrarQuitacaoSemPagamentoNovo"/> (a passagem pra Pago solta limite).</returns>
+    /// <see cref="RegistrarQuitacaoSemPagamentoNovo"/>.</returns>
     public static bool ReconciliarEstadoPagamento(Fatura fatura, DateTime agora)
     {
         if (ValorRestanteFatura(fatura) > 0) return false;
@@ -227,8 +227,8 @@ public static class RegrasFinanceiras
     /// <summary>
     /// Registra <c>FaturaPagaTotal</c> pra fatura que virou Pago SEM dinheiro novo — o total caiu até o já
     /// pago (cancelamento) ou o ciclo fechou já coberto (<c>FaturaFechamentoJob</c>). Toda passagem pra
-    /// Pago solta o limite das compras à vista dela (LimiteCalculator), então a trilha de auditoria registra
-    /// por qualquer caminho, com o mesmo formato — antes só o cancelamento registrava e o job não.
+    /// Pago muda a fatura sem movimento de dinheiro, então a trilha de auditoria registra por qualquer
+    /// caminho, com o mesmo formato — antes só o cancelamento registrava e o job não.
     /// Não salva — o chamador grava junto com a mudança de estado.
     /// </summary>
     public static void RegistrarQuitacaoSemPagamentoNovo(
@@ -289,4 +289,146 @@ public static class RegrasFinanceiras
             RegistrarQuitacaoSemPagamentoNovo(eventLog, f, usuarioId, correlationId, "API", "CancelamentoZerouRestante");
         return quitadas;
     }
+
+    // ── Limite do cartão ──────────────────────────────────────────────────────
+    //
+    // Havia duas regras e nenhuma batia com o banco: o card da tela de cartões somava só compra à vista
+    // datada no ciclo atual (ignorava parcela) e subtraía o ValorPago inteiro das faturas — com
+    // R$ 1.500 em parcelamentos mostrava "Disponível R$ 5.000 de R$ 5.000"; o LimiteCalculator somava
+    // parcela Pendente + à vista de fatura não Pago — pagamento parcial não liberava nada e a parcela
+    // coberta pelo pagamento da fatura seguia bloqueando. A regra agora é a do banco: comprou, o usado
+    // sobe; pagou a fatura (mesmo em parte), o usado desce na medida do pago. Um lugar só, os dois usam.
+
+    /// <summary>
+    /// Limite que UMA fatura segura: o que ela cobra de efetivado menos o que já foi pago, nunca
+    /// negativo. O piso é por fatura de propósito: excesso pago numa fatura (pagou a mais, parcela
+    /// cancelada depois do pagamento) é crédito que o sistema ainda não representa — não pode liberar
+    /// o limite de OUTRA fatura, senão o usado caía por uma compra que ninguém pagou.
+    /// </summary>
+    public static decimal LimiteUsadoDaFatura(decimal valorExecutado, decimal valorPago) =>
+        Math.Max(0m, valorExecutado - valorPago);
+
+    /// <summary>
+    /// O que UMA fatura carregada cobra de EFETIVADO: o total (<see cref="ValorTotalFatura(Fatura)"/>) sem
+    /// previsão — a mesma conta que <see cref="ConsultaLimitePorFatura"/> faz em SQL, pra quem já tem a
+    /// fatura na mão e precisa do antes/depois de uma mudança ainda não salva. Exige
+    /// <c>Include(Transacoes)</c> e <c>Include(ParcelasTransacao)</c>.
+    /// </summary>
+    public static decimal ValorExecutadoFatura(Fatura fatura) =>
+        ValorTotalFatura(
+            fatura.Transacoes.Where(t => t.StatusTransacao == StatusTransacao.Executado),
+            fatura.ParcelasTransacao);
+
+    /// <summary>
+    /// Limite que a fatura carregada segura agora (<see cref="LimiteUsadoDaFatura(decimal, decimal)"/> com o
+    /// efetivado dela). Quem muda pago ou total de faturas mede o limite que REALMENTE soltou pela queda
+    /// disto antes/depois — o valor da parcela ou do pagamento é só o teto: o usado segue o pago de cada
+    /// fatura, então pagamento anterior já tinha soltado parte, e pagamento que cobre previsão não solta
+    /// nada (previsão não usa limite). Mesmo requisito de <see cref="ValorExecutadoFatura"/>.
+    /// </summary>
+    public static decimal LimiteUsadoDaFatura(Fatura fatura) =>
+        LimiteUsadoDaFatura(ValorExecutadoFatura(fatura), fatura.ValorPago);
+
+    /// <summary>
+    /// Disponível = limite total − usado. PODE ficar negativo: se o usado passou do limite (compra
+    /// lançada acima do disponível, limite reduzido depois), o número mostra o estouro em vez de
+    /// esconder atrás de um zero. A trava de compra parcelada ("Limite insuficiente") compara com ele.
+    /// </summary>
+    public static decimal LimiteDisponivel(decimal limiteTotal, decimal limiteUsado) =>
+        limiteTotal - limiteUsado;
+
+    /// <summary>Linha da consulta de limite: uma por fatura dos cartões pedidos.</summary>
+    public sealed record LimiteFaturaLinha(Guid CartaoId, decimal ValorExecutado, decimal ValorPago);
+
+    /// <summary>
+    /// Por fatura: o que ela cobra de EFETIVADO e o que já foi pago. "Cobra" é a regra do total da fatura
+    /// (<see cref="CompoeTotalFatura(Transacao)"/> + <see cref="CompoeTotalFatura(ParcelaTransacao)"/>,
+    /// valor devido da parcela = <see cref="ValorDevidoParcela"/>), escrita aqui em SQL — um bool em C#
+    /// não vira WHERE —, com UMA diferença: previsão (recorrente futura no cartão) fica fora. Ela entra no
+    /// total pagável, mas ainda não foi cobrada, então não usa limite (aparece à parte como exposição
+    /// futura no LimiteCalculator). Parcela entra inteira, inclusive a de fatura futura: compra parcelada
+    /// bloqueia o valor de todas as parcelas não pagas, como no banco. A mesma conta pra fatura já
+    /// carregada é <see cref="ValorExecutadoFatura"/> (teste garante que as duas batem).
+    /// Somas nas subconsultas (uma linha por fatura, não o histórico de lançamentos em memória); o piso
+    /// por fatura (<see cref="LimiteUsadoDaFatura(decimal, decimal)"/>) é aplicado depois, no C#. Filtra pelo dono do
+    /// cartão: id de cartão alheio vindo de um chamador não devolve nada.
+    /// </summary>
+    public static IQueryable<LimiteFaturaLinha> ConsultaLimitePorFatura(
+        AppDbContext context, IEnumerable<Guid> cartaoIds, Guid usuarioId)
+    {
+        var ids = cartaoIds.Distinct().ToArray();
+        return context.Faturas
+            .Where(f => ids.Contains(f.CartaoCreditoId) && f.CartaoCredito.CriadoPor == usuarioId)
+            .Select(f => new LimiteFaturaLinha(
+                f.CartaoCreditoId,
+                f.Transacoes
+                    .Where(t => t.UsadoComoCredito && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
+                    .Sum(t => t.Valor)
+                + f.ParcelasTransacao
+                    .Where(p => p.Status != StatusParcela.Cancelada)
+                    .Sum(p => p.ValorComJuros ?? p.Valor),
+                f.ValorPago));
+    }
+
+    /// <summary>Linha da consulta de compra no cartão fora de fatura (uma por cartão que tem).</summary>
+    public sealed record CompraSemFaturaLinha(Guid CartaoId, decimal Valor);
+
+    /// <summary>
+    /// Compra efetivada no cartão SEM fatura. Rede de segurança pra dado antigo: até a correção,
+    /// <c>RecorrenteService.GerarPendentesAsync</c> lançava a recorrente de cartão como Executado sem
+    /// <c>FaturaId</c> (e sem <c>UsadoComoCredito</c>); hoje ela nasce na fatura do período e o
+    /// <c>ExpandirRecorrentesJob</c> põe as antigas na fatura delas (aí pagar libera). Enquanto nenhuma
+    /// fatura cobra a compra, pagar fatura não a libera — mas ela foi feita no crédito e usa limite
+    /// (conservador: não soltar limite de compra que ninguém pagou). Sai do usado quando a transação é
+    /// excluída ou entra numa fatura. Parcela nunca cai aqui: <c>ParcelaTransacao.FaturaId</c> é obrigatório.
+    /// Só despesa sem conta (compra com conta é débito, não crédito) e só do dono: o lançamento tem que
+    /// ser dele além do cartão, pra um id de cartão alheio gravado num lançamento não mexer no limite
+    /// de outra pessoa.
+    /// </summary>
+    public static IQueryable<CompraSemFaturaLinha> ConsultaComprasSemFatura(
+        AppDbContext context, IEnumerable<Guid> cartaoIds, Guid usuarioId)
+    {
+        var ids = cartaoIds.Distinct().ToArray();
+        return context.Transacoes
+            .Where(t => t.CartaoCreditoId != null
+                        && ids.Contains(t.CartaoCreditoId.Value)
+                        && t.CartaoCredito!.CriadoPor == usuarioId
+                        && t.CriadoPor == usuarioId
+                        && t.FaturaId == null
+                        && t.ContaId == null
+                        && !t.EhPagamentoFatura
+                        && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Executado
+                        && t.Tipo == TipoTransacao.Despesa)
+            .GroupBy(t => t.CartaoCreditoId!.Value)
+            .Select(g => new CompraSemFaturaLinha(g.Key, g.Sum(t => t.Valor)));
+    }
+
+    /// <summary>
+    /// Limite USADO de vários cartões em duas idas ao banco (não uma por cartão): Σ das faturas de
+    /// <see cref="LimiteUsadoDaFatura(decimal, decimal)"/> + compra fora de fatura. Todo cartão pedido vem no dicionário
+    /// (sem fatura nem compra → 0). Mesmo número no card da tela de cartões, na trava de compra
+    /// parcelada, no resultado de pagar/cancelar parcela e no dashboard.
+    /// </summary>
+    public static async Task<Dictionary<Guid, decimal>> LimitesUsadosDosCartoesAsync(
+        AppDbContext context, IEnumerable<Guid> cartaoIds, Guid usuarioId)
+    {
+        var ids = cartaoIds.Distinct().ToList();
+        var resultado = ids.ToDictionary(id => id, _ => 0m);
+        if (ids.Count == 0) return resultado;
+
+        var faturas = await ConsultaLimitePorFatura(context, ids, usuarioId).ToListAsync();
+        foreach (var f in faturas)
+            resultado[f.CartaoId] += LimiteUsadoDaFatura(f.ValorExecutado, f.ValorPago);
+
+        var semFatura = await ConsultaComprasSemFatura(context, ids, usuarioId).ToListAsync();
+        foreach (var s in semFatura)
+            resultado[s.CartaoId] += s.Valor;
+
+        return resultado;
+    }
+
+    /// <summary>Limite usado de UM cartão (mesma regra/consultas de <see cref="LimitesUsadosDosCartoesAsync"/>).</summary>
+    public static async Task<decimal> LimiteUsadoDoCartaoAsync(AppDbContext context, Guid cartaoId, Guid usuarioId) =>
+        (await LimitesUsadosDosCartoesAsync(context, new[] { cartaoId }, usuarioId))[cartaoId];
 }

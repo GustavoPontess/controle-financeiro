@@ -48,7 +48,9 @@ public class FaturaAtrasoJob
 
     private IQueryable<Fatura> Pendentes(DateTime hoje) =>
         _context.Faturas
-            .Where(f => !f.EstaAtrasada && f.DataVencimento < hoje && f.EstadoPagamento != EstadoPagamentoFatura.Pago)
+            // Sem filtro pelo rótulo Pago: fatura marcada Pago que recebeu compra nova volta a ter restante e
+            // também atrasa. Quem decide é o restante (MarcarAtraso).
+            .Where(f => !f.EstaAtrasada && f.DataVencimento < hoje)
             .Include(f => f.Transacoes)
             .Include(f => f.ParcelasTransacao);
 

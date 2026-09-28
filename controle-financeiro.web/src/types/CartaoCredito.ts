@@ -8,8 +8,10 @@ export interface CartaoCredito {
   temDebito: boolean
   ehPrePago: boolean
   limite?: number
+  /** Limite − usado. Negativo quando estourou o limite. */
   limiteDisponivel?: number
-  gastosNoCicloAtual: number
+  /** Quanto do limite está em uso: o que as faturas cobram (parcelas futuras incluídas) menos o pago. */
+  limiteUsado?: number
   diaFechamento?: number
   diaVencimento?: number
   contaId?: string

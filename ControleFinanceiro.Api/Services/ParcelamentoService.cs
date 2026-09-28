@@ -359,9 +359,9 @@ public class ParcelamentoService
             .Where(p => p.Status == StatusParcela.Pendente && !quitadasPelaFatura.Contains(p))
             .ToList();
         var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga) + quitadasPelaFatura.Count;
-        // Limite liberado = tudo que o LimiteCalculator bloqueava (toda Pendente do parcelamento ativo,
-        // inclusive a quitada pela fatura): com o parcelamento inativo, nenhuma bloqueia mais.
-        var valorBloqueadoLiberado = pendentes.Concat(quitadasPelaFatura).Sum(p => p.ValorComJuros ?? p.Valor);
+        // Só as faturas das Pendentes canceladas mudam de total: a quitada pela fatura vira Paga e segue
+        // no total (o pagamento dela já está no ValorPago).
+        var faturasAfetadas = pendentes.Select(p => p.Fatura!).Distinct().ToList();
 
         var correlationId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
@@ -369,6 +369,11 @@ public class ParcelamentoService
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Limite antes da mudança, pra trilha de auditoria registrar o que REALMENTE soltou (abaixo).
+            var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(
+                _context, parcelamento.CartaoCreditoId, usuarioId);
+            var usadoFaturasAntes = faturasAfetadas.Sum(RegrasFinanceiras.LimiteUsadoDaFatura);
+
             parcelamento.Ativo = false;
             parcelamento.CanceladoEm = agora;
             parcelamento.MotivoCancelamento = dto.Motivo;
@@ -433,7 +438,11 @@ public class ParcelamentoService
                     });
             }
 
-            if (valorBloqueadoLiberado > 0)
+            // Limite liberado = queda do usado das faturas afetadas, não o valor das parcelas: o limite segue
+            // o pago de cada fatura (RegrasFinanceiras.LimiteUsadoDaFatura), então pagamento anterior já
+            // tinha soltado parte. Antes/depois = limite usado do CARTÃO; as outras faturas não mudaram.
+            var limiteLiberado = usadoFaturasAntes - faturasAfetadas.Sum(RegrasFinanceiras.LimiteUsadoDaFatura);
+            if (limiteLiberado > 0)
             {
                 _eventLog.Registrar(
                     usuarioId: usuarioId,
@@ -442,12 +451,13 @@ public class ParcelamentoService
                     entidadeId: parcelamento.CartaoCreditoId,
                     correlationId: correlationId,
                     origemAcao: "API",
-                    valorAntes: valorBloqueadoLiberado,
-                    valorDepois: 0m,
+                    valorAntes: usadoCartaoAntes,
+                    valorDepois: usadoCartaoAntes - limiteLiberado,
                     payload: new
                     {
                         parcelamentoId,
-                        delta = -valorBloqueadoLiberado,
+                        valorParcelasCanceladas = pendentes.Sum(p => p.ValorComJuros ?? p.Valor),
+                        delta = -limiteLiberado,
                     });
             }
 

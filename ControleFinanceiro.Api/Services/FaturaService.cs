@@ -257,9 +257,6 @@ public class FaturaService
         if (pagamentoAnterior != null)
             return pagamentoAnterior;
 
-        if (fatura.EstadoPagamento == EstadoPagamentoFatura.Pago)
-            throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
-
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
@@ -268,6 +265,11 @@ public class FaturaService
         var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);
 
         var valorRestante = RegrasFinanceiras.ValorRestanteFatura(valorTotal, fatura.ValorPago);
+        // "Já paga" pelo RESTANTE, não pelo rótulo: compra nova que cai numa fatura marcada Pago (ciclo
+        // aberto quitado, compra retroativa, recorrente) deixa restante > 0 — recusar pelo rótulo travava
+        // a fatura pra sempre (não pagava, e o limite dessa compra nunca voltava).
+        if (valorRestante <= 0)
+            throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
             throw new ArgumentException($"Valor inválido. Restante a pagar: {valorRestante:C}.");
 
@@ -288,6 +290,11 @@ public class FaturaService
             Data = dto.DataPagamento.ToUniversalTime(),
             CriadoPor = usuarioId,
         };
+
+        // Limite antes do pagamento (lido do banco, que ainda não tem este pagamento), pra trilha de
+        // auditoria registrar o que ele soltou (abaixo).
+        var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, fatura.CartaoCreditoId, usuarioId);
+        var usadoFaturaAntes = RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
 
         var valorPagoAntes = fatura.ValorPago;
         fatura.ValorPago += dto.Valor;
@@ -340,6 +347,29 @@ public class FaturaService
                 estadoPagamento = fatura.EstadoPagamento.ToString(),
             });
 
+        // Limite: o usado segue o pago da fatura, então pagar solta limite (mesmo em parte). Solta o que a
+        // fatura segurava até o valor pago — a parte que cobre previsão ou passa do efetivado não solta
+        // nada. Antes/depois = limite usado do CARTÃO; só esta fatura mudou, então a queda dela é a do
+        // cartão. Mesmo SaveChanges do pagamento: ou os dois ficam, ou nenhum.
+        var limiteLiberado = usadoFaturaAntes - RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+        var logLimite = limiteLiberado > 0
+            ? _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.LimiteLiberado,
+                entidade: "CartaoCredito",
+                entidadeId: fatura.CartaoCreditoId,
+                correlationId: log.CorrelationId,
+                origemAcao: "API",
+                valorAntes: usadoCartaoAntes,
+                valorDepois: usadoCartaoAntes - limiteLiberado,
+                payload: new
+                {
+                    faturaId = fatura.Id,
+                    pagamentoId = pagamento.Id,
+                    delta = -limiteLiberado,
+                })
+            : null;
+
         try
         {
             await _context.SaveChangesAsync();
@@ -352,8 +382,9 @@ public class FaturaService
             // chave, é o duplo clique/retry → replay com o pagamento dela (se os dados baterem — senão
             // 409, igual ao replay normal). Senão foi outra operação (outro pagamento, parcela, job)
             // → propaga; o middleware devolve 409 e o cliente recarrega.
-            foreach (var pendente in new object[] { pagamento, registro, log, fatura })
-                _context.Entry(pendente).State = EntityState.Detached;
+            foreach (var pendente in new object?[] { pagamento, registro, log, logLimite, fatura })
+                if (pendente != null)
+                    _context.Entry(pendente).State = EntityState.Detached;
 
             var vencedor = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId, dto);
             if (vencedor != null)
@@ -454,15 +485,21 @@ public class FaturaService
             .Include(f => f.CartaoCredito)
             .Include(f => f.Transacoes)
                 .ThenInclude(t => t.Categoria)
+            // Parcelamento (descrição/data da compra) e categoria vêm na MESMA consulta — sem N+1 por parcela.
             .Include(f => f.ParcelasTransacao)
+                .ThenInclude(p => p.Parcelamento!)
+                    .ThenInclude(pa => pa.Categoria)
             .AsNoTracking()
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("Fatura não encontrada.");
 
         var dto = new FaturaDetalheDto();
         PreencherDto(dto, fatura, fatura.CartaoCredito.Nome);
+        // A lista usa o MESMO filtro do total (RegrasFinanceiras): compras + parcelas listadas somam
+        // exatamente o ValorTotal. Previsão (assinatura expandida pelo job, UsadoComoCredito) entra nos
+        // dois lados — a regra do total não olha StatusTransacao.
         dto.Transacoes = fatura.Transacoes
-            .Where(t => t.UsadoComoCredito)
+            .Where(RegrasFinanceiras.CompoeTotalFatura)
             .OrderByDescending(t => t.CriadoEm)
             .Select(t => new FaturaTransacaoDto
             {
@@ -473,6 +510,29 @@ public class FaturaService
                 CriadoEm = t.CriadoEm,
                 CategoriaId = t.CategoriaId,
                 CategoriaDescricao = t.Categoria?.Descricao,
+            }).ToList();
+
+        // Parcelas do parcelamento que caíram nesta fatura. Antes só entravam no total: a fatura cobrava
+        // R$ 450 e a lista dizia "nenhuma transação". Isolamento: vêm pela fatura, já filtrada pelo dono
+        // do cartão (mesmo critério das compras acima). Data = compra do parcelamento (convenção do
+        // extrato de cartão); a linha do tempo ordena por CriadoEm, como as compras.
+        dto.Parcelas = fatura.ParcelasTransacao
+            .Where(RegrasFinanceiras.CompoeTotalFatura)
+            .OrderByDescending(p => p.CriadoEm)
+            .ThenBy(p => p.Numero)
+            .Select(p => new FaturaParcelaDto
+            {
+                Id = p.Id,
+                ParcelamentoId = p.ParcelamentoId,
+                Descricao = p.Parcelamento?.Descricao ?? string.Empty,
+                Numero = p.Numero,
+                QuantidadeTotal = p.QuantidadeTotal,
+                Valor = RegrasFinanceiras.ValorDevidoParcela(p),
+                Data = p.Parcelamento?.DataCompra ?? p.DataVencimento,
+                CriadoEm = p.CriadoEm,
+                CategoriaId = p.Parcelamento?.CategoriaId,
+                CategoriaDescricao = p.Parcelamento?.Categoria?.Descricao,
+                Status = (int)p.Status,
             }).ToList();
 
         // Pagamentos: transações de pagamento desta fatura (FaturaPagaId, não FaturaId).

@@ -128,7 +128,6 @@ export default function TransferenciasPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Transferências</h1>
-          <div className={styles.subtitle}>Mova dinheiro entre suas contas</div>
         </div>
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Nova Transferência

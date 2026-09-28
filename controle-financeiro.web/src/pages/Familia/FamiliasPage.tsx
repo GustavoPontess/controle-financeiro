@@ -138,7 +138,6 @@ export default function FamiliasPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Famílias</h1>
-          <div className={styles.subtitle}>Organize as finanças com quem você divide a vida.</div>
         </div>
         <PontesButton size="sm" iconStart={<Users size={16} strokeWidth={2.5} />} onClick={() => setCriarOpen(true)}>
           Nova Família
