@@ -89,7 +89,7 @@ npm run lint
 
 ### Database
 - **Postgres único** (SQLite removido no #114): `DATABASE_URL` deve conter connection string Npgsql (`Host=...`). Rodar a API **exige** Postgres no ar (`docker compose up -d postgres`)
-- **Schema via migrations versionadas** em `Migrations/` (42 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
+- **Schema via migrations versionadas** em `Migrations/` (43 migrations, geradas pelo `AppDbContextFactory`); `dotnet ef database update` aplica e o startup roda `MigrateAsync` automático
 - `Npgsql.EnableLegacyTimestampBehavior` ativo — `DateTime` mapeia para `timestamp without time zone`
 - Não há mais DDL cru no startup do `Program.cs` — schema muda **só** via migration
 

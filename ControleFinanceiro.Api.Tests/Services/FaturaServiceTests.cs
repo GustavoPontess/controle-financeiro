@@ -547,12 +547,21 @@ public class FaturaServiceTests
         var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
         await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
 
-        var log = Assert.Single(await ctx.FinancialEventLogs.ToListAsync());
+        var logs = await ctx.FinancialEventLogs.ToListAsync();
+        var log = Assert.Single(logs, l => l.EntidadeAfetada == "Fatura");
         Assert.Equal(FinancialEventType.FaturaPagaParcial, log.Tipo);
         Assert.Equal(fatura.Id, log.EntidadeId);
         Assert.Equal(usuarioId, log.CriadoPor);
         Assert.Equal(0m, log.ValorAntes);
         Assert.Equal(100m, log.ValorDepois);
+
+        // Pagar solta limite na medida do pago (o usado segue o pago): a trilha registra o limite do
+        // cartão também, na mesma correlação e no mesmo SaveChanges do pagamento.
+        var limite = Assert.Single(logs, l => l.Tipo == FinancialEventType.LimiteLiberado);
+        Assert.Equal(fatura.CartaoCreditoId, limite.EntidadeId);
+        Assert.Equal(300m, limite.ValorAntes);
+        Assert.Equal(200m, limite.ValorDepois);
+        Assert.Equal(log.CorrelationId, limite.CorrelationId);
     }
 
     // ── PagarFaturaAsync — idempotência (Idempotency-Key) ───────────────────
@@ -581,7 +590,9 @@ public class FaturaServiceTests
         Assert.Equal(FaturaService.OperacaoPagarFatura, registro.Operacao);
         Assert.Equal(chave, registro.Chave);
         Assert.Equal(primeiro.Id, registro.ReferenciaId);
-        Assert.Single(await ctx.FinancialEventLogs.ToListAsync()); // replay não audita de novo
+        // Replay não audita de novo: um evento do pagamento e um do limite, os do 1º pedido.
+        Assert.Single(await ctx.FinancialEventLogs.Where(l => l.EntidadeAfetada == "Fatura").ToListAsync());
+        Assert.Single(await ctx.FinancialEventLogs.Where(l => l.Tipo == FinancialEventType.LimiteLiberado).ToListAsync());
     }
 
     [Fact]
@@ -759,7 +770,9 @@ public class FaturaServiceTests
         Assert.Single(await ctx.Transacoes.Where(t => t.FaturaPagaId == fatura.Id).ToListAsync());
         Assert.Equal(300m, await DebitadoDaContaAsync(ctx, contaA.Id));
         Assert.Equal(0m, await DebitadoDaContaAsync(ctx, contaB.Id));
-        Assert.Single(await ctx.FinancialEventLogs.ToListAsync());
+        // Só os eventos do 1º pagamento (pagamento + limite); a tentativa recusada não audita nada.
+        Assert.Single(await ctx.FinancialEventLogs.Where(l => l.EntidadeAfetada == "Fatura").ToListAsync());
+        Assert.Single(await ctx.FinancialEventLogs.Where(l => l.Tipo == FinancialEventType.LimiteLiberado).ToListAsync());
     }
 
     [Fact]

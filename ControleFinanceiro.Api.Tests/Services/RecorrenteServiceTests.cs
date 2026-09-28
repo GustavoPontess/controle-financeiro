@@ -668,4 +668,32 @@ public class RecorrenteServiceTests
         var atualizada = await ctx.Transacoes.FindAsync(transacao.Id);
         Assert.Equal(categoriaAntiga, atualizada!.CategoriaId);
     }
+
+    [Fact]
+    public async Task GerarPendentesAsync_CartaoDeOutroUsuario_PulaARecorrente_SemQuebrarAsDemais()
+    {
+        // GerarPendentes agora põe a ocorrência de cartão na fatura (ObterOuCriarFaturaAsync confere o dono do
+        // cartão). Recorrente gravada antes da checagem de dono, apontando pro cartão de outro usuário, não
+        // pode derrubar o GET /recorrentes nem criar fatura no cartão alheio — pula só ela.
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u1);
+        var cartaoDeOutro = SeedCartao(ctx, u2);
+        var hoje = DateTime.UtcNow.Date;
+        var valida = SeedRecorrente(ctx, u1, conta);
+        valida.DataProximaGeracao = hoje;
+        var ruim = SeedRecorrente(ctx, u1, conta);
+        ruim.ContaId = null;
+        ruim.CartaoCreditoId = cartaoDeOutro;
+        ruim.DataProximaGeracao = hoje;
+        ctx.SaveChanges();
+
+        await CreateService(ctx).GerarPendentesAsync(u1);
+
+        Assert.Single(await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == valida.Id).ToListAsync());
+        Assert.Empty(await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == ruim.Id).ToListAsync());
+        Assert.Empty(await ctx.Faturas.ToListAsync());
+        Assert.Equal(hoje, (await ctx.Recorrentes.AsNoTracking().SingleAsync(r => r.Id == ruim.Id)).DataProximaGeracao);
+    }
 }

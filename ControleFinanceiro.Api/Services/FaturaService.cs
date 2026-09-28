@@ -273,6 +273,11 @@ public class FaturaService
             CriadoPor = usuarioId,
         };
 
+        // Limite antes do pagamento (lido do banco, que ainda não tem este pagamento), pra trilha de
+        // auditoria registrar o que ele soltou (abaixo).
+        var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, fatura.CartaoCreditoId, usuarioId);
+        var usadoFaturaAntes = RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+
         var valorPagoAntes = fatura.ValorPago;
         fatura.ValorPago += dto.Valor;
         if (fatura.ValorPago >= valorTotal)
@@ -324,6 +329,29 @@ public class FaturaService
                 estadoPagamento = fatura.EstadoPagamento.ToString(),
             });
 
+        // Limite: o usado segue o pago da fatura, então pagar solta limite (mesmo em parte). Solta o que a
+        // fatura segurava até o valor pago — a parte que cobre previsão ou passa do efetivado não solta
+        // nada. Antes/depois = limite usado do CARTÃO; só esta fatura mudou, então a queda dela é a do
+        // cartão. Mesmo SaveChanges do pagamento: ou os dois ficam, ou nenhum.
+        var limiteLiberado = usadoFaturaAntes - RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+        var logLimite = limiteLiberado > 0
+            ? _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.LimiteLiberado,
+                entidade: "CartaoCredito",
+                entidadeId: fatura.CartaoCreditoId,
+                correlationId: log.CorrelationId,
+                origemAcao: "API",
+                valorAntes: usadoCartaoAntes,
+                valorDepois: usadoCartaoAntes - limiteLiberado,
+                payload: new
+                {
+                    faturaId = fatura.Id,
+                    pagamentoId = pagamento.Id,
+                    delta = -limiteLiberado,
+                })
+            : null;
+
         try
         {
             await _context.SaveChangesAsync();
@@ -336,8 +364,9 @@ public class FaturaService
             // chave, é o duplo clique/retry → replay com o pagamento dela (se os dados baterem — senão
             // 409, igual ao replay normal). Senão foi outra operação (outro pagamento, parcela, job)
             // → propaga; o middleware devolve 409 e o cliente recarrega.
-            foreach (var pendente in new object[] { pagamento, registro, log, fatura })
-                _context.Entry(pendente).State = EntityState.Detached;
+            foreach (var pendente in new object?[] { pagamento, registro, log, logLimite, fatura })
+                if (pendente != null)
+                    _context.Entry(pendente).State = EntityState.Detached;
 
             var vencedor = await BuscarPagamentoPorChaveAsync(usuarioId, idempotencyKey, faturaId, dto);
             if (vencedor != null)

@@ -1,13 +1,17 @@
+using System.Text.Json;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.CartaoCredito;
 using ControleFinanceiro.Api.DTOs.Fatura;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.ParcelaTransacao;
+using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Infrastructure;
+using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace ControleFinanceiro.Api.Tests.Services;
@@ -281,29 +285,138 @@ public class LimiteCartaoRegraUnicaTests
         // 300 à vista + 3 × 400 − 200 pagos − 400 da parcela cancelada; a previsão de 50 fica fora.
         Assert.Equal(900m, esperado);
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, esperado);
+        // A versão em C# pra fatura carregada (usada pela trilha de auditoria) dá o mesmo número do SQL.
+        Assert.Equal(esperado, faturas.Sum(RegrasFinanceiras.LimiteUsadoDaFatura));
     }
 
-    // ══ Compra no cartão fora de fatura ═════════════════════════════════════
+    // ══ Recorrente no cartão ═════════════════════════════════════════════════
+
+    private static RecorrenteService Recorrentes(AppDbContext ctx) =>
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor());
+
+    /// <summary>Recorrente mensal de R$ 80 no cartão pelo caminho real (modal de nova transação, modo recorrente).</summary>
+    private static Task CriarRecorrenteNoCartaoAsync(AppDbContext ctx, Cenario c, DateTime inicio) =>
+        Recorrentes(ctx).CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Streaming", Valor = 80, Tipo = (int)TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
+            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = inicio.Day, DataInicio = inicio,
+        }, c.UsuarioId);
+
+    /// <summary>Paga o restante de toda fatura do cartão que ainda deve (o usuário quitou tudo).</summary>
+    private static async Task QuitarTodasAsFaturasAsync(AppDbContext ctx, Cenario c)
+    {
+        var faturas = await ctx.Faturas.AsNoTracking()
+            .Include(f => f.Transacoes).Include(f => f.ParcelasTransacao)
+            .Where(f => f.CartaoCreditoId == c.CartaoId)
+            .ToListAsync();
+        foreach (var f in faturas)
+        {
+            var restante = RegrasFinanceiras.ValorRestanteFatura(f);
+            if (restante > 0)
+                await PagarFaturaAsync(ctx, c, f.Id, restante);
+        }
+    }
 
     [Fact]
-    public async Task RecorrenteGeradaSemFatura_BloqueiaAParte_DebitoEPrevisaoSemFaturaNao()
+    public async Task RecorrenteCriadaPeloApp_EfetivadaPeloJob_UsaLimite_EPagarAFaturaLibera()
     {
+        // O revisor achou: CriarAsync gravava as 3 primeiras ocorrências SEM UsadoComoCredito. Efetivada
+        // pelo job, a compra ficava fora das duas consultas da regra — usado 0 com R$ 80 comprados.
         var ctx = CreateContext();
         var c = await SeedAsync(ctx);
         var hoje = DateTime.UtcNow.Date;
-        ctx.Recorrentes.Add(new Recorrente
+
+        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m); // só previsão: ainda não usa limite
+        Assert.Equal(240m, (await LimiteAsync(ctx, c)).ExposicaoFuturaPrevisao);
+
+        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();
+
+        var executada = await ctx.Transacoes.AsNoTracking()
+            .SingleAsync(t => t.Descricao == "Streaming" && t.StatusTransacao == StatusTransacao.Executado);
+        Assert.True(executada.UsadoComoCredito);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 80m);
+        Assert.Equal(160m, (await LimiteAsync(ctx, c)).ExposicaoFuturaPrevisao);
+
+        // Entra no total da fatura (dá pra pagar) e pagar solta o limite.
+        var fatura = await ctx.Faturas.AsNoTracking()
+            .Include(f => f.Transacoes).Include(f => f.ParcelasTransacao)
+            .SingleAsync(f => f.Id == executada.FaturaId);
+        Assert.Equal(80m, RegrasFinanceiras.ValorRestanteFatura(fatura));
+        await PagarFaturaAsync(ctx, c, fatura.Id, 80m);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m);
+    }
+
+    [Fact]
+    public async Task RecorrenteComInicioNoPassado_ListagemLancaNaFaturaDoPeriodo_QuitarTudoLiberaTudo()
+    {
+        // O revisor achou: com início há mais de 3 meses, GerarPendentesAsync (roda em todo GET /recorrentes)
+        // lançava as ocorrências vencidas no cartão SEM fatura — pagar todas as faturas deixava 320 presos.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var hoje = DateTime.UtcNow.Date;
+
+        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // previsões de -6 a -4 meses
+        await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
+        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();           // efetiva as previsões vencidas
+
+        var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming").ToListAsync();
+        Assert.Equal(7, ocorrencias.Count);
+        Assert.All(ocorrencias, t =>
+        {
+            Assert.Equal(StatusTransacao.Executado, t.StatusTransacao);
+            Assert.NotNull(t.FaturaId);
+            Assert.True(t.UsadoComoCredito);
+        });
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 560m);
+
+        await QuitarTodasAsFaturasAsync(ctx, c);
+
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m);
+    }
+
+    [Fact]
+    public async Task OcorrenciaAntigaSemFatura_BloqueiaAteOJobPorNaFatura_DepoisPagarLibera()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var outro = await SeedAsync(ctx);
+        var hoje = DateTime.UtcNow.Date;
+        var recorrenteId = Guid.NewGuid();
+
+        // Fatura do ciclo passado já quitada: cobrou 100 e recebeu 100.
+        var dataPassada = hoje.AddMonths(-1);
+        var (inicio, fechamento) = FaturaService.CalcularPeriodo(dataPassada, 10);
+        var quitada = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = c.CartaoId, CriadoPor = c.UsuarioId, ValorPago = 100,
+            DataInicio = inicio, DataFechamento = fechamento, DataVencimento = FaturaService.CalcularVencimento(fechamento, 20),
+            EstadoCiclo = EstadoCicloFatura.Fechada, EstadoPagamento = EstadoPagamentoFatura.Pago,
+        };
+        ctx.Faturas.Add(quitada);
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Compra", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = c.CartaoId, FaturaId = quitada.Id, UsadoComoCredito = true, Data = dataPassada,
+            CriadoPor = c.UsuarioId,
+        });
+
+        // Ocorrências como GerarPendentesAsync gravava antes da correção: efetivadas, no cartão, sem fatura.
+        Transacao SemFatura(Guid cartaoId, DateTime data) => new()
         {
             Id = Guid.NewGuid(), Descricao = "Streaming", Valor = 80, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, Frequencia = FrequenciaRecorrencia.Mensal, Dia = hoje.Day,
-            DataInicio = hoje, DataProximaGeracao = hoje, Ativo = true, CriadoPor = c.UsuarioId,
-        });
-        // Débito com o cartão (tem conta): saiu da conta, não do limite.
+            CartaoCreditoId = cartaoId, Data = data, CriadoPor = c.UsuarioId, RecorrenteOrigemId = recorrenteId,
+        };
+        var doCiclo = SemFatura(c.CartaoId, hoje);
+        var daQuitada = SemFatura(c.CartaoId, dataPassada);
+        var noCartaoAlheio = SemFatura(outro.CartaoId, hoje); // cartão de outro usuário gravado antes da checagem
+        ctx.Transacoes.AddRange(doCiclo, daQuitada, noCartaoAlheio);
+        // Débito com o cartão (tem conta): saiu da conta, não do limite. Previsão sem fatura: não foi cobrada.
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Padaria", Valor = 70, Tipo = TipoTransacao.Despesa,
             ContaId = c.ContaId, CartaoCreditoId = c.CartaoId, Data = hoje, CriadoPor = c.UsuarioId,
         });
-        // Previsão sem fatura: ainda não foi cobrada.
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Previsto", Valor = 60, Tipo = TipoTransacao.Despesa,
@@ -312,13 +425,162 @@ public class LimiteCartaoRegraUnicaTests
         });
         await ctx.SaveChangesAsync();
 
-        // Caminho real que grava compra no cartão sem FaturaId (achado registrado na regra).
-        await new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor())
-            .GerarPendentesAsync(c.UsuarioId);
-        var gerada = await ctx.Transacoes.AsNoTracking().SingleAsync(t => t.Descricao == "Streaming");
-        Assert.Null(gerada.FaturaId);
+        // Rede de segurança: nenhuma fatura cobra as duas ocorrências do cartão, então seguem usando limite.
+        // A do cartão alheio não entra em nenhum dos dois (dono do lançamento ≠ dono do cartão).
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 160m);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, outro, 0m);
 
+        await new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), NullLogger<ExpandirRecorrentesJob>.Instance)
+            .ExecuteAsync();
+
+        var depois = await ctx.Transacoes.AsNoTracking()
+            .Where(t => t.RecorrenteOrigemId == recorrenteId)
+            .ToDictionaryAsync(t => t.Id);
+        // Do ciclo: entrou na fatura do período como compra no crédito — cobrada, então pagar libera.
+        Assert.NotNull(depois[doCiclo.Id].FaturaId);
+        Assert.True(depois[doCiclo.Id].UsadoComoCredito);
+        // Do ciclo quitado: entra na fatura dela fora do total (foi dada por paga sem ela) e para de
+        // segurar limite — cobrar deixaria restante numa fatura Pago, que não aceita mais pagamento.
+        Assert.Equal(quitada.Id, depois[daQuitada.Id].FaturaId);
+        Assert.False(depois[daQuitada.Id].UsadoComoCredito);
+        // Cartão de outro usuário: o job não mexe (nem cria fatura no cartão alheio).
+        Assert.Null(depois[noCartaoAlheio.Id].FaturaId);
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 80m);
+
+        await PagarFaturaAsync(ctx, c, depois[doCiclo.Id].FaturaId!.Value, 80m);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, outro, 0m);
+    }
+
+    // ══ Trilha de auditoria do limite (FinancialEventLog) ════════════════════
+
+    /// <summary>Eventos LimiteLiberado do cartão, com o payload já lido.</summary>
+    private static async Task<List<(FinancialEventLog Log, JsonElement Payload)>> LimiteLiberadoAsync(
+        AppDbContext ctx, Cenario c) =>
+        (await ctx.FinancialEventLogs.AsNoTracking()
+            .Where(e => e.Tipo == FinancialEventType.LimiteLiberado && e.EntidadeId == c.CartaoId)
+            .ToListAsync())
+        .Select(e => (e, JsonDocument.Parse(e.PayloadJson!).RootElement))
+        .ToList();
+
+    private static decimal Delta(JsonElement payload) => payload.GetProperty("delta").GetDecimal();
+
+    /// <summary>
+    /// Parcelado 2 × 200. A fatura da 1ª (F1) cobra 300 (parcela + compra de 100) com 250 pagos → segura 50;
+    /// a da 2ª segura 200. Cartão: 250 usados.
+    /// </summary>
+    private static async Task<(ParcelamentoDetalheDto Parcelamento, Guid F1)> ParceladoComFaturaPagaEmParteAsync(
+        AppDbContext ctx, Cenario c)
+    {
+        var p = await ParcelarAsync(ctx, c, 400m, 2);
+        var f1 = p.Parcelas.Single(x => x.Numero == 1).FaturaId;
+        var inicioF1 = (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == f1)).DataInicio;
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = c.CartaoId, FaturaId = f1, UsadoComoCredito = true, Data = inicioF1, CriadoPor = c.UsuarioId,
+        });
+        await ctx.SaveChangesAsync();
+        await PagarFaturaAsync(ctx, c, f1, 250m);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 250m);
+        return (p, f1);
+    }
+
+    [Fact]
+    public async Task CancelarParcela_FaturaPagaEmParte_TrilhaRegistraSoOQueOLimiteSoltou()
+    {
+        // O revisor achou: o log gravava delta = −200 (a parcela inteira), mas a fatura só segurava 50.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var (p, f1) = await ParceladoComFaturaPagaEmParteAsync(ctx, c);
+        var primeira = p.Parcelas.Single(x => x.Numero == 1);
+
+        var resultado = await new ParcelaTransacaoService(ctx, new FinancialEventLogService(ctx), new LimiteCalculatorService(ctx))
+            .CancelarAsync(primeira.Id,
+                new CancelarParcelaDto { Motivo = "Devolvido", IdempotencyKey = Guid.NewGuid().ToString() }, c.UsuarioId);
+
+        var (log, payload) = Assert.Single(await LimiteLiberadoAsync(ctx, c), e => e.Payload.TryGetProperty("parcelaId", out _));
+        Assert.Equal(250m, log.ValorAntes);
+        Assert.Equal(200m, log.ValorDepois);
+        Assert.Equal(-50m, Delta(payload));
+        Assert.Equal(f1, payload.GetProperty("faturaId").GetGuid());
+        Assert.Equal(200m, payload.GetProperty("valorParcela").GetDecimal()); // o teto fica registrado à parte
+        // O "depois" da trilha é o limite que todo mundo mostra agora.
+        Assert.Equal(log.ValorDepois, resultado.NovoLimite.LimiteBloqueado);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 200m);
+    }
+
+    [Fact]
+    public async Task CancelarParcelamento_TrilhaRegistraSoOQueOLimiteSoltou_NaoOValorDasParcelas()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var (p, _) = await ParceladoComFaturaPagaEmParteAsync(ctx, c);
+
+        var resultado = await Parcelamentos(ctx).CancelarAsync(p.Id,
+            new CancelarParcelamentoDto { Motivo = "Desisti", IdempotencyKey = Guid.NewGuid().ToString() }, c.UsuarioId);
+
+        // 400 em parcelas canceladas, mas só 250 estavam presos (F1 já tinha 250 pagos de 300).
+        var (log, payload) = Assert.Single(await LimiteLiberadoAsync(ctx, c),
+            e => e.Payload.TryGetProperty("valorParcelasCanceladas", out _));
+        Assert.Equal(250m, log.ValorAntes);
+        Assert.Equal(0m, log.ValorDepois);
+        Assert.Equal(-250m, Delta(payload));
+        Assert.Equal(400m, payload.GetProperty("valorParcelasCanceladas").GetDecimal());
+        Assert.Equal(log.ValorDepois, resultado.NovoLimite.LimiteBloqueado);
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m);
+    }
+
+    [Fact]
+    public async Task PagarFatura_TrilhaRegistraOLimiteSolto_APartePagaDaPrevisaoNaoSolta()
+    {
+        // Antes pagar fatura não gravava evento de limite nenhum, mas o usado cai a cada pagamento.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var compra = await ComprarAsync(ctx, c, 100m);
+        await ComprarAsync(ctx, c, 50m, StatusTransacao.Previsao); // mesma fatura; cobra mas não usa limite
+        var faturaId = compra.FaturaId!.Value;
+
+        await PagarFaturaAsync(ctx, c, faturaId, 30m);
+        await PagarFaturaAsync(ctx, c, faturaId, 120m); // quita os 150 da fatura
+
+        var eventos = (await LimiteLiberadoAsync(ctx, c)).OrderByDescending(e => e.Log.ValorAntes).ToList();
+        Assert.Equal(2, eventos.Count);
+        Assert.Equal((100m, 70m, -30m), (eventos[0].Log.ValorAntes!.Value, eventos[0].Log.ValorDepois!.Value, Delta(eventos[0].Payload)));
+        // 120 pagos, mas só 70 estavam presos: os 50 que cobrem a previsão não soltam nada.
+        Assert.Equal((70m, 0m, -70m), (eventos[1].Log.ValorAntes!.Value, eventos[1].Log.ValorDepois!.Value, Delta(eventos[1].Payload)));
+        Assert.All(eventos, e => Assert.Equal(faturaId, e.Payload.GetProperty("faturaId").GetGuid()));
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m);
+    }
+
+    [Fact]
+    public async Task PagarParcelaAntecipada_ComPrevisaoNaFatura_TrilhaRegistraSoOQueOLimiteSoltou()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        var p = await ParcelarAsync(ctx, c, 400m, 2); // 2 × 200
+        var primeira = p.Parcelas.Single(x => x.Numero == 1);
+        var inicioF1 = (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == primeira.FaturaId)).DataInicio;
+        // Previsão de 100 na mesma fatura: F1 cobra 300 (200 efetivados).
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Assinatura", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = c.CartaoId, FaturaId = primeira.FaturaId, UsadoComoCredito = true,
+            StatusTransacao = StatusTransacao.Previsao, Data = inicioF1, CriadoPor = c.UsuarioId,
+        });
+        await ctx.SaveChangesAsync();
+        await PagarFaturaAsync(ctx, c, primeira.FaturaId, 50m); // F1 segura 150; cartão 350
+
+        await new ParcelaTransacaoService(ctx, new FinancialEventLogService(ctx), new LimiteCalculatorService(ctx))
+            .PagarAntecipadoAsync(primeira.Id,
+                new PagarParcelaDto { ContaPagamentoId = c.ContaId, IdempotencyKey = Guid.NewGuid().ToString() }, c.UsuarioId);
+
+        // Restante 250 ≥ 200 → aceita. Pago 250 ≥ efetivado 200: a fatura solta os 150 que segurava, não 200.
+        var (log, payload) = Assert.Single(await LimiteLiberadoAsync(ctx, c), e => e.Payload.TryGetProperty("parcelaId", out _));
+        Assert.Equal(350m, log.ValorAntes);
+        Assert.Equal(200m, log.ValorDepois);
+        Assert.Equal(-150m, Delta(payload));
+        await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 200m);
     }
 
     // ══ Consumidores e isolamento ════════════════════════════════════════════
