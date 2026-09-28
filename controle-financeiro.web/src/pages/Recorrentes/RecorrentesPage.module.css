@@ -10,6 +10,12 @@
 
 /* Topo (sem título — mora na Navbar), toolbar, esqueleto e vazio vêm do DS (padrão de tela). */
 
+.subtitle {
+  font-size: 13px;
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
 /* ── Hero de custo ───────────────────────────────────────────────────────── */
 
 .hero {

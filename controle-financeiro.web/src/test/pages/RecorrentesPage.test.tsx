@@ -101,10 +101,11 @@ beforeEach(() => {
 describe("RecorrentesPage", () => {
   // ── Padrão de tela ──
 
-  it("sem <h1> próprio (título mora na Navbar) e botão 'Nova conta fixa' no topo", async () => {
+  it("cabeçalho: nome da tela + descrição e botão 'Nova conta fixa' no topo", async () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Contas Fixas" })).toBeInTheDocument()
+    expect(screen.getByText("Aluguel, escola, plano de saúde e outros pagamentos recorrentes")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Nova conta fixa" })).toBeInTheDocument()
   })
 

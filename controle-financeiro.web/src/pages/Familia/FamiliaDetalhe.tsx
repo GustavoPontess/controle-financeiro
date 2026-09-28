@@ -486,6 +486,9 @@ export function FamiliaDetalhe({ familiaId, showBack, onClose }: FamiliaDetalheP
               <h2 className={styles.title}>{detalhe.nome}</h2>
               {meuPapel && <PontesBadge tone="primary" size="sm">{meuPapel}</PontesBadge>}
             </div>
+            <div className={styles.subtitle}>
+              {detalhe.membros.length} {detalhe.membros.length === 1 ? "membro" : "membros"}
+            </div>
           </div>
         </div>
         {detalhe.ehAdmin && (

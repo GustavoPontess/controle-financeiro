@@ -61,10 +61,11 @@ describe("TransferenciasPage (#151)", () => {
     expect(listTransferenciasPage).toHaveBeenCalledWith(1, 25, "")
   })
 
-  it("padrão de tela: sem <h1>, botão 'Nova transferência' no topo, sem seletor de situação", async () => {
+  it("cabeçalho: nome da tela + descrição, botão 'Nova transferência' no topo, sem seletor de situação", async () => {
     renderPage()
     await screen.findByText("Reserva")
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Transferências" })).toBeInTheDocument()
+    expect(screen.getByText("Mova dinheiro entre suas contas")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Nova transferência" })).toBeInTheDocument()
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument()
     // Sem contador redundante ("N transferências") fora da paginação.

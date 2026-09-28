@@ -1,8 +1,10 @@
 .root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
 
-/* Header padrão (igual às outras telas: título + ação — sem subtítulo explicativo) */
+/* Header padrão (igual às outras telas: título + subtitle + ação) */
 .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
+
 /* Hero composto — linguagem hero das outras telas, composição própria:
    saldo total (global) à esquerda + resumo do mês à direita, numa peça só. */
 .hero {

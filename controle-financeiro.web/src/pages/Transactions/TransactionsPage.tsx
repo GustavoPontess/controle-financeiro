@@ -254,6 +254,7 @@ export default function TransactionsPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Transações</h1>
+          <div className={styles.subtitle}>Todos os seus lançamentos, mês a mês</div>
         </div>
       </div>
 

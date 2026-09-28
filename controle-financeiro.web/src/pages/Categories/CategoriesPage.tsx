@@ -203,6 +203,7 @@ export default function CategoriesPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Categorias</h1>
+          <div className={styles.subtitle}>Organize receitas, despesas e subcategorias</div>
         </div>
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={abrirNovaCategoria}>
           Nova Categoria

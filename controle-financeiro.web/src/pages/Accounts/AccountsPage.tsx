@@ -99,6 +99,9 @@ export default function AccountsPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Bancos</h1>
+          <p className={styles.subtitle}>
+            Contas correntes, poupança e a carteira automática do sistema.
+          </p>
         </div>
         <PontesButton
           variant="primary"

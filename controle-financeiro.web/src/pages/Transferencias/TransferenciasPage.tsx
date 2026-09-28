@@ -170,7 +170,7 @@ export default function TransferenciasPage() {
 
   return (
     <div className={styles.root}>
-      <PontesPageHeader actionLabel="Nova transferência" onAction={openCreate} />
+      <PontesPageHeader titulo="Transferências" descricao="Mova dinheiro entre suas contas" actionLabel="Nova transferência" onAction={openCreate} />
 
       <PontesToolbar
         search={{ value: busca, onChange: setBusca, placeholder: "Buscar transferência…", ariaLabel: "Buscar transferência" }}

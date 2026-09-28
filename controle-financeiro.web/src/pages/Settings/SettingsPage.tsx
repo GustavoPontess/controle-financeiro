@@ -17,6 +17,9 @@ export default function SettingsPage() {
     <div className={styles.root}>
       <header className={styles.header}>
         <h1 className={styles.title}>Configurações</h1>
+        <p className={styles.subtitle}>
+          Segurança da conta e aparência do app. As escolhas de tema valem em todas as telas e sobrevivem ao reload.
+        </p>
       </header>
 
       <MfaSection />

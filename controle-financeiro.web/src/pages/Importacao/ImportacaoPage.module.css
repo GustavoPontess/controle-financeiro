@@ -2,6 +2,8 @@
 
 .header { display: flex; flex-direction: column; gap: 4px; }
 .title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin: 0; }
+
 .uploadRow { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
 .uploadRow > * { flex: 1 1 220px; }
 

@@ -494,7 +494,7 @@ export default function RecorrentesPage() {
 
   return (
     <div className={styles.page}>
-      <PontesPageHeader actionLabel="Nova conta fixa" onAction={openCriar} />
+      <PontesPageHeader titulo="Contas Fixas" descricao="Aluguel, escola, plano de saúde e outros pagamentos recorrentes" actionLabel="Nova conta fixa" onAction={openCriar} />
 
       {/* Hero de custo */}
       <div className={styles.hero}>

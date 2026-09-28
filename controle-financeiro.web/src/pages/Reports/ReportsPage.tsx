@@ -104,6 +104,7 @@ export default function ReportsPage() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Relatórios</h1>
+          <p className={styles.subtitle}>Análise financeira detalhada</p>
         </div>
         <div className={styles.yearNav}>
           <PontesIconButton size={32} variant="outline" aria-label="Ano anterior" onClick={() => setAno((a) => a - 1)}>

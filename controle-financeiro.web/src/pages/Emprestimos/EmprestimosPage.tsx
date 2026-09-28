@@ -31,6 +31,7 @@ export default function EmprestimosPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Empréstimos</h1>
+          <p className={styles.subtitle}>Dinheiro que você emprestou ou pegou emprestado</p>
         </div>
         <div className={styles.headerActions}>
           <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={l.openCreate}>
