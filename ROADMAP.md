@@ -21,13 +21,12 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
 
-1. **Front sem retrabalho: uma tela de lista só** (**PRIORIDADE do Gustavo**, pedida em 2026-09-28: "perco tempo acertando tela que nem precisa" e deixo de fazer feature). Absorve o antigo "padrão de telas fase 2" (fase 1 = #279).
-   - **Causa:** o DS já tem as peças (`PontesTable`, `PontesToolbar`, `PontesRowActions`, `PontesEmptyState`, `PontesPagination`, `PontesSegmented`), mas cada página monta a lista do seu jeito. Resultado: filtro diferente, tabela diferente, linha sem ⋮. Hoje cada lista interna desenha a própria tabela: Transações, Transferências, Contas Fixas, Parcelamentos, Empréstimos, Importação e as 4 do Admin.
-   - **Proposta** (explicar ao Gustavo e pegar o OK antes de executar, é mudança grande):
-     - (a) **um componente que é a tela de lista inteira**: busca + **Ativos | Encerrados** + tabela + ⋮ na linha (excluir por último, com confirmação) + vazio com botão + esqueleto ao carregar + paginação no servidor. A página só declara colunas e ações; não desenha nada;
-     - (b) o mesmo pro detalhe (`PontesDetailHeader`: voltar, título, status, ⋮);
-     - (c) **trava automática**: teste que falha se uma página interna usar `<table>` cru ou montar filtro próprio;
-     - (d) migrar todas as listas de uma vez, **mantendo o visual atual**: Parcelamentos (cancelados → "Encerrados"), Empréstimos, Transações, Transferências, Contas Fixas, Bancos, Categorias, Metas, Limites, Famílias, Admin.
+1. **Front sem retrabalho** (**PRIORIDADE do Gustavo**, pedida em 2026-09-28: "perco tempo acertando tela que nem precisa" e não consigo ir pra Família). Absorve o antigo "padrão de telas fase 2" (fase 1 = #279).
+   - **Plano completo, escrito pra qualquer modelo seguir:** [`docs/features/padrao-telas/plano.md`](docs/features/padrao-telas/plano.md). Pesquisa + revisão adversarial feitas em 2026-09-28. **Aguardando o OK do Gustavo pra começar o PR 1.**
+   - **Vale pra tela inteira, não só tabela** (Gustavo, 2026-09-28): 4 blocos fixos (resumo, coleção, detalhe, formulário), anatomia fixa de card/linha e uma **ficha por entidade** dizendo o que mostrar na coleção, o que fica só no detalhe e o que nunca aparece — aprovada pelo Gustavo no PR 1.
+   - **Em uma linha:** skill de projeto `pontes-telas` no lugar da `frontend-design` genérica (que mandava variar cada tela) + trava de lint + TanStack Query num hook de lista único + molde `PontesListPage` (variantes `list`/`table`) + migrar **uma tela por PR**, mantendo o visual.
+   - **PR 0 (P1, independente, antes do molde):** Idempotency-Key nova a cada envio em Parcelamentos (tentar de novo pode duplicar); Contas Fixas grava "1.500" como R$ 1,50; API da Família devolve a renda de todos os membros pra todos. Detalhe e arquivo:linha no plano.
+   - **GETs que gravam** (item P2 em "Auditoria de arquitetura") vira **pré-requisito** do PR 3 (o TanStack Query recarrega sozinho).
 2. **Dashboard: "Saiu" ignora o cartão** (P1, dinheiro — **DECISÃO DO GUSTAVO**) — "Saiu" tira a compra no cartão E o pagamento da fatura, então gasto no cartão nunca aparece em "Seu mês". Proposta: "Entrou/Saiu/Sobrou" = dinheiro da conta (pagamento de fatura entra em "Saiu"); "Gastos por categoria" = compras do mês (cartão e parcelas incluídos, pagamento de fatura nunca). É a mesma regra da decisão "parcelamento no dashboard" abaixo.
 3. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
 4. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.
