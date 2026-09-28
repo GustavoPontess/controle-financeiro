@@ -600,8 +600,11 @@ public class ParcelamentoService
         var valorPago = p.Parcelas
             .Where(par => par.Status == StatusParcela.Paga)
             .Sum(par => par.ValorComJuros ?? par.Valor);
-        var valorTotalEfetivo = p.ValorComJuros ?? p.ValorTotal;
-        var valorRestante = valorTotalEfetivo - valorPago;
+        // Restante = só o que ainda está Pendente. Antes era total − pago, o que contava parcela
+        // Cancelada como "a pagar" (parcelamento cancelado com 1 de 2 paga mostrava restante R$ 100).
+        var valorRestante = p.Parcelas
+            .Where(par => par.Status == StatusParcela.Pendente)
+            .Sum(par => par.ValorComJuros ?? par.Valor);
 
         var proxima = p.Parcelas
             .Where(par => par.Status == StatusParcela.Pendente)

@@ -140,6 +140,15 @@ describe("ParcelamentosPage (#153)", () => {
     expect(payload.taxaJuroMensal).toBe(2.5)
   })
 
+  it("parcelamento cancelado mostra 'Cancelado' escrito (não só o cinza); lista não tem cancelar", async () => {
+    listarPaginado.mockReset().mockResolvedValue(paged([p1, { ...p1, id: "p2", descricao: "Livro", ativo: false }]))
+    renderPage()
+    expect(await screen.findByText("Livro")).toBeInTheDocument()
+    expect(screen.getAllByText("Cancelado")).toHaveLength(1)
+    // Cancelar mora só no detalhe.
+    expect(screen.queryByLabelText("Cancelar parcelamento")).not.toBeInTheDocument()
+  })
+
   it("card da lista não mostra a tag 'Compra Parcelada' (tipo padrão)", async () => {
     renderPage()
     await screen.findByText("Notebook")

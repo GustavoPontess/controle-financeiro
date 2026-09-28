@@ -15,6 +15,7 @@ import { getEmprestimo } from "../../services/emprestimoService"
 import { useEmprestimosLogic } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
+import { useDetalheNoCaminho } from "../../layouts/Default/useDetalheNoCaminho"
 import styles from "./EmprestimoDetalhePage.module.css"
 
 const formatDate = (d?: string) =>
@@ -47,6 +48,7 @@ export default function EmprestimoDetalhePage() {
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const e = l.emprestimos.find((x) => x.id === id) ?? inicial
+  useDetalheNoCaminho(e?.descricao)
 
   if (carregando && !e) return <div className={styles.muted}>Carregando…</div>
   if (erro || !e) return <div className={styles.error}>Empréstimo não encontrado</div>

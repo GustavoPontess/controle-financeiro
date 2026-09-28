@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
@@ -11,6 +11,24 @@ vi.mock("react-router-dom", async (orig) => ({
   useNavigate: () => vi.fn(),
   useOutletContext: () => ({ notify: vi.fn() }),
 }))
+
+const obterDetalhe = vi.fn()
+vi.mock("../../services/ParcelamentoService", () => ({
+  ParcelamentoService: {
+    obterDetalhe: (...a: unknown[]) => obterDetalhe(...a),
+    pagarParcelaAntecipado: vi.fn(),
+    cancelar: vi.fn(),
+  },
+}))
+vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve([]) }))
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <PontesThemeProvider><ParcelamentoDetalhePage /></PontesThemeProvider>
+    </MemoryRouter>
+  )
+}
 
 // Parcela ANTIGA (criada antes da regra do mês de fechamento): DataVencimento = dia da compra (28/09),
 // mas ela está na fatura que fecha 10/10 e vence 20/10. A tela mostrava "SET/2026 · 28/09"; Cartões
@@ -35,18 +53,12 @@ const detalhe = {
   ],
 } as unknown as ParcelamentoDetalhe
 
-vi.mock("../../services/ParcelamentoService", () => ({
-  ParcelamentoService: { obterDetalhe: () => Promise.resolve(detalhe) },
-}))
-vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve([]) }))
+describe("ParcelamentoDetalhePage", () => {
+  beforeEach(() => obterDetalhe.mockReset())
 
-describe("ParcelamentoDetalhePage — fatura da parcela", () => {
   it("mostra a fatura pelo mês de FECHAMENTO (rótulo de Cartões) e o vencimento real dela", async () => {
-    render(
-      <MemoryRouter>
-        <PontesThemeProvider><ParcelamentoDetalhePage /></PontesThemeProvider>
-      </MemoryRouter>
-    )
+    obterDetalhe.mockResolvedValue(detalhe)
+    renderPage()
 
     expect(await screen.findByText("Fatura Outubro de 2026")).toBeInTheDocument()
 
@@ -57,5 +69,23 @@ describe("ParcelamentoDetalhePage — fatura da parcela", () => {
     expect(within(linhas[1]).getByText("20/11/2026")).toBeInTheDocument()
     expect(screen.queryByText("28/09/2026")).not.toBeInTheDocument()
     expect(screen.queryByText(/SET\/2026/)).not.toBeInTheDocument()
+  })
+
+  it("cancelado: aviso com data e motivo, selo 'Cancelado' e sem botão de cancelar de novo", async () => {
+    obterDetalhe.mockResolvedValue({
+      ...detalhe, ativo: false, canceladoEm: "2026-09-28T15:00:00", motivoCancelamento: "Devolvido",
+    })
+    renderPage()
+    expect(await screen.findByText("Parcelamento cancelado:")).toBeInTheDocument()
+    expect(screen.getByText(/em 28\/09\/2026 · Devolvido/)).toBeInTheDocument()
+    expect(screen.getByText("Cancelado")).toBeInTheDocument()
+    expect(screen.queryByText("Cancelar Parcelamento")).not.toBeInTheDocument()
+  })
+
+  it("ativo: sem aviso, com o botão de cancelar", async () => {
+    obterDetalhe.mockResolvedValue(detalhe)
+    renderPage()
+    expect(await screen.findByText("Cancelar Parcelamento")).toBeInTheDocument()
+    expect(screen.queryByText("Parcelamento cancelado:")).not.toBeInTheDocument()
   })
 })

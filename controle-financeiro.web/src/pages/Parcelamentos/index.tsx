@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
+import { Plus, ChevronRight, Layers } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesMonthInput, PontesSelect,
+  PontesButton, PontesCard, PontesBadge, PontesStatCard,
+  PontesModal, PontesField, PontesInput, PontesDateInput, PontesMonthInput, PontesSelect,
   PontesEmptyState, PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
@@ -16,6 +16,7 @@ import type { CartaoCredito } from "../../types/CartaoCredito"
 import { notificacaoDeErro } from "@/utils/apiError"
 import { mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura } from "../CreditCards/ciclosFatura"
 import styles from "./ParcelamentosPage.module.css"
+import CartoesAbas from "../CreditCards/CartoesAbas"
 
 
 const parseMoney = (masked: string): number | undefined => {
@@ -77,7 +78,6 @@ export default function ParcelamentosPage() {
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [cancelarId, setCancelarId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   // Usuário escolheu o mês da 1ª parcela à mão: mudar a data da compra ou o cartão não sobrescreve
   // a escolha (se ela ficar antes do mínimo, a validação do submit avisa no campo).
@@ -177,29 +177,13 @@ export default function ParcelamentosPage() {
     } finally { setLoading(false) }
   }
 
-  const handleCancelar = async () => {
-    if (!cancelarId) return
-    try {
-      await ParcelamentoService.cancelar(cancelarId, {
-        motivo: "Cancelamento via dashboard",
-        idempotencyKey: crypto.randomUUID(),
-      })
-      notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
-      await loadData()
-    } catch (err) {
-      notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
-    } finally { setCancelarId(null) }
-  }
-
   const { ativos, totalRestante } = stats
 
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Parcelamentos</h1>
-          <div className={styles.subtitle}>Acompanhe suas compras parceladas no cartão</div>
-        </div>
+        {/* Parcelamento mora dentro de Cartões — mesmas abas da tela de cartões. */}
+        <CartoesAbas />
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Parcelamento
         </PontesButton>
@@ -237,6 +221,8 @@ export default function ParcelamentosPage() {
                       {p.tipo !== TipoParcelamento.CompraParcelada && (
                         <PontesBadge tone="neutral" size="sm">{tiposLabel[p.tipo] ?? "—"}</PontesBadge>
                       )}
+                      {/* O cinza sozinho não dizia nada — cancelado precisa estar escrito. */}
+                      {!p.ativo && <PontesBadge tone="danger" size="sm">Cancelado</PontesBadge>}
                       <span className={styles.itemPills}>{p.quantidadeParcelas}× · {p.parcelasPagas}/{p.quantidadeParcelas} pago</span>
                       <span className={styles.itemAmount}>{formatMoney(p.valorOriginal)}</span>
                     </div>
@@ -262,15 +248,11 @@ export default function ParcelamentosPage() {
 
                   <div className={styles.itemActions}>
                     <PontesButton variant="outline" size="sm" iconEnd={<ChevronRight size={14} />}
-                      onClick={() => navigate(`/parcelamentos/${p.id}`)}>
+                      onClick={() => navigate(`/credit-cards/parcelamentos/${p.id}`)}>
                       Detalhes
                     </PontesButton>
-                    {p.ativo && (
-                      <PontesIconButton size={32} variant="ghost" aria-label="Cancelar parcelamento"
-                        onClick={() => setCancelarId(p.id)}>
-                        <Trash2 size={14} />
-                      </PontesIconButton>
-                    )}
+                    {/* Cancelar só no detalhe: lá a pessoa vê as parcelas (pagas × pendentes) antes de
+                        decidir — a lixeira na lista cancelava às cegas, a um clique do "Detalhes". */}
                   </div>
                 </li>
               )
@@ -369,15 +351,6 @@ export default function ParcelamentosPage() {
           )}
         </form>
       </PontesModal>
-
-      <PontesDialog
-        open={cancelarId !== null}
-        title="Cancelar parcelamento?"
-        description="As parcelas pendentes serão removidas. Esta ação não pode ser desfeita."
-        confirmLabel="Cancelar parcelamento"
-        onConfirm={handleCancelar}
-        onCancel={() => setCancelarId(null)}
-      />
     </div>
   )
 }
