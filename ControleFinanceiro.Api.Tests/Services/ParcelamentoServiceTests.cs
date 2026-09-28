@@ -193,6 +193,39 @@ public class ParcelamentoServiceTests
     }
 
     [Fact]
+    public async Task ObterDetalhe_ParcelamentoCancelado_RestanteNaoContaParcelaCancelada()
+    {
+        var usuarioId = Guid.NewGuid();
+        var cartaoId = Guid.NewGuid();
+        var context = CreateInMemoryContext();
+        SetupTestData(context, usuarioId, cartaoId);
+        var service = new ParcelamentoService(context, new FinancialEventLogService(context),
+            new LimiteCalculatorService(context), new FaturaService(context));
+
+        var criado = await service.CriarAsync(new CriarParcelamentoDto
+        {
+            Descricao = "Livro", Valor = 200, Tipo = TipoParcelamento.CompraParcelada, CartaoCreditoId = cartaoId,
+            DataCompra = DateTime.UtcNow.Date, Parcelas = 2, PrimeiraParcelaMes = DateTime.UtcNow.ToString("yyyy-MM"),
+            CategoriaId = context.Categorias.First().Id, IdempotencyKey = Guid.NewGuid().ToString(),
+        }, usuarioId);
+        // Parcela 1 paga (antecipada); a 2 é cancelada junto com o parcelamento.
+        var p1 = context.ParcelasTransacao.Single(p => p.ParcelamentoId == criado.Id && p.Numero == 1);
+        p1.Status = StatusParcela.Paga;
+        await context.SaveChangesAsync();
+        await service.CancelarAsync(criado.Id, new CancelarParcelamentoDto
+        {
+            Motivo = "Devolvido", IdempotencyKey = Guid.NewGuid().ToString(),
+        }, usuarioId);
+
+        var detalhe = await service.ObterDetalheAsync(criado.Id, usuarioId);
+
+        Assert.False(detalhe.Ativo);
+        Assert.Equal(100m, detalhe.ValorPago);
+        // Antes: total − pago = 100 — a parcela cancelada aparecia como "a pagar".
+        Assert.Equal(0m, detalhe.ValorRestante);
+    }
+
+    [Fact]
     public async Task ListarAsync_RetornaParcelamentosDoUsuario()
     {
         // Arrange

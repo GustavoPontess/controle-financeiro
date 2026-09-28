@@ -3,6 +3,7 @@
 // duplicar ~700 linhas de estado/handlers 3x. Não usado pela EmprestimosPage.tsx real (mantida
 // intacta, zero risco pros testes existentes).
 import { useCallback, useEffect, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
 import {
@@ -40,7 +41,7 @@ export const formatDate = (d?: string) =>
 export const formatDateTime = (d?: string) =>
   d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => dataLocalISO()
 
 export const parseMoney = (masked: string): number | undefined => {
   const digits = masked.replace(/\D/g, "")

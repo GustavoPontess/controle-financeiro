@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ArrowLeftRight } from "lucide-react"
@@ -14,7 +15,7 @@ import type { Conta } from "../../types/Conta"
 import styles from "./TransferenciasPage.module.css"
 
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => dataLocalISO()
 
 // UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).

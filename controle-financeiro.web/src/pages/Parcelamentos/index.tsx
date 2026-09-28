@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
+import { Plus, ChevronRight, Layers } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge, PontesIconButton, PontesStatCard,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
+  PontesButton, PontesCard, PontesBadge, PontesStatCard,
+  PontesModal, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
@@ -57,7 +58,7 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 const emptyForm = (proximoMes: string): FormState => ({
   descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
-  dataCompra: new Date().toISOString().split("T")[0],
+  dataCompra: dataLocalISO(),
   parcelas: 3, primeiraParcelaMes: proximoMes, taxaJuroMensal: undefined,
 })
 
@@ -73,10 +74,9 @@ export default function ParcelamentosPage() {
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [cancelarId, setCancelarId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
-    return emptyForm(d.toISOString().split("T")[0].substring(0, 7))
+    return emptyForm(dataLocalISO(d).substring(0, 7))
   })
   const [errors, setErrors] = useState<Errors>({})
 
@@ -103,7 +103,7 @@ export default function ParcelamentosPage() {
 
   const openCreate = () => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
-    setForm(emptyForm(d.toISOString().split("T")[0].substring(0, 7)))
+    setForm(emptyForm(dataLocalISO(d).substring(0, 7)))
     setErrors({})
     setDialogOpen(true)
   }
@@ -145,20 +145,6 @@ export default function ParcelamentosPage() {
       // Ex.: limite do cartão insuficiente → aviso com a mensagem do servidor, não erro genérico.
       notify({ open: true, ...notificacaoDeErro(err, "Erro ao criar parcelamento") })
     } finally { setLoading(false) }
-  }
-
-  const handleCancelar = async () => {
-    if (!cancelarId) return
-    try {
-      await ParcelamentoService.cancelar(cancelarId, {
-        motivo: "Cancelamento via dashboard",
-        idempotencyKey: crypto.randomUUID(),
-      })
-      notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
-      await loadData()
-    } catch (err) {
-      notify({ open: true, ...notificacaoDeErro(err, "Erro ao cancelar parcelamento") })
-    } finally { setCancelarId(null) }
   }
 
   const { ativos, totalRestante } = stats
@@ -207,6 +193,8 @@ export default function ParcelamentosPage() {
                       {p.tipo !== TipoParcelamento.CompraParcelada && (
                         <PontesBadge tone="neutral" size="sm">{tiposLabel[p.tipo] ?? "—"}</PontesBadge>
                       )}
+                      {/* O cinza sozinho não dizia nada — cancelado precisa estar escrito. */}
+                      {!p.ativo && <PontesBadge tone="danger" size="sm">Cancelado</PontesBadge>}
                       <span className={styles.itemPills}>{p.quantidadeParcelas}× · {p.parcelasPagas}/{p.quantidadeParcelas} pago</span>
                       <span className={styles.itemAmount}>{formatMoney(p.valorOriginal)}</span>
                     </div>
@@ -235,12 +223,8 @@ export default function ParcelamentosPage() {
                       onClick={() => navigate(`/parcelamentos/${p.id}`)}>
                       Detalhes
                     </PontesButton>
-                    {p.ativo && (
-                      <PontesIconButton size={32} variant="ghost" aria-label="Cancelar parcelamento"
-                        onClick={() => setCancelarId(p.id)}>
-                        <Trash2 size={14} />
-                      </PontesIconButton>
-                    )}
+                    {/* Cancelar só no detalhe: lá a pessoa vê as parcelas (pagas × pendentes) antes de
+                        decidir — a lixeira na lista cancelava às cegas, a um clique do "Detalhes". */}
                   </div>
                 </li>
               )
@@ -334,15 +318,6 @@ export default function ParcelamentosPage() {
           )}
         </form>
       </PontesModal>
-
-      <PontesDialog
-        open={cancelarId !== null}
-        title="Cancelar parcelamento?"
-        description="As parcelas pendentes serão removidas. Esta ação não pode ser desfeita."
-        confirmLabel="Cancelar parcelamento"
-        onConfirm={handleCancelar}
-        onCancel={() => setCancelarId(null)}
-      />
     </div>
   )
 }

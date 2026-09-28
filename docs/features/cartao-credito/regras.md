@@ -155,13 +155,9 @@ Quando uma fatura é paga integralmente (`EstadoPagamento = Pago`), suas transa�
 - Uma fatura com `EstadoPagamento = Pago` **não pode** ser paga novamente via API (guard no service).
 - **Idempotência + concorrência (#268):** header `Idempotency-Key` obrigatório (400 sem ele); a chave vai pra `RegistroIdempotencia` (índice único) no mesmo `SaveChanges` do pagamento. Retry com os mesmos dados → 204 sem pagar de novo; com outros dados → 409. `xmin` na `Fatura`: pagamento concorrente → 409. Detalhe do fluxo em `docs/FLOWS.md` §4.
 
-### 5.1 Coloração no histórico detalhado
+### 5.1 Histórico detalhado — sem "pago" por compra
 
-Na listagem de transações dentro de uma fatura, a cor do valor indica cobertura pelo pagamento:
-
-- Ordenar transações por `CriadoEm` (mais antiga primeiro).
-- Acumular valores; se `valorPago >= acumulado` → **verde** (coberta).
-- Caso contrário → **vermelho** (ainda em aberto).
+Pagar a fatura **abate o total dela**; não quita uma compra específica (é assim no banco). Por isso a lista de compras da fatura não marca compra nenhuma como paga (a antiga coloração verde por "cobertura acumulada" foi removida em 2026-09-27 — dava a impressão de compra paga com a fatura ainda devendo). O quanto já foi pago aparece só no resumo da fatura ("Total pago R$ X · falta R$ Y") e nas linhas de pagamento da linha do tempo.
 
 ---
 
