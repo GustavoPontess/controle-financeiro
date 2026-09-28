@@ -11,7 +11,11 @@ import {
   PontesPageHeader, PontesToolbar, PontesSegmented, PontesSkeletonList, PontesEmptyState,
   PontesButton, PontesRowActions, PontesBadge, type PontesRowAction,
 } from "@/components/pontes"
+import { PainelFiltros } from "./FiltrosAvancados"
+import { tagsDeFiltrosAvancados, type FiltroAvancado } from "./filtrosAvancadosCore"
 import styles from "./DemoPadrao.module.css"
+
+export type { FiltroAvancado }
 
 export type ColunaPadrao<T> = {
   key: string
@@ -32,7 +36,7 @@ export type FiltroSegmentado = {
 }
 
 export function TabelaPadrao<T>({
-  titulo, descricao, acao, resumo, busca, filtros, tags,
+  titulo, descricao, acao, resumo, busca, filtros, filtrosAvancados, tags,
   colunas, itens, chave, acoes, renderAcoes, onLinhaClick,
   carregando, erro, onTentarDeNovo, vazio, paginacao,
 }: {
@@ -43,7 +47,11 @@ export function TabelaPadrao<T>({
   /** Resumo do topo (cards de número). Máx. 3-4. */
   resumo?: ReactNode
   busca?: { value: string; onChange: (v: string) => void; placeholder: string; ariaLabel?: string }
+  /** Filtros rápidos inline (segmented). */
   filtros?: FiltroSegmentado[]
+  /** Filtros avançados no botão "Filtros" (status, faixa de valor, período). As tags saem sozinhas. */
+  filtrosAvancados?: FiltroAvancado[]
+  /** Tags do que está filtrado (busca/segmented). As dos filtros avançados são adicionadas sozinhas. */
   tags?: TagFiltro[]
   colunas: ColunaPadrao<T>[]
   itens: T[]
@@ -60,9 +68,11 @@ export function TabelaPadrao<T>({
   paginacao?: ReactNode
 }) {
   const temAcoes = !!(acoes || renderAcoes)
-  const temFiltroAtivo = !!tags && tags.length > 0
+  // Tags de busca/segmented (da tela) + as dos filtros avançados (automáticas).
+  const tagsTodas = [...(tags ?? []), ...tagsDeFiltrosAvancados(filtrosAvancados ?? [])]
+  const temFiltroAtivo = tagsTodas.length > 0
   const botaoCriar = acao && <PontesButton size="sm" onClick={acao.onClick}>{acao.label}</PontesButton>
-  const temToolbar = !!busca || (filtros && filtros.length > 0)
+  const temToolbar = !!busca || (filtros && filtros.length > 0) || (!!filtrosAvancados && filtrosAvancados.length > 0)
 
   let conteudo: ReactNode
   if (carregando) {
@@ -83,7 +93,7 @@ export function TabelaPadrao<T>({
         {temFiltroAtivo && (
           <div className={styles.tags}>
             <span className={styles.tagsLabel}>Filtros:</span>
-            {tags!.map((t, i) => (
+            {tagsTodas.map((t, i) => (
               <button key={i} type="button" className={styles.tag} onClick={t.onRemover}>
                 {t.label}<X size={12} strokeWidth={2.5} />
               </button>
@@ -140,6 +150,7 @@ export function TabelaPadrao<T>({
             {filtros?.map((f, i) => (
               <PontesSegmented key={i} ariaLabel={f.ariaLabel} options={f.options} value={f.value} onChange={f.onChange} />
             ))}
+            {filtrosAvancados && filtrosAvancados.length > 0 && <PainelFiltros filtros={filtrosAvancados} />}
           </div>
         )}
         <div aria-live="polite" aria-busy={carregando || undefined}>{conteudo}</div>

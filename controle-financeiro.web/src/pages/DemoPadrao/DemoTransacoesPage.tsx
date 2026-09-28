@@ -40,12 +40,18 @@ export default function DemoTransacoesPage() {
   const [busca, setBusca] = useState("")
   const buscaAplicada = useDebouncedValue(busca.trim())
   const [tipo, setTipo] = useState<"tudo" | "1" | "2">("tudo")
+  // Filtros avançados (todos no servidor): status, faixa de valor, período.
+  const [status, setStatus] = useState("")        // "" = qualquer | "1" = efetivado | "0" = previsto
+  const [valorMin, setValorMin] = useState<number>()
+  const [valorMax, setValorMax] = useState<number>()
+  const [de, setDe] = useState<string>()
+  const [ate, setAte] = useState<string>()
 
   const [novoAberto, setNovoAberto] = useState(false)
   const [editando, setEditando] = useState<Transaction | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
 
-  useEffect(() => { setPage(1) }, [buscaAplicada, tipo])
+  useEffect(() => { setPage(1) }, [buscaAplicada, tipo, status, valorMin, valorMax, de, ate])
 
   const [versao, setVersao] = useState(0)
   const recarregar = useCallback(() => setVersao((v) => v + 1), [])
@@ -54,7 +60,12 @@ export default function DemoTransacoesPage() {
     let vivo = true
     setCarregando(true)
     Promise.all([
-      listTransactionsPage(page, pageSize, { q: buscaAplicada || undefined, tipo: tipo === "tudo" ? undefined : Number(tipo) }),
+      listTransactionsPage(page, pageSize, {
+        q: buscaAplicada || undefined,
+        tipo: tipo === "tudo" ? undefined : Number(tipo),
+        status: status !== "" ? Number(status) : undefined,
+        valorMin, valorMax, from: de, to: ate,
+      }),
       getTransactionStats({}).catch(() => null),
     ])
       .then(([lista, s]) => {
@@ -66,7 +77,7 @@ export default function DemoTransacoesPage() {
       .catch(() => { if (vivo) notify({ open: true, message: "Erro ao carregar transações", severity: "error" }) })
       .finally(() => { if (vivo) setCarregando(false) })
     return () => { vivo = false }
-  }, [page, pageSize, buscaAplicada, tipo, versao, notify])
+  }, [page, pageSize, buscaAplicada, tipo, status, valorMin, valorMax, de, ate, versao, notify])
 
   const handleExcluir = async () => {
     if (!excluindo) return
@@ -128,6 +139,15 @@ export default function DemoTransacoesPage() {
           options: [{ value: "tudo", label: "Tudo" }, { value: "1", label: "Receitas" }, { value: "2", label: "Despesas" }],
           onChange: (v) => setTipo(v as typeof tipo),
         }]}
+        filtrosAvancados={[
+          {
+            tipo: "select", id: "status", label: "Status", value: status,
+            opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Efetivado" }, { value: "0", label: "Previsto" }],
+            onChange: setStatus,
+          },
+          { tipo: "faixaValor", id: "valor", label: "Valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx) } },
+          { tipo: "faixaData", id: "data", label: "Período", de, ate, onChange: (d, a) => { setDe(d); setAte(a) } },
+        ]}
         tags={tags}
         colunas={colunas}
         itens={itens}

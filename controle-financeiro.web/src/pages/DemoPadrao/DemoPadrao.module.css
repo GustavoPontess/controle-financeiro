@@ -61,3 +61,10 @@
 .sub { font-size: 12px; color: var(--pontes-text-muted); }
 
 .valEntrada { color: var(--pontes-success); }
+
+/* Filtros avançados (drawer) */
+.filtrosCorpo { display: flex; flex-direction: column; gap: 16px; }
+.filtrosFaixa { display: flex; align-items: center; gap: 8px; }
+.filtrosFaixa > * { flex: 1; min-width: 0; }
+.filtrosAte { flex: 0 0 auto; font-size: 12px; color: var(--pontes-text-muted); }
+.filtrosFooter { display: flex; justify-content: space-between; gap: 8px; }
