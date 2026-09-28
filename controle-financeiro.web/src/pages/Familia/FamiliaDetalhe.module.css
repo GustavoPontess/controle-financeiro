@@ -13,8 +13,6 @@
   letter-spacing: -0.02em; color: var(--pontes-text); margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
-
 /* Grid de resumo: membros (largo) + coluna direita (balanço + rateio) */
 .summaryGrid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
 .rightCol { display: flex; flex-direction: column; gap: 16px; }

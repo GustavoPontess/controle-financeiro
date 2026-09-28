@@ -203,7 +203,6 @@ export default function MetasPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Metas</h1>
-          <p className={styles.subtitle}>Acompanhe seus objetivos financeiros</p>
         </div>
         <PontesButton variant="primary" size="sm" iconStart={<Plus size={16} />} onClick={openCriar}>
           Nova meta

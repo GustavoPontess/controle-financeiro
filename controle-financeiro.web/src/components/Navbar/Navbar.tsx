@@ -47,6 +47,8 @@ const TITLES: Record<string, string> = {
   "/accounts": "Bancos",
   "/categories": "Categorias",
   "/familias": "Famílias",
+  "/metas": "Metas",
+  "/limites": "Limites",
   "/settings": "Configurações",
 }
 
