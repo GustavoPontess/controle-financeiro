@@ -7,12 +7,15 @@
 import { useState } from "react"
 import { SlidersHorizontal } from "lucide-react"
 import {
-  PontesButton, PontesDrawer, PontesField, PontesSelect, PontesDateInput, PontesMoneyInput,
+  PontesButton, PontesDrawer, PontesField, PontesSelect, PontesDateInput, PontesInput,
 } from "@/components/pontes"
 import {
   type FiltroAvancado, filtroAtivo, numeroParaMasked, maskedParaNumero,
 } from "./filtrosAvancadosCore"
 import styles from "./DemoPadrao.module.css"
+
+// Máscara de dinheiro pro input normal (dígitos → "1.234,56"), sem o campo grande de destaque.
+const mascararDinheiro = (raw: string) => numeroParaMasked(maskedParaNumero(raw))
 
 type Rascunho = Record<string, { value?: string; minMasked?: string; maxMasked?: string; de?: string; ate?: string }>
 
@@ -83,9 +86,11 @@ export function PainelFiltros({ filtros }: { filtros: FiltroAvancado[] }) {
               return (
                 <PontesField key={f.id} label={f.label}>
                   <div className={styles.filtrosFaixa}>
-                    <PontesMoneyInput label="" value={d.minMasked ?? ""} onChange={(v) => setR(f.id, { minMasked: v })} />
+                    <PontesInput iconStart="R$" inputMode="numeric" placeholder="0,00"
+                      value={d.minMasked ?? ""} onChange={(e) => setR(f.id, { minMasked: mascararDinheiro(e.target.value) })} />
                     <span className={styles.filtrosAte}>até</span>
-                    <PontesMoneyInput label="" value={d.maxMasked ?? ""} onChange={(v) => setR(f.id, { maxMasked: v })} />
+                    <PontesInput iconStart="R$" inputMode="numeric" placeholder="0,00"
+                      value={d.maxMasked ?? ""} onChange={(e) => setR(f.id, { maxMasked: mascararDinheiro(e.target.value) })} />
                   </div>
                 </PontesField>
               )
