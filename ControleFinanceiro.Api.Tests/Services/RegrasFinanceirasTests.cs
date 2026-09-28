@@ -201,6 +201,27 @@ public class RegrasFinanceirasTests
     }
 
     [Fact]
+    public async Task DetalheDaFatura_ListaAsParcelasDoTotal_SomaDaListaBateComOTotal()
+    {
+        // Parcelas criadas pelo fluxo real (tela de Parcelamentos) entravam no total mas não na lista.
+        var ctx = CreateContext();
+        var c = await SeedFaturaAsync(ctx);
+        var p2Parcela1 = c.P2.Parcelas.Single(p => p.Numero == 1).Id;
+        await CancelarParcelaAsync(ctx, c, p2Parcela1);
+
+        var detalhe = await new FaturaService(ctx).DetalheAsync(c.FaturaId, c.UsuarioId);
+
+        // Só a 1ª de P1 (a 2ª cai na fatura seguinte; a 1ª de P2 foi cancelada).
+        var parcela = Assert.Single(detalhe.Parcelas);
+        Assert.Equal(c.P1.Parcelas.Single(p => p.Numero == 1).Id, parcela.Id);
+        Assert.Equal("Geladeira", parcela.Descricao);
+        Assert.Equal((1, 2), (parcela.Numero, parcela.QuantidadeTotal));
+        Assert.Equal(c.P1.Id, parcela.ParcelamentoId);
+        Assert.DoesNotContain(detalhe.Parcelas, p => p.Id == p2Parcela1);
+        Assert.Equal(detalhe.ValorTotal, detalhe.Transacoes.Sum(t => t.Valor) + detalhe.Parcelas.Sum(p => p.Valor));
+    }
+
+    [Fact]
     public async Task ParcelamentoCancelado_ParcelasSaemDoTotalDeTodasAsFaturas()
     {
         var ctx = CreateContext();

@@ -215,6 +215,8 @@ Tanto o job (`dataProximaJanela = 1º Jan do ano seguinte`) quanto a projeção 
 ### 9.5 Pagamentos no detalhe da fatura
 `FaturaDetalheDto.Pagamentos` retorna as transações com `FaturaPagaId == fatura.Id` (separadas das compras, que vão em `Transacoes`). Frontend renderiza compras + pagamentos numa **linha do tempo única ordenada por `criadoEm`** (data+hora) — dá pra acompanhar parcial-1, compra, parcial-2, compra, total. Linha de pagamento destacada em verde. Nota "Total pago" no fim quando houver pagamento.
 
+**Parcelas na lista (2026-09):** `FaturaDetalheDto.Parcelas` traz as `ParcelaTransacao` da fatura pelo **mesmo filtro do total** (`RegrasFinanceiras.CompoeTotalFatura` — Cancelada fora; Paga fica) e com o mesmo valor (`ValorDevidoParcela`, com juros quando houver); as compras também passaram a usar a regra do total. Resultado: compras + parcelas listadas somam exatamente o `ValorTotal` (previsão de assinatura entra nos dois lados). Descrição/categoria vêm do `Parcelamento` (Include na mesma consulta, sem N+1). `Data` = data da compra do parcelamento (convenção do extrato: "15/07 Loja 02/03"); a linha do tempo ordena por `CriadoEm` (registro do parcelamento), como as compras. Na tela: mesmo visual de compra, rótulo "Descrição (n/N)", ícone discreto de parcelado e link pra `/parcelamentos/:id`. Nenhuma linha é marcada "paga" — pagar abate o total da fatura, não uma compra. "Nenhuma transação nesta fatura." só sem compra, parcela e pagamento.
+
 ### 9.6 "Paga" só quando fechada + quitada
 `statusKey` (UI):
 - `EstadoCiclo === Fechada` e `valorRestante <= 0` → **Paga**

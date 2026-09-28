@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { formatMoney } from "@/utils/money"
-import { useOutletContext } from "react-router-dom"
+import { Link, useOutletContext } from "react-router-dom"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi, Layers,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesModal, PontesDialog,
@@ -27,7 +27,7 @@ import type { Recorrente } from "../../types/Recorrente"
 import type { CartaoCredito, CriarCartaoCredito } from "../../types/CartaoCredito"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
-import type { Fatura, FaturaDetalhe, FaturaPagamento, PagarFaturaPayload } from "../../types/Fatura"
+import type { Fatura, FaturaDetalhe, FaturaPagamento, FaturaParcela, PagarFaturaPayload } from "../../types/Fatura"
 import { montarCiclos, indiceMes, indiceMesDeHoje, type FaturaView } from "./ciclosFatura"
 import styles from "./CreditCardsPage.module.css"
 
@@ -546,16 +546,21 @@ export default function CreditCardsPage() {
     const detalhe = faturaDetalhes[f.id]
     if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
     const pagamentos = detalhe.pagamentos ?? []
-    if (detalhe.transacoes.length === 0 && pagamentos.length === 0)
+    // Parcelas dos parcelamentos entram no total da fatura — sem elas na lista, fatura de R$ 450 só com
+    // parcelas dizia "Nenhuma transação".
+    const parcelas = detalhe.parcelas ?? []
+    if (detalhe.transacoes.length === 0 && parcelas.length === 0 && pagamentos.length === 0)
       return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
 
-    // Linha do tempo única: compras + pagamentos ordenados por data (cronológico).
+    // Linha do tempo única: compras + parcelas + pagamentos ordenados por data (cronológico).
     type Linha =
       | { kind: "compra"; id: string; ts: number; t: FaturaDetalhe["transacoes"][number] }
+      | { kind: "parcela"; id: string; ts: number; par: FaturaParcela }
       | { kind: "pagamento"; id: string; ts: number; p: FaturaPagamento }
-    // Ordena por data + hora (criadoEm carrega o horário do lançamento).
+    // Ordena por data + hora (criadoEm carrega o horário do lançamento; na parcela, o do parcelamento).
     const linhas: Linha[] = [
       ...detalhe.transacoes.map((t) => ({ kind: "compra" as const, id: t.id, ts: new Date(t.criadoEm).getTime(), t })),
+      ...parcelas.map((par) => ({ kind: "parcela" as const, id: par.id, ts: new Date(par.criadoEm).getTime(), par })),
       ...pagamentos.map((p) => ({ kind: "pagamento" as const, id: p.id, ts: new Date(p.criadoEm).getTime(), p })),
     ].sort((a, b) => a.ts - b.ts)
 
@@ -574,6 +579,24 @@ export default function CreditCardsPage() {
             {/* Sem "pago" por compra: pagar a fatura só abate o total dela, não quita uma compra
                 específica (é assim no banco). O quanto já foi pago fica no resumo da fatura. */}
             <span className={styles.txValor}>{formatMoney(l.t.valor)}</span>
+          </div>
+        ) : l.kind === "parcela" ? (
+          // Mesmo visual da compra (e também sem "paga": a fatura é que é paga, não a parcela) + ícone
+          // discreto de parcelado; a descrição leva ao parcelamento (onde se cancela/antecipa).
+          <div key={l.id} className={styles.txRow} data-parcela="true">
+            <div className={styles.txMain}>
+              <span className={styles.txDesc}>
+                <Layers size={13} strokeWidth={2.5} className={styles.txParcelaIcon} aria-label="Parcelado" />
+                <Link to={`/credit-cards/parcelamentos/${l.par.parcelamentoId}`} className={styles.txLink}>
+                  {`${l.par.descricao} (${l.par.numero}/${l.par.quantidadeTotal})`}
+                </Link>
+              </span>
+              <span className={styles.txMeta}>
+                {new Date(l.par.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.par.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {l.par.categoriaDescricao ? ` · ${l.par.categoriaDescricao}` : ""}
+              </span>
+            </div>
+            <span className={styles.txValor}>{formatMoney(l.par.valor)}</span>
           </div>
         ) : (
           <div key={l.id} className={styles.txRow} data-pagamento="true">

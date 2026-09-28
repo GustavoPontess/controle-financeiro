@@ -28,8 +28,41 @@ public class FaturaDetalheDto : FaturaDto
 {
     public List<FaturaTransacaoDto> Transacoes { get; set; } = new();
 
+    /// <summary>
+    /// Parcelas de parcelamento que caíram nesta fatura (as que entram no total — a Cancelada fica
+    /// fora). Transacoes + Parcelas = ValorTotal: sem elas a fatura cobrava R$ 450 e a lista dizia
+    /// "nenhuma transação".
+    /// </summary>
+    public List<FaturaParcelaDto> Parcelas { get; set; } = new();
+
     /// <summary>Pagamentos registrados nesta fatura (transações com FaturaPagaId).</summary>
     public List<FaturaPagamentoDto> Pagamentos { get; set; } = new();
+}
+
+/// <summary>Uma parcela (ParcelaTransacao) na lista de lançamentos da fatura.</summary>
+public class FaturaParcelaDto
+{
+    public Guid Id { get; set; }
+    public Guid ParcelamentoId { get; set; }
+    /// <summary>Descrição do Parcelamento (a parcela não tem descrição própria).</summary>
+    public string Descricao { get; set; } = string.Empty;
+    /// <summary>Número desta parcela (o "2" de 2/3).</summary>
+    public int Numero { get; set; }
+    /// <summary>Total de parcelas (o "3" de 2/3).</summary>
+    public int QuantidadeTotal { get; set; }
+    /// <summary>O mesmo valor que entra no total da fatura (com juros quando houver).</summary>
+    public decimal Valor { get; set; }
+    /// <summary>Data da COMPRA do parcelamento — como no extrato do banco ("15/07 Loja 02/03").</summary>
+    public DateTime Data { get; set; }
+    /// <summary>Quando o parcelamento foi registrado — ordena a linha do tempo, igual às compras.</summary>
+    public DateTime CriadoEm { get; set; }
+    public Guid? CategoriaId { get; set; }
+    public string? CategoriaDescricao { get; set; }
+    /// <summary>
+    /// 0=Pendente, 1=Paga (Cancelada não vem). Só informativo: pagar a fatura abate o total dela e não
+    /// muda o status da parcela, então a tela não marca linha nenhuma como "paga".
+    /// </summary>
+    public int Status { get; set; }
 }
 
 public class FaturaPagamentoDto
