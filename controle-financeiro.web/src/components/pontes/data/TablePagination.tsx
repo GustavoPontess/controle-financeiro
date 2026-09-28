@@ -16,7 +16,7 @@ import styles from "./TablePagination.module.css"
 
 /** Opções padrão do projeto. Importe se quiser estender/reusar. */
 export const PONTES_TABLE_PAGE_SIZES = [10, 25, 50, 100] as const
-export const PONTES_TABLE_PAGE_SIZE_DEFAULT = 25
+export const PONTES_TABLE_PAGE_SIZE_DEFAULT = 10
 /** Hard cap — qualquer valor maior é clampado pra cá. */
 export const PONTES_TABLE_PAGE_SIZE_MAX = 100
 

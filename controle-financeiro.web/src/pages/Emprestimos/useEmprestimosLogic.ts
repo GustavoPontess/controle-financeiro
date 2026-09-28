@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
+import { PONTES_TABLE_PAGE_SIZE_DEFAULT } from "@/components/pontes"
 import {
   listEmprestimosPage, getEmprestimo, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
   arquivarEmprestimo, desarquivarEmprestimo,
@@ -113,7 +114,7 @@ export function useEmprestimosLogic(focusId?: string) {
   })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(100)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   // Busca + direção — filtro SERVER-SIDE (o backend pagina já filtrado).
   const [busca, setBuscaState] = useState("")
   const [buscaDebounced, setBuscaDebounced] = useState("")

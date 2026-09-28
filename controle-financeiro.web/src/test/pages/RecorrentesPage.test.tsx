@@ -112,7 +112,7 @@ describe("RecorrentesPage", () => {
   it("carrega a lista filtrada NO SERVIDOR com a aba padrão 'Ativas' — numa chamada só", async () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })
-    expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+    expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "" })
     // O GET da lista gera as ocorrências vencidas no servidor: 2 chamadas paralelas podiam duplicar.
     expect(listRecorrentesPage).toHaveBeenCalledTimes(1)
     expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
@@ -204,7 +204,7 @@ describe("RecorrentesPage", () => {
     await screen.findAllByRole("button", { name: "Ações" })
     fireEvent.click(screen.getByRole("tab", { name: "Encerradas" }))
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "encerradas", busca: "" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "encerradas", busca: "" })
     })
   })
 
@@ -213,7 +213,7 @@ describe("RecorrentesPage", () => {
     await screen.findAllByRole("button", { name: "Ações" })
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar conta fixa" }), { target: { value: "net" } })
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "net" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "net" })
     })
   })
 
@@ -249,7 +249,7 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockClear()
     fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "" })
     })
     expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
   })

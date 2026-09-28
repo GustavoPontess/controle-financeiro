@@ -58,7 +58,7 @@ describe("TransferenciasPage (#151)", () => {
     renderPage()
     expect(await screen.findByText("Reserva")).toBeInTheDocument()
     expect(screen.getByText(/R\$\s?500,00/)).toBeInTheDocument()
-    expect(listTransferenciasPage).toHaveBeenCalledWith(1, 25, "")
+    expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "")
   })
 
   it("cabeçalho: nome da tela + descrição, botão 'Nova transferência' no topo, sem seletor de situação", async () => {
@@ -94,7 +94,7 @@ describe("TransferenciasPage (#151)", () => {
     renderPage()
     await screen.findByText("Reserva")
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar transferência" }), { target: { value: "reserva" } })
-    await waitFor(() => expect(listTransferenciasPage).toHaveBeenCalledWith(1, 25, "reserva"))
+    await waitFor(() => expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "reserva"))
   })
 
   it("busca sem resultado: 'Nada encontrado' + 'Limpar filtros'", async () => {
