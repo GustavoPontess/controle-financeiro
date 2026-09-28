@@ -49,6 +49,18 @@ public class LimiteCalculatorServiceTests
         };
         context.Parcelamentos.Add(parcelamento);
 
+        // Toda parcela tem fatura (FaturaId é NOT NULL com FK) — o limite é contado pelas faturas.
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(),
+            CartaoCreditoId = cartaoId,
+            DataInicio = DateTime.UtcNow,
+            DataFechamento = DateTime.UtcNow.AddDays(20),
+            DataVencimento = DateTime.UtcNow.AddDays(30),
+            CriadoPor = usuarioId
+        };
+        context.Faturas.Add(fatura);
+
         var parcela = new ParcelaTransacao
         {
             Id = Guid.NewGuid(),
@@ -58,7 +70,7 @@ public class LimiteCalculatorServiceTests
             QuantidadeTotal = 3,
             Valor = 100,
             DataVencimento = DateTime.UtcNow.AddDays(30),
-            FaturaId = Guid.NewGuid(),
+            FaturaId = fatura.Id,
             CriadoPor = usuarioId
         };
         context.ParcelasTransacao.Add(parcela);

@@ -127,23 +127,26 @@ Transações de pagamento da fatura **não entram** no total — elas têm `Cont
 
 ## 4. Limite de Crédito
 
-### 4.1 Limite disponível
+### 4.1 Limite usado e disponível — regra única (como no banco)
+
+Comprou, o usado sobe; pagou a fatura (**mesmo em parte**), o usado desce na medida do pago. Compra parcelada bloqueia **todas** as parcelas ainda não pagas, inclusive as de faturas futuras.
 
 ```
-gastosCicloAtual = Σ transacoes WHERE:
-    UsadoComoCredito = true
-    AND Tipo = Despesa
-    AND Data ∈ [inicio_ciclo_atual, fim_ciclo_atual]
-    AND FaturaId NOT IN (faturas com EstadoPagamento = Pago)
-
-limiteDisponivel = LimiteTotal - gastosCicloAtual
+executado(fatura) = Σ crédito à vista vivo e EFETIVADO (UsadoComoCredito, Ativo, Executado)
+                  + Σ parcelas não canceladas (ValorComJuros ?? Valor)      ← regra do total da fatura, sem previsão
+limiteUsado       = Σ por fatura do cartão de max(0, executado − ValorPago)
+                  + Σ compra efetivada no cartão SEM fatura (sem conta, despesa)
+limiteDisponivel  = LimiteTotal − limiteUsado                               ← pode ficar negativo (estouro)
 ```
 
-### 4.2 Restauração após pagamento
+- **Previsão** (recorrente futura no cartão) não usa limite — aparece à parte como `ExposicaoFuturaPrevisao`.
+- **Piso por fatura:** excesso pago numa fatura (pagou a mais, parcela cancelada depois) não libera o limite das outras.
+- **Parcela `Pendente` em fatura coberta** pelo pagamento não bloqueia mais (o pagamento da fatura já a cobriu) — o limite segue o `ValorPago`, não o rótulo `EstadoPagamento`.
+- **Recorrente no cartão** é compra no crédito: toda ocorrência nasce na fatura do período com `UsadoComoCredito` (`RecorrenteService.CriarAsync`, `GerarPendentesAsync` e `ExpandirRecorrentesJob`), então entra no total da fatura e pagar libera. Previsão fica fora do usado até o `ExecutarRecorrentesJob` efetivar.
+- **Compra sem fatura** (rede de segurança pra dado antigo): até a correção, `GerarPendentesAsync` lançava a ocorrência sem `FaturaId`. Enquanto nenhuma fatura a cobra ela segue usando limite; o `ExpandirRecorrentesJob` põe cada uma na fatura do período (aí pagar libera). Se a fatura do período já está `Pago`, entra nela **fora** do total (a fatura foi dada por quitada sem ela; cobrar deixaria restante numa fatura que não aceita mais pagamento) — mesmo tratamento da migration `BackfillCreditoRecorrenteCartao`, que marcou `UsadoComoCredito` nas ocorrências antigas que já tinham fatura.
+- **Trilha de auditoria:** pagar fatura, pagar parcela antecipada e cancelar parcela/parcelamento registram `LimiteLiberado` com o que o limite **realmente** soltou (queda de `LimiteUsadoDaFatura` antes/depois, no mesmo `SaveChanges` da operação) — `ValorAntes`/`ValorDepois` = usado do cartão, `delta` no payload. O valor da parcela/pagamento é só o teto: fatura já paga em parte ou pagamento que cobre previsão soltam menos. Nada soltou → sem evento.
 
-Quando uma fatura é paga integralmente (`EstadoPagamento = Pago`), suas transações são **excluídas** do cálculo de `gastosCicloAtual`. O limite é restaurado imediatamente na próxima leitura.
-
-> Implementado em `CartaoCreditoService.ToDto()` — exclui faturas pagas via `faturasPagas HashSet`.
+Fonte única: `Services/RegrasFinanceiras.cs` (`LimitesUsadosDosCartoesAsync` — somas no SQL, uma linha por fatura; `LimiteUsadoDaFatura`; `LimiteDisponivel`). Consumidores: `CartaoCreditoService` (card da tela, `LimiteUsado`/`LimiteDisponivel` no DTO) e `LimiteCalculatorService` (trava "Limite insuficiente" do parcelamento, `NovoLimite` de pagar/cancelar parcela e parcelamento, dashboard) — o mesmo número em todos.
 
 ---
 
@@ -190,7 +193,7 @@ Os dois salvam o lote num `SaveChanges`; com o `xmin` na `Fatura`, um conflito (
 | Cálculo de período/vencimento | `Services/FaturaService.cs` — `CalcularPeriodo`, `CalcularVencimento` |
 | Criação automática de fatura | `Services/FaturaService.cs` — `ObterOuCriarFaturaAsync` |
 | Pagamento de fatura | `Services/FaturaService.cs` — `PagarFaturaAsync` |
-| Limite disponível | `Services/CartaoCreditoService.cs` — `ToDto` |
+| Limite usado/disponível | `Services/RegrasFinanceiras.cs` — `LimitesUsadosDosCartoesAsync` (usado por `CartaoCreditoService` e `LimiteCalculatorService`) |
 | Validação de criação de cartão | `Services/CartaoCreditoService.cs` — `CriarAsync`, `AtualizarAsync` |
 | Estados da fatura (enums) | `Domain/Enums/EstadoCicloFatura.cs`, `EstadoPagamentoFatura.cs` |
 | UI — histórico de faturas | `controle-financeiro.web/src/pages/CreditCards/CreditCardsPage.tsx` |

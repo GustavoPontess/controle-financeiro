@@ -83,9 +83,9 @@ public class FaturaFechamentoJob
         fatura.DataFechamentoEfetiva = agora;
         // Ciclo que fecha já coberto vira Pago. Cobre a fatura em que uma parcela foi cancelada com o
         // ciclo ABERTO: ela fica Parcial com restante 0 até aqui (ver a decisão em
-        // RegrasFinanceiras.ReconciliarEstadoPagamento) — sem este passo o limite ficava preso.
-        // Virar Pago solta o limite das compras à vista: registra no audit log como o caminho do
-        // cancelamento faz (a trilha não pode depender de por onde a fatura foi quitada).
+        // RegrasFinanceiras.ReconciliarEstadoPagamento) — sem este passo ela seguia Parcial pra sempre.
+        // Virar Pago registra no audit log como o caminho do cancelamento faz (a trilha não pode
+        // depender de por onde a fatura foi quitada). O limite não espera por isto: segue o pago.
         if (RegrasFinanceiras.ReconciliarEstadoPagamento(fatura, agora))
             RegrasFinanceiras.RegistrarQuitacaoSemPagamentoNovo(
                 _eventLog, fatura, fatura.CriadoPor, correlationId,
