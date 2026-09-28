@@ -120,16 +120,25 @@ describe("mesDaFaturaDoDia / rotuloMesFatura", () => {
     expect(mesMinimoPrimeiraParcela("", "2026-09-28", 10)).toBe("")
   })
 
-  it("mínimo da 1ª parcela = a mais tarde entre a fatura da compra e a aberta hoje", () => {
+  it("mínimo da 1ª parcela = a mais tarde entre a fatura da compra e a 1ª que ainda não venceu", () => {
     // Compra de hoje: as duas são a mesma.
-    expect(mesMinimoPrimeiraParcela("2026-09-28", "2026-09-28", 10)).toBe("2026-10")
-    expect(mesMinimoPrimeiraParcela("2026-09-05", "2026-09-05", 10)).toBe("2026-09")
-    // Compra antiga (15/06, hoje 28/09): julho a setembro já fecharam → a aberta hoje (outubro).
-    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10)).toBe("2026-10")
+    expect(mesMinimoPrimeiraParcela("2026-09-28", "2026-09-28", 10, 20)).toBe("2026-10")
+    expect(mesMinimoPrimeiraParcela("2026-09-05", "2026-09-05", 10, 20)).toBe("2026-09")
+    // Compra antiga (15/06, hoje 28/09, vence dia 20): julho a setembro já venceram → outubro.
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10, 20)).toBe("2026-10")
     // Compra de dias atrás ainda no ciclo aberto: a da compra.
-    expect(mesMinimoPrimeiraParcela("2026-09-12", "2026-09-28", 10)).toBe("2026-10")
+    expect(mesMinimoPrimeiraParcela("2026-09-12", "2026-09-28", 10, 20)).toBe("2026-10")
     // Sem dia de fechamento: mês calendário de hoje.
     expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28")).toBe("2026-09")
+  })
+
+  it("fatura que já fechou mas ainda não venceu vale (é nela que o banco cobra)", () => {
+    // Fecha 25, vence 5: compra 24/09 lançada 28/09 → setembro (fechou 25/09, vence 05/10).
+    expect(mesMinimoPrimeiraParcela("2026-09-24", "2026-09-28", 25, 5)).toBe("2026-09")
+    // Hoje 06/10: setembro venceu ontem → outubro.
+    expect(mesMinimoPrimeiraParcela("2026-09-24", "2026-10-06", 25, 5)).toBe("2026-10")
+    // Fecha 10, vence 20, hoje é o dia 10: outubro fechou hoje mas vence 20/10 → outubro ainda vale.
+    expect(mesMinimoPrimeiraParcela("2026-10-09", "2026-10-10", 10, 20)).toBe("2026-10")
   })
 
   it("rótulo pelo fechamento, em UTC (meia-noite do backend não volta pro mês anterior)", () => {

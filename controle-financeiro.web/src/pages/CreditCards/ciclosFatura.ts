@@ -52,14 +52,22 @@ export function mesDaFaturaDoDia(iso: string, diaFechamento?: number): string {
 }
 
 /** Primeira parcela mais cedo que o parcelamento aceita ("YYYY-MM") — espelha o piso do
- * ParcelamentoService: a MAIS TARDE entre a fatura em que a compra cai e a fatura aberta hoje
- * (`hojeIso` = dia LOCAL de quem usa). Compra retroativa não põe parcela numa fatura que já fechou:
- * ela nasceria pendente numa fatura vencida (juros/multa) ou já paga. "" se a data da compra for inválida. */
-export function mesMinimoPrimeiraParcela(dataCompraIso: string, hojeIso: string, diaFechamento?: number): string {
+ * ParcelamentoService: a MAIS TARDE entre a fatura em que a compra cai e a 1ª fatura que ainda NÃO
+ * VENCEU (`hojeIso` = dia LOCAL de quem usa). A fatura que já fechou mas ainda não venceu vale — é nela
+ * que o banco cobra a compra feita antes do fechamento e lançada depois. Fatura vencida não: a parcela
+ * nasceria pendente numa fatura vencida (juros/multa) ou já paga. "" se a data da compra for inválida. */
+export function mesMinimoPrimeiraParcela(
+  dataCompraIso: string, hojeIso: string, diaFechamento?: number, diaVencimento?: number,
+): string {
   const daCompra = mesDaFaturaDoDia(dataCompraIso, diaFechamento)
-  if (!daCompra) return ""
-  const daAberta = mesDaFaturaDoDia(hojeIso, diaFechamento)
-  return daAberta > daCompra ? daAberta : daCompra
+  const [ano, mes, dia] = hojeIso.split("-").map(Number)
+  if (!daCompra || !ano || !mes || !dia) return ""
+  const aberta = cicloDoDia(ano, mes - 1, dia, diaFechamento)
+  const hoje = new Date(Date.UTC(ano, mes - 1, dia))
+  // A anterior à aberta fechou em `aberta.inicio`; ainda aceita cobrança se não venceu.
+  const naoVencida = vencimentoDe(aberta.inicio, diaVencimento) >= hoje ? aberta.inicio : aberta.fechamento
+  const piso = naoVencida.toISOString().slice(0, 7)
+  return piso > daCompra ? piso : daCompra
 }
 
 /** Rótulo da fatura pelo mês de fechamento ("Outubro de 2026") — o mesmo em Cartões e Parcelamentos.

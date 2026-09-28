@@ -379,18 +379,18 @@ public class ParcelamentoServiceTests
 
     [Theory]
     [InlineData("2026-07")] // fatura da compra (fechou 10/07, venceu 20/07)
-    [InlineData("2026-09")] // fechou 10/09 — a última antes da aberta
-    public async Task CriarAsync_CompraRetroativa_PrimeiraParcelaEmFaturaQueJaFechou_Recusa_SemGravarNada(string mes)
+    [InlineData("2026-09")] // fechou 10/09 e venceu 20/09 — a última antes da aberta
+    public async Task CriarAsync_CompraRetroativa_PrimeiraParcelaEmFaturaQueJaVenceu_Recusa_SemGravarNada(string mes)
     {
         // Hoje 28/09/2026, compra de 15/06/2026. A fatura da compra (julho) e as seguintes até setembro já
-        // fecharam: parcela nova nelas nasceria Pendente numa fatura vencida (juros + multa do
+        // VENCERAM: parcela nova nelas nasceria Pendente numa fatura vencida (juros + multa do
         // FaturaAtrasoJob) ou já paga (restante volta a aparecer e o pagamento passa a ser recusado).
         var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2026, 9, 28));
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => CriarAsync(c, new DateTime(2026, 6, 15), mes, parcelas: 12));
 
-        Assert.Contains("outubro de 2026, a aberta hoje", ex.Message);
+        Assert.Contains("outubro de 2026 — as anteriores já venceram", ex.Message);
         Assert.Empty(c.Db.Parcelamentos);
         Assert.Empty(c.Db.ParcelasTransacao);
         Assert.Empty(c.Db.Faturas);
@@ -424,17 +424,45 @@ public class ParcelamentoServiceTests
     }
 
     [Fact]
-    public async Task CriarAsync_DiaDoFechamentoEmTodoOBrasil_FaturaQueFechouNaoEntra()
+    public async Task CriarAsync_FaturaQueFechouHojeMasNaoVenceu_AceitaAPrimeiraParcela()
     {
-        // 06:00 UTC de 10/10 = já é dia 10 até no Acre (UTC-5): a fatura de outubro fechou, mesmo com a
-        // compra de 09/10 ter caído nela — a 1ª parcela vai pra de novembro.
+        // 06:00 UTC de 10/10 = já é dia 10 em todo o Brasil: a fatura de outubro FECHOU hoje, mas só vence
+        // 20/10 — e a compra de 09/10 caiu nela. É nela que o banco cobra a 1ª parcela; travar na aberta
+        // (novembro) era o bug de "uma fatura depois" voltando pela porta dos fundos.
         var c = await CriarCtxNoInstanteAsync(diaFechamento: 10, diaVencimento: 20,
             agoraUtc: new DateTime(2026, 10, 10, 6, 0, 0));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CriarAsync(c, new DateTime(2026, 10, 9), "2026-10", parcelas: 2));
+        var p = await CriarAsync(c, new DateTime(2026, 10, 9), "2026-10", parcelas: 2);
 
-        Assert.Contains("novembro de 2026, a aberta hoje", ex.Message);
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2026, 10, 10), faturas[0].DataFechamento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraAntesDoFechamentoLancadaDepois_CaiNaFaturaFechadaAindaNaoVencida()
+    {
+        // Fecha dia 25, vence dia 5. Compra 24/09 lançada 28/09: a fatura de setembro fechou 25/09 mas só
+        // vence 05/10 — o banco cobra a 1ª parcela nela.
+        var c = await CriarCtxAsync(diaFechamento: 25, diaVencimento: 5, hoje: new DateTime(2026, 9, 28));
+
+        var p = await CriarAsync(c, new DateTime(2026, 9, 24), "2026-09", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2026, 9, 25), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2026, 10, 5), p.Parcelas.Single(x => x.Numero == 1).DataVencimento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_FaturaAnteriorJaVenceu_Recusa()
+    {
+        // Fecha dia 25, vence dia 5. Hoje 06/10: a fatura de setembro (fechou 25/09) venceu ontem — a 1ª
+        // parcela de uma compra de 24/09 vai pra de outubro.
+        var c = await CriarCtxAsync(diaFechamento: 25, diaVencimento: 5, hoje: new DateTime(2026, 10, 6));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 9, 24), "2026-09", parcelas: 2));
+
+        Assert.Contains("outubro de 2026 — as anteriores já venceram", ex.Message);
     }
 
     [Fact]

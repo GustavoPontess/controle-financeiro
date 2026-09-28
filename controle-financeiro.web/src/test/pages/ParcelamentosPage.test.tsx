@@ -221,8 +221,8 @@ describe("ParcelamentosPage (#153)", () => {
       expect(criar).not.toHaveBeenCalled()
     })
 
-    // Compra retroativa: a fatura da compra (julho) e as seguintes até setembro já fecharam. Parcela
-    // nelas nasceria pendente numa fatura vencida (juros/multa) ou já paga — começa na aberta hoje.
+    // Compra retroativa: a fatura da compra (julho) e as seguintes até setembro já VENCERAM. Parcela
+    // nelas nasceria pendente numa fatura vencida (juros/multa) ou já paga — começa na 1ª não vencida.
     const mudarCompraPara15DeJunho = () => {
       fireEvent.click(screen.getByRole("button", { name: "28/09/2026" }))
       for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button", { name: "‹" }))
@@ -230,7 +230,7 @@ describe("ParcelamentosPage (#153)", () => {
       expect(screen.getByRole("button", { name: "15/06/2026" })).toBeInTheDocument()
     }
 
-    it("compra antiga: sugere a fatura aberta hoje e desabilita as que já fecharam", async () => {
+    it("compra antiga: sugere a 1ª fatura não vencida e desabilita as vencidas", async () => {
       await abrirForm()
       mudarCompraPara15DeJunho()
       await escolherCartao()
@@ -247,7 +247,7 @@ describe("ParcelamentosPage (#153)", () => {
       expect(criar.mock.calls[0][0].dataCompra).toBe("2026-06-15")
     })
 
-    it("compra antiga com mês escolhido antes da fatura aberta hoje bloqueia no campo", async () => {
+    it("compra antiga com mês escolhido numa fatura vencida bloqueia no campo", async () => {
       await abrirForm()
       fireEvent.click(screen.getByRole("button", { name: "Setembro de 2026" }))
       fireEvent.click(screen.getByRole("button", { name: "Setembro de 2026", pressed: true }))
@@ -255,7 +255,7 @@ describe("ParcelamentosPage (#153)", () => {
       await escolherCartao()
 
       fireEvent.click(screen.getByText("Criar"))
-      expect(await screen.findByText("Não pode ser antes da fatura aberta hoje (Outubro de 2026)")).toBeInTheDocument()
+      expect(await screen.findByText("Não pode ser antes da fatura de Outubro de 2026 — as anteriores já venceram")).toBeInTheDocument()
       expect(criar).not.toHaveBeenCalled()
     })
   })

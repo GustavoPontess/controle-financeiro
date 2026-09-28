@@ -120,22 +120,29 @@ public class ParcelamentoService
         // 4b. Piso da 1ª parcela = a MAIS TARDE entre:
         //  (a) a fatura em que a compra cai (a que fecha depois da DataCompra, mesma regra do lançamento
         //      à vista) — o banco não cobra parcela numa fatura que fechou antes da compra;
-        //  (b) a fatura aberta hoje — as anteriores já fecharam. Compra retroativa (ex.: de junho,
-        //      lançada em setembro) com parcela numa fatura passada nascia Pendente numa fatura
-        //      fechada/vencida/paga: o FaturaAtrasoJob cobrava juros e multa dela, e uma fatura já paga
-        //      voltava a ter restante e passava a recusar pagamento. Compra antiga começa na aberta.
+        //  (b) a 1ª fatura que ainda NÃO VENCEU — é a mais antiga que ainda pode receber cobrança.
+        //      Compra retroativa (ex.: de junho, lançada em setembro) com parcela numa fatura vencida
+        //      nascia Pendente lá: o FaturaAtrasoJob cobrava juros e multa dela e uma fatura já paga
+        //      voltava a ter restante. Mas a fatura que JÁ FECHOU e ainda não venceu é válida: compra do
+        //      dia 24 (fecha 25, vence 5) lançada no dia 28 é cobrada justamente nela — travar na aberta
+        //      jogava a 1ª parcela uma fatura depois do banco (o bug que motivou esta regra).
         // "Hoje" = o dia mais cedo possível no Brasil agora (UTC-5, Acre): o form usa o dia LOCAL de
         // quem usa, e o back não pode ser mais estrito que ele — com o dia UTC, das 21h à meia-noite
         // de Brasília na véspera do fechamento, a fatura que o form sugere seria recusada.
         var hojeNoBrasil = agoraUtc.AddHours(-5).Date;
         var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dto.DataCompra.Date, cartao.DiaFechamento);
-        var (_, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
-        var pisoEhACompra = fechamentoDaCompra >= fechamentoDaAberta;
-        var piso = pisoEhACompra ? fechamentoDaCompra : fechamentoDaAberta;
+        var (fechamentoDaAnterior, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
+        // A fatura anterior à aberta (fechou em fechamentoDaAnterior) ainda aceita cobrança se não venceu.
+        var fechamentoNaoVencido =
+            FaturaService.CalcularVencimento(fechamentoDaAnterior, cartao.DiaVencimento) >= hojeNoBrasil
+                ? fechamentoDaAnterior
+                : fechamentoDaAberta;
+        var pisoEhACompra = fechamentoDaCompra >= fechamentoNaoVencido;
+        var piso = pisoEhACompra ? fechamentoDaCompra : fechamentoNaoVencido;
         if (mesPrimeiraParcela < new DateTime(piso.Year, piso.Month, 1))
             throw new InvalidOperationException(pisoEhACompra
                 ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
-                : $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, a aberta hoje — as anteriores já fecharam.");
+                : $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)} — as anteriores já venceram.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa
         if (dto.CategoriaId.HasValue)
