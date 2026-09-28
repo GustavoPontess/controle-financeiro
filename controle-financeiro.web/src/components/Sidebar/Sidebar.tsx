@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
   Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
-  Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
+  Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight, LayoutTemplate,
 } from "lucide-react"
 import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
@@ -39,6 +39,7 @@ const NAV: SidebarNavGroup[] = [
       { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={19} strokeWidth={2} /> },
       { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={19} strokeWidth={2} /> },
       { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
+      { to: "/demo-padrao", label: "Demo Padrão", icon: <LayoutTemplate size={19} strokeWidth={2} /> },
       { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
     ],
   },
