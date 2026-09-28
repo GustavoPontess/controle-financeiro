@@ -45,6 +45,11 @@
 }
 .month:hover:not(:disabled) { background: var(--pontes-bg); }
 .month:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--pontes-primary-soft); }
-.month[data-current="true"] { color: var(--pontes-primary); font-weight: 700; }
-.month[data-selected="true"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); font-weight: 700; }
+/* Mesmos estados do PontesDatePicker — data e mês ficam lado a lado no form e a mesma cor tem que
+   dizer a mesma coisa: selecionado = primary-soft; atual (hoje) = primary sólido, que vence se for os
+   dois. O :hover repetido mantém o estado ao passar o mouse (o hover genérico acima é mais específico). */
+.month[data-selected="true"],
+.month[data-selected="true"]:hover:not(:disabled) { background: var(--pontes-primary-soft); color: var(--pontes-primary); font-weight: 700; }
+.month[data-current="true"],
+.month[data-current="true"]:hover:not(:disabled) { background: var(--pontes-primary); color: var(--pontes-hero-fg); font-weight: 700; }
 .month:disabled { cursor: not-allowed; opacity: 0.35; }

@@ -243,11 +243,22 @@ public class ParcelamentoServiceTests
     // Bug (dogfooding 2026-09-28): a parcela ganhava o DIA DA COMPRA no mês escolhido e a fatura saía do
     // ciclo dessa data. Cartão que fecha dia 10, compra 28/09, "primeira parcela: outubro" → parcela em
     // 28/10 → fatura que fecha 10/11 (Novembro na tela Cartões); a mesma escolha com compra no dia 5
-    // caía em outubro. Datas fixas no passado: a regra não depende de hoje (compra futura é recusada).
+    // caía em outubro. "Hoje" vem de um relógio fixo: o piso da 1ª parcela também depende da fatura
+    // aberta hoje, e os cenários precisam ser os mesmos em qualquer dia em que a suíte rodar.
 
     private sealed record Ctx(AppDbContext Db, ParcelamentoService Service, Guid UsuarioId, CartaoCredito Cartao);
 
-    private static async Task<Ctx> CriarCtxAsync(int? diaFechamento, int? diaVencimento)
+    /// <summary>Relógio parado num instante UTC — o "hoje" do service nos testes.</summary>
+    private sealed class RelogioFixo(DateTime agoraUtc) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(DateTime.SpecifyKind(agoraUtc, DateTimeKind.Utc));
+    }
+
+    /// <param name="hoje">Dia de "hoje" (meio-dia UTC = o mesmo dia em todo o Brasil).</param>
+    private static Task<Ctx> CriarCtxAsync(int? diaFechamento, int? diaVencimento, DateTime hoje) =>
+        CriarCtxNoInstanteAsync(diaFechamento, diaVencimento, hoje.Date.AddHours(12));
+
+    private static async Task<Ctx> CriarCtxNoInstanteAsync(int? diaFechamento, int? diaVencimento, DateTime agoraUtc)
     {
         var db = CreateInMemoryContext();
         var usuarioId = Guid.NewGuid();
@@ -259,7 +270,8 @@ public class ParcelamentoServiceTests
         db.CartoesCredito.Add(cartao);
         await db.SaveChangesAsync();
         var service = new ParcelamentoService(
-            db, new FinancialEventLogService(db), new LimiteCalculatorService(db), new FaturaService(db));
+            db, new FinancialEventLogService(db), new LimiteCalculatorService(db), new FaturaService(db),
+            new RelogioFixo(agoraUtc));
         return new Ctx(db, service, usuarioId, cartao);
     }
 
@@ -287,7 +299,8 @@ public class ParcelamentoServiceTests
     [InlineData(28)] // depois do fechamento: fatura de outubro (o caso do bug)
     public async Task CriarAsync_MesmoMesEscolhido_CaiSempreNaFaturaQueFechaNesseMes_EmFaturasConsecutivas(int diaCompra)
     {
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        // Compra de hoje (a fatura aberta hoje é a da compra — o piso é o mesmo).
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, diaCompra));
 
         var p = await CriarAsync(c, new DateTime(2025, 9, diaCompra), "2025-10", parcelas: 3);
 
@@ -312,7 +325,7 @@ public class ParcelamentoServiceTests
     public async Task CriarAsync_VencimentoNoMesSeguinteAoFechamento_ParcelaVenceNoVencimentoRealDaFatura()
     {
         // Fecha dia 28, vence dia 5: a fatura "de setembro" fecha 28/09 e vence 05/10.
-        var c = await CriarCtxAsync(diaFechamento: 28, diaVencimento: 5);
+        var c = await CriarCtxAsync(diaFechamento: 28, diaVencimento: 5, hoje: new DateTime(2025, 9, 15));
 
         var p = await CriarAsync(c, new DateTime(2025, 9, 15), "2025-09", parcelas: 2);
 
@@ -330,7 +343,7 @@ public class ParcelamentoServiceTests
     {
         // Fatura de outubro já existe (ex.: o dia de vencimento do cartão mudou depois): a parcela entra
         // nela e vence quando ELA vence — o que a tela Cartões mostra.
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, 28));
         var existente = new Fatura
         {
             Id = Guid.NewGuid(), CartaoCreditoId = c.Cartao.Id, CriadoPor = c.UsuarioId,
@@ -353,7 +366,7 @@ public class ParcelamentoServiceTests
     public async Task CriarAsync_PrimeiraParcelaAntesDaFaturaDaCompra_Recusa_SemGravarNada()
     {
         // Compra 28/09 com fechamento dia 10 cai na fatura de outubro: setembro já fechou antes da compra.
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, 28));
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => CriarAsync(c, new DateTime(2025, 9, 28), "2025-09"));
@@ -364,11 +377,71 @@ public class ParcelamentoServiceTests
         Assert.Empty(c.Db.Faturas);
     }
 
+    [Theory]
+    [InlineData("2026-07")] // fatura da compra (fechou 10/07, venceu 20/07)
+    [InlineData("2026-09")] // fechou 10/09 — a última antes da aberta
+    public async Task CriarAsync_CompraRetroativa_PrimeiraParcelaEmFaturaQueJaFechou_Recusa_SemGravarNada(string mes)
+    {
+        // Hoje 28/09/2026, compra de 15/06/2026. A fatura da compra (julho) e as seguintes até setembro já
+        // fecharam: parcela nova nelas nasceria Pendente numa fatura vencida (juros + multa do
+        // FaturaAtrasoJob) ou já paga (restante volta a aparecer e o pagamento passa a ser recusado).
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2026, 9, 28));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 6, 15), mes, parcelas: 12));
+
+        Assert.Contains("outubro de 2026, a aberta hoje", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+        Assert.Empty(c.Db.ParcelasTransacao);
+        Assert.Empty(c.Db.Faturas);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraRetroativa_ComecaNaFaturaAbertaHoje()
+    {
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2026, 9, 28));
+
+        var p = await CriarAsync(c, new DateTime(2026, 6, 15), "2026-10", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2026, 10, 10), faturas[0].DataFechamento);
+        Assert.Equal(new DateTime(2026, 11, 10), faturas[1].DataFechamento);
+        Assert.Equal(new DateTime(2026, 10, 20), p.Parcelas.Single(x => x.Numero == 1).DataVencimento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_NoiteDaVesperaDoFechamento_NoBrasil_AceitaAFaturaQueAindaEstaAberta()
+    {
+        // 02:30 UTC de 10/10 = 23:30 de 09/10 em Brasília: pra quem usa, a fatura de outubro (fecha 10/10)
+        // ainda está aberta, e é o que o form sugere. Com o dia UTC (10/10) o back recusaria.
+        var c = await CriarCtxNoInstanteAsync(diaFechamento: 10, diaVencimento: 20,
+            agoraUtc: new DateTime(2026, 10, 10, 2, 30, 0));
+
+        var p = await CriarAsync(c, new DateTime(2026, 10, 9), "2026-10", parcelas: 2);
+
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new DateTime(2026, 10, 10), faturas[0].DataFechamento);
+    }
+
+    [Fact]
+    public async Task CriarAsync_DiaDoFechamentoEmTodoOBrasil_FaturaQueFechouNaoEntra()
+    {
+        // 06:00 UTC de 10/10 = já é dia 10 até no Acre (UTC-5): a fatura de outubro fechou, mesmo com a
+        // compra de 09/10 ter caído nela — a 1ª parcela vai pra de novembro.
+        var c = await CriarCtxNoInstanteAsync(diaFechamento: 10, diaVencimento: 20,
+            agoraUtc: new DateTime(2026, 10, 10, 6, 0, 0));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 10, 9), "2026-10", parcelas: 2));
+
+        Assert.Contains("novembro de 2026, a aberta hoje", ex.Message);
+    }
+
     [Fact]
     public async Task CriarAsync_PrimeiraParcelaNaFaturaDaCompraAntesDoFechamento_Aceita()
     {
         // Compra 05/09 (antes do fechamento dia 10) ainda cai na fatura de setembro: é a mais cedo aceita.
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, 5));
 
         var p = await CriarAsync(c, new DateTime(2025, 9, 5), "2025-09", parcelas: 2);
 
@@ -380,7 +453,7 @@ public class ParcelamentoServiceTests
     [Fact]
     public async Task CriarAsync_CartaoSemDiaFechamento_FaturaDoMesCalendario()
     {
-        var c = await CriarCtxAsync(diaFechamento: null, diaVencimento: 10);
+        var c = await CriarCtxAsync(diaFechamento: null, diaVencimento: 10, hoje: new DateTime(2025, 9, 28));
 
         var p = await CriarAsync(c, new DateTime(2025, 9, 28), "2025-09", parcelas: 2);
 
@@ -397,7 +470,7 @@ public class ParcelamentoServiceTests
     [Fact]
     public async Task CriarAsync_DiaFechamento31EmMesCurto_FechaNoUltimoDiaDoMes()
     {
-        var c = await CriarCtxAsync(diaFechamento: 31, diaVencimento: 10);
+        var c = await CriarCtxAsync(diaFechamento: 31, diaVencimento: 10, hoje: new DateTime(2025, 1, 15));
 
         var p = await CriarAsync(c, new DateTime(2025, 1, 15), "2025-02", parcelas: 2);
 
@@ -414,7 +487,7 @@ public class ParcelamentoServiceTests
     [Fact]
     public async Task CriarAsync_PIXCredito_MesmaRegraDeFatura_JurosInalterados()
     {
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, 28));
 
         var p = await CriarAsync(c, new DateTime(2025, 9, 28), "2025-10", parcelas: 3,
             tipo: TipoParcelamento.PIXCredito, taxa: 2.5m, valor: 1000);
@@ -432,7 +505,7 @@ public class ParcelamentoServiceTests
     public async Task ListarEDetalhe_ProximaParcela_TrazFaturaPeloFechamentoEVencimentoReal()
     {
         // Parcela antiga (antes da regra) guarda o dia da compra como DataVencimento: a tela usa a fatura.
-        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20);
+        var c = await CriarCtxAsync(diaFechamento: 10, diaVencimento: 20, hoje: new DateTime(2025, 9, 28));
         var fatura = new Fatura
         {
             Id = Guid.NewGuid(), CartaoCreditoId = c.Cartao.Id, CriadoPor = c.UsuarioId,

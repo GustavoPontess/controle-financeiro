@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   cicloDoDia, cicloQueFechaEm, vencimentoDe, montarCiclos, indiceMes, indiceMesDeHoje,
-  mesDaFaturaDoDia, rotuloMesFatura,
+  mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura,
   type FaturaView,
 } from "../../pages/CreditCards/ciclosFatura"
 import type { Fatura } from "../../types/Fatura"
@@ -117,6 +117,19 @@ describe("mesDaFaturaDoDia / rotuloMesFatura", () => {
 
   it("data inválida → vazio", () => {
     expect(mesDaFaturaDoDia("", 10)).toBe("")
+    expect(mesMinimoPrimeiraParcela("", "2026-09-28", 10)).toBe("")
+  })
+
+  it("mínimo da 1ª parcela = a mais tarde entre a fatura da compra e a aberta hoje", () => {
+    // Compra de hoje: as duas são a mesma.
+    expect(mesMinimoPrimeiraParcela("2026-09-28", "2026-09-28", 10)).toBe("2026-10")
+    expect(mesMinimoPrimeiraParcela("2026-09-05", "2026-09-05", 10)).toBe("2026-09")
+    // Compra antiga (15/06, hoje 28/09): julho a setembro já fecharam → a aberta hoje (outubro).
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10)).toBe("2026-10")
+    // Compra de dias atrás ainda no ciclo aberto: a da compra.
+    expect(mesMinimoPrimeiraParcela("2026-09-12", "2026-09-28", 10)).toBe("2026-10")
+    // Sem dia de fechamento: mês calendário de hoje.
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28")).toBe("2026-09")
   })
 
   it("rótulo pelo fechamento, em UTC (meia-noite do backend não volta pro mês anterior)", () => {

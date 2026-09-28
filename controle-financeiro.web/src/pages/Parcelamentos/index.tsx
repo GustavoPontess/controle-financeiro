@@ -14,7 +14,7 @@ import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
 import { notificacaoDeErro } from "@/utils/apiError"
-import { mesDaFaturaDoDia, rotuloMesFatura } from "../CreditCards/ciclosFatura"
+import { mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura } from "../CreditCards/ciclosFatura"
 import styles from "./ParcelamentosPage.module.css"
 
 
@@ -54,13 +54,14 @@ type Notification = { open: boolean; message: string; severity: "success" | "err
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 // "Primeira parcela: outubro" = a fatura que FECHA em outubro (o rótulo da tela Cartões). A sugestão é
-// a fatura em que a compra cai — como o banco cobra. Sem cartão escolhido ainda, mês da compra.
+// a mais cedo que o banco cobraria: a fatura em que a compra cai ou, se a compra é antiga, a aberta
+// hoje. Sem cartão escolhido ainda, mês calendário.
 const emptyForm = (): FormState => {
   const dataCompra = dataLocalISO()
   return {
     descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
     dataCompra,
-    parcelas: 3, primeiraParcelaMes: mesDaFaturaDoDia(dataCompra), taxaJuroMensal: undefined,
+    parcelas: 3, primeiraParcelaMes: mesMinimoPrimeiraParcela(dataCompra, dataCompra), taxaJuroMensal: undefined,
   }
 }
 
@@ -79,7 +80,7 @@ export default function ParcelamentosPage() {
   const [cancelarId, setCancelarId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   // Usuário escolheu o mês da 1ª parcela à mão: mudar a data da compra ou o cartão não sobrescreve
-  // a escolha (se ela ficar antes da fatura da compra, a validação do submit avisa no campo).
+  // a escolha (se ela ficar antes do mínimo, a validação do submit avisa no campo).
   const [mesEscolhido, setMesEscolhido] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
 
@@ -105,15 +106,21 @@ export default function ParcelamentosPage() {
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
   const diaFechamentoDo = (cartaoId: string) => cartoes.find((c) => c.id === cartaoId)?.diaFechamento
-  // Fatura em que a compra cai no cartão escolhido: a primeira parcela mais cedo possível (o backend
-  // recusa antes dela) — mínimo do seletor e sugestão enquanto o usuário não escolhe o mês.
-  const mesMinimo = mesDaFaturaDoDia(form.dataCompra, diaFechamentoDo(form.cartaoCreditoId))
+  // Primeira parcela mais cedo possível no cartão escolhido (o backend recusa antes dela): a fatura em
+  // que a compra cai ou, compra antiga, a aberta hoje — as anteriores já fecharam. Mínimo do seletor e
+  // sugestão enquanto o usuário não escolhe o mês.
+  const diaFechamento = diaFechamentoDo(form.cartaoCreditoId)
+  const mesMinimo = mesMinimoPrimeiraParcela(form.dataCompra, dataLocalISO(), diaFechamento)
+  const minimoEhAFaturaDaCompra = mesMinimo === mesDaFaturaDoDia(form.dataCompra, diaFechamento)
 
   const mudarCompra = (patch: Partial<Pick<FormState, "dataCompra" | "cartaoCreditoId">>) => {
     setForm((f) => {
       const next = { ...f, ...patch }
       if (mesEscolhido) return next
-      return { ...next, primeiraParcelaMes: mesDaFaturaDoDia(next.dataCompra, diaFechamentoDo(next.cartaoCreditoId)) }
+      return {
+        ...next,
+        primeiraParcelaMes: mesMinimoPrimeiraParcela(next.dataCompra, dataLocalISO(), diaFechamentoDo(next.cartaoCreditoId)),
+      }
     })
     clearErr("primeiraParcelaMes")
   }
@@ -134,7 +141,9 @@ export default function ParcelamentosPage() {
     if (form.parcelas < 2 || form.parcelas > 36) e.parcelas = "Entre 2 e 36 parcelas"
     if (!form.primeiraParcelaMes) e.primeiraParcelaMes = "Informe o mês da primeira parcela"
     else if (mesMinimo && form.primeiraParcelaMes < mesMinimo)
-      e.primeiraParcelaMes = `Não pode ser antes da fatura da compra (${rotuloMesFatura(`${mesMinimo}-01`)})`
+      e.primeiraParcelaMes = minimoEhAFaturaDaCompra
+        ? `Não pode ser antes da fatura da compra (${rotuloMesFatura(`${mesMinimo}-01`)})`
+        : `Não pode ser antes da fatura aberta hoje (${rotuloMesFatura(`${mesMinimo}-01`)})`
     if (form.tipo === "1") {
       const t = form.taxaJuroMensal ?? 0
       if (t < 1.99 || t > 11.99) e.taxaJuroMensal = "PIX Crédito exige juros entre 1,99 e 11,99%"

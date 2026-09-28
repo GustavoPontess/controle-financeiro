@@ -113,11 +113,7 @@ export function PontesMonthInput({
   const anoAnteriorBloqueado = minI != null && ano * 12 - 1 < minI
   const proximoAnoBloqueado = maxI != null && (ano + 1) * 12 > maxI
 
-  // Esc também fecha pelo hook; aqui devolve o foco ao campo (senão ele cai no <body>).
-  const onPopoverKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape") { e.preventDefault(); fechar() }
-  }
-
+  // Esc é tratado no useAnchoredPopover (fecha só o popover, não o modal, e devolve o foco ao campo).
   const onGradeKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const passos: Record<string, number> = {
       ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLUNAS, ArrowDown: COLUNAS, PageUp: -12, PageDown: 12,
@@ -163,7 +159,6 @@ export function PontesMonthInput({
           role="dialog"
           aria-label="Escolher mês"
           style={{ position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom, ...scopedThemeVars(p, font) } as CSSProperties}
-          onKeyDown={onPopoverKeyDown}
         >
           <div className={styles.panel}>
             <div className={styles.head}>

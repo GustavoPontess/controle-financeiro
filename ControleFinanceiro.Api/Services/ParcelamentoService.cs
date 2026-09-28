@@ -30,18 +30,36 @@ public class ParcelamentoService
     private readonly FinancialEventLogService _eventLog;
     private readonly LimiteCalculatorService _limiteCalc;
     private readonly FaturaService _faturaService;
+    private readonly TimeProvider _relogio;
 
     public ParcelamentoService(
         AppDbContext context,
         FinancialEventLogService eventLog,
         LimiteCalculatorService limiteCalc,
-        FaturaService faturaService)
+        FaturaService faturaService,
+        TimeProvider? relogio = null)
     {
         _context = context;
         _eventLog = eventLog;
         _limiteCalc = limiteCalc;
         _faturaService = faturaService;
+        // Opcional só pra testar com um "hoje" fixo a regra da fatura aberta (a 1ª parcela depende do
+        // dia). O Program.cs não registra TimeProvider → vale o default (relógio do sistema); os
+        // chamadores não mudam.
+        _relogio = relogio ?? TimeProvider.System;
     }
+
+    // Nome do mês sem CultureInfo("pt-BR"): a imagem de produção (alpine) roda com globalização
+    // invariante, e lá o construtor lança CultureNotFoundException — o usuário veria um 400 técnico em
+    // inglês no lugar da mensagem da regra.
+    private static readonly string[] MesesPtBr =
+    {
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+    };
+
+    private static string RotuloMesFatura(DateTime fechamento) =>
+        $"{MesesPtBr[fechamento.Month - 1]} de {fechamento.Year}";
 
     // ── Criar ─────────────────────────────────────────────────────────────────
 
@@ -69,7 +87,8 @@ public class ParcelamentoService
         if (dto.Parcelas < 2 || dto.Parcelas > 36)
             throw new InvalidOperationException("Quantidade de parcelas deve estar entre 2 e 36.");
 
-        if (dto.DataCompra.Date > DateTime.UtcNow.Date)
+        var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
+        if (dto.DataCompra.Date > agoraUtc.Date)
             throw new InvalidOperationException("Data da compra não pode ser futura.");
 
         if (dto.Tipo != TipoParcelamento.CompraParcelada && dto.Tipo != TipoParcelamento.PIXCredito)
@@ -98,14 +117,25 @@ public class ParcelamentoService
         if (!cartao.Ativo)
             throw new InvalidOperationException("Cartão inativo.");
 
-        // 4b. A 1ª parcela não vem antes da fatura em que a compra cai (a que fecha depois da DataCompra,
-        // mesma regra do lançamento à vista): o banco não cobra parcela numa fatura que fechou antes da
-        // compra. Antes a regra era "não anterior ao mês atual", que não olhava o ciclo do cartão.
+        // 4b. Piso da 1ª parcela = a MAIS TARDE entre:
+        //  (a) a fatura em que a compra cai (a que fecha depois da DataCompra, mesma regra do lançamento
+        //      à vista) — o banco não cobra parcela numa fatura que fechou antes da compra;
+        //  (b) a fatura aberta hoje — as anteriores já fecharam. Compra retroativa (ex.: de junho,
+        //      lançada em setembro) com parcela numa fatura passada nascia Pendente numa fatura
+        //      fechada/vencida/paga: o FaturaAtrasoJob cobrava juros e multa dela, e uma fatura já paga
+        //      voltava a ter restante e passava a recusar pagamento. Compra antiga começa na aberta.
+        // "Hoje" = o dia mais cedo possível no Brasil agora (UTC-5, Acre): o form usa o dia LOCAL de
+        // quem usa, e o back não pode ser mais estrito que ele — com o dia UTC, das 21h à meia-noite
+        // de Brasília na véspera do fechamento, a fatura que o form sugere seria recusada.
+        var hojeNoBrasil = agoraUtc.AddHours(-5).Date;
         var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dto.DataCompra.Date, cartao.DiaFechamento);
-        if (mesPrimeiraParcela < new DateTime(fechamentoDaCompra.Year, fechamentoDaCompra.Month, 1))
-            throw new InvalidOperationException(
-                $"A primeira parcela não pode ser antes da fatura de " +
-                $"{fechamentoDaCompra.ToString("MMMM 'de' yyyy", new CultureInfo("pt-BR"))}, em que a compra cai.");
+        var (_, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
+        var pisoEhACompra = fechamentoDaCompra >= fechamentoDaAberta;
+        var piso = pisoEhACompra ? fechamentoDaCompra : fechamentoDaAberta;
+        if (mesPrimeiraParcela < new DateTime(piso.Year, piso.Month, 1))
+            throw new InvalidOperationException(pisoEhACompra
+                ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
+                : $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, a aberta hoje — as anteriores já fecharam.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa
         if (dto.CategoriaId.HasValue)

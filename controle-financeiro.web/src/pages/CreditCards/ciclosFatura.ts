@@ -43,12 +43,23 @@ export function cicloDoDia(ano: number, mes0: number, dia: number, diaFechamento
 
 /** Mês "YYYY-MM" da fatura em que cai uma compra do dia `iso` ("YYYY-MM-DD"): o mês em que essa fatura
  * FECHA, que é o rótulo dela na tela Cartões. Antes do dia de fechamento → mês da compra; no dia ou
- * depois → mês seguinte; sem dia de fechamento → mês da compra. É a primeira parcela mais cedo que o
- * parcelamento aceita (espelha a validação do ParcelamentoService). "" se a data for inválida. */
+ * depois → mês seguinte; sem dia de fechamento → mês da compra. Com o dia de hoje, é a fatura aberta.
+ * "" se a data for inválida. */
 export function mesDaFaturaDoDia(iso: string, diaFechamento?: number): string {
   const [ano, mes, dia] = iso.split("-").map(Number)
   if (!ano || !mes || !dia) return ""
   return cicloDoDia(ano, mes - 1, dia, diaFechamento).fechamento.toISOString().slice(0, 7)
+}
+
+/** Primeira parcela mais cedo que o parcelamento aceita ("YYYY-MM") — espelha o piso do
+ * ParcelamentoService: a MAIS TARDE entre a fatura em que a compra cai e a fatura aberta hoje
+ * (`hojeIso` = dia LOCAL de quem usa). Compra retroativa não põe parcela numa fatura que já fechou:
+ * ela nasceria pendente numa fatura vencida (juros/multa) ou já paga. "" se a data da compra for inválida. */
+export function mesMinimoPrimeiraParcela(dataCompraIso: string, hojeIso: string, diaFechamento?: number): string {
+  const daCompra = mesDaFaturaDoDia(dataCompraIso, diaFechamento)
+  if (!daCompra) return ""
+  const daAberta = mesDaFaturaDoDia(hojeIso, diaFechamento)
+  return daAberta > daCompra ? daAberta : daCompra
 }
 
 /** Rótulo da fatura pelo mês de fechamento ("Outubro de 2026") — o mesmo em Cartões e Parcelamentos.

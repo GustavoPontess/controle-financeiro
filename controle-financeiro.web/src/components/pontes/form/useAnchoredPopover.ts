@@ -4,7 +4,8 @@
  * Um lugar só pro comportamento comum dos campos com popover: vive num portal com `position: fixed`
  * (foge do overflow do modal), é clampado contra o boundary do modal/viewport (senão vaza pela
  * borda direita em campos perto dela — mesmo padrão do PontesSelect), abre pra cima quando falta
- * espaço embaixo, reposiciona em scroll/resize e fecha ao clicar fora ou no Esc.
+ * espaço embaixo, reposiciona em scroll/resize e fecha ao clicar fora ou no Esc (sem fechar junto o
+ * modal em que o campo está).
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -68,12 +69,23 @@ export function useAnchoredPopover(largura: number, altura: number) {
     return () => document.removeEventListener("mousedown", onDoc)
   }, [open])
 
-  // Fecha ao ESC.
+  // Esc com o popover aberto fecha SÓ o popover. O PontesModal também fecha no Esc (listener no
+  // document); ouvindo no mesmo lugar, o mesmo Esc fechava o popover E o modal inteiro, com tudo o que
+  // já tinha sido digitado no form. Por isso escuta na fase de CAPTURA do document (roda antes de
+  // qualquer outro listener) e para a propagação: o popover é a camada de cima, ele consome o Esc.
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      e.preventDefault()
+      e.stopPropagation()
+      // Foco dentro do popover (que vai sumir) volta pro campo — senão cai no <body>.
+      const focoNoPopover = !!popoverRef.current?.contains(document.activeElement)
+      setOpen(false)
+      if (focoNoPopover) triggerRef.current?.focus()
+    }
+    document.addEventListener("keydown", onKey, true)
+    return () => document.removeEventListener("keydown", onKey, true)
   }, [open])
 
   return { open, setOpen, pos, wrapRef, triggerRef, popoverRef }
