@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { TrendingDown, TrendingUp, ArrowLeftRight } from "lucide-react"
 import {
   PontesButton, PontesToggle, PontesField, PontesInput, PontesDateInput, PontesMoneyInput, PontesSelect,
@@ -87,7 +88,7 @@ export default function TransactionForm({
     contaOrigemId: "",
     contaDestinoId: "",
     valor: "",
-    data: new Date().toISOString().split("T")[0],
+    data: dataLocalISO(),
     descricao: "",
     parcelas: 1,
     efetivado: true,
@@ -107,7 +108,7 @@ export default function TransactionForm({
   const isCredito = !isTransferencia && (form.meioPagamento === 3 || !!form.cartaoCreditoId)
   const isRecorrente = !isTransferencia && form.modo === "recorrente"
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
-  const today = new Date().toISOString().split("T")[0]
+  const today = dataLocalISO()
   // Conta/transferência não aceitam data futura; crédito e recorrente (início) sim.
   const dateMax = isCredito || isRecorrente ? undefined : today
 

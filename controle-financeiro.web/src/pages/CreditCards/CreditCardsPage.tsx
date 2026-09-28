@@ -19,7 +19,7 @@ import { getCartoes, createCartao, updateCartao, deleteCartao } from "../../serv
 import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
-import { dataComHora } from "../../utils/dateTime"
+import { dataComHora, dataLocalISO } from "../../utils/dateTime"
 import { notificacaoDeErro } from "../../utils/apiError"
 import { getRecorrentes } from "../../services/recorrenteService"
 import type { Recorrente } from "../../types/Recorrente"
@@ -191,9 +191,12 @@ export default function CreditCardsPage() {
   const [pagarFaturaId, setPagarFaturaId] = useState<string | null>(null)
   const [pagarCartaoId, setPagarCartaoId] = useState<string | null>(null)
   const [pagarForm, setPagarForm] = useState({
-    contaId: "", valor: "", dataPagamento: new Date().toISOString().split("T")[0], meioPagamento: "4",
+    contaId: "", valor: "", dataPagamento: dataLocalISO(), meioPagamento: "4",
   })
   const [pagarErrors, setPagarErrors] = useState<{ conta?: string; valor?: string }>({})
+  // O que falta pagar na fatura quando o modal abriu: teto do valor. Pagar acima disso criaria um
+  // "crédito" que o app não trata (a API também recusa; aqui o erro aparece no campo, antes de enviar).
+  const [pagarRestante, setPagarRestante] = useState(0)
   const [pagarLoading, setPagarLoading] = useState(false)
   // Idempotency-Key da tentativa de pagamento: nasce ao abrir o modal e é reusada nos retries
   // (erro de rede, 409) — a API nunca paga 2x a mesma chave. Reabrir o modal gera outra.
@@ -268,10 +271,11 @@ export default function CreditCardsPage() {
     setPagarFaturaId(faturaId)
     setPagarCartaoId(cartaoId)
     setPagarErrors({})
+    setPagarRestante(valorRestante)
     setPagarIdemKey(crypto.randomUUID())
     setPagarForm({
       contaId: contaId ?? "", valor: String(valorRestante.toFixed(2)),
-      dataPagamento: new Date().toISOString().split("T")[0], meioPagamento: "4",
+      dataPagamento: dataLocalISO(), meioPagamento: "4",
     })
   }
 
@@ -292,6 +296,8 @@ export default function CreditCardsPage() {
     const e: { conta?: string; valor?: string } = {}
     if (!pagarForm.contaId) e.conta = "Selecione a conta"
     if (!pagarForm.valor || Number(pagarForm.valor) <= 0) e.valor = "Informe um valor válido"
+    else if (Number(pagarForm.valor) > pagarRestante + 0.005)
+      e.valor = `O valor não pode passar do que falta pagar (${formatMoney(pagarRestante)})`
     setPagarErrors(e)
     if (Object.keys(e).length) return
     setPagarLoading(true)
@@ -502,15 +508,6 @@ export default function CreditCardsPage() {
     })
   }, [faturasCartaoId, idsKey])
 
-  const paidIdsOf = (f: Fatura, detalhe?: FaturaDetalhe) => {
-    const ids = new Set<string>()
-    if (!detalhe?.transacoes?.length) return ids
-    const sorted = [...detalhe.transacoes].sort((a, b) => new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime())
-    let cum = 0
-    for (const t of sorted) { cum += t.valor; if (f.valorPago >= cum) ids.add(t.id) }
-    return ids
-  }
-
   const renderDetalhe = (f: FaturaView) => {
     // Mês sem fatura (nenhum lançamento caiu nele). Sem fatura nenhuma no cartão, orienta o 1º uso.
     if (f.vazia) {
@@ -547,7 +544,6 @@ export default function CreditCardsPage() {
     }
     const detalhe = faturaDetalhes[f.id]
     if (!detalhe) return <div className={styles.detailMuted}>Carregando…</div>
-    const paid = paidIdsOf(f, detalhe)
     const pagamentos = detalhe.pagamentos ?? []
     if (detalhe.transacoes.length === 0 && pagamentos.length === 0)
       return <div className={styles.detailMuted}>Nenhuma transação nesta fatura.</div>
@@ -574,9 +570,9 @@ export default function CreditCardsPage() {
                 {l.t.categoriaDescricao ? ` · ${l.t.categoriaDescricao}` : ""}
               </span>
             </div>
-            <span className={styles.txValor} data-paid={paid.has(l.t.id) ? "true" : "false"}>
-              {paid.has(l.t.id) && <Check size={13} strokeWidth={2.5} />} {formatMoney(l.t.valor)}
-            </span>
+            {/* Sem "pago" por compra: pagar a fatura só abate o total dela, não quita uma compra
+                específica (é assim no banco). O quanto já foi pago fica no resumo da fatura. */}
+            <span className={styles.txValor}>{formatMoney(l.t.valor)}</span>
           </div>
         ) : (
           <div key={l.id} className={styles.txRow} data-pagamento="true">

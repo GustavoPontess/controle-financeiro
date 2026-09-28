@@ -21,11 +21,13 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
 
-1. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
-2. **Fatura que trava:** compra nova numa fatura já paga não reabre (P1, dinheiro) — item em "Auditoria de arquitetura".
-3. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.
-4. **Travas que faltam no miolo:** `xmin` em Empréstimo/Meta + transação no `ImportacaoService` (P1) e hard delete de conta (P1) — itens em "Auditoria de arquitetura".
-5. **Antes de produção** (só quando for publicar) — lista abaixo.
+1. **Cartão (dogfooding do Gustavo, 2026-09-27) — EM ANDAMENTO:** (a) barra de limite parada em "R$ 5.000 de R$ 5.000" → limite usado = o que falta pagar em todas as faturas, regra única (item P2 "Duas regras de limite"); (b) compras parceladas aparecerem na lista da fatura (item P2 "Detalhe da fatura não lista as parcelas"). Já feito no mesmo dia: sem check verde por compra, valor acima do que falta trava no campo, data "hoje" local.
+2. **Parcelamento: primeira parcela cai uma fatura depois** (P1, dinheiro) — item em "Auditoria de arquitetura".
+3. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
+4. **Fatura que trava:** compra nova numa fatura já paga não reabre (P1, dinheiro) — item em "Auditoria de arquitetura".
+5. **Importar o extrato do banco do Gustavo** (P1, produto) — item em "Produto / UX". **Bloqueado:** falta o Gustavo dizer qual é o banco.
+6. **Travas que faltam no miolo:** `xmin` em Empréstimo/Meta + transação no `ImportacaoService` (P1) e hard delete de conta (P1) — itens em "Auditoria de arquitetura".
+7. **Antes de produção** (só quando for publicar) — lista abaixo.
 
 ### ❓ Decisões pendentes do Gustavo
 Perguntar **uma de cada vez**, quando o item da fila chegar nela.
@@ -33,7 +35,9 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 - **Recorrente prevista no cartão entra no total a pagar da fatura?** (item P2 na Auditoria de arquitetura)
 - **Cartão com dia 29/30/31:** (a) aceitar e cair no último dia do mês curto, ou (b) travar em 28 com mensagem? (item P2 na Auditoria de forms)
 - **Roster em navegador compartilhado:** senha antes de revelar / não revelar / mascarar nome / aceitar com aviso? (item P2 em "Backend / débito técnico")
-- **Qual é o banco** pra importação do extrato (item 3 da fila).
+- **Qual é o banco** pra importação do extrato (item 5 da fila).
+- **Parcelamentos dentro de Cartões?** Pesquisa (`docs/features/parcelamento/pix-no-credito.md`): Pix no crédito tem 2 modelos — no **cartão** (Nubank, Itaú; parcelas na fatura, juros + IOF) e **linha de crédito à parte** (Mercado Pago; parcelas na conta). Proposta: a tela vai pra dentro de Cartões (cobre o modelo do cartão, o único que o Pontes modela hoje) e o Pix no crédito fora do cartão vira **empréstimo bancário**. Na UI, chamar de "Pix no crédito" (o BCB vetou o nome "Pix Parcelado" pros bancos).
+- **Dois jeitos de parcelar:** "Nova transação" parcelada (uma transação por parcela, aparece nos gastos) × tela de Parcelamentos (parcela separada, fica fora dos gastos). Unificar num só — junto com a decisão "parcelamento no dashboard/relatórios" acima.
 
 ### 🧪 Verificação manual
 **Feita em 2026-09-27** pelo Claude no navegador interno, com uma conta de teste local nova (sem MFA, dados fictícios) e Postgres real:
@@ -149,7 +153,8 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
   - 🟡 **P2 — Write skew compra nova × pagamento** — lançar compra/parcela na fatura não altera a linha da `Fatura`, então o `xmin` não pega: um pagamento simultâneo valida o restante contra um total velho.
   - ⚪ **P3 — `POST /cartoes/{cartaoId}/faturas/{id}/pagar` ignora o `cartaoId` da rota** — dá pra pagar a fatura pelo caminho de outro cartão do MESMO usuário (não é furo de isolamento; consistência). Validar `fatura.CartaoCreditoId == cartaoId` → 404.
   - 🟡 **P2 — Detalhe da fatura não lista as parcelas** (achado na verificação 2026-09-27) — fatura só com parcelas de parcelamento mostra o total certo (ex.: R$ 450) e embaixo "Nenhuma transação nesta fatura": o detalhe lista só `Transacoes`, não `ParcelasTransacao`. O usuário não vê do que a fatura é feita.
-  - ⚪ **P3 — Fuso horário no pagamento de fatura** (achado na verificação 2026-09-27) — às 23h de 27/09 (BRT) o modal de pagar sugeriu a data **28/09** e o pagamento aparece com a hora em UTC ("02:33"). Mesma família do item "editar manda data date-only".
+  - ⚪ **P3 — Hora do lançamento aparece em UTC** (achado na verificação 2026-09-27) — pagamento feito às 23h33 (BRT) aparece como "02:33": o `CriadoEm` sai do banco sem fuso (`timestamp without time zone`) e o front formata como hora local. _(A outra metade — formulário abrindo com a data de **amanhã** depois das 21h — foi corrigida em 2026-09-27: `dataLocalISO()` em `utils/dateTime.ts` nos 10 formulários.)_ Mesma família do item "editar manda data date-only".
+  - 🟠 **P1 — Parcelamento: primeira parcela cai uma fatura depois** (achado na verificação 2026-09-27) — o form sugere "primeira parcela" = mês que vem, e o `ParcelamentoService` põe a parcela no **dia da compra** desse mês; o ciclo é calculado por essa data. Compra em 27/09 (fecha dia 10) com "primeira parcela: out/2026" caiu na fatura que **fecha 10/11 e vence 20/11** — o banco cobraria na fatura que vence em 20/10. Resultado: dívida no mês errado (fatura, limite, dashboard). Definir "mês da primeira parcela" = mês de **vencimento** da fatura e mapear direto pro ciclo dela; conferir o default do form.
   - ⚪ **P3 — Modal de pagar: fechar e reabrir com a request em voo gera chave nova** → o mesmo pagamento pode sair com 2 chaves. Bloquear fechar enquanto `pagarLoading` ou manter a chave por fatura até resposta definitiva.
 - ✅ **P1 — Unificar as regras de dinheiro — (a) e (b) CORRIGIDOS (2026-09-27, #269).** `Services/RegrasFinanceiras.cs`: total/restante da fatura sem parcela cancelada (5 cópias → 1) e saldo de conta único agregado no banco (4 cópias → 1; resumo por conta parou de somar previsão). De bônus, a revisão achou e o PR corrigiu a **fatura travada depois de cancelar parcela** (reconciliação do estado, atraso/"Vencida" pelo restante, juros sobre o restante, parcela quitada pela fatura preservada com `requerEstorno`).
   - 🟠 **P1 — (c) Parcelamento fora do dashboard e dos relatórios — DECISÃO DO GUSTAVO.** Compra no fluxo novo (`ParcelaTransacao`, sem `Transacao`) não aparece em nenhuma visão de receita/despesa (Dashboard, Relatórios, stats, Orçamento). Regra proposta, sem dupla contagem: receita/despesa = `Transacao` executada que **não** é pagamento de fatura/transferência/saldo inicial **+** `ParcelaTransacao` não cancelada no mês da fatura (categoria do `Parcelamento`); pagamento de fatura nunca entra em receita/despesa; caixa/saldo seguem só com as transações da conta. Nunca somar `Parcelamento.ValorTotal` por cima das parcelas.

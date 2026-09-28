@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import { Plus, Trash2, ChevronRight, Layers } from "lucide-react"
@@ -57,7 +58,7 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 const emptyForm = (proximoMes: string): FormState => ({
   descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
-  dataCompra: new Date().toISOString().split("T")[0],
+  dataCompra: dataLocalISO(),
   parcelas: 3, primeiraParcelaMes: proximoMes, taxaJuroMensal: undefined,
 })
 
@@ -76,7 +77,7 @@ export default function ParcelamentosPage() {
   const [cancelarId, setCancelarId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
-    return emptyForm(d.toISOString().split("T")[0].substring(0, 7))
+    return emptyForm(dataLocalISO(d).substring(0, 7))
   })
   const [errors, setErrors] = useState<Errors>({})
 
@@ -103,7 +104,7 @@ export default function ParcelamentosPage() {
 
   const openCreate = () => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
-    setForm(emptyForm(d.toISOString().split("T")[0].substring(0, 7)))
+    setForm(emptyForm(dataLocalISO(d).substring(0, 7)))
     setErrors({})
     setDialogOpen(true)
   }

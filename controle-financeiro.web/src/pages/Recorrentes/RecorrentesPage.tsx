@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
@@ -34,7 +35,7 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => dataLocalISO()
 
 // Dias até a data (negativo = passou). null se sem data.
 const diasAte = (iso?: string): number | null => {

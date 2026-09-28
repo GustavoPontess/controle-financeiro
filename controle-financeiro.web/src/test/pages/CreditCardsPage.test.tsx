@@ -252,6 +252,32 @@ describe("CreditCardsPage (#84)", () => {
     expect(screen.getByText("Pagar fatura")).toBeInTheDocument()
   })
 
+  it("pagar fatura: valor acima do que falta trava no campo e não envia (senão viraria 'crédito')", async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText("Pagar"))
+    await screen.findByText("Pagar fatura")
+
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "200,00" } }) // falta 150
+    fireEvent.click(screen.getByText("Confirmar pagamento"))
+
+    expect(await screen.findByText(/não pode passar do que falta pagar \(R\$\s?150,00\)/)).toBeInTheDocument()
+    expect(pagarFatura).not.toHaveBeenCalled()
+  })
+
+  it("lista da fatura não marca compra como paga: pagar abate o total, não quita uma compra", async () => {
+    getFaturasByCartao.mockReset().mockResolvedValue([{ ...fatura, valorPago: 150, valorRestante: 0, estadoPagamento: 2 }])
+    getFaturaDetalhe.mockReset().mockResolvedValue({
+      transacoes: [{ id: "t1", descricao: "Mercado", valor: 150, data: "2026-06-01", criadoEm: "2026-06-01T10:00:00Z" }],
+      pagamentos: [],
+    })
+    const { container } = renderPage()
+
+    expect(await screen.findByText("Mercado")).toBeInTheDocument()
+    // Antes, a compra "coberta" pelo valor pago ganhava check verde (data-paid) — parecia paga
+    // mesmo com a fatura ainda devendo.
+    expect(container.querySelector("[data-paid]")).toBeNull()
+  })
+
   it("cartão só com faturas FUTURAS abre no mês de hoje (vazio), não na fatura futura", async () => {
     // 27/set com fechamento dia 20 → o mês atual é o ciclo que fecha em OUTUBRO. O bug antigo
     // abria em Jan/2027 rotulado "atual" (caía na fatura mais recente por não ter uma cobrindo hoje).
