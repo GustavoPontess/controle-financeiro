@@ -15,6 +15,27 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-28 (fecha em ponto verde) — dogfooding do cartão/parcelamento + padrão de telas · #270–#279
+
+**Mergeado na `main` (`8cb8f4f` + docs), CI verde em todos:**
+- **#270/#271** fila única no topo do ROADMAP + resultado da verificação manual dos P1 (feita no navegador interno com uma **conta de teste local** `verificacao.p1@pontes.test` — credenciais NÃO versionadas; dados fictícios no Postgres local).
+- **#272** fatura sem "pago" por compra, trava de valor acima do que falta, `dataLocalISO()` (formulários abriam com a data de amanhã depois das 21h), caminho do topo com o nome do item no detalhe, parcelamento cancelado aparece como cancelado + restante sem parcela cancelada.
+- **#273** Parcelamentos mora dentro de **Cartões de Crédito** (abas; `/parcelamentos` redireciona). Pesquisa Pix no crédito em `docs/features/parcelamento/pix-no-credito.md`.
+- **#274** sem subtítulo explicativo nas telas internas; Metas/Limites com título certo na barra.
+- **#275** 1ª parcela na fatura que **fecha** no mês escolhido (piso = 1ª fatura não vencida) + `PontesMonthInput` no DS.
+- **#276** parcelas de parcelamento aparecem na lista da fatura.
+- **#277** **limite com regra única** (usado = o que falta pagar em todas as faturas; barra mexe) + "já paga" pelo restante (fatura não trava mais) + migration **só de dados** `BackfillCreditoRecorrenteCartao` (faturas não pagas e a vencer).
+- **#278** ROADMAP: vídeo promocional no lançamento (repositório "brag").
+- **#279** **padrão de telas fase 1**: `PontesPageHeader`, `PontesToolbar`, `PontesRowActions` (⋮), Popover com teclado, Modal/Dialog pegam o foco; Contas Fixas (⋮, Ativas|Encerradas, busca no servidor, **cancelada ≠ pausada**) e Transferências.
+
+**Diagnósticos que ficaram registrados:** MFA "lembrar 30 dias" não é bug do servidor — o painel de navegador do app Claude perde os cookies entre sessões (Gustavo confirmar no Edge/Chrome). Saldo inicial não entra em "Entrou" de propósito.
+
+**Próxima ação:** a **🎯 Fila** do `ROADMAP.md` — item 1 é o **padrão de telas fase 2** (Parcelamentos, Empréstimos, Transações…). Decisões pendentes (uma de cada vez): dashboard "Saiu" com cartão; Empréstimos "Arquivados" → "Encerrados"; parcelamento no dashboard; dia 29-31; roster; banco pra importação.
+
+**Ambiente:** `main` limpa, todas as branches mergeadas apagadas (local e remoto). API e front de dev **parados**. ⚠️ Sobrou a pasta `.claude/worktrees/wf_b8c402d4-d89-1` presa por um processo do Windows (já fora do git) — apagar depois de reiniciar (sem junção de `node_modules` dentro; conferido).
+
+---
+
 ### 📌 Sessão 2026-09-27 (parte 2) — os 3 P1 da auditoria · #267, #268, #269
 
 Feitos por workflow (3 builders em worktree → revisor adversarial → correções → 2ª revisão até ficar `ok`), mergeados em sequência:
