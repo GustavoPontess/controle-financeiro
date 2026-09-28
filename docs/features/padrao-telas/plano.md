@@ -49,6 +49,48 @@ Comportamentos errados achados (a auditoria contou ~75, **reconferir cada um ant
 - **Página interna:** sem `<h1>`/subtítulo (a Navbar tem o título); ⋮ com destrutivo por último e confirmação; vazio com botão; esqueleto ao carregar.
 - **Exceção ao ⋮:** caixa de pendências da Família (Aprovar/Recusar visíveis).
 
+## Padrão geral: não é só tabela (pedido do Gustavo, 2026-09-28)
+
+O padrão vale pra **tudo que aparece na tela**: cards, listas, resumos, detalhes. Não só tabela. A pergunta que ele resolve: "que informação faz sentido mostrar, onde e em que ordem".
+
+### Toda tela interna é montada só com 4 blocos
+
+| Bloco | Responde | Regra |
+|---|---|---|
+| **Resumo do topo** (hero ou StatCards) | "Como estou?" | Máx. 3-4 números, cada um com rótulo curto + valor + contexto opcional ("de R$ 5.000"). Não repete número que a coleção já mostra; sem contador redundante ("13 registrados") |
+| **Coleção** (`list`, `table` ou `cards`) | "O que eu tenho?" | Regra de escolha abaixo |
+| **Detalhe** | "Tudo sobre isso + o que posso fazer" | `PontesDetailHeader` (voltar, título, status, ⋮) + seções fixas |
+| **Formulário** | "Criar/alterar" | Modal padrão (`useFormModal`), validação por campo |
+
+### Anatomia fixa do item (card ou linha), sempre na mesma ordem
+
+1. **Identidade:** ícone / logo do banco / avatar + **título** (o nome do item).
+2. **Meta:** uma linha, no máximo 2-3 fatos separados por "·" (data, conta ou cartão, categoria ou pessoa).
+3. **Valor principal:** à direita na linha, em destaque no card. Formato de dinheiro único.
+4. **Status:** badge **só quando foge do normal** (Cancelado, Atrasada, Pausada, Encerrado). Item ativo e em dia não ganha badge.
+5. **Progresso** (quando existe): barra + "x de y" (parcelas, meta, limite).
+6. **⋮** com as ações; clicar no item abre o detalhe.
+
+**Teto:** título + 1 linha de meta + 1 valor + 1 status + 1 progresso. O resto vai pro detalhe.
+
+### O que mostrar
+
+- **Coleção mostra o que ajuda a reconhecer o item e decidir o que fazer agora** (o que é, quanto, quando vence, se precisa de atenção). **Detalhe mostra o resto** (histórico, datas de criação, ids, observações).
+- **Sem texto explicativo** sob título, sem contador redundante.
+- **Menor exposição:** dado sensível de outra pessoa não aparece (ex.: renda de outro membro); valor sensível usa o olhinho (`PontesSensitiveValue`).
+- **Vocabulário único de status** em todas as telas: Ativo · Pausado · Encerrado · Cancelado · Atrasado · Pago · Parcial.
+- **Formatos únicos:** um formatador de dinheiro, um de data (relativa "em 3 dias" na coleção quando é prazo próximo; absoluta no detalhe).
+
+### Ficha por entidade (entregável do PR 1, com aprovação do Gustavo)
+
+Uma tabela por entidade (Transação, Transferência, Conta, Cartão, Fatura, Parcelamento, Conta fixa, Empréstimo, Meta, Limite, Categoria, e na Família: membro, acerto, despesa compartilhada, convite) dizendo:
+- bloco de coleção (`list` / `table` / `cards`);
+- o que vai em título, meta, valor, status e progresso;
+- o que fica **só no detalhe**;
+- o que **nunca** aparece (sensível).
+
+É decisão de produto: montar a partir da auditoria das telas + DTOs, e o Gustavo aprova antes de virar regra da skill. Depois disso, tela nova (inclusive da Família) nasce da ficha, sem rodada de ajuste.
+
 ## Pré-requisitos antes do TanStack Query (achados da revisão)
 
 1. **GETs que gravam** (P2 → vira P1 pré-requisito): `GET /recorrentes` roda `GerarPendentesAsync` antes de listar (`RecorrentesController.cs:44`); Empréstimos aplica multa na leitura. O Query recarrega sozinho (foco, montagem, novas tentativas) → mais gravações concorrentes. Tirar a gravação da leitura, ou até lá `refetchOnWindowFocus: false` e `retry: false`.
@@ -65,7 +107,8 @@ Comportamentos errados achados (a auditoria contou ~75, **reconferir cada um ant
 - Família: a API devolve a renda (`RendaMensal`) de **todos** os membros pra todos (`FamiliaService.cs:84,146,192`; tela em `FamiliaDetalhe.tsx:520`). Contradiz "o sistema sabe o peso, não o valor" e a regra de menor exposição. Backend passa a devolver só a própria.
 
 **PR 1 (P) — trava do Claude:**
-- Skill `.claude/skills/pontes-telas/SKILL.md` (receita da fase 1 + regra de escolha acima + exceções). Reescrever quando o molde existir (PR 4).
+- Skill `.claude/skills/pontes-telas/SKILL.md` (receita da fase 1 + os 4 blocos + anatomia do item + regra de escolha + exceções). Reescrever quando o molde existir (PR 4).
+- **Ficha por entidade** (ver acima), aprovada pelo Gustavo, referenciada pela skill.
 - `frontend-design`: descrição restrita a `pages/Site` (site público) ou apagar.
 - Trazer `web-design-guidelines` pro repo (após ler, com OK do Gustavo).
 - ESLint só nas telas do `DefaultLayout` (fora: Site, DesignSystem, Auth, Convite, Onboarding): proibir `<table>` cru, `<h1>`, `PontesTable` antigo. Legados listados por nome em bloco `off` (lista só encolhe).

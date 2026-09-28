@@ -23,6 +23,7 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 1. **Front sem retrabalho** (**PRIORIDADE do Gustavo**, pedida em 2026-09-28: "perco tempo acertando tela que nem precisa" e não consigo ir pra Família). Absorve o antigo "padrão de telas fase 2" (fase 1 = #279).
    - **Plano completo, escrito pra qualquer modelo seguir:** [`docs/features/padrao-telas/plano.md`](docs/features/padrao-telas/plano.md). Pesquisa + revisão adversarial feitas em 2026-09-28. **Aguardando o OK do Gustavo pra começar o PR 1.**
+   - **Vale pra tela inteira, não só tabela** (Gustavo, 2026-09-28): 4 blocos fixos (resumo, coleção, detalhe, formulário), anatomia fixa de card/linha e uma **ficha por entidade** dizendo o que mostrar na coleção, o que fica só no detalhe e o que nunca aparece — aprovada pelo Gustavo no PR 1.
    - **Em uma linha:** skill de projeto `pontes-telas` no lugar da `frontend-design` genérica (que mandava variar cada tela) + trava de lint + TanStack Query num hook de lista único + molde `PontesListPage` (variantes `list`/`table`) + migrar **uma tela por PR**, mantendo o visual.
    - **PR 0 (P1, independente, antes do molde):** Idempotency-Key nova a cada envio em Parcelamentos (tentar de novo pode duplicar); Contas Fixas grava "1.500" como R$ 1,50; API da Família devolve a renda de todos os membros pra todos. Detalhe e arquivo:linha no plano.
    - **GETs que gravam** (item P2 em "Auditoria de arquitetura") vira **pré-requisito** do PR 3 (o TanStack Query recarrega sozinho).
