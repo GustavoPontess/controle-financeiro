@@ -129,6 +129,75 @@ describe("RecorrentesPage", () => {
     expect(screen.getByText("Próximas cobranças")).toBeInTheDocument()
   })
 
+  // Com busca ligada o recarregar() só traz a lista filtrada: a faixa (última lista SEM filtro) não
+  // pode continuar anunciando como próxima cobrança o que acabou de ser pausado/cancelado.
+  describe("ação com busca ligada atualiza 'Próximas cobranças'", () => {
+    const futura = () => new Date(Date.now() + 3 * 86400000).toISOString()
+    const netflix = () => makeRecorrente({ dataProximaGeracao: futura() })
+    const spotify = () => makeRecorrente({ id: "rec-s", descricao: "Spotify", dataProximaGeracao: futura() })
+
+    // Carrega sem filtro (Netflix + Spotify na faixa e na lista) e busca "net" (lista só com Netflix).
+    async function buscarNet() {
+      listRecorrentesPage.mockResolvedValue(paged([netflix(), spotify()]))
+      renderPage()
+      expect(await screen.findByText("Próximas cobranças")).toBeInTheDocument()
+      await waitFor(() => expect(screen.getAllByText("Spotify")).toHaveLength(2)) // faixa + lista
+
+      listRecorrentesPage.mockResolvedValue(paged([netflix()]))
+      fireEvent.change(screen.getByRole("searchbox", { name: "Buscar conta fixa" }), { target: { value: "net" } })
+      // Spotify saiu da lista filtrada e segue só na faixa.
+      await waitFor(() => expect(screen.getAllByText("Spotify")).toHaveLength(1))
+      return listRecorrentesPage.mock.calls.length
+    }
+
+    it("cancelar tira da faixa, sem 2º GET sem filtro", async () => {
+      cancelarRecorrente.mockResolvedValue({})
+      const antes = await buscarNet()
+
+      listRecorrentesPage.mockResolvedValue(paged([])) // cancelada sai da aba Ativas
+      fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cancelar conta fixa" }))
+      fireEvent.change(await screen.findByPlaceholderText("Ex: Não uso mais, preço alto..."), {
+        target: { value: "Preço alto" },
+      })
+      fireEvent.click(screen.getByText("Confirmar cancelamento"))
+
+      await waitFor(() => expect(cancelarRecorrente).toHaveBeenCalledWith("rec-001", { motivo: "Preço alto" }))
+      await waitFor(() => expect(screen.queryByText("Netflix")).not.toBeInTheDocument())
+      expect(screen.getByText("Próximas cobranças")).toBeInTheDocument()
+      expect(screen.getByText("Spotify")).toBeInTheDocument()
+      // Toda recarga seguiu filtrada (o GET da lista gera cobranças no servidor — nada de paralelo).
+      for (const [, , filtros] of listRecorrentesPage.mock.calls.slice(antes)) {
+        expect(filtros).toEqual({ status: "ativas", busca: "net" })
+      }
+    })
+
+    it("pausar tira da faixa (e a linha fica como 'Pausada')", async () => {
+      toggleRecorrente.mockResolvedValue(undefined)
+      await buscarNet()
+
+      listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", dataProximaGeracao: futura() })]))
+      fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
+
+      expect(await screen.findByText("Pausada")).toBeInTheDocument()
+      expect(screen.getAllByText("Netflix")).toHaveLength(1) // só a linha; saiu da faixa
+      expect(screen.getByText("Spotify")).toBeInTheDocument()
+    })
+  })
+
+  it("recarga depois de uma ação não troca a lista pelo esqueleto — o foco volta pro ⋮", async () => {
+    toggleRecorrente.mockResolvedValue(undefined)
+    renderPage()
+    await abrirMenu()
+    const antes = listRecorrentesPage.mock.calls.length
+    listRecorrentesPage.mockResolvedValue(paged([pausada()].map((p) => ({ ...p, id: "rec-001" }))))
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Pausar" }))
+
+    expect(await screen.findByText("Pausada")).toBeInTheDocument()
+    expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes)
+    expect(screen.getByRole("button", { name: "Ações" })).toHaveFocus()
+  })
+
   it("trocar pra 'Encerradas' refaz a consulta com status=encerradas", async () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })

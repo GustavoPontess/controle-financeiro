@@ -8,7 +8,8 @@
  *
  * Teclado: ao abrir, o foco vai pro 1º item (o menu mora no fim do <body>, então sem isso o Tab
  * nunca chegava nele); ↑/↓/Home/End navegam; Esc fecha e devolve o foco ao trigger; Tab fecha e
- * segue a ordem normal da página a partir do trigger.
+ * segue a ordem normal da página a partir do trigger; escolher um item também devolve o foco ao
+ * trigger (a menos que a ação tenha focado outra coisa).
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties, type KeyboardEvent } from "react"
@@ -140,6 +141,16 @@ export function PontesPopover({
     }
   }
 
+  // Item escolhido: roda a ação, fecha e devolve o foco ao trigger (padrão WAI-ARIA de menu button).
+  // Sem isso o item focado desmontava e o foco caía no <body> — quem usa teclado voltava pro topo
+  // da página. Só devolve se a ação NÃO levou o foco pra outro lugar (ex.: um campo que ela focou).
+  const ativarItem = (it: PontesPopoverItem) => {
+    it.onClick?.()
+    setOpen(false)
+    const ativo = document.activeElement
+    if (!ativo || ativo === document.body || menuRef.current?.contains(ativo)) focarDentro(triggerRef.current)
+  }
+
   const transform = [
     !fullWidth && align === "right" ? "translateX(-100%)" : "",
     direction === "up" ? "translateY(-100%)" : "",
@@ -166,7 +177,7 @@ export function PontesPopover({
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => { it.onClick?.(); setOpen(false) }}
+                onClick={() => ativarItem(it)}
                 className={styles.item}
                 data-danger={it.danger ? "true" : undefined}
               >

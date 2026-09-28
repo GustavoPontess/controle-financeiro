@@ -69,6 +69,33 @@ describe("PontesRowActions (menu ⋮ da linha)", () => {
     expect(botao).toHaveAttribute("aria-expanded", "false")
   })
 
+  it("escolher um item devolve o foco ao ⋮ (não cai no <body>)", () => {
+    const pausar = vi.fn()
+    render(<PontesRowActions actions={acoes({ pausar })} />)
+    const botao = screen.getByRole("button", { name: "Ações" })
+    fireEvent.click(botao)
+    fireEvent.click(screen.getByRole("menuitem", { name: "Pausar" }))
+
+    expect(pausar).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+    expect(botao).toHaveFocus()
+  })
+
+  it("se a ação levou o foco pra outro lugar, o foco fica lá (não volta pro ⋮)", () => {
+    render(
+      <>
+        <input aria-label="Destino" />
+        <PontesRowActions
+          actions={[{ key: "ir", label: "Ir pro campo", onClick: () => screen.getByRole("textbox", { name: "Destino" }).focus() }]}
+        />
+      </>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Ações" }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ir pro campo" }))
+
+    expect(screen.getByRole("textbox", { name: "Destino" })).toHaveFocus()
+  })
+
   it("↓/↑ navegam entre os itens (com volta)", () => {
     render(<PontesRowActions actions={acoes()} />)
     fireEvent.click(screen.getByRole("button", { name: "Ações" }))

@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace ControleFinanceiro.Api.Services;
 
@@ -98,8 +99,13 @@ public class RecorrenteService
     /// </summary>
     public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
     {
+        var hoje = DateTime.UtcNow.Date;
         var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
-        var ativas = query.Where(r => r.Ativo);
+        // "Ativas" do hero = em vigor (MESMA regra da aba Ativas / do rótulo Situacao) e não pausada
+        // (pausada não gera cobrança nem pesa no custo). Só `Ativo` não bastava: ninguém desliga o
+        // Ativo quando a DataFim passa, e o hero somava no custo mensal uma conta fixa que a lista
+        // logo abaixo já mostrava como "Encerrada".
+        var ativas = query.Where(EmVigor(hoje)).Where(r => r.Ativo);
 
         var qtdAtivas = await ativas.CountAsync();
         var custoMensal = await ativas
@@ -123,12 +129,25 @@ public class RecorrenteService
         };
     }
 
-    // Situação de UMA conta fixa (rótulo do DTO). Mesma regra do filtro ?status= do ListarAsync —
-    // mexeu aqui, mexa lá. `hoje` à meia-noite UTC: DataFim < hoje ⇔ o último dia já passou (igual ao
-    // GerarPendentesAsync, que ainda gera no próprio dia da DataFim).
-    private static string CalcularSituacao(Recorrente r, DateTime hoje) =>
+    // Regra ÚNICA de "em vigor" (não cancelada e a DataFim não passou): filtro ?status= do
+    // ListarAsync, rótulo Situacao do DTO e KPIs do hero saem TODOS daqui — eram cópias e divergiram
+    // (o hero contava como ativa a que a lista já mostrava "Encerrada"). Expression pra o EF
+    // traduzir em SQL; em memória, compilada. `hoje` à meia-noite UTC: DataFim < hoje ⇔ o último dia
+    // já passou (igual ao GerarPendentesAsync, que ainda gera no próprio dia da DataFim).
+    private static Expression<Func<Recorrente, bool>> EmVigor(DateTime hoje) =>
+        r => r.CanceladoEm == null && (r.DataFim == null || r.DataFim >= hoje);
+
+    // Aba "Encerradas" = negação exata do EmVigor, montada da MESMA árvore (não reescrita à mão).
+    private static Expression<Func<Recorrente, bool>> NaoEmVigor(DateTime hoje)
+    {
+        var emVigor = EmVigor(hoje);
+        return Expression.Lambda<Func<Recorrente, bool>>(Expression.Not(emVigor.Body), emVigor.Parameters);
+    }
+
+    // Situação de UMA conta fixa (rótulo do DTO), a partir do EmVigor já compilado.
+    private static string CalcularSituacao(Recorrente r, Func<Recorrente, bool> emVigor) =>
         r.CanceladoEm != null ? SituacaoRecorrente.Cancelada
-        : r.DataFim != null && r.DataFim.Value < hoje ? SituacaoRecorrente.Encerrada
+        : !emVigor(r) ? SituacaoRecorrente.Encerrada
         : !r.Ativo ? SituacaoRecorrente.Pausada
         : SituacaoRecorrente.Ativa;
 
@@ -151,9 +170,9 @@ public class RecorrenteService
         // no front esconderia itens das outras páginas e o total ficaria errado.
         var statusNormalizado = status?.Trim().ToLowerInvariant();
         if (statusNormalizado == SituacaoRecorrente.FiltroAtivas)
-            query = query.Where(r => r.CanceladoEm == null && (r.DataFim == null || r.DataFim >= hoje));
+            query = query.Where(EmVigor(hoje));
         else if (statusNormalizado == SituacaoRecorrente.FiltroEncerradas)
-            query = query.Where(r => r.CanceladoEm != null || (r.DataFim != null && r.DataFim < hoje));
+            query = query.Where(NaoEmVigor(hoje));
         else if (!string.IsNullOrEmpty(statusNormalizado))
             throw new ArgumentException("Status inválido. Use 'ativas' ou 'encerradas'.");
 
@@ -183,6 +202,7 @@ public class RecorrenteService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+        var emVigor = EmVigor(hoje).Compile();
 
         return new PagedResult<RecorrenteDto>
         {
@@ -208,7 +228,7 @@ public class RecorrenteService
                 DataProximaGeracao = r.DataProximaGeracao,
                 CanceladoEm = r.CanceladoEm,
                 MotivoCancelamento = r.MotivoCancelamento,
-                Situacao = CalcularSituacao(r, hoje)
+                Situacao = CalcularSituacao(r, emVigor)
             }),
             Total = total,
             Page = page,

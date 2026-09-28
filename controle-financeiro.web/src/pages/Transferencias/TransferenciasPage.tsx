@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
@@ -80,10 +80,15 @@ export default function TransferenciasPage() {
   const [versao, setVersao] = useState(0)
   const recarregar = () => setVersao((v) => v + 1)
 
+  // Esqueleto só quando muda O QUE se vê (1ª carga, busca, página). A recarga depois de criar/excluir
+  // (versao) troca os dados no lugar: a lista não pisca e as linhas (e seus ⋮) seguem montadas.
+  const chaveListaRef = useRef<string | null>(null)
+
   // Lista paginada NO SERVIDOR. `vivo` descarta resposta velha (busca trocada no meio).
   useEffect(() => {
     let vivo = true
-    setCarregandoLista(true)
+    const chave = `${page}|${pageSize}|${buscaDebounced}`
+    if (chave !== chaveListaRef.current) { chaveListaRef.current = chave; setCarregandoLista(true) }
     listTransferenciasPage(page, pageSize, buscaDebounced)
       .then((result) => {
         if (!vivo) return

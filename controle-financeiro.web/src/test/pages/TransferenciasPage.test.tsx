@@ -126,6 +126,22 @@ describe("TransferenciasPage (#151)", () => {
     await waitFor(() => expect(deleteTransferencia).toHaveBeenCalledWith("t1"))
   })
 
+  it("recarga depois de excluir não troca a lista pelo esqueleto (não pisca)", async () => {
+    renderPage()
+    await screen.findByText("Reserva")
+    fireEvent.click(screen.getByRole("button", { name: "Ações" }))
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Excluir" }))
+    await screen.findByText("Excluir transferência?")
+
+    const antes = listTransferenciasPage.mock.calls.length
+    listTransferenciasPage.mockReturnValue(new Promise(() => { /* recarga pendurada */ }))
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }))
+
+    await waitFor(() => expect(listTransferenciasPage.mock.calls.length).toBeGreaterThan(antes))
+    // Enquanto a recarga não volta, a lista atual segue na tela (antes virava esqueleto).
+    expect(screen.getByText("Reserva")).toBeInTheDocument()
+  })
+
   it("cancelar a confirmação não apaga", async () => {
     renderPage()
     await screen.findByText("Reserva")

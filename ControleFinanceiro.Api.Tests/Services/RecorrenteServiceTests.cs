@@ -656,6 +656,83 @@ public class RecorrenteServiceTests
         Assert.Equal(0, stats.QtdTotal);
     }
 
+    [Fact]
+    public async Task ObterStatsAsync_DataFimPassada_ComAtivoTrue_NaoContaNoHero()
+    {
+        // Ninguém desliga o Ativo quando a DataFim passa: o hero contava (e somava no custo mensal) a
+        // conta fixa que a lista já mostrava como "Encerrada". Cenário do revisor: "Curso" R$ 300/mês.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var curso = SeedRecorrente(ctx, u, c);
+        curso.Descricao = "Curso";
+        curso.Valor = 300m;
+        curso.DataFim = DateTime.UtcNow.Date.AddDays(-13);
+        curso.DataProximaGeracao = DateTime.UtcNow.AddDays(3); // dentro dos 30 dias
+        ctx.SaveChanges();
+        Assert.True(curso.Ativo); // o dado "sujo" que o hero precisa tolerar
+
+        var svc = CreateService(ctx);
+        var stats = await svc.ObterStatsAsync(u);
+
+        Assert.Equal(0, stats.Ativas);
+        Assert.Equal(0m, stats.CustoMensalDespesas);
+        Assert.Equal(0, stats.Proximas30Dias);
+        Assert.Equal(1, stats.QtdTotal); // continua existindo (aba Encerradas)
+        Assert.Equal(SituacaoRecorrente.Encerrada, (await svc.ListarAsync(u)).Items.Single().Situacao);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_DataFimHoje_AindaContaNoHero()
+    {
+        // Último dia ainda gera cobrança — mesma borda do filtro "ativas".
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var rec = SeedRecorrente(ctx, u, SeedConta(ctx, u));
+        rec.DataFim = DateTime.UtcNow.Date;
+        ctx.SaveChanges();
+
+        var stats = await CreateService(ctx).ObterStatsAsync(u);
+
+        Assert.Equal(1, stats.Ativas);
+        Assert.Equal(1200m, stats.CustoMensalDespesas);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_Cancelada_MesmoComAtivoTrue_NaoContaNoHero()
+    {
+        // Defesa contra dado legado incoerente (CanceladoEm preenchido e Ativo=true): cancelada é
+        // encerrada pra lista, então também não pode pesar no hero.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var rec = SeedRecorrente(ctx, u, SeedConta(ctx, u));
+        rec.CanceladoEm = DateTime.UtcNow.AddDays(-1);
+        ctx.SaveChanges();
+
+        var stats = await CreateService(ctx).ObterStatsAsync(u);
+
+        Assert.Equal(0, stats.Ativas);
+        Assert.Equal(0m, stats.CustoMensalDespesas);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_BateComASituacaoDaLista()
+    {
+        // Anti-divergência: "ativas" do hero = itens que a lista rotula "ativa" (pausada fica na aba
+        // Ativas, mas não gera cobrança nem pesa no custo).
+        var ctx = CreateContext();
+        var (u, ativa, _, _, _) = SeedSituacoes(ctx);
+        var svc = CreateService(ctx);
+
+        var stats = await svc.ObterStatsAsync(u);
+        var lista = await svc.ListarAsync(u);
+
+        var rotuladasAtivas = lista.Items.Where(r => r.Situacao == SituacaoRecorrente.Ativa).ToList();
+        Assert.Equal(rotuladasAtivas.Count, stats.Ativas);
+        Assert.Equal(ativa.Id, rotuladasAtivas.Single().Id);
+        Assert.Equal(ativa.Valor, stats.CustoMensalDespesas);
+    }
+
     // ── Isolamento entre usuários (fix P0 — DonoRecursos) ────────────────────────
 
     [Fact]

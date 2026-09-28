@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
@@ -232,10 +232,16 @@ export default function RecorrentesPage() {
     return () => { vivo = false }
   }, [notify, versao])
 
+  // Esqueleto só quando muda O QUE se vê (1ª carga, aba, busca, página). A recarga depois de uma
+  // ação (versao) troca os dados no lugar: a linha e o ⋮ seguem montados — o foco volta pro ⋮ em vez
+  // de cair no topo da página — e a lista não pisca.
+  const chaveListaRef = useRef<string | null>(null)
+
   // Lista filtrada/paginada NO SERVIDOR. `vivo` descarta resposta velha (filtro trocado no meio).
   useEffect(() => {
     let vivo = true
-    setLoading(true)
+    const chave = `${page}|${pageSize}|${status}|${buscaDebounced}`
+    if (chave !== chaveListaRef.current) { chaveListaRef.current = chave; setLoading(true) }
     listRecorrentesPage(page, pageSize, { status, busca: buscaDebounced })
       .then((res) => {
         if (!vivo) return
@@ -300,12 +306,26 @@ export default function RecorrentesPage() {
     }
   }
 
+  // ── base da faixa "Próximas cobranças" ───────────────────────────────────────
+  // Com busca ligada, o recarregar() só traz a lista FILTRADA — a base (última lista sem filtro)
+  // seguiria mostrando como próxima cobrança o que acabou de ser pausado/cancelado/excluído, com o
+  // hero já atualizado. Corrige a base no lugar, sem 2º GET (o GET da lista gera as cobranças
+  // vencidas no servidor; duas chamadas simultâneas podiam lançar a mesma cobrança duas vezes).
+  // Sem filtro, a própria recarga substitui a base pelos dados do servidor.
+  const mudarNaBase = (id: string, mudar: (r: Recorrente) => Recorrente) =>
+    setBaseProximas((b) => b.map((x) => (x.id === id ? mudar(x) : x)))
+  const tirarDaBase = (id: string) => setBaseProximas((b) => b.filter((x) => x.id !== id))
+
   // ── pausar / retomar ─────────────────────────────────────────────────────────
   // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
 
   async function handleToggle(r: Recorrente) {
     try {
       await toggleRecorrente(r.id)
+      // Troca a situação em vez de remover: pausar e depois retomar (com a busca ligada) devolve o
+      // item à faixa.
+      const retomou = r.situacao === "pausada"
+      mudarNaBase(r.id, (x) => ({ ...x, ativo: retomou, situacao: retomou ? "ativa" : "pausada" }))
       recarregar()
       notify({
         open: true,
@@ -325,6 +345,7 @@ export default function RecorrentesPage() {
     setExcluirAlvo(null)
     try {
       await deleteRecorrente(alvo.id)
+      tirarDaBase(alvo.id)
       recarregar()
       notify({ open: true, message: "Conta fixa excluída.", severity: "success" })
     } catch {
@@ -349,6 +370,7 @@ export default function RecorrentesPage() {
     try {
       await cancelarRecorrente(cancelarTarget.id, { motivo: cancelarForm.motivo })
       setCancelarOpen(false)
+      tirarDaBase(cancelarTarget.id)
       recarregar()
       notify({ open: true, message: "Conta fixa cancelada.", severity: "success" })
     } catch {
