@@ -68,8 +68,8 @@ const fFechadaComSaldo = {
 } as unknown as Fatura
 
 function renderPage() {
-  // Router: a parcela na lista da fatura é link pro parcelamento (<Link> exige contexto de rota).
-  return render(<MemoryRouter><PontesThemeProvider><CreditCardsPage /></PontesThemeProvider></MemoryRouter>)
+  // Router: as abas Cartões | Parcelamentos do topo navegam por rota.
+  return render(<MemoryRouter initialEntries={["/credit-cards"]}><PontesThemeProvider><CreditCardsPage /></PontesThemeProvider></MemoryRouter>)
 }
 
 describe("CreditCardsPage (#84)", () => {
@@ -296,7 +296,7 @@ describe("CreditCardsPage (#84)", () => {
     const { container } = renderPage()
 
     const geladeira = await screen.findByText("Geladeira (2/3)")
-    expect(geladeira.closest("a")).toHaveAttribute("href", "/parcelamentos/pa1")
+    expect(geladeira.closest("a")).toHaveAttribute("href", "/credit-cards/parcelamentos/pa1")
     expect(screen.getByText("Fone (1/2)")).toBeInTheDocument()
     expect(screen.getAllByLabelText("Parcelado")).toHaveLength(2)
     expect(screen.getByText(/15\/04\/2026 · .* · Casa/)).toBeInTheDocument() // data da compra + categoria

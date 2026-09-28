@@ -20,6 +20,7 @@ import { getContas } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
 import { dataComHora, dataLocalISO } from "../../utils/dateTime"
+import CartoesAbas from "./CartoesAbas"
 import { notificacaoDeErro } from "../../utils/apiError"
 import { getRecorrentes } from "../../services/recorrenteService"
 import type { Recorrente } from "../../types/Recorrente"
@@ -586,7 +587,7 @@ export default function CreditCardsPage() {
             <div className={styles.txMain}>
               <span className={styles.txDesc}>
                 <Layers size={13} strokeWidth={2.5} className={styles.txParcelaIcon} aria-label="Parcelado" />
-                <Link to={`/parcelamentos/${l.par.parcelamentoId}`} className={styles.txLink}>
+                <Link to={`/credit-cards/parcelamentos/${l.par.parcelamentoId}`} className={styles.txLink}>
                   {`${l.par.descricao} (${l.par.numero}/${l.par.quantidadeTotal})`}
                 </Link>
               </span>
@@ -716,10 +717,8 @@ export default function CreditCardsPage() {
     <div className={styles.root}>
       {/* Header */}
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Cartões</h1>
-          <div className={styles.subtitle}>Seus cartões e faturas, num lugar só</div>
-        </div>
+        {/* O título já está na barra de cima; aqui ficam as abas Cartões | Parcelamentos. */}
+        <CartoesAbas />
         <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
           Novo Cartão
         </PontesButton>
