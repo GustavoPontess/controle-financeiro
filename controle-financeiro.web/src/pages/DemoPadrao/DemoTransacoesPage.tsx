@@ -1,15 +1,14 @@
 /**
- * SANDBOX FUNCIONAL — rota /demo-transacoes. Transações no padrão novo, MAS de verdade: paginação no
- * servidor + criar/editar/excluir usando os modais reais. Mexe nos mesmos dados de /transactions.
- * Só o layout é o padrão novo.
+ * SANDBOX FUNCIONAL — /demo-transacoes. Transações no padrão novo, de verdade: paginação no servidor
+ * + criar/editar/excluir com os modais reais. Só o layout é o padrão novo. A tela monta só o resumo,
+ * as colunas e as ações; todo o resto vem do TabelaPadrao.
  */
 
 import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import { TrendingUp, TrendingDown, Pencil, Trash2 } from "lucide-react"
 import {
-  PontesPageHeader, PontesToolbar, PontesSegmented, PontesStatCard, PontesSkeletonList,
-  PontesEmptyState, PontesTablePagination, PontesDialog, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesStatCard, PontesTablePagination, PontesDialog, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
@@ -17,7 +16,7 @@ import { listTransactionsPage, getTransactionStats, deleteTransaction } from "@/
 import type { Transaction } from "@/types/Transaction"
 import NewTransactionDialog from "../Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import EditTransactionDialog, { type EditableTransaction } from "../Transactions/components/EditTransactionDialog/EditTransactionDialog"
-import { TabelaPadrao, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
+import { TabelaPadrao, CelulaIdentidade, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
 import styles from "./DemoPadrao.module.css"
 
 const fmtData = (s?: string) => (s ? new Date(s).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—")
@@ -85,15 +84,7 @@ export default function DemoTransacoesPage() {
   const colunas: ColunaPadrao<Transaction>[] = [
     {
       key: "desc", header: "Transação",
-      render: (t) => (
-        <span className={styles.ident}>
-          <span className={styles.identIcone} data-tom={t.tipo === 1 ? "entrada" : "saida"}>{t.tipo === 1 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />}</span>
-          <span>
-            <span className={styles.identNome}>{t.descricao}</span>
-            {t.contaNome && <span className={styles.sub}> · {t.contaNome}</span>}
-          </span>
-        </span>
-      ),
+      render: (t) => <CelulaIdentidade icone={t.tipo === 1 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />} tom={t.tipo === 1 ? "entrada" : "saida"} nome={t.descricao} sub={t.contaNome} />,
     },
     { key: "data", header: "Data", render: (t) => fmtData(t.data) },
     {
@@ -117,51 +108,42 @@ export default function DemoTransacoesPage() {
   if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBusca("") })
   if (tipo !== "tudo") tags.push({ label: tipo === "1" ? "Receitas" : "Despesas", onRemover: () => setTipo("tudo") })
 
-  const filtrosAtivos = !!buscaAplicada || tipo !== "tudo"
-
   return (
-    <div className={styles.pagina}>
+    <>
       <div className={styles.aviso}>Tela de teste FUNCIONAL — Transações no padrão novo. Cria, edita e exclui de verdade (mesmos dados de /transactions).</div>
-      <section className={styles.secao}>
-        <PontesPageHeader titulo="Transações" descricao="Todos os seus lançamentos, mês a mês" actionLabel="Nova transação" onAction={() => setNovoAberto(true)} />
-        <div className={styles.stats}>
-          <PontesStatCard label="Entrou" value={formatMoney(stats?.entradas ?? 0)} tone="success" />
-          <PontesStatCard label="Saiu" value={formatMoney(stats?.saidas ?? 0)} tone="danger" />
-          <PontesStatCard label="Saldo" value={formatMoney(stats?.saldo ?? 0)} />
-        </div>
-        <div className={styles.toolbar}>
-          <div className={styles.toolbarBusca}>
-            <PontesToolbar search={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }} />
+      <TabelaPadrao
+        titulo="Transações"
+        descricao="Todos os seus lançamentos, mês a mês"
+        acao={{ label: "Nova transação", onClick: () => setNovoAberto(true) }}
+        resumo={
+          <div className={styles.stats}>
+            <PontesStatCard label="Entrou" value={formatMoney(stats?.entradas ?? 0)} tone="success" />
+            <PontesStatCard label="Saiu" value={formatMoney(stats?.saidas ?? 0)} tone="danger" />
+            <PontesStatCard label="Saldo" value={formatMoney(stats?.saldo ?? 0)} />
           </div>
-          <PontesSegmented
-            ariaLabel="Tipo"
-            options={[{ value: "tudo", label: "Tudo" }, { value: "1", label: "Receitas" }, { value: "2", label: "Despesas" }]}
-            value={tipo}
-            onChange={(v) => setTipo(v as typeof tipo)}
+        }
+        busca={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }}
+        filtros={[{
+          value: tipo, ariaLabel: "Tipo",
+          options: [{ value: "tudo", label: "Tudo" }, { value: "1", label: "Receitas" }, { value: "2", label: "Despesas" }],
+          onChange: (v) => setTipo(v as typeof tipo),
+        }]}
+        tags={tags}
+        colunas={colunas}
+        itens={itens}
+        chave={(t) => t.id}
+        acoes={acoes}
+        carregando={carregando}
+        vazio={{ icone: <TrendingUp size={28} strokeWidth={2.5} />, titulo: "Nenhuma transação" }}
+        paginacao={
+          <PontesTablePagination
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="transações" itemLabelSingular="transação"
           />
-        </div>
-        {carregando ? <PontesSkeletonList rows={4} />
-          : itens.length === 0 ? (
-            <PontesEmptyState icon={<TrendingUp size={28} strokeWidth={2.5} />} title={filtrosAtivos ? "Nada encontrado" : "Nenhuma transação"} />
-          ) : (
-            <TabelaPadrao
-              colunas={colunas}
-              itens={itens}
-              chave={(t) => t.id}
-              acoes={acoes}
-              tags={tags}
-              paginacao={
-                <PontesTablePagination
-                  total={total} page={page} pageSize={pageSize}
-                  onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-                  itemLabel="transações" itemLabelSingular="transação"
-                />
-              }
-            />
-          )}
-      </section>
+        }
+      />
 
-      {/* O modal de nova transação aceita "warning"; o notify do layout também (só o tipo do outlet é mais estreito). */}
       <NewTransactionDialog open={novoAberto} onClose={() => setNovoAberto(false)} notify={notify as unknown as React.Dispatch<React.SetStateAction<{ open: boolean; message: string; severity: "success" | "error" | "warning" }>>} />
       <EditTransactionDialog transaction={editando ? paraEditavel(editando) : null} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); recarregar() }} notify={notify} />
       <PontesDialog
@@ -173,6 +155,6 @@ export default function DemoTransacoesPage() {
         onConfirm={handleExcluir}
         onCancel={() => setExcluindo(null)}
       />
-    </div>
+    </>
   )
 }

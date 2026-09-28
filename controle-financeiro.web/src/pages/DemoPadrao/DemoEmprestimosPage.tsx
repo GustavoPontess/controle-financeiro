@@ -1,21 +1,18 @@
 /**
- * SANDBOX FUNCIONAL — rota /demo-emprestimos. Empréstimos no padrão novo, MAS de verdade: usa o
- * hook real (useEmprestimosLogic) + os modais reais + as ações reais no ⋮ + paginação no servidor.
- * Cria/quita/arquiva/exclui de fato (mesmos dados da tela /emprestimos). Só o layout é o padrão novo.
+ * SANDBOX FUNCIONAL — /demo-emprestimos. Empréstimos no padrão novo, de verdade: hook real
+ * (useEmprestimosLogic) + ações reais no ⋮ + modais reais + paginação. Só o layout é o padrão novo.
+ * A tela monta só o resumo, as colunas e as ações; todo o resto vem do TabelaPadrao.
  */
 
 import { HandCoins } from "lucide-react"
-import {
-  PontesPageHeader, PontesToolbar, PontesSegmented, PontesStatCard, PontesSkeletonList,
-  PontesEmptyState, PontesTablePagination,
-} from "@/components/pontes"
-import { formatMoney } from "@/utils/money"
 import { useNavigate } from "react-router-dom"
+import { PontesStatCard, PontesTablePagination } from "@/components/pontes"
+import { formatMoney } from "@/utils/money"
 import type { Emprestimo } from "@/types/Emprestimo"
 import { useEmprestimosLogic } from "../Emprestimos/useEmprestimosLogic"
 import { ActionIcons } from "../Emprestimos/EmprestimosLabItemParts"
 import EmprestimosLabModals from "../Emprestimos/EmprestimosLabModals"
-import { TabelaPadrao, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
+import { TabelaPadrao, CelulaIdentidade, StatusPadrao, type ColunaPadrao, type TagFiltro } from "./TabelaPadrao"
 import styles from "./DemoPadrao.module.css"
 
 export default function DemoEmprestimosPage() {
@@ -26,15 +23,7 @@ export default function DemoEmprestimosPage() {
   const colunas: ColunaPadrao<Emprestimo>[] = [
     {
       key: "desc", header: "Empréstimo",
-      render: (e) => (
-        <span className={styles.ident}>
-          <span className={styles.identIcone} data-tom={e.tipo === 1 ? "saida" : "entrada"}><HandCoins size={17} strokeWidth={2.2} /></span>
-          <span>
-            <span className={styles.identNome}>{e.descricao}</span>
-            <span className={styles.sub}> · {e.pessoa}</span>
-          </span>
-        </span>
-      ),
+      render: (e) => <CelulaIdentidade icone={<HandCoins size={17} strokeWidth={2.2} />} tom={e.tipo === 1 ? "saida" : "entrada"} nome={e.descricao} sub={e.pessoa} />,
     },
     { key: "forma", header: "Forma", render: (e) => e.tipoDescricao },
     {
@@ -53,47 +42,42 @@ export default function DemoEmprestimosPage() {
   if (l.direcao !== "todos") tags.push({ label: l.direcao === "receber" ? "A receber" : "A pagar", onRemover: () => l.setDirecao("todos") })
 
   return (
-    <div className={styles.pagina}>
+    <>
       <div className={styles.aviso}>Tela de teste FUNCIONAL — Empréstimos no padrão novo. Cria, quita, arquiva e exclui de verdade (mesmos dados de /emprestimos).</div>
-      <section className={styles.secao}>
-        <PontesPageHeader titulo="Empréstimos" descricao="Dinheiro que você emprestou ou pegou emprestado" actionLabel="Novo empréstimo" onAction={l.openCreate} />
-        <div className={styles.stats}>
-          <PontesStatCard label="A receber" value={formatMoney(l.totalAReceber)} tone="success" />
-          <PontesStatCard label="A pagar" value={formatMoney(l.totalAPagar)} tone="danger" />
-          <PontesStatCard label="Ativos" value={String(l.qtdAtivos)} />
-        </div>
-        <div className={styles.toolbar}>
-          <div className={styles.toolbarBusca}>
-            <PontesToolbar search={{ value: l.busca, onChange: l.setBusca, placeholder: "Buscar por descrição ou pessoa…", ariaLabel: "Buscar empréstimo" }} />
+      <TabelaPadrao
+        titulo="Empréstimos"
+        descricao="Dinheiro que você emprestou ou pegou emprestado"
+        acao={{ label: "Novo empréstimo", onClick: l.openCreate }}
+        resumo={
+          <div className={styles.stats}>
+            <PontesStatCard label="A receber" value={formatMoney(l.totalAReceber)} tone="success" />
+            <PontesStatCard label="A pagar" value={formatMoney(l.totalAPagar)} tone="danger" />
+            <PontesStatCard label="Ativos" value={String(l.qtdAtivos)} />
           </div>
-          <PontesSegmented
-            ariaLabel="Direção"
-            options={[{ value: "todos", label: "Tudo" }, { value: "receber", label: "A receber" }, { value: "pagar", label: "A pagar" }]}
-            value={l.direcao}
-            onChange={(v) => l.setDirecao(v as typeof l.direcao)}
+        }
+        busca={{ value: l.busca, onChange: l.setBusca, placeholder: "Buscar por descrição ou pessoa…", ariaLabel: "Buscar empréstimo" }}
+        filtros={[{
+          value: l.direcao, ariaLabel: "Direção",
+          options: [{ value: "todos", label: "Tudo" }, { value: "receber", label: "A receber" }, { value: "pagar", label: "A pagar" }],
+          onChange: (v) => l.setDirecao(v as typeof l.direcao),
+        }]}
+        tags={tags}
+        colunas={colunas}
+        itens={l.emprestimos}
+        chave={(e) => e.id}
+        onLinhaClick={(e) => navigate(`/emprestimos/${e.id}`)}
+        renderAcoes={(e) => <ActionIcons e={e} logic={l} mode="full" />}
+        carregando={primeiraCarga}
+        vazio={{ icone: <HandCoins size={28} strokeWidth={2.5} />, titulo: "Nenhum empréstimo" }}
+        paginacao={
+          <PontesTablePagination
+            total={l.total} page={l.page} pageSize={l.pageSize}
+            onPageChange={l.setPage} onPageSizeChange={l.setPageSize}
+            itemLabel="empréstimos" itemLabelSingular="empréstimo"
           />
-        </div>
-        {primeiraCarga ? <PontesSkeletonList rows={4} />
-          : l.emprestimos.length === 0 ? <PontesEmptyState icon={<HandCoins size={28} strokeWidth={2.5} />} title="Nenhum empréstimo" />
-            : (
-              <TabelaPadrao
-                colunas={colunas}
-                itens={l.emprestimos}
-                chave={(e) => e.id}
-                onLinhaClick={(e) => navigate(`/emprestimos/${e.id}`)}
-                renderAcoes={(e) => <ActionIcons e={e} logic={l} mode="full" />}
-                tags={tags}
-                paginacao={
-                  <PontesTablePagination
-                    total={l.total} page={l.page} pageSize={l.pageSize}
-                    onPageChange={l.setPage} onPageSizeChange={l.setPageSize}
-                    itemLabel="empréstimos" itemLabelSingular="empréstimo"
-                  />
-                }
-              />
-            )}
-      </section>
+        }
+      />
       <EmprestimosLabModals logic={l} />
-    </div>
+    </>
   )
 }
