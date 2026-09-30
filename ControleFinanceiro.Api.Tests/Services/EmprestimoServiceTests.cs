@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Emprestimo;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
@@ -981,6 +982,158 @@ public class EmprestimoServiceTests
 
         Assert.Equal(500m, stats.TotalAReceberVencido); // só a 1ª parcela (500 de 1000/2)
         Assert.Equal(1000m, stats.TotalAReceber); // total inclui as duas parcelas
+    }
+
+    // ── Stats — TotalAPagarVencido (espelho do TotalAReceberVencido) ─────────────────
+
+    [Fact]
+    public async Task ObterStatsAsync_PeguiEmprestadoAVistaVencido_SomaRestanteEmTotalAPagarVencido()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "apagar-vencido@x.com");
+        // Devo 300, já paguei 100 → restante 200, vencido há 5 dias.
+        await SeedEmprestimoAsync(ctx, svc, uid, "Devo vencido", valorTotal: 300, valorPago: 100,
+            vencimento: DateTime.UtcNow.Date.AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(200m, stats.TotalAPagarVencido); // restante, não o total
+        Assert.Equal(200m, stats.TotalAPagar);
+        Assert.Equal(0m, stats.TotalAReceberVencido); // nada a receber
+        Assert.Equal(0m, stats.TotalAReceber);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_VencidoDosDoisLados_CadaTotalFicaComOSeuLado()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "dois-lados@x.com");
+        var vencido = DateTime.UtcNow.Date.AddDays(-5);
+        await SeedEmprestimoAsync(ctx, svc, uid, "Emprestei vencido", valorTotal: 300, vencimento: vencido, tipo: TipoEmprestimo.Emprestei);
+        await SeedEmprestimoAsync(ctx, svc, uid, "Devo vencido", valorTotal: 200, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(300m, stats.TotalAReceberVencido);
+        Assert.Equal(200m, stats.TotalAPagarVencido);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_APagarNoFuturoOuSemVencimento_NaoEntraEmTotalAPagarVencido()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "apagar-futuro@x.com");
+        await SeedEmprestimoAsync(ctx, svc, uid, "Devo no futuro", valorTotal: 400,
+            vencimento: DateTime.UtcNow.Date.AddDays(5), tipo: TipoEmprestimo.PeguiEmprestado);
+        await SeedEmprestimoAsync(ctx, svc, uid, "Devo sem data", valorTotal: 150,
+            vencimento: null, tipo: TipoEmprestimo.PeguiEmprestado);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(0m, stats.TotalAPagarVencido);
+        Assert.Equal(550m, stats.TotalAPagar); // continua devendo, só não está vencido
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_APagarVencidoMasQuitado_NaoEntraEmTotalAPagarVencido()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "apagar-quitado@x.com");
+        await SeedEmprestimoAsync(ctx, svc, uid, "Devia, já quitado", valorTotal: 300,
+            vencimento: DateTime.UtcNow.Date.AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado, quitado: true);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(0m, stats.TotalAPagarVencido);
+        Assert.Equal(0m, stats.TotalAPagar);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_APagarVencidoComMulta_SomaValorComMultaNoTotalAPagarVencido()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "apagar-multa@x.com");
+        var dto = NovoDto("Devo com multa", "X", 200, TipoEmprestimo.PeguiEmprestado);
+        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
+        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        dto.PercentualMultaAtraso = 20;
+        await svc.CriarAsync(dto, uid);
+        await svc.ListarAsync(uid); // dispara o snapshot da multa
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(240m, stats.TotalAPagarVencido); // 200 * 1.20, não só o principal
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_APagarParceladoComParcelaAtrasada_SomaSoAParcelaVencida()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var uid = SeedUsuario(ctx, "apagar-parcelado@x.com");
+        var dto = NovoDto("Devo parcelado", "X", 1000, TipoEmprestimo.PeguiEmprestado);
+        dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
+        dto.QuantidadeParcelas = 2;
+        dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
+        await svc.CriarAsync(dto, uid);
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(500m, stats.TotalAPagarVencido); // só a 1ª parcela (500 de 1000/2)
+        Assert.Equal(1000m, stats.TotalAPagar); // total inclui as duas parcelas
+        Assert.Equal(0m, stats.TotalAReceberVencido);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_APagarVencidoDeOutroUsuario_NaoSomaNoMeuTotalAPagarVencido()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var eu = SeedUsuario(ctx, "eu@x.com");
+        var outro = SeedUsuario(ctx, "outro@x.com");
+        var vencido = DateTime.UtcNow.Date.AddDays(-5);
+        await SeedEmprestimoAsync(ctx, svc, eu, "Meu vencido", valorTotal: 120, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
+        await SeedEmprestimoAsync(ctx, svc, outro, "Vencido do outro", valorTotal: 9999, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
+
+        var meus = await svc.ObterStatsAsync(eu);
+        Assert.Equal(120m, meus.TotalAPagarVencido);
+        Assert.Equal(120m, meus.TotalAPagar);
+
+        // Quem não tem nada não enxerga o vencido alheio.
+        var estranho = SeedUsuario(ctx, "estranho@x.com");
+        var dele = await svc.ObterStatsAsync(estranho);
+        Assert.Equal(0m, dele.TotalAPagarVencido);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_ContraparteVinculadaDevedora_VencidoVaiParaAPagarDelaENaoDoCredor()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var credorId = SeedUsuario(ctx, "credor@x.com");
+        var devedorId = SeedUsuario(ctx, "devedor@x.com");
+        var dto = DtoValido();
+        dto.Tipo = TipoEmprestimo.Emprestei; // credor emprestou → pro devedor vinculado é "a pagar"
+        dto.ValorTotal = 500;
+        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
+        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        var criado = await svc.CriarAsync(dto, credorId);
+        var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
+        await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), devedorId);
+
+        var statsDevedor = await svc.ObterStatsAsync(devedorId);
+        var statsCredor = await svc.ObterStatsAsync(credorId);
+
+        Assert.Equal(500m, statsDevedor.TotalAPagarVencido);
+        Assert.Equal(0m, statsDevedor.TotalAReceberVencido);
+
+        Assert.Equal(500m, statsCredor.TotalAReceberVencido);
+        Assert.Equal(0m, statsCredor.TotalAPagarVencido);
     }
 
     [Fact]
@@ -2149,7 +2302,315 @@ public class EmprestimoServiceTests
         Assert.Equal(2, tudo.Total);
     }
 
+    // ── Filtros server-side: situação / forma / valor restante / vencimento ───────────
+
+    private static DateTime Utc(int ano, int mes, int dia) => new(ano, mes, dia, 0, 0, 0, DateTimeKind.Utc);
+
+    private static string[] Descricoes(PagedResult<EmprestimoDto> r) =>
+        r.Items.Select(i => i.Descricao).OrderBy(d => d).ToArray();
+
+    [Fact]
+    public async Task ListarAsync_Situacao_AtivoTrazSoEmAberto_QuitadoTrazSoQuitados()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "situacao@x.com");
+        var outro = SeedUsuario(ctx, "situacao-outro@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo 1");
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo 2");
+        await SeedEmprestimoAsync(ctx, svc,u, "Quitado 1", quitado: true);
+        // Outro usuário, um de cada — nunca pode entrar na lista de u.
+        await SeedEmprestimoAsync(ctx, svc,outro, "Ativo do outro");
+        await SeedEmprestimoAsync(ctx, svc,outro, "Quitado do outro", quitado: true);
+
+        var ativos = await svc.ListarAsync(u, situacao: "ativo");
+        Assert.Equal(2, ativos.Total);
+        Assert.Equal(new[] { "Ativo 1", "Ativo 2" }, Descricoes(ativos));
+        Assert.All(ativos.Items, i => Assert.False(i.Quitado));
+
+        var quitados = await svc.ListarAsync(u, situacao: "quitado");
+        Assert.Equal(1, quitados.Total);
+        Assert.Equal("Quitado 1", quitados.Items.Single().Descricao);
+        Assert.True(quitados.Items.Single().Quitado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("todos")]
+    public async Task ListarAsync_Situacao_ValorForaDoContrato_NaoFiltra(string? situacao)
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "situacao-invalida@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo");
+        await SeedEmprestimoAsync(ctx, svc,u, "Quitado", quitado: true);
+
+        var lista = await svc.ListarAsync(u, situacao: situacao);
+
+        Assert.Equal(2, lista.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Forma_AVistaTrazSoAVista_ParceladoTrazSoParcelado()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "forma@x.com");
+        var outro = SeedUsuario(ctx, "forma-outro@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "A vista 1");
+        await SeedEmprestimoAsync(ctx, svc,u, "A vista 2");
+        await SeedEmprestimoAsync(ctx, svc,u, "Parcelado 1", forma: FormaPagamentoEmprestimo.Parcelado);
+        await SeedEmprestimoAsync(ctx, svc,outro, "A vista do outro");
+        await SeedEmprestimoAsync(ctx, svc,outro, "Parcelado do outro", forma: FormaPagamentoEmprestimo.Parcelado);
+
+        var avista = await svc.ListarAsync(u, forma: "avista");
+        Assert.Equal(new[] { "A vista 1", "A vista 2" }, Descricoes(avista));
+        Assert.All(avista.Items, i => Assert.Equal((int)FormaPagamentoEmprestimo.AVista, i.FormaPagamento));
+
+        var parcelado = await svc.ListarAsync(u, forma: "parcelado");
+        Assert.Equal(1, parcelado.Total);
+        Assert.Equal("Parcelado 1", parcelado.Items.Single().Descricao);
+        Assert.Equal((int)FormaPagamentoEmprestimo.Parcelado, parcelado.Items.Single().FormaPagamento);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Forma_ValorForaDoContrato_NaoFiltra()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "forma-invalida@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "A vista");
+        await SeedEmprestimoAsync(ctx, svc,u, "Parcelado", forma: FormaPagamentoEmprestimo.Parcelado);
+
+        Assert.Equal(2, (await svc.ListarAsync(u, forma: "qualquer")).Total);
+        Assert.Equal(2, (await svc.ListarAsync(u, forma: null)).Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_FaixaValor_UsaRestanteInclusivoNasBordas()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "faixa@x.com");
+        var outro = SeedUsuario(ctx, "faixa-outro@x.com");
+        // Restante = ValorTotal - ValorPago.
+        await SeedEmprestimoAsync(ctx, svc,u, "Restante 800", valorTotal: 1000, valorPago: 200); // total 1000, mas restante 800
+        await SeedEmprestimoAsync(ctx, svc,u, "Restante 500", valorTotal: 500);
+        await SeedEmprestimoAsync(ctx, svc,u, "Restante 1500", valorTotal: 1500);
+        await SeedEmprestimoAsync(ctx, svc,outro, "Restante 800 do outro", valorTotal: 1000, valorPago: 200);
+
+        // Borda: min == max == restante exato entra.
+        var exato = await svc.ListarAsync(u, valorMin: 800m, valorMax: 800m);
+        Assert.Equal("Restante 800", exato.Items.Single().Descricao);
+
+        // 1 centavo acima do restante: sai pelo min.
+        var acimaDoMin = await svc.ListarAsync(u, valorMin: 800.01m);
+        Assert.Equal(new[] { "Restante 1500" }, Descricoes(acimaDoMin));
+
+        // 1 centavo abaixo do restante: sai pelo max.
+        var abaixoDoMax = await svc.ListarAsync(u, valorMax: 799.99m);
+        Assert.Equal(new[] { "Restante 500" }, Descricoes(abaixoDoMax));
+
+        // Só min (sem teto) e só max (sem piso).
+        Assert.Equal(new[] { "Restante 1500", "Restante 800" }, Descricoes(await svc.ListarAsync(u, valorMin: 800m)));
+        Assert.Equal(new[] { "Restante 500", "Restante 800" }, Descricoes(await svc.ListarAsync(u, valorMax: 800m)));
+
+        // Faixa fechada com as duas bordas.
+        var faixa = await svc.ListarAsync(u, valorMin: 500m, valorMax: 800m);
+        Assert.Equal(new[] { "Restante 500", "Restante 800" }, Descricoes(faixa));
+
+        // Prova de que NÃO filtra pelo ValorTotal: o de total 1000 (restante 800) cai em max=800.
+        var porTotal = await svc.ListarAsync(u, valorMax: 900m);
+        Assert.Contains(porTotal.Items, i => i.Descricao == "Restante 800");
+    }
+
+    [Fact]
+    public async Task ListarAsync_FaixaValor_QuitadoTemRestanteZero()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "faixa-quitado@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Quitado", valorTotal: 300, quitado: true); // ValorPago = ValorTotal → restante 0
+        await SeedEmprestimoAsync(ctx, svc,u, "Aberto", valorTotal: 300);
+
+        var comRestante = await svc.ListarAsync(u, valorMin: 0.01m);
+        Assert.Equal("Aberto", comRestante.Items.Single().Descricao);
+
+        var zerados = await svc.ListarAsync(u, valorMax: 0m);
+        Assert.Equal("Quitado", zerados.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Vencimento_FiltraPorPeriodoInclusivo_ESemDataNaoAparece()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "venc@x.com");
+        var outro = SeedUsuario(ctx, "venc-outro@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Vence marco", vencimento: Utc(2026, 3, 10));
+        await SeedEmprestimoAsync(ctx, svc,u, "Vence junho", vencimento: Utc(2026, 6, 15));
+        await SeedEmprestimoAsync(ctx, svc,u, "Vence setembro", vencimento: Utc(2026, 9, 20));
+        await SeedEmprestimoAsync(ctx, svc,u, "Sem vencimento", vencimento: null);
+        await SeedEmprestimoAsync(ctx, svc,outro, "Vence junho do outro", vencimento: Utc(2026, 6, 15));
+
+        // Só "de": do dia 15/06 em diante (borda inclusiva).
+        var de = await svc.ListarAsync(u, vencDe: Utc(2026, 6, 15));
+        Assert.Equal(new[] { "Vence junho", "Vence setembro" }, Descricoes(de));
+
+        // Só "até": até 15/06 (borda inclusiva).
+        var ate = await svc.ListarAsync(u, vencAte: Utc(2026, 6, 15));
+        Assert.Equal(new[] { "Vence junho", "Vence marco" }, Descricoes(ate));
+
+        // Período fechado numa janela.
+        var janela = await svc.ListarAsync(u, vencDe: Utc(2026, 4, 1), vencAte: Utc(2026, 8, 31));
+        Assert.Equal("Vence junho", janela.Items.Single().Descricao);
+
+        // Período que não pega ninguém.
+        Assert.Equal(0, (await svc.ListarAsync(u, vencDe: Utc(2027, 1, 1))).Total);
+
+        // Sem data de vencimento nunca alcança um período, nem o mais largo possível.
+        var amplo = await svc.ListarAsync(u, vencDe: Utc(2000, 1, 1), vencAte: Utc(2099, 12, 31));
+        Assert.DoesNotContain(amplo.Items, i => i.Descricao == "Sem vencimento");
+        Assert.Equal(3, amplo.Total);
+
+        // Sem filtro de período o sem-vencimento continua aparecendo.
+        var todos = await svc.ListarAsync(u);
+        Assert.Contains(todos.Items, i => i.Descricao == "Sem vencimento");
+        Assert.Equal(4, todos.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Vencimento_SoVencDeOuSoVencAte_ExcluiSemDataDeVencimento()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "venc-null@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Com data", vencimento: Utc(2026, 6, 15));
+        await SeedEmprestimoAsync(ctx, svc,u, "Sem data", vencimento: null);
+
+        var soDe = await svc.ListarAsync(u, vencDe: Utc(2020, 1, 1));
+        Assert.Equal("Com data", soDe.Items.Single().Descricao);
+
+        var soAte = await svc.ListarAsync(u, vencAte: Utc(2099, 1, 1));
+        Assert.Equal("Com data", soAte.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Filtros_Combinados_AplicamEmAnd()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "combo@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo parcelado", valorTotal: 600, forma: FormaPagamentoEmprestimo.Parcelado);
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo a vista", valorTotal: 600);
+        await SeedEmprestimoAsync(ctx, svc,u, "Quitado parcelado", valorTotal: 600, forma: FormaPagamentoEmprestimo.Parcelado, quitado: true);
+        await SeedEmprestimoAsync(ctx, svc,u, "Ativo parcelado pequeno", valorTotal: 100, forma: FormaPagamentoEmprestimo.Parcelado);
+
+        var ativoParcelado = await svc.ListarAsync(u, situacao: "ativo", forma: "parcelado");
+        Assert.Equal(new[] { "Ativo parcelado", "Ativo parcelado pequeno" }, Descricoes(ativoParcelado));
+
+        var comValor = await svc.ListarAsync(u, situacao: "ativo", forma: "parcelado", valorMin: 500m);
+        Assert.Equal("Ativo parcelado", comValor.Items.Single().Descricao);
+
+        var quitadoAVista = await svc.ListarAsync(u, situacao: "quitado", forma: "avista");
+        Assert.Equal(0, quitadoAVista.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_Filtros_CombinadosComDirecaoEBusca_AplicamEmAnd()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "combo-dir@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "Aluguel receber", tipo: TipoEmprestimo.Emprestei);
+        await SeedEmprestimoAsync(ctx, svc,u, "Aluguel pagar", tipo: TipoEmprestimo.PeguiEmprestado);
+        await SeedEmprestimoAsync(ctx, svc,u, "Carro receber", tipo: TipoEmprestimo.Emprestei);
+
+        var lista = await svc.ListarAsync(u, busca: "aluguel", direcao: "receber", situacao: "ativo");
+
+        Assert.Equal("Aluguel receber", lista.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_FiltrosNovos_NuncaVazamEmprestimoDeOutroUsuario()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "iso@x.com");
+        var outro = SeedUsuario(ctx, "iso-outro@x.com");
+        // O do outro bate em TODOS os filtros — só o dono pode enxergar.
+        await SeedEmprestimoAsync(ctx, svc,outro, "Do outro", valorTotal: 1000, valorPago: 200,
+            forma: FormaPagamentoEmprestimo.Parcelado, vencimento: Utc(2026, 6, 15));
+
+        var semNada = await svc.ListarAsync(u, situacao: "ativo", forma: "parcelado", valorMin: 800m, valorMax: 800m,
+            vencDe: Utc(2026, 1, 1), vencAte: Utc(2026, 12, 31));
+        Assert.Equal(0, semNada.Total);
+
+        // Mesmo caso agora com um registro de u também batendo: volta só o de u.
+        await SeedEmprestimoAsync(ctx, svc,u, "Do u", valorTotal: 1000, valorPago: 200,
+            forma: FormaPagamentoEmprestimo.Parcelado, vencimento: Utc(2026, 6, 15));
+        var soDoU = await svc.ListarAsync(u, situacao: "ativo", forma: "parcelado", valorMin: 800m, valorMax: 800m,
+            vencDe: Utc(2026, 1, 1), vencAte: Utc(2026, 12, 31));
+        Assert.Equal("Do u", soDoU.Items.Single().Descricao);
+
+        // E o total paginado também não vaza contagem alheia.
+        Assert.Equal(1, soDoU.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_SemFiltrosNovos_RetornaTodosDoUsuarioComoAntes()
+    {
+        using var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "sem-filtro@x.com");
+        var outro = SeedUsuario(ctx, "sem-filtro-outro@x.com");
+        await SeedEmprestimoAsync(ctx, svc,u, "A");
+        await SeedEmprestimoAsync(ctx, svc,u, "B", quitado: true);
+        await SeedEmprestimoAsync(ctx, svc,u, "C", forma: FormaPagamentoEmprestimo.Parcelado, vencimento: Utc(2026, 6, 15));
+        await SeedEmprestimoAsync(ctx, svc,outro, "Do outro");
+
+        var lista = await svc.ListarAsync(u);
+
+        Assert.Equal(3, lista.Total);
+        Assert.Equal(new[] { "A", "B", "C" }, Descricoes(lista));
+    }
+
     // ── helpers de teste ─────────────────────────────────────────────────────
+
+    /// <summary>Semeia um empréstimo via CriarAsync (caminho real) e ajusta ValorPago direto na linha
+    /// quando o teste precisa de um restante específico. Quitado usa QuitarAsync (ValorPago = ValorTotal).</summary>
+    private static async Task<Guid> SeedEmprestimoAsync(
+        AppDbContext ctx, EmprestimoService svc, Guid usuarioId, string descricao,
+        decimal valorTotal = 100, decimal valorPago = 0,
+        FormaPagamentoEmprestimo forma = FormaPagamentoEmprestimo.AVista,
+        DateTime? vencimento = null, bool quitado = false,
+        TipoEmprestimo tipo = TipoEmprestimo.Emprestei)
+    {
+        var dto = NovoDto(descricao, "Pessoa", valorTotal, tipo);
+        // Fixa quando não há vencimento; com vencimento, 30 dias antes dele (aceita vencimento no passado
+        // relativo a "hoje" sem violar a regra "vencimento não pode ser anterior ao início").
+        dto.DataInicio = vencimento?.AddDays(-30) ?? Utc(2026, 1, 1);
+        dto.DataVencimento = vencimento;
+        dto.FormaPagamento = forma;
+        if (forma == FormaPagamentoEmprestimo.Parcelado)
+        {
+            dto.QuantidadeParcelas = 2;
+            dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(30);
+        }
+
+        var criado = await svc.CriarAsync(dto, usuarioId);
+
+        if (valorPago > 0)
+        {
+            var linha = await ctx.Emprestimos.FindAsync(criado.Id);
+            linha!.ValorPago = valorPago;
+            await ctx.SaveChangesAsync();
+        }
+
+        if (quitado) await svc.QuitarAsync(criado.Id, usuarioId);
+        return criado.Id;
+    }
 
     private static CriarEmprestimoDto NovoDto(string descricao, string pessoa, decimal valor, TipoEmprestimo tipo) => new()
     {

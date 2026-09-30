@@ -53,6 +53,11 @@ export type PontesTabelaProps<T> = {
   filtros?: PontesTabelaFiltroRapido[]
   /** Filtros avançados no botão "Filtros" (select, faixa de valor, período). Tags saem sozinhas. */
   filtrosAvancados?: PontesFiltroAvancado[]
+  /** Controles extra da toolbar ANTES do botão de criar (ex.: "Consolidar"). Genérico. */
+  ferramentas?: ReactNode
+  /** Controles extra no fim da toolbar, depois do botão de criar e ANTES do seletor de colunas
+   *  (o ⊞ de colunas é sempre o último). Ex.: toggle "Arquivados" só-ícone. Genérico. */
+  ferramentasFim?: ReactNode
   /** Tags de busca/segmented (as dos filtros avançados são adicionadas sozinhas). */
   tags?: PontesTabelaTag[]
   colunas: PontesTabelaColuna<T>[]
@@ -74,7 +79,7 @@ export type PontesTabelaProps<T> = {
 }
 
 export function PontesTabela<T>({
-  id, titulo, acao, resumo, busca, filtros, filtrosAvancados, tags,
+  id, titulo, acao, resumo, busca, filtros, filtrosAvancados, ferramentas, ferramentasFim, tags,
   colunas, colunasPadraoOcultas, itens, chave, acoes, renderAcoes, onLinhaClick,
   carregando, erro, onTentarDeNovo, vazio, paginacao,
 }: PontesTabelaProps<T>) {
@@ -103,7 +108,7 @@ export function PontesTabela<T>({
   // Filtro só aparece se a coluna dele estiver visível (sem `coluna` = aparece sempre).
   const filtrosVisiveis = (filtrosAvancados ?? []).filter((f) => !f.coluna || !ocultas.has(f.coluna))
   const temColunas = colunas.length > 1
-  const temToolbar = !!busca || (filtros && filtros.length > 0) || filtrosVisiveis.length > 0 || temColunas
+  const temToolbar = !!busca || (filtros && filtros.length > 0) || filtrosVisiveis.length > 0 || temColunas || !!ferramentas || !!ferramentasFim
   // Banda do topo do cartão aparece se há nome, ação ou algum controle.
   const temBanda = !!titulo || !!acao || temToolbar
 
@@ -182,6 +187,9 @@ export function PontesTabela<T>({
                 <PontesSegmented key={i} size="sm" ariaLabel={f.ariaLabel} options={f.options} value={f.value} onChange={f.onChange} />
               ))}
               {filtrosVisiveis.length > 0 && <PontesTabelaPainelFiltros filtros={filtrosVisiveis} />}
+              {ferramentas}
+              {botaoCriar}
+              {ferramentasFim}
               {temColunas && (
                 <PontesTabelaColunas
                   colunas={colunas.map((c) => ({ key: c.key, header: c.header }))}
@@ -191,7 +199,6 @@ export function PontesTabela<T>({
                   onVoltarPadrao={chavePadrao ? voltarPadraoColunas : undefined}
                 />
               )}
-              {botaoCriar}
             </div>
           </div>
         )}

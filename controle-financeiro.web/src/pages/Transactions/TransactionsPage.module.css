@@ -27,3 +27,9 @@
 .valEntrada { color: var(--pontes-success); }
 .valSaida { color: var(--pontes-danger); }
 .valNeutro { color: var(--pontes-text); }
+
+/* Modais de família/rateio (compartilhar, atribuir, definir rateio). */
+.modalIntro { font-size: 13px; color: var(--pontes-text-muted); margin: 0 0 12px; font-family: var(--pontes-font); }
+.modalMuted { font-size: 13px; color: var(--pontes-text-muted); font-family: var(--pontes-font); }
+.optionList { display: flex; flex-direction: column; gap: 8px; }
+.rateioErro { margin: 8px 0 0; font-size: 13px; color: var(--pontes-danger); font-family: var(--pontes-font); }

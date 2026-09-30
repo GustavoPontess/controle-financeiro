@@ -6,11 +6,12 @@
 }
 .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .titleBox { min-width: 0; }
-.crumb { display: none; }
+.crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: 12px; font-weight: 500; color: var(--pontes-text-muted); line-height: 1.1; margin-bottom: 1px; }
 .crumbHome { cursor: pointer; }
+.crumbHome:hover { color: var(--pontes-primary); }
 .crumbSep { opacity: .5; }
 .crumbCur { color: var(--pontes-text); }
-.title { font-size: 22px; font-weight: 600; letter-spacing: -.02em; color: var(--pontes-text); margin: 0; line-height: 1.15; font-family: 'Fraunces', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title { font-size: 20px; font-weight: 600; letter-spacing: -.02em; color: var(--pontes-text); margin: 0; line-height: 1.15; font-family: 'Fraunces', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .right { display: flex; align-items: center; gap: 8px; }
 .search {
   display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 11px;

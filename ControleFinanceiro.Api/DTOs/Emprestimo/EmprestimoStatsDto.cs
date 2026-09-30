@@ -18,6 +18,10 @@ public class EmprestimoStatsDto
     /// parcelas") — pode subestimar levemente se a parcela nunca foi aberta desde que venceu.</summary>
     public decimal TotalAReceberVencido { get; init; }
 
+    /// <summary>Fatia vencida do TotalAPagar — mesma regra do TotalAReceberVencido, do lado do que
+    /// você deve (empréstimos "Peguei" / o lado devedor do vínculo).</summary>
+    public decimal TotalAPagarVencido { get; init; }
+
     /// <summary>Quantidade de empréstimos em andamento (não quitados, não soft-deleted).</summary>
     public int Ativos { get; init; }
 

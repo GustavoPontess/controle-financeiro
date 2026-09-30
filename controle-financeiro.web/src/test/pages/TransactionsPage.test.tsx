@@ -9,6 +9,8 @@ import TransactionsPage from "../../pages/Transactions/TransactionsPage"
 const {
   notify, listTransactionsPage, getTransactionStats, deleteTransaction, getContas, getCategories,
   getSubcategories, getCartoes,
+  getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
+  getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
 } = vi.hoisted(() => ({
   notify: vi.fn(),
   listTransactionsPage: vi.fn(),
@@ -19,6 +21,14 @@ const {
   // Só usados pelo dialog de edição (montado sob demanda ao clicar em "Editar").
   getSubcategories: vi.fn(),
   getCartoes: vi.fn(),
+  // Ações de família/rateio no ⋮ (só despesa real de conta).
+  getFamilias: vi.fn(),
+  compartilharTransacao: vi.fn(),
+  getDependentes: vi.fn(),
+  atribuirDependente: vi.fn(),
+  getRateioTransacao: vi.fn(),
+  definirRateioTransacao: vi.fn(),
+  removerRateioTransacao: vi.fn(),
 }))
 
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -35,6 +45,15 @@ vi.mock("../../services/contaService", () => ({ getContas: (...a: unknown[]) => 
 vi.mock("../../services/categoryService", () => ({ getCategories: (...a: unknown[]) => getCategories(...a) }))
 vi.mock("../../services/subcategoryService", () => ({ getSubcategories: (...a: unknown[]) => getSubcategories(...a) }))
 vi.mock("../../services/cartaoCreditoService", () => ({ getCartoes: (...a: unknown[]) => getCartoes(...a) }))
+vi.mock("../../services/familiaService", () => ({
+  getFamilias: (...a: unknown[]) => getFamilias(...a),
+  compartilharTransacao: (...a: unknown[]) => compartilharTransacao(...a),
+  getDependentes: (...a: unknown[]) => getDependentes(...a),
+  atribuirDependente: (...a: unknown[]) => atribuirDependente(...a),
+  getRateioTransacao: (...a: unknown[]) => getRateioTransacao(...a),
+  definirRateioTransacao: (...a: unknown[]) => definirRateioTransacao(...a),
+  removerRateioTransacao: (...a: unknown[]) => removerRateioTransacao(...a),
+}))
 
 // Envelope paginado (server-side) — o backend devolve isso, não um array cru.
 const paged = <T,>(items: T[], total = items.length) => ({ items, total, page: 1, pageSize: 25, totalPages: 1 })
@@ -121,6 +140,17 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     getSubcategories.mockResolvedValue([])
     getCartoes.mockResolvedValue([])
     deleteTransaction.mockResolvedValue(undefined)
+    getFamilias.mockResolvedValue([
+      { id: "fam1", nome: "Família Silva", criadoPorUsuarioId: "u1", criadoEm: "2026-01-01", ehAdmin: true, totalMembros: 2 },
+    ])
+    compartilharTransacao.mockResolvedValue(undefined)
+    getDependentes.mockResolvedValue([
+      { id: "dep1", familiaId: "fam1", nome: "João", apelido: null, dataNascimento: null, tipo: 1, ativo: true },
+    ])
+    atribuirDependente.mockResolvedValue(undefined)
+    getRateioTransacao.mockResolvedValue({ modo: 1, familiaId: "fam1", membros: [] })
+    definirRateioTransacao.mockResolvedValue(undefined)
+    removerRateioTransacao.mockResolvedValue(undefined)
   })
 
   it("renderiza as linhas do extrato vindas do serviço", async () => {
@@ -417,5 +447,68 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
 
     const modal = await screen.findByRole("dialog", { name: "Editar transação" })
     expect(within(modal).getByDisplayValue("Mercado")).toBeInTheDocument()
+  })
+
+  // ── Ações de família/rateio no ⋮ (só despesa real de conta) ──
+
+  it("despesa real de conta mostra as 3 ações de família no ⋮, antes de Editar/Excluir", async () => {
+    renderPage()
+    await screen.findByText("Mercado")
+    const menu = await abrirMenu(1) // Mercado = despesa (tipo 1, não-transferência, não-fatura)
+    const itens = within(menu).getAllByRole("menuitem").map((mi) => mi.textContent)
+    expect(itens).toEqual([
+      "Compartilhar com família",
+      "Atribuir a dependente",
+      "Definir rateio",
+      "Editar",
+      "Excluir",
+    ])
+  })
+
+  it.each([
+    ["receita", 0],             // Salário (tipo 2)
+    ["transferência", 2],       // Para Poupança (ehTransferencia)
+    ["pagamento de fatura", 3], // Fatura Nubank (ehPagamentoFatura)
+  ])("linha de %s não oferece as 3 ações de família (só Editar/Excluir)", async (_rotulo, i) => {
+    renderPage()
+    await screen.findByText("Salário")
+    const menu = await abrirMenu(i)
+    const itens = within(menu).getAllByRole("menuitem").map((mi) => mi.textContent)
+    expect(itens).toEqual(["Editar", "Excluir"])
+    expect(within(menu).queryByRole("menuitem", { name: "Compartilhar com família" })).not.toBeInTheDocument()
+    expect(within(menu).queryByRole("menuitem", { name: "Atribuir a dependente" })).not.toBeInTheDocument()
+    expect(within(menu).queryByRole("menuitem", { name: "Definir rateio" })).not.toBeInTheDocument()
+  })
+
+  it("Definir rateio (no ⋮) abre o modal e salvar chama o serviço + toast e recarrega", async () => {
+    renderPage()
+    await screen.findByText("Mercado")
+    const antes = listTransactionsPage.mock.calls.length
+
+    const menu = await abrirMenu(1)
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Definir rateio" }))
+
+    const modal = await screen.findByRole("dialog", { name: /Rateio de/ })
+    await waitFor(() => expect(getRateioTransacao).toHaveBeenCalledWith("t2"))
+
+    fireEvent.click(within(modal).getByRole("button", { name: "Salvar" }))
+
+    await waitFor(() => expect(definirRateioTransacao).toHaveBeenCalledWith("t2", 1, null))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Rateio definido", severity: "success" }))
+    await waitFor(() => expect(listTransactionsPage.mock.calls.length).toBeGreaterThan(antes))
+  })
+
+  it("Compartilhar com família (no ⋮) abre o modal e escolher a família chama o serviço + toast", async () => {
+    renderPage()
+    await screen.findByText("Mercado")
+
+    const menu = await abrirMenu(1)
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Compartilhar com família" }))
+
+    const modal = await screen.findByRole("dialog", { name: "Compartilhar com a família" })
+    fireEvent.click(await within(modal).findByRole("button", { name: "Família Silva" }))
+
+    await waitFor(() => expect(compartilharTransacao).toHaveBeenCalledWith("t2", "fam1"))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Despesa compartilhada com a família", severity: "success" }))
   })
 })

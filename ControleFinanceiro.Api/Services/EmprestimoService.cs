@@ -22,7 +22,10 @@ public class EmprestimoService(
 
     public async Task<PagedResult<EmprestimoDto>> ListarAsync(
         Guid usuarioId, int page = 1, int pageSize = 25, bool incluirArquivados = false,
-        string? busca = null, string? direcao = null)
+        string? busca = null, string? direcao = null,
+        string? situacao = null, string? forma = null,
+        decimal? valorMin = null, decimal? valorMax = null,
+        DateTime? vencDe = null, DateTime? vencAte = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -58,6 +61,23 @@ public class EmprestimoService(
         else if (direcao == "pagar")
             query = query.Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado)
                                   || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.Emprestei));
+
+        // Situação: ativos (em aberto) ou quitados. "Vencido" é derivado (parcela/à vista) e vira
+        // badge na linha, não filtro — evita query pesada por parcela aqui.
+        if (situacao == "ativo") query = query.Where(e => !e.Quitado);
+        else if (situacao == "quitado") query = query.Where(e => e.Quitado);
+
+        // Forma de pagamento.
+        if (forma == "avista") query = query.Where(e => e.FormaPagamento == FormaPagamentoEmprestimo.AVista);
+        else if (forma == "parcelado") query = query.Where(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado);
+
+        // Faixa do valor restante (ValorTotal - ValorPago) — mesmo número da coluna Restante.
+        if (valorMin.HasValue) query = query.Where(e => e.ValorTotal - e.ValorPago >= valorMin.Value);
+        if (valorMax.HasValue) query = query.Where(e => e.ValorTotal - e.ValorPago <= valorMax.Value);
+
+        // Período de vencimento — só alcança quem tem DataVencimento no nível do registro.
+        if (vencDe.HasValue) query = query.Where(e => e.DataVencimento != null && e.DataVencimento >= vencDe.Value);
+        if (vencAte.HasValue) query = query.Where(e => e.DataVencimento != null && e.DataVencimento <= vencAte.Value);
 
         query = query
             .OrderBy(e => e.Quitado)
@@ -115,12 +135,21 @@ public class EmprestimoService(
             .Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.Emprestei)
                      || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado))
             .ToListAsync();
-        var totalAReceberVencido = aReceberAtivos.Sum(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado
+        var aPagarAtivos = await ativos
+            .Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado)
+                     || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.Emprestei))
+            .ToListAsync();
+
+        // Vencido = parcela pendente vencida (parcelado) ou registro vencido não quitado (à vista),
+        // sempre no restante (com multa/juros quando houver). Mesma regra pros dois lados.
+        decimal SomaVencido(List<Emprestimo> lista) => lista.Sum(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado
             ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < hoje)
                 .Sum(p => (p.ValorComMulta ?? p.ValorComJuros ?? p.Valor) - p.ValorPago)
             : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje
                 ? (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago
                 : 0m));
+        var totalAReceberVencido = SomaVencido(aReceberAtivos);
+        var totalAPagarVencido = SomaVencido(aPagarAtivos);
 
         return new EmprestimoStatsDto
         {
@@ -129,6 +158,7 @@ public class EmprestimoService(
             Ativos = qtdAtivos,
             QtdTotal = qtdTotal,
             TotalAReceberVencido = totalAReceberVencido,
+            TotalAPagarVencido = totalAPagarVencido,
         };
     }
 

@@ -15,6 +15,29 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-09-30 (parte 3) — Empréstimos → PontesTabela + ações restauradas + decisão: RECONCILIAÇÃO é a fundação · branch `exp/consistencia-front`
+
+**Ponto verde (vai virar commit).** Front 534 testes verdes (55 arquivos); back `EmprestimoServiceTests` 132 (14 filtros + 8 `TotalAPagarVencido`); tsc/lint/build limpos. Backend buildado em saída separada (API rodando trava o `.exe`/`.dll` — não é erro de código).
+
+**Empréstimos migrado pro `PontesTabela` (só params, sem tabela na mão):**
+- Filtro de direção foi pro popover **Filtros** (select, `neutro:"todos"`); filtros server-side novos: **situação** (ativo/quitado), **forma** (avista/parcelado), **faixa de valor** (restante), **período de vencimento** — cada um casado com a coluna (só aparece se a coluna estiver visível).
+- Colunas na ordem `Empréstimo · Status · Forma · Início · Vencimento · Valor total · Pago · Juros · Restante`; **padrão mínimo** = Empréstimo/Status/Vencimento/Valor total/Restante (`colunasPadraoOcultas`), salvável por `id="emprestimos"`.
+- **Hero** simétrico: A receber / A pagar cada um com **seu vencido** embaixo (âmbar se atrasado) + **Ativos · Quitados** (contagem neutra; saldo líquido foi tirado — paia pra quem só pega emprestado).
+- Ações ricas de volta no ⋮ da lista (`mode="full"` + `mostrarDetalhe={false}`): Registrar pagamento / Marcar quitado / Vincular / Histórico / Arquivar-Desarquivar / Remover. **Arquivados** = botão só-ícone; **Consolidar** condicional. Título/subtítulo saíram (vêm do PontesTabela).
+- Backend: `ListarAsync` += situacao/forma/valorMin/valorMax/vencDe/vencAte (leitura, isolado por `UsuarioId`, EF parametrizado); `ObterStatsAsync` += `TotalAPagarVencido`; controller + `emprestimoService.ts` (6º arg `filtros`) + hook wired.
+
+**`PontesTabela` ganhou (genérico):** slot `ferramentas` (antes do criar) + `ferramentasFim` (depois do criar; o ⊞ colunas agora é o ÚLTIMO). `ActionIcons` ganhou `mostrarDetalhe`.
+
+**Transações — ações restauradas** (tinham sumido junto com o `TransactionTable` deletado): **Compartilhar com família · Atribuir a dependente · Definir rateio** + 3 modais + handlers (port fiel do `main`; serviços de `familiaService` estavam intactos, backend intacto). Gating: só **despesa real** (`tipo===1 && !ehTransferencia && !ehPagamentoFatura`). Recarrega após mutação; rateio personalizado valida "soma 100%" inline (não toast). Navbar: **breadcrumb voltou** (title 22→20).
+
+**Removido:** Demo Empréstimos (rota/nav/página).
+
+**🎯 Decisão estratégica (Gustavo):** a fundação que falta é a **RECONCILIAÇÃO** (nome escolhido — "conferência de caixa" era só exemplo). Sem ela o saldo é só soma de lançamentos, sem âncora → sempre parece errado; polir front em cima disso é bater cabeça à toa. É o **P0 real**. **Sequência: commitar este ponto verde primeiro, DEPOIS atacar a reconciliação em frente limpa.**
+
+**Próxima ação concreta:** commit + push deste bloco (draft PR #284, **sem merge**) → iniciar **Reconciliação**: renomear demo `conferencia`→`reconciliacao` (rota/página/spec `docs/features/conferencia-caixa/`), spec do modelo **multi-marco datável**, resolver fork **verificação × baseline** + **transação com hora** (default = agora), backend (`ReconciliacaoSaldo` = marco datado; saldo em D = último marco ≤ D + Σ caixa depois) + tela real. **Gate `auditor-seguranca` roda ANTES do merge** (dinheiro).
+
+---
+
 ### 📌 Sessão 2026-09-30 (parte 2) — Transações = EXTRATO DE CAIXA + tela real promovida + chrome denso · branch `exp/consistencia-front`
 
 **NÃO está na `main`.** Continuação na branch **`exp/consistencia-front`** (base `821b063`; commit desta sessão no fim do bloco). **Build verde** (front `npm run build` + back `dotnet build` 0 erros). Testes desta rodada delegados ao `escritor-de-teste` (front `TransactionsPage` + back `apenasCaixa`/`natureza`/`meioPagamento`) — conferir resultado.
