@@ -37,12 +37,10 @@ type Props = {
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/transactions": "Transações",
-  "/demo-transacoes": "Demo Transações",
   "/demo-emprestimos": "Demo Empréstimos",
   "/credit-cards": "Cartões de Crédito",
   "/credit-cards/parcelamentos": "Parcelamentos",
   "/reports": "Relatórios",
-  "/transferencias": "Transferências",
   "/assinaturas": "Contas Fixas",
   "/emprestimos": "Empréstimos",
   "/importacao": "Importar Extrato",
@@ -144,7 +142,7 @@ export default function Navbar({
 
         {showFinance && (
           <PontesButton
-            variant="accent" size="md"
+            variant="accent" size="sm"
             onClick={openTransaction}
             disabled={!canCreateTransaction}
             iconStart={<Plus size={16} strokeWidth={2.5} />}

@@ -1,111 +1,29 @@
-.root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
+/* Transações — extrato de caixa. O grosso do layout vem do PontesTabela; aqui só
+   o hero (saldo em conta + fluxo) e as cores de valor por natureza. */
 
-/* Header padrão (igual às outras telas: título + subtitle + ação) */
-.header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-.title { font-family: var(--pontes-font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
-.subtitle { font-size: 13px; color: var(--pontes-text-muted); margin-top: 2px; }
-
-/* Hero composto — linguagem hero das outras telas, composição própria:
-   saldo total (global) à esquerda + resumo do mês à direita, numa peça só. */
-.hero {
-  position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg);
-  background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
-  font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between;
-  gap: 32px; flex-wrap: wrap;
-}
-.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, 0.10); pointer-events: none; }
+/* Hero: patrimônio (saldo em conta) à esquerda; fluxo (Entrou/Saiu) à direita —
+   naturezas distintas, não somam entre si (por isso separados). */
+.hero { position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg); background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+.heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.10); pointer-events: none; }
 .heroMain { position: relative; min-width: 0; }
 .heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
 .heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
-.heroSub { font-size: 13px; opacity: 0.8; margin-top: 6px; }
-
-/* Lado direito do hero — nav de mês + 3 números do mês */
-.heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
-.heroMonthNav { display: inline-flex; align-items: center; gap: 6px; }
-.heroNavBtn {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
-  border: none; border-radius: 8px; cursor: pointer; color: var(--pontes-hero-fg);
-  background: rgba(255, 255, 255, 0.15); transition: background-color .14s ease;
-}
-.heroNavBtn:hover { background: rgba(255, 255, 255, 0.28); }
-.heroMonthLabel { min-width: 130px; text-align: center; font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
-.heroTodayBtn {
-  display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; padding: 5px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; cursor: pointer;
-  background: transparent; color: var(--pontes-hero-fg); font-family: var(--pontes-font);
-  font-size: 12px; font-weight: 600; transition: background-color .14s ease;
-}
-.heroTodayBtn:hover { background: rgba(255, 255, 255, 0.15); }
-.heroStats { display: flex; align-items: stretch; gap: 18px; }
+.heroFluxo { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 340px; }
+.heroStats { position: relative; display: flex; align-items: stretch; gap: 18px; }
 .heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
 .heroStatValue[data-tone="up"] { color: #4ADE80; }
 .heroStatValue[data-tone="down"] { color: #FB7185; }
 .heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
-.heroStatDivider { width: 1px; background: rgba(255, 255, 255, 0.22); }
-
+.heroStatDivider { width: 1px; background: rgba(255,255,255,0.22); }
 @media (max-width: 720px) {
   .hero { gap: 20px; }
-  .heroSide { align-items: flex-start; width: 100%; }
+  .heroFluxo { align-items: flex-start; max-width: none; width: 100%; }
   .heroStats { width: 100%; justify-content: space-between; }
   .heroStat { align-items: flex-start; }
 }
 
-/* Toolbar — busca + tipo chips + categoria */
-.toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.searchWrap { flex: 1 1 240px; min-width: 200px; }
-.searchClear {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: none; cursor: pointer; padding: 0;
-  color: var(--pontes-text-muted); pointer-events: auto;
-}
-.searchClear:hover { color: var(--pontes-text); }
-
-.tipoChips {
-  display: inline-flex; gap: 2px; padding: 3px; height: 42px; box-sizing: border-box;
-  background: var(--pontes-bg); border: 1px solid var(--pontes-border); border-radius: 11px;
-}
-.tipoChip {
-  display: inline-flex; align-items: center;
-  padding: 0 14px; border: none; background: transparent; cursor: pointer;
-  font-family: var(--pontes-font); font-size: 13px; font-weight: 600;
-  color: var(--pontes-text-muted); border-radius: 8px;
-  transition: background-color .14s ease, color .14s ease;
-}
-.tipoChip:hover { color: var(--pontes-text); }
-.tipoChip[data-active="true"] {
-  background: var(--pontes-surface); color: var(--pontes-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-
-/* Filtros/Limpar (PontesButton) — mesma altura dos demais controles da toolbar (42px). */
-.toolbar > button { height: 42px; box-sizing: border-box; }
-
-/* Filtros avançados (#1.1) — chips ativos + corpo do drawer */
-.advChips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
-.advChip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 8px 5px 12px; border-radius: 999px;
-  background: var(--pontes-primary-soft); color: var(--pontes-primary);
-  font-family: var(--pontes-font); font-size: 12.5px; font-weight: 600;
-}
-.advChipX {
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; background: transparent; cursor: pointer; color: inherit;
-  padding: 2px; border-radius: 999px; opacity: 0.8;
-}
-.advChipX:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
-
-.drawerBody { display: flex; flex-direction: column; gap: 16px; }
-.drawerLabel {
-  display: flex; flex-direction: column; gap: 6px;
-  font-family: var(--pontes-font); font-size: 13px; font-weight: 600; color: var(--pontes-text);
-}
-.drawerRow { display: flex; gap: 12px; }
-.drawerRow .drawerLabel { flex: 1; min-width: 0; }
-.drawerFooter { display: flex; justify-content: space-between; gap: 12px; }
-
-.tableHead { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); }
-.tableTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.tableMeta { font-size: 12px; color: var(--pontes-text-muted); }
+/* Cor do valor por natureza. Transferência = neutro (não é gasto/renda). */
+.valEntrada { color: var(--pontes-success); }
+.valSaida { color: var(--pontes-danger); }
+.valNeutro { color: var(--pontes-text); }

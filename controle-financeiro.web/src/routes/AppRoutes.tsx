@@ -20,7 +20,6 @@ import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
 import SettingsPage from "../pages/Settings/SettingsPage"
 import DashboardPage from "../pages/Dashboard/DashboardPage"
 import ReportsPage from "../pages/Reports/ReportsPage"
-import TransferenciasPage from "../pages/Transferencias/TransferenciasPage"
 import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import ParcelamentosPage from "../pages/Parcelamentos"
 import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
@@ -43,7 +42,6 @@ import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 import DemoEmprestimosPage from "../pages/DemoPadrao/DemoEmprestimosPage"
-import DemoTransacoesPage from "../pages/DemoPadrao/DemoTransacoesPage"
 
 // /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
 function RedirecionarParcelamento() {
@@ -101,12 +99,10 @@ export default function AppRoutes() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/demo-emprestimos" element={<DemoEmprestimosPage />} />
-          <Route path="/demo-transacoes" element={<DemoTransacoesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/credit-cards" element={<CreditCardsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/transferencias" element={<TransferenciasPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
           {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.
               Os endereços antigos redirecionam, pra link salvo/notificação não quebrar. */}

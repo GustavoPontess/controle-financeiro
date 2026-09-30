@@ -56,6 +56,9 @@ export type PontesTabelaProps<T> = {
   /** Tags de busca/segmented (as dos filtros avançados são adicionadas sozinhas). */
   tags?: PontesTabelaTag[]
   colunas: PontesTabelaColuna<T>[]
+  /** Colunas ocultas no padrão ORIGINAL (visão mínima). O usuário pode salvar o próprio
+   *  padrão (localStorage por `id`) ou voltar a este. 1ª coluna nunca oculta. */
+  colunasPadraoOcultas?: string[]
   itens: T[]
   chave: (item: T) => string
   acoes?: (item: T) => PontesRowAction[]
@@ -71,20 +74,36 @@ export type PontesTabelaProps<T> = {
 }
 
 export function PontesTabela<T>({
-  titulo, acao, resumo, busca, filtros, filtrosAvancados, tags,
-  colunas, itens, chave, acoes, renderAcoes, onLinhaClick,
+  id, titulo, acao, resumo, busca, filtros, filtrosAvancados, tags,
+  colunas, colunasPadraoOcultas, itens, chave, acoes, renderAcoes, onLinhaClick,
   carregando, erro, onTentarDeNovo, vazio, paginacao,
 }: PontesTabelaProps<T>) {
   const temAcoes = !!(acoes || renderAcoes)
   const tagsTodas = [...(tags ?? []), ...tagsDeFiltrosAvancados(filtrosAvancados ?? [])]
   const temFiltroAtivo = tagsTodas.length > 0
   const botaoCriar = acao && <PontesButton size="sm" onClick={acao.onClick}>{acao.label}</PontesButton>
-  // Mostrar/ocultar colunas (1ª coluna fica fixa). Estado por sessão.
-  const [ocultas, setOcultas] = useState<Set<string>>(new Set())
+  // Mostrar/ocultar colunas (1ª coluna fica fixa). Padrão ORIGINAL = colunasPadraoOcultas;
+  // padrão SALVO do usuário mora em localStorage por `id`. Salvar/voltar no popover de colunas.
+  const chavePadrao = id ? `pontes:tabela:${id}:colunas` : null
+  const padraoOriginal = () => new Set(colunasPadraoOcultas ?? [])
+  const [ocultas, setOcultas] = useState<Set<string>>(() => {
+    if (chavePadrao) {
+      try {
+        const raw = localStorage.getItem(chavePadrao)
+        if (raw) return new Set<string>(JSON.parse(raw))
+      } catch { /* localStorage indisponível/privado → cai no padrão */ }
+    }
+    return padraoOriginal()
+  })
   const alternarColuna = (key: string) => setOcultas((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n })
+  // "Salvar padrão" = grava a visão atual (persiste). "Voltar ao padrão" = apaga o salvo e volta ao original mínimo.
+  const salvarPadraoColunas = () => { if (chavePadrao) try { localStorage.setItem(chavePadrao, JSON.stringify([...ocultas])) } catch { /* ignore */ } }
+  const voltarPadraoColunas = () => { if (chavePadrao) try { localStorage.removeItem(chavePadrao) } catch { /* ignore */ } ; setOcultas(padraoOriginal()) }
   const colunasVisiveis = colunas.filter((c) => !ocultas.has(c.key))
+  // Filtro só aparece se a coluna dele estiver visível (sem `coluna` = aparece sempre).
+  const filtrosVisiveis = (filtrosAvancados ?? []).filter((f) => !f.coluna || !ocultas.has(f.coluna))
   const temColunas = colunas.length > 1
-  const temToolbar = !!busca || (filtros && filtros.length > 0) || (!!filtrosAvancados && filtrosAvancados.length > 0) || temColunas
+  const temToolbar = !!busca || (filtros && filtros.length > 0) || filtrosVisiveis.length > 0 || temColunas
   // Banda do topo do cartão aparece se há nome, ação ou algum controle.
   const temBanda = !!titulo || !!acao || temToolbar
 
@@ -162,12 +181,14 @@ export function PontesTabela<T>({
               {filtros?.map((f, i) => (
                 <PontesSegmented key={i} size="sm" ariaLabel={f.ariaLabel} options={f.options} value={f.value} onChange={f.onChange} />
               ))}
-              {filtrosAvancados && filtrosAvancados.length > 0 && <PontesTabelaPainelFiltros filtros={filtrosAvancados} />}
+              {filtrosVisiveis.length > 0 && <PontesTabelaPainelFiltros filtros={filtrosVisiveis} />}
               {temColunas && (
                 <PontesTabelaColunas
                   colunas={colunas.map((c) => ({ key: c.key, header: c.header }))}
                   ocultas={ocultas}
                   onToggle={alternarColuna}
+                  onSalvar={chavePadrao ? salvarPadraoColunas : undefined}
+                  onVoltarPadrao={chavePadrao ? voltarPadraoColunas : undefined}
                 />
               )}
               {botaoCriar}

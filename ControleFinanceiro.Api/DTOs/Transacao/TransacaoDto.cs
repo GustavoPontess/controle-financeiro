@@ -22,6 +22,9 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public Guid? ParcelamentoId { get; set; }
         public Guid? ParcelaTransacaoId { get; set; }
         public bool EhPagamentoFatura { get; set; }
+        // Perna de transferência entre contas próprias — no extrato aparece
+        // neutra (não conta como entrada/saída, só troca de bolso).
+        public bool EhTransferencia { get; set; }
         // 0 = Previsao, 1 = Executado, 2 = Cancelado.
         public int StatusTransacao { get; set; }
         public DateTime Data { get; set; }

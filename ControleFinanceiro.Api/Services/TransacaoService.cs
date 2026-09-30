@@ -136,7 +136,10 @@ namespace ControleFinanceiro.Api.Services
             decimal? valorMin = null,
             decimal? valorMax = null,
             int? status = null,
-            string? ordenacao = null)
+            string? ordenacao = null,
+            bool apenasCaixa = false,
+            int? meioPagamento = null,
+            string? natureza = null)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -150,6 +153,13 @@ namespace ControleFinanceiro.Api.Services
                 .Include(t => t.Categoria)
                 .AsQueryable();
 
+            // Escopo "extrato de caixa": só o que mexe no saldo da conta. Compra
+            // no crédito tem só CartaoCreditoId (vive na fatura/aba Cartão) → cai
+            // fora. Pagamento de fatura e pernas de transferência têm ContaId →
+            // ficam. Saldo inicial é patrimônio de abertura, não movimento → fora.
+            if (apenasCaixa)
+                query = query.Where(t => t.ContaId.HasValue && !t.EhSaldoInicial);
+
             // Filtros opcionais aplicados no banco — só assim a paginação serve
             // pra UI: o front pagina o conjunto JÁ filtrado (por mês, categoria
             // etc), em vez de pedir tudo e filtrar no cliente.
@@ -159,6 +169,17 @@ namespace ControleFinanceiro.Api.Services
             if (tipo.HasValue) query = query.Where(t => (int)t.Tipo == tipo.Value);
             if (contaId.HasValue) query = query.Where(t => t.ContaId == contaId.Value);
             if (cartaoId.HasValue) query = query.Where(t => t.CartaoCreditoId == cartaoId.Value);
+            if (meioPagamento.HasValue) query = query.Where(t => t.MeioPagamento != null && (int)t.MeioPagamento == meioPagamento.Value);
+            // Natureza do lançamento — bate 1:1 com a coluna do extrato (entrada/saída
+            // de conta, transferência entre contas, pagamento de fatura).
+            query = natureza switch
+            {
+                "entrada" => query.Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial),
+                "saida" => query.Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa && !t.EhTransferencia && !t.EhPagamentoFatura),
+                "transferencia" => query.Where(t => t.EhTransferencia),
+                "fatura" => query.Where(t => t.EhPagamentoFatura),
+                _ => query,
+            };
             if (valorMin.HasValue) query = query.Where(t => t.Valor >= valorMin.Value);
             if (valorMax.HasValue) query = query.Where(t => t.Valor <= valorMax.Value);
             // status: previsto (Previsao) vs efetivado (Executado). Cancelado já é

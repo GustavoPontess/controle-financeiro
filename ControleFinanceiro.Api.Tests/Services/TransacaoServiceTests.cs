@@ -530,6 +530,299 @@ public class TransacaoServiceTests
         Assert.Equal("na 2", r.Items.Single().Descricao);
     }
 
+    // ── Extrato de caixa: apenasCaixa + meioPagamento + natureza ───────────────
+    // Tela Transações virou extrato de caixa (só o que mexe no saldo da conta).
+    // Os 3 filtros rodam no banco; aqui provamos o escopo de cada um com um
+    // extrato "misto" (uma de cada natureza + compra no crédito + saldo inicial).
+
+    /// <summary>
+    /// Semeia, na conta do usuário, um extrato misto de 8 lançamentos (uma de cada
+    /// natureza + compra no crédito + saldo inicial). Compra no crédito tem só
+    /// CartaoCreditoId (ContaId nulo).
+    /// </summary>
+    private static async Task SeedExtratoMisto(AppDbContext ctx, Guid contaId, Guid usuarioId)
+    {
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = usuarioId, Ativo = true, TemCredito = true, LimiteTotal = 5000 };
+        ctx.CartoesCredito.Add(cartao);
+
+        var d = DateTime.UtcNow;
+        ctx.Transacoes.AddRange(
+            // Receita comum de conta (Pix)
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Salário", Valor = 5000, Tipo = TipoTransacao.Receita, MeioPagamento = MeioPagamento.Pix, Data = d.AddDays(-9) },
+            // Despesa comum de conta (Débito)
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Mercado", Valor = 200, Tipo = TipoTransacao.Despesa, MeioPagamento = MeioPagamento.Debito, Data = d.AddDays(-8) },
+            // Despesa de conta sem meio de pagamento informado (MeioPagamento nulo)
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Sem meio", Valor = 15, Tipo = TipoTransacao.Despesa, MeioPagamento = null, Data = d.AddDays(-7) },
+            // Compra no crédito: só CartaoCreditoId, ContaId nulo → NÃO mexe no saldo da conta
+            new Transacao { Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id, Descricao = "Compra crédito", Valor = 300, Tipo = TipoTransacao.Despesa, MeioPagamento = MeioPagamento.Credito, Data = d.AddDays(-6) },
+            // Pagamento de fatura: tem ContaId (sai do caixa) e a marca EhPagamentoFatura
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Pagto fatura", Valor = 300, Tipo = TipoTransacao.Despesa, EhPagamentoFatura = true, MeioPagamento = MeioPagamento.Boleto, Data = d.AddDays(-5) },
+            // Pernas de transferência entre contas próprias
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Transf saída", Valor = 100, Tipo = TipoTransacao.Despesa, EhTransferencia = true, MeioPagamento = MeioPagamento.Ted,Data = d.AddDays(-4) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Transf entrada", Valor = 100, Tipo = TipoTransacao.Receita, EhTransferencia = true, MeioPagamento = MeioPagamento.Ted, Data = d.AddDays(-3) },
+            // Saldo inicial (abertura da conta): compõe o saldo, mas não é movimento
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Saldo inicial", Valor = 1000, Tipo = TipoTransacao.Receita, EhSaldoInicial = true, Data = d.AddDays(-30) });
+        await ctx.SaveChangesAsync();
+    }
+
+    private static string[] Descricoes(DTOs.Common.PagedResult<Transacao> r) =>
+        r.Items.Select(t => t.Descricao).OrderBy(x => x).ToArray();
+
+    [Fact]
+    public async Task ListarAsync_SemApenasCaixa_RetornaTudoInclusiveCreditoESaldoInicial()
+    {
+        // Regressão: o default (false) NÃO muda o comportamento das outras telas
+        // (Cartão, relatórios) que listam compra no crédito e saldo inicial.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId);
+
+        Assert.Equal(8, r.Total);
+        Assert.Contains("Compra crédito", Descricoes(r));
+        Assert.Contains("Saldo inicial", Descricoes(r));
+    }
+
+    [Fact]
+    public async Task ListarAsync_ApenasCaixa_ExcluiCompraNoCreditoESaldoInicial()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, apenasCaixa: true);
+
+        // 8 semeadas − compra no crédito − saldo inicial = 6
+        Assert.Equal(6, r.Total);
+        Assert.DoesNotContain("Compra crédito", Descricoes(r));
+        Assert.DoesNotContain("Saldo inicial", Descricoes(r));
+        // Nada sem conta: todo item do extrato de caixa mexe no saldo de uma conta.
+        Assert.All(r.Items, t => Assert.NotNull(t.ContaId));
+        Assert.All(r.Items, t => Assert.False(t.EhSaldoInicial));
+    }
+
+    [Fact]
+    public async Task ListarAsync_ApenasCaixa_MantemPagamentoDeFaturaETransferencia()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, apenasCaixa: true);
+
+        Assert.Contains("Pagto fatura", Descricoes(r));
+        Assert.Contains("Transf saída", Descricoes(r));
+        Assert.Contains("Transf entrada", Descricoes(r));
+        Assert.Contains("Salário", Descricoes(r));
+        Assert.Contains("Mercado", Descricoes(r));
+        Assert.Contains("Sem meio", Descricoes(r));
+    }
+
+    [Fact]
+    public async Task ListarAsync_ApenasCaixa_NaoVazaExtratoDeOutroUsuario()
+    {
+        // IDOR: apenasCaixa só restringe escopo, nunca amplia — o dono continua
+        // valendo (a conta de outro usuário não aparece no extrato de caixa).
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+        var (contaOutro, outroUsuarioId) = await SeedConta(ctx);
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), ContaId = contaOutro, Descricao = "Do outro", Valor = 999, Tipo = TipoTransacao.Despesa, Data = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+
+        var meu = await svc.ListarAsync(usuarioId, apenasCaixa: true);
+        var dele = await svc.ListarAsync(outroUsuarioId, apenasCaixa: true);
+
+        Assert.DoesNotContain("Do outro", Descricoes(meu));
+        Assert.Equal(6, meu.Total);
+        Assert.Equal("Do outro", dele.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_ApenasCaixa_NaoRetornaCancelada()
+    {
+        // Soft delete continua valendo com o novo escopo (global query filter).
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var manter = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+        var excluir = await svc.CriarTransacaoAsync(NovaDespesa(contaId), usuarioId);
+        await svc.DeletarAsync(excluir.Id, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, apenasCaixa: true);
+
+        Assert.Equal(manter.Id, r.Items.Single().Id);
+    }
+
+    [Fact]
+    public async Task ListarAsync_MeioPagamento_RetornaSomenteDoMeio()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var pix = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Pix);
+        Assert.Equal("Salário", pix.Items.Single().Descricao);
+
+        var debito = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Debito);
+        Assert.Equal("Mercado", debito.Items.Single().Descricao);
+
+        var ted = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Ted);
+        Assert.Equal(new[] { "Transf entrada", "Transf saída" }, Descricoes(ted));
+    }
+
+    [Fact]
+    public async Task ListarAsync_MeioPagamento_IgnoraTransacaoSemMeioInformado()
+    {
+        // MeioPagamento é anulável: "Sem meio" não pode cair em nenhum meio
+        // (nem em Dinheiro=1, o "primeiro" valor do enum).
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        foreach (var meio in Enum.GetValues<MeioPagamento>())
+        {
+            var r = await svc.ListarAsync(usuarioId, meioPagamento: (int)meio);
+            Assert.DoesNotContain("Sem meio", Descricoes(r));
+        }
+    }
+
+    [Fact]
+    public async Task ListarAsync_MeioPagamento_SemNenhumaTransacao_RetornaVazio()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Dinheiro);
+
+        Assert.Equal(0, r.Total);
+        Assert.Empty(r.Items);
+    }
+
+    [Fact]
+    public async Task ListarAsync_MeioPagamento_CombinaComApenasCaixa()
+    {
+        // Crédito (3) só existe na compra no cartão; no extrato de caixa some.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var semEscopo = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Credito);
+        Assert.Equal("Compra crédito", semEscopo.Items.Single().Descricao);
+
+        var comEscopo = await svc.ListarAsync(usuarioId, meioPagamento: (int)MeioPagamento.Credito, apenasCaixa: true);
+        Assert.Equal(0, comEscopo.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaEntrada_SoReceitaReal()
+    {
+        // Entrada = Receita que NÃO é perna de transferência, pagamento de
+        // fatura nem saldo inicial. Aqui só "Salário".
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, natureza: "entrada");
+
+        Assert.Equal("Salário", r.Items.Single().Descricao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaSaida_SoDespesaRealSemTransferenciaNemFatura()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        // Sem escopo de caixa a compra no crédito também é despesa "de saída".
+        var todas = await svc.ListarAsync(usuarioId, natureza: "saida");
+        Assert.Equal(new[] { "Compra crédito", "Mercado", "Sem meio" }, Descricoes(todas));
+
+        // Com o escopo do extrato de caixa, a compra no crédito cai fora.
+        var caixa = await svc.ListarAsync(usuarioId, natureza: "saida", apenasCaixa: true);
+        Assert.Equal(new[] { "Mercado", "Sem meio" }, Descricoes(caixa));
+        Assert.DoesNotContain("Pagto fatura", Descricoes(caixa));
+        Assert.DoesNotContain("Transf saída", Descricoes(caixa));
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaTransferencia_SoAsDuasPernas()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, natureza: "transferencia");
+
+        Assert.Equal(new[] { "Transf entrada", "Transf saída" }, Descricoes(r));
+        Assert.All(r.Items, t => Assert.True(t.EhTransferencia));
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaFatura_SoPagamentoDeFatura()
+    {
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var r = await svc.ListarAsync(usuarioId, natureza: "fatura");
+
+        Assert.Equal("Pagto fatura", r.Items.Single().Descricao);
+        Assert.True(r.Items.Single().EhPagamentoFatura);
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaDesconhecidaOuVazia_NaoFiltra()
+    {
+        // Valor fora da lista (ou string vazia do "Todos" do front) = sem filtro,
+        // nunca "nada" nem erro 500.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var desconhecida = await svc.ListarAsync(usuarioId, natureza: "qualquer-coisa");
+        var vazia = await svc.ListarAsync(usuarioId, natureza: "");
+        var nula = await svc.ListarAsync(usuarioId, natureza: null);
+
+        Assert.Equal(8, desconhecida.Total);
+        Assert.Equal(8, vazia.Total);
+        Assert.Equal(8, nula.Total);
+    }
+
+    [Fact]
+    public async Task ListarAsync_NaturezaEntradaComApenasCaixa_ExcluiSaldoInicialMesmoSendoReceita()
+    {
+        // Saldo inicial é Receita, mas não é "entrada" — nem sem o escopo de caixa.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var semEscopo = await svc.ListarAsync(usuarioId, natureza: "entrada");
+        var comEscopo = await svc.ListarAsync(usuarioId, natureza: "entrada", apenasCaixa: true);
+
+        Assert.DoesNotContain("Saldo inicial", Descricoes(semEscopo));
+        Assert.Equal(Descricoes(semEscopo), Descricoes(comEscopo));
+    }
+
+    [Fact]
+    public async Task ListarAsync_FiltrosDeExtrato_CombinamComPaginacao()
+    {
+        // O total reflete o conjunto JÁ filtrado (paginação server-side).
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        await SeedExtratoMisto(ctx, contaId, usuarioId);
+
+        var pagina1 = await svc.ListarAsync(usuarioId, page: 1, pageSize: 4, apenasCaixa: true);
+        var pagina2 = await svc.ListarAsync(usuarioId, page: 2, pageSize: 4, apenasCaixa: true);
+
+        Assert.Equal(6, pagina1.Total);
+        Assert.Equal(4, pagina1.Items.Count());
+        Assert.Equal(2, pagina2.Items.Count());
+        Assert.Empty(pagina1.Items.Select(t => t.Id).Intersect(pagina2.Items.Select(t => t.Id)));
+    }
+
     // ── C3: soft delete de Transacao ───────────────────────────────────────────
 
     private static Transacao NovaDespesa(Guid contaId) => new()

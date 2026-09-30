@@ -112,4 +112,8 @@
 .colunasItem:hover:not(:disabled) { background: var(--pontes-bg); }
 .colunasItem:disabled { cursor: default; }
 .colunasItem[data-oculta="true"] { color: var(--pontes-text-muted); }
+/* Ações do padrão de exibição (empilhadas): Salvar padrão / Voltar ao padrão. */
+.colunasAcao[data-primary="true"] { background: var(--pontes-primary); border-color: var(--pontes-primary); color: var(--pontes-hero-fg); text-align: center; }
+.colunasAcao:not([data-primary="true"]) { text-align: center; }
+.colunasAcao[data-primary="true"]:hover:not(:disabled) { background: var(--pontes-primary-dark); border-color: var(--pontes-primary-dark); }
 .colunasCheck { width: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--pontes-primary); flex-shrink: 0; }

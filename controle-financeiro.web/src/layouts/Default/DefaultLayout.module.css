@@ -1,7 +1,8 @@
 /* DefaultLayout.module.css — shell do app logado. Cor via var(--pontes-*). */
 .shell {
   display: flex; height: 100vh; font-family: var(--pontes-font);
-  padding: 12px; gap: 4px; box-sizing: border-box; overflow: hidden;
+  /* Sem padding à esquerda: sidebar cola na borda da janela (ganha espaço). */
+  padding: 12px 12px 12px 0; gap: 4px; box-sizing: border-box; overflow: hidden;
   background:
     radial-gradient(40% 28% at 3% 3%, color-mix(in srgb, var(--pontes-primary) 20%, transparent), transparent 60%),
     radial-gradient(38% 30% at 17% 97%, color-mix(in srgb, var(--pontes-accent) 19%, transparent), transparent 60%),

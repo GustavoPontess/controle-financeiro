@@ -17,7 +17,6 @@ const DEV_ACCOUNTS_BASE: { email: string; label: string }[] = [
   { email: 'conjuge@controle.test', label: 'Cônjuge do Dev' },
   { email: 'solo@controle.test', label: 'Solo (sem família)' },
   { email: 'gustavo.seed@local.test', label: 'Gustavo (cenário real)' },
-  { email: 'anapaula.seed@local.test', label: 'Ana Paula (cenário real)' },
 ]
 
 // Contas locais extras (ex: seu cenário real do MeuCenarioSeeder) — vêm de um

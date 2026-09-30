@@ -21,6 +21,8 @@ export interface Transaction {
   parcelamentoId?: string | null
   parcelaTransacaoId?: string | null
   ehPagamentoFatura?: boolean
+  // Perna de transferência entre contas próprias — neutra no extrato.
+  ehTransferencia?: boolean
   // 0 = Previsao, 1 = Executado, 2 = Cancelado (resposta).
   statusTransacao?: number
   // Envio na criação: true = já recebido/pago (Executado); false = previsão.

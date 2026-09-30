@@ -1,9 +1,0 @@
-/* Topo, toolbar, tabela, esqueleto, vazio e paginação vêm do PontesTabela (padrão de tela). */
-
-/* Célula "rota" da tabela: conta de origem → conta de destino. */
-.rota { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.routeArrow { color: var(--pontes-text-muted); flex-shrink: 0; }
-
-/* Modal de nova transferência. */
-.formCol { display: flex; flex-direction: column; gap: 14px; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

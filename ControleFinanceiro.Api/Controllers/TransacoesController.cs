@@ -100,6 +100,7 @@ namespace ControleFinanceiro.Api.Controllers
             ParcelamentoId = t.ParcelamentoId,
             ParcelaTransacaoId = t.ParcelaTransacaoId,
             EhPagamentoFatura = t.EhPagamentoFatura,
+            EhTransferencia = t.EhTransferencia,
             StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
         };
@@ -119,12 +120,15 @@ namespace ControleFinanceiro.Api.Controllers
             [FromQuery] decimal? valorMin = null,
             [FromQuery] decimal? valorMax = null,
             [FromQuery] int? status = null,
-            [FromQuery] string? ordenacao = null)
+            [FromQuery] string? ordenacao = null,
+            [FromQuery] bool apenasCaixa = false,
+            [FromQuery] int? meioPagamento = null,
+            [FromQuery] string? natureza = null)
         {
             var usuarioId = GetUserId();
             var resultado = await _service.ListarAsync(
                 usuarioId, page, pageSize, from, to, categoriaId, q, tipo,
-                contaId, cartaoId, valorMin, valorMax, status, ordenacao);
+                contaId, cartaoId, valorMin, valorMax, status, ordenacao, apenasCaixa, meioPagamento, natureza);
 
             return Ok(new PagedResult<TransacaoDto>
             {

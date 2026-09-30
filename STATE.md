@@ -15,30 +15,36 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Sessão 2026-09-30 (fecha em ponto verde) — padrão de telas fase 2: PontesTabela evoluído + demo Transações + Transferências real · branch `exp/consistencia-front`
+### 📌 Sessão 2026-09-30 (parte 2) — Transações = EXTRATO DE CAIXA + tela real promovida + chrome denso · branch `exp/consistencia-front`
 
-**NÃO está na `main`.** Tudo na branch **`exp/consistencia-front`**, commit **`821b063`** (base: `e22cabf` = Admin Usuários já migrado; `0425f24` = PontesTabela nasceu). **Build verde** (`npm run build`), **testes verdes** (485/485; 1 teste de foco do Recorrentes flaka sob carga da suíte cheia mas passa isolado). API+front de dev rodando via `preview_start` (web/api).
+**NÃO está na `main`.** Continuação na branch **`exp/consistencia-front`** (base `821b063`; commit desta sessão no fim do bloco). **Build verde** (front `npm run build` + back `dotnet build` 0 erros). Testes desta rodada delegados ao `escritor-de-teste` (front `TransactionsPage` + back `apenasCaixa`/`natureza`/`meioPagamento`) — conferir resultado.
 
-**Modelo mental (regra pro Gustavo e pro modelo barato):** `PontesTabela` (`src/components/pontes/data/`) é O componente de tela-de-lista. Aplicar numa tela = **só passar params** (busca/filtros/filtrosAvancados/colunas/itens/acoes/resumo/paginacao) — tudo opcional, tira o param e some. **NÃO redesenhar por tela nem mudar o look do componente numa migração.** As demos `/demo-transacoes` e `/demo-emprestimos` são a referência visual aprovada. (memória [[feedback_pontestabela_componente_params]])
+**Modelo mental (regra pro Gustavo e pro modelo barato):** `PontesTabela` (`src/components/pontes/data/`) é O componente de tela-de-lista. Aplicar = **só passar params**. NÃO redesenhar por tela. (memória [[feedback_pontestabela_componente_params]])
 
-**Feito nesta sessão (no componente → vale pra todas as telas):**
-- Toolbar DENTRO do cartão: nome à esquerda + controles compactos à direita (busca/segmented/Filtros/colunas), todos 32px mesma altura; título com `--pontes-font-heading` (Fraunces), 18px.
-- Célula identidade **empilhada** (nome em cima, conta/sub embaixo).
-- Filtros avançados em **popover ancorado** no botão (não gaveta lateral), portalizado, com **bolinha vermelha + modo ativo** quando há filtro; click-outside ignora os popovers internos (select/datepicker).
-- **Paginação numerada** com pulo de página + reticências (`1 … 3 4 5 … 17`), footer branco compacto (evoluiu a PontesTablePagination, não trocou de componente).
-- Botão **mostrar/ocultar colunas** (ícone `Columns3` → popover com check ✓, 1ª coluna fixa). Só "Exibir colunas" (sem salvar/aplicar padrão — o Gustavo pediu pra tirar).
-- Fonte das linhas menor (12px) + linhas mais densas.
+**Modelo de negócio travado — Transações = EXTRATO DE CAIXA (linha do tempo do que mexe no saldo):**
+- **Entra:** movimento de conta (pix/débito/boleto/salário), **pagamento de fatura**, **transferência** entre contas próprias (2 pernas, neutras).
+- **Sai (fora):** compra no **crédito** (tem `CartaoCreditoId`, sem `ContaId` → vive na aba Cartão/fatura); **saldo inicial** (equity, não é movimento).
+- **Dois eixos separados** (a coluna antiga misturava): **Tipo** (natureza: Entrada/Saída/Transferência/Pagto. fatura) × **Status** (Previsto/Efetivado). "Pago"/"Recebido" = Executado + tipo, NÃO é status.
+- Enum: **TipoTransacao Despesa=1 / Receita=2**; **StatusTransacao Previsao=0 / Executado=1 / Cancelado=2** (Cancelado = soft-delete, não aparece).
 
-**Feito (telas):**
-- **Demo Transações**: hero (Saldo total = soma das contas; + Entrou/Saiu), colunas Descrição-Conta / Categoria / Pagamento / Data / Status / Valor, sem +/− no valor (cor indica), **tipo corrigido** (enum **Despesa=1 / Receita=2** — a demo estava invertida), filtro status "Pago / Recebido".
-- **Transferências (tela REAL)**: migrada pra PontesTabela + filtro **valor/período server-side** (mexeu no `TransferenciasController`/`TransferenciaService` + `transferenciaService.ts`). Teste atualizado.
-- **Navbar**: títulos das rotas `/demo-transacoes` e `/demo-emprestimos`.
+**Feito no componente (vale pra todas as telas):**
+- Toolbar no cartão, célula identidade empilhada, filtro em popover, paginação numerada, linhas densas (fase 1, já era).
+- **Colunas com "Padrão de exibição"**: default = mínimo (`colunasPadraoOcultas`), **Salvar padrão** + **Voltar ao padrão** (localStorage por `id`). Precisa de `id` na tela pra aparecer.
+- **Filtros aparecem conforme as colunas visíveis** — cada `PontesFiltroAvancado` tem `coluna?`; se a coluna está oculta, o filtro some (sem `coluna` = sempre).
 
-**Pendências (fila desta frente):**
-1. **Hero Entrou/Saiu × Saldo total NÃO fecham** — saldo inicial + transferência + pagamento de fatura ficam fora de Entrou/Saiu (regra contábil P&L, `TransacaoService.ObterStatsAsync`), mas o Saldo total (soma das contas) os inclui. É **decisão de produto/contábil do app todo** (dashboard/gráficos), não só a demo. **Não resolvido** — decidir: (a) saldo inicial conta como entrada, ou (b) hero reconcilia explícito (`saldo inicial + ganhou − gastou = saldo atual`). Ligado à pendência antiga "saldo inicial vira transação".
-2. **150 registros `PAGTESTE #n`** na conta de teste `verificacao.p1` (Postgres local) — criados só pra testar paginação. **APAGAR** (loop delete nos que a descrição começa com "PAGTESTE", via `/transacoes` autenticado como no create).
-3. **Telas reais ainda NÃO migradas**: Admin Pendentes/Auditoria/LGPD, Recorrentes, Importação, Parcelamentos, e a **Transações real** (`/transactions`, ainda usa `TransactionTable`). A migração automática por workflow foi **ABANDONADA** (cada agente divergiu) — fazer **manual, uma a uma**, só passando params do componente.
-4. Decidir se a branch vira PR pra `main` quando o Gustavo validar.
+**Feito (telas / backend):**
+- **Transações real (`/transactions`)**: a demo virou a real (component `TransactionsPage` reescrito com PontesTabela). `apenasCaixa: true`. Hero = Saldo em conta (soma `getContas`) + Entrou/Saiu **caixa** (`entradasCaixa`/`saidasCaixa`). Colunas Tipo+Status separadas, hora na Data quando houver. Criar = evento global `transactionCreated`; editar/excluir no ⋮.
+- **Removidos:** `DemoTransacoesPage`, `TransactionTable` (+teste), e a **tela/rota/aba Transferências** inteira (criar transferência = tipo dentro de "Nova transação"; ver = no extrato filtrando Tipo). `transferenciaService` reduzido a create/delete.
+- **Backend** (`TransacaoService.ListarAsync` + `TransacoesController` + `TransacaoDto`): params `apenasCaixa`, `meioPagamento`, `natureza` (entrada/saida/transferencia/fatura); DTO expõe `EhTransferencia`. `transactionService.ts` manda os params.
+- **Chrome do shell** mais denso: sidebar 208 / rail 64 **centralizado** (logo/ícones/avatar não deslizam ao colapsar), header 60, sidebar **colada na borda** (shell `padding-left:0`), user chip "PrimeiroNome · Free" + seta pra baixo, menu do usuário abre largura normal + fecha ao sair o mouse (`closeOnMouseLeave` no PontesPopover). Title 22 sem breadcrumb.
+- **LoginPage**: Ana Paula removida do fallback estático de contas DEV.
+
+**Pendências (fila) — 3 frentes grandes, UMA POR SESSÃO (detalhe no ROADMAP):**
+1. 🟠 **Conferência de caixa / consolidação** (spec `docs/features/conferencia-caixa/spec.md` atualizado com o **modelo de marco datável** do Gustavo) — resolve o "dado viajado" do saldo. **Atacar primeiro.**
+2. 🟡 **Forms de criar/editar em PÁGINA, não popup** (Gustavo odeia editar em modal).
+3. 🟡 **Migrar telas de lista reais restantes** (Recorrentes, Importação, Parcelamentos, Admin) — manual, uma a uma.
+
+**Outras pendências:** apagar 150 `PAGTESTE` da conta `verificacao.p1` (Postgres local); virar PR pra `main` quando validar; **investigar** se o service worker do PWA cacheia GET da API (dado financeiro velho quando a API cai — não confirmado).
 
 ---
 

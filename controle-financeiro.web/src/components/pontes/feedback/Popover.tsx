@@ -38,6 +38,8 @@ export type PontesPopoverProps = {
   direction?: "down" | "up"
   /** Trigger ocupa 100% da largura do pai. */
   fullWidth?: boolean
+  /** Fecha quando o mouse sai do menu (menu de hover, além de clique-fora/Esc). */
+  closeOnMouseLeave?: boolean
   /** Avisa quando abre/fecha — ex.: o trigger refletir `aria-expanded`. */
   onOpenChange?: (open: boolean) => void
 }
@@ -48,7 +50,7 @@ function focarDentro(el: HTMLElement | null) {
 }
 
 export function PontesPopover({
-  p, font, trigger, items, minWidth = 200, align = "left", direction = "down", fullWidth = false, onOpenChange,
+  p, font, trigger, items, minWidth = 200, align = "left", direction = "down", fullWidth = false, closeOnMouseLeave = false, onOpenChange,
 }: PontesPopoverProps) {
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number; width?: number } | null>(null)
@@ -165,6 +167,7 @@ export function PontesPopover({
           role="menu"
           className={styles.menu}
           onKeyDown={onMenuKeyDown}
+          onMouseLeave={closeOnMouseLeave ? () => setOpen(false) : undefined}
           style={{
             ...(scopedThemeVars(p, font) as CSSProperties),
             position: "fixed", top: coords.top, left: coords.left, right: "auto", bottom: "auto",

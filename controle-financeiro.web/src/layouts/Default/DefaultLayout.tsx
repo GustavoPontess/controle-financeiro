@@ -8,7 +8,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import {
-  LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
+  LayoutDashboard, Receipt, CreditCard, BarChart3, Repeat,
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
@@ -23,8 +23,8 @@ import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
 import { getCategories } from "../../services/categoryService"
 
-const DRAWER_WIDTH = 248
-const RAIL_WIDTH = 72
+const DRAWER_WIDTH = 208
+const RAIL_WIDTH = 64
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 
@@ -36,7 +36,6 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/transactions", label: "Transações", icon: <Receipt size={18} strokeWidth={2} /> },
   { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={18} strokeWidth={2} /> },
   { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
-  { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
   { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={18} strokeWidth={2} /> },
   { to: "/credit-cards/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
   { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },

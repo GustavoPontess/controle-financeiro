@@ -27,8 +27,11 @@
 .heroStatValue[data-tone="down"] { color: #FB7185; }
 .heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
 .heroStatDivider { width: 1px; background: rgba(255,255,255,0.22); }
+/* Bloco de fluxo (movimento do mês) — separado do saldo (patrimônio) de propósito. */
+.heroFluxo { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 340px; }
 @media (max-width: 720px) {
   .hero { gap: 20px; }
+  .heroFluxo { align-items: flex-start; max-width: none; width: 100%; }
   .heroStats { width: 100%; justify-content: space-between; }
   .heroStat { align-items: flex-start; }
 }

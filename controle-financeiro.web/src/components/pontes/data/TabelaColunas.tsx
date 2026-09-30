@@ -14,11 +14,15 @@ import styles from "./Tabela.module.css"
 export type PontesColunaToggle = { key: string; header: string }
 
 export function PontesTabelaColunas({
-  colunas, ocultas, onToggle,
+  colunas, ocultas, onToggle, onSalvar, onVoltarPadrao,
 }: {
   colunas: PontesColunaToggle[]
   ocultas: Set<string>
   onToggle: (key: string) => void
+  /** Salva a visão atual como padrão do usuário (persiste). Omitir esconde o botão. */
+  onSalvar?: () => void
+  /** Volta ao padrão original (mínimo) e apaga o salvo. */
+  onVoltarPadrao?: () => void
 }) {
   const [aberto, setAberto] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
@@ -75,6 +79,18 @@ export function PontesTabelaColunas({
           aria-label="Colunas"
           style={{ position: "fixed", top: coords.top, left: coords.left, transform: "translateX(-100%)" }}
         >
+          {(onSalvar || onVoltarPadrao) && (
+            <>
+              <div className={styles.colunasTitulo}>Padrão de exibição</div>
+              {onSalvar && (
+                <button type="button" className={styles.colunasAcao} data-primary="true" onClick={onSalvar}>Salvar padrão</button>
+              )}
+              {onVoltarPadrao && (
+                <button type="button" className={styles.colunasAcao} onClick={onVoltarPadrao}>Voltar ao padrão</button>
+              )}
+              <div className={styles.colunasSep} />
+            </>
+          )}
           <div className={styles.colunasTitulo}>Exibir colunas</div>
           {colunas.map((c, i) => {
             const visivel = !ocultas.has(c.key)

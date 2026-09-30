@@ -93,6 +93,41 @@ fazer), como outros apps financeiros oferecem no primeiro uso. **Não faz parte 
 registrado como item separado no ROADMAP (P3), porque depende de decisão de biblioteca/abordagem
 (ver nota lá) e o próprio Gustavo marcou como menos urgente que a conferência de caixa.
 
+## Evolução — modelo de "marco datável" (decisão do Gustavo, 2026-09-30)
+
+> Responde a pergunta em aberto de "Fora de escopo v1" (reconstrução de saldo histórico por data).
+> Nasceu da confusão real com a hero de Transações: saldo inicial **não** é "Entrou" (correto), mas
+> sem um ponto de referência datável a tela mostra "dado viajado" (ex.: Entrou R$0, Saiu R$8k, saldo
+> positivo) e o usuário não sabe se falta lançamento ou é bug.
+
+**Ideia:** o saldo inicial deixa de ser só o pontapé da criação da conta e vira um **marco** — um
+"saldo real **nesta data**" que o usuário pode cravar em **qualquer data** (retroativa ou não). O
+marco é o `SaldoConferencia`/`DataConferencia` da spec acima, só que tratado como **âncora temporal**:
+
+- **Do marco pra frente** (marco → hoje) os lançamentos **têm que reconciliar**: `marco +
+  Σ(entradas caixa) − Σ(saídas caixa) = saldo atual`. Se não bater, faltou/sobrou lançamento.
+- **Do marco pra trás = "fds"** — o usuário não precisa lançar retroativo infinito até o 1º dia da
+  conta; o marco é o piso. (Quem quiser histórico mais antigo crava um marco mais antigo.)
+- **Onboarding:** conta nova → usuário registra o saldo de **hoje** como o 1º marco; tudo pra frente
+  é normal. Se ele quiser ver o mês, crava um marco retroativo (ex.: 1º do mês) com o saldo daquele
+  dia e lança dali pra frente.
+- **Aviso de consolidação:** ao lançar algo **retroativo** (data anterior ao último marco, ou que
+  quebra a janela marco→hoje), o app **avisa que os dados precisam ser consolidados** e mostra
+  **como** (cravar um novo marco naquela data / conferir o saldo / lançar o que falta). Informativo,
+  não bloqueia.
+- **Indicador na tela** (Transações/Bancos): "confere até dd/mm" quando há marco recente; "não
+  conferido — pode não bater com seu banco" quando não há.
+
+**Impacto técnico (a decidir no início da frente):** a reconciliação marco→hoje exige **somar
+transações por data de corte** (reconstrução de saldo histórico), que a spec v1 tinha adiado — é a
+parte mais pesada. Decidir no MVP: (a) só o indicador + aviso (sem reconstrução real, compara saldo
+total como hoje), ou (b) reconstrução por data de verdade (soma até a `DataConferencia`). Segurança:
+é dado financeiro — validar dono da conta, isolamento por `UsuarioId`, idempotência nas mutações.
+
+**Relação com o front atual:** a hero de Transações hoje já é honesta (saldo em conta = soma real
+das contas; Entrou/Saiu = fluxo de caixa, crédito fora). O "fechar de verdade" (marco + reconciliação)
+é esta feature. Enquanto ela não existe, a hero não mente — só não reconcilia o saldo inicial.
+
 ## Referências
 
 - [A Guide to Reconciling Accounts in YNAB](https://support.ynab.com/en_us/reconciling-accounts-a-guide-BJFE3fHys) — fluxo "Looks Good"/"Let's Fix It", inspiração do modo certinho × ajuste automático.

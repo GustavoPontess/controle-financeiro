@@ -45,6 +45,7 @@ export default function DemoEmprestimosPage() {
     <>
       <div className={styles.aviso}>Tela de teste FUNCIONAL — Empréstimos no padrão novo. Cria, quita, arquiva e exclui de verdade (mesmos dados de /emprestimos).</div>
       <PontesTabela
+        id="demo-emprestimos"
         titulo="Empréstimos"
         descricao="Dinheiro que você emprestou ou pegou emprestado"
         acao={{ label: "Novo empréstimo", onClick: l.openCreate }}

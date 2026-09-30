@@ -4,10 +4,13 @@
  */
 import { formatMoney } from "@/utils/money"
 
+// `coluna` (opcional): key da coluna que o filtro depende. Se essa coluna estiver
+// oculta, o filtro some junto — filtros aparecem conforme as colunas visíveis.
+// Sem `coluna`, o filtro aparece sempre (ex.: Conta, que não tem coluna própria).
 export type PontesFiltroAvancado =
-  | { tipo: "select"; id: string; label: string; value: string; neutro?: string; opcoes: { value: string; label: string }[]; onChange: (v: string) => void }
-  | { tipo: "faixaValor"; id: string; label: string; min?: number; max?: number; onChange: (min?: number, max?: number) => void }
-  | { tipo: "faixaData"; id: string; label: string; de?: string; ate?: string; onChange: (de?: string, ate?: string) => void }
+  | { tipo: "select"; id: string; label: string; value: string; neutro?: string; coluna?: string; opcoes: { value: string; label: string }[]; onChange: (v: string) => void }
+  | { tipo: "faixaValor"; id: string; label: string; coluna?: string; min?: number; max?: number; onChange: (min?: number, max?: number) => void }
+  | { tipo: "faixaData"; id: string; label: string; coluna?: string; de?: string; ate?: string; onChange: (de?: string, ate?: string) => void }
 
 export type PontesTabelaTag = { label: string; onRemover: () => void }
 
