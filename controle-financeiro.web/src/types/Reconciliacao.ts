@@ -10,6 +10,8 @@ export interface ReconciliacaoMarco {
   /** 1 = Baseline, 2 = Verificação. */
   tipo: number
   temAjuste: boolean
+  /** Marco derivado do saldo inicial da conta — não é removível (pra mudar, edita a conta). */
+  derivado?: boolean
   observacao?: string
   criadoEm: string
 }

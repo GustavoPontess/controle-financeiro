@@ -117,6 +117,17 @@ public class ReconciliacaoServiceTests
         return t;
     }
 
+    /// <summary>Lançamento de saldo inicial como o <c>ContaService.CriarAsync</c> grava (Receita, EhSaldoInicial).</summary>
+    private static async Task<Transacao> AddSaldoInicial(
+        AppDbContext ctx, Guid contaId, decimal valor, DateTime data, bool ativo = true)
+    {
+        var t = await AddTransacao(ctx, contaId, TipoTransacao.Receita, valor, data, ativo: ativo);
+        t.Descricao = "Saldo Inicial";
+        t.EhSaldoInicial = true;
+        await ctx.SaveChangesAsync();
+        return t;
+    }
+
     private static CriarMarcoReconciliacaoDto Dto(
         Guid contaId, decimal declarado, int tipo = Verificacao, DateTime? dataHora = null,
         string? resolucao = null, string? observacao = null) => new()
@@ -1457,5 +1468,252 @@ public class ReconciliacaoServiceTests
         Assert.Equal(1000m, evento.ValorAntes);
         Assert.Equal(700m, evento.ValorDepois);
         Assert.Equal(700m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0)); // saldo intocado
+    }
+
+    // ── ListarAsync — baseline DERIVADO do saldo inicial da conta ────────────
+
+    [Fact]
+    public async Task Listar_ContaComSaldoInicialESemMarcos_ExpoeOSaldoInicialComoBaselineDerivado()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var dataInicial = T0.AddDays(-30);
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1500.75m, dataInicial);
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        var item = Assert.Single(lista);
+        Assert.True(item.Derivado);
+        Assert.Equal(Baseline, item.Tipo);
+        Assert.Equal(inicial.Id, item.Id); // o id é o da transação de saldo inicial
+        Assert.Equal(conta.Id, item.ContaId);
+        Assert.Equal(dataInicial, item.DataHora);
+        Assert.Equal(1500.75m, item.SaldoDeclarado);
+        Assert.Equal(1500.75m, item.SaldoCalculado);
+        Assert.Equal(0m, item.Diferenca);
+        Assert.False(item.TemAjuste);
+        Assert.Equal("Saldo inicial da conta", item.Observacao);
+        Assert.Equal(inicial.CriadoEm, item.CriadoEm);
+    }
+
+    [Fact]
+    public async Task Listar_BaselineDerivado_ESinteticoNaoGravaMarcoNemAuditaNada()
+    {
+        // Listar é leitura: o derivado existe só na resposta — não vira linha em ReconciliacoesSaldo.
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30));
+
+        var primeira = await service.ListarAsync(usuarioId, conta.Id);
+        var segunda = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Equal(primeira.Single().Id, segunda.Single().Id); // estável entre chamadas
+        Assert.Empty(await ctx.ReconciliacoesSaldo.ToListAsync());
+        Assert.Empty(await ctx.FinancialEventLogs.ToListAsync());
+        Assert.Empty(await ctx.RegistrosIdempotencia.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Listar_SaldoInicialMaisVerificacaoReal_RetornaOsDois_DerivadoESoOBaseline()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1500m, T0.AddDays(-30));
+        var real = await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 1500m, Verificacao, T0), Chave());
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Equal(2, lista.Count);
+        var derivado = Assert.Single(lista, m => m.Derivado);
+        var marcoReal = Assert.Single(lista, m => !m.Derivado);
+        Assert.Equal(inicial.Id, derivado.Id);
+        Assert.Equal(Baseline, derivado.Tipo);
+        Assert.Equal(1500m, derivado.SaldoDeclarado);
+        Assert.Equal(real.Id, marcoReal.Id);
+        Assert.Equal(Verificacao, marcoReal.Tipo);
+        Assert.False(marcoReal.Derivado);
+    }
+
+    [Fact]
+    public async Task Listar_ComDerivado_OrdenaTudoPorDataHoraDescendente()
+    {
+        // O derivado entra no MEIO da ordenação pela data dele, não fica sempre no fim nem no começo.
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30));
+        var maisRecente = NovoMarco(usuarioId, conta.Id, T0);
+        var maisAntigo = NovoMarco(usuarioId, conta.Id, T0.AddDays(-60)); // verificação anterior ao saldo inicial
+        ctx.ReconciliacoesSaldo.AddRange(maisAntigo, maisRecente);
+        await ctx.SaveChangesAsync();
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Equal(new[] { maisRecente.Id, inicial.Id, maisAntigo.Id }, lista.Select(m => m.Id).ToArray());
+    }
+
+    [Theory]
+    [InlineData(1000)] // bate com o saldo inicial → baseline real sem ajuste
+    [InlineData(1500)] // diferente → baseline real com ajuste
+    public async Task Listar_ComBaselineReal_NaoAdicionaODerivado_OMarcoRealManda(int declarado)
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-10));
+        var real = await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, declarado, Baseline, T0), Chave());
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        var item = Assert.Single(lista);
+        Assert.Equal(real.Id, item.Id);
+        Assert.False(item.Derivado);
+        Assert.Equal(Baseline, item.Tipo);
+        Assert.DoesNotContain(lista, m => m.Derivado);
+        Assert.DoesNotContain(lista, m => m.Id == inicial.Id);
+    }
+
+    [Fact]
+    public async Task Listar_BaselineRealRemovido_OSaldoInicialVoltaComoDerivado()
+    {
+        // Só baseline ATIVO suprime o derivado: removendo o real, o ponto de partida volta a ser o saldo inicial.
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-10));
+        var real = await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 1500m, Baseline, T0), Chave());
+        Assert.False(Assert.Single(await service.ListarAsync(usuarioId, conta.Id)).Derivado);
+
+        await service.RemoverAsync(usuarioId, real.Id);
+
+        var item = Assert.Single(await service.ListarAsync(usuarioId, conta.Id));
+        Assert.True(item.Derivado);
+        Assert.Equal(inicial.Id, item.Id);
+    }
+
+    [Fact]
+    public async Task Listar_BaselineRealDeOutraContaDoMesmoUsuario_NaoSuprimeODerivadoDestaConta()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var outraConta = NovaConta(ctx, usuarioId, "Poupança");
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-10));
+        await service.CriarMarcoAsync(usuarioId, Dto(outraConta.Id, 50m, Baseline, T0), Chave());
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        var item = Assert.Single(lista);
+        Assert.True(item.Derivado);
+        Assert.Equal(inicial.Id, item.Id);
+    }
+
+    [Fact]
+    public async Task Listar_ContaSemSaldoInicialESemMarcos_RetornaVazia_TransacaoComumNaoViraDerivado()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 500m, T0.AddDays(-5)); // receita comum, não é saldo inicial
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Empty(lista);
+    }
+
+    [Fact]
+    public async Task Listar_VerificacaoRealSemSaldoInicial_RetornaSoOReal_SemDerivado()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var real = await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 0m, Verificacao, T0), Chave());
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        var item = Assert.Single(lista);
+        Assert.Equal(real.Id, item.Id);
+        Assert.False(item.Derivado);
+    }
+
+    [Fact]
+    public async Task Listar_SaldoInicialCancelado_NaoViraDerivado()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30), ativo: false);
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Empty(lista);
+    }
+
+    [Fact]
+    public async Task Listar_MaisDeUmSaldoInicial_UsaOMaisAntigoPorData()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var maisNovo = await AddSaldoInicial(ctx, conta.Id, 999m, T0.AddDays(-5));
+        var maisAntigo = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30));
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        var item = Assert.Single(lista); // um derivado só
+        Assert.Equal(maisAntigo.Id, item.Id);
+        Assert.Equal(1000m, item.SaldoDeclarado);
+        Assert.NotEqual(maisNovo.Id, item.Id);
+    }
+
+    [Fact]
+    public async Task Listar_SaldoInicialDeOutraContaOuUsuario_NaoViraBaselineDerivadoNaMinhaLista()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var minhaOutraConta = NovaConta(ctx, usuarioId, "Poupança");
+        var outroUsuarioId = Guid.NewGuid();
+        var contaAlheia = NovaConta(ctx, outroUsuarioId, "Conta alheia");
+        await AddSaldoInicial(ctx, minhaOutraConta.Id, 111m, T0.AddDays(-5));
+        await AddSaldoInicial(ctx, contaAlheia.Id, 222m, T0.AddDays(-5));
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Empty(lista); // a minha conta não tem saldo inicial; os outros dois não vazam pra cá
+
+        // E cada conta enxerga só o seu próprio saldo inicial.
+        var daOutra = Assert.Single(await service.ListarAsync(usuarioId, minhaOutraConta.Id));
+        Assert.Equal(111m, daOutra.SaldoDeclarado);
+        Assert.Equal(minhaOutraConta.Id, daOutra.ContaId);
+        var daAlheia = Assert.Single(await service.ListarAsync(outroUsuarioId, contaAlheia.Id));
+        Assert.Equal(222m, daAlheia.SaldoDeclarado);
+    }
+
+    [Fact]
+    public async Task Listar_ContaDeOutroUsuarioComSaldoInicial_LancaKeyNotFound_SemVazarODerivado()
+    {
+        // IDOR: o atacante lista a conta da vítima; o saldo inicial (dado sensível) não pode voltar.
+        var (ctx, service, _, contaVitima) = Seed();
+        await AddSaldoInicial(ctx, contaVitima.Id, 50000m, T0.AddDays(-30));
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.ListarAsync(Guid.NewGuid(), contaVitima.Id));
+    }
+
+    [Fact]
+    public async Task Remover_ComOIdDoBaselineDerivado_LancaKeyNotFound_ENaoCancelaOSaldoInicial()
+    {
+        // O derivado reaproveita o id da transação de saldo inicial. Mandar esse id pra remover o "marco"
+        // não pode cancelar o saldo inicial da conta (mudaria o saldo) — o derivado não é removível.
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30));
+        var derivado = Assert.Single(await service.ListarAsync(usuarioId, conta.Id));
+        Assert.Equal(inicial.Id, derivado.Id);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.RemoverAsync(usuarioId, derivado.Id));
+
+        var inicialDb = await ctx.Transacoes.AsNoTracking().SingleAsync(t => t.Id == inicial.Id);
+        Assert.True(inicialDb.Ativo);
+        Assert.Null(inicialDb.CanceladoEm);
+        Assert.Equal(1000m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+        Assert.Empty(await ctx.FinancialEventLogs.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Listar_MarcosReaisSempreTemDerivadoFalso()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        var inicial = await AddSaldoInicial(ctx, conta.Id, 1000m, T0.AddDays(-30));
+        ctx.ReconciliacoesSaldo.Add(NovoMarco(usuarioId, conta.Id, T0)); // real semeado direto
+        await ctx.SaveChangesAsync();
+        await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 1000m, Verificacao, T0.AddDays(-1)), Chave()); // real via service
+
+        var lista = await service.ListarAsync(usuarioId, conta.Id);
+
+        Assert.Equal(3, lista.Count); // 2 reais + o derivado
+        Assert.Equal(inicial.Id, Assert.Single(lista, m => m.Derivado).Id);
+        var reais = lista.Where(m => m.Id != inicial.Id).ToList();
+        Assert.Equal(2, reais.Count);
+        Assert.All(reais, m => Assert.False(m.Derivado));
     }
 }

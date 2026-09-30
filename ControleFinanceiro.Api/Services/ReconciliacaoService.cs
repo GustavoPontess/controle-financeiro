@@ -65,7 +65,37 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
             .OrderByDescending(r => r.DataHora)
             .ThenByDescending(r => r.CriadoEm)
             .ToListAsync();
-        return marcos.Select(ToDto).ToList();
+        var dtos = marcos.Select(ToDto).ToList();
+
+        // Saldo inicial da conta = o baseline. Se ainda não há um marco baseline real, expõe o saldo
+        // inicial como um marco DERIVADO (não removível) — pra o calendário/"confere até" refletirem o
+        // ponto de partida que o usuário já definiu ao criar a conta.
+        if (!dtos.Any(d => d.Tipo == (int)TipoMarcoReconciliacao.Baseline))
+        {
+            var inicial = await _context.Transacoes
+                .Where(t => t.ContaId == contaId && t.EhSaldoInicial && t.Ativo
+                            && t.StatusTransacao == StatusTransacao.Executado
+                            && t.Conta!.UsuarioIdProprietario == usuarioId)
+                .OrderBy(t => t.Data)
+                .FirstOrDefaultAsync();
+            if (inicial != null)
+                dtos.Add(new ReconciliacaoSaldoDto
+                {
+                    Id = inicial.Id,
+                    ContaId = contaId,
+                    DataHora = inicial.Data,
+                    SaldoDeclarado = inicial.Valor,
+                    SaldoCalculado = inicial.Valor,
+                    Diferenca = 0m,
+                    Tipo = (int)TipoMarcoReconciliacao.Baseline,
+                    TemAjuste = false,
+                    Derivado = true,
+                    Observacao = "Saldo inicial da conta",
+                    CriadoEm = inicial.CriadoEm,
+                });
+        }
+
+        return dtos.OrderByDescending(d => d.DataHora).ToList();
     }
 
     /// <summary>

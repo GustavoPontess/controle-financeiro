@@ -114,6 +114,20 @@ export default function ReconciliacaoPage() {
     }
   }
 
+  // Ao abrir / trocar de conta: já começa conferindo HOJE (painel nunca nasce vazio). Calcula SEMPRE
+  // aqui (não via selecionarDia) — na troca de conta o marcoPorDia ainda tem os marcos da conta
+  // anterior, então decidir por ele pularia o cálculo (bug: painel de hoje ficava sem o calculado).
+  useEffect(() => {
+    if (!contaId) return
+    const iso = dataLocalISO()
+    setDiaSel(iso); setSaldoReal(""); setIdemKey(crypto.randomUUID())
+    let vivo = true
+    getSaldoCalculado(contaId, combinarDataHora(iso, horaLocalHHMM()))
+      .then((v) => { if (vivo) setCalculado(v) })
+      .catch(() => { if (vivo) notify({ open: true, message: "Erro ao calcular o saldo de hoje", severity: "error" }) })
+    return () => { vivo = false }
+  }, [contaId, notify])
+
   const declarado = parseMoney(saldoReal)
   const diferenca = calculado != null ? declarado - calculado : 0
   const bate = calculado != null && Math.abs(diferenca) < 0.005
@@ -146,28 +160,30 @@ export default function ReconciliacaoPage() {
 
   return (
     <div className={styles.wrap}>
-      {/* Sem título de página — o header já mostra "Reconciliação". Começa no banner. */}
+      {/* Sem título de página (o header já mostra). Hero grande em destaque; seletor de conta abaixo. */}
       <div className={styles.hero}>
         <div className={styles.heroBlob} />
         <div className={styles.heroMain}>
           <div className={styles.heroLabel}>Saldo em conta</div>
           <div className={styles.heroValor}>{formatMoney(saldoAtual)}</div>
         </div>
-        <div className={styles.heroRight}>
-          <div className={styles.heroConta}>
-            <PontesSelect
-              value={contaId}
-              onChange={(v) => { setContaId(v); setDiaSel(null); setSaldoReal(""); setCalculado(null) }}
-              options={contas.map((c) => ({ value: c.id, label: c.nome }))}
-            />
+        <div className={styles.heroConfere}>
+          <span className={styles.heroConfereIcone} aria-hidden><Check size={16} strokeWidth={3} /></span>
+          <div>
+            <div className={styles.heroConfereLabel}>Confere até</div>
+            <div className={styles.heroConfereData}>{ultimoMarco ? fmtDataHora(ultimoMarco.dataHora) : "nenhuma conferência ainda"}</div>
           </div>
-          <div className={styles.heroConfere}>
-            <span className={styles.heroConfereIcone} aria-hidden><Check size={14} strokeWidth={3} /></span>
-            <div>
-              <div className={styles.heroConfereLabel}>Confere até</div>
-              <div className={styles.heroConfereData}>{ultimoMarco ? fmtDataHora(ultimoMarco.dataHora) : "nenhuma conferência ainda"}</div>
-            </div>
-          </div>
+        </div>
+      </div>
+
+      {/* Seletor de conta abaixo do hero (fora do banner). */}
+      <div className={styles.toolbar}>
+        <div className={styles.contaSel}>
+          <PontesSelect
+            value={contaId}
+            onChange={(v) => { setContaId(v); setDiaSel(null); setSaldoReal(""); setCalculado(null) }}
+            options={contas.map((c) => ({ value: c.id, label: c.nome }))}
+          />
         </div>
       </div>
 
@@ -232,7 +248,9 @@ export default function ReconciliacaoPage() {
                   <strong className={marcoDoDiaSel.diferenca === 0 ? styles.difOk : styles.difNok}>{marcoDoDiaSel.diferenca > 0 ? "+" : ""}{formatMoney(marcoDoDiaSel.diferenca)}</strong>
                 </div>
                 {marcoDoDiaSel.temAjuste && <div className={styles.tag}>lançamento de ajuste criado</div>}
-                <PontesButton variant="outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(marcoDoDiaSel)}>Remover marco</PontesButton>
+                {marcoDoDiaSel.derivado
+                  ? <div className={styles.notaDerivado}>Saldo inicial da conta — pra mudar, edite a conta.</div>
+                  : <PontesButton variant="outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(marcoDoDiaSel)}>Remover marco</PontesButton>}
               </div>
             </>
           )}

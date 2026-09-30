@@ -14,6 +14,9 @@ public class ReconciliacaoSaldoDto
     public int Tipo { get; init; }
     /// <summary>Houve lançamento de ajuste pra fechar a diferença.</summary>
     public bool TemAjuste { get; init; }
+    /// <summary>Marco DERIVADO (sintético) do saldo inicial da conta — não é um registro removível;
+    /// pra mudar, edita-se o saldo inicial da conta. Baseline padrão quando ainda não há marco real.</summary>
+    public bool Derivado { get; init; }
     public string? Observacao { get; init; }
     public DateTime CriadoEm { get; init; }
 }
