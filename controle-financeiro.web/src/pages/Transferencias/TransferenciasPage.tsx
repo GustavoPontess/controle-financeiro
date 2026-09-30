@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
-import { Plus, Trash2, ArrowLeftRight, SearchX } from "lucide-react"
+import { Trash2, ArrowLeftRight } from "lucide-react"
 import {
-  PontesButton, PontesCard, PontesBadge,
-  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect, PontesEmptyState,
-  PontesPageHeader, PontesToolbar, PontesRowActions, PontesSkeletonList,
+  PontesButton, PontesBadge,
+  PontesModal, PontesDialog, PontesField, PontesInput, PontesDateInput, PontesSelect,
   PontesTablePagination, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesTabela, PontesCelulaIdentidade, type PontesTabelaColuna, type PontesTabelaTag,
 } from "@/components/pontes"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { listTransferenciasPage, createTransferencia, deleteTransferencia } from "../../services/transferenciaService"
@@ -63,11 +63,16 @@ export default function TransferenciasPage() {
   const [carregandoLista, setCarregandoLista] = useState(true)
 
   // Busca SERVER-SIDE (a lista é paginada): debounce = 1 request por pausa, não por tecla.
-  // Transferência não "acaba", então não há seletor de situação — só a busca.
   const [busca, setBuscaState] = useState("")
   const buscaDebounced = useDebouncedValue(busca.trim())
   const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
   const limparBusca = () => setBusca("")
+
+  // Filtros avançados (server-side), conforme o dado da tela: faixa de valor + período.
+  const [valorMin, setValorMin] = useState<number>()
+  const [valorMax, setValorMax] = useState<number>()
+  const [de, setDe] = useState<string>()
+  const [ate, setAte] = useState<string>()
 
   // Contas só alimentam o modal de criar — 1x na montagem.
   useEffect(() => {
@@ -87,9 +92,9 @@ export default function TransferenciasPage() {
   // Lista paginada NO SERVIDOR. `vivo` descarta resposta velha (busca trocada no meio).
   useEffect(() => {
     let vivo = true
-    const chave = `${page}|${pageSize}|${buscaDebounced}`
+    const chave = `${page}|${pageSize}|${buscaDebounced}|${valorMin}|${valorMax}|${de}|${ate}`
     if (chave !== chaveListaRef.current) { chaveListaRef.current = chave; setCarregandoLista(true) }
-    listTransferenciasPage(page, pageSize, buscaDebounced)
+    listTransferenciasPage(page, pageSize, buscaDebounced, { valorMin, valorMax, from: de, to: ate })
       .then((result) => {
         if (!vivo) return
         // Página além do fim (ex.: excluiu o último item da última página) → volta pra última
@@ -108,7 +113,7 @@ export default function TransferenciasPage() {
         setCarregandoLista(false)
       })
     return () => { vivo = false }
-  }, [notify, page, pageSize, buscaDebounced, versao])
+  }, [notify, page, pageSize, buscaDebounced, valorMin, valorMax, de, ate, versao])
 
   const clearErr = (k: keyof Errors) => setErrors((p) => ({ ...p, [k]: undefined }))
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -155,12 +160,6 @@ export default function TransferenciasPage() {
     } finally { setDelId(null) }
   }
 
-  const botaoCriar = (
-    <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
-      Nova transferência
-    </PontesButton>
-  )
-
   const optsOrigem = contas
     .filter((c) => c.id !== form.contaDestinoId)
     .map((c) => ({ value: c.id, label: c.nome }))
@@ -168,67 +167,65 @@ export default function TransferenciasPage() {
     .filter((c) => c.id !== form.contaOrigemId)
     .map((c) => ({ value: c.id, label: c.nome }))
 
+  // Colunas: identidade (ícone + descrição), rota (origem → destino), data e valor (numérica).
+  const colunas: PontesTabelaColuna<Transferencia>[] = [
+    {
+      key: "desc", header: "Transferência",
+      render: (t) => <PontesCelulaIdentidade icone={<ArrowLeftRight size={17} strokeWidth={2.2} />} tom="neutro" nome={t.descricao || "Transferência"} />,
+    },
+    {
+      key: "rota", header: "Rota",
+      render: (t) => (
+        <span className={styles.rota}>
+          <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
+          <ArrowLeftRight size={12} className={styles.routeArrow} />
+          <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
+        </span>
+      ),
+    },
+    { key: "data", header: "Data", render: (t) => formatDate(t.data) },
+    { key: "valor", header: "Valor", numerica: true, render: (t) => formatMoney(t.valor) },
+  ]
+
+  const tags: PontesTabelaTag[] = []
+  if (busca.trim()) tags.push({ label: `Busca: "${busca.trim()}"`, onRemover: limparBusca })
+
+  // "Nada encontrado" quando QUALQUER filtro está ativo (busca ou avançados), não só a busca.
+  const algumFiltro = busca.trim() !== "" || valorMin != null || valorMax != null || !!de || !!ate
+
   return (
-    <div className={styles.root}>
-      <PontesPageHeader titulo="Transferências" descricao="Mova dinheiro entre suas contas" actionLabel="Nova transferência" onAction={openCreate} />
-
-      <PontesToolbar
-        search={{ value: busca, onChange: setBusca, placeholder: "Buscar transferência…", ariaLabel: "Buscar transferência" }}
-      />
-
-      {carregandoLista ? (
-        <PontesSkeletonList rows={4} />
-      ) : transferencias.length === 0 ? (
-        buscaDebounced || busca.trim() ? (
-          <PontesEmptyState
-            icon={<SearchX size={28} strokeWidth={2.5} />}
-            title="Nada encontrado"
-            actions={<PontesButton variant="outline" size="sm" onClick={limparBusca}>Limpar filtros</PontesButton>}
-          />
-        ) : (
-          <PontesEmptyState
-            icon={<ArrowLeftRight size={28} strokeWidth={2.5} />}
-            title="Nenhuma transferência ainda"
-            actions={botaoCriar}
-          />
-        )
-      ) : (
-        <PontesCard padding={0} radius={16}>
-          <ul className={styles.list}>
-            {transferencias.map((t) => (
-              <li key={t.id} className={styles.item}>
-                <div className={styles.itemLeft}>
-                  <div className={styles.itemIcon}><ArrowLeftRight size={16} strokeWidth={2.5} /></div>
-                  <div className={styles.itemMeta}>
-                    <span className={styles.itemDesc}>{t.descricao || "Transferência"}</span>
-                    <div className={styles.itemRoute}>
-                      <PontesBadge tone="danger" size="sm">{t.contaOrigemNome}</PontesBadge>
-                      <ArrowLeftRight size={12} className={styles.routeArrow} />
-                      <PontesBadge tone="success" size="sm">{t.contaDestinoNome}</PontesBadge>
-                      <span className={styles.itemDate}>{formatDate(t.data)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.itemRight}>
-                  <span className={styles.itemValue}>{formatMoney(t.valor)}</span>
-                  <PontesRowActions
-                    actions={[{
-                      key: "excluir", label: "Excluir", danger: true,
-                      icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setDelId(t.id),
-                    }]}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+    <>
+      <PontesTabela
+        titulo="Transferências"
+        descricao="Mova dinheiro entre suas contas"
+        acao={{ label: "Nova transferência", onClick: openCreate }}
+        busca={{ value: busca, onChange: setBusca, placeholder: "Buscar transferência…", ariaLabel: "Buscar transferência" }}
+        filtrosAvancados={[
+          { tipo: "faixaValor", id: "valor", label: "Valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx); setPage(1) } },
+          { tipo: "faixaData", id: "periodo", label: "Período", de, ate, onChange: (d, a) => { setDe(d); setAte(a); setPage(1) } },
+        ]}
+        tags={tags}
+        colunas={colunas}
+        itens={transferencias}
+        chave={(t) => t.id}
+        acoes={(t) => [
+          { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setDelId(t.id) },
+        ]}
+        carregando={carregandoLista}
+        vazio={{
+          icone: <ArrowLeftRight size={28} strokeWidth={2.5} />,
+          titulo: algumFiltro ? "Nada encontrado" : "Nenhuma transferência ainda",
+          descricao: algumFiltro ? "Nada bate com os filtros." : "Mova dinheiro entre suas contas registrando a primeira.",
+        }}
+        paginacao={
           <PontesTablePagination
             total={total} page={page} pageSize={pageSize}
             onPageChange={setPage}
             onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
             itemLabel="transferências" itemLabelSingular="transferência"
           />
-        </PontesCard>
-      )}
+        }
+      />
 
       <PontesModal
         open={dialogOpen}
@@ -295,6 +292,6 @@ export default function TransferenciasPage() {
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}
       />
-    </div>
+    </>
   )
 }

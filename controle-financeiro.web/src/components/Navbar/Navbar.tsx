@@ -37,6 +37,8 @@ type Props = {
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/transactions": "Transações",
+  "/demo-transacoes": "Demo Transações",
+  "/demo-emprestimos": "Demo Empréstimos",
   "/credit-cards": "Cartões de Crédito",
   "/credit-cards/parcelamentos": "Parcelamentos",
   "/reports": "Relatórios",

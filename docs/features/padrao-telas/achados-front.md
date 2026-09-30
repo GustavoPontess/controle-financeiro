@@ -1,25 +1,10 @@
 ---
 owner: Gustavo
 last_reviewed: 2026-09-28
-status: PADRÃO VALIDADO (branch exp/consistencia-front) — aplicar nas telas reais
+status: A CORRIGIR (branch exp/consistencia-front)
 ---
 
 # Achados do front — inconsistências e erros a corrigir
-
-## ✅ Padrão validado pelo Gustavo (2026-09-28)
-
-Aprovou o padrão nas demos **funcionais** `/demo-emprestimos` e `/demo-transacoes` ("gostei muito, ficaram clean").
-É ESTE o alvo pra toda tela de lista/tabela. Código de referência: `src/pages/DemoPadrao/` (`TabelaPadrao.tsx` + `DemoPadrao.module.css`; as duas demos usam o MESMO componente → saem idênticas).
-
-**Anatomia da tela (de cima pra baixo):**
-1. `PontesPageHeader titulo=… descricao=…` + botão primário à direita.
-2. Resumo em `PontesStatCard` (3 números, mesma linha) — **não** o hero azulão só de uma tela; igual nas duas.
-3. Faixa de filtro: `PontesToolbar` (busca) à esquerda + `PontesSegmented` à direita, sempre nessa ordem.
-4. Tags do filtro ativo (chips com ×) logo abaixo, dentro do cartão da tabela.
-5. Tabela: 1ª coluna "identidade" (ícone colorido + nome + sub), colunas do meio, status como `PontesBadge`, **dinheiro à direita tabular**, e as ações SEMPRE no **⋮** (última coluna). Linha clicável abre o detalhe.
-6. Paginação no rodapé do cartão (`PontesTablePagination`), no servidor.
-
-**Próximo passo:** promover o `TabelaPadrao` pra dentro do DS (`src/components/pontes`) e migrar as telas reais uma a uma usando ele (assim ficam iguais de verdade, não cópias). As telas fora de tabela (cards: Contas/Metas/Limites/Famílias) ganham o equivalente em card depois.
 
 Recuperado da sessão de 2026-09-28 (o experimento do molde genérico foi abandonado; estes achados
 sobreviveram). **Regra desta rodada:** padronizar os DETALHES sem mexer no visual bonito das telas —

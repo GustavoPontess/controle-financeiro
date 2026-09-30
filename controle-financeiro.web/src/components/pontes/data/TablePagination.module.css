@@ -2,43 +2,48 @@
 
 .wrap {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
-  padding: 12px 20px;
-  background: var(--pontes-bg);
+  gap: 12px 16px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--pontes-surface);
   border-top: 1px solid var(--pontes-border);
   font-family: var(--pontes-font);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--pontes-text-muted);
 }
 
 .sizeGroup { display: flex; align-items: center; gap: 8px; }
-.sizeLabel { font-size: 12px; color: var(--pontes-text-muted); }
-/* PontesSelect default ocupa 100% — caixinha compacta pra page-size. */
-.sizeSelect { width: 84px; }
+.sizeLabel { font-size: 13px; color: var(--pontes-text-muted); }
+/* PontesSelect default ocupa 100% — caixinha compacta (mesma altura dos botões da paginação). */
+.sizeSelect { width: 72px; }
+.sizeSelect :global(button) { min-height: 30px; height: 30px; padding: 0 10px; font-size: 13px; }
 
-.range { font-size: 12px; color: var(--pontes-text-muted); text-align: center; flex: 1 1 auto; }
+.range { font-size: 13px; color: var(--pontes-text-muted); text-align: center; flex: 1 1 auto; }
 
-.nav { display: flex; align-items: center; gap: 6px; }
+.nav { display: flex; align-items: center; gap: 4px; }
 
+/* Chevrons minimalistas, iguais aos números (sem caixa). */
 .navBtn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border: 1px solid var(--pontes-border);
-  border-radius: 8px;
-  background: var(--pontes-surface);
+  width: 30px; height: 30px;
+  border: none; border-radius: 8px;
+  background: transparent;
   color: var(--pontes-text);
   cursor: pointer;
-  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+  transition: background-color .15s ease, color .15s ease;
 }
-.navBtn:hover:not(:disabled) {
-  background: var(--pontes-primary-soft);
-  border-color: var(--pontes-primary);
-  color: var(--pontes-primary);
-}
+.navBtn:hover:not(:disabled) { background: var(--pontes-bg); }
 .navBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.pageInfo {
-  font-size: 12px; font-weight: 600; color: var(--pontes-text);
-  min-width: 56px; text-align: center;
+/* Botões numerados (pula pra qualquer página) — minimalistas; ativo preenchido na cor primária. */
+.pageBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 6px;
+  border: none; border-radius: 8px;
+  background: transparent; color: var(--pontes-text);
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
 }
-.pageOf { font-weight: 400; color: var(--pontes-text-muted); }
+.pageBtn:hover { background: var(--pontes-bg); }
+.pageBtn[data-active="true"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
+.ellipse { color: var(--pontes-text-muted); padding: 0 2px; }

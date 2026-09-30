@@ -34,10 +34,12 @@ public class TransferenciasController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<TransferenciaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? busca = null)
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? busca = null,
+        [FromQuery] decimal? valorMin = null, [FromQuery] decimal? valorMax = null,
+        [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
     {
         var usuarioId = GetUserId();
-        var resultado = await _service.ListarAsync(usuarioId, page, pageSize, busca);
+        var resultado = await _service.ListarAsync(usuarioId, page, pageSize, busca, valorMin, valorMax, from, to);
         return Ok(resultado);
     }
 

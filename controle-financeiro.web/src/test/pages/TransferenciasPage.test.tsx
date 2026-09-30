@@ -58,14 +58,13 @@ describe("TransferenciasPage (#151)", () => {
     renderPage()
     expect(await screen.findByText("Reserva")).toBeInTheDocument()
     expect(screen.getByText(/R\$\s?500,00/)).toBeInTheDocument()
-    expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "")
+    expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "", expect.objectContaining({}))
   })
 
-  it("cabeçalho: nome da tela + descrição, botão 'Nova transferência' no topo, sem seletor de situação", async () => {
+  it("cabeçalho: nome da tabela + botão 'Nova transferência', sem seletor de situação", async () => {
     renderPage()
     await screen.findByText("Reserva")
     expect(screen.getByRole("heading", { level: 1, name: "Transferências" })).toBeInTheDocument()
-    expect(screen.getByText("Mova dinheiro entre suas contas")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Nova transferência" })).toBeInTheDocument()
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument()
     // Sem contador redundante ("N transferências") fora da paginação.
@@ -94,18 +93,20 @@ describe("TransferenciasPage (#151)", () => {
     renderPage()
     await screen.findByText("Reserva")
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar transferência" }), { target: { value: "reserva" } })
-    await waitFor(() => expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "reserva"))
+    await waitFor(() => expect(listTransferenciasPage).toHaveBeenCalledWith(1, 10, "reserva", expect.objectContaining({})))
   })
 
-  it("busca sem resultado: 'Nada encontrado' + 'Limpar filtros'", async () => {
+  it("busca sem resultado: 'Nada encontrado' e limpar a busca traz de volta", async () => {
     renderPage()
     await screen.findByText("Reserva")
     listTransferenciasPage.mockResolvedValue(paged([]))
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar transferência" }), { target: { value: "xyz" } })
     expect(await screen.findByText("Nada encontrado")).toBeInTheDocument()
 
+    // Limpar a busca no próprio campo traz a lista de volta (padrão do PontesTabela — o vazio-com-filtro
+    // não tem botão "Limpar filtros"; some pelo campo/chip, igual às demos).
     listTransferenciasPage.mockResolvedValue(paged([transferencia]))
-    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar transferência" }), { target: { value: "" } })
     expect(await screen.findByText("Reserva")).toBeInTheDocument()
     expect(screen.getByRole("searchbox", { name: "Buscar transferência" })).toHaveValue("")
   })
@@ -171,8 +172,9 @@ describe("TransferenciasPage (#151)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova transferência" }))
     await screen.findByText("Transferir")
 
-    // valor com máscara
-    const valorInput = screen.getByPlaceholderText("0,00") as HTMLInputElement
+    // valor com máscara — escopado ao modal (o drawer de Filtros também tem campo "0,00").
+    const modal = screen.getByRole("dialog", { name: "Nova transferência" })
+    const valorInput = within(modal).getByPlaceholderText("0,00") as HTMLInputElement
     fireEvent.change(valorInput, { target: { value: "10000" } }) // R$ 100,00
     expect(valorInput.value).toBe("100,00")
 

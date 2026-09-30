@@ -10,10 +10,15 @@ export const listTransferenciasPage = async (
   page: number,
   pageSize: number,
   busca?: string,
+  filtro: { valorMin?: number; valorMax?: number; from?: string; to?: string } = {},
 ): Promise<PagedResult<Transferencia>> => {
   const params: Record<string, unknown> = { page, pageSize }
   const termo = busca?.trim()
   if (termo) params.busca = termo
+  if (filtro.valorMin != null) params.valorMin = filtro.valorMin
+  if (filtro.valorMax != null) params.valorMax = filtro.valorMax
+  if (filtro.from) params.from = filtro.from
+  if (filtro.to) params.to = filtro.to
   const res = await api.get("/transferencias", { params })
   return res.data
 }

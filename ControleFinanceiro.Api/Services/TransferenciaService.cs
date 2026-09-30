@@ -109,7 +109,8 @@ public class TransferenciaService
     }
 
     public async Task<PagedResult<TransferenciaDto>> ListarAsync(
-        Guid usuarioId, int page = 1, int pageSize = 25, string? busca = null)
+        Guid usuarioId, int page = 1, int pageSize = 25, string? busca = null,
+        decimal? valorMin = null, decimal? valorMax = null, DateTime? from = null, DateTime? to = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -128,6 +129,12 @@ public class TransferenciaService
                 || (t.ContaOrigem != null && t.ContaOrigem.Nome.ToLower().Contains(termo))
                 || (t.ContaDestino != null && t.ContaDestino.Nome.ToLower().Contains(termo)));
         }
+
+        // Filtros avançados SERVER-SIDE (conforme o dado da tela): faixa de valor e período.
+        if (valorMin.HasValue) filtrada = filtrada.Where(t => t.Valor >= valorMin.Value);
+        if (valorMax.HasValue) filtrada = filtrada.Where(t => t.Valor <= valorMax.Value);
+        if (from.HasValue) filtrada = filtrada.Where(t => t.Data >= from.Value);
+        if (to.HasValue) filtrada = filtrada.Where(t => t.Data < to.Value.AddDays(1)); // 'até' inclusivo no dia
 
         var query = filtrada
             .Include(t => t.ContaOrigem)

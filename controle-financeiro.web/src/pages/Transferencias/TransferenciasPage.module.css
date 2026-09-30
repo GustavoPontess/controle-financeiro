@@ -1,21 +1,9 @@
-.root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
+/* Topo, toolbar, tabela, esqueleto, vazio e paginação vêm do PontesTabela (padrão de tela). */
 
-/* Topo (sem título — mora na Navbar), toolbar, esqueleto e vazio vêm do DS (padrão de tela). */
-
-.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); transition: background-color .15s ease; }
-.item:last-child { border-bottom: none; }
-.item:hover { background: var(--pontes-bg); }
-.itemLeft { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
-.itemIcon { width: 36px; height: 36px; border-radius: 10px; background: var(--pontes-info-soft, var(--pontes-primary-soft)); color: var(--pontes-info, var(--pontes-primary)); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.itemMeta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.itemDesc { font-size: 13px; font-weight: 600; color: var(--pontes-text); }
-.itemRoute { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Célula "rota" da tabela: conta de origem → conta de destino. */
+.rota { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .routeArrow { color: var(--pontes-text-muted); flex-shrink: 0; }
-.itemDate { font-size: 11px; color: var(--pontes-text-muted); margin-left: 4px; }
 
-.itemRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.itemValue { font-size: 14px; font-weight: 800; color: var(--pontes-text); white-space: nowrap; }
-
+/* Modal de nova transferência. */
 .formCol { display: flex; flex-direction: column; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

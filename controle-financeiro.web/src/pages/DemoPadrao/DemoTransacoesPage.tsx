@@ -8,11 +8,13 @@ import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import { TrendingUp, TrendingDown, Pencil, Trash2 } from "lucide-react"
 import {
-  PontesStatCard, PontesTablePagination, PontesDialog, PONTES_TABLE_PAGE_SIZE_DEFAULT,
+  PontesTablePagination, PontesDialog, PONTES_TABLE_PAGE_SIZE_DEFAULT,
 } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { listTransactionsPage, getTransactionStats, deleteTransaction } from "@/services/transactionService"
+import { getContas } from "@/services/contaService"
+import { getCategories } from "@/services/categoryService"
 import type { Transaction } from "@/types/Transaction"
 import NewTransactionDialog from "../Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import EditTransactionDialog, { type EditableTransaction } from "../Transactions/components/EditTransactionDialog/EditTransactionDialog"
@@ -34,6 +36,8 @@ export default function DemoTransacoesPage() {
   const [itens, setItens] = useState<Transaction[]>([])
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState<{ entradas: number; saidas: number; saldo: number } | null>(null)
+  const [saldoTotal, setSaldoTotal] = useState(0) // soma real das contas — o dinheiro que você tem
+  const [catNome, setCatNome] = useState<Record<string, string>>({}) // id da categoria → nome
   const [carregando, setCarregando] = useState(true)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
@@ -55,6 +59,25 @@ export default function DemoTransacoesPage() {
 
   const [versao, setVersao] = useState(0)
   const recarregar = useCallback(() => setVersao((v) => v + 1), [])
+
+  // Saldo total = soma dos saldos reais das contas (bate com o dinheiro que a pessoa tem). Consolidado,
+  // não depende de mês/filtro. Recarrega quando cria/edita/exclui (versao).
+  useEffect(() => {
+    let vivo = true
+    getContas()
+      .then((cs) => { if (vivo) setSaldoTotal(cs.reduce((s, c) => s + (c.saldoAtual ?? 0), 0)) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [versao])
+
+  // Nome das categorias (a transação só traz o id) — pra coluna Categoria.
+  useEffect(() => {
+    let vivo = true
+    getCategories()
+      .then((cats) => { if (vivo) setCatNome(Object.fromEntries(cats.map((c) => [c.id, c.descricao]))) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [])
 
   useEffect(() => {
     let vivo = true
@@ -94,19 +117,21 @@ export default function DemoTransacoesPage() {
 
   const colunas: PontesTabelaColuna<Transaction>[] = [
     {
-      key: "desc", header: "Transação",
-      render: (t) => <PontesCelulaIdentidade icone={t.tipo === 1 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />} tom={t.tipo === 1 ? "entrada" : "saida"} nome={t.descricao} sub={t.contaNome} />,
+      key: "descricao", header: "Descrição / Conta",
+      render: (t) => <PontesCelulaIdentidade icone={t.tipo === 2 ? <TrendingUp size={17} strokeWidth={2.2} /> : <TrendingDown size={17} strokeWidth={2.2} />} tom={t.tipo === 2 ? "entrada" : "saida"} nome={t.descricao} sub={t.contaNome} />,
     },
+    { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
+    { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
     { key: "data", header: "Data", render: (t) => fmtData(t.data) },
     {
       key: "status", header: "Status",
       render: (t) => t.statusTransacao === 0
         ? <PontesBadge tone="warning" size="sm">Previsto</PontesBadge>
-        : <PontesBadge tone="neutral" size="sm">{t.tipo === 1 ? "Recebido" : "Pago"}</PontesBadge>,
+        : <PontesBadge tone="neutral" size="sm">{t.tipo === 2 ? "Recebido" : "Pago"}</PontesBadge>,
     },
     {
       key: "valor", header: "Valor", numerica: true,
-      render: (t) => <span className={t.tipo === 1 ? styles.valEntrada : undefined}>{t.tipo === 1 ? "+" : "−"}{formatMoney(t.valor)}</span>,
+      render: (t) => <span className={t.tipo === 2 ? styles.valEntrada : styles.valSaida}>{formatMoney(t.valor)}</span>,
     },
   ]
 
@@ -117,32 +142,44 @@ export default function DemoTransacoesPage() {
 
   const tags: PontesTabelaTag[] = []
   if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBusca("") })
-  if (tipo !== "tudo") tags.push({ label: tipo === "1" ? "Receitas" : "Despesas", onRemover: () => setTipo("tudo") })
+  if (tipo !== "tudo") tags.push({ label: tipo === "2" ? "Receitas" : "Despesas", onRemover: () => setTipo("tudo") })
 
   return (
     <>
-      <div className={styles.aviso}>Tela de teste FUNCIONAL — Transações no padrão novo. Cria, edita e exclui de verdade (mesmos dados de /transactions).</div>
       <PontesTabela
-        titulo="Transações"
-        descricao="Todos os seus lançamentos, mês a mês"
-        acao={{ label: "Nova transação", onClick: () => setNovoAberto(true) }}
+        id="demo-transacoes"
+        titulo="Todas as transações"
         resumo={
-          <div className={styles.stats}>
-            <PontesStatCard label="Entrou" value={formatMoney(stats?.entradas ?? 0)} tone="success" />
-            <PontesStatCard label="Saiu" value={formatMoney(stats?.saidas ?? 0)} tone="danger" />
-            <PontesStatCard label="Saldo" value={formatMoney(stats?.saldo ?? 0)} />
+          <div className={styles.hero}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroMain}>
+              <div className={styles.heroLabel}>Saldo total</div>
+              <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
+              <div className={styles.heroSub}>Soma de todas as contas</div>
+            </div>
+            <div className={styles.heroStats}>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone="up">{formatMoney(stats?.entradas ?? 0)}</span>
+                <span className={styles.heroStatLabel}>Entrou</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone="down">{formatMoney(stats?.saidas ?? 0)}</span>
+                <span className={styles.heroStatLabel}>Saiu</span>
+              </div>
+            </div>
           </div>
         }
         busca={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }}
         filtros={[{
           value: tipo, ariaLabel: "Tipo",
-          options: [{ value: "tudo", label: "Tudo" }, { value: "1", label: "Receitas" }, { value: "2", label: "Despesas" }],
+          options: [{ value: "tudo", label: "Tudo" }, { value: "2", label: "Receitas" }, { value: "1", label: "Despesas" }],
           onChange: (v) => setTipo(v as typeof tipo),
         }]}
         filtrosAvancados={[
           {
             tipo: "select", id: "status", label: "Status", value: status,
-            opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Efetivado" }, { value: "0", label: "Previsto" }],
+            opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Pago / Recebido" }, { value: "0", label: "Previsto" }],
             onChange: setStatus,
           },
           { tipo: "faixaValor", id: "valor", label: "Valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx) } },
