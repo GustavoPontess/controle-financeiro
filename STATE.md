@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-30
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,33 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-09-30 (fecha em ponto verde) — padrão de telas fase 2: PontesTabela evoluído + demo Transações + Transferências real · branch `exp/consistencia-front`
+
+**NÃO está na `main`.** Tudo na branch **`exp/consistencia-front`**, commit **`821b063`** (base: `e22cabf` = Admin Usuários já migrado; `0425f24` = PontesTabela nasceu). **Build verde** (`npm run build`), **testes verdes** (485/485; 1 teste de foco do Recorrentes flaka sob carga da suíte cheia mas passa isolado). API+front de dev rodando via `preview_start` (web/api).
+
+**Modelo mental (regra pro Gustavo e pro modelo barato):** `PontesTabela` (`src/components/pontes/data/`) é O componente de tela-de-lista. Aplicar numa tela = **só passar params** (busca/filtros/filtrosAvancados/colunas/itens/acoes/resumo/paginacao) — tudo opcional, tira o param e some. **NÃO redesenhar por tela nem mudar o look do componente numa migração.** As demos `/demo-transacoes` e `/demo-emprestimos` são a referência visual aprovada. (memória [[feedback_pontestabela_componente_params]])
+
+**Feito nesta sessão (no componente → vale pra todas as telas):**
+- Toolbar DENTRO do cartão: nome à esquerda + controles compactos à direita (busca/segmented/Filtros/colunas), todos 32px mesma altura; título com `--pontes-font-heading` (Fraunces), 18px.
+- Célula identidade **empilhada** (nome em cima, conta/sub embaixo).
+- Filtros avançados em **popover ancorado** no botão (não gaveta lateral), portalizado, com **bolinha vermelha + modo ativo** quando há filtro; click-outside ignora os popovers internos (select/datepicker).
+- **Paginação numerada** com pulo de página + reticências (`1 … 3 4 5 … 17`), footer branco compacto (evoluiu a PontesTablePagination, não trocou de componente).
+- Botão **mostrar/ocultar colunas** (ícone `Columns3` → popover com check ✓, 1ª coluna fixa). Só "Exibir colunas" (sem salvar/aplicar padrão — o Gustavo pediu pra tirar).
+- Fonte das linhas menor (12px) + linhas mais densas.
+
+**Feito (telas):**
+- **Demo Transações**: hero (Saldo total = soma das contas; + Entrou/Saiu), colunas Descrição-Conta / Categoria / Pagamento / Data / Status / Valor, sem +/− no valor (cor indica), **tipo corrigido** (enum **Despesa=1 / Receita=2** — a demo estava invertida), filtro status "Pago / Recebido".
+- **Transferências (tela REAL)**: migrada pra PontesTabela + filtro **valor/período server-side** (mexeu no `TransferenciasController`/`TransferenciaService` + `transferenciaService.ts`). Teste atualizado.
+- **Navbar**: títulos das rotas `/demo-transacoes` e `/demo-emprestimos`.
+
+**Pendências (fila desta frente):**
+1. **Hero Entrou/Saiu × Saldo total NÃO fecham** — saldo inicial + transferência + pagamento de fatura ficam fora de Entrou/Saiu (regra contábil P&L, `TransacaoService.ObterStatsAsync`), mas o Saldo total (soma das contas) os inclui. É **decisão de produto/contábil do app todo** (dashboard/gráficos), não só a demo. **Não resolvido** — decidir: (a) saldo inicial conta como entrada, ou (b) hero reconcilia explícito (`saldo inicial + ganhou − gastou = saldo atual`). Ligado à pendência antiga "saldo inicial vira transação".
+2. **150 registros `PAGTESTE #n`** na conta de teste `verificacao.p1` (Postgres local) — criados só pra testar paginação. **APAGAR** (loop delete nos que a descrição começa com "PAGTESTE", via `/transacoes` autenticado como no create).
+3. **Telas reais ainda NÃO migradas**: Admin Pendentes/Auditoria/LGPD, Recorrentes, Importação, Parcelamentos, e a **Transações real** (`/transactions`, ainda usa `TransactionTable`). A migração automática por workflow foi **ABANDONADA** (cada agente divergiu) — fazer **manual, uma a uma**, só passando params do componente.
+4. Decidir se a branch vira PR pra `main` quando o Gustavo validar.
+
+---
 
 ### 📌 Sessão 2026-09-28 (fecha em ponto verde) — dogfooding do cartão/parcelamento + padrão de telas · #270–#279
 
