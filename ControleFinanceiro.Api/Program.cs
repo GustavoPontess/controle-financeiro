@@ -112,6 +112,7 @@ builder.Services.AddScoped<RelatorioService>();
 builder.Services.AddScoped<TransferenciaService>();
 builder.Services.AddScoped<RecorrenteService>();
 builder.Services.AddScoped<EmprestimoService>();
+builder.Services.AddScoped<ReconciliacaoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();

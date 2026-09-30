@@ -60,4 +60,8 @@ public enum FinancialEventType
     EmprestimoConsolidacaoAceita = 79,
     EmprestimoConsolidacaoRecusada = 80,
     EmprestimoConsolidacaoCancelada = 81,
+
+    // Reconciliação (docs/features/reconciliacao/spec.md)
+    ReconciliacaoRegistrada = 90,
+    ReconciliacaoRemovida = 91,
 }

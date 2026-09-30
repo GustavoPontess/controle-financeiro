@@ -104,6 +104,11 @@ public class Transacao
     /// mas NÃO é receita real — excluída de relatórios de P&amp;L.</summary>
     public bool EhSaldoInicial { get; set; }
 
+    /// <summary>true se esta Transacao é um lançamento de AJUSTE criado por um marco de reconciliação
+    /// pra fechar a diferença entre o saldo declarado e o calculado. Compõe o saldo (corrige-o), mas
+    /// NÃO é receita/despesa real — fora de relatórios de P&amp;L. Ver ReconciliacaoSaldo.</summary>
+    public bool EhAjusteReconciliacao { get; set; }
+
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;
 

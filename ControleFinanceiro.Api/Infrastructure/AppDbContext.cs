@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
     public DbSet<ParcelaTransacao> ParcelasTransacao => Set<ParcelaTransacao>();
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
+    public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -228,6 +229,22 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(r => r.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ReconciliacaoSaldo → Conta (Cascade: o marco morre com a conta). O lançamento de ajuste é
+        // uma Transacao normal (FK opcional, SetNull pra não arrastar). Índice por dono+conta+data
+        // pra listar e consultar o último marco ≤ D.
+        modelBuilder.Entity<ReconciliacaoSaldo>()
+            .HasOne(r => r.Conta)
+            .WithMany()
+            .HasForeignKey(r => r.ContaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReconciliacaoSaldo>()
+            .HasOne(r => r.AjusteTransacao)
+            .WithMany()
+            .HasForeignKey(r => r.AjusteTransacaoId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ReconciliacaoSaldo>()
+            .HasIndex(r => new { r.UsuarioId, r.ContaId, r.DataHora });
 
         // Unique constraints
         modelBuilder.Entity<Usuario>()

@@ -1359,6 +1359,57 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("RateiosTransacao");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ReconciliacaoSaldo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AjusteTransacaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DataHora")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("Diferenca")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<decimal>("SaldoCalculado")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("SaldoDeclarado")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AjusteTransacaoId");
+
+                    b.HasIndex("ContaId");
+
+                    b.HasIndex("UsuarioId", "ContaId", "DataHora");
+
+                    b.ToTable("ReconciliacoesSaldo");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1654,6 +1705,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
+
+                    b.Property<bool>("EhAjusteReconciliacao")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("boolean");
@@ -2346,6 +2400,24 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Transacao");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ReconciliacaoSaldo", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "AjusteTransacao")
+                        .WithMany()
+                        .HasForeignKey("AjusteTransacaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AjusteTransacao");
+
+                    b.Navigation("Conta");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Recorrente", b =>
