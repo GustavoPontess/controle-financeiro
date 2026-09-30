@@ -17,6 +17,23 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ---
 
+## 🏁 Caminho até pronto (fases) — visão de linha de chegada
+
+> Consolidado em 2026-09-30 dos docs (Monarch `docs/concorrentes/monarch/roubar-priorizado.md`, `ACHADOS_ACIONAVEIS.md`, `familia/visao.md`, este ROADMAP). Visão macro; o detalhe acionável fica na 🎯 Fila abaixo e nas seções deste arquivo. Esforço S/M/L.
+
+- **FASE 0 — Confiança no dado (fundação).** ✅ Reconciliação (backend + tela + saldo-inicial-baseline) FECHADA. Falta: bugs de dinheiro — idempotency-key do Parcelamento (S), conta fixa valor "1.500"→1,50 (S) / dia errado (M) / pausada debita (M) / custo mensal só soma mensais (S), dashboard "Saiu" ignora cartão (M), fatura não lista parcelas (S), hora em UTC (S), limite com 2 regras divergentes (S/M).
+- **FASE 1 — Usável no dia a dia.** Tela de Assinaturas (S) · Tags (S/M) · Merchant como entidade (M) · Auto-categorização/Rules IF-THEN (M/L) · "Needs review" (S) · ocultar saldo (S) · forms de criar/editar em PÁGINA não modal (M) · migrar telas de lista restantes pro PontesTabela (M).
+- **FASE 2 — Fosso família (diferencial, ninguém tem).** Toggle "Minha visão ↔ Visão da família" (M) · papéis/permissões front (M) · aprovação de despesa compartilhada (M) · renda derivada das receitas (M) · decisão de modelagem despesa-compartilhada × saldo real §16.5 (L) · IA de casal (L).
+- **FASE 3 — Paridade Monarch.** Metas com alocação real + meta-por-data (M) · orçamento Flex/buckets (M) · net worth completo ativo×passivo (M/L) · relatórios Sankey/Treemap/export (M) · dashboard customizável (M) · forecasting/projeção (L) · pay-down de dívida (M).
+- **FASE 4 — Automação/escala.** Open Finance / agregação bancária (L, gap nº1) · IA conversacional grounded (L) · importar OFX/CSV do banco (M, bloqueado: qual banco).
+- **FASE 5 — Pré-produção (gate 1.0).** Rotacionar segredos (S) · KnownProxies do X-Forwarded-For (S) · subir como Production (S) · hard-delete→arquivar em entidade financeira (M) · idempotência legada→RegistroIdempotencia (M) · CSRF antes do CORS (S) · GETs que gravam (S/M) · hospedagem (S) · jurídico/INPI/CAPTCHA (S–M).
+- **Depois (não agora):** B2B/contador (validar com contadoras antes, L) · mobile nativo (L) · extras BR — PIX no settle-up, NFC-e/QR, DARF/IR, benchmarks CDI/IBOV/IPCA (M cada).
+
+**Placar paridade** (Monarch tem, falta): metas-alocação, merchant, tags, rules, IA, forecasting, sankey, net worth, budget avançado, assinaturas, open finance, businesses/PJ, pay-down.
+**Fosso** (só nosso): rateio real + settle-up, papéis, dependentes, aprovação de despesa, IA de casal, contadores, local BR.
+
+---
+
 ## 🎯 Fila — o que fazer, na ordem
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
