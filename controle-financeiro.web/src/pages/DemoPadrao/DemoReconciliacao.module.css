@@ -1,4 +1,4 @@
-/* Mockup Conferência de caixa — calendário dos marcos. Cor/fonte via var(--pontes-*). */
+/* Mockup Reconciliação — calendário dos marcos. Cor/fonte via var(--pontes-*). */
 .wrap { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); }
 
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

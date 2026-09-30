@@ -1,14 +1,14 @@
 /**
- * MOCKUP — /demo-conferencia. Desenho da tela de Conferência de caixa (saldo declarado × calculado,
+ * MOCKUP — /demo-reconciliacao. Desenho da tela de Reconciliação (saldo declarado × calculado,
  * multi-marco datável) com os marcos num CALENDÁRIO. Dados FALSOS (useState), zero backend — é só pro
- * Gustavo reagir ao design. Vira real depois. Spec: docs/features/conferencia-caixa/spec.md.
+ * Gustavo reagir ao design. Vira real depois. Spec: docs/features/reconciliacao/spec.md.
  */
 
 import { useState } from "react"
 import { Check, Plus, TriangleAlert, ChevronLeft, ChevronRight, Flag } from "lucide-react"
 import { PontesButton, PontesField, PontesMoneyInput, PontesSelect } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
-import styles from "./DemoConferencia.module.css"
+import styles from "./DemoReconciliacao.module.css"
 
 // ── Mock ────────────────────────────────────────────────────────────────────
 const CONTAS = [
@@ -28,7 +28,7 @@ const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
 
 const parseMoney = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0
 
-export default function DemoConferenciaPage() {
+export default function DemoReconciliacaoPage() {
   const [contaId, setContaId] = useState(CONTAS[0].value)
   const conta = CONTAS.find((c) => c.value === contaId)!
   const [diaSel, setDiaSel] = useState<number>(HOJE)
@@ -55,8 +55,8 @@ export default function DemoConferenciaPage() {
     <div className={styles.wrap}>
       <div className={styles.head}>
         <div>
-          <h1 className={styles.titulo}>Conferência de caixa</h1>
-          <p className={styles.sub}>Confira se o saldo do app bate com o do banco. Cada conferência vira um marco — você só reconcilia do último marco pra frente.</p>
+          <h1 className={styles.titulo}>Reconciliação</h1>
+          <p className={styles.sub}>Confira se o saldo do app bate com o real. Cada conferência vira um marco — você só reconcilia do último marco pra frente.</p>
         </div>
         <div className={styles.contaSel}>
           <PontesField label="Conta">

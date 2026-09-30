@@ -38,7 +38,7 @@ const NAV: SidebarNavGroup[] = [
       { to: "/reports", label: "Relatórios", icon: <BarChart3 size={19} strokeWidth={2} /> },
       { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={19} strokeWidth={2} /> },
       { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
-      { to: "/demo-conferencia", label: "Demo Conferência", icon: <LayoutTemplate size={19} strokeWidth={2} /> },
+      { to: "/demo-reconciliacao", label: "Demo Reconciliação", icon: <LayoutTemplate size={19} strokeWidth={2} /> },
       { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
     ],
   },

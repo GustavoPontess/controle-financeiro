@@ -41,7 +41,7 @@ import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
 import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
-import DemoConferenciaPage from "../pages/DemoPadrao/DemoConferenciaPage"
+import DemoReconciliacaoPage from "../pages/DemoPadrao/DemoReconciliacaoPage"
 
 // /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
 function RedirecionarParcelamento() {
@@ -98,7 +98,7 @@ export default function AppRoutes() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/demo-conferencia" element={<DemoConferenciaPage />} />
+          <Route path="/demo-reconciliacao" element={<DemoReconciliacaoPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/credit-cards" element={<CreditCardsPage />} />

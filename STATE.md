@@ -34,7 +34,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **🎯 Decisão estratégica (Gustavo):** a fundação que falta é a **RECONCILIAÇÃO** (nome escolhido — "conferência de caixa" era só exemplo). Sem ela o saldo é só soma de lançamentos, sem âncora → sempre parece errado; polir front em cima disso é bater cabeça à toa. É o **P0 real**. **Sequência: commitar este ponto verde primeiro, DEPOIS atacar a reconciliação em frente limpa.**
 
-**Próxima ação concreta:** commit + push deste bloco (draft PR #284, **sem merge**) → iniciar **Reconciliação**: renomear demo `conferencia`→`reconciliacao` (rota/página/spec `docs/features/conferencia-caixa/`), spec do modelo **multi-marco datável**, resolver fork **verificação × baseline** + **transação com hora** (default = agora), backend (`ReconciliacaoSaldo` = marco datado; saldo em D = último marco ≤ D + Σ caixa depois) + tela real. **Gate `auditor-seguranca` roda ANTES do merge** (dinheiro).
+**Próxima ação concreta:** commit + push deste bloco feito (`771e6dc`). **Rename feito** (`conferencia`→`reconciliacao`: rota `/demo-reconciliacao`, `DemoReconciliacaoPage`, pasta `docs/features/reconciliacao/`; h1 "Reconciliação"). **Decisão travada: marco = VERIFICAÇÃO por padrão** (1º marco da conta = baseline/saldo inicial). Seguir a **Reconciliação**: (1) **transação com hora** (campo data+hora, default = agora); (2) backend (`ReconciliacaoSaldo` = marco datado; saldo em D = último marco ≤ D + Σ caixa depois; `Transacao += EhAjusteReconciliacao`; migration; service); (3) tela real ligada no mockup do calendário. **Gate `auditor-seguranca` ANTES do merge** (dinheiro). Aguardando OK do Gustavo pra sair do spec e ir pro backend (explicar antes de sweep).
 
 ---
 
@@ -63,7 +63,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - **LoginPage**: Ana Paula removida do fallback estático de contas DEV.
 
 **Pendências (fila) — 3 frentes grandes, UMA POR SESSÃO (detalhe no ROADMAP):**
-1. 🟠 **Conferência de caixa / consolidação** (spec `docs/features/conferencia-caixa/spec.md` — **multi-marco datável**) — resolve o "dado viajado" do saldo. **Atacar primeiro.** **Mockup pronto** em `/demo-conferencia` (`DemoConferenciaPage`, dados fake): hero (saldo + "confere até"), **calendário dos marcos** (dias conferidos verde ✓ + saldo, ajuste amber, "a conferir" tracejado, clicar dia → conferir), painel Conferir (declarado × calculado × diferença → grava marco / lança / ajusta). **Design em andamento** (Gustavo reagindo). Antes de codar o real, resolver: (a) marco = **verificação** × **baseline**; (b) **transação precisa de hora** (campo data+hora com default = agora). Backend: tabela `ConferenciaSaldo`, `Transacao += EhAjusteConferencia`, migration, `ConferenciaService`, gate `auditor-seguranca`.
+1. 🟠 **Conferência de caixa / consolidação** (spec `docs/features/reconciliacao/spec.md` — **multi-marco datável**) — resolve o "dado viajado" do saldo. **Atacar primeiro.** **Mockup pronto** em `/demo-reconciliacao` (`DemoReconciliacaoPage`, dados fake): hero (saldo + "confere até"), **calendário dos marcos** (dias conferidos verde ✓ + saldo, ajuste amber, "a conferir" tracejado, clicar dia → conferir), painel Conferir (declarado × calculado × diferença → grava marco / lança / ajusta). **Design em andamento** (Gustavo reagindo). Antes de codar o real, resolver: (a) marco = **verificação** × **baseline**; (b) **transação precisa de hora** (campo data+hora com default = agora). Backend: tabela `ReconciliacaoSaldo`, `Transacao += EhAjusteConferencia`, migration, `ReconciliacaoService`, gate `auditor-seguranca`.
 2. 🟡 **Forms de criar/editar em PÁGINA, não popup** (Gustavo odeia editar em modal).
 3. 🟡 **Migrar telas de lista reais restantes** (Recorrentes, Importação, Parcelamentos, Admin) — manual, uma a uma.
 
@@ -228,7 +228,7 @@ Todas as frentes viraram PR mergeado (não há mais branch solta, exceto a órf�
 **⚠️ Pré-condição de PROD (gate 1.0.0, NÃO é código):** rotacionar `Jwt:Key` (quem tem a chave forja sessão de qualquer conta).
 
 **Próxima ação (P1 restantes):**
-- **Conferência de caixa** (saldo declarado × calculado; tem spec em `docs/features/conferencia-caixa/spec.md`) — **próximo recomendado**.
+- **Conferência de caixa** (saldo declarado × calculado; tem spec em `docs/features/reconciliacao/spec.md`) — **próximo recomendado**.
 
 **Ambiente:** API :5293 **parada**; Postgres no ar; front preview pode estar no ar. Migrations aplicadas no dev DB (incl. `AddSessaoTrackingToRefreshToken`).
 
@@ -1396,7 +1396,7 @@ tree limpo. Detalhe técnico completo: `docs/features/emprestimo-compartilhado/p
   modelagem diferente, não coberta por isso.
 - ⚪ P3 — gesto "toque duplo na traseira" (ressalva técnica: recurso nativo iOS, não dá pra PWA).
 - 🟡 P1 catalogado em sessão anterior (fora do fluxo do empréstimo) — spec
-  `docs/features/conferencia-caixa/spec.md` escrita, **não implementada ainda**: saldo declarado ×
+  `docs/features/reconciliacao/spec.md` escrita, **não implementada ainda**: saldo declarado ×
   calculado, dois modos (achar lançamento faltante × aceitar ajuste automático).
 
 > ⚠️ **Lição reforçada de novo:** contexto ficou grande outra vez nesta sessão. Antes de compactar

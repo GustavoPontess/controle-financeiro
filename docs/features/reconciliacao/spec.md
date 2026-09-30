@@ -1,8 +1,16 @@
-# Feature — Conferência de caixa (saldo declarado × saldo calculado)
+# Feature — Reconciliação (saldo declarado × saldo calculado)
 
-> Spec curta (spec-driven, CLAUDE.md §Processo). Registrada no ROADMAP como P1 (intake, 2026-07-20).
-> Status: **spec — não implementado**. Origem: caso real do Gustavo (começou a lançar retroativo
-> num app novo, sem ponto de partida claro pra saber se o saldo bateu).
+> Spec curta (spec-driven, CLAUDE.md §Processo). Registrada no ROADMAP como **P0 — fundação**.
+> Status: **spec — não implementado** (mockup pronto em `/demo-reconciliacao`).
+> Origem: caso real do Gustavo (começou a lançar retroativo num app novo, sem ponto de partida
+> claro pra saber se o saldo bateu).
+
+> **Decisões (2026-09-30):**
+> - **Nome = "Reconciliação"** (antes "conferência de caixa", que era só o exemplo que o Gustavo deu).
+> - **Modelo multi-marco datável:** saldo em D = último marco ≤ D + Σ movimentos de caixa depois do marco. Reconcilia só do último marco pra frente (não re-soma desde o dia 1).
+> - **Marco = VERIFICAÇÃO por padrão:** confere calculado × declarado; se não bater, mostra a diferença e força resolver (lançar o que falta / criar ajuste) — não reancora cego. O **1º marco da conta** é naturalmente o **baseline** (saldo inicial real).
+> - **Transação precisa de HORA** (campo data+hora, default = agora) pra marco preciso ("hoje às 13h eu tinha X").
+> - Backend a construir: tabela `ReconciliacaoSaldo` (marco datado por conta), `Transacao += EhAjusteReconciliacao`, migration, service, gate `auditor-seguranca` antes do merge.
 
 ## Problema
 
