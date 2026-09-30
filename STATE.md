@@ -40,7 +40,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - **LoginPage**: Ana Paula removida do fallback estático de contas DEV.
 
 **Pendências (fila) — 3 frentes grandes, UMA POR SESSÃO (detalhe no ROADMAP):**
-1. 🟠 **Conferência de caixa / consolidação** (spec `docs/features/conferencia-caixa/spec.md` atualizado com o **modelo de marco datável** do Gustavo) — resolve o "dado viajado" do saldo. **Atacar primeiro.**
+1. 🟠 **Conferência de caixa / consolidação** (spec `docs/features/conferencia-caixa/spec.md` — **multi-marco datável**) — resolve o "dado viajado" do saldo. **Atacar primeiro.** **Mockup pronto** em `/demo-conferencia` (`DemoConferenciaPage`, dados fake): hero (saldo + "confere até"), **calendário dos marcos** (dias conferidos verde ✓ + saldo, ajuste amber, "a conferir" tracejado, clicar dia → conferir), painel Conferir (declarado × calculado × diferença → grava marco / lança / ajusta). **Design em andamento** (Gustavo reagindo). Antes de codar o real, resolver: (a) marco = **verificação** × **baseline**; (b) **transação precisa de hora** (campo data+hora com default = agora). Backend: tabela `ConferenciaSaldo`, `Transacao += EhAjusteConferencia`, migration, `ConferenciaService`, gate `auditor-seguranca`.
 2. 🟡 **Forms de criar/editar em PÁGINA, não popup** (Gustavo odeia editar em modal).
 3. 🟡 **Migrar telas de lista reais restantes** (Recorrentes, Importação, Parcelamentos, Admin) — manual, uma a uma.
 
