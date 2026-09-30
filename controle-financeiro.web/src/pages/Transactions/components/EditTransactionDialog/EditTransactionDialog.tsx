@@ -7,6 +7,7 @@ import { getSubcategories } from "../../../../services/subcategoryService"
 import { updateTransaction } from "../../../../services/transactionService"
 import { getContas } from "../../../../services/contaService"
 import { getCartoes } from "../../../../services/cartaoCreditoService"
+import { combinarDataHora, isoParaHoraHHMM } from "../../../../utils/dateTime"
 import type { Category } from "../../../../types/Category"
 import type { Subcategory } from "../../../../types/Subcategory"
 import type { Conta } from "../../../../types/Conta"
@@ -74,6 +75,7 @@ export default function EditTransactionDialog({ transaction, onClose, onSaved, n
     cartaoCreditoId: transaction.cartaoCreditoId ?? "",
     valor: formatValor(transaction.valor),
     data: transaction.data.split("T")[0],
+    hora: isoParaHoraHHMM(transaction.data),
     descricao: transaction.descricao,
   }
 
@@ -97,7 +99,7 @@ export default function EditTransactionDialog({ transaction, onClose, onSaved, n
         contaId: transaction.contaId,
         cartaoCreditoId: transaction.cartaoCreditoId,
         meioPagamento: data.meioPagamento,
-        data: data.data,
+        data: combinarDataHora(data.data, data.hora),
       })
       notify({ open: true, message: "Transação atualizada", severity: "success" })
       onSaved()

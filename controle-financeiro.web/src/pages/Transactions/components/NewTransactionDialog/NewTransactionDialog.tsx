@@ -9,7 +9,7 @@ import { createRecorrente } from "../../../../services/recorrenteService"
 import { createTransferencia } from "../../../../services/transferenciaService"
 import { getContas } from "../../../../services/contaService"
 import { getCartoes } from "../../../../services/cartaoCreditoService"
-import { dataComHora } from "../../../../utils/dateTime"
+import { combinarDataHora } from "../../../../utils/dateTime"
 import type { Category } from "../../../../types/Category"
 import type { Subcategory } from "../../../../types/Subcategory"
 import type { Conta } from "../../../../types/Conta"
@@ -68,7 +68,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           contaOrigemId: data.contaOrigemId,
           contaDestinoId: data.contaDestinoId,
           valor,
-          data: dataComHora(data.data),
+          data: combinarDataHora(data.data, data.hora),
           descricao: data.descricao,
         })
         notify({ open: true, message: "Transferência criada com sucesso", severity: "success" })
@@ -122,7 +122,7 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           meioPagamento: data.meioPagamento,
           parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
           efetivado: data.efetivado,
-          data: dataComHora(data.data),
+          data: combinarDataHora(data.data, data.hora),
         })
         notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
       }

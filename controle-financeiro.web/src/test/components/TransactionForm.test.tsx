@@ -100,6 +100,48 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(data.contaDestinoId).toBe("a2")
   })
 
+  it("campo Hora aparece com a hora atual por padrão (HH:MM)", () => {
+    setup()
+    const hora = screen.getByPlaceholderText("HH:MM") as HTMLInputElement
+    expect(hora.value).toMatch(/^\d{2}:\d{2}$/)
+  })
+
+  it("máscara da hora: digitar '0930' vira '09:30'", () => {
+    setup()
+    const hora = screen.getByPlaceholderText("HH:MM") as HTMLInputElement
+    fireEvent.change(hora, { target: { value: "0930" } })
+    expect(hora.value).toBe("09:30")
+  })
+
+  it("edição pré-preenche a hora vinda do initial", () => {
+    render(
+      <TransactionForm
+        mode="edit"
+        initial={{ natureza: "despesa", tipo: 1, valor: "50,00", descricao: "X", categoriaId: "c1", contaId: "a1", hora: "07:30" }}
+        categories={categories} subcategories={subcategories} contas={contas} cartoes={cartoes}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />
+    )
+    expect((screen.getByPlaceholderText("HH:MM") as HTMLInputElement).value).toBe("07:30")
+  })
+
+  it("submit carrega a hora escolhida (transferência)", async () => {
+    const onSubmit = setup()
+    fireEvent.click(screen.getByText("Transferência"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "10000" } })
+    fireEvent.change(screen.getByPlaceholderText("HH:MM"), { target: { value: "0815" } })
+    fireEvent.click(screen.getByText("De qual conta"))
+    fireEvent.click(screen.getByText("Nubank"))
+    fireEvent.click(screen.getByText("Para qual conta"))
+    fireEvent.click(screen.getByText("Itaú"))
+    fireEvent.change(screen.getByPlaceholderText("Ex: Reserva de emergência"), { target: { value: "Mover grana" } })
+    fireEvent.click(screen.getByText("Transferir"))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const data = onSubmit.mock.calls[0][0] as TransactionFormData
+    expect(data.hora).toBe("08:15")
+  })
+
   it("submit vazio mostra erros e não chama onSubmit", () => {
     const onSubmit = setup()
     fireEvent.click(screen.getByText("Adicionar"))
