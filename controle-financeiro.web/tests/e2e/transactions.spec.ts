@@ -36,14 +36,17 @@ test.describe('Transações', () => {
     await expect(page.locator('input[inputmode="decimal"]').first()).not.toBeVisible({ timeout: 5_000 });
   });
 
-  test('filtro por tipo Despesas filtra lista', async ({ page }) => {
-    // Clica em "Despesas" no filtro
-    await page.getByRole('button', { name: /^despesas$/i }).click();
+  test('busca filtra a lista no servidor', async ({ page }) => {
+    // O extrato de caixa filtra pela busca (server-side). Tipo/status/período vivem
+    // no popover "Filtros" — a busca é o controle sempre visível da toolbar.
+    const busca = page.getByPlaceholder(/buscar lançamento/i);
+    await expect(busca).toBeVisible();
+    await busca.fill('zzz-nao-existe-nada-com-isso');
     await page.waitForLoadState('networkidle');
     // Página permanece em /transactions
     await expect(page).toHaveURL(/\/transactions/);
-    // Tabela ou vazio visível
-    const hasContent = await page.locator('table, [class*="empty"]').count();
+    // Tabela ou estado vazio visível (a busca sem match cai no vazio)
+    const hasContent = await page.locator('table, [class*="empty"], [class*="vazio"]').count();
     expect(hasContent).toBeGreaterThan(0);
   });
 });
