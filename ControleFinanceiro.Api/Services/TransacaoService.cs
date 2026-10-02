@@ -76,7 +76,7 @@ namespace ControleFinanceiro.Api.Services
             // (ex.: salário do próximo mês) pode ser futura — é justamente o ponto dela.
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                && transacao.Data.Date > DateTime.UtcNow.Date)
+                && transacao.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Transação de crédito → associar à fatura correspondente (invariante 2)
@@ -126,8 +126,8 @@ namespace ControleFinanceiro.Api.Services
             Guid usuarioId,
             int page = 1,
             int pageSize = 25,
-            DateTime? from = null,
-            DateTime? to = null,
+            DateOnly? from = null,
+            DateOnly? to = null,
             Guid? categoriaId = null,
             string? q = null,
             int? tipo = null,
@@ -194,13 +194,14 @@ namespace ControleFinanceiro.Api.Services
                 query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
             }
 
-            // Ordenação (default: data desc). Empate sempre por Data desc pra estabilidade.
+            // Ordenação (default: data desc). Dia + hora pra ordem cronológica intradia;
+            // Hora null (sem hora) ordena junto. Empate por Data/Hora desc pra estabilidade.
             var ordered = ordenacao switch
             {
-                "data_asc"  => query.OrderBy(t => t.Data),
-                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data),
-                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data),
-                _            => query.OrderByDescending(t => t.Data),
+                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora),
+                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
+                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
+                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora),
             };
             var total = await ordered.CountAsync();
             var items = await ordered
@@ -224,8 +225,8 @@ namespace ControleFinanceiro.Api.Services
         /// </summary>
         public async Task<DTOs.Transacao.TransacaoStatsDto> ObterStatsAsync(
             Guid usuarioId,
-            DateTime? from = null,
-            DateTime? to = null,
+            DateOnly? from = null,
+            DateOnly? to = null,
             Guid? categoriaId = null)
         {
             var query = _context.Transacoes
@@ -305,7 +306,7 @@ namespace ControleFinanceiro.Api.Services
             // (Editar qualquer campo desses lançamentos legítimos não pode voltar a dar 400.)
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                && dados.Data.Date > DateTime.UtcNow.Date)
+                && dados.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Categoria/subcategoria vêm do cliente: global ou do próprio usuário.
@@ -321,6 +322,7 @@ namespace ControleFinanceiro.Api.Services
             transacao.SubcategoriaId = dados.SubcategoriaId;
             transacao.MeioPagamento = dados.MeioPagamento;
             transacao.Data = dados.Data;
+            transacao.Hora = dados.Hora;
 
             await _context.SaveChangesAsync();
             return true;

@@ -61,24 +61,24 @@ const paged = <T,>(items: T[], total = items.length) => ({ items, total, page: 1
 const salario = {
   id: "t1", descricao: "Salário", valor: 3000, tipo: 2, categoriaId: "cat-sal",
   contaId: "c1", contaNome: "Nubank", meioPagamento: 4, meioPagamentoDescricao: "Pix",
-  statusTransacao: 1, data: "2026-05-20T00:00:00Z",
+  statusTransacao: 1, data: "2026-05-20", hora: null, // sem hora
 }
 const mercado = {
   id: "t2", descricao: "Mercado", valor: 250, tipo: 1, categoriaId: "cat-mer",
   contaId: "c1", contaNome: "Nubank", meioPagamento: 2, meioPagamentoDescricao: "Débito",
-  statusTransacao: 1, data: "2026-05-21T14:32:00Z", // com hora real
+  statusTransacao: 1, data: "2026-05-21", hora: "14:32:00", // com hora
 }
 const transferencia = {
   id: "t3", descricao: "Para Poupança", valor: 500, tipo: 1, categoriaId: null,
-  contaId: "c1", contaNome: "Nubank", ehTransferencia: true, statusTransacao: 1, data: "2026-05-22T00:00:00Z",
+  contaId: "c1", contaNome: "Nubank", ehTransferencia: true, statusTransacao: 1, data: "2026-05-22", hora: null,
 }
 const pagtoFatura = {
   id: "t4", descricao: "Fatura Nubank", valor: 900, tipo: 1, categoriaId: null,
-  contaId: "c1", contaNome: "Nubank", ehPagamentoFatura: true, statusTransacao: 1, data: "2026-05-23T00:00:00Z",
+  contaId: "c1", contaNome: "Nubank", ehPagamentoFatura: true, statusTransacao: 1, data: "2026-05-23", hora: "09:05:00",
 }
 const previsto = {
   id: "t5", descricao: "Aluguel", valor: 1200, tipo: 1, categoriaId: null,
-  contaId: "c2", contaNome: "Itaú", statusTransacao: 0, data: "2026-06-05T00:00:00Z",
+  contaId: "c2", contaNome: "Itaú", statusTransacao: 0, data: "2026-06-05", hora: null,
 }
 
 const contas = [
@@ -182,12 +182,22 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     expect(screen.getAllByText("Previsto")).toHaveLength(1)
   })
 
-  it("data mostra a hora só quando o lançamento tem horário real (não inventa 00:00)", async () => {
+  it("data mostra a hora só quando o lançamento tem hora (data e hora vêm separadas; hora null não inventa 00:00)", async () => {
     renderPage()
     await screen.findByText("Salário")
-    expect(screen.getByText("21/05/2026 14:32")).toBeInTheDocument() // mercado, com hora
-    expect(screen.getByText("20/05/2026")).toBeInTheDocument() // salário, meia-noite → sem hora
+    expect(screen.getByText("21/05/2026 14:32")).toBeInTheDocument() // mercado: hora "14:32:00" → HH:MM (sem segundos)
+    expect(screen.getByText("23/05/2026 09:05")).toBeInTheDocument() // fatura: hora com zero à esquerda
+    expect(screen.getByText("20/05/2026")).toBeInTheDocument() // salário: hora null → só o dia
+    expect(screen.getByText("05/06/2026")).toBeInTheDocument() // previsto: hora null → só o dia
     expect(screen.queryByText(/00:00/)).not.toBeInTheDocument()
+  })
+
+  it("o dia sai do string 'YYYY-MM-DD' sem passar por fuso (não recua nem avança 1 dia)", async () => {
+    renderPage()
+    await screen.findByText("Salário")
+    // 20/05 (e não 19/05 nem 21/05): o front não faz new Date() no dia, então o fuso não interfere
+    expect(screen.getByText("20/05/2026")).toBeInTheDocument()
+    expect(screen.queryByText("19/05/2026")).not.toBeInTheDocument()
   })
 
   it("valor da transferência é neutro; entrada/saída/fatura têm tom próprio", async () => {
@@ -447,6 +457,32 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
 
     const modal = await screen.findByRole("dialog", { name: "Editar transação" })
     expect(within(modal).getByDisplayValue("Mercado")).toBeInTheDocument()
+  })
+
+  it("editar: o dialog recebe data e hora SEPARADAS da linha (21/05 + 14:32), sem passar por fuso", async () => {
+    renderPage()
+    await screen.findByText("Mercado")
+
+    const menu = await abrirMenu(1) // 2ª linha = Mercado (data "2026-05-21", hora "14:32:00")
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
+
+    const modal = await screen.findByRole("dialog", { name: "Editar transação" })
+    expect(within(modal).getByPlaceholderText("HH:MM")).toHaveValue("14:32") // "14:32:00" → HH:MM
+    expect(within(modal).getByRole("button", { name: "21/05/2026" })).toBeInTheDocument() // dia exato, sem recuar pra 20/05
+  })
+
+  it("editar lançamento SEM hora (null): o campo Hora abre vazio (e, sendo obrigatório, o submit é bloqueado até preencher)", async () => {
+    renderPage()
+    await screen.findByText("Salário")
+
+    const menu = await abrirMenu(0) // 1ª linha = Salário (data "2026-05-20", hora null)
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
+
+    const modal = await screen.findByRole("dialog", { name: "Editar transação" })
+    expect(within(modal).getByPlaceholderText("HH:MM")).toHaveValue("")
+    expect(within(modal).getByRole("button", { name: "20/05/2026" })).toBeInTheDocument()
+    fireEvent.click(within(modal).getByRole("button", { name: "Salvar" }))
+    expect(await within(modal).findByText("Informe a hora")).toBeInTheDocument()
   })
 
   // ── Ações de família/rateio no ⋮ (só despesa real de conta) ──

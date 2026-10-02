@@ -8,7 +8,7 @@ namespace ControleFinanceiro.Api.DTOs.Conta
     {
         public decimal Valor { get; set; }
 
-        /// <summary>Data de abertura do saldo inicial. Null = mantém a atual (ou hoje, se for novo).</summary>
-        public DateTime? Data { get; set; }
+        /// <summary>Data de abertura do saldo inicial ("yyyy-MM-dd"). Null = mantém a atual (ou hoje, se for novo).</summary>
+        public DateOnly? Data { get; set; }
     }
 }

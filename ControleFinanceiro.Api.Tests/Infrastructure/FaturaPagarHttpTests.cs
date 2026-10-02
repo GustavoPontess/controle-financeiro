@@ -54,7 +54,7 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = valorCompra, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateTime.UtcNow, CriadoPor = usuario.Id, Ativo = true,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuario.Id, Ativo = true,
         };
         var conta = new Conta
         {

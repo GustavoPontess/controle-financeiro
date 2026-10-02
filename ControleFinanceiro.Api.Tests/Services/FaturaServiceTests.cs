@@ -226,7 +226,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.ObterOuCriarFaturaAsync(Guid.NewGuid(), DateTime.UtcNow, usuarioId));
+            () => service.ObterOuCriarFaturaAsync(Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), usuarioId));
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class FaturaServiceTests
         var service = new FaturaService(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 5), atacanteId));
+            () => service.ObterOuCriarFaturaAsync(cartao.Id, new DateOnly(2026, 3, 5), atacanteId));
 
         Assert.Empty(ctx.Faturas);
     }
@@ -259,7 +259,7 @@ public class FaturaServiceTests
         await ctx.SaveChangesAsync();
 
         var service = new FaturaService(ctx);
-        var fatura = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 5), usuarioId);
+        var fatura = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateOnly(2026, 3, 5), usuarioId);
 
         Assert.Equal(new DateTime(2026, 2, 10), fatura.DataInicio);
         Assert.Equal(new DateTime(2026, 3, 10), fatura.DataFechamento);
@@ -282,9 +282,9 @@ public class FaturaServiceTests
         await ctx.SaveChangesAsync();
 
         var service = new FaturaService(ctx);
-        var primeira = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 5), usuarioId);
+        var primeira = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateOnly(2026, 3, 5), usuarioId);
         // Outra transação, dia diferente, mesmo período de fatura (fecha em 10/03).
-        var segunda = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 8), usuarioId);
+        var segunda = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateOnly(2026, 3, 8), usuarioId);
 
         Assert.Equal(primeira.Id, segunda.Id);
         Assert.Single(ctx.Faturas);
@@ -313,7 +313,7 @@ public class FaturaServiceTests
         await ctx.SaveChangesAsync();
 
         var service = new FaturaService(ctx);
-        var fatura = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateTime(2026, 3, 5), usuarioId);
+        var fatura = await service.ObterOuCriarFaturaAsync(cartao.Id, new DateOnly(2026, 3, 5), usuarioId);
 
         Assert.Equal(faturaExistente.Id, fatura.Id);
         Assert.Equal(new DateTime(2026, 2, 10), fatura.DataInicio); // corrigida
@@ -334,7 +334,7 @@ public class FaturaServiceTests
         var service = new FaturaService(ctx);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.CriarParcelamentoAsync(
-            cartao.Id, null, "Compra", 100m, 1, DateTime.UtcNow.Date, usuarioId));
+            cartao.Id, null, "Compra", 100m, 1, DateOnly.FromDateTime(DateTime.UtcNow), usuarioId));
         Assert.Contains("mínimo 2 parcelas", ex.Message);
     }
 
@@ -351,7 +351,7 @@ public class FaturaServiceTests
         var dataBase = new DateTime(2026, 1, 15);
 
         var transacoes = await service.CriarParcelamentoAsync(
-            cartao.Id, null, "Notebook", 300m, 3, dataBase, usuarioId);
+            cartao.Id, null, "Notebook", 300m, 3, DateOnly.FromDateTime(dataBase), usuarioId);
 
         Assert.Equal(3, transacoes.Count);
         Assert.All(transacoes, t =>
@@ -389,7 +389,7 @@ public class FaturaServiceTests
         var service = new FaturaService(ctx);
 
         var transacoes = await service.CriarParcelamentoAsync(
-            cartao.Id, null, "Compra", 100m, 3, new DateTime(2026, 1, 15), usuarioId);
+            cartao.Id, null, "Compra", 100m, 3, new DateOnly(2026, 1, 15), usuarioId);
 
         Assert.Equal(33.33m, transacoes[0].Valor);
         Assert.Equal(33.33m, transacoes[1].Valor);
@@ -423,7 +423,7 @@ public class FaturaServiceTests
             CartaoCreditoId = cartao.Id,
             FaturaId = fatura.Id,
             UsadoComoCredito = true,
-            Data = DateTime.UtcNow,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
             CriadoPor = usuarioId,
             Ativo = true,
         };
@@ -550,7 +550,8 @@ public class FaturaServiceTests
         Assert.True(pagamento.EhPagamentoFatura);
         Assert.Equal(fatura.Id, pagamento.FaturaPagaId);
         Assert.Null(pagamento.FaturaId); // pagamento NÃO conta como transação da própria fatura
-        Assert.Equal(dataPagamento, pagamento.Data);
+        Assert.Equal(DateOnly.FromDateTime(dataPagamento), pagamento.Data);
+        Assert.Null(pagamento.Hora); // pagamento de fatura é datado (sem hora específica)
 
         var faturaDb = await ctx.Faturas.FindAsync(fatura.Id);
         Assert.Equal(300m, faturaDb!.ValorPago);
@@ -1023,13 +1024,13 @@ public class FaturaServiceTests
             {
                 Id = Guid.NewGuid(), Descricao = "Compra ativa", Valor = 50, Tipo = TipoTransacao.Despesa,
                 CartaoCreditoId = cartao.Id, FaturaId = faturaRecente.Id, UsadoComoCredito = true,
-                Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+                Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
             },
             new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "Compra cancelada", Valor = 20, Tipo = TipoTransacao.Despesa,
                 CartaoCreditoId = cartao.Id, FaturaId = faturaRecente.Id, UsadoComoCredito = true,
-                Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = false,
+                Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = false,
             });
         ctx.ParcelasTransacao.AddRange(
             new ParcelaTransacao
@@ -1081,7 +1082,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 80, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateTime.UtcNow.AddDays(-20), CriadoPor = usuarioId,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-20)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -1114,7 +1115,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = coberta.Id, UsadoComoCredito = true,
-            Data = DateTime.UtcNow.AddDays(-20), CriadoPor = usuarioId,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-20)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -1189,14 +1190,14 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Compra no mercado", Valor = 80, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            CategoriaId = categoria.Id, Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+            CategoriaId = categoria.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
         };
         // Transação de conta corrente (não é crédito) associada por engano à fatura não deve aparecer.
         var naoCredito = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Não é crédito", Valor = 10, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = false,
-            Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Categorias.Add(categoria);
@@ -1284,7 +1285,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 40, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Categorias.Add(categoria);

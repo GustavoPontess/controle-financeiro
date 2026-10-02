@@ -46,7 +46,8 @@ public class TransferenciaService
             Tipo = TipoTransacao.Despesa,
             ContaId = dto.ContaOrigemId,
             CriadoPor = usuarioId,
-            Data = dto.Data,
+            Data = DateOnly.FromDateTime(dto.Data),
+            Hora = null, // perna de transferência é datada (sem hora de relógio)
             CategoriaId = null,
             EhTransferencia = true
         };
@@ -59,7 +60,8 @@ public class TransferenciaService
             Tipo = TipoTransacao.Receita,
             ContaId = dto.ContaDestinoId,
             CriadoPor = usuarioId,
-            Data = dto.Data,
+            Data = DateOnly.FromDateTime(dto.Data),
+            Hora = null, // perna de transferência é datada (sem hora de relógio)
             CategoriaId = null,
             EhTransferencia = true
         };

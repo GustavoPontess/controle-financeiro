@@ -14,7 +14,7 @@ namespace ControleFinanceiro.Api.Tests.Infrastructure;
 /// <summary>
 /// Pipeline HTTP real do POST /contas com saldo inicial + DATA de abertura (DataSaldoInicial):
 /// prova que o campo do DTO chega do JSON ao service (o front manda "YYYY-MM-DD"), que a transação
-/// EhSaldoInicial é carimbada no início do dia escolhido, que data futura vira 400 sem gravar nada e
+/// EhSaldoInicial é gravada no DIA escolhido (Data = DateOnly, Hora = null), que data futura vira 400 sem gravar nada e
 /// que sem login é 401. Create não recebe id de recurso, então 404/403 (IDOR) não se aplicam aqui.
 /// Também cobre o PUT /contas/{id}/saldo-inicial (edição do ponto de partida pela Reconciliação):
 /// 204 + transação alterada no banco + evento financeiro, 400 (valor zero/negativo/ausente, data futura),
@@ -70,8 +70,11 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         return req;
     }
 
-    // "YYYY-MM-DD" é exatamente o que o ContaForm do front envia em dataSaldoInicial.
-    private static string Iso(DateTime d) => d.ToString("yyyy-MM-dd");
+    // Transacao.Data é DateOnly (o DIA, sem fuso) e Hora é TimeOnly? (null = sem hora).
+    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+
+    // "YYYY-MM-DD" é exatamente o que o ContaForm do front envia em dataSaldoInicial (e em `data` do PUT).
+    private static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     private List<Transacao> SaldosIniciaisDoUsuario(Guid usuarioId)
     {
@@ -90,12 +93,12 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Criar_ComDataSaldoInicialRetroativa_Retorna201_ECarimbaTransacaoNaqueleDia()
+    public async Task Criar_ComDataSaldoInicialRetroativa_Retorna201_EGravaTransacaoNaqueleDiaSemHora()
     {
         const string email = "contas-data-retroativa@test.com";
         var usuarioId = SeedUsuario(email);
         var (client, csrf) = await LoginClientAsync(email);
-        var dia = DateTime.UtcNow.Date.AddDays(-20);
+        var dia = Hoje.AddDays(-20);
 
         var resp = await client.SendAsync(CriarContaRequest(
             new { nome = "Conta Retroativa", tipo = (int)TipoConta.ContaCorrente, saldoInicial = 500m, dataSaldoInicial = Iso(dia) },
@@ -104,7 +107,8 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var saldos = SaldosIniciaisDoUsuario(usuarioId);
         var saldoInicial = Assert.Single(saldos);
-        Assert.Equal(dia, saldoInicial.Data); // início do dia informado, não "agora"
+        Assert.Equal(dia, saldoInicial.Data); // o dia informado, não "agora"
+        Assert.Null(saldoInicial.Hora); // saldo inicial é datado, sem hora
         Assert.Equal(500m, saldoInicial.Valor);
         // O saldo devolvido já reflete o lançamento (lido do banco pela mesma regra da listagem).
         var corpo = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -112,22 +116,22 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Criar_SemDataSaldoInicial_CarimbaTransacaoHoje()
+    public async Task Criar_SemDataSaldoInicial_GravaTransacaoHojeSemHora()
     {
         const string email = "contas-sem-data@test.com";
         var usuarioId = SeedUsuario(email);
         var (client, csrf) = await LoginClientAsync(email);
 
-        var antes = DateTime.UtcNow.Date;
+        var antes = Hoje;
         var resp = await client.SendAsync(CriarContaRequest(
             new { nome = "Conta Sem Data", tipo = (int)TipoConta.ContaCorrente, saldoInicial = 300m },
             csrf));
-        var depois = DateTime.UtcNow.Date;
+        var depois = Hoje;
 
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var saldoInicial = Assert.Single(SaldosIniciaisDoUsuario(usuarioId));
         Assert.InRange(saldoInicial.Data, antes, depois);
-        Assert.Equal(TimeSpan.Zero, saldoInicial.Data.TimeOfDay);
+        Assert.Null(saldoInicial.Hora);
     }
 
     [Fact]
@@ -141,7 +145,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
             new
             {
                 nome = "Conta Futura", tipo = (int)TipoConta.ContaCorrente, saldoInicial = 500m,
-                dataSaldoInicial = Iso(DateTime.UtcNow.Date.AddDays(2)),
+                dataSaldoInicial = Iso(Hoje.AddDays(2)),
             },
             csrf));
 
@@ -156,7 +160,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     // ------------------------------------------------------------------ PUT /contas/{id}/saldo-inicial
 
     // Conta do usuário já com a transação de saldo inicial (ou sem ela, se valor == null).
-    private Guid SeedContaComSaldoInicial(Guid usuarioId, decimal? valor, DateTime data)
+    private Guid SeedContaComSaldoInicial(Guid usuarioId, decimal? valor, DateOnly data, TimeOnly? hora = null)
     {
         using var scope = _factory.CreateScopeComBanco();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -171,7 +175,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
             ctx.Transacoes.Add(new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "Saldo Inicial", Valor = valor.Value, Tipo = TipoTransacao.Receita,
-                ContaId = conta.Id, CriadoPor = usuarioId, Data = data, EhSaldoInicial = true,
+                ContaId = conta.Id, CriadoPor = usuarioId, Data = data, Hora = hora, EhSaldoInicial = true,
             });
         }
         ctx.SaveChanges();
@@ -200,16 +204,18 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         const string email = "contas-si-ok@test.com";
         var usuarioId = SeedUsuario(email);
-        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, DateTime.UtcNow.Date.AddDays(-5));
+        // Saldo inicial de partida COM hora (15:30) de propósito: editar pelo endpoint tem que limpar (Hora = null).
+        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, Hoje.AddDays(-5), new TimeOnly(15, 30));
         var (client, csrf) = await LoginClientAsync(email);
-        var novoDia = DateTime.UtcNow.Date.AddDays(-15);
+        var novoDia = Hoje.AddDays(-15);
 
         var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor = 2345.67m, data = Iso(novoDia) }, csrf));
 
         Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
         var saldoInicial = Assert.Single(SaldosIniciaisDoUsuario(usuarioId)); // atualizou a existente, não duplicou
         Assert.Equal(2345.67m, saldoInicial.Valor);
-        Assert.Equal(novoDia, saldoInicial.Data); // início do dia informado
+        Assert.Equal(novoDia, saldoInicial.Data); // o dia informado
+        Assert.Null(saldoInicial.Hora);
         // O saldo da conta (regra única) já reflete o novo ponto de partida.
         var conta = await client.GetFromJsonAsync<JsonElement>($"/api/v1/contas/{contaId}");
         Assert.Equal(2345.67m, conta.GetProperty("saldoAtual").GetDecimal());
@@ -225,7 +231,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         const string email = "contas-si-sem-data@test.com";
         var usuarioId = SeedUsuario(email);
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-8);
+        var dataOriginal = Hoje.AddDays(-8);
         var contaId = SeedContaComSaldoInicial(usuarioId, 300m, dataOriginal);
         var (client, csrf) = await LoginClientAsync(email);
 
@@ -242,10 +248,10 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         const string email = "contas-si-cria@test.com";
         var usuarioId = SeedUsuario(email);
-        var contaId = SeedContaComSaldoInicial(usuarioId, valor: null, DateTime.UtcNow.Date);
+        var contaId = SeedContaComSaldoInicial(usuarioId, valor: null, Hoje);
         Assert.Empty(SaldosIniciaisDoUsuario(usuarioId));
         var (client, csrf) = await LoginClientAsync(email);
-        var dia = DateTime.UtcNow.Date.AddDays(-3);
+        var dia = Hoje.AddDays(-3);
 
         var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor = 800m, data = Iso(dia) }, csrf));
 
@@ -254,6 +260,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(contaId, criada.ContaId);
         Assert.Equal(800m, criada.Valor);
         Assert.Equal(dia, criada.Data);
+        Assert.Null(criada.Hora);
         Assert.Equal(TipoTransacao.Receita, criada.Tipo);
         var evento = Assert.Single(EventosDoUsuario(usuarioId));
         Assert.Equal(FinancialEventType.TransacaoCriada, evento.Tipo);
@@ -266,11 +273,11 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         var email = $"contas-si-valor-{(valor < 0 ? "negativo" : "zero")}@test.com";
         var usuarioId = SeedUsuario(email);
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-5);
+        var dataOriginal = Hoje.AddDays(-5);
         var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, dataOriginal);
         var (client, csrf) = await LoginClientAsync(email);
 
-        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor, data = Iso(DateTime.UtcNow.Date.AddDays(-2)) }, csrf));
+        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor, data = Iso(Hoje.AddDays(-2)) }, csrf));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         Assert.Contains("\"code\":\"VALIDATION_ERROR\"", await resp.Content.ReadAsStringAsync());
@@ -286,10 +293,10 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         // Valor ausente vira 0 (decimal default) → mesma recusa de "maior que zero".
         const string email = "contas-si-sem-valor@test.com";
         var usuarioId = SeedUsuario(email);
-        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, DateTime.UtcNow.Date.AddDays(-5));
+        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, Hoje.AddDays(-5));
         var (client, csrf) = await LoginClientAsync(email);
 
-        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { data = Iso(DateTime.UtcNow.Date.AddDays(-2)) }, csrf));
+        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { data = Iso(Hoje.AddDays(-2)) }, csrf));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         Assert.Equal(1000m, Assert.Single(SaldosIniciaisDoUsuario(usuarioId)).Valor);
@@ -300,11 +307,11 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     {
         const string email = "contas-si-data-futura@test.com";
         var usuarioId = SeedUsuario(email);
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-5);
+        var dataOriginal = Hoje.AddDays(-5);
         var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, dataOriginal);
         var (client, csrf) = await LoginClientAsync(email);
 
-        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor = 2000m, data = Iso(DateTime.UtcNow.Date.AddDays(2)) }, csrf));
+        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor = 2000m, data = Iso(Hoje.AddDays(2)) }, csrf));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         var corpo = await resp.Content.ReadAsStringAsync();
@@ -323,12 +330,12 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         // (não confirma que o id existe) e o saldo inicial do dono fica intacto.
         var emailDono = "contas-si-dono@test.com";
         var donoId = SeedUsuario(emailDono);
-        var dataDono = DateTime.UtcNow.Date.AddDays(-5);
+        var dataDono = Hoje.AddDays(-5);
         var contaDoDono = SeedContaComSaldoInicial(donoId, 1000m, dataDono);
         const string emailAtacante = "contas-si-atacante@test.com";
         var atacanteId = SeedUsuario(emailAtacante);
         var (client, csrf) = await LoginClientAsync(emailAtacante);
-        var corpo = new { valor = 99999m, data = Iso(DateTime.UtcNow.Date.AddDays(-1)) };
+        var corpo = new { valor = 99999m, data = Iso(Hoje.AddDays(-1)) };
 
         var deOutro = await client.SendAsync(SaldoInicialRequest(contaDoDono, corpo, csrf));
         var inexistente = await client.SendAsync(SaldoInicialRequest(Guid.NewGuid(), corpo, csrf));
@@ -351,10 +358,10 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         // vir da autorização (e não do CsrfValidationMiddleware), como em Criar_Anonimo.
         const string email = "contas-si-anonimo@test.com";
         var usuarioId = SeedUsuario(email);
-        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, DateTime.UtcNow.Date.AddDays(-5));
+        var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, Hoje.AddDays(-5));
         var client = _factory.CreateClient();
         const string csrf = "csrf-anonimo-saldo-inicial";
-        var req = SaldoInicialRequest(contaId, new { valor = 5m, data = Iso(DateTime.UtcNow.Date) }, csrf);
+        var req = SaldoInicialRequest(contaId, new { valor = 5m, data = Iso(Hoje) }, csrf);
         req.Headers.Add("Cookie", $"X-CSRF-Token={csrf}");
 
         var resp = await client.SendAsync(req);
@@ -371,7 +378,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
         var client = _factory.CreateClient();
         const string csrf = "csrf-anonimo-contas";
         var req = CriarContaRequest(
-            new { nome = "Conta Anonima", tipo = (int)TipoConta.ContaCorrente, saldoInicial = 500m, dataSaldoInicial = Iso(DateTime.UtcNow.Date) },
+            new { nome = "Conta Anonima", tipo = (int)TipoConta.ContaCorrente, saldoInicial = 500m, dataSaldoInicial = Iso(Hoje) },
             csrf);
         req.Headers.Add("Cookie", $"X-CSRF-Token={csrf}");
 

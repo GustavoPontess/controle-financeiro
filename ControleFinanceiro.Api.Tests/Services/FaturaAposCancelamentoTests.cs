@@ -99,12 +99,12 @@ public class FaturaAposCancelamentoTests
             {
                 Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
                 CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-                MeioPagamento = MeioPagamento.Credito, Data = inicio.AddDays(1), CriadoPor = usuarioId,
+                MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(inicio.AddDays(1)), CriadoPor = usuarioId,
             },
             new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "Salário", Valor = 10_000, Tipo = TipoTransacao.Receita,
-                ContaId = conta.Id, Data = hoje, CriadoPor = usuarioId,
+                ContaId = conta.Id, Data = DateOnly.FromDateTime(hoje), CriadoPor = usuarioId,
             });
         await ctx.SaveChangesAsync();
 
@@ -212,7 +212,7 @@ public class FaturaAposCancelamentoTests
         await new TransacaoService(ctx, new FaturaService(ctx)).CriarTransacaoAsync(new Transacao
         {
             Descricao = "Farmácia", Valor = 50, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
-            UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, Data = DateTime.UtcNow.Date,
+            UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow),
         }, c.UsuarioId);
 
         var comCompra = await DtoAsync(ctx, c, c.FaturaId);
@@ -593,7 +593,7 @@ public class FaturaAposCancelamentoTests
         {
             Id = Guid.NewGuid(), Descricao = "Farmácia", Valor = valor, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = c.CartaoId, FaturaId = c.FaturaId, UsadoComoCredito = true,
-            MeioPagamento = MeioPagamento.Credito, Data = DateTime.UtcNow.Date, CriadoPor = c.UsuarioId,
+            MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = c.UsuarioId,
         };
         ctx.Transacoes.Add(compra);
         await ctx.SaveChangesAsync();

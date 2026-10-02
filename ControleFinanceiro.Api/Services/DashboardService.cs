@@ -95,7 +95,7 @@ public class DashboardService
                         && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
             .Sum(t => t.Valor);
 
-        var inicioDoPeriodo = new DateTime(ano, mes, 1);
+        var inicioDoPeriodo = DateOnly.FromDateTime(new DateTime(ano, mes, 1));
         var saldoAnteriorAoMes = todasTransacoes
             .Where(t => t.Data < inicioDoPeriodo && !t.UsadoComoCredito
                         && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
@@ -164,7 +164,7 @@ public class DashboardService
                     Domain.Enums.MeioPagamento.Boleto   => "Boleto",
                     _ => null
                 },
-                Data = t.Data
+                Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue)
             }).ToList();
 
         // Evolução do saldo de caixa: 6 meses terminando no mês selecionado.
@@ -176,7 +176,7 @@ public class DashboardService
         for (var i = 5; i >= 0; i--)
         {
             var refDate = new DateTime(ano, mes, 1).AddMonths(-i);
-            var fimDoMes = refDate.AddMonths(1);
+            var fimDoMes = DateOnly.FromDateTime(refDate.AddMonths(1));
             var saldoAteFim = caixaExecutado
                 .Where(t => t.Data < fimDoMes)
                 .Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);

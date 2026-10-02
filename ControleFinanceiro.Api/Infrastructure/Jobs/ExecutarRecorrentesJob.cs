@@ -16,9 +16,10 @@ public class ExecutarRecorrentesJob
     public async Task ExecuteAsync()
     {
         var hoje = DateTime.UtcNow.Date;
+        var hojeData = DateOnly.FromDateTime(hoje);
 
         var transacoes = await _context.Transacoes
-            .Where(t => t.StatusTransacao == StatusTransacao.Previsao && t.Data <= hoje && t.Ativo && t.RecorrenteOrigemId != null)
+            .Where(t => t.StatusTransacao == StatusTransacao.Previsao && t.Data <= hojeData && t.Ativo && t.RecorrenteOrigemId != null)
             .ToListAsync();
 
         foreach (var t in transacoes)

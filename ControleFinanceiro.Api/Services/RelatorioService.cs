@@ -36,8 +36,10 @@ public class RelatorioService
         if ((dataFim - dataInicio).TotalDays > 730)
             throw new ArgumentException("O período não pode exceder 2 anos.");
 
+        var inicioDia = DateOnly.FromDateTime(dataInicio);
+        var fimDia = DateOnly.FromDateTime(dataFim);
         var query = _context.Transacoes
-            .Where(t => t.Data >= dataInicio && t.Data <= dataFim &&
+            .Where(t => t.Data >= inicioDia && t.Data <= fimDia &&
                         (t.Conta!.UsuarioIdProprietario == usuarioId ||
                          t.CartaoCredito!.CriadoPor == usuarioId))
             // Relatório de P&L: só movimento real executado. Exclui canceladas/previsões e
@@ -90,7 +92,7 @@ public class RelatorioService
             .ToList();
 
         var evolucaoDiaria = transacoes
-            .GroupBy(t => DateOnly.FromDateTime(t.Data.Date))
+            .GroupBy(t => t.Data)
             .Select(g => new EvolucaoDiariaDto
             {
                 Data = g.Key,
@@ -103,7 +105,7 @@ public class RelatorioService
         var linhas = transacoes.Select(t => new TransacaoRelatorioDto
         {
             Id = t.Id,
-            Data = t.Data,
+            Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
             Descricao = t.Descricao,
             Valor = t.Valor,
             Tipo = t.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",

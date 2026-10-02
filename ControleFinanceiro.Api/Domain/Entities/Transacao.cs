@@ -69,8 +69,15 @@ public class Transacao
 
     public DateTime? AprovadoEm { get; set; }
 
+    /// <summary>Dia do lançamento — <c>date</c> puro, sem fuso. A hora fica em <see cref="Hora"/>.
+    /// Separado de hora (#fuso): timestamp único vinha sem 'Z' no JSON e o front deslocava +3h.</summary>
     [Required]
-    public DateTime Data { get; set; }
+    public DateOnly Data { get; set; }
+
+    /// <summary>Hora do lançamento — <c>time</c> puro, sem fuso. Null = lançamento SEM hora
+    /// (recorrente, saldo inicial, importação, ou data passada sem horário real). A tela só mostra
+    /// a hora quando ela existe.</summary>
+    public TimeOnly? Hora { get; set; }
 
     public Guid? RecorrenteOrigemId { get; set; }
 

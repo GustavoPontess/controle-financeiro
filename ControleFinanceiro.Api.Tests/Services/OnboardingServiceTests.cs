@@ -107,7 +107,7 @@ public class OnboardingServiceTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = 10m,
-            Tipo = TipoTransacao.Despesa, Data = new DateTime(2026, 5, 10),
+            Tipo = TipoTransacao.Despesa, Data = new DateOnly(2026, 5, 10),
             ContaId = contaId, Ativo = true, StatusTransacao = StatusTransacao.Executado,
         });
         ctx.SaveChanges();

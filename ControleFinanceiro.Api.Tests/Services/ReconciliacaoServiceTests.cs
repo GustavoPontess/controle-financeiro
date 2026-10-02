@@ -108,7 +108,10 @@ public class ReconciliacaoServiceTests
             Valor = valor,
             Tipo = tipo,
             ContaId = contaId,
-            Data = data,
+            // Transacao.Data = o DIA (DateOnly) e Hora = a hora (TimeOnly?). O DateTime do teste carrega as duas
+            // coisas: meia-noite = lançamento sem hora (null), qualquer outro horário vira Hora.
+            Data = DateOnly.FromDateTime(data),
+            Hora = data.TimeOfDay == TimeSpan.Zero ? null : TimeOnly.FromDateTime(data),
             StatusTransacao = status,
             Ativo = ativo,
         };
@@ -124,6 +127,7 @@ public class ReconciliacaoServiceTests
         var t = await AddTransacao(ctx, contaId, TipoTransacao.Receita, valor, data, ativo: ativo);
         t.Descricao = "Saldo Inicial";
         t.EhSaldoInicial = true;
+        t.Hora = null; // o ContaService grava o saldo inicial datado, sem hora
         await ctx.SaveChangesAsync();
         return t;
     }
@@ -238,6 +242,8 @@ public class ReconciliacaoServiceTests
     {
         var (ctx, service, usuarioId, conta) = Seed();
         await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 500m, T0.AddDays(-1));
+        // MESMO DIA do limite, mas com Hora (12:01) depois dele (12:00): "o saldo às 12:00" não pode incluí-la.
+        // O saldo até uma data+hora tem que respeitar a Hora no dia do limite, não só a Data.
         await AddTransacao(ctx, conta.Id, TipoTransacao.Despesa, 200m, T0.AddMinutes(1));
 
         var saldo = await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0);
@@ -323,7 +329,8 @@ public class ReconciliacaoServiceTests
         Assert.Equal(conta.Id, ajuste.ContaId);
         Assert.Equal(StatusTransacao.Executado, ajuste.StatusTransacao);
         Assert.True(ajuste.Ativo);
-        Assert.Equal(T0, ajuste.Data);
+        Assert.Equal(DateOnly.FromDateTime(T0), ajuste.Data);
+        Assert.Null(ajuste.Hora); // ajuste é datado (sem hora específica)
         Assert.Equal(usuarioId, ajuste.CriadoPor);
         Assert.Null(ajuste.CategoriaId);
 
@@ -1486,7 +1493,7 @@ public class ReconciliacaoServiceTests
         Assert.Equal(Baseline, item.Tipo);
         Assert.Equal(inicial.Id, item.Id); // o id é o da transação de saldo inicial
         Assert.Equal(conta.Id, item.ContaId);
-        Assert.Equal(dataInicial, item.DataHora);
+        Assert.Equal(dataInicial.Date, item.DataHora); // saldo inicial é datado (sem hora) → meia-noite do dia
         Assert.Equal(1500.75m, item.SaldoDeclarado);
         Assert.Equal(1500.75m, item.SaldoCalculado);
         Assert.Equal(0m, item.Diferenca);

@@ -22,6 +22,9 @@ public class ContaServiceTests
     // mesmo contexto: Registrar só enfileira no contexto e o SaveChanges do service persiste junto.
     private static ContaService CriarService(AppDbContext ctx) => new(ctx, new FinancialEventLogService(ctx));
 
+    // Transacao.Data agora é DateOnly (o DIA, sem fuso) + Hora TimeOnly? (null = sem hora).
+    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+
     [Fact]
     public async Task CriarAsync_NomeVazio_LancaException()
     {
@@ -79,45 +82,45 @@ public class ContaServiceTests
         Assert.Equal("Saldo Inicial", transacoes[0].Descricao);
     }
 
-    // --- Saldo inicial com DATA de abertura: a transação EhSaldoInicial é carimbada no INÍCIO do dia
-    // escolhido (baseline da reconciliação fica antes dos lançamentos daquele dia, inclusive retroativos).
+    // --- Saldo inicial com DATA de abertura: a transação EhSaldoInicial é gravada no DIA escolhido, SEM hora
+    // (Hora = null → baseline da reconciliação fica antes dos lançamentos daquele dia, inclusive retroativos).
 
     [Fact]
-    public async Task CriarAsync_DataSaldoInicialInformada_CarimbaTransacaoNoInicioDaqueleDia()
+    public async Task CriarAsync_DataSaldoInicialInformada_GravaODiaEscolhidoSemHora()
     {
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
         var conta = new Conta { Nome = "Conta Retroativa", Tipo = TipoConta.ContaCorrente };
-        // 30 dias atrás, com hora no meio da tarde de propósito: o service tem que normalizar pra 00:00.
+        // 30 dias atrás, com hora no meio da tarde de propósito: o service guarda só o DIA (Hora = null).
         var dataAbertura = DateTime.UtcNow.Date.AddDays(-30).AddHours(15).AddMinutes(30);
 
         await svc.CriarAsync(conta, usuarioId, saldoInicial: 1000, dataSaldoInicial: dataAbertura);
 
         var saldoInicial = await ctx.Transacoes.SingleAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial);
-        Assert.Equal(dataAbertura.Date, saldoInicial.Data.Date);
-        Assert.Equal(TimeSpan.Zero, saldoInicial.Data.TimeOfDay);
+        Assert.Equal(DateOnly.FromDateTime(dataAbertura), saldoInicial.Data);
+        Assert.Null(saldoInicial.Hora);
         Assert.Equal(1000, saldoInicial.Valor);
         Assert.Equal(TipoTransacao.Receita, saldoInicial.Tipo);
     }
 
     [Fact]
-    public async Task CriarAsync_DataSaldoInicialNula_UsaHojeNoInicioDoDia()
+    public async Task CriarAsync_DataSaldoInicialNula_UsaHojeSemHora()
     {
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
         var conta = new Conta { Nome = "Conta Hoje", Tipo = TipoConta.ContaCorrente };
 
-        // Janela [antes, depois] em vez de comparar com UtcNow.Date solto: o teste não quebra se
+        // Janela [antes, depois] em vez de comparar com "hoje" solto: o teste não quebra se
         // virar a meia-noite UTC entre a chamada e a asserção.
-        var antes = DateTime.UtcNow.Date;
+        var antes = Hoje;
         await svc.CriarAsync(conta, usuarioId, saldoInicial: 500, dataSaldoInicial: null);
-        var depois = DateTime.UtcNow.Date;
+        var depois = Hoje;
 
         var saldoInicial = await ctx.Transacoes.SingleAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial);
-        Assert.InRange(saldoInicial.Data.Date, antes, depois);
-        Assert.Equal(TimeSpan.Zero, saldoInicial.Data.TimeOfDay);
+        Assert.InRange(saldoInicial.Data, antes, depois);
+        Assert.Null(saldoInicial.Hora);
     }
 
     [Fact]
@@ -264,10 +267,11 @@ public class ContaServiceTests
 
     // --- AtualizarSaldoInicialAsync: edição do saldo inicial (ponto de partida) direto na Reconciliação.
     // É dinheiro: valida dono (404, sem vazar existência), valor > 0, data não futura (início do dia) e
-    // registra o evento financeiro (TransacaoAtualizada ao editar / TransacaoCriada ao criar).
+    // registra o evento financeiro (TransacaoAtualizada ao editar / TransacaoCriada ao criar). Grava só o DIA
+    // (Data = DateOnly) e sempre com Hora = null: saldo inicial é datado, não tem horário.
 
     private static async Task<(Conta Conta, Transacao SaldoInicial)> SeedContaComSaldoInicialAsync(
-        AppDbContext ctx, Guid usuarioId, decimal valor, DateTime data, bool ativo = true)
+        AppDbContext ctx, Guid usuarioId, decimal valor, DateOnly data, bool ativo = true, TimeOnly? hora = null)
     {
         var conta = new Conta
         {
@@ -285,6 +289,7 @@ public class ContaServiceTests
             ContaId = conta.Id,
             CriadoPor = usuarioId,
             Data = data,
+            Hora = hora,
             EhSaldoInicial = true,
             Ativo = ativo,
         };
@@ -295,14 +300,15 @@ public class ContaServiceTests
     }
 
     [Fact]
-    public async Task AtualizarSaldoInicialAsync_ExistenteComData_AtualizaValorEDataNoInicioDoDia()
+    public async Task AtualizarSaldoInicialAsync_ExistenteComData_AtualizaValorEDataELimpaAHora()
     {
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, DateTime.UtcNow.Date.AddDays(-5));
-        // 20 dias atrás, com hora no meio da tarde de propósito: o service tem que normalizar pra 00:00.
-        var novaData = DateTime.UtcNow.Date.AddDays(-20).AddHours(15).AddMinutes(30);
+        // O saldo inicial de partida TEM hora (15:30) de propósito: editar tem que limpar (Hora = null).
+        var (conta, original) = await SeedContaComSaldoInicialAsync(
+            ctx, usuarioId, 1000m, Hoje.AddDays(-5), hora: new TimeOnly(15, 30));
+        var novaData = Hoje.AddDays(-20);
 
         await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 2500.75m, novaData);
 
@@ -310,8 +316,8 @@ public class ContaServiceTests
         var saldoInicial = await ctx.Transacoes.SingleAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial);
         Assert.Equal(original.Id, saldoInicial.Id);
         Assert.Equal(2500.75m, saldoInicial.Valor);
-        Assert.Equal(novaData.Date, saldoInicial.Data);
-        Assert.Equal(TimeSpan.Zero, saldoInicial.Data.TimeOfDay);
+        Assert.Equal(novaData, saldoInicial.Data);
+        Assert.Null(saldoInicial.Hora);
         Assert.True(saldoInicial.Ativo);
         Assert.Equal(TipoTransacao.Receita, saldoInicial.Tipo);
     }
@@ -322,7 +328,7 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-12);
+        var dataOriginal = Hoje.AddDays(-12);
         var (conta, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 300m, dataOriginal);
 
         await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 450m, data: null);
@@ -339,13 +345,14 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var (conta, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 100m, DateTime.UtcNow.Date.AddDays(-3));
+        var (conta, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 100m, Hoje.AddDays(-3));
+        var hoje = Hoje;
 
-        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 200m, DateTime.UtcNow.Date);
+        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 200m, hoje);
 
         var saldoInicial = await ctx.Transacoes.SingleAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial);
         Assert.Equal(200m, saldoInicial.Valor);
-        Assert.Equal(DateTime.UtcNow.Date, saldoInicial.Data);
+        Assert.Equal(hoje, saldoInicial.Data);
     }
 
     [Fact]
@@ -356,7 +363,7 @@ public class ContaServiceTests
         var usuarioId = Guid.NewGuid();
         var conta = await svc.CriarAsync(new Conta { Nome = "Conta Sem Saldo", Tipo = TipoConta.ContaCorrente }, usuarioId); // saldoInicial 0 → sem transação
         Assert.Equal(0, await ctx.Transacoes.CountAsync());
-        var data = DateTime.UtcNow.Date.AddDays(-7).AddHours(9);
+        var data = Hoje.AddDays(-7);
 
         await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 800m, data);
 
@@ -369,25 +376,26 @@ public class ContaServiceTests
         Assert.Equal(usuarioId, criada.CriadoPor);
         Assert.Null(criada.CategoriaId);
         Assert.True(criada.Ativo);
-        Assert.Equal(data.Date, criada.Data); // início do dia, mesmo passando hora
+        Assert.Equal(data, criada.Data);
+        Assert.Null(criada.Hora); // saldo inicial é datado, sem hora
     }
 
     [Fact]
-    public async Task AtualizarSaldoInicialAsync_SemSaldoInicialEDataNula_CriaComHojeNoInicioDoDia()
+    public async Task AtualizarSaldoInicialAsync_SemSaldoInicialEDataNula_CriaComHojeSemHora()
     {
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
         var conta = await svc.CriarAsync(new Conta { Nome = "Conta Hoje", Tipo = TipoConta.ContaCorrente }, usuarioId);
 
-        // Janela [antes, depois] em vez de comparar com UtcNow.Date solto: não quebra se virar a meia-noite UTC.
-        var antes = DateTime.UtcNow.Date;
+        // Janela [antes, depois] em vez de comparar com "hoje" solto: não quebra se virar a meia-noite UTC.
+        var antes = Hoje;
         await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 120m, data: null);
-        var depois = DateTime.UtcNow.Date;
+        var depois = Hoje;
 
         var criada = await ctx.Transacoes.SingleAsync(t => t.EhSaldoInicial);
         Assert.InRange(criada.Data, antes, depois);
-        Assert.Equal(TimeSpan.Zero, criada.Data.TimeOfDay);
+        Assert.Null(criada.Hora);
     }
 
     [Fact]
@@ -397,9 +405,9 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var (conta, cancelado) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 100m, DateTime.UtcNow.Date.AddDays(-9), ativo: false);
+        var (conta, cancelado) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 100m, Hoje.AddDays(-9), ativo: false);
 
-        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 777m, DateTime.UtcNow.Date.AddDays(-2));
+        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 777m, Hoje.AddDays(-2));
 
         // Transacao tem query filter global (Ativo) → IgnoreQueryFilters pra enxergar o cancelado.
         Assert.Equal(2, await ctx.Transacoes.IgnoreQueryFilters().CountAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial));
@@ -416,12 +424,12 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var dataA = DateTime.UtcNow.Date.AddDays(-10);
-        var dataB = DateTime.UtcNow.Date.AddDays(-4);
+        var dataA = Hoje.AddDays(-10);
+        var dataB = Hoje.AddDays(-4);
         var (contaA, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 100m, dataA);
         var (contaB, saldoB) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 900m, dataB);
 
-        await svc.AtualizarSaldoInicialAsync(contaA.Id, usuarioId, 111m, DateTime.UtcNow.Date.AddDays(-1));
+        await svc.AtualizarSaldoInicialAsync(contaA.Id, usuarioId, 111m, Hoje.AddDays(-1));
 
         var b = await ctx.Transacoes.SingleAsync(t => t.Id == saldoB.Id);
         Assert.Equal(900m, b.Valor);
@@ -440,11 +448,11 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-5);
+        var dataOriginal = Hoje.AddDays(-5);
         var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, dataOriginal);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, (decimal)valor, DateTime.UtcNow.Date.AddDays(-2)));
+            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, (decimal)valor, Hoje.AddDays(-2)));
 
         Assert.Contains("maior que zero", ex.Message);
         var doBanco = await ctx.Transacoes.SingleAsync(t => t.Id == original.Id);
@@ -459,11 +467,11 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-5);
+        var dataOriginal = Hoje.AddDays(-5);
         var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, dataOriginal);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 2000m, DateTime.UtcNow.Date.AddDays(1)));
+            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 2000m, Hoje.AddDays(1)));
 
         Assert.Contains("futura", ex.Message);
         var doBanco = await ctx.Transacoes.SingleAsync(t => t.Id == original.Id);
@@ -481,7 +489,7 @@ public class ContaServiceTests
         var conta = await svc.CriarAsync(new Conta { Nome = "Conta Futura", Tipo = TipoConta.ContaCorrente }, usuarioId);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 500m, DateTime.UtcNow.Date.AddDays(3)));
+            svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 500m, Hoje.AddDays(3)));
 
         Assert.Equal(0, await ctx.Transacoes.CountAsync());
         Assert.Equal(0, await ctx.FinancialEventLogs.CountAsync());
@@ -495,11 +503,11 @@ public class ContaServiceTests
         var svc = CriarService(ctx);
         var dono = Guid.NewGuid();
         var invasor = Guid.NewGuid();
-        var dataOriginal = DateTime.UtcNow.Date.AddDays(-5);
+        var dataOriginal = Hoje.AddDays(-5);
         var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, dono, 1000m, dataOriginal);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            svc.AtualizarSaldoInicialAsync(conta.Id, invasor, 99999m, DateTime.UtcNow.Date.AddDays(-1)));
+            svc.AtualizarSaldoInicialAsync(conta.Id, invasor, 99999m, Hoje.AddDays(-1)));
 
         var doBanco = await ctx.Transacoes.SingleAsync(t => t.Id == original.Id);
         Assert.Equal(1000m, doBanco.Valor);
@@ -528,10 +536,10 @@ public class ContaServiceTests
         // senão a diferença 404 × 400 revelaria que o id existe.
         var ctx = CreateContext();
         var svc = CriarService(ctx);
-        var (conta, _) = await SeedContaComSaldoInicialAsync(ctx, Guid.NewGuid(), 1000m, DateTime.UtcNow.Date.AddDays(-5));
+        var (conta, _) = await SeedContaComSaldoInicialAsync(ctx, Guid.NewGuid(), 1000m, Hoje.AddDays(-5));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            svc.AtualizarSaldoInicialAsync(conta.Id, Guid.NewGuid(), 0m, DateTime.UtcNow.Date.AddDays(10)));
+            svc.AtualizarSaldoInicialAsync(conta.Id, Guid.NewGuid(), 0m, Hoje.AddDays(10)));
     }
 
     [Fact]
@@ -540,9 +548,9 @@ public class ContaServiceTests
         var ctx = CreateContext();
         var svc = CriarService(ctx);
         var usuarioId = Guid.NewGuid();
-        var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, DateTime.UtcNow.Date.AddDays(-5));
+        var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, Hoje.AddDays(-5));
 
-        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 1500m, DateTime.UtcNow.Date.AddDays(-5));
+        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 1500m, Hoje.AddDays(-5));
 
         var evento = await ctx.FinancialEventLogs.SingleAsync();
         Assert.Equal(FinancialEventType.TransacaoAtualizada, evento.Tipo);
@@ -564,7 +572,7 @@ public class ContaServiceTests
         var usuarioId = Guid.NewGuid();
         var conta = await svc.CriarAsync(new Conta { Nome = "Conta Evento", Tipo = TipoConta.ContaCorrente }, usuarioId);
 
-        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 640m, DateTime.UtcNow.Date.AddDays(-1));
+        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 640m, Hoje.AddDays(-1));
 
         var criada = await ctx.Transacoes.SingleAsync(t => t.EhSaldoInicial);
         var evento = await ctx.FinancialEventLogs.SingleAsync();

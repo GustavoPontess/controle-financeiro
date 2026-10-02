@@ -117,7 +117,7 @@ public class OrcamentoService
     private async Task<Dictionary<string, decimal>> ObterGastosAsync(
         Guid usuarioId, int mes, int ano, IEnumerable<Guid?> categoriaIds)
     {
-        var inicio = new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc);
+        var inicio = DateOnly.FromDateTime(new DateTime(ano, mes, 1));
         var fim = inicio.AddMonths(1);
 
         var gastos = await _context.Transacoes

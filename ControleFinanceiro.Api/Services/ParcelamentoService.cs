@@ -229,7 +229,7 @@ public class ParcelamentoService
                 var mesDaParcela = mesPrimeiraParcela.AddMonths(i);
                 var fatura = await _faturaService.ObterOuCriarFaturaAsync(
                     dto.CartaoCreditoId,
-                    FaturaService.DataNoCicloQueFechaEm(mesDaParcela.Year, mesDaParcela.Month, cartao.DiaFechamento),
+                    DateOnly.FromDateTime(FaturaService.DataNoCicloQueFechaEm(mesDaParcela.Year, mesDaParcela.Month, cartao.DiaFechamento)),
                     usuarioId);
 
                 var parcela = new ParcelaTransacao

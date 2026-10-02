@@ -27,5 +27,8 @@ export interface Transaction {
   statusTransacao?: number
   // Envio na criação: true = já recebido/pago (Executado); false = previsão.
   efetivado?: boolean
+  /** Dia do lançamento, "YYYY-MM-DD" (date puro, sem fuso). */
   data: string
+  /** Hora do lançamento, "HH:MM:SS" — ou null/ausente quando não tem hora. */
+  hora?: string | null
 }

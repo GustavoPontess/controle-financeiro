@@ -7,7 +7,6 @@ import { getSubcategories } from "../../../../services/subcategoryService"
 import { updateTransaction } from "../../../../services/transactionService"
 import { getContas } from "../../../../services/contaService"
 import { getCartoes } from "../../../../services/cartaoCreditoService"
-import { combinarDataHora, isoParaHoraHHMM } from "../../../../utils/dateTime"
 import type { Category } from "../../../../types/Category"
 import type { Subcategory } from "../../../../types/Subcategory"
 import type { Conta } from "../../../../types/Conta"
@@ -23,7 +22,10 @@ export interface EditableTransaction {
   contaId?: string
   cartaoCreditoId?: string
   meioPagamento?: number
+  /** Dia "YYYY-MM-DD". */
   data: string
+  /** Hora "HH:MM:SS" ou null/ausente. */
+  hora?: string | null
 }
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -74,8 +76,8 @@ export default function EditTransactionDialog({ transaction, onClose, onSaved, n
     contaId: transaction.contaId ?? "",
     cartaoCreditoId: transaction.cartaoCreditoId ?? "",
     valor: formatValor(transaction.valor),
-    data: transaction.data.split("T")[0],
-    hora: isoParaHoraHHMM(transaction.data),
+    data: transaction.data,
+    hora: transaction.hora ? transaction.hora.slice(0, 5) : "",
     descricao: transaction.descricao,
   }
 
@@ -99,7 +101,9 @@ export default function EditTransactionDialog({ transaction, onClose, onSaved, n
         contaId: transaction.contaId,
         cartaoCreditoId: transaction.cartaoCreditoId,
         meioPagamento: data.meioPagamento,
-        data: combinarDataHora(data.data, data.hora),
+        // date e time separados (sem fuso): data "YYYY-MM-DD", hora "HH:MM:SS" ou null.
+        data: data.data,
+        hora: data.hora ? `${data.hora}:00` : null,
       })
       notify({ open: true, message: "Transação atualizada", severity: "success" })
       onSaved()

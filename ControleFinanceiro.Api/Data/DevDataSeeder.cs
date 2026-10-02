@@ -12,10 +12,10 @@ namespace ControleFinanceiro.Api.Data;
 /// atlas Playwright (#59) e revisão visual do redesign (#61). Só roda em
 /// ambiente Development e só se o usuário dev ainda não existir (idempotente).
 ///
-/// Cria (senha de todos: <c>Dev@123456</c>):
-/// - <c>dev@controle.test</c> — 3 contas, ~40 transações e uma família (casal)
-/// - <c>conjuge@controle.test</c> — 2º membro da família do dev
-/// - <c>solo@controle.test</c> — usuário sozinho: 2 contas e transações, sem família
+/// Seed enxuto por casos de teste (senha de todos: <c>Dev@123456</c>) — um CASAL completo cobre
+/// contas/cartão/faturas/recorrentes/reconciliação E família/rateio/acerto (o diferencial):
+/// - <c>dev@controle.test</c> — titular: 3 contas + cartão + faturas + recorrentes + família (casal)
+/// - <c>conjuge@controle.test</c> — cônjuge COM conta e renda próprias (2º lado do casal p/ rateio)
 /// </summary>
 public static class DevDataSeeder
 {
@@ -89,7 +89,7 @@ public static class DevDataSeeder
             CriadoPor = criadoPor,
             FamiliaId = familiaId,
             MeioPagamento = meio,
-            Data = data,
+            Data = DateOnly.FromDateTime(data), // Hora é atribuída depois (loop de hora realista)
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
         };
@@ -155,8 +155,7 @@ public static class DevDataSeeder
         // ── Usuários ──
         var dev = NovoUsuario(DevEmail, "Gabriel Dev");
         var conjuge = NovoUsuario("conjuge@controle.test", "Marina Dev");
-        var solo = NovoUsuario("solo@controle.test", "Rafael Solo");
-        context.Usuarios.AddRange(dev, conjuge, solo);
+        context.Usuarios.AddRange(dev, conjuge);
 
         // ── Bancos pra vincular (do BancoSeeder; null se faltar/offline) ──
         var bancos = await context.Bancos.ToListAsync();
@@ -175,9 +174,9 @@ public static class DevDataSeeder
         var devCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, dev.Id, bancoId: Vincular("260")); // Nubank
         var devPoupanca = NovaConta("Poupança", TipoConta.ContaPoupanca, dev.Id, bancoId: Vincular("341")); // Itaú
         var devCarteira = NovaConta("Carteira", TipoConta.Dinheiro, dev.Id, carteira: true);
-        var soloCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, solo.Id, bancoId: Vincular("077")); // Inter
-        var soloCarteira = NovaConta("Carteira", TipoConta.Dinheiro, solo.Id, carteira: true);
-        context.Contas.AddRange(devCorrente, devPoupanca, devCarteira, soloCorrente, soloCarteira);
+        var conjugeCorrente = NovaConta("Conta Corrente", TipoConta.ContaCorrente, conjuge.Id, bancoId: Vincular("077")); // Inter
+        var conjugeCarteira = NovaConta("Carteira", TipoConta.Dinheiro, conjuge.Id, carteira: true);
+        context.Contas.AddRange(devCorrente, devPoupanca, devCarteira, conjugeCorrente, conjugeCarteira);
 
         // ── Cartão de crédito do dev (pra testar crédito + parcelamento) ──
         var devCartao = new CartaoCredito
@@ -285,7 +284,7 @@ public static class DevDataSeeder
                         FaturaId = fatura.Id,
                         UsadoComoCredito = true,
                         MeioPagamento = MeioPagamento.Credito,
-                        Data = data,
+                        Data = DateOnly.FromDateTime(data), // Hora atribuída depois (loop de hora realista)
                         CriadoPor = dono.Id,
                         StatusTransacao = StatusTransacao.Executado,
                         Ativo = true,
@@ -316,7 +315,7 @@ public static class DevDataSeeder
                         EhPagamentoFatura = true,
                         FaturaPagaId = f.Id,
                         MeioPagamento = MeioPagamento.Pix,
-                        Data = f.DataVencimento,
+                        Data = DateOnly.FromDateTime(f.DataVencimento), // Hora atribuída depois (loop de hora realista)
                         CriadoPor = dono.Id,
                         StatusTransacao = StatusTransacao.Executado,
                         Ativo = true,
@@ -328,7 +327,8 @@ public static class DevDataSeeder
 
         // ── Movimentação ──
         SeedFinancas(dev, devCorrente, devCarteira, devPoupanca, familia, salario: 7500m, rngSeed: 42);
-        SeedFinancas(solo, soloCorrente, soloCarteira, poupanca: null, familia: null, salario: 4200m, rngSeed: 7);
+        // Cônjuge também lança (com conta e renda próprias) e compartilha despesas de casa com a mesma família.
+        SeedFinancas(conjuge, conjugeCorrente, conjugeCarteira, poupanca: null, familia, salario: 5200m, rngSeed: 7);
         SeedCartaoFaturas(dev, devCartao, devCorrente);
 
         // ── Recorrentes / Assinaturas (repetição automática mensal) ──
@@ -362,9 +362,9 @@ public static class DevDataSeeder
             NovaRecorrente(dev.Id, "Netflix", 39.90m, TipoTransacao.Despesa, "Serviços digitais", 15, null, devCartao.Id),
             NovaRecorrente(dev.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, null, devCartao.Id),
             NovaRecorrente(dev.Id, "Academia", 89.90m, TipoTransacao.Despesa, "Lazer", 5, devCorrente.Id, null),
-            // Solo: renda + uma assinatura em débito.
-            NovaRecorrente(solo.Id, "Salário", 4200m, TipoTransacao.Receita, "Renda", 5, soloCorrente.Id, null),
-            NovaRecorrente(solo.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, soloCorrente.Id, null),
+            // Cônjuge: renda + uma assinatura em débito.
+            NovaRecorrente(conjuge.Id, "Salário", 5200m, TipoTransacao.Receita, "Renda", 5, conjugeCorrente.Id, null),
+            NovaRecorrente(conjuge.Id, "Spotify", 21.90m, TipoTransacao.Despesa, "Serviços digitais", 8, conjugeCorrente.Id, null),
         };
 
         // Hora realista por transação (horário comercial). Lançamentos de AÇÃO
@@ -375,11 +375,13 @@ public static class DevDataSeeder
         var rngHora = new Random(2026);
         foreach (var t in transacoes)
         {
-            var hora = t.Data.AddHours(rngHora.Next(8, 22)).AddMinutes(rngHora.Next(0, 60));
+            // Data é o dia (DateOnly) → parte da meia-noite pra compor o instante do CriadoEm.
+            var hora = t.Data.ToDateTime(TimeOnly.MinValue).AddHours(rngHora.Next(8, 22)).AddMinutes(rngHora.Next(0, 60));
             t.CriadoEm = hora;
             var ehGerado = t.RecorrenteOrigemId.HasValue || t.ParcelamentoId.HasValue || t.ParcelaTransacaoId.HasValue;
+            // Ação real (compra à vista, pagamento, avulsa) ganha hora de relógio; gerado fica sem (null).
             if (!ehGerado)
-                t.Data = hora;
+                t.Hora = TimeOnly.FromDateTime(hora);
         }
 
         context.Faturas.AddRange(faturas);

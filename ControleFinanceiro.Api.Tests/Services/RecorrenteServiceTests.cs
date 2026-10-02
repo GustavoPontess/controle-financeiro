@@ -98,7 +98,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Previsao,
             Ativo = true,
             CriadoPor = userId,
-            Data = data ?? DateTime.UtcNow.Date.AddDays(5),
+            Data = DateOnly.FromDateTime(data ?? DateTime.UtcNow.Date.AddDays(5)),
             RecorrenteOrigemId = recorrenteId,
             CriadoEm = DateTime.UtcNow
         };
@@ -330,7 +330,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
             CriadoPor = u,
-            Data = DateTime.UtcNow.Date.AddDays(-5),
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-5)),
             RecorrenteOrigemId = rec.Id,
             CriadoEm = DateTime.UtcNow
         });

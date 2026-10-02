@@ -60,7 +60,7 @@ public class AcertoServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Despesa", Valor = valor,
             Tipo = TipoTransacao.Despesa, CriadoPor = criadoPor,
-            Data = new DateTime(2026, 5, 10), Ativo = true,
+            Data = new DateOnly(2026, 5, 10), Ativo = true,
             StatusTransacao = StatusTransacao.Executado, FamiliaId = familiaId,
         };
         ctx.Transacoes.Add(t);

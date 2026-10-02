@@ -54,7 +54,7 @@ public class RelatorioServiceTests
             Descricao = descricao,
             Valor = 123.45m,
             Tipo = TipoTransacao.Despesa,
-            Data = DataBase,
+            Data = DateOnly.FromDateTime(DataBase),
             CriadoPor = usuarioId,
             MeioPagamento = MeioPagamento.Pix
         };
@@ -141,7 +141,7 @@ public class RelatorioServiceTests
             var t = new Transacao
             {
                 Id = Guid.NewGuid(), ContaId = conta.Id, Descricao = desc, Valor = valor,
-                Tipo = tipo, Data = DataBase, CriadoPor = usuarioId,
+                Tipo = tipo, Data = DateOnly.FromDateTime(DataBase), CriadoPor = usuarioId,
             };
             cfg?.Invoke(t);
             return t;

@@ -32,12 +32,12 @@ import styles from "./TransactionsPage.module.css"
 
 // Data + hora — só mostra a hora quando o lançamento tem horário real (≠ meia-noite
 // UTC). Lançamento manual salvo só com data fica sem hora, então não inventa "00:00".
-const fmtData = (s?: string) => {
-  if (!s) return "—"
-  const d = new Date(s)
-  const data = d.toLocaleDateString("pt-BR", { timeZone: "UTC" })
-  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return data
-  return `${data} ${d.toLocaleTimeString("pt-BR", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" })}`
+// Data "YYYY-MM-DD" + hora "HH:MM:SS"|null — campos separados, sem fuso. Mostra a hora só quando existe.
+const fmtData = (data?: string, hora?: string | null) => {
+  if (!data) return "—"
+  const [y, m, d] = data.split("-")
+  const dia = `${d}/${m}/${y}`
+  return hora ? `${dia} ${hora.slice(0, 5)}` : dia
 }
 
 // Meios de pagamento no extrato de caixa (crédito fica na aba Cartão, fora daqui).
@@ -62,7 +62,7 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 const paraEditavel = (t: Transaction): EditableTransaction => ({
   id: t.id, descricao: t.descricao, valor: t.valor, tipo: t.tipo,
   categoriaId: t.categoriaId ?? undefined, subcategoriaId: t.subcategoriaId ?? undefined,
-  contaId: t.contaId, cartaoCreditoId: t.cartaoCreditoId, meioPagamento: t.meioPagamento, data: t.data,
+  contaId: t.contaId, cartaoCreditoId: t.cartaoCreditoId, meioPagamento: t.meioPagamento, data: t.data, hora: t.hora,
 })
 
 export default function TransactionsPage() {
@@ -308,7 +308,7 @@ export default function TransactionsPage() {
     },
     { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
     { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
-    { key: "data", header: "Data", render: (t) => fmtData(t.data) },
+    { key: "data", header: "Data", render: (t) => fmtData(t.data, t.hora) },
     {
       // Eixo 2: STATUS — em que estado está (puro, sem misturar com o tipo).
       key: "status", header: "Status",

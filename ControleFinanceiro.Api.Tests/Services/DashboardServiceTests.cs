@@ -26,7 +26,7 @@ public class DashboardServiceTests
         Valor = valor,
         Tipo = tipo,
         ContaId = contaId,
-        Data = data,
+        Data = DateOnly.FromDateTime(data),
         StatusTransacao = status,
         Ativo = ativo,
     };

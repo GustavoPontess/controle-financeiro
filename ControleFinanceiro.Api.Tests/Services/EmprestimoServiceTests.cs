@@ -321,7 +321,7 @@ public class EmprestimoServiceTests
         var receita = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
-            ContaId = contaId, CategoriaId = categoriaReceitaId, Data = DateTime.UtcNow, CriadoPor = usuarioId,
+            ContaId = contaId, CategoriaId = categoriaReceitaId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(receita);
         await ctx.SaveChangesAsync();
@@ -1286,7 +1286,7 @@ public class EmprestimoServiceTests
             Valor = valor,
             Tipo = TipoTransacao.Despesa,
             ContaId = contaId,
-            Data = DateTime.UtcNow,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
             CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(t);
@@ -1345,7 +1345,7 @@ public class EmprestimoServiceTests
         var receita = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
-            ContaId = contaId, Data = DateTime.UtcNow, CriadoPor = devedorId,
+            ContaId = contaId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = devedorId,
         };
         ctx.Transacoes.Add(receita);
         await ctx.SaveChangesAsync();

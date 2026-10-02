@@ -107,7 +107,7 @@ public class ExpandirRecorrentesJob
             Guid? faturaId = null;
             if (r.CartaoCreditoId.HasValue)
             {
-                var fatura = await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, proxima, r.CriadoPor);
+                var fatura = await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, DateOnly.FromDateTime(proxima), r.CriadoPor);
                 faturaId = fatura.Id;
             }
 
@@ -125,7 +125,8 @@ public class ExpandirRecorrentesJob
                 StatusTransacao = StatusTransacao.Previsao,
                 Ativo = true,
                 CriadoPor = r.CriadoPor,
-                Data = proxima,
+                Data = DateOnly.FromDateTime(proxima),
+                Hora = null, // ocorrência de recorrente é datada (sem hora de relógio)
                 RecorrenteOrigemId = r.Id,
                 CriadoEm = DateTime.UtcNow
             });

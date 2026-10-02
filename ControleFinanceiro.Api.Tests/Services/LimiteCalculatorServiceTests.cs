@@ -173,7 +173,7 @@ public class LimiteCalculatorServiceTests
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
             CriadoPor = usuarioId,
-            Data = DateTime.UtcNow,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
             CriadoEm = DateTime.UtcNow,
             UsadoComoCredito = true
         };

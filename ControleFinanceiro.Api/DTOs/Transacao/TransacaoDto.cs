@@ -27,6 +27,9 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public bool EhTransferencia { get; set; }
         // 0 = Previsao, 1 = Executado, 2 = Cancelado.
         public int StatusTransacao { get; set; }
-        public DateTime Data { get; set; }
+        /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>
+        public DateOnly Data { get; set; }
+        /// <summary>Hora do lançamento ("HH:mm:ss") — time puro, sem fuso. Null = sem hora.</summary>
+        public TimeOnly? Hora { get; set; }
     }
 }

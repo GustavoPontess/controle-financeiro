@@ -39,11 +39,16 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
     {
         await DonoRecursos.ExigirContaAsync(_context, contaId, usuarioId);
 
+        // Corte dia+hora (date/time separados): entra tudo de dias anteriores, e do próprio dia só o que
+        // tem Hora <= o limite. Hora null (ajuste, saldo inicial — sem horário) conta no dia (como 00:00).
+        var dia = DateOnly.FromDateTime(dataHora);
+        var hora = TimeOnly.FromDateTime(dataHora);
+
         var linha = await _context.Transacoes
             .Where(RegrasFinanceiras.CompoeSaldoReal)
             .Where(t => t.ContaId == contaId
                         && t.Conta!.UsuarioIdProprietario == usuarioId
-                        && t.Data <= dataHora)
+                        && (t.Data < dia || (t.Data == dia && (t.Hora == null || t.Hora <= hora))))
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -83,7 +88,7 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
                 {
                     Id = inicial.Id,
                     ContaId = contaId,
-                    DataHora = inicial.Data,
+                    DataHora = inicial.Data.ToDateTime(TimeOnly.MinValue),
                     SaldoDeclarado = inicial.Valor,
                     SaldoCalculado = inicial.Valor,
                     Diferenca = 0m,
@@ -152,7 +157,8 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
                 Tipo = diferenca > 0 ? TipoTransacao.Receita : TipoTransacao.Despesa,
                 ContaId = dto.ContaId,
                 CategoriaId = null,
-                Data = dto.DataHora,
+                Data = DateOnly.FromDateTime(dto.DataHora),
+                Hora = null, // ajuste é datado (sem hora específica)
                 StatusTransacao = StatusTransacao.Executado,
                 EhAjusteReconciliacao = true,
                 CriadoPor = usuarioId,

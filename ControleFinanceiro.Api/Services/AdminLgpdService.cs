@@ -92,20 +92,33 @@ public class AdminLgpdService
                     LimiteTotal = c.LimiteTotal,
                 })
                 .ToListAsync(),
-            Transacoes = await _context.Transacoes
+            // ToDateTime não traduz pro SQL — projeta Data+Hora crus e monta o DateTime em memória.
+            Transacoes = (await _context.Transacoes
                 .IgnoreQueryFilters()
                 .Where(t => t.CriadoPor == usuarioId)
                 .OrderByDescending(t => t.Data)
+                .ThenByDescending(t => t.Hora)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Descricao,
+                    t.Valor,
+                    t.Tipo,
+                    t.Data,
+                    t.Hora,
+                    Categoria = t.Categoria != null ? t.Categoria.Descricao : null,
+                })
+                .ToListAsync())
                 .Select(t => new TransacaoExportadaDto
                 {
                     Id = t.Id,
                     Descricao = t.Descricao,
                     Valor = t.Valor,
                     Tipo = t.Tipo.ToString(),
-                    Data = t.Data,
-                    Categoria = t.Categoria != null ? t.Categoria.Descricao : null,
+                    Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
+                    Categoria = t.Categoria,
                 })
-                .ToListAsync(),
+                .ToList(),
             Metas = await _context.Metas
                 .Where(m => m.UsuarioId == usuarioId)
                 .Select(m => new MetaExportadaDto { Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo })

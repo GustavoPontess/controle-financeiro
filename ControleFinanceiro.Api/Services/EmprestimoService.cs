@@ -250,7 +250,8 @@ public class EmprestimoService(
                 Tipo = tipoTransacaoEsperado,
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = dto.DataInicio.ToUniversalTime(),
+                Data = DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime()),
+                Hora = null, // lançamento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             transacaoId = transacao.Id;
         }
@@ -699,7 +700,8 @@ public class EmprestimoService(
                 Tipo = tipoEsperado,
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = dto.Data.ToUniversalTime(),
+                Data = DateOnly.FromDateTime(dto.Data.ToUniversalTime()),
+                Hora = null, // pagamento/recebimento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             valor = dto.Valor;
         }
@@ -944,7 +946,8 @@ public class EmprestimoService(
                 Tipo = TipoTransacao.Receita, // credor recebendo — entra na conta dele
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = DateTime.UtcNow,
+                Data = DateOnly.FromDateTime(DateTime.UtcNow),
+                Hora = null, // recebimento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             solicitacao.TransacaoRecebimentoId = transacaoRecebimento.Id;
         }
@@ -1588,9 +1591,9 @@ public class EmprestimoService(
                 CriadoEm = s.CriadoEm,
                 AprovadoEm = s.AprovadoEm,
                 TransacaoRecebimentoId = s.TransacaoRecebimentoId,
-                ComprovanteData = comprovante?.Data ?? s.CriadoEm,
+                ComprovanteData = comprovante != null ? comprovante.Data.ToDateTime(comprovante.Hora ?? TimeOnly.MinValue) : s.CriadoEm,
                 ComprovanteContaNome = comprovante?.Conta?.Nome,
-                RecebimentoData = recebimento?.Data,
+                RecebimentoData = recebimento != null ? recebimento.Data.ToDateTime(recebimento.Hora ?? TimeOnly.MinValue) : null,
                 RecebimentoContaNome = recebimento?.Conta?.Nome,
                 MotivoRejeicao = s.MotivoRejeicao,
                 // Só o caminho credor-registra-e-já-aprova produz aprovador == solicitante — o

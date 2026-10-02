@@ -104,7 +104,8 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           cartaoCreditoId: isCredito ? data.cartaoCreditoId || undefined : undefined,
           frequencia: data.frequencia,
           // Backend gera por DataInicio + intervalo; "dia" é só metadado → deriva da data início.
-          dia: new Date(data.data).getDate(),
+          // Dia vem do string "YYYY-MM-DD" (new Date em fuso -3 recuava 1 dia).
+          dia: Number(data.data.slice(8, 10)),
           dataInicio: data.data,
           dataFim: data.dataFim || undefined,
         })
@@ -122,7 +123,9 @@ export default function NewTransactionDialog({ open, onClose, notify }: Props) {
           meioPagamento: data.meioPagamento,
           parcelas: isCredito && data.parcelas > 1 ? data.parcelas : undefined,
           efetivado: data.efetivado,
-          data: combinarDataHora(data.data, data.hora),
+          // date e time separados (sem fuso): data "YYYY-MM-DD", hora "HH:MM:SS" ou null.
+          data: data.data,
+          hora: data.hora ? `${data.hora}:00` : null,
         })
         notify({ open: true, message: "Transação criada com sucesso", severity: "success" })
       }

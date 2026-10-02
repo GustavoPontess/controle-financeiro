@@ -75,7 +75,7 @@ public class RecorrenteService
                     Guid? faturaId = null;
                     if (r.CartaoCreditoId.HasValue)
                         faturaId = (await _faturaService.ObterOuCriarFaturaAsync(
-                            r.CartaoCreditoId.Value, proxima, usuarioId)).Id;
+                            r.CartaoCreditoId.Value, DateOnly.FromDateTime(proxima), usuarioId)).Id;
 
                     _context.Transacoes.Add(new Transacao
                     {
@@ -91,7 +91,8 @@ public class RecorrenteService
                         StatusTransacao = StatusTransacao.Executado,
                         Ativo = true,
                         CriadoPor = usuarioId,
-                        Data = proxima,
+                        Data = DateOnly.FromDateTime(proxima),
+                        Hora = null, // ocorrência de recorrente é datada (sem hora de relógio)
                         RecorrenteOrigemId = r.Id,
                         CriadoEm = DateTime.UtcNow
                     });
@@ -314,7 +315,7 @@ public class RecorrenteService
                 Guid? faturaId = null;
                 if (dto.CartaoCreditoId.HasValue)
                 {
-                    var fatura = await _faturaService.ObterOuCriarFaturaAsync(dto.CartaoCreditoId.Value, proxima, usuarioId);
+                    var fatura = await _faturaService.ObterOuCriarFaturaAsync(dto.CartaoCreditoId.Value, DateOnly.FromDateTime(proxima), usuarioId);
                     faturaId = fatura.Id;
                 }
 
@@ -335,7 +336,8 @@ public class RecorrenteService
                     StatusTransacao = StatusTransacao.Previsao,
                     Ativo = true,
                     CriadoPor = usuarioId,
-                    Data = proxima,
+                    Data = DateOnly.FromDateTime(proxima),
+                    Hora = null, // ocorrência de recorrente é datada (sem hora de relógio)
                     RecorrenteOrigemId = recorrenteId,
                     CriadoEm = DateTime.UtcNow
                 };

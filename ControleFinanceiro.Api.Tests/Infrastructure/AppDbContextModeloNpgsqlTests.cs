@@ -48,6 +48,26 @@ public class AppDbContextModeloNpgsqlTests
     }
 
     [Fact]
+    public void Transacao_Data_EhDate_EHora_EhTimeAnulavel_NaoMaisTimestampUnico()
+    {
+        // O timestamp único saía sem 'Z' no JSON e o front deslocava +3h (rolava o dia). Dia e hora são
+        // colunas separadas SEM fuso: Data = date (obrigatória), Hora = time (null = lançamento sem hora).
+        // Em InMemory qualquer tipo "funciona", então só o modelo do Npgsql pega a regressão de volta a timestamp.
+        using var ctx = ContextoNpgsqlSemBanco();
+        var transacao = Modelo(ctx).FindEntityType(typeof(Transacao))!;
+
+        var data = transacao.FindProperty(nameof(Transacao.Data))!;
+        Assert.Equal(typeof(DateOnly), data.ClrType);
+        Assert.Equal("date", data.GetColumnType());
+        Assert.False(data.IsNullable);
+
+        var hora = transacao.FindProperty(nameof(Transacao.Hora))!;
+        Assert.Equal(typeof(TimeOnly?), hora.ClrType);
+        Assert.Equal("time without time zone", hora.GetColumnType());
+        Assert.True(hora.IsNullable);
+    }
+
+    [Fact]
     public void RegistroIdempotencia_IndiceUsuarioOperacaoChave_EhUnico()
     {
         // É o índice único que torna a idempotência atômica: a 2ª requisição simultânea com a mesma

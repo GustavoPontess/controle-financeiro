@@ -1695,8 +1695,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("Data")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date");
 
                     b.Property<Guid?>("DependenteId")
                         .HasColumnType("uuid");
@@ -1726,6 +1726,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("FaturaPagaId")
                         .HasColumnType("uuid");
+
+                    b.Property<TimeOnly?>("Hora")
+                        .HasColumnType("time without time zone");
 
                     b.Property<string>("ImportacaoFitId")
                         .HasMaxLength(120)
