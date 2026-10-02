@@ -13,7 +13,7 @@ import {
   Landmark, ArrowUpRight, ArrowDownRight,
 } from "lucide-react"
 import { PontesButton, PontesField, PontesInput, PontesSelect, PontesDateInput, PontesDialog, PontesTabela } from "@/components/pontes"
-import { formatMoney } from "@/utils/money"
+import { formatMoney, parseMoney, maskMoney, moneyParaCampo } from "@/utils/money"
 import { combinarDataHora, horaLocalHHMM, dataLocalISO } from "@/utils/dateTime"
 import { getContas, atualizarSaldoInicial } from "@/services/contaService"
 import { listMarcos, getSaldoCalculado, criarMarco, removerMarco } from "@/services/reconciliacaoService"
@@ -30,12 +30,6 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
-const parseMoney = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0
-// Máscara compacta pt-BR: dígitos → centavos (ex. "394420" → "3.944,20").
-const maskMoney = (raw: string) => {
-  const d = raw.replace(/\D/g, "")
-  return d ? (Number(d) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
-}
 const pad = (n: number) => String(n).padStart(2, "0")
 // Marco/transação guardam wall-clock como UTC → o dia do marco é o trecho ISO (YYYY-MM-DD).
 const isoDoMarco = (m: ReconciliacaoMarco) => m.dataHora.slice(0, 10)
@@ -221,7 +215,7 @@ export default function ReconciliacaoPage() {
 
   // Editar o saldo inicial (marco de partida) aqui mesmo: valor + data da abertura da conta.
   const abrirEdicaoInicial = (m: ReconciliacaoMarco) => {
-    setInicialValor(m.saldoDeclarado.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    setInicialValor(moneyParaCampo(m.saldoDeclarado))
     setInicialData(isoDoMarco(m))
     setEditandoInicial(true)
   }

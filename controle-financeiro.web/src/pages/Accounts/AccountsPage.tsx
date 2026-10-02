@@ -7,22 +7,24 @@
  * - NewContaDialog ainda é legacy (refatorar em PR separado).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import { Plus, Wallet, Landmark } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge,
   PontesStatCard, PontesEmptyState, PontesLoadingDots, PontesDialog,
-  PontesBankBadge,
+  PontesBankBadge, PontesModal, PontesField, PontesInput, PontesDateInput,
 } from "@/components/pontes"
 import NewContaDialog from "../../components/Contas/NewContaDialog/NewContaDialog"
-import { getContas, deleteConta } from "../../services/contaService"
+import { getContas, deleteConta, atualizarSaldoInicial } from "../../services/contaService"
 import { getBancos } from "../../services/bancoService"
+import { listMarcos } from "../../services/reconciliacaoService"
 import type { Conta } from "../../types/Conta"
 import type { Banco } from "../../types/Banco"
 import styles from "./AccountsPage.module.css"
 import { Pencil, Trash2 } from "lucide-react"
-import { formatMoney as fmt } from "@/utils/money"
+import { formatMoney as fmt, parseMoney, maskMoney, moneyParaCampo } from "@/utils/money"
+import { dataLocalISO } from "@/utils/dateTime"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,62 @@ export default function AccountsPage() {
       notify({ open: true, message: "Erro ao remover conta", severity: "error" })
     } finally {
       setDeleting(false)
+    }
+  }
+
+  // ── Saldo inicial (ponto de partida da conta) ──────────────────────────────
+  // Vale pra TODA conta, inclusive a Carteira: ela nasce zerada no cadastro e não passa pelo
+  // formulário de conta, então este é o lugar de dizer quanto dinheiro havia nela.
+  const [saldoAlvo, setSaldoAlvo] = useState<Conta | null>(null)
+  const [saldoValor, setSaldoValor] = useState("")
+  const [saldoData, setSaldoData] = useState("")
+  const [saldoErro, setSaldoErro] = useState<string | undefined>()
+  const [saldoCarregando, setSaldoCarregando] = useState(false)
+  const [saldoSalvando, setSaldoSalvando] = useState(false)
+  // Descarta a resposta de uma abertura anterior (fechou e abriu outra conta com a busca em voo).
+  const saldoPedido = useRef(0)
+
+  const abrirSaldoInicial = async (conta: Conta) => {
+    const pedido = ++saldoPedido.current
+    setSaldoAlvo(conta)
+    setSaldoErro(undefined)
+    setSaldoValor("")
+    setSaldoData(dataLocalISO())
+    setSaldoCarregando(true)
+    try {
+      // O saldo inicial já gravado chega como o marco de partida (derivado) da reconciliação.
+      const partida = (await listMarcos(conta.id)).find((m) => m.derivado)
+      if (pedido !== saldoPedido.current) return
+      if (partida) {
+        setSaldoValor(moneyParaCampo(partida.saldoDeclarado))
+        setSaldoData(partida.dataHora.slice(0, 10))
+      }
+    } catch {
+      // Sem a partida o formulário abre vazio — salvar continua funcionando.
+    } finally {
+      if (pedido === saldoPedido.current) setSaldoCarregando(false)
+    }
+  }
+
+  const fecharSaldoInicial = () => {
+    saldoPedido.current++
+    setSaldoAlvo(null)
+  }
+
+  const salvarSaldoInicial = async () => {
+    if (!saldoAlvo) return
+    const valor = parseMoney(saldoValor)
+    if (valor <= 0) { setSaldoErro("Informe um valor maior que zero"); return }
+    setSaldoSalvando(true)
+    try {
+      await atualizarSaldoInicial(saldoAlvo.id, { valor, data: saldoData || undefined })
+      notify({ open: true, message: "Saldo inicial salvo", severity: "success" })
+      fecharSaldoInicial()
+      await loadData()
+    } catch {
+      notify({ open: true, message: "Erro ao salvar o saldo inicial", severity: "error" })
+    } finally {
+      setSaldoSalvando(false)
     }
   }
 
@@ -135,7 +193,17 @@ export default function AccountsPage() {
               <p className={styles.carteiraNome}>{carteira.nome}</p>
               <span className={styles.carteiraChip}>Não aparece como opção de cadastro</span>
             </div>
-            <span className={styles.carteiraSaldo}>{fmt(carteira.saldoAtual)}</span>
+            <div className={styles.carteiraDireita}>
+              <span className={styles.carteiraSaldo}>{fmt(carteira.saldoAtual)}</span>
+              <PontesButton
+                variant="soft"
+                size="sm"
+                iconStart={<Landmark size={14} strokeWidth={2.5} />}
+                onClick={() => { void abrirSaldoInicial(carteira) }}
+              >
+                Saldo inicial
+              </PontesButton>
+            </div>
           </div>
         </div>
       )}
@@ -196,6 +264,15 @@ export default function AccountsPage() {
                   <PontesIconButton
                     size={32}
                     variant="ghost"
+                    title="Saldo inicial"
+                    aria-label={`Saldo inicial de ${conta.nome}`}
+                    onClick={() => { void abrirSaldoInicial(conta) }}
+                  >
+                    <Landmark size={14} />
+                  </PontesIconButton>
+                  <PontesIconButton
+                    size={32}
+                    variant="ghost"
                     title="Editar"
                     onClick={() => { setEditingConta(conta); setOpenDialog(true) }}
                   >
@@ -225,6 +302,41 @@ export default function AccountsPage() {
         onSaved={loadData}
         notify={notify}
       />
+
+      {/* Modal: saldo inicial da conta (valor + desde quando) */}
+      <PontesModal
+        open={saldoAlvo !== null}
+        title={`Saldo inicial — ${saldoAlvo?.nome ?? ""}`}
+        onClose={fecharSaldoInicial}
+        footer={<>
+          <PontesButton variant="outline" onClick={fecharSaldoInicial}>Cancelar</PontesButton>
+          <PontesButton
+            loading={saldoSalvando}
+            disabled={saldoCarregando}
+            onClick={() => { void salvarSaldoInicial() }}
+          >
+            Salvar
+          </PontesButton>
+        </>}
+      >
+        <div className={styles.saldoForm}>
+          <PontesField label="Valor" required error={saldoErro}>
+            <PontesInput
+              iconStart="R$"
+              inputMode="decimal"
+              placeholder="0,00"
+              maxLength={18}
+              value={saldoValor}
+              disabled={saldoCarregando}
+              invalid={!!saldoErro}
+              onChange={(e) => { setSaldoErro(undefined); setSaldoValor(maskMoney(e.target.value)) }}
+            />
+          </PontesField>
+          <PontesField label="Desde" required>
+            <PontesDateInput value={saldoData} max={dataLocalISO()} onChange={setSaldoData} />
+          </PontesField>
+        </div>
+      </PontesModal>
 
       {/* Dialog: confirmar exclusão */}
       {deleteTarget && (

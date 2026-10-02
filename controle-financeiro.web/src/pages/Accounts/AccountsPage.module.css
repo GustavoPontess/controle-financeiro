@@ -202,3 +202,18 @@
   justify-content: center;
   padding: 48px 0;
 }
+
+/* Carteira: saldo + ação de saldo inicial, lado a lado. */
+.carteiraDireita {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Modal de saldo inicial: valor + desde, lado a lado. */
+.saldoForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}

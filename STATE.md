@@ -42,6 +42,8 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Galeria DEV:** `/reconciliacao-estados` (rota atrás de `import.meta.env.DEV`, `ReconciliacaoEstados.tsx`) — todos os modos do painel lado a lado, CSS real, dados fake. Pra revisar design sem ping-pong.
 
+**Saldo inicial na tela de Bancos (2026-10-02, noite):** furo fechado — a Carteira nasce zerada no cadastro e não tinha onde receber saldo inicial. `AccountsPage` (rota `/accounts` = item "Bancos"; a `BancosPage` é código morto, catalogado P3) ganhou a ação "Saldo inicial" em toda conta (Carteira inclusive): modal Valor + Desde, pré-preenche pelo marco derivado (`listMarcos`), valida inline, salva via `atualizarSaldoInicial`. Helpers `parseMoney`/`maskMoney`/`moneyParaCampo` foram pra `utils/money.ts` (a reconciliação passou a importá-los). Verificado ao vivo na Carteira do dev (abre pré-preenchido, erro inline no vazio, salva e o saldo acompanha). **Seed:** "Saldo Inicial" do `DevDataSeeder` agora sai com `EhSaldoInicial` + hora nula → vira a partida da reconciliação.
+
 **Estado: TUDO VERDE** — back build 0 erro + 1095 testes · front build+lint + 662 testes · migração aplicada no Postgres local e verificada ao vivo · seed enxuto. Pronto pra commit.
 
 **Próxima ação concreta (quando voltar):**

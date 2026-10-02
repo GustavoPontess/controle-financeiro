@@ -22,3 +22,19 @@ const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 export function formatMoney(value: number): string {
   return isBalanceHidden() ? MONEY_MASK : BRL.format(value)
 }
+
+/** Texto de campo pt-BR ("1.234,56") → número. Vazio/ inválido vira 0. */
+export function parseMoney(texto: string): number {
+  return Number(texto.replace(/\./g, "").replace(",", ".")) || 0
+}
+
+/** Máscara de digitação pt-BR: só dígitos, lidos como centavos ("394420" → "3.944,20"). */
+export function maskMoney(raw: string): string {
+  const d = raw.replace(/\D/g, "")
+  return d ? (Number(d) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
+}
+
+/** Número → texto de campo pt-BR sem símbolo (2500 → "2.500,00"), pra pré-preencher um input. */
+export function moneyParaCampo(valor: number): string {
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
