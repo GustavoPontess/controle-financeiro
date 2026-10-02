@@ -101,11 +101,18 @@ public static class DevDataSeeder
             var rng = new Random(rngSeed); // seed fixo → atlas determinístico
             var abertura = hoje.AddMonths(-3).AddDays(-10);
 
-            // Saldo inicial — mesmo padrão do ContaService.CriarAsync: Receita sem categoria.
-            transacoes.Add(Nova(dono.Id, "Saldo Inicial", 5000m, TipoTransacao.Receita, null, corrente.Id, abertura));
-            transacoes.Add(Nova(dono.Id, "Saldo Inicial", 200m, TipoTransacao.Receita, null, carteira.Id, abertura));
+            // Saldo inicial — mesmo padrão do ContaService.CriarAsync: Receita sem categoria + flag
+            // EhSaldoInicial (pra virar a PARTIDA derivada na reconciliação e sair do extrato/P&L).
+            void AddSaldoInicial(Guid contaId, decimal valor)
+            {
+                var t = Nova(dono.Id, "Saldo Inicial", valor, TipoTransacao.Receita, null, contaId, abertura);
+                t.EhSaldoInicial = true; // Hora fica null (datado, sem horário) — ver loop de hora no fim.
+                transacoes.Add(t);
+            }
+            AddSaldoInicial(corrente.Id, 5000m);
+            AddSaldoInicial(carteira.Id, 200m);
             if (poupanca != null)
-                transacoes.Add(Nova(dono.Id, "Saldo Inicial", 8000m, TipoTransacao.Receita, null, poupanca.Id, abertura));
+                AddSaldoInicial(poupanca.Id, 8000m);
 
             for (int m = 0; m < 3; m++)
             {
@@ -379,8 +386,9 @@ public static class DevDataSeeder
             var hora = t.Data.ToDateTime(TimeOnly.MinValue).AddHours(rngHora.Next(8, 22)).AddMinutes(rngHora.Next(0, 60));
             t.CriadoEm = hora;
             var ehGerado = t.RecorrenteOrigemId.HasValue || t.ParcelamentoId.HasValue || t.ParcelaTransacaoId.HasValue;
-            // Ação real (compra à vista, pagamento, avulsa) ganha hora de relógio; gerado fica sem (null).
-            if (!ehGerado)
+            // Ação real (compra à vista, pagamento, avulsa) ganha hora de relógio; gerado e saldo
+            // inicial (datado, é a partida da conta) ficam sem hora (null).
+            if (!ehGerado && !t.EhSaldoInicial)
                 t.Hora = TimeOnly.FromDateTime(hora);
         }
 
