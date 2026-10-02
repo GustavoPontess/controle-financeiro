@@ -347,3 +347,37 @@ npm install lucide-react recharts
 
 **Última atualização:** 2026-05-07  
 **Responsável:** Design System v1.0
+
+---
+
+## 📏 Densidade — padrão compacto das telas internas (2026-10-02)
+
+**Regra:** toda tela autenticada segue o padrão **denso** já aplicado em Transações, Reconciliação e
+Empréstimos. Tela nova nasce assim; tela antiga migra **uma por vez** (fila no `ROADMAP.md`). Os números
+abaixo foram tirados do CSS real dessas três telas — é a referência, não uma sugestão.
+
+| Item | Padrão denso | Como estava nas telas grandes |
+|---|---|---|
+| Título da página | **só no Navbar** (20px). Não repetir `h1` no corpo | h1 de 24–30px no corpo |
+| Espaço entre blocos | 12–16px | 24px |
+| Caixa / card | raio 14 · padding 14px 16px (painel) ou 12px (card pequeno) | raio 16–18 · padding 20–24px |
+| Banda de cabeçalho da caixa | padding 10px 16px | 18px 24px |
+| Título de caixa | 18px na fonte de título (`--pontes-font-heading`), ou 13.5px/700 em painel pequeno | 16px/700 |
+| Texto de linha | 12px (nome 600; número 700 `tabular-nums`) | 14–15px |
+| Texto secundário | 11px (sub da linha) · 12px (descrição) | 12–14px |
+| Label / cabeçalho de coluna | 11px · 700 · MAIÚSCULAS · tracking 0.08em · `text-muted` | 12px |
+| Linha de tabela/lista | padding 11px 16px (20px nas bordas) → ~40–44px de altura | 14px 24px → ~66px |
+| Ícone/avatar da linha | 34×34 · raio 9 · ícone 17px | 38–42px |
+| Controles de toolbar | 32px de altura · raio 10 | 37–42px |
+| Botão | `size="sm"` · botão de ícone `size={32}` | md / 40px |
+| Badge | `size="sm"` (11px) | md (12px) |
+| Shell | header 60px · `main` padding 20px 24px · página até 1800px | header 64 · padding 28 · 1480px |
+
+**Exceção deliberada — o hero de saldo** continua grande: valor 38px/800 (32px quando há dois valores lado
+a lado), padding 24–32px, raio 20. É o único bloco "grande" da tela.
+
+**Proibido no padrão denso:** subtítulo explicativo embaixo de título de seção; `h1` repetindo o Navbar;
+card com hover de "levantar" quando não é clicável; mais de uma altura de barra de progresso na mesma tela.
+
+**Lista de itens = `PontesTabela`** (só passar parâmetros). Tela de gráficos/cards não precisa de tabela,
+só dos tamanhos acima.
