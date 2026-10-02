@@ -41,6 +41,14 @@ const pad = (n: number) => String(n).padStart(2, "0")
 const isoDoMarco = (m: ReconciliacaoMarco) => m.dataHora.slice(0, 10)
 const fmtDiaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 const fmtDataBR = (iso: string) => iso.split("-").reverse().join("/")
+// dd/mm + HH:MM da transação. Lê em UTC (o wall-clock é guardado como UTC — mesma convenção da
+// tabela de Transações e do isoParaHoraHHMM). Lançamento só-data (00:00) mostra só o dia.
+const fmtDiaHora = (iso: string) => {
+  const dm = fmtDiaMes(iso.slice(0, 10))
+  const d = new Date(iso)
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return dm
+  return `${dm} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+}
 // Próximo dia (YYYY-MM-DD + 1) — `to` da listagem é semi-aberto (`Data < to`).
 const proxDia = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number)
@@ -447,7 +455,7 @@ export default function ReconciliacaoPage() {
           id="reconciliacao-movimentos"
           titulo={diaSel ? `Movimentos desde ${marcoAnterior ? fmtDiaMes(isoDoMarco(marcoAnterior)) : "o começo"} até ${fmtDiaMes(diaSel)}` : "Movimentos"}
           colunas={[
-            { key: "data", header: "Data", render: (t) => fmtDiaMes(t.data.slice(0, 10)) },
+            { key: "data", header: "Data", render: (t) => fmtDiaHora(t.data) },
             { key: "descricao", header: "Lançamento", render: (t) => t.descricao },
             { key: "valor", header: "Valor", numerica: true, render: (t) => (
               <span className={t.tipo === 2 ? styles.movValorPos : styles.movValorNeg}>{formatMoney(t.valor)}</span>

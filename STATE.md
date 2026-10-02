@@ -32,11 +32,18 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **EDITAR saldo inicial pela reconciliação (feature nova, dinheiro):** marco de partida ganhou "Alterar valor" → modo edição (Valor + Desde) → salva. Backend: `PUT /contas/{id}/saldo-inicial` + `ContaService.AtualizarSaldoInicialAsync` (dono/`UsuarioId` → 404 alheio, valor>0, data não futura, atualiza/cria a tx `EhSaldoInicial` no início do dia, `FinancialEventLog` `TransacaoAtualizada=52`). `AtualizarSaldoInicialDto`, `atualizarSaldoInicial` no `contaService.ts`. Verificado ao vivo (2.000→2.500, toast, partida atualizada).
 
+**Hora na transação (2026-10-02, tarde):** (1) tabela de movimentos da reconciliação ganhou hora na coluna Data (`dd/mm HH:MM`, helper `fmtDiaHora`, lê UTC igual `fmtData` das Transações). (2) `TransactionForm` — **hora virou obrigatória** no único + transferência (`*` no label + erro inline "Informe a hora", bloqueia submit; recorrente segue sem hora). Verificado ao vivo. **Edit reusa o form → vale pra edição também.**
+
+**🟠 ACHADO P1 (catalogado no ROADMAP) — fuso quebra data/hora app-wide:** ao pôr a hora na tabela, apareceu que toda data-com-hora desloca **+3h** e rola o DIA perto da meia-noite. Confirmado banco+JSON+tela: gravado `2026-09-28 12:00` → JSON `"2026-09-28T12:00:00"` (SEM `Z`) → tela `15:00`; ajuste gravado `2026-09-30 23:59` → tela `01/10 02:59`. Causa: API serializa `DateTime` Unspecified sem marcador UTC; front formata com `getUTC*` achando que é UTC; escrita manda COM `Z`, leitura volta SEM. **NÃO corrigido** (é sweep app-wide, sensível — fica pra frente própria com teste de round-trip + auditoria do front). Fix candidato: `JsonConverter<DateTime>` global emitindo `Z`. Detalhe completo no ROADMAP (seção fatura/verificação). Obs: a linha "editar manda date-only" do ROADMAP já estava corrigida — marquei.
+
 **Shell (vale pra TODAS as telas):** `DefaultLayout.module.css` `.page` max-width 1480→**1800**, `.main` padding 28→**20px 24px** (menos espaço lateral perdido em tela grande). `Navbar` ganhou wrapper `.inner` (mesmo cap+padding do conteúdo) → título e "Nova transação" ALINHAM com a página em qualquer largura.
 
 **Galeria DEV:** `/reconciliacao-estados` (rota atrás de `import.meta.env.DEV`, `ReconciliacaoEstados.tsx`) — todos os modos do painel lado a lado, CSS real, dados fake. Pra revisar design sem ping-pong.
 
-**Próxima ação concreta:** esperar o agente de teste fechar verde → rodar suítes completas (front+back) → **commit** em `exp/consistencia-front` (sem merge) → atualizar ROADMAP. **Limpeza pendente:** apagar dados de teste no Postgres local (`reconc.teste`: contas Carteira/Conta Corrente Teste/Conta Teste Retroativa + marcos + os 150 `PAGTESTE` antigos). Obs: na verificação o saldo inicial da "Conta Corrente Teste" foi mudado 2.000→2.500 (dado de teste). A "Conta Teste Retroativa" ficou zerada por um ajuste de teste (marco bogus 30/09 declarado 0).
+**Próxima ação concreta (quando voltar):**
+1. **Testes pendentes (NÃO verdes):** suíte não rodada a verde desde o commit de proteção. Falta: `ReconciliacaoPage.test.tsx` (painel novo + coluna hora), `ContaServiceTests` (novo ctor com `FinancialEventLogService` + `AtualizarSaldoInicialAsync`), integração `PUT /contas/{id}/saldo-inicial`, e **teste do `TransactionForm` (submit com hora vazia bloqueia + "Informe a hora")**. Rodar front+back → verde → commit.
+2. **Bug de fuso P1 (nova frente própria):** sweep app-wide da data/hora (ver ROADMAP). Sensível — com teste de round-trip + auditoria de todo parse de data no front. Parkar e atacar em frente limpa.
+3. **Limpeza:** apagar dados de teste no Postgres local (`reconc.teste`: contas Carteira/Conta Corrente Teste/Conta Teste Retroativa + marcos + 150 `PAGTESTE`). Obs: saldo inicial da "Conta Corrente Teste" foi mudado 2.000→2.500 (teste); "Conta Teste Retroativa" zerada por ajuste bogus 30/09.
 
 ---
 

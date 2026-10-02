@@ -176,9 +176,13 @@ export default function TransactionForm({
       if (!isCredito && !form.contaId) e.conta = "Conta obrigatória"
     }
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
-    if (!isRecorrente && form.hora) {
-      const m = form.hora.match(/^(\d{2}):(\d{2})$/)
-      if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) e.hora = "Hora inválida (HH:MM)"
+    // Hora obrigatória no lançamento único (toda transação tem data E hora). Recorrente não tem hora.
+    if (!isRecorrente) {
+      if (!form.hora.trim()) e.hora = "Informe a hora"
+      else {
+        const m = form.hora.match(/^(\d{2}):(\d{2})$/)
+        if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) e.hora = "Hora inválida (HH:MM)"
+      }
     }
 
     setErrors(e)
@@ -242,7 +246,7 @@ export default function TransactionForm({
             <PontesField label="Data" required>
               <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
             </PontesField>
-            <PontesField label="Hora" error={errors.hora}>
+            <PontesField label="Hora" required error={errors.hora}>
               <PontesInput value={form.hora} onChange={(e) => set("hora", mascararHora(e.target.value))}
                 placeholder="HH:MM" inputMode="numeric" maxLength={5} invalid={!!errors.hora} />
             </PontesField>
@@ -271,7 +275,7 @@ export default function TransactionForm({
                 <PontesField label="Data" required>
                   <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
                 </PontesField>
-                <PontesField label="Hora" error={errors.hora}>
+                <PontesField label="Hora" required error={errors.hora}>
                   <PontesInput value={form.hora} onChange={(e) => set("hora", mascararHora(e.target.value))}
                     placeholder="HH:MM" inputMode="numeric" maxLength={5} invalid={!!errors.hora} />
                 </PontesField>
