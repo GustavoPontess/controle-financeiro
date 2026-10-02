@@ -90,8 +90,8 @@ export default function DefaultLayout() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  // Modal global de Nova Transação — disparado por botões das telas e pela
-  // tecla N (que emitem o evento `openNewTransaction`). Centralizado no Shell
+  // Modal global de Nova Transação — disparado por botões das telas (que emitem o
+  // evento `openNewTransaction`). Centralizado no Shell
   // porque o dialog vive aqui. Sem este listener, os disparos caíam no vazio.
   useEffect(() => {
     const handler = () => {

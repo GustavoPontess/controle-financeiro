@@ -154,37 +154,25 @@ describe("DashboardPage (#81)", () => {
     expect(await screen.findByText("Soma de todas as contas")).toBeInTheDocument()
   })
 
-  it("QuickActions renderiza 4 atalhos com dicas N/T/C/F", async () => {
+  it("não tem mais a linha de atalhos nem atalho de teclado (removidos)", async () => {
     renderDash()
-    // A saudação vem do usuário logado e aparece na hora; os atalhos só depois que os dados do
-    // dashboard chegam. Esperar a saudação e checar o atalho síncrono era corrida (flaky no CI).
-    expect(await screen.findByText("Nova transação")).toBeInTheDocument()
-    expect(screen.getByText("Transações")).toBeInTheDocument()
-    expect(screen.getByText("Cartões")).toBeInTheDocument()
-    expect(screen.getByText("Transferir")).toBeInTheDocument()
-    // Dicas de teclado discretas — Transferir agora tem atalho F
-    expect(screen.getByText("N")).toBeInTheDocument()
-    expect(screen.getByText("T")).toBeInTheDocument()
-    expect(screen.getByText("C")).toBeInTheDocument()
-    expect(screen.getByText("F")).toBeInTheDocument()
-  })
-
-  it("atalho N dispara evento openNewTransaction (fora de input)", async () => {
-    renderDash()
-    await screen.findByText("Olá, Gabriel")
+    // "Seu mês" só existe depois que os dados chegam — a linha de atalhos ficava logo acima.
+    await screen.findByText("Seu mês")
+    expect(screen.queryByText("Transferir")).not.toBeInTheDocument()
+    expect(screen.queryByText("Nova transação")).not.toBeInTheDocument()
     let fired = 0
     const handler = () => { fired++ }
     window.addEventListener("openNewTransaction", handler)
     fireEvent.keyDown(window, { key: "n" })
     window.removeEventListener("openNewTransaction", handler)
-    expect(fired).toBe(1)
+    expect(fired).toBe(0)
   })
 
   it("seção Cartões só aparece quando cartoesResumo > 0", async () => {
     renderDash()
     // Espera os dados carregarem ANTES de checar ausência — senão a asserção passa sempre
     // (a seção ainda não existiria de qualquer jeito).
-    await screen.findByText("Nova transação")
+    await screen.findByText("Seu mês")
     // mockData padrão tem cartoesResumo=[], então não renderiza
     expect(screen.queryByText("Seus cartões")).not.toBeInTheDocument()
 

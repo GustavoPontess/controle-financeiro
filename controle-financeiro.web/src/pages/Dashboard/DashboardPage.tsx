@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom"
 import {
   ChevronLeft, ChevronRight, Wallet,
   ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock,
-  Plus, CreditCard, ArrowLeftRight, Receipt, Target,
+  Target,
   TrendingUp, TrendingDown, type LucideIcon,
 } from "lucide-react"
 import {
@@ -107,35 +107,6 @@ export default function DashboardPage() {
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))
 
-  // Atalhos teclado globais — só quando foco NÃO está em input/textarea.
-  // N → Nova transação, T → /transactions, C → /credit-cards, ←/→ navega mês.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
-      switch (e.key.toLowerCase()) {
-        case "n":
-          // Dispara o modal global de Nova Transação (escutado pelo Shell).
-          window.dispatchEvent(new Event("openNewTransaction"))
-          e.preventDefault(); break
-        case "t":
-          navigate("/transactions"); e.preventDefault(); break
-        case "c":
-          navigate("/credit-cards"); e.preventDefault(); break
-        case "f":
-          navigate("/transfers"); e.preventDefault(); break
-        case "arrowleft":
-          prevMonth(); e.preventDefault(); break
-        case "arrowright":
-          nextMonth(); e.preventDefault(); break
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [navigate])
-
   return (
     <div className={styles.root}>
       {/* Saudação (olho de ocultar saldo vive no navbar global) */}
@@ -164,9 +135,6 @@ export default function DashboardPage() {
             fmt={fmt}
             hide={hide}
           />
-
-          {/* Atalhos rápidos — 4 ações principais. Teclado em parens. */}
-          <QuickActions navigate={navigate} />
 
           {/* Seu mês — Entrou / Saiu / Sobrou (resposta de relance) */}
           <PontesCard padding={0} radius={18}>
@@ -547,39 +515,6 @@ function HeroBalance({ saldoTotal, saldoMesAnterior, fmt, hide }: {
   )
 }
 
-/**
- * QuickActions — 4 atalhos horizontais. Cada um tem hover, ícone, label
- * e dica de teclado (kbd). Específicos do dashboard.
- *
- * "Nova transação" dispara evento global `openNewTransaction` que o Shell
- * já escuta pra abrir o modal (mesma porta de N do teclado).
- */
-function QuickActions({ navigate }: { navigate: (to: string) => void }) {
-  const items: { icon: LucideIcon; label: string; kbd: string; action: () => void }[] = [
-    { icon: Plus, label: "Nova transação", kbd: "N", action: () => window.dispatchEvent(new Event("openNewTransaction")) },
-    { icon: Receipt, label: "Transações", kbd: "T", action: () => navigate("/transactions") },
-    { icon: CreditCard, label: "Cartões", kbd: "C", action: () => navigate("/credit-cards") },
-    { icon: ArrowLeftRight, label: "Transferir", kbd: "F", action: () => navigate("/transfers") },
-  ]
-  return (
-    <div className={styles.quickActions}>
-      {items.map((it) => (
-        <button
-          key={it.label}
-          type="button"
-          onClick={it.action}
-          className={styles.quickAction}
-        >
-          <span className={styles.quickActionIcon}>
-            <it.icon size={18} strokeWidth={2.4} />
-          </span>
-          <span className={styles.quickActionLabel}>{it.label}</span>
-          {it.kbd && <span className={styles.quickActionKbd}>{it.kbd}</span>}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 /**
  * CartaoTile — resumo de UM cartão (top 3 do dashboard).
