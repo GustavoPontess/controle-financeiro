@@ -11,11 +11,10 @@ import styles from './LoginPage.module.css'
 const DEV_SENHA = 'Dev@123456'
 
 // Contas fictícias do DevDataSeeder (sempre existem em dev, sem risco — nada real).
-// Todas as contas que os seeders criam no dev local (DevDataSeeder + MeuCenarioSeeder).
+// Contas de teste que o DevDataSeeder cria no dev local (só o casal).
 const DEV_ACCOUNTS_BASE: { email: string; label: string }[] = [
   { email: 'dev@controle.test', label: 'Titular (casal)' },
   { email: 'conjuge@controle.test', label: 'Cônjuge' },
-  { email: 'gustavo.seed@local.test', label: 'Gustavo (cenário real)' },
 ]
 
 // Contas locais extras (ex: seu cenário real do MeuCenarioSeeder) — vêm de um
