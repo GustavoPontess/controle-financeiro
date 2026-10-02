@@ -1,9 +1,11 @@
 /* Navbar.module.css — topbar do shell. Cor via var(--pontes-*). */
 .header {
-  height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 0 20px; background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border);
+  height: 60px; flex-shrink: 0; display: flex; align-items: center;
+  background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border);
   font-family: var(--pontes-font); position: sticky; top: 0; z-index: 1000;
 }
+/* Mesmo cap + padding do conteúdo (.page/.main) → título e ações alinham com a tela em qualquer largura. */
+.inner { width: 100%; max-width: 1800px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .titleBox { min-width: 0; }
 .crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: 12px; font-weight: 500; color: var(--pontes-text-muted); line-height: 1.1; margin-bottom: 1px; }

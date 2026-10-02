@@ -89,6 +89,7 @@ export default function Navbar({
 
   return (
     <header className={styles.header}>
+      <div className={styles.inner}>
       <div className={styles.left}>
         <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
           {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
@@ -151,6 +152,7 @@ export default function Navbar({
             Nova transação
           </PontesButton>
         )}
+      </div>
       </div>
     </header>
   )

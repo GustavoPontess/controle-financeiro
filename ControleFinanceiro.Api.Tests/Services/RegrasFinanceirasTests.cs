@@ -421,7 +421,7 @@ public class RegrasFinanceirasTests
         var regra = (await RegrasFinanceiras.SaldoDaContaAsync(ctx, c.ContaId, c.UsuarioId)).Saldo;
 
         // 2. Tela de contas (listagem e detalhe)
-        var controller = new ContasController(new ContaService(ctx))
+        var controller = new ContasController(new ContaService(ctx, new FinancialEventLogService(ctx)))
         {
             ControllerContext = new ControllerContext
             {
@@ -520,7 +520,7 @@ public class RegrasFinanceirasTests
         var ctx = CreateContext();
         var c = await SeedSaldoAsync(ctx);
 
-        var contas = await new ContaService(ctx).ListarAsync(c.UsuarioId);
+        var contas = await new ContaService(ctx, new FinancialEventLogService(ctx)).ListarAsync(c.UsuarioId);
 
         Assert.All(contas, conta => Assert.Empty(conta.Transacoes));
     }

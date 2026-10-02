@@ -116,7 +116,7 @@ namespace ControleFinanceiro.Api.Controllers
                 IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
             };
 
-            var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
+            var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial, dto.DataSaldoInicial);
             // Saldo lido do banco (já com o lançamento de saldo inicial gravado) pela mesma regra.
             var saldos = await _service.ObterSaldosAsync(new[] { criada.Id }, usuarioId);
             return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada, saldos[criada.Id].Saldo));
@@ -142,6 +142,18 @@ namespace ControleFinanceiro.Api.Controllers
             };
 
             await _service.AtualizarAsync(id, conta, usuarioId);
+            return NoContent();
+        }
+
+        /// <summary>Edita o saldo inicial (ponto de partida) da conta — valor e data de abertura.</summary>
+        [HttpPut("{id}/saldo-inicial")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AtualizarSaldoInicial(Guid id, [FromBody] AtualizarSaldoInicialDto dto)
+        {
+            var usuarioId = GetUserId();
+            await _service.AtualizarSaldoInicialAsync(id, usuarioId, dto.Valor, dto.Data);
             return NoContent();
         }
 

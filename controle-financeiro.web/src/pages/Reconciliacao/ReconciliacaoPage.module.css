@@ -1,73 +1,98 @@
-/* Reconciliação — denso (fonte/espaçamento compactos). Cor/fonte via var(--pontes-*). */
+/* Reconciliação — denso (fonte/espaçamento compactos). Hero é a exceção "grande". Cor/fonte via var(--pontes-*). */
 .wrap { display: flex; flex-direction: column; gap: 12px; font-family: var(--pontes-font); }
 
-/* Toolbar limpa (fundo da página) só com o seletor de conta, à direita. */
-.toolbar { display: flex; justify-content: flex-end; }
-.contaSel { min-width: 200px; }
+/* Seletor de conta no topo do painel de conferir (dirige a tela toda). */
+.painelSel { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--pontes-border); }
 
-/* Hero GRANDE em destaque (mesmo porte do de Transações). O resto da tela é denso; o hero é a exceção. */
-.hero { position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg); background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+/* Hero GRANDE em destaque (mesmo porte do de Transações). */
+.hero { position: relative; overflow: hidden; border-radius: 20px; padding: 24px 28px; color: var(--pontes-hero-fg); background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap; }
 .heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.10); pointer-events: none; }
 .heroMain { position: relative; min-width: 0; }
 .heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
 .heroValor { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
-.heroConfere { position: relative; display: flex; align-items: center; gap: 10px; }
-.heroConfereIcone { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.18); flex-shrink: 0; }
-.heroConfereLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.8; }
-.heroConfereData { font-size: 14px; font-weight: 700; }
+.heroDelta { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; opacity: 0.9; margin-top: 7px; }
 
-/* Duas colunas */
-.cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 12px; align-items: start; }
-@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+.heroRight { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.heroChip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.16); color: var(--pontes-hero-fg); }
+.heroChip[data-ok="false"] { background: rgba(245,158,11,0.28); }
+.heroBtn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 999px; padding: 8px 16px; font-family: var(--pontes-font); font-size: 13px; font-weight: 700; background: #fff; color: var(--pontes-primary-dark); cursor: pointer; transition: transform .1s; }
+.heroBtn:hover { transform: translateY(-1px); }
+.heroBtn:active { transform: translateY(0); }
+
+/* Duas colunas: ESQUERDA = conferir (protagonista, seletor no topo, ações no rodapé), DIREITA = calendário + última.
+   O painel de conferir é flex-column e estica até a altura da linha; a coluna do calendário fica na altura
+   natural (align-self: start). Assim as ações ancoram no rodapé sem buraco, e o modo "marco" não encolhe. */
+.cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); gap: 12px; align-items: stretch; }
+.painelConf { display: flex; flex-direction: column; }
+.painelCal { display: flex; flex-direction: column; }
+.painelInput { margin-top: 10px; }
+.statusSlot { min-height: 44px; margin-top: 10px; display: flex; align-items: flex-start; }
+.painelFooter { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
+@media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
 
 .painel { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 14px 16px; }
 .painelTitulo { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--pontes-text); }
-.painelSub { margin: 6px 0 12px; font-size: 12px; color: var(--pontes-text-muted); line-height: 1.4; }
+.painelSub { margin: 8px 0 0; font-size: 12px; color: var(--pontes-text-muted); line-height: 1.4; }
 .diaSelLabel { color: var(--pontes-primary); font-weight: 800; }
 
+/* Resultado (conferir e marco) */
+.resultado { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
+.resultLinha { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--pontes-text-muted); }
+.resultLinha strong { color: var(--pontes-text); font-size: 13px; }
+.resultLinha[data-destaque="true"] { padding-top: 6px; border-top: 1px solid var(--pontes-border); }
+.difOk { color: var(--pontes-success); }
+.difNok { color: var(--pontes-danger); }
+.resultAviso { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--pontes-danger); background: var(--pontes-danger-soft, rgba(239,68,68,0.08)); border-radius: 9px; padding: 7px 9px; line-height: 1.35; margin-top: 4px; }
+.tag { align-self: flex-start; font-size: 10.5px; font-weight: 700; color: var(--pontes-warning); background: var(--pontes-warning-soft, rgba(245,158,11,0.12)); border-radius: 6px; padding: 2px 8px; }
+.marcoAcoes { display: flex; gap: 8px; margin-top: 2px; }
+.notaDerivado { font-size: 11.5px; color: var(--pontes-text-muted); line-height: 1.35; }
+
+/* Cor do valor na tabela de movimentos (o PontesTabela cuida do resto do estilo da tabela). */
+.movValorPos { color: var(--pontes-success); font-weight: 600; }
+.movValorNeg { color: var(--pontes-danger); font-weight: 600; }
+
 /* Calendário */
-.calTopo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.calTopo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .calNav { display: flex; align-items: center; gap: 6px; }
 .calNavBtn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text); cursor: pointer; }
 .calNavBtn:hover { background: var(--pontes-bg); border-color: var(--pontes-primary); }
-.calMes { font-size: 12.5px; font-weight: 700; color: var(--pontes-text); min-width: 120px; text-align: center; }
 
 .calGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.calWeekday { text-align: center; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pontes-text-muted); padding-bottom: 3px; }
-.calVazio { aspect-ratio: 1 / 1; }
+.calWeekday { text-align: center; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pontes-text-muted); padding-bottom: 2px; }
+.calVazio { height: 38px; }
 .calDia {
-  position: relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  position: relative; height: 38px; display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-surface); cursor: pointer;
   font-family: var(--pontes-font); transition: background-color .12s, border-color .12s;
 }
 .calDia:hover { border-color: var(--pontes-primary); background: var(--pontes-bg); }
 .calDiaNum { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; color: var(--pontes-text); }
-.calDiaCheck { color: inherit; }
-.calDiaSaldo { font-size: 9px; font-weight: 700; line-height: 1; opacity: 0.9; }
 
 /* estados */
 .calDia[data-pendente="true"] { border-style: dashed; border-color: var(--pontes-warning); }
-.calDia[data-marco="bateu"], .calDia[data-marco="inicial"] { background: var(--pontes-success-soft, rgba(34,197,94,0.12)); border-color: var(--pontes-success); color: var(--pontes-success); }
-.calDia[data-marco="bateu"] .calDiaNum, .calDia[data-marco="inicial"] .calDiaNum, .calDia[data-marco="bateu"] .calDiaSaldo, .calDia[data-marco="inicial"] .calDiaSaldo { color: var(--pontes-success); }
+.calDia[data-marco="bateu"], .calDia[data-marco="inicial"] { background: var(--pontes-success-soft, rgba(34,197,94,0.12)); border-color: var(--pontes-success); }
+.calDia[data-marco="bateu"] .calDiaNum, .calDia[data-marco="inicial"] .calDiaNum { color: var(--pontes-success); }
 .calDia[data-marco="ajuste"] { background: var(--pontes-warning-soft, rgba(245,158,11,0.12)); border-color: var(--pontes-warning); }
-.calDia[data-marco="ajuste"] .calDiaNum, .calDia[data-marco="ajuste"] .calDiaSaldo { color: var(--pontes-warning); }
-.calDia[data-hoje="true"] { font-weight: 800; }
+.calDia[data-marco="ajuste"] .calDiaNum { color: var(--pontes-warning); }
+.calDia[data-hoje="true"] .calDiaNum { font-weight: 800; }
 .calDia[data-sel="true"] { outline: 2px solid var(--pontes-primary); outline-offset: 1px; }
 
-.calLegenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 10.5px; color: var(--pontes-text-muted); }
+.calLegenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; margin-bottom: 16px; font-size: 10.5px; color: var(--pontes-text-muted); }
 .calLegenda span { display: inline-flex; align-items: center; gap: 5px; }
 .legDot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 .legDot[data-t="bateu"] { background: var(--pontes-success); }
 .legDot[data-t="ajuste"] { background: var(--pontes-warning); }
 .legDot[data-t="pendente"] { border: 1px dashed var(--pontes-warning); }
 
-/* Resultado */
-.resultado { margin-top: 14px; border-top: 1px dashed var(--pontes-border); padding-top: 12px; display: flex; flex-direction: column; gap: 7px; }
-.resultLinha { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--pontes-text-muted); }
-.resultLinha strong { color: var(--pontes-text); font-size: 13px; }
-.resultLinha[data-destaque="true"] { padding-top: 5px; border-top: 1px solid var(--pontes-border); }
-.difOk { color: var(--pontes-success); }
-.difNok { color: var(--pontes-danger); }
-.resultAviso { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--pontes-danger); background: var(--pontes-danger-soft, rgba(239,68,68,0.08)); border-radius: 9px; padding: 7px 9px; line-height: 1.35; }
-.tag { align-self: flex-start; font-size: 10.5px; font-weight: 700; color: var(--pontes-warning); background: var(--pontes-warning-soft, rgba(245,158,11,0.12)); border-radius: 6px; padding: 2px 8px; }
-.notaDerivado { font-size: 11.5px; color: var(--pontes-text-muted); line-height: 1.35; }
+/* Histórico de marcos */
+.histTitulo { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--pontes-text-muted); margin: auto 0 4px; border-top: 1px dashed var(--pontes-border); padding-top: 12px; }
+/* Última conferência — uma linha só (o calendário já mostra os demais marcos). */
+.histLinha { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; font-size: 12.5px; padding: 8px 10px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); border-radius: 8px; cursor: pointer; font-family: var(--pontes-font); color: var(--pontes-text); text-align: left; }
+.histLinha:hover { background: var(--pontes-bg); }
+.histLinha[data-sel="true"] { background: var(--pontes-bg); outline: 1px solid var(--pontes-primary); }
+.histEsq { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.histIconOk { color: var(--pontes-success); }
+.histIconAjuste { color: var(--pontes-warning); }
+.histIconInicial { color: var(--pontes-primary); }
+.histValor { color: var(--pontes-text-muted); }
+.histTagPartida { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pontes-primary); background: var(--pontes-primary-soft, rgba(59,130,246,0.12)); border-radius: 5px; padding: 1px 6px; }

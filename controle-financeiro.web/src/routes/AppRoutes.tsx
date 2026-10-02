@@ -42,6 +42,7 @@ import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 import ReconciliacaoPage from "../pages/Reconciliacao/ReconciliacaoPage"
+import ReconciliacaoEstados from "../pages/Reconciliacao/ReconciliacaoEstados"
 
 // /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
 function RedirecionarParcelamento() {
@@ -77,6 +78,10 @@ export default function AppRoutes() {
             (achado do sweep pré-beta, 2026-08-18: eram públicas sem gate nenhum). */}
         {import.meta.env.DEV && (
           <Route path="/design-system" element={<DesignSystemPage />} />
+        )}
+        {/* Galeria DEV dos estados do painel de conferir da Reconciliação (revisão de design). */}
+        {import.meta.env.DEV && (
+          <Route path="/reconciliacao-estados" element={<ReconciliacaoEstados />} />
         )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}

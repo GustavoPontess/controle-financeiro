@@ -15,6 +15,31 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 Sessão 2026-10-02 — Reconciliação: redesenho do painel + saldo inicial com data + editar saldo inicial · branch `exp/consistencia-front`
+
+**Fechando em ponto verde (testes sendo atualizados por agente → depois commit).** Front build+lint verdes; backend compila 0 erro (saída separada, API rodando trava o bin). Dogfood ao vivo com conta de teste nova (`reconc.teste@local.test`, senha = dev `Dev@123456`, 1-clique no painel DEV).
+
+**Modelo — saldo inicial com DATA (consertou o retroativo):** `ContaService.CriarAsync` += `dataSaldoInicial` (default hoje), carimba a transação `EhSaldoInicial` no **início desse dia** (não mais `UtcNow`). `CriarContaDto += DataSaldoInicial`; `ContaForm` ganhou campo "Saldo inicial desde" (só ao criar + saldo>0, max hoje). Antes: baseline caía "hoje" e todo dia passado ignorava a abertura (01/09=0, 16/09 sem os 2.000). Agora o baseline ancora no começo.
+
+**Reconciliação — painel REDESENHADO (layout uniforme, iterado ao vivo com o Gustavo):**
+- Seletor de conta ("Conta a conferir") mora no TOPO do painel de conferir (não mais topbar solta). Removido o contador "N contas".
+- Painel uniforme: título → input → 3 linhas (Calculado/Declarado/Diferença) → slot de status (altura fixa) → ações no RODAPÉ. Conferir e marco têm a MESMA altura; calendário compacto (célula altura fixa, não quadrado gigante); as duas colunas `align-items: stretch` com o histórico/última ancorado embaixo.
+- Copy do "banco": input "Saldo que aparece no seu banco" + "Abre o app do seu banco e põe o valor aqui".
+- Aviso ESPECÍFICO pelo sinal: `dif>0` → "Sobrou R$ X — tem mais no banco…"; `dif<0` → "Faltou R$ X — tem menos no banco…" (não mais "Faltou (ou sobrou)").
+- **Baseline removido da reconciliação** — saldo inicial = só no cadastro (uma fonte, sem lançar 2×); a tela só **confere/ajusta**.
+- "Remover" marco em vermelho (`danger-outline`). Histórico virou **uma linha** "Última conferência" (calendário já mostra os marcos). Movimentos = `PontesTabela` full-width, SEMPRE visível (vazio do componente), coluna Valor **sem +/−** (só cor verde/vermelho — memória [[feedback_display_sem_sinal_valor]]).
+- `abrirDia` leva o calendário pro mês do dia (clicar na última conferência de outro mês navega).
+
+**EDITAR saldo inicial pela reconciliação (feature nova, dinheiro):** marco de partida ganhou "Alterar valor" → modo edição (Valor + Desde) → salva. Backend: `PUT /contas/{id}/saldo-inicial` + `ContaService.AtualizarSaldoInicialAsync` (dono/`UsuarioId` → 404 alheio, valor>0, data não futura, atualiza/cria a tx `EhSaldoInicial` no início do dia, `FinancialEventLog` `TransacaoAtualizada=52`). `AtualizarSaldoInicialDto`, `atualizarSaldoInicial` no `contaService.ts`. Verificado ao vivo (2.000→2.500, toast, partida atualizada).
+
+**Shell (vale pra TODAS as telas):** `DefaultLayout.module.css` `.page` max-width 1480→**1800**, `.main` padding 28→**20px 24px** (menos espaço lateral perdido em tela grande). `Navbar` ganhou wrapper `.inner` (mesmo cap+padding do conteúdo) → título e "Nova transação" ALINHAM com a página em qualquer largura.
+
+**Galeria DEV:** `/reconciliacao-estados` (rota atrás de `import.meta.env.DEV`, `ReconciliacaoEstados.tsx`) — todos os modos do painel lado a lado, CSS real, dados fake. Pra revisar design sem ping-pong.
+
+**Próxima ação concreta:** esperar o agente de teste fechar verde → rodar suítes completas (front+back) → **commit** em `exp/consistencia-front` (sem merge) → atualizar ROADMAP. **Limpeza pendente:** apagar dados de teste no Postgres local (`reconc.teste`: contas Carteira/Conta Corrente Teste/Conta Teste Retroativa + marcos + os 150 `PAGTESTE` antigos). Obs: na verificação o saldo inicial da "Conta Corrente Teste" foi mudado 2.000→2.500 (dado de teste). A "Conta Teste Retroativa" ficou zerada por um ajuste de teste (marco bogus 30/09 declarado 0).
+
+---
+
 ### 📌 Sessão 2026-09-30 (parte 3) — Empréstimos → PontesTabela + ações restauradas + decisão: RECONCILIAÇÃO é a fundação · branch `exp/consistencia-front`
 
 **Ponto verde (vai virar commit).** Front 534 testes verdes (55 arquivos); back `EmprestimoServiceTests` 132 (14 filtros + 8 `TotalAPagarVencido`); tsc/lint/build limpos. Backend buildado em saída separada (API rodando trava o `.exe`/`.dll` — não é erro de código).

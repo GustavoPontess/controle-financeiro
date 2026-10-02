@@ -38,6 +38,13 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão.
 
+0. **RECONCILIAÇÃO — bugs achados no dogfood 2026-09-30** (conta de teste nova + saldo inicial + retroativos, verificado ao vivo e via API). A tela "está feia" mas o fundo é modelo:
+   - 🔴 **P0 (modelo) — saldo inicial é datado `DateTime.UtcNow`** (`ContaService.cs:88`), não no começo da linha do tempo. Efeito: reconciliar qualquer dia ANTES da criação da conta ignora o saldo inicial (dogfood: saldo calc. 01/09 = R$0, 16/09 = R$2.299,50, 28/09 = R$1.944,20 — todos SEM os R$2.000 de abertura; só 30/09 inclui). Caso real (abri a conta hoje com o saldo do banco e lanço o mês passado retroativo) → todo dia passado erra. E o baseline colide com o mesmo dia da atividade de hoje. **Fix candidato: saldo inicial ganha DATA no cadastro da conta (default hoje); stamp da transação `EhSaldoInicial` nessa data (início do dia). Decisão do Gustavo pendente.**
+   - 🟠 **P1 (UI) — contradição no mesmo dia:** no dia do baseline o calendário mostra o marco verde com R$2.000 (declarado do baseline) enquanto o hero e o saldo real do dia = R$3.944,20. O "Calculado (app)" do marco derivado fica congelado no saldo inicial, ignorando lançamentos do mesmo dia depois dele.
+   - 🟠 **P1 (UI/confiança) — falso "confere até":** hero mostra ✓ "Confere até 30/09 HH:MM" só por existir o baseline derivado (snapshot de R$2.000), dando a entender que o saldo de HOJE (R$3.944,20) está conferido. O ponto da reconciliação é confiança — esse check engana.
+   - ⚪ **P2 (visual) — tela vazia/sem vida:** muito espaço morto, células grandes vazias, painel direito curto, legenda minúscula; não mostra os lançamentos do dia nem "o que mudou desde o último marco". Redesenhar junto com o fix de modelo (polir sobre modelo quebrado = bater cabeça).
+   - **Conta de teste do dogfood (Postgres local):** `reconc.teste@local.test` (aprovada, id `acf724e4-…`), conta `Conta Corrente Teste` (id `273eb038-…`) com saldo inicial R$2.000 + 8 lançamentos de setembro → saldo R$3.944,20. Apagar quando fechar a investigação.
+
 1. **Bugs de dinheiro achados em 2026-09-28** (P1, conferidos no código):
    - Parcelamentos gera `Idempotency-Key` nova a cada envio (`Parcelamentos/index.tsx` criar, `[id].tsx` pagar antecipado e cancelar): tentar de novo depois de queda de rede pode duplicar. Gerar a chave ao abrir o modal.
    - Contas Fixas grava "1.500" como R$ 1,50 (`RecorrentesPage.tsx` `parseMoneyString`, campo de texto livre).
