@@ -87,4 +87,21 @@ export interface DashboardData {
   transacoesRecentes: TransacaoRecente[]
   saldoContas: SaldoConta[]
   cartoesResumo: CartaoResumo[]
+  /** Gasto no cartão de crédito no mês, À PARTE do caixa (soma de comprasCartaoMes). */
+  gastoCartaoMes?: number
+  /** Compras no crédito do mês: à vista pela data da compra; parcelamento só com a parcela do mês. */
+  comprasCartaoMes?: CompraCartao[]
+}
+
+/** Uma compra (ou a parcela do mês) no cartão de crédito. */
+export interface CompraCartao {
+  descricao: string
+  valor: number
+  /** Data da compra "YYYY-MM-DD" (no parcelamento, a da compra original). */
+  data: string
+  /** Parcela que cai neste mês (null = à vista). */
+  parcela?: number | null
+  totalParcelas?: number | null
+  cartao?: string | null
+  categoria?: string | null
 }

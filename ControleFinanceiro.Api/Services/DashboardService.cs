@@ -293,6 +293,8 @@ public class DashboardService
             .Take(3)
             .ToList();
 
+        var comprasCartaoMes = await ComprasNoCartaoDoMesAsync(usuarioId, ano, mes, cartoes);
+
         return new DashboardDto
         {
             SaldoTotal = saldoTotal,
@@ -314,6 +316,56 @@ public class DashboardService
             TransacoesRecentes = recentes,
             SaldoContas = saldoContas,
             CartoesResumo = topCartoes,
+            GastoCartaoMes = comprasCartaoMes.Sum(c => c.Valor),
+            ComprasCartaoMes = comprasCartaoMes,
         };
+    }
+
+    /// <summary>
+    /// O que foi passado no cartão no mês, À PARTE do caixa (decisão do Gustavo, 2026-10-03). Mesmas
+    /// regras do total da fatura (<see cref="RegrasFinanceiras"/>): crédito à vista vivo pela data da
+    /// compra (o parcelamento antigo grava uma transação por parcela, já datada no mês dela) + parcela
+    /// não cancelada do parcelamento novo no mês da fatura dela (o "mês da parcela" da tela Cartões).
+    /// Nunca o total da compra parcelada — só a parcela do mês, com o número.
+    /// </summary>
+    private async Task<List<CompraCartaoDto>> ComprasNoCartaoDoMesAsync(
+        Guid usuarioId, int ano, int mes, List<Domain.Entities.CartaoCredito> cartoes)
+    {
+        var aVista = cartoes
+            .SelectMany(c => c.Transacoes.Select(t => (Cartao: c, Transacao: t)))
+            .Where(x => RegrasFinanceiras.CompoeTotalFatura(x.Transacao)
+                        && x.Transacao.Data.Year == ano && x.Transacao.Data.Month == mes)
+            .Select(x => new CompraCartaoDto
+            {
+                Descricao = x.Transacao.Descricao,
+                Valor = x.Transacao.Valor,
+                Data = x.Transacao.Data,
+                Cartao = x.Cartao.Nome,
+                Categoria = x.Transacao.Categoria?.Descricao,
+            });
+
+        var parcelas = (await _context.ParcelasTransacao
+                .Where(p => p.Parcelamento!.CriadoPor == usuarioId
+                            && p.Fatura!.DataFechamento.Year == ano && p.Fatura.DataFechamento.Month == mes)
+                .Include(p => p.Parcelamento!).ThenInclude(pc => pc.Categoria)
+                .Include(p => p.Parcelamento!).ThenInclude(pc => pc.CartaoCredito)
+                .AsNoTracking()
+                .ToListAsync())
+            .Where(RegrasFinanceiras.CompoeTotalFatura)
+            .Select(p => new CompraCartaoDto
+            {
+                Descricao = p.Parcelamento!.Descricao,
+                Valor = RegrasFinanceiras.ValorDevidoParcela(p),
+                Data = DateOnly.FromDateTime(p.Parcelamento.DataCompra),
+                Parcela = p.Numero,
+                TotalParcelas = p.QuantidadeTotal,
+                Cartao = p.Parcelamento.CartaoCredito?.Nome,
+                Categoria = p.Parcelamento.Categoria?.Descricao,
+            });
+
+        return aVista.Concat(parcelas)
+            .OrderByDescending(c => c.Data)
+            .ThenBy(c => c.Descricao)
+            .ToList();
     }
 }

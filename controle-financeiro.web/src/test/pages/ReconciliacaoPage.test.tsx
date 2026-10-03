@@ -356,10 +356,11 @@ describe("ReconciliacaoPage", () => {
     expect(screen.getByText(ROTULO_SALDO_BANCO)).toBeInTheDocument()
     expect(screen.getByText("Abre o app do seu banco e põe o valor aqui.")).toBeInTheDocument()
     expect(screen.getByPlaceholderText("0,00")).toHaveValue("")
-    // o "Calculado (app)" já aparece, sem a pessoa digitar nada; "Declarado" ainda é zero
+    // o "Calculado (app)" já aparece, sem a pessoa digitar nada; "Declarado" e "Diferença" ficam em "—"
     expect(await screen.findByText("Calculado (app)")).toBeInTheDocument()
     expect(linha("Calculado (app)")).toHaveTextContent(/R\$\s?100,00/)
-    expect(linha("Declarado (você)")).toHaveTextContent(/R\$\s?0,00/)
+    expect(linha("Declarado (você)")).toHaveTextContent("—")
+    expect(linha("Diferença")).toHaveTextContent("—")
     // calcula o saldo de hoje com a hora atual (não o "23:59" dos outros dias), 1x, da conta selecionada
     expect(getSaldoCalculado).toHaveBeenCalledTimes(1)
     expect(getSaldoCalculado).toHaveBeenCalledWith("c1", HOJE_CALCULO)
@@ -414,10 +415,37 @@ describe("ReconciliacaoPage", () => {
     expect(await screen.findByText(`hoje, ${diaMes(HOJE)}`)).toBeInTheDocument()
     await waitFor(() => expect(getSaldoCalculado).toHaveBeenLastCalledWith("c1", HOJE_CALCULO))
     expect(screen.getByPlaceholderText("0,00")).toHaveValue("")
-    // o "Declarado" volta a zero (o digitado de antes foi descartado)
+    // o "Declarado" volta a "—" (o digitado de antes foi descartado)
     await screen.findByText("Calculado (app)")
-    expect(linha("Declarado (você)")).toHaveTextContent(/R\$\s?0,00/)
+    expect(linha("Declarado (você)")).toHaveTextContent("—")
     expect(linha("Declarado (você)")).not.toHaveTextContent(/100,00/)
+  })
+
+  it("regressão: campo do banco VAZIO não libera 'Ajustar' nem aviso — clicar antes de digitar não lança o saldo inteiro como ajuste", async () => {
+    getSaldoCalculado.mockResolvedValue(3944.2)
+    await renderPage()
+    await abrirDiaLivre()
+    await screen.findByText("Calculado (app)")
+    expect(screen.getByPlaceholderText("0,00")).toHaveValue("")
+    expect(screen.queryByRole("button", { name: AJUSTAR })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Lançar o que falta" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Confere/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Faltou/)).not.toBeInTheDocument()
+    expect(criarMarco).not.toHaveBeenCalled()
+  })
+
+  it("'0,00' DIGITADO de propósito (banco zerado) vale: libera 'Ajustar' e grava declarado 0", async () => {
+    getSaldoCalculado.mockResolvedValue(250)
+    await renderPage()
+    await abrirDiaLivre()
+    digitarSaldoReal("0")
+    expect(screen.getByPlaceholderText("0,00")).toHaveValue("0,00")
+    expect(linha("Declarado (você)")).toHaveTextContent(/R\$\s?0,00/)
+    expect(await screen.findByText(/Faltou/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: AJUSTAR }))
+    await waitFor(() => expect(criarMarco).toHaveBeenCalledTimes(1))
+    expect(criarMarco.mock.calls[0][0]).toMatchObject({ contaId: "c1", saldoDeclarado: 0, resolucao: "ajustar" })
   })
 
   it("trocar de mês limpa o dia selecionado: painel volta a pedir um dia e o campo de saldo some", async () => {

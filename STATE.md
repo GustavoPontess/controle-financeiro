@@ -46,16 +46,19 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Dashboard redesenhado (2026-10-02, noite) — 1ª tela da fila de densidade.** Layout aprovado pelo Gustavo (inspiração Behance: WealthWise / Approx): faixa de saldo com Entrou/Saiu/Sobrou + troca de mês, gráficos lado a lado, recentes à esquerda e orçamento/contas/cartões à direita. Sem saudação nem textos explicativos. Backend: `DashboardService` corrigido (recentes só efetivadas até hoje, variação na mesma base do saldo, `DistinctBy`, maiores gastos = saídas de caixa com "Sem categoria"/"Outros", DTO de recentes com `Data`+`Hora`+flags, `UltimosDigitos` do cartão, `TipoConta.Descricao()` compartilhado com `ContasController`). `PontesCategoryDonut` com raio em % e % pt-BR (Relatórios conferido, sem quebra). Atalhos rápidos + atalhos de teclado do Dashboard REMOVIDOS (pedido do Gustavo). Padrão denso documentado em `docs/DESIGN_SYSTEM.md` → "Densidade"; fila de migração das outras telas no ROADMAP. **Testes: back 1144 · front 805 verdes.**
 
-**Próxima ação concreta (atualizada):** (1) decisão do Gustavo: compra no crédito em "Saiu"/"Maiores gastos" (ROADMAP P1); (2) P1 ajuste acidental na reconciliação; (3) próxima tela da fila de densidade: `/categories`.
+**Estado: TUDO VERDE e commitado** — último commit `4df2901` (push feito). Back 1144 testes · front 805 · lint+build limpos. Banco local já com o seed novo (só `dev@` + `conjuge@`, senha `Dev@123456`). `MeuCenarioSeeder` pessoal DESLIGADO (renomeado `.cs.bak`, gitignored — nunca commitar).
 
-**Estado: TUDO VERDE** — back build 0 erro + 1095 testes · front build+lint + 662 testes · migração aplicada no Postgres local e verificada ao vivo · seed enxuto. Pronto pra commit.
+**2026-10-03 (madrugada) — dois itens fechados:**
+- **Reconciliação: ajuste acidental FECHADO.** Campo do banco vazio ≠ zero: sem digitar, Declarado/Diferença ficam "—" e não aparece ação; "0,00" digitado vale. Back: `SaldoDeclarado` `decimal?` obrigatório (ausente → 400).
+- **Dashboard: "Gasto no cartão" (decisão do Gustavo = opção A).** Caixa à parte (embaixo das recentes) com total + compras do mês; parcela aparece com o número ("TV 2/10"); "Saiu"/"Maiores gastos" seguem no caixa. Regras do total da fatura (`RegrasFinanceiras`).
+- Testes: **back 1152 · front 812**, lint+build verdes. Verificado ao vivo na conta de teste da cônjuge (criado "Cartão Teste" •••• 4321 + "Tênis (teste)" + "TV (teste)" 10x — dado de teste, pode apagar).
+- Achado novo (P2, ROADMAP): o seed grava lançamento efetivado com data futura → saldo/hero não batem com o "Calculado" de hoje.
 
 **Próxima ação concreta (quando voltar):**
-1. **Achados catalogados no ROADMAP (migração date/time) — atacar por prioridade:**
-   - 🟠 **P1 — Ajuste acidental na reconciliação:** clicar "Ajustar"/"Lançar o que falta" ANTES de digitar o saldo (declarado=0) cria ajuste do saldo INTEIRO. Fix: só habilitar ações após o campo preenchido (front) + back recusar ajuste sem declarado.
-   - 🟡 P2: transferência exige hora mas o back descarta (alinhar); editar lançamento sem hora força inventar hora; "Alterar valor" do saldo inicial erra por toast (→ inline).
-2. **Reseed quando for testar:** o Postgres local ainda tem o seed ANTIGO (com solo). Pra ver o seed novo: wipe + restart da API (DevDataSeeder é idempotente — só reseeda se `dev@controle.test` não existir).
-3. PR #284 (draft) segue; merge só quando a frente de consistência fechar.
+1. 🟡 P2 seed com efetivado no futuro (fix no `DevDataSeeder` + reseed — pedir OK antes de apagar o banco).
+2. Próxima tela da fila de densidade: `/categories` (Gustavo pediu pra deixar pra depois — uma por vez, com ele vendo).
+3. 🟡 P2: transferência exige hora mas o back descarta; editar lançamento sem hora força inventar hora; "Alterar valor" do saldo inicial erra por toast (→ inline); Dashboard usa `DateTime.UtcNow` no fechamento; Dashboard carrega todas as transações em memória.
+4. PR #284 (draft) segue; merge só quando a frente de consistência fechar.
 
 ---
 

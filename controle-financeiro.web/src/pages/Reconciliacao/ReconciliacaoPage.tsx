@@ -173,11 +173,14 @@ export default function ReconciliacaoPage() {
   }
 
   const declarado = parseMoney(saldoReal)
-  const diferenca = calculado != null ? declarado - calculado : 0
-  const bate = calculado != null && Math.abs(diferenca) < 0.005
+  // Campo vazio não é zero: sem o saldo do banco digitado não há o que comparar nem gravar.
+  // (Antes o vazio valia 0 e "Ajustar" lançava o saldo inteiro como ajuste.) "0,00" digitado vale.
+  const preenchido = saldoReal.trim() !== ""
+  const diferenca = calculado != null && preenchido ? declarado - calculado : 0
+  const bate = calculado != null && preenchido && Math.abs(diferenca) < 0.005
 
   const gravar = async (resolucao?: "ajustar") => {
-    if (!diaSel || calculado == null) return
+    if (!diaSel || calculado == null || !preenchido) return
     setSalvando(true)
     try {
       const dataHora = combinarDataHora(diaSel, diaSel === hojeISO ? horaLocalHHMM() : "23:59")
@@ -303,6 +306,8 @@ export default function ReconciliacaoPage() {
             const dif = m ? m.diferenca : diferenca
             const bateu = m ? m.diferenca === 0 : bate
             const temResultado = m != null || calculado != null
+            // Sem o saldo do banco digitado: mostra só o calculado; declarado/diferença ficam em "—".
+            const comparavel = m != null || preenchido
             return (
               <>
                 {/* Título — mesma posição em todo modo. */}
@@ -331,10 +336,12 @@ export default function ReconciliacaoPage() {
                 {temResultado && (
                   <div className={styles.resultado} data-bate={bateu ? "true" : "false"}>
                     <div className={styles.resultLinha}><span>Calculado (app)</span><strong>{formatMoney(calc ?? 0)}</strong></div>
-                    <div className={styles.resultLinha}><span>Declarado (você)</span><strong>{formatMoney(decl)}</strong></div>
+                    <div className={styles.resultLinha}><span>Declarado (você)</span><strong>{comparavel ? formatMoney(decl) : "—"}</strong></div>
                     <div className={styles.resultLinha} data-destaque="true">
                       <span>Diferença</span>
-                      <strong className={bateu ? styles.difOk : styles.difNok}>{dif > 0 ? "+" : ""}{formatMoney(dif)}</strong>
+                      {comparavel
+                        ? <strong className={bateu ? styles.difOk : styles.difNok}>{dif > 0 ? "+" : ""}{formatMoney(dif)}</strong>
+                        : <strong>—</strong>}
                     </div>
                   </div>
                 )}
@@ -344,7 +351,7 @@ export default function ReconciliacaoPage() {
                   {m?.derivado && <div className={styles.notaDerivado}>Ponto de partida da conta.</div>}
                   {m?.temAjuste && <div className={styles.tag}>lançamento de ajuste criado</div>}
                   {!m && calculado == null && <span className={styles.painelSub}>Calculando o saldo do dia…</span>}
-                  {!m && calculado != null && !bate && (
+                  {!m && calculado != null && preenchido && !bate && (
                     <div className={styles.resultAviso}>
                       <TriangleAlert size={14} strokeWidth={2.5} />
                       {dif > 0
@@ -365,7 +372,7 @@ export default function ReconciliacaoPage() {
                       <PontesButton variant="danger-outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(m)}>Remover</PontesButton>
                     </>
                   )}
-                  {!m && calculado != null && (bate
+                  {!m && calculado != null && preenchido && (bate
                     ? <PontesButton variant="primary" size="sm" fullWidth loading={salvando} iconStart={<Check size={14} strokeWidth={3} />} onClick={() => gravar()}>Confere — gravar marco</PontesButton>
                     : <>
                         <PontesButton variant="outline" size="sm" fullWidth onClick={() => navigate("/transactions")}>Lançar o que falta</PontesButton>

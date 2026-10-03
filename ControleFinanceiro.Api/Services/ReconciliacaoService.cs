@@ -115,7 +115,10 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
             throw new ArgumentException($"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
         if (!Enum.IsDefined(typeof(TipoMarcoReconciliacao), dto.Tipo))
             throw new ArgumentException("Tipo de marco inválido.");
-        if (Math.Abs(dto.SaldoDeclarado) > SaldoMaximo)
+        // Saldo do banco é obrigatório: omitido não pode virar 0 (viraria ajuste do saldo inteiro).
+        if (dto.SaldoDeclarado is not decimal declarado)
+            throw new ArgumentException("Informe o saldo que aparece no banco.");
+        if (Math.Abs(declarado) > SaldoMaximo)
             throw new ArgumentException("Saldo declarado fora da faixa aceita.");
         // Marco é sobre o passado/presente. Tolera 1 dia pra folga de fuso.
         if (dto.DataHora > DateTime.UtcNow.AddDays(1))
@@ -140,7 +143,7 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
 
         var tipo = (TipoMarcoReconciliacao)dto.Tipo;
         var calculado = await CalcularSaldoAteAsync(usuarioId, dto.ContaId, dto.DataHora);
-        var diferenca = dto.SaldoDeclarado - calculado;
+        var diferenca = declarado - calculado;
         var correlationId = Guid.NewGuid();
 
         // Ajuste: baseline sempre fecha a diferença; verificação só quando o usuário pede "ajustar".
@@ -174,7 +177,7 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
                 correlationId: correlationId,
                 origemAcao: "ReconciliacaoAjuste",
                 valorAntes: calculado,
-                valorDepois: dto.SaldoDeclarado,
+                valorDepois: declarado,
                 payload: new { contaId = dto.ContaId, diferenca, tipoLancamento = ajuste.Tipo.ToString() });
         }
 
@@ -184,7 +187,7 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
             ContaId = dto.ContaId,
             UsuarioId = usuarioId,
             DataHora = dto.DataHora,
-            SaldoDeclarado = dto.SaldoDeclarado,
+            SaldoDeclarado = declarado,
             SaldoCalculado = calculado,
             Diferenca = diferenca,
             Tipo = tipo,
@@ -215,7 +218,7 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
             correlationId: correlationId,
             origemAcao: "API",
             valorAntes: calculado,
-            valorDepois: dto.SaldoDeclarado,
+            valorDepois: declarado,
             payload: new { tipo = tipo.ToString(), diferenca, ajusteTransacaoId = ajusteId });
 
         try

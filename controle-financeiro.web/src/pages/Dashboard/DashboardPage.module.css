@@ -98,6 +98,15 @@
 .linhaValor[data-tom="saida"] { color: var(--pontes-danger); }
 .digitos { font-weight: 400; color: var(--pontes-text-muted); }
 
+/* Gasto no cartão: total no topo da caixa, "2/10" ao lado do nome da parcela */
+.caixaTotal { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--pontes-text); }
+.caixaRodape { display: flex; justify-content: flex-end; padding: 6px 12px; }
+.linhaNomeLinha { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.parcelaChip {
+  flex-shrink: 0; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.5;
+  padding: 0 6px; border-radius: 6px; background: var(--pontes-primary-soft); color: var(--pontes-primary);
+}
+
 /* ── Bloco com barra (orçamento / cartão) ────────────────────────────────────────────────── */
 .bloco { display: flex; flex-direction: column; gap: 7px; padding: 10px 16px; border-bottom: 1px solid var(--pontes-border); font-size: 12px; }
 .bloco:last-child { border-bottom: none; }

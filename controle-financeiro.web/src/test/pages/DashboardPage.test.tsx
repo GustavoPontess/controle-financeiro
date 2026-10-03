@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, within, act } from "@testing-librar
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider, setHideBalance } from "../../components/pontes"
 import DashboardPage from "../../pages/Dashboard/DashboardPage"
-import type { DashboardData, TransacaoRecente, SaldoConta, CartaoResumo } from "../../types/Dashboard"
+import type { DashboardData, TransacaoRecente, SaldoConta, CartaoResumo, CompraCartao } from "../../types/Dashboard"
 import type { Orcamento } from "../../types/Orcamento"
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -830,6 +830,58 @@ describe("DashboardPage", () => {
   })
 
   // ── navegação ──────────────────────────────────────────────────────────────
+
+  // ── Gasto no cartão (à parte do caixa — decisão 2026-10-03) ─────────────────
+
+  describe("Gasto no cartão", () => {
+    const compras: CompraCartao[] = [
+      { descricao: "Tênis", valor: 300, data: HOJE, categoria: "Vestuário", cartao: "Nubank" },
+      { descricao: "TV", valor: 200, data: "2026-08-03", parcela: 3, totalParcelas: 10, categoria: "Eletrônicos", cartao: "Nubank" },
+    ]
+
+    it("sem compra no cartão no mês, a caixa não aparece", async () => {
+      await renderCarregado()
+      expect(screen.queryByRole("heading", { name: "Gasto no cartão" })).not.toBeInTheDocument()
+    })
+
+    it("mostra o total à parte e cada compra; a parcela aparece com o número dela ('3/10')", async () => {
+      getDashboard.mockResolvedValue(makeDashboard({ gastoCartaoMes: 500, comprasCartaoMes: compras }))
+      await renderCarregado()
+      const caixa = secao("Gasto no cartão")
+      expect(within(caixa).getByText(/R\$\s?500,00/)).toBeInTheDocument()
+      expect(within(caixa).getByText("Tênis")).toBeInTheDocument()
+      expect(within(caixa).getByText("Vestuário · Nubank · Hoje")).toBeInTheDocument()
+      expect(within(caixa).getByText("TV")).toBeInTheDocument()
+      expect(within(caixa).getByTitle("Parcela 3 de 10")).toHaveTextContent("3/10")
+      expect(within(caixa).getByText("Eletrônicos · Nubank · compra em 03/08")).toBeInTheDocument()
+      expect(within(caixa).getByText(/R\$\s?200,00/)).toBeInTheDocument()
+    })
+
+    it("não mexe no 'Saiu' (segue o caixa que veio do resumo)", async () => {
+      getDashboard.mockResolvedValue(makeDashboard({ gastoCartaoMes: 500, comprasCartaoMes: compras }))
+      await renderCarregado()
+      expect(stat("Saiu")).toHaveTextContent(/R\$\s?300,00/)
+    })
+
+    it("mais de 5 compras: mostra 5 e um link 'Mais N compras' que leva pros cartões", async () => {
+      const muitas = Array.from({ length: 7 }, (_, i) => ({ descricao: `Compra ${i + 1}`, valor: 10, data: HOJE }))
+      getDashboard.mockResolvedValue(makeDashboard({ gastoCartaoMes: 70, comprasCartaoMes: muitas }))
+      await renderCarregado()
+      const caixa = secao("Gasto no cartão")
+      expect(within(caixa).getByText("Compra 5")).toBeInTheDocument()
+      expect(within(caixa).queryByText("Compra 6")).not.toBeInTheDocument()
+      fireEvent.click(within(caixa).getByRole("button", { name: /Mais 2 compras/ }))
+      expect(navigateSpy).toHaveBeenCalledWith("/credit-cards")
+    })
+
+    it("olho fechado mascara o total e os valores das compras", async () => {
+      setHideBalance(true)
+      getDashboard.mockResolvedValue(makeDashboard({ gastoCartaoMes: 500, comprasCartaoMes: compras }))
+      await renderCarregado()
+      const caixa = secao("Gasto no cartão")
+      expect(caixa).not.toHaveTextContent(/500,00|300,00|200,00/)
+    })
+  })
 
   describe("links 'Ver todas/todos'", () => {
     const casos = [

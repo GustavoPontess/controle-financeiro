@@ -22,7 +22,7 @@ import { PontesButton, PontesBankBadge, PontesCategoryDonut, usePontesTheme, use
 import { getDashboard } from "../../services/dashboardService"
 import { getOrcamentos } from "../../services/orcamentoService"
 import type { Orcamento } from "../../types/Orcamento"
-import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
+import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo, CompraCartao } from "../../types/Dashboard"
 import { formatMoney, MONEY_MASK } from "@/utils/money"
 import { dataLocalISO } from "@/utils/dateTime"
 import styles from "./DashboardPage.module.css"
@@ -198,19 +198,29 @@ export default function DashboardPage() {
 
           {/* O que aconteceu (esquerda) + onde está o dinheiro (direita) */}
           <div className={styles.grid2} data-topo="true">
-            <section className={styles.caixa}>
-              <div className={styles.caixaTopo}>
-                <h2 className={styles.caixaTitulo}>Transações recentes</h2>
-                <button type="button" className={styles.linkBtn} onClick={() => navigate("/transactions")}>
-                  Ver todas <ArrowRight size={13} strokeWidth={2.5} />
-                </button>
-              </div>
-              {data.transacoesRecentes.length === 0 ? (
-                <div className={styles.vazio}>Nenhuma transação ainda</div>
-              ) : (
-                data.transacoesRecentes.map((t) => <TxRow key={t.id} t={t} />)
+            <div className={styles.coluna}>
+              <section className={styles.caixa}>
+                <div className={styles.caixaTopo}>
+                  <h2 className={styles.caixaTitulo}>Transações recentes</h2>
+                  <button type="button" className={styles.linkBtn} onClick={() => navigate("/transactions")}>
+                    Ver todas <ArrowRight size={13} strokeWidth={2.5} />
+                  </button>
+                </div>
+                {data.transacoesRecentes.length === 0 ? (
+                  <div className={styles.vazio}>Nenhuma transação ainda</div>
+                ) : (
+                  data.transacoesRecentes.map((t) => <TxRow key={t.id} t={t} />)
+                )}
+              </section>
+
+              {(data.comprasCartaoMes?.length ?? 0) > 0 && (
+                <ComprasCartaoBox
+                  compras={data.comprasCartaoMes ?? []}
+                  total={data.gastoCartaoMes ?? 0}
+                  onVerMais={() => navigate("/credit-cards")}
+                />
               )}
-            </section>
+            </div>
 
             <div className={styles.coluna}>
               <div data-atualizando={loading ? "true" : undefined}>
@@ -319,6 +329,63 @@ function TxRow({ t }: { t: TransacaoRecente }) {
         <span className={styles.linhaSub}>{detalhe}</span>
       </div>
       <span className={styles.linhaValor} data-tom={tom}>{formatMoney(t.valor)}</span>
+    </div>
+  )
+}
+
+const MAX_COMPRAS_CARTAO = 5
+
+/**
+ * ComprasCartaoBox — o que foi passado no cartão no mês, À PARTE do caixa (Entrou/Saiu/Sobrou e
+ * "Maiores gastos" seguem no dinheiro que sai da conta). Parcelamento aparece só com a parcela do
+ * mês e o número dela ("2/10"), nunca o total da compra.
+ */
+function ComprasCartaoBox({ compras, total, onVerMais }: {
+  compras: CompraCartao[]; total: number; onVerMais: () => void
+}) {
+  const visiveis = compras.slice(0, MAX_COMPRAS_CARTAO)
+  const resto = compras.length - visiveis.length
+  return (
+    <section className={styles.caixa}>
+      <div className={styles.caixaTopo}>
+        <h2 className={styles.caixaTitulo}>Gasto no cartão</h2>
+        <span className={styles.caixaTotal}>{formatMoney(total)}</span>
+      </div>
+      {visiveis.map((c, i) => <CompraCartaoRow key={`${i}-${c.descricao}`} compra={c} />)}
+      {resto > 0 && (
+        <div className={styles.caixaRodape}>
+          <button type="button" className={styles.linkBtn} onClick={onVerMais}>
+            Mais {resto} {resto === 1 ? "compra" : "compras"} <ArrowRight size={13} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Linha de compra no cartão: nome + "2/10" quando é parcela; categoria · cartão · dia da compra. */
+function CompraCartaoRow({ compra }: { compra: CompraCartao }) {
+  const ehParcela = compra.parcela != null && compra.totalParcelas != null
+  const detalhe = [
+    compra.categoria,
+    compra.cartao,
+    ehParcela ? `compra em ${compra.data.slice(8, 10)}/${compra.data.slice(5, 7)}` : fmtQuando(compra.data),
+  ].filter(Boolean).join(" · ")
+  return (
+    <div className={styles.linha}>
+      <span className={styles.linhaIcone} data-tom="neutro"><CreditCard size={16} strokeWidth={2.4} /></span>
+      <div className={styles.linhaTexto}>
+        <span className={styles.linhaNomeLinha}>
+          <span className={styles.linhaNome}>{compra.descricao}</span>
+          {ehParcela && (
+            <span className={styles.parcelaChip} title={`Parcela ${compra.parcela} de ${compra.totalParcelas}`}>
+              {compra.parcela}/{compra.totalParcelas}
+            </span>
+          )}
+        </span>
+        <span className={styles.linhaSub}>{detalhe}</span>
+      </div>
+      <span className={styles.linhaValor}>{formatMoney(compra.valor)}</span>
     </div>
   )
 }

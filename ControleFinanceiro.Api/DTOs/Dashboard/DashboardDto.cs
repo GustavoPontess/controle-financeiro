@@ -35,6 +35,34 @@ public class DashboardDto
     public List<SaldoContaDto> SaldoContas { get; set; } = new();
     /// <summary>Top 3 cartões ativos por % do limite usado (desc).</summary>
     public List<CartaoResumoDto> CartoesResumo { get; set; } = new();
+
+    /// <summary>
+    /// Gasto no cartão de crédito no mês — À PARTE do caixa (decisão 2026-10-03): "Saiu" e "Maiores
+    /// gastos" seguem no dinheiro que sai da conta; aqui fica o que foi passado no cartão. Soma de
+    /// <see cref="ComprasCartaoMes"/>.
+    /// </summary>
+    public decimal GastoCartaoMes { get; set; }
+
+    /// <summary>
+    /// O que compõe o <see cref="GastoCartaoMes"/>: compra à vista no crédito pela data da compra e,
+    /// de parcelamento, só a parcela que cai no mês (com o número dela). Nunca o total da compra
+    /// parcelada por cima das parcelas.
+    /// </summary>
+    public List<CompraCartaoDto> ComprasCartaoMes { get; set; } = new();
+}
+
+/// <summary>Uma compra (ou a parcela do mês) no cartão de crédito.</summary>
+public class CompraCartaoDto
+{
+    public string Descricao { get; set; } = string.Empty;
+    public decimal Valor { get; set; }
+    /// <summary>Data da compra (no parcelamento, a da compra original).</summary>
+    public DateOnly Data { get; set; }
+    /// <summary>Número da parcela que cai neste mês (null = à vista).</summary>
+    public int? Parcela { get; set; }
+    public int? TotalParcelas { get; set; }
+    public string? Cartao { get; set; }
+    public string? Categoria { get; set; }
 }
 
 /// <summary>

@@ -982,4 +982,175 @@ public class DashboardServiceTests
         Assert.Equal(-10m, r.EvolucaoSaldo[^1].Saldo);
         Assert.Empty(r.CartoesResumo);
     }
+
+    // ── Gasto no cartão do mês (à parte do caixa — decisão 2026-10-03) ────────
+
+    private static Fatura NovaFatura(AppDbContext ctx, CartaoCredito cartao, Guid usuarioId, int ano, int mes)
+    {
+        var fechamento = new DateTime(ano, mes, 5);
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id, CriadoPor = usuarioId,
+            DataInicio = fechamento.AddMonths(-1).AddDays(1), DataFechamento = fechamento,
+            DataVencimento = fechamento.AddDays(10),
+        };
+        ctx.Faturas.Add(fatura);
+        return fatura;
+    }
+
+    /// <summary>Parcelamento do fluxo novo: N parcelas em faturas consecutivas a partir de (ano, mes).</summary>
+    private static Parcelamento NovoParcelamento(AppDbContext ctx, CartaoCredito cartao, Guid usuarioId,
+        string descricao, decimal valorParcela, int parcelas, int ano, int mes, Categoria? categoria = null)
+    {
+        var parcelamento = new Parcelamento
+        {
+            Id = Guid.NewGuid(), CriadoPor = usuarioId, Descricao = descricao, DataCompra = new DateTime(ano, mes, 3),
+            ValorTotal = valorParcela * parcelas, QuantidadeParcelas = parcelas, CartaoCreditoId = cartao.Id,
+            CategoriaId = categoria?.Id, Ativo = true,
+        };
+        ctx.Parcelamentos.Add(parcelamento);
+        for (var i = 0; i < parcelas; i++)
+        {
+            var mesDaParcela = new DateTime(ano, mes, 1).AddMonths(i);
+            var fatura = NovaFatura(ctx, cartao, usuarioId, mesDaParcela.Year, mesDaParcela.Month);
+            ctx.ParcelasTransacao.Add(new ParcelaTransacao
+            {
+                Id = Guid.NewGuid(), ParcelamentoId = parcelamento.Id, Numero = i + 1, QuantidadeTotal = parcelas,
+                DataVencimento = fatura.DataVencimento, Valor = valorParcela, FaturaId = fatura.Id, CriadoPor = usuarioId,
+            });
+        }
+        return parcelamento;
+    }
+
+    // Compra à vista no crédito (cartão, sem conta) num dia.
+    private static Transacao CompraNoCredito(CartaoCredito cartao, decimal valor, DateOnly dia, string descricao,
+        Categoria? categoria = null) =>
+        Mov(null, TipoTransacao.Despesa, valor, dia, descricao, t =>
+        {
+            t.CartaoCreditoId = cartao.Id;
+            t.UsadoComoCredito = true;
+            t.MeioPagamento = MeioPagamento.Credito;
+            t.CategoriaId = categoria?.Id;
+        });
+
+    [Fact]
+    public async Task GetResumoAsync_CompraAVistaNoCredito_EntraNoGastoCartao_MasNaoNoSaiuNemNosMaioresGastos()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(ctx, usuarioId);
+        var cartao = NovoCartao(ctx, usuarioId, "Nubank");
+        var vestuario = NovaCategoria(ctx, "Vestuário");
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 300m, new DateOnly(2026, 10, 2), "Tênis", vestuario));
+        ctx.Transacoes.Add(Gasto(conta.Id, 50m, null, new DateOnly(2026, 10, 1)));
+        await ctx.SaveChangesAsync();
+
+        var r = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 10);
+
+        Assert.Equal(300m, r.GastoCartaoMes);
+        var compra = Assert.Single(r.ComprasCartaoMes);
+        Assert.Equal("Tênis", compra.Descricao);
+        Assert.Equal(300m, compra.Valor);
+        Assert.Equal(new DateOnly(2026, 10, 2), compra.Data);
+        Assert.Null(compra.Parcela);
+        Assert.Null(compra.TotalParcelas);
+        Assert.Equal("Nubank", compra.Cartao);
+        Assert.Equal("Vestuário", compra.Categoria);
+        // O caixa segue como estava: só os 50 da conta.
+        Assert.Equal(50m, r.SaidasCaixa);
+        Assert.DoesNotContain(r.TopCategorias, c => c.Descricao == "Vestuário");
+    }
+
+    [Fact]
+    public async Task GetResumoAsync_Parcelamento_MostraSoAParcelaDoMesComONumero_NuncaOTotal()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = NovoCartao(ctx, usuarioId, "Nubank");
+        var eletro = NovaCategoria(ctx, "Eletrônicos");
+        NovoParcelamento(ctx, cartao, usuarioId, "TV", 200m, 10, 2026, 10, eletro);
+        await ctx.SaveChangesAsync();
+
+        var outubro = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 10);
+        var novembro = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 11);
+
+        var p1 = Assert.Single(outubro.ComprasCartaoMes);
+        Assert.Equal(("TV", 200m, 1, 10), (p1.Descricao, p1.Valor, p1.Parcela!.Value, p1.TotalParcelas!.Value));
+        Assert.Equal("Eletrônicos", p1.Categoria);
+        Assert.Equal("Nubank", p1.Cartao);
+        Assert.Equal(200m, outubro.GastoCartaoMes);
+        var p2 = Assert.Single(novembro.ComprasCartaoMes);
+        Assert.Equal(2, p2.Parcela);
+        Assert.Equal(200m, novembro.GastoCartaoMes);
+    }
+
+    [Fact]
+    public async Task GetResumoAsync_GastoCartao_ParcelaComJurosUsaOValorDevido_ECanceladaNaoEntra()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = NovoCartao(ctx, usuarioId);
+        NovoParcelamento(ctx, cartao, usuarioId, "Pix no crédito", 100m, 2, 2026, 10);
+        var cancelado = NovoParcelamento(ctx, cartao, usuarioId, "Cancelado", 80m, 2, 2026, 10);
+        await ctx.SaveChangesAsync();
+        var parcelaPix = await ctx.ParcelasTransacao.SingleAsync(p => p.Numero == 1 && p.Valor == 100m);
+        parcelaPix.ValorComJuros = 112.5m;
+        foreach (var p in ctx.ParcelasTransacao.Where(p => p.ParcelamentoId == cancelado.Id))
+            p.Status = StatusParcela.Cancelada;
+        await ctx.SaveChangesAsync();
+
+        var r = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 10);
+
+        var unica = Assert.Single(r.ComprasCartaoMes);
+        Assert.Equal("Pix no crédito", unica.Descricao);
+        Assert.Equal(112.5m, unica.Valor);
+        Assert.Equal(112.5m, r.GastoCartaoMes);
+    }
+
+    [Fact]
+    public async Task GetResumoAsync_GastoCartao_IgnoraOutroMesPagamentoDeFaturaEOutroUsuario()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var outro = Guid.NewGuid();
+        var conta = NovaConta(ctx, usuarioId);
+        var cartao = NovoCartao(ctx, usuarioId);
+        var cartaoAlheio = NovoCartao(ctx, outro);
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 40m, new DateOnly(2026, 10, 9), "Do mês"));
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 70m, new DateOnly(2026, 9, 30), "Do mês passado"));
+        ctx.Transacoes.Add(CompraNoCredito(cartaoAlheio, 999m, new DateOnly(2026, 10, 9), "Alheia"));
+        NovoParcelamento(ctx, cartaoAlheio, outro, "Parcelado alheio", 500m, 2, 2026, 10);
+        // Pagar a fatura tira dinheiro da conta, mas não é compra no cartão.
+        ctx.Transacoes.Add(Mov(conta.Id, TipoTransacao.Despesa, 400m, new DateOnly(2026, 10, 10), "Pagamento fatura",
+            t => { t.EhPagamentoFatura = true; t.CartaoCreditoId = cartao.Id; }));
+        // Compra no crédito desativada (soft delete) também não.
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 15m, new DateOnly(2026, 10, 9), "Apagada"));
+        await ctx.SaveChangesAsync();
+        var apagada = await ctx.Transacoes.SingleAsync(t => t.Descricao == "Apagada");
+        apagada.Ativo = false;
+        await ctx.SaveChangesAsync();
+
+        var r = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 10);
+
+        var unica = Assert.Single(r.ComprasCartaoMes);
+        Assert.Equal("Do mês", unica.Descricao);
+        Assert.Equal(40m, r.GastoCartaoMes);
+    }
+
+    [Fact]
+    public async Task GetResumoAsync_GastoCartao_OrdenaPelaDataDaCompraMaisRecentePrimeiro()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var cartao = NovoCartao(ctx, usuarioId);
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 10m, new DateOnly(2026, 10, 1), "Antiga"));
+        ctx.Transacoes.Add(CompraNoCredito(cartao, 20m, new DateOnly(2026, 10, 20), "Recente"));
+        NovoParcelamento(ctx, cartao, usuarioId, "Parcela", 30m, 3, 2026, 10); // compra em 03/10
+        await ctx.SaveChangesAsync();
+
+        var r = await Servico(ctx).GetResumoAsync(usuarioId, 2026, 10);
+
+        Assert.Equal(new[] { "Recente", "Parcela", "Antiga" }, r.ComprasCartaoMes.Select(c => c.Descricao));
+        Assert.Equal(60m, r.GastoCartaoMes);
+    }
 }

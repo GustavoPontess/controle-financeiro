@@ -498,6 +498,43 @@ public class ReconciliacaoServiceTests
         Assert.Equal(650m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
     }
 
+    // ── CriarMarcoAsync — saldo declarado ausente × zero explícito ───────────
+
+    [Theory]
+    [InlineData(Verificacao, "ajustar")]
+    [InlineData(Baseline, null)]
+    public async Task CriarMarco_SemSaldoDeclarado_Lanca400_ENaoCriaMarcoNemAjuste(int tipo, string? resolucao)
+    {
+        // Regressão: campo omitido virava 0 e o "ajustar" lançava o saldo INTEIRO como despesa.
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 3944.20m, T0.AddDays(-1));
+        var semDeclarado = Dto(conta.Id, 0m, tipo, resolucao: resolucao);
+        semDeclarado.SaldoDeclarado = null;
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => service.CriarMarcoAsync(usuarioId, semDeclarado, Chave()));
+
+        Assert.Contains("saldo", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await Ajustes(ctx));
+        Assert.Empty(await ctx.ReconciliacoesSaldo.AsNoTracking().ToListAsync());
+        Assert.Equal(3944.20m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+    }
+
+    [Fact]
+    public async Task CriarMarco_ZeroExplicitoComAjustar_CriaAjusteQueZeraASaldo()
+    {
+        // "0,00" digitado de propósito (conta zerada no banco) continua valendo.
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 250m, T0.AddDays(-1));
+
+        await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 0m, Verificacao, resolucao: "ajustar"), Chave());
+
+        var ajuste = Assert.Single(await Ajustes(ctx));
+        Assert.Equal(250m, ajuste.Valor);
+        Assert.Equal(TipoTransacao.Despesa, ajuste.Tipo);
+        Assert.Equal(0m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+    }
+
     // ── CriarMarcoAsync — diferença zero ─────────────────────────────────────
 
     [Theory]
