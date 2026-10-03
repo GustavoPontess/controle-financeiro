@@ -16,7 +16,14 @@ export interface TransacaoRecente {
   conta?: string
   meioPagamento?: number
   meioPagamentoDescricao?: string
+  /** Dia do lançamento, "YYYY-MM-DD" (date puro, sem fuso). */
   data: string
+  /** Hora do lançamento, "HH:MM:SS" — ou null quando não tem hora. */
+  hora?: string | null
+  /** Perna de transferência entre contas próprias — neutra. */
+  ehTransferencia?: boolean
+  /** Pagamento de fatura de cartão — sai da conta, mas não é gasto novo. */
+  ehPagamentoFatura?: boolean
 }
 
 export interface SaldoConta {
@@ -41,6 +48,8 @@ export interface EvolucaoMes {
 export interface CartaoResumo {
   id: string
   nome: string
+  /** Últimos 4 dígitos do cartão. */
+  ultimosDigitos?: string | null
   bancoNome?: string
   bancoLogoUrl?: string
   bancoCor?: string
@@ -57,6 +66,7 @@ export interface CartaoResumo {
 
 export interface DashboardData {
   saldoTotal: number
+  /** Saldo das contas no fim do mês passado (em relação a hoje) — mesma base do saldoTotal. */
   saldoMesAnterior: number
   receitasMes: number
   despesasMes: number

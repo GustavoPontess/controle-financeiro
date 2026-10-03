@@ -1,68 +1,57 @@
 /**
- * DashboardPage — refator Q5 (#81), estilo via CSS Modules + var(--pontes-*) (#122).
+ * DashboardPage — visão de relance, no padrão DENSO das telas internas (docs/DESIGN_SYSTEM.md →
+ * "Densidade"). Cabe numa tela e responde, nesta ordem:
+ * 1) Quanto tenho e como foi o mês? — faixa de saldo com Entrou / Saiu / Sobrou e a troca de mês
+ * 2) Pra onde está indo? — saldo nos últimos meses + maiores gastos, lado a lado
+ * 3) O que aconteceu e onde está o dinheiro? — transações recentes + orçamento, contas e cartões
  *
- * Foco: leitura de relance, sem assustar. Responde 3 perguntas em ordem:
- * 1) Quanto tenho? (Saldo total — hero)
- * 2) Como foi o mês? (Entrou / Saiu / Sobrou — linguagem humana)
- * 3) Tem pendência? (A receber / A pagar — strip secundário, só se > 0)
- * Depois: evolução do saldo, maiores gastos, contas e transações recentes.
- *
- * Cor/fonte vêm de CSS vars (tema global). usePontesTheme() é usado APENAS
- * para as cores dos gráficos recharts — var() não resolve em atributos SVG.
+ * O título da página fica só no Navbar. Cor/fonte vêm de CSS vars; usePontesTheme() é usado APENAS
+ * pras cores do gráfico recharts (var() não resolve em atributo SVG).
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import {
-  ChevronLeft, ChevronRight, Wallet,
-  ArrowDownLeft, ArrowUpRight, ArrowRight, PiggyBank, Clock,
-  Target,
-  TrendingUp, TrendingDown, type LucideIcon,
+  ChevronLeft, ChevronRight, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, ArrowRight,
+  CreditCard, Target, TrendingUp, TrendingDown,
 } from "lucide-react"
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts"
-import { PontesCard, PontesButton, PontesIconButton, PontesBadge, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
+import { PontesButton, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
 import { getOrcamentos } from "../../services/orcamentoService"
 import type { Orcamento } from "../../types/Orcamento"
 import type { DashboardData, SaldoConta, TransacaoRecente, CartaoResumo } from "../../types/Dashboard"
-import { useAuth } from "../../hooks/useAuth"
+import { formatMoney, MONEY_MASK } from "@/utils/money"
+import { dataLocalISO } from "@/utils/dateTime"
 import styles from "./DashboardPage.module.css"
 
-const fmtFull = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 
-/** Data humana: Hoje / Ontem / "12 mai". */
-function fmtRelDate(iso: string): string {
-  const d = new Date(iso)
-  const now = new Date()
-  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const diff = Math.round((a.getTime() - b.getTime()) / 86400000)
-  if (diff === 0) return "Hoje"
-  if (diff === 1) return "Ontem"
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+/** Dia "YYYY-MM-DD" (sem fuso) → "Hoje" / "Ontem" / "15/10", mais a hora quando existe. */
+function fmtQuando(data: string, hora?: string | null): string {
+  const hoje = dataLocalISO()
+  const ontem = dataLocalISO(new Date(Date.now() - 86400000))
+  const dia = data === hoje ? "Hoje" : data === ontem ? "Ontem" : `${data.slice(8, 10)}/${data.slice(5, 7)}`
+  return hora ? `${dia} ${hora.slice(0, 5)}` : dia
 }
 
 export default function DashboardPage() {
-  // Tema só pras cores dos gráficos (recharts SVG não lê var(--pontes-*)).
+  // Tema só pras cores do gráfico (recharts SVG não lê var(--pontes-*)).
   const { palette: p, font } = usePontesTheme()
-  const { currentUser } = useAuth()
   const navigate = useNavigate()
-  const firstName = currentUser?.nome?.trim().split(" ")[0] ?? ""
-
 
   const [data, setData] = useState<DashboardData | null>(null)
-  const [orcamento, setOrcamento] = useState<Orcamento | null>(null) // orçamento GERAL do mês (#1.4)
+  const [orcamento, setOrcamento] = useState<Orcamento | null>(null) // orçamento GERAL do mês
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
-  // Olho global (ocultar saldo): controlado pelo navbar; aqui só consumimos o estado.
+  const [erro, setErro] = useState(false)
+  // Olho global (ocultar saldo): o navbar controla; assinar aqui força o re-render do formatMoney.
   const [hide] = useHideBalance()
 
-  const fmt = useCallback((v: number) => (hide ? "R$ ••••" : fmtFull(v)), [hide])
-
-  // Eixo Y: valor compacto ("R$ 5 mil"). Em branco quando olho fechado.
+  // Eixo Y: valor compacto ("R$ 5 mil"). Em branco quando o olho está fechado.
   const fmtAxis = useCallback(
     (v: number) => (hide ? "" : new Intl.NumberFormat("pt-BR", {
       notation: "compact", style: "currency", currency: "BRL", maximumFractionDigits: 1,
@@ -70,30 +59,30 @@ export default function DashboardPage() {
     [hide]
   )
 
-  const todayLabel = useMemo(
-    () => new Date()
-      .toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })
-      .replace(/^\w/, (c) => c.toUpperCase()),
-    []
-  )
-  const monthLabel = currentDate
-    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    .replace(/^\w/, (c) => c.toUpperCase())
+  // Trocar de mês rápido dispara várias buscas; só a ÚLTIMA pode escrever na tela. Sem isso, a
+  // resposta atrasada de um mês antigo sobrescrevia os números do mês que está no rótulo.
+  const pedidoAtual = useRef(0)
 
   const load = useCallback(async () => {
+    const pedido = ++pedidoAtual.current
+    const valeAinda = () => pedido === pedidoAtual.current
     setLoading(true)
+    setErro(false)
     const ano = currentDate.getFullYear()
     const mes = currentDate.getMonth() + 1
     try {
-      setData(await getDashboard(ano, mes))
-      // Orçamento GERAL do mês (categoriaId null) — alimenta o card "safe-to-spend".
-      // Falha aqui não derruba o dashboard (orçamento é opcional).
+      const dash = await getDashboard(ano, mes)
+      if (!valeAinda()) return
+      setData(dash)
+      // Orçamento GERAL do mês (categoriaId null). Falha aqui não derruba o dashboard.
       try {
         const { data: orcs } = await getOrcamentos(mes, ano)
-        setOrcamento(orcs.find((o) => o.categoriaId === null) ?? null)
-      } catch { setOrcamento(null) }
+        if (valeAinda()) setOrcamento(orcs.find((o) => o.categoriaId === null) ?? null)
+      } catch { if (valeAinda()) setOrcamento(null) }
+    } catch {
+      if (valeAinda()) setErro(true)
     } finally {
-      setLoading(false)
+      if (valeAinda()) setLoading(false)
     }
   }, [currentDate])
 
@@ -106,200 +95,155 @@ export default function DashboardPage() {
 
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))
+  const monthLabel = `${MESES_CURTOS[currentDate.getMonth()]} ${currentDate.getFullYear()}`
 
   return (
     <div className={styles.root}>
-      {/* Saudação (olho de ocultar saldo vive no navbar global) */}
-      <div className={styles.greetRow}>
-        <div>
-          <h1 className={styles.greetTitle}>
-            {firstName ? `Olá, ${firstName}` : "Visão geral"}
-          </h1>
-          <div className={styles.greetSub}>
-            {todayLabel} · <em className={styles.greetSubEm}>resumo das suas finanças</em>
-          </div>
-        </div>
-      </div>
-
       {loading && !data && (
-        <div className={styles.loadBar}>
-          <div className={styles.loadBarFill} />
+        <div className={styles.loadBar}><div className={styles.loadBarFill} /></div>
+      )}
+
+      {erro && (
+        <div className={styles.erro} role="alert">
+          <span>Não deu pra carregar o resumo.</span>
+          <PontesButton variant="outline" size="sm" onClick={() => { void load() }}>Tentar de novo</PontesButton>
         </div>
       )}
 
       {data && (
         <>
-          <HeroBalance
-            saldoTotal={data.saldoTotal}
-            saldoMesAnterior={data.saldoMesAnterior}
-            fmt={fmt}
-            hide={hide}
-          />
+          {/* Faixa de saldo: quanto tenho (hoje) + como foi o mês escolhido. É o único bloco grande. */}
+          <div className={styles.hero}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroMain}>
+              <div className={styles.heroLabel}>Saldo total</div>
+              <div className={styles.heroValue}>{formatMoney(data.saldoTotal)}</div>
+              <HeroDelta saldoTotal={data.saldoTotal} saldoMesAnterior={data.saldoMesAnterior} hide={hide} />
+            </div>
 
-          {/* Seu mês — Entrou / Saiu / Sobrou (resposta de relance) */}
-          <PontesCard padding={0} radius={18}>
-            {/* Header: título + navegação de mês */}
-            <div className={styles.monthHead}>
-              <div className={styles.monthTitle}>Seu mês</div>
+            <div className={styles.heroMes} data-atualizando={loading ? "true" : undefined}>
               <div className={styles.monthNav}>
-                <PontesIconButton variant="outline" size={32} onClick={prevMonth} aria-label="Mês anterior">
-                  <ChevronLeft size={16} strokeWidth={2.5} />
-                </PontesIconButton>
-                <div className={styles.monthLabel}>{monthLabel}</div>
-                <PontesIconButton variant="outline" size={32} onClick={nextMonth} aria-label="Próximo mês">
-                  <ChevronRight size={16} strokeWidth={2.5} />
-                </PontesIconButton>
+                <button type="button" className={styles.monthBtn} onClick={prevMonth} aria-label="Mês anterior">
+                  <ChevronLeft size={15} strokeWidth={2.5} />
+                </button>
+                <span className={styles.monthLabel}>{monthLabel}</span>
+                <button type="button" className={styles.monthBtn} onClick={nextMonth} aria-label="Próximo mês">
+                  <ChevronRight size={15} strokeWidth={2.5} />
+                </button>
               </div>
-            </div>
 
-            {/* 3 números humanos — usam FLUXO DE CAIXA (exclui crédito não-pago),
-                igual /transacoes/stats. "Entrou/Saiu" só conta o que de fato
-                moveu caixa; compras no crédito aparecem em Pendências abaixo
-                como "ainda vai sair" via APagar. */}
-            <div className={styles.monthGrid}>
-              <MonthStat label="Entrou" value={fmt(data.entradasCaixa)} icon={ArrowUpRight} tone="success"
-                current={data.entradasCaixa} prev={data.entradasCaixaMesAnterior} higherIsBetter hide={hide} />
-              <MonthStat label="Saiu" value={fmt(data.saidasCaixa)} icon={ArrowDownLeft} tone="danger"
-                current={data.saidasCaixa} prev={data.saidasCaixaMesAnterior} hide={hide} />
-              <MonthStat
-                label="Sobrou" value={fmt(data.saldoCaixaMes)} icon={PiggyBank}
-                tone={data.saldoCaixaMes >= 0 ? "success" : "danger"}
-                emphasis
-              />
-            </div>
-
-            {/* Pendências — só se houver algo a receber ou pagar */}
-            {(data.aReceber > 0 || data.aPagar > 0) && (
-              <div className={styles.pendings}>
-                {data.aReceber > 0 && (
-                  <span className={styles.pendItem}>
-                    <Clock size={15} strokeWidth={2} className={styles.pendIcon} />
-                    Ainda vai entrar <strong className={styles.pendStrong}>{fmt(data.aReceber)}</strong>
-                  </span>
-                )}
-                {data.aPagar > 0 && (
-                  <span className={styles.pendItem}>
-                    <Clock size={15} strokeWidth={2} className={styles.pendIcon} />
-                    Ainda vai sair <strong className={styles.pendStrong}>{fmt(data.aPagar)}</strong>
-                  </span>
-                )}
+              {/* Fluxo de CAIXA do mês (o mesmo número de /transactions): compra no crédito não entra. */}
+              <div className={styles.heroStats}>
+                <HeroStat label="Entrou" value={formatMoney(data.entradasCaixa)}
+                  current={data.entradasCaixa} prev={data.entradasCaixaMesAnterior} higherIsBetter hide={hide} />
+                <div className={styles.heroStatDivider} />
+                <HeroStat label="Saiu" value={formatMoney(data.saidasCaixa)}
+                  current={data.saidasCaixa} prev={data.saidasCaixaMesAnterior} hide={hide} />
+                <div className={styles.heroStatDivider} />
+                <HeroStat label="Sobrou" value={formatMoney(data.saldoCaixaMes)}
+                  tone={data.saldoCaixaMes >= 0 ? "up" : "down"} />
               </div>
-            )}
-          </PontesCard>
 
-          {/* Orçamento do mês (#1.4) — "safe-to-spend" sobre o orçamento geral. */}
-          <OrcamentoCard orcamento={orcamento} fmt={fmt} hide={hide} onConfigurar={() => navigate("/limites")} />
+              {(data.aReceber > 0 || data.aPagar > 0) && (
+                <div className={styles.pendencias}>
+                  {data.aReceber > 0 && <span>Ainda vai entrar <strong>{formatMoney(data.aReceber)}</strong></span>}
+                  {data.aPagar > 0 && <span>Ainda vai sair <strong>{formatMoney(data.aPagar)}</strong></span>}
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* Gráficos lado a lado no desktop */}
-          <div className={styles.chartsGrid}>
-            {/* Evolução do saldo (área) */}
-            <PontesCard padding={24} radius={18} hover style={{ minWidth: 0 }}>
-              <div className={styles.cardTitle}>Saldo nos últimos meses</div>
-              <div className={styles.cardSub}>Pra ver se está subindo ou caindo</div>
+          {/* Gráficos lado a lado */}
+          <div className={styles.grid2} data-atualizando={loading ? "true" : undefined}>
+            <section className={styles.caixa}>
+              <div className={styles.caixaTopo}>
+                <h2 className={styles.caixaTitulo}>Saldo nos últimos meses</h2>
+              </div>
               <div className={styles.chartBox}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={data.evolucaoSaldo} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                     <defs>
                       <linearGradient id="dash-saldo" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={p.primary} stopOpacity={0.35} />
+                        <stop offset="0%" stopColor={p.primary} stopOpacity={0.3} />
                         <stop offset="100%" stopColor={p.primary} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={p.border} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: p.textMuted }} axisLine={false} tickLine={false} dy={4} />
-                    <YAxis
-                      width={64}
-                      tick={{ fontSize: 12, fill: p.textMuted }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={fmtAxis}
-                    />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} dy={4} />
+                    <YAxis width={58} tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} tickFormatter={fmtAxis} />
                     <Tooltip
-                      formatter={(v) => [hide ? "R$ ••••" : fmtFull(Number(v)), "Saldo"] as [string, string]}
-                      contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: 13 }}
+                      formatter={(v) => [hide ? MONEY_MASK : formatMoney(Number(v)), "Saldo"] as [string, string]}
+                      contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: 12 }}
                     />
-                    <Area type="monotone" dataKey="saldo" stroke={p.primary} strokeWidth={2.5} fill="url(#dash-saldo)" />
+                    <Area type="monotone" dataKey="saldo" stroke={p.primary} strokeWidth={2} fill="url(#dash-saldo)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </PontesCard>
+            </section>
 
-            {/* Maiores gastos (donut) */}
-            <PontesCard padding={24} radius={18} hover style={{ minWidth: 0 }}>
-              <div className={styles.cardTitle}>Maiores gastos</div>
-              <div className={styles.cardSub}>Onde seu dinheiro foi este mês</div>
-              <PontesCategoryDonut
-                data={data.topCategorias.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
-                formatMoney={fmt}
-                emptyLabel="Nenhuma despesa no período"
-              />
-            </PontesCard>
+            <section className={styles.caixa}>
+              <div className={styles.caixaTopo}>
+                <h2 className={styles.caixaTitulo}>Maiores gastos</h2>
+              </div>
+              <div className={styles.donutBox}>
+                <PontesCategoryDonut
+                  data={data.topCategorias.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
+                  formatMoney={formatMoney}
+                  height={170}
+                  emptyLabel="Nenhuma despesa no período"
+                />
+              </div>
+            </section>
           </div>
 
-          {/* Cartões — top 3 por % limite usado, com próximo fechamento */}
-          {data.cartoesResumo.length > 0 && (
-            <PontesCard padding={24} radius={18}>
-              <div className={styles.contasHead}>
-                <div className={styles.contasTitle}>Seus cartões</div>
-                <button
-                  type="button"
-                  className={styles.linkBtn}
-                  onClick={() => navigate("/credit-cards")}
-                >
-                  Ver todos <ArrowRight size={14} strokeWidth={2.5} />
+          {/* O que aconteceu (esquerda) + onde está o dinheiro (direita) */}
+          <div className={styles.grid2} data-topo="true">
+            <section className={styles.caixa}>
+              <div className={styles.caixaTopo}>
+                <h2 className={styles.caixaTitulo}>Transações recentes</h2>
+                <button type="button" className={styles.linkBtn} onClick={() => navigate("/transactions")}>
+                  Ver todas <ArrowRight size={13} strokeWidth={2.5} />
                 </button>
               </div>
-              <div className={styles.cartoesGrid}>
-                {data.cartoesResumo.map((c) => (
-                  <CartaoTile key={c.id} cartao={c} fmt={fmt} onClick={() => navigate("/credit-cards")} />
-                ))}
-              </div>
-            </PontesCard>
-          )}
+              {data.transacoesRecentes.length === 0 ? (
+                <div className={styles.vazio}>Nenhuma transação ainda</div>
+              ) : (
+                data.transacoesRecentes.map((t) => <TxRow key={t.id} t={t} />)
+              )}
+            </section>
 
-          {/* Suas contas */}
-          <PontesCard padding={24} radius={18}>
-            <div className={styles.contasHead}>
-              <div className={styles.contasTitle}>Suas contas</div>
-              {data.saldoContas.length > 0 && (
-                <div className={styles.contasMeta}>
-                  {data.saldoContas.length} {data.saldoContas.length === 1 ? "conta" : "contas"} ·{" "}
-                  <strong>{fmt(data.saldoContas.reduce((s, c) => s + c.saldo, 0))}</strong>
+            <div className={styles.coluna}>
+              <div data-atualizando={loading ? "true" : undefined}>
+                <OrcamentoBox orcamento={orcamento} onConfigurar={() => navigate("/limites")} />
+              </div>
+
+              <section className={styles.caixa}>
+                <div className={styles.caixaTopo}>
+                  <h2 className={styles.caixaTitulo}>Contas</h2>
+                  <button type="button" className={styles.linkBtn} onClick={() => navigate("/accounts")}>
+                    Ver todas <ArrowRight size={13} strokeWidth={2.5} />
+                  </button>
                 </div>
+                {data.saldoContas.length === 0 ? (
+                  <div className={styles.vazio}>Nenhuma conta cadastrada</div>
+                ) : (
+                  data.saldoContas.map((c) => <ContaRow key={c.id} conta={c} />)
+                )}
+              </section>
+
+              {data.cartoesResumo.length > 0 && (
+                <section className={styles.caixa}>
+                  <div className={styles.caixaTopo}>
+                    <h2 className={styles.caixaTitulo}>Cartões</h2>
+                    <button type="button" className={styles.linkBtn} onClick={() => navigate("/credit-cards")}>
+                      Ver todos <ArrowRight size={13} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  {data.cartoesResumo.map((c) => <CartaoRow key={c.id} cartao={c} />)}
+                </section>
               )}
             </div>
-            {data.saldoContas.length === 0 ? (
-              <div className={styles.empty}>Nenhuma conta cadastrada</div>
-            ) : (
-              <div className={styles.contasGrid}>
-                {(() => {
-                  const total = data.saldoContas.reduce((s, c) => s + c.saldo, 0)
-                  // % do total só faz sentido se tudo positivo (sem conta negativa).
-                  const podeMostrar = total > 0 && data.saldoContas.every((c) => c.saldo >= 0)
-                  return data.saldoContas.map((conta) => (
-                    <AccountTile key={conta.id} conta={conta} fmt={fmt} share={podeMostrar ? (conta.saldo / total) * 100 : null} />
-                  ))
-                })()}
-              </div>
-            )}
-          </PontesCard>
-
-          {/* Transações recentes */}
-          <PontesCard padding={0} radius={18}>
-            <div className={styles.txHead}>Transações recentes</div>
-            {data.transacoesRecentes.length === 0 ? (
-              <div className={styles.empty} style={{ padding: "32px 0" }}>Nenhuma transação encontrada</div>
-            ) : (
-              <>
-                {data.transacoesRecentes.map((t) => (
-                  <TxRow key={t.id} t={t} fmt={fmt} />
-                ))}
-                <button onClick={() => navigate("/transactions")} className={styles.seeAll}>
-                  Ver todas as transações <ArrowRight size={15} strokeWidth={2.5} />
-                </button>
-              </>
-            )}
-          </PontesCard>
+          </div>
         </>
       )}
     </div>
@@ -307,261 +251,148 @@ export default function DashboardPage() {
 }
 
 /**
- * AccountTile — card de uma conta com hover (lift + borda). Quando `share`
- * vem preenchido, mostra "X% do seu dinheiro" + barra (fatia do total entre
- * as contas). `share` é null se houver conta negativa (% não faz sentido).
- * Específico do dashboard. Cor da logo (conta.cor) é dado dinâmico do banco.
+ * HeroDelta — quanto o saldo andou desde o fim do mês passado (mês do calendário, não o navegado:
+ * o saldo do hero é o de hoje). Sem sinal de +/−: o ícone, o texto e a cor dizem a direção.
  */
-function AccountTile({ conta, fmt, share }: {
-  conta: SaldoConta; fmt: (v: number) => string; share: number | null
+function HeroDelta({ saldoTotal, saldoMesAnterior, hide }: {
+  saldoTotal: number; saldoMesAnterior: number; hide: boolean
 }) {
-  const neg = conta.saldo < 0
+  const delta = saldoTotal - saldoMesAnterior
+  if (Math.abs(delta) < 0.005) return null
+  const subiu = delta > 0
+  const Icone = subiu ? TrendingUp : TrendingDown
+  const agora = new Date()
+  const mesPassado = MESES[new Date(agora.getFullYear(), agora.getMonth() - 1, 1).getMonth()]
   return (
-    <div className={styles.tile}>
-      <div className={styles.tileHead}>
-        <PontesBankBadge
-          name={conta.bancoNome ?? conta.nome}
-          logoUrl={conta.logoUrl}
-          cor={conta.cor}
-          size={36}
-        />
-        <div style={{ minWidth: 0 }}>
-          <div className={styles.tileName}>{conta.nome}</div>
-          <div className={styles.tileSub}>{conta.bancoNome ?? conta.tipoDescricao}</div>
-        </div>
-      </div>
-      <div>
-        <div className={styles.tileSaldo} data-neg={neg}>{fmt(conta.saldo)}</div>
-        {share !== null && (
-          <>
-            <div className={styles.shareRow}>
-              <span className={styles.shareLabel}>do seu dinheiro</span>
-              <span className={styles.sharePct}>{Math.round(share)}%</span>
-            </div>
-            <div className={styles.shareTrack}>
-              <div className={styles.shareFill} style={{ width: `${share}%` }} />
-            </div>
-          </>
-        )}
-      </div>
+    <div className={styles.heroDelta} data-tone={subiu ? "up" : "down"}>
+      <Icone size={14} strokeWidth={2.5} />
+      <span>
+        {hide ? MONEY_MASK : formatMoney(Math.abs(delta))} {subiu ? "a mais" : "a menos"}
+      </span>
+      <span className={styles.heroDeltaLabel}>que no fim de {mesPassado}</span>
     </div>
   )
 }
 
 /**
- * TxRow — linha de transação recente com hover. Específico do dashboard.
+ * HeroStat — um dos 3 números do mês (Entrou / Saiu / Sobrou). Entrou e Saiu mostram a variação %
+ * contra o mês anterior (verde = bom pra aquela métrica: mais entrada ou menos saída).
  */
-function TxRow({ t, fmt }: { t: TransacaoRecente; fmt: (v: number) => string }) {
-  const receita = t.tipo === 2
+function HeroStat({ label, value, tone, current, prev, higherIsBetter, hide }: {
+  label: string; value: string; tone?: "up" | "down"
+  current?: number; prev?: number; higherIsBetter?: boolean; hide?: boolean
+}) {
+  let variacao: ReactNode = null
+  if (current !== undefined && prev !== undefined && Math.abs(prev) > 0.005) {
+    const pct = ((current - prev) / Math.abs(prev)) * 100
+    const subiu = pct >= 0
+    const bom = subiu === !!higherIsBetter
+    const Icone = subiu ? TrendingUp : TrendingDown
+    variacao = (
+      <span className={styles.heroStatVar} data-tone={bom ? "up" : "down"} title="comparado ao mês anterior">
+        <Icone size={11} strokeWidth={2.5} />
+        {hide ? "••" : `${Math.abs(pct).toFixed(0)}%`}
+      </span>
+    )
+  }
   return (
-    <div className={styles.txRow}>
-      <div className={styles.txIcon} data-tone={receita ? "receita" : "despesa"}>
-        {receita ? <ArrowUpRight size={18} strokeWidth={2.5} /> : <ArrowDownLeft size={18} strokeWidth={2.5} />}
+    <div className={styles.heroStat}>
+      <span className={styles.heroStatLabel}>{label}{variacao}</span>
+      <span className={styles.heroStatValue} data-tone={tone}>{value}</span>
+    </div>
+  )
+}
+
+/** Linha de transação recente — mesma anatomia da linha do PontesTabela (ícone 34, nome, sub). */
+function TxRow({ t }: { t: TransacaoRecente }) {
+  // Transferência e pagamento de fatura são neutros: mexem no saldo, mas não são ganho nem gasto.
+  const neutra = !!t.ehTransferencia || !!t.ehPagamentoFatura
+  const entrada = t.tipo === 2
+  const tom = neutra ? "neutro" : entrada ? "entrada" : "saida"
+  const Icone = t.ehTransferencia ? ArrowLeftRight : t.ehPagamentoFatura ? CreditCard : entrada ? ArrowUpRight : ArrowDownLeft
+  const detalhe = [t.categoria, t.conta, fmtQuando(t.data, t.hora)].filter(Boolean).join(" · ")
+  return (
+    <div className={styles.linha}>
+      <span className={styles.linhaIcone} data-tom={tom}><Icone size={16} strokeWidth={2.4} /></span>
+      <div className={styles.linhaTexto}>
+        <span className={styles.linhaNome}>{t.descricao}</span>
+        <span className={styles.linhaSub}>{detalhe}</span>
       </div>
-      <div className={styles.txInfo}>
-        <div className={styles.txTitle}>{t.descricao}</div>
-        <div className={styles.txSub}>
-          {t.categoria ?? "Sem categoria"}{t.conta ? ` · ${t.conta}` : ""} · {fmtRelDate(t.data)}
-        </div>
+      <span className={styles.linhaValor} data-tom={tom}>{formatMoney(t.valor)}</span>
+    </div>
+  )
+}
+
+/** Linha de conta: logo do banco, nome e saldo. Cor do logo (conta.cor) é dado do banco. */
+function ContaRow({ conta }: { conta: SaldoConta }) {
+  return (
+    <div className={styles.linha}>
+      <PontesBankBadge name={conta.bancoNome ?? conta.nome} logoUrl={conta.logoUrl} cor={conta.cor} size={28} />
+      <div className={styles.linhaTexto}>
+        <span className={styles.linhaNome}>{conta.nome}</span>
+        <span className={styles.linhaSub}>{conta.bancoNome ?? conta.tipoDescricao}</span>
       </div>
-      {t.meioPagamentoDescricao && (
-        <PontesBadge tone="neutral" size="sm">{t.meioPagamentoDescricao}</PontesBadge>
-      )}
-      <div className={styles.txValue} data-tone={receita ? "receita" : undefined}>
-        {receita ? "+ " : "− "}{fmt(t.valor)}
+      <span className={styles.linhaValor} data-tom={conta.saldo < 0 ? "saida" : undefined}>{formatMoney(conta.saldo)}</span>
+    </div>
+  )
+}
+
+/** Linha de cartão: quanto do limite está usado (barra) e quando fecha a fatura. */
+function CartaoRow({ cartao }: { cartao: CartaoResumo }) {
+  const pct = Math.max(0, Math.min(100, cartao.percentualUsado))
+  const tone = pct >= 90 ? "danger" : pct >= 70 ? "warning" : "ok"
+  const dias = cartao.diasAteFechamento
+  const fecha = dias == null ? null : dias === 0 ? "fecha hoje" : dias === 1 ? "fecha amanhã" : `fecha em ${dias} dias`
+  return (
+    <div className={styles.bloco}>
+      <div className={styles.blocoTopo}>
+        <span className={styles.linhaNome}>
+          {cartao.nome}{cartao.ultimosDigitos ? <span className={styles.digitos}> •••• {cartao.ultimosDigitos}</span> : null}
+        </span>
+        <span className={styles.blocoValor}>{formatMoney(cartao.limiteUsado)} de {formatMoney(cartao.limiteTotal)}</span>
       </div>
+      <div className={styles.barra}><div className={styles.barraFill} data-tone={tone} style={{ width: `${pct}%` }} /></div>
+      {fecha && <div className={styles.linhaSub}>{fecha}</div>}
     </div>
   )
 }
 
 /**
- * OrcamentoCard — "safe-to-spend" do mês (#1.4) sobre o orçamento GERAL.
- * Sem orçamento → CTA pra configurar em /limites. Com → barra de progresso
- * + "ainda pode gastar X" (ou "passou Y do limite"). Tom por consumo/alerta.
+ * OrcamentoBox — quanto ainda dá pra gastar no mês, sobre o orçamento GERAL. Sem orçamento,
+ * só o atalho pra configurar em /limites.
  */
-function OrcamentoCard({ orcamento, fmt, hide, onConfigurar }: {
-  orcamento: Orcamento | null
-  fmt: (v: number) => string
-  hide: boolean
-  onConfigurar: () => void
-}) {
+function OrcamentoBox({ orcamento, onConfigurar }: { orcamento: Orcamento | null; onConfigurar: () => void }) {
   if (!orcamento) {
     return (
-      <PontesCard padding={24} radius={18}>
-        <div className={styles.orcEmpty}>
-          <div>
-            <div className={styles.cardTitle}>Orçamento do mês</div>
-            <div className={styles.cardSub}>Defina quanto quer gastar e acompanhe quanto ainda pode.</div>
-          </div>
-          <PontesButton variant="outline" size="sm" iconStart={<Target size={15} strokeWidth={2.5} />} onClick={onConfigurar}>
+      <section className={styles.caixa}>
+        <div className={styles.caixaTopo} data-semborda="true">
+          <h2 className={styles.caixaTitulo}>Orçamento do mês</h2>
+          <PontesButton variant="outline" size="sm" iconStart={<Target size={14} strokeWidth={2.5} />} onClick={onConfigurar}>
             Configurar
           </PontesButton>
         </div>
-      </PontesCard>
+      </section>
     )
   }
   const pct = Math.min(100, Math.max(0, orcamento.percentualConsumido))
   const tone = orcamento.ultrapassado ? "danger" : orcamento.emAlerta ? "warning" : "ok"
   return (
-    <PontesCard padding={24} radius={18}>
-      <div className={styles.orcHead}>
-        <div>
-          <div className={styles.cardTitle}>Orçamento do mês</div>
-          <div className={styles.cardSub}>
+    <section className={styles.caixa}>
+      <div className={styles.bloco}>
+        <div className={styles.blocoTopo}>
+          <h2 className={styles.caixaTitulo}>Orçamento do mês</h2>
+          <span className={styles.orcPct} data-tone={tone}>{pct.toFixed(0)}%</span>
+        </div>
+        <div className={styles.barra}><div className={styles.barraFill} data-tone={tone} style={{ width: `${pct}%` }} /></div>
+        <div className={styles.orcPe}>
+          <span>
             {orcamento.ultrapassado
-              ? `Passou ${hide ? "••••" : fmt(orcamento.valorGasto - orcamento.valorLimite)} do limite`
-              : `Ainda pode gastar ${hide ? "••••" : fmt(orcamento.valorRestante)}`}
-          </div>
-        </div>
-        <div className={styles.orcPct} data-tone={tone}>{pct.toFixed(0)}%</div>
-      </div>
-      <div className={styles.orcBarTrack}>
-        <div className={styles.orcBarFill} data-tone={tone} style={{ width: `${pct}%` }} />
-      </div>
-      <div className={styles.orcFoot}>
-        <span>{hide ? "••••" : fmt(orcamento.valorGasto)} gastos</span>
-        <span>limite {hide ? "••••" : fmt(orcamento.valorLimite)}</span>
-      </div>
-    </PontesCard>
-  )
-}
-
-/**
- * MonthStat — um dos 3 números do mês (Entrou/Saiu/Sobrou).
- * Entrou/Saiu: valor neutro, só o ícone colorido (menos ruído).
- * Sobrou (emphasis): fundo soft + valor colorido — é a resposta que salta.
- */
-function MonthStat({ label, value, icon: Icon, tone, emphasis, current, prev, higherIsBetter, hide }: {
-  label: string; value: string; icon: LucideIcon
-  tone: "success" | "danger"; emphasis?: boolean
-  /** Variação % vs mês anterior (#1.3). Só renderiza se houver baseline > 0. */
-  current?: number; prev?: number; higherIsBetter?: boolean; hide?: boolean
-}) {
-  // Variação vs mês anterior: seta na direção do número; cor por "bom/ruim" pra
-  // a métrica (mais entrada = bom; mais saída = ruim).
-  let delta: ReactNode = null
-  if (current !== undefined && prev !== undefined && Math.abs(prev) > 0.005) {
-    const pct = ((current - prev) / Math.abs(prev)) * 100
-    const subiu = pct >= 0
-    const bom = subiu === !!higherIsBetter
-    const DeltaIcon = subiu ? TrendingUp : TrendingDown
-    delta = (
-      <div className={styles.statDelta} data-tone={bom ? "up" : "down"} title="vs mês anterior">
-        <DeltaIcon size={13} strokeWidth={2.5} />
-        <span>{hide ? "••••" : `${subiu ? "+" : ""}${pct.toFixed(0)}%`}</span>
-      </div>
-    )
-  }
-  return (
-    <div className={styles.stat} data-emphasis={!!emphasis} data-tone={tone}>
-      <div className={styles.statHead}>
-        <span className={styles.statIcon} data-tone={tone}>
-          <Icon size={17} strokeWidth={2.4} />
-        </span>
-        <span className={styles.statLabel}>{label}</span>
-      </div>
-      <div className={styles.statValue} data-emphasis={!!emphasis} data-tone={tone}>{value}</div>
-      {delta}
-    </div>
-  )
-}
-
-/**
- * HeroBalance — saldo total + delta vs mês anterior.
- *
- * Delta é a história: "subiu R$ 850 (+3,2%)" é mais útil que só "R$ 27.430".
- * Se saldoMesAnterior === 0 e atual !== 0, esconde %  (divisão estouraria).
- * `hide` aplica máscara no delta também — coerência com toggle do olho.
- */
-function HeroBalance({ saldoTotal, saldoMesAnterior, fmt, hide }: {
-  saldoTotal: number; saldoMesAnterior: number;
-  fmt: (v: number) => string; hide: boolean
-}) {
-  const delta = saldoTotal - saldoMesAnterior
-  const hasBaseline = Math.abs(saldoMesAnterior) > 0.005
-  const pct = hasBaseline ? (delta / Math.abs(saldoMesAnterior)) * 100 : null
-  const tone = delta >= 0 ? "up" : "down"
-  const TrendIcon = delta >= 0 ? TrendingUp : TrendingDown
-  return (
-    <div className={styles.hero}>
-      <div className={styles.heroBlob} />
-      <div className={styles.heroBlob2} />
-      <div className={styles.heroInner}>
-        <div className={styles.heroLabel}>Saldo total</div>
-        <div className={styles.heroValue}>{fmt(saldoTotal)}</div>
-        {/* Delta — só renderiza se houve mês anterior com saldo */}
-        {hasBaseline && (
-          <div className={styles.heroDelta} data-tone={tone}>
-            <TrendIcon size={15} strokeWidth={2.5} />
-            <span>
-              {hide ? "•••• " : `${delta >= 0 ? "+" : ""}${fmt(delta)} `}
-              {pct !== null && (
-                <span className={styles.heroDeltaPct}>
-                  ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)
-                </span>
-              )}
-            </span>
-            <span className={styles.heroDeltaLabel}>vs mês anterior</span>
-          </div>
-        )}
-        {!hasBaseline && (
-          <div className={styles.heroSub}>Soma de todas as contas</div>
-        )}
-      </div>
-      <div className={styles.heroIcon}>
-        <Wallet size={26} strokeWidth={2} />
-      </div>
-    </div>
-  )
-}
-
-
-/**
- * CartaoTile — resumo de UM cartão (top 3 do dashboard).
- * Limite usado em barra + status do próximo fechamento.
- * Cor da barra varia com % usado (safe/warning/danger) — sinal visual rápido.
- */
-function CartaoTile({ cartao, fmt, onClick }: {
-  cartao: CartaoResumo; fmt: (v: number) => string; onClick: () => void
-}) {
-  const pct = Math.max(0, Math.min(100, cartao.percentualUsado))
-  // Pressão: <60 ok, 60-85 atenção, >85 perigo. Não-linear porque user só sente
-  // dor quando passa de 80%.
-  const tone = pct >= 85 ? "danger" : pct >= 60 ? "warning" : "ok"
-  const dias = cartao.diasAteFechamento
-  const fechaLabel =
-    dias == null ? null :
-      dias === 0 ? "fecha hoje" :
-        dias === 1 ? "fecha amanhã" :
-          dias > 0 ? `fecha em ${dias} dias` :
-            `fechou há ${Math.abs(dias)}d`
-  const fechaUrgente = dias != null && dias >= 0 && dias <= 5
-  return (
-    <button type="button" onClick={onClick} className={styles.cartaoTile}>
-      <div className={styles.cartaoHead}>
-        <PontesBankBadge
-          name={cartao.bancoNome ?? cartao.nome}
-          logoUrl={cartao.bancoLogoUrl ?? undefined}
-          cor={cartao.bancoCor ?? undefined}
-          size={36}
-        />
-        <div className={styles.cartaoInfo}>
-          <div className={styles.cartaoNome}>{cartao.nome}</div>
-          <div className={styles.cartaoBanco}>{cartao.bancoNome ?? "Cartão"}</div>
-        </div>
-        <span className={styles.cartaoPct} data-tone={tone}>{pct.toFixed(0)}%</span>
-      </div>
-      <div className={styles.cartaoBar} data-tone={tone}>
-        <div className={styles.cartaoBarFill} data-tone={tone} style={{ width: `${pct}%` }} />
-      </div>
-      <div className={styles.cartaoFoot}>
-        <span>{fmt(cartao.limiteUsado)} <span className={styles.cartaoMuted}>de {fmt(cartao.limiteTotal)}</span></span>
-        {fechaLabel && (
-          <span className={styles.cartaoFecha} data-urgent={fechaUrgente}>
-            {fechaLabel}
+              ? `Passou ${formatMoney(orcamento.valorGasto - orcamento.valorLimite)} do limite`
+              : `Ainda pode gastar ${formatMoney(orcamento.valorRestante)}`}
           </span>
-        )}
+          <span>{formatMoney(orcamento.valorGasto)} de {formatMoney(orcamento.valorLimite)}</span>
+        </div>
       </div>
-    </button>
+    </section>
   )
 }

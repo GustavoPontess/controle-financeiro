@@ -386,4 +386,31 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
+
+    // ------------------------------------------------------------------ GET /contas (TipoDescricao)
+
+    // O controller usa TipoContaExtensions.Descricao() — a mesma fonte do Dashboard (era uma cópia local).
+    [Theory]
+    [InlineData(TipoConta.ContaCorrente, "Conta Corrente")]
+    [InlineData(TipoConta.ContaPoupanca, "Conta Poupança")]
+    [InlineData(TipoConta.Dinheiro, "Dinheiro")]
+    public async Task Listar_RetornaTipoDescricaoLegivel(TipoConta tipo, string esperado)
+    {
+        var email = $"contas-tipo-{(int)tipo}@test.com";
+        var usuarioId = SeedUsuario(email);
+        var contaId = Guid.NewGuid();
+        using (var scope = _factory.CreateScopeComBanco())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            ctx.Contas.Add(new Conta { Id = contaId, Nome = "Conta do tipo", Tipo = tipo, UsuarioIdProprietario = usuarioId });
+            ctx.SaveChanges();
+        }
+        var (client, _) = await LoginClientAsync(email);
+
+        var contas = await client.GetFromJsonAsync<JsonElement>("/api/v1/contas");
+
+        var conta = contas.EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == contaId);
+        Assert.Equal(esperado, conta.GetProperty("tipoDescricao").GetString()); // não o nome cru do enum ("ContaCorrente")
+        Assert.Equal((int)tipo, conta.GetProperty("tipo").GetInt32());
+    }
 }

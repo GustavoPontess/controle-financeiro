@@ -33,7 +33,18 @@
 
 .empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); font-family: var(--pontes-font); }
 
-/* Card estreito (ex.: Dashboard) → empilha donut sobre a lista */
+/* Card médio (ex.: coluna do Dashboard) → donut menor e legenda compacta, pro nome da categoria caber */
+@container (max-width: 520px) {
+  .grid { grid-template-columns: minmax(0, 150px) 1fr; gap: 14px; }
+  .list { gap: 4px; }
+  .item { padding: 5px 8px; }
+  .name, .itemValue { font-size: 12px; }
+  .right { gap: 8px; }
+  .center { max-width: 84px; }
+  .totalValue { font-size: 12px; }
+}
+
+/* Card estreito → empilha donut sobre a lista */
 @container (max-width: 380px) {
   .grid { grid-template-columns: 1fr; gap: 16px; }
   .list { max-height: 200px; }

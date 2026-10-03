@@ -28,16 +28,6 @@ namespace ControleFinanceiro.Api.Controllers
             return userId;
         }
 
-        private static string DescricaoTipo(TipoConta tipo) => tipo switch
-        {
-            TipoConta.ContaCorrente => "Conta Corrente",
-            TipoConta.ContaPoupanca => "Conta Poupança",
-            TipoConta.CartaoCredito => "Cartão de Crédito",
-            TipoConta.Dinheiro => "Dinheiro",
-            TipoConta.Emprestimo => "Empréstimo",
-            _ => tipo.ToString()
-        };
-
         private static string DescricaoTipoCartao(TipoCartao? tipo) => tipo switch
         {
             TipoCartao.Credito => "Crédito",
@@ -56,7 +46,7 @@ namespace ControleFinanceiro.Api.Controllers
             NumeroConta = c.NumeroConta,
             Agencia = c.Agencia,
             Tipo = (int)c.Tipo,
-            TipoDescricao = DescricaoTipo(c.Tipo),
+            TipoDescricao = c.Tipo.Descricao(),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
             SaldoAtual = saldoAtual,

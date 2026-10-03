@@ -3,7 +3,8 @@ namespace ControleFinanceiro.Api.DTOs.Dashboard;
 public class DashboardDto
 {
     public decimal SaldoTotal { get; set; }
-    /// <summary>Saldo no fim do mês anterior — pra hero calcular variação.</summary>
+    /// <summary>Saldo das contas no fim do mês PASSADO (em relação a hoje, não ao mês navegado) —
+    /// mesma base do <see cref="SaldoTotal"/>, pro hero mostrar quanto o saldo andou no mês corrente.</summary>
     public decimal SaldoMesAnterior { get; set; }
     public decimal ReceitasMes { get; set; }
     public decimal DespesasMes { get; set; }
@@ -43,6 +44,8 @@ public class CartaoResumoDto
 {
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
+    /// <summary>Últimos 4 dígitos do cartão (pra distinguir cartões de mesmo nome).</summary>
+    public string? UltimosDigitos { get; set; }
     public string? BancoNome { get; set; }
     public string? BancoLogoUrl { get; set; }
     public string? BancoCor { get; set; }
@@ -87,7 +90,14 @@ public class TransacaoRecenteDto
     public string? Conta { get; set; }
     public int? MeioPagamento { get; set; }
     public string? MeioPagamentoDescricao { get; set; }
-    public DateTime Data { get; set; }
+    /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>
+    public DateOnly Data { get; set; }
+    /// <summary>Hora do lançamento ("HH:mm:ss") — time puro. Null = sem hora.</summary>
+    public TimeOnly? Hora { get; set; }
+    /// <summary>Perna de transferência entre contas próprias — neutra (não é entrada nem saída).</summary>
+    public bool EhTransferencia { get; set; }
+    /// <summary>Pagamento de fatura de cartão — sai da conta, mas não é gasto novo.</summary>
+    public bool EhPagamentoFatura { get; set; }
 }
 
 public class SaldoContaDto

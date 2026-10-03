@@ -64,7 +64,9 @@ export function PontesCategoryDonut({
           <PieChart>
             <Pie
               data={data} dataKey="valor" nameKey="label"
-              cx="50%" cy="50%" innerRadius={62} outerRadius={90} paddingAngle={2}
+              // Raio em % do espaço disponível: acompanha `height` e a largura da coluna sem cortar
+              // (com 200×220 dá os mesmos ~62/90px de antes).
+              cx="50%" cy="50%" innerRadius="65%" outerRadius="95%" paddingAngle={2}
               onMouseEnter={(_, i) => setActive(i)}
               onMouseLeave={() => setActive(null)}
             >
@@ -84,7 +86,7 @@ export function PontesCategoryDonut({
           {active !== null ? (
             <>
               <div className={styles.pct} style={{ color: colors[active % colors.length] }}>
-                {data[active].percentual}%
+                {data[active].percentual.toLocaleString("pt-BR")}%
               </div>
               <div className={styles.activeLabel}>{data[active].label}</div>
             </>
@@ -108,10 +110,10 @@ export function PontesCategoryDonut({
               <div className={styles.row}>
                 <div className={styles.left}>
                   <span className={styles.dot} style={{ background: color }} />
-                  <span className={styles.name} data-bold={isActive ? "true" : undefined}>{cat.label}</span>
+                  <span className={styles.name} data-bold={isActive ? "true" : undefined} title={cat.label}>{cat.label}</span>
                 </div>
                 <div className={styles.right}>
-                  <span className={styles.itemPct}>{cat.percentual}%</span>
+                  <span className={styles.itemPct}>{cat.percentual.toLocaleString("pt-BR")}%</span>
                   <span className={styles.itemValue}>{formatMoney(cat.valor)}</span>
                 </div>
               </div>
