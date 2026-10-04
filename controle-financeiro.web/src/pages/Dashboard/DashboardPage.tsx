@@ -51,10 +51,11 @@ export default function DashboardPage() {
   // Olho global (ocultar saldo): o navbar controla; assinar aqui força o re-render do formatMoney.
   const [hide] = useHideBalance()
 
-  // Eixo Y: valor compacto ("R$ 5 mil"). Em branco quando o olho está fechado.
+  // Eixo Y: valor compacto SEM "R$" ("13,5 mil") — com o símbolo o rótulo não cabia e era cortado.
+  // O tooltip mostra o valor cheio em reais. Em branco quando o olho está fechado.
   const fmtAxis = useCallback(
     (v: number) => (hide ? "" : new Intl.NumberFormat("pt-BR", {
-      notation: "compact", style: "currency", currency: "BRL", maximumFractionDigits: 1,
+      notation: "compact", maximumFractionDigits: 1,
     }).format(v)),
     [hide]
   )
@@ -170,7 +171,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={p.border} />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} dy={4} />
-                    <YAxis width={58} tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} tickFormatter={fmtAxis} />
+                    <YAxis width={52} tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} tickFormatter={fmtAxis} />
                     <Tooltip
                       formatter={(v) => [hide ? MONEY_MASK : formatMoney(Number(v)), "Saldo"] as [string, string]}
                       contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: 12 }}

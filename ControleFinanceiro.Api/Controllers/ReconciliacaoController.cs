@@ -42,6 +42,17 @@ public class ReconciliacaoController(ReconciliacaoService service) : ControllerB
         return CreatedAtAction(nameof(Listar), new { contaId = marco.ContaId }, marco);
     }
 
+    /// <summary>
+    /// Fecha a diferença de um marco já gravado: recalcula o saldo do app até a data do marco e, se
+    /// ainda não bate, cria o lançamento de ajuste (no máximo um por marco). Se passou a bater (a
+    /// pessoa lançou o que faltava), só atualiza o marco. Requer header Idempotency-Key.
+    /// </summary>
+    [HttpPost("marcos/{id:guid}/fechar")]
+    public async Task<ActionResult<ReconciliacaoSaldoDto>> FecharDiferenca(
+        Guid id,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
+        => Ok(await _service.FecharDiferencaAsync(UserId, id, idempotencyKey ?? ""));
+
     /// <summary>Remove um marco (e cancela o lançamento de ajuste que ele criou, se houver).</summary>
     [HttpDelete("marcos/{id:guid}")]
     public async Task<IActionResult> Remover(Guid id)

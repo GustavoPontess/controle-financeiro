@@ -42,6 +42,10 @@
 .resultLinha[data-destaque="true"] { padding-top: 6px; border-top: 1px solid var(--pontes-border); }
 .difOk { color: var(--pontes-success); }
 .difNok { color: var(--pontes-danger); }
+/* Linha "Ajuste lançado": sem sinal — a cor diz se entrou (faltava no app) ou saiu (sobrava). */
+.resultLinha .ajusteEntrada { color: var(--pontes-success); }
+.resultLinha .ajusteSaida { color: var(--pontes-danger); }
+.footerPar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .resultAviso { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--pontes-danger); background: var(--pontes-danger-soft, rgba(239,68,68,0.08)); border-radius: 9px; padding: 7px 9px; line-height: 1.35; margin-top: 4px; }
 .tag { align-self: flex-start; font-size: 10.5px; font-weight: 700; color: var(--pontes-warning); background: var(--pontes-warning-soft, rgba(245,158,11,0.12)); border-radius: 6px; padding: 2px 8px; }
 .marcoAcoes { display: flex; gap: 8px; margin-top: 2px; }
@@ -74,6 +78,8 @@
 .calDia[data-marco="bateu"] .calDiaNum, .calDia[data-marco="inicial"] .calDiaNum { color: var(--pontes-success); }
 .calDia[data-marco="ajuste"] { background: var(--pontes-warning-soft, rgba(245,158,11,0.12)); border-color: var(--pontes-warning); }
 .calDia[data-marco="ajuste"] .calDiaNum { color: var(--pontes-warning); }
+.calDia[data-marco="diferenca"] { background: var(--pontes-danger-soft, rgba(239,68,68,0.08)); border-color: var(--pontes-danger); }
+.calDia[data-marco="diferenca"] .calDiaNum { color: var(--pontes-danger); }
 .calDia[data-hoje="true"] .calDiaNum { font-weight: 800; }
 .calDia[data-sel="true"] { outline: 2px solid var(--pontes-primary); outline-offset: 1px; }
 
@@ -82,6 +88,7 @@
 .legDot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 .legDot[data-t="bateu"] { background: var(--pontes-success); }
 .legDot[data-t="ajuste"] { background: var(--pontes-warning); }
+.legDot[data-t="diferenca"] { background: var(--pontes-danger); }
 .legDot[data-t="pendente"] { border: 1px dashed var(--pontes-warning); }
 
 /* Histórico de marcos */
@@ -93,6 +100,7 @@
 .histEsq { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
 .histIconOk { color: var(--pontes-success); }
 .histIconAjuste { color: var(--pontes-warning); }
+.histIconDif { color: var(--pontes-danger); }
 .histIconInicial { color: var(--pontes-primary); }
 .histValor { color: var(--pontes-text-muted); }
 .histTagPartida { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pontes-primary); background: var(--pontes-primary-soft, rgba(59,130,246,0.12)); border-radius: 5px; padding: 1px 6px; }

@@ -1760,4 +1760,217 @@ public class ReconciliacaoServiceTests
         Assert.Equal(2, reais.Count);
         Assert.All(reais, m => Assert.False(m.Derivado));
     }
+
+    // ── FecharDiferencaAsync — salvar o saldo do banco PRIMEIRO, ajustar depois ──
+
+    /// <summary>Marco de verificação gravado SEM resolver (o 1º passo da tela: salvar o saldo do banco).</summary>
+    private static Task<ReconciliacaoSaldoDto> MarcoSemResolver(
+        ReconciliacaoService service, Guid usuarioId, Guid contaId, decimal declarado) =>
+        service.CriarMarcoAsync(usuarioId, Dto(contaId, declarado, Verificacao), Chave());
+
+    [Fact]
+    public async Task FecharDiferenca_MarcoComDiferenca_CriaAjusteDaDiferencaAtual_ESaldoPassaABater()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        Assert.False(gravado.TemAjuste);
+        Assert.Empty(await Ajustes(ctx)); // salvar o saldo do banco NÃO ajusta nada
+
+        var dto = await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        var ajuste = Assert.Single(await Ajustes(ctx));
+        Assert.Equal(300m, ajuste.Valor);
+        Assert.Equal(TipoTransacao.Receita, ajuste.Tipo);
+        Assert.Equal(DateOnly.FromDateTime(T0), ajuste.Data);
+        Assert.True(dto.TemAjuste);
+        Assert.Equal(300m, dto.Diferenca);
+        var marco = await ctx.ReconciliacoesSaldo.AsNoTracking().SingleAsync();
+        Assert.Equal(ajuste.Id, marco.AjusteTransacaoId);
+        Assert.Equal(1000m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_DepoisDeLancarOQueFaltava_NaoCriaAjuste_SoAtualizaOMarco()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        // A pessoa foi em "Lançar o que falta" e lançou os 300 que faltavam, antes da data do marco.
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 300m, T0.AddHours(-2));
+
+        var dto = await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        Assert.Empty(await Ajustes(ctx));
+        Assert.False(dto.TemAjuste);
+        Assert.Equal(0m, dto.Diferenca);
+        Assert.Equal(1000m, dto.SaldoCalculado);
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_LancouSoParte_AjusteCobreSoORestante()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 250m, T0.AddHours(-2));
+
+        await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        Assert.Equal(50m, Assert.Single(await Ajustes(ctx)).Valor);
+        Assert.Equal(1000m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_DeclaradoMenor_CriaAjusteDespesa()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 0.02m);
+
+        await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        var ajuste = Assert.Single(await Ajustes(ctx));
+        Assert.Equal(699.98m, ajuste.Valor);
+        Assert.Equal(TipoTransacao.Despesa, ajuste.Tipo);
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_MarcoQueJaTemAjuste_Lanca409_ENaoCriaOutro()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave()));
+        Assert.Single(await Ajustes(ctx));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_MesmaChave_EhReplay_NaoDuplicaAjuste()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        var chave = Chave();
+
+        var primeira = await service.FecharDiferencaAsync(usuarioId, gravado.Id, chave);
+        var segunda = await service.FecharDiferencaAsync(usuarioId, gravado.Id, chave);
+
+        Assert.Equal(primeira.Id, segunda.Id);
+        Assert.True(segunda.TemAjuste);
+        Assert.Single(await Ajustes(ctx));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_ChaveJaUsadaEmOutroMarco_Lanca409()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-2));
+        var um = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        var outro = await service.CriarMarcoAsync(usuarioId, Dto(conta.Id, 800m, Verificacao, T0.AddDays(-1)), Chave());
+        var chave = Chave();
+        await service.FecharDiferencaAsync(usuarioId, um.Id, chave);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.FecharDiferencaAsync(usuarioId, outro.Id, chave));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_MarcoDeOutroUsuario_Lanca404_ENaoAjusta()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.FecharDiferencaAsync(Guid.NewGuid(), gravado.Id, Chave()));
+        Assert.Empty(await Ajustes(ctx));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_MarcoRemovido_Lanca404()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        await service.RemoverAsync(usuarioId, gravado.Id);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave()));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task FecharDiferenca_SemIdempotencyKey_Lanca400(string chave)
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.FecharDiferencaAsync(usuarioId, gravado.Id, chave));
+        Assert.Empty(await Ajustes(ctx));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_RegistraAuditoriaDoAjusteEDaAtualizacao()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        var antes = await IdsDeEventos(ctx);
+
+        await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        var novos = await EventosNovos(ctx, antes);
+        Assert.Contains(novos, l => l.Tipo == FinancialEventType.TransacaoCriada);
+        Assert.Contains(novos, l => l.Tipo == FinancialEventType.ReconciliacaoAtualizada);
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_RemoverOMarcoDepois_DesfazOAjuste()
+    {
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var gravado = await MarcoSemResolver(service, usuarioId, conta.Id, 1000m);
+        await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        await service.RemoverAsync(usuarioId, gravado.Id);
+
+        Assert.Equal(700m, await service.CalcularSaldoAteAsync(usuarioId, conta.Id, T0));
+    }
+
+    [Fact]
+    public async Task FecharDiferenca_Corrida_ViolacaoDoIndiceUnico_ViraReplayDoMarcoVencedor()
+    {
+        // Duplo clique com chaves diferentes: a gêmea fecha primeiro; a nossa estoura o índice único da
+        // trava "um ajuste por marco" → devolve o marco como ficou, sem segundo ajuste (e sem 500).
+        var root = new InMemoryDatabaseRoot();
+        var nome = Guid.NewGuid().ToString();
+        var corrida = new SimulaCorridaNoMarco();
+        var ctx = CreateContext(root, nome, corrida);
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(ctx, usuarioId);
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 700m, T0.AddDays(-1));
+        var service = CriarService(ctx);
+        var gravado = await CriarService(CreateContext(root, nome))
+            .CriarMarcoAsync(usuarioId, Dto(conta.Id, 1000m, Verificacao), Chave());
+
+        corrida.Concorrente = async () =>
+        {
+            await using var outraConexao = CreateContext(root, nome);
+            await CriarService(outraConexao).FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+            return ViolacaoDeUnicidade();
+        };
+
+        var resultado = await service.FecharDiferencaAsync(usuarioId, gravado.Id, Chave());
+
+        Assert.True(resultado.TemAjuste);
+        await using var leitura = CreateContext(root, nome);
+        Assert.Single(await Ajustes(leitura));
+        Assert.Equal(1000m, await CriarService(leitura).CalcularSaldoAteAsync(usuarioId, conta.Id, T0)); // não 1300
+    }
 }

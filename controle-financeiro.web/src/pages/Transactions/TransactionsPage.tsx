@@ -308,7 +308,7 @@ export default function TransactionsPage() {
     },
     { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
     { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
-    { key: "data", header: "Data", render: (t) => fmtData(t.data, t.hora) },
+    { key: "data", header: "Data/Hora", render: (t) => fmtData(t.data, t.hora) },
     {
       // Eixo 2: STATUS — em que estado está (puro, sem misturar com o tipo).
       key: "status", header: "Status",

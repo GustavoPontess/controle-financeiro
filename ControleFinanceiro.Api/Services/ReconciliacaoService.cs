@@ -26,6 +26,9 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
     private readonly FinancialEventLogService _eventLog = eventLog;
 
     private const string OperacaoCriarMarco = "CriarMarcoReconciliacao";
+    private const string OperacaoFecharDiferenca = "FecharDiferencaMarco";
+    /// <summary>Chave = id do marco: o índice único garante no máximo UM ajuste por marco.</summary>
+    private const string OperacaoAjusteDoMarco = "AjusteDoMarco";
 
     /// <summary>Teto de sanidade pro saldo declarado (aceita negativo — conta no vermelho).</summary>
     private const decimal SaldoMaximo = 1_000_000_000m;
@@ -253,6 +256,130 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
         if (!mesmos)
             throw new InvalidOperationException("Idempotency-Key já usada com outros dados.");
         return ToDto(original);
+    }
+
+    /// <summary>
+    /// Fecha a diferença de um marco JÁ GRAVADO (o fluxo da tela: primeiro a pessoa salva o saldo do
+    /// banco, depois decide). Recalcula o saldo do app até a data do marco — a pessoa pode ter lançado
+    /// o que faltava nesse meio-tempo — e, se ainda houver diferença, cria o lançamento de ajuste. Se
+    /// passou a bater, só atualiza o marco (sem ajuste). Um marco tem no máximo UM ajuste: garantido
+    /// por um registro com chave = id do marco, no mesmo SaveChanges (duas chamadas simultâneas → a
+    /// 2ª estoura o índice único e vira replay). Idempotency-Key obrigatória (mesma chave → mesmo
+    /// resultado). Isolado por usuário (marco alheio → 404).
+    /// </summary>
+    public async Task<ReconciliacaoSaldoDto> FecharDiferencaAsync(Guid usuarioId, Guid marcoId, string idempotencyKey)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para ajustar um marco.");
+        if (idempotencyKey.Length > RegistroIdempotencia.ChaveMaxLength)
+            throw new ArgumentException($"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
+
+        var marco = await _context.ReconciliacoesSaldo
+            .FirstOrDefaultAsync(r => r.Id == marcoId && r.UsuarioId == usuarioId && r.Ativo)
+            ?? throw new KeyNotFoundException("Marco de reconciliação não encontrado.");
+
+        // Replay da mesma tentativa → devolve o marco como ficou. Chave usada em OUTRO marco → 409.
+        var jaExiste = await _context.RegistrosIdempotencia
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId && r.Operacao == OperacaoFecharDiferenca && r.Chave == idempotencyKey);
+        if (jaExiste != null)
+        {
+            if (jaExiste.ReferenciaId != marco.Id)
+                throw new InvalidOperationException("Idempotency-Key já usada com outros dados.");
+            return ToDto(marco);
+        }
+
+        if (marco.AjusteTransacaoId.HasValue)
+            throw new InvalidOperationException("Esse marco já tem um lançamento de ajuste.");
+
+        var calculado = await CalcularSaldoAteAsync(usuarioId, marco.ContaId, marco.DataHora);
+        var diferenca = marco.SaldoDeclarado - calculado;
+        var correlationId = Guid.NewGuid();
+        var agora = DateTime.UtcNow;
+        var valorAntes = marco.SaldoCalculado;
+
+        if (diferenca != 0m)
+        {
+            var ajuste = new Transacao
+            {
+                Id = Guid.NewGuid(),
+                Descricao = "Ajuste de reconciliação",
+                Valor = Math.Abs(diferenca),
+                // Falta dinheiro (declarado > calculado) → entra como Receita; sobra → Despesa.
+                Tipo = diferenca > 0 ? TipoTransacao.Receita : TipoTransacao.Despesa,
+                ContaId = marco.ContaId,
+                CategoriaId = null,
+                Data = DateOnly.FromDateTime(marco.DataHora),
+                Hora = null, // ajuste é datado (sem hora específica)
+                StatusTransacao = StatusTransacao.Executado,
+                EhAjusteReconciliacao = true,
+                CriadoPor = usuarioId,
+            };
+            _context.Transacoes.Add(ajuste);
+            marco.AjusteTransacaoId = ajuste.Id;
+
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.TransacaoCriada,
+                entidade: "Transacao",
+                entidadeId: ajuste.Id,
+                correlationId: correlationId,
+                origemAcao: "ReconciliacaoAjuste",
+                valorAntes: calculado,
+                valorDepois: marco.SaldoDeclarado,
+                payload: new { contaId = marco.ContaId, marcoId = marco.Id, diferenca, tipoLancamento = ajuste.Tipo.ToString() });
+
+            // Trava natural: no máximo um ajuste por marco, mesmo com chaves diferentes (duplo clique).
+            _context.RegistrosIdempotencia.Add(new RegistroIdempotencia
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = usuarioId,
+                Operacao = OperacaoAjusteDoMarco,
+                Chave = marco.Id.ToString(),
+                ReferenciaId = marco.Id,
+                CriadoEm = agora,
+            });
+        }
+
+        marco.SaldoCalculado = calculado;
+        marco.Diferenca = diferenca;
+
+        _context.RegistrosIdempotencia.Add(new RegistroIdempotencia
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId,
+            Operacao = OperacaoFecharDiferenca,
+            Chave = idempotencyKey,
+            ReferenciaId = marco.Id,
+            CriadoEm = agora,
+        });
+
+        _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.ReconciliacaoAtualizada,
+            entidade: "ReconciliacaoSaldo",
+            entidadeId: marco.Id,
+            correlationId: correlationId,
+            origemAcao: "API",
+            valorAntes: valorAntes,
+            valorDepois: calculado,
+            payload: new { diferenca, ajusteTransacaoId = marco.AjusteTransacaoId });
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || EhViolacaoDeUnicidade(ex))
+        {
+            // Corrida: outra chamada fechou este marco primeiro. Rollback total do SaveChanges (nada
+            // duplicado) → devolve o marco como a vencedora deixou.
+            foreach (var entry in _context.ChangeTracker.Entries().ToList())
+                entry.State = EntityState.Detached;
+            var vencedor = await _context.ReconciliacoesSaldo.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == marcoId && r.UsuarioId == usuarioId);
+            if (vencedor == null) throw;
+            return ToDto(vencedor);
+        }
+        return ToDto(marco);
     }
 
     /// <summary>Violação de índice único no Postgres (SqlState 23505) dentro do DbUpdateException.</summary>

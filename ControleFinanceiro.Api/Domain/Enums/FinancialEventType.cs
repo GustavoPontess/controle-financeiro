@@ -65,4 +65,6 @@ public enum FinancialEventType
     // Reconciliação (docs/features/reconciliacao/spec.md)
     ReconciliacaoRegistrada = 90,
     ReconciliacaoRemovida = 91,
+    /// <summary>Marco já gravado teve a diferença fechada depois (ajuste lançado ou recálculo que passou a bater).</summary>
+    ReconciliacaoAtualizada = 92,
 }

@@ -54,7 +54,15 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - Testes: **back 1152 · front 812**, lint+build verdes. Verificado ao vivo na conta de teste da cônjuge (criado "Cartão Teste" •••• 4321 + "Tênis (teste)" + "TV (teste)" 10x — dado de teste, pode apagar).
 - Achado novo (P2, ROADMAP): o seed grava lançamento efetivado com data futura → saldo/hero não batem com o "Calculado" de hoje.
 
+**2026-10-04 — Reconciliação em 2 passos + eixo do gráfico:**
+- Gustavo: "o ajuste só aparece depois que a pessoa lançar o que tem no banco". Agora: passo 1 = só "Salvar saldo do banco" (marco de verificação, sem ajuste); passo 2, no marco salvo = diferença recalculada ao vivo + "Lançar o que falta" / "Ajustar" (ou "Confere — atualizar marco" se já lançou o que faltava). Backend `POST /reconciliacao/marcos/{id}/fechar`. Ajuste virou linha ("Ajuste lançado"), sem etiqueta amarela. Marco com diferença pendente = vermelho no calendário.
+- Dashboard: eixo do gráfico sem "R$" (não corta mais). Comparação com o mês anterior = decisão pendente do Gustavo (3 opções no ROADMAP).
+- Coluna "Data" → "Data/Hora" (Reconciliação + Transações; a transação já guarda date + time separados). Fonte de título = fonte normal no app todo (Fraunces só no site público).
+- **Back 1166 · front 828** verdes, lint+build limpos. Verificado ao vivo (Carteira da cônjuge: salvar → ajustar → remover; voltou ao saldo original).
+- Pergunta aberta ao Gustavo: separar também a data/hora do MARCO da conferência (`ReconciliacaoSaldo.DataHora`)?
+
 **Próxima ação concreta (quando voltar):**
+0. 🟠 Decisão do Gustavo: como o gráfico de saldo compara com o mês anterior (ROADMAP, Pendências do Dashboard).
 1. 🟡 P2 seed com efetivado no futuro (fix no `DevDataSeeder` + reseed — pedir OK antes de apagar o banco).
 2. Próxima tela da fila de densidade: `/categories` (Gustavo pediu pra deixar pra depois — uma por vez, com ele vendo).
 3. 🟡 P2: transferência exige hora mas o back descarta; editar lançamento sem hora força inventar hora; "Alterar valor" do saldo inicial erra por toast (→ inline); Dashboard usa `DateTime.UtcNow` no fechamento; Dashboard carrega todas as transações em memória.

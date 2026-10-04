@@ -8,7 +8,7 @@
 
 /* Banda do TOPO do cartão: nome da tabela à esquerda, controles compactos à direita. */
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--pontes-border); }
-/* Nome da tabela — tipografia do DS (fonte de marca Fraunces + peso/tracking padrão), sub-heading
+/* Nome da tabela — tipografia do DS (fonte de título --pontes-font-heading + peso/tracking padrão), sub-heading
    (16px: menor que modal 20 / página 24). */
 .titulo { margin: 0; font-family: var(--pontes-font-heading); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); }
 /* Controles à direita, compactos, lado a lado e TODOS na MESMA altura (36px). O DS varia a altura

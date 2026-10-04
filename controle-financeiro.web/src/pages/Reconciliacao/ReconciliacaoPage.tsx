@@ -16,7 +16,7 @@ import { PontesButton, PontesField, PontesInput, PontesSelect, PontesDateInput, 
 import { formatMoney, parseMoney, maskMoney, moneyParaCampo } from "@/utils/money"
 import { combinarDataHora, horaLocalHHMM, dataLocalISO } from "@/utils/dateTime"
 import { getContas, atualizarSaldoInicial } from "@/services/contaService"
-import { listMarcos, getSaldoCalculado, criarMarco, removerMarco } from "@/services/reconciliacaoService"
+import { listMarcos, getSaldoCalculado, criarMarco, removerMarco, fecharDiferenca } from "@/services/reconciliacaoService"
 import { listTransactionsPage } from "@/services/transactionService"
 import type { Conta } from "@/types/Conta"
 import type { Transaction } from "@/types/Transaction"
@@ -39,6 +39,14 @@ const fmtDataBR = (iso: string) => iso.split("-").reverse().join("/")
 // Lançamento sem hora (null) mostra só o dia.
 const fmtDiaHora = (data: string, hora?: string | null) =>
   hora ? `${fmtDiaMes(data)} ${hora.slice(0, 5)}` : fmtDiaMes(data)
+// Cor do marco no calendário/histórico. "diferenca" = saldo do banco salvo que ainda não bate e não
+// foi ajustado (a pessoa ainda vai lançar o que falta ou ajustar).
+type TomMarco = "inicial" | "ajuste" | "diferenca" | "bateu"
+const tomDoMarco = (m: ReconciliacaoMarco): TomMarco =>
+  m.tipo === TIPO_MARCO.Baseline ? "inicial"
+    : m.temAjuste ? "ajuste"
+      : Math.abs(m.diferenca) >= 0.005 ? "diferenca"
+        : "bateu"
 // Próximo dia (YYYY-MM-DD + 1) — `to` da listagem é semi-aberto (`Data < to`).
 const proxDia = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number)
@@ -91,7 +99,6 @@ export default function ReconciliacaoPage() {
   }, [contaId, versao, notify])
 
   const ultimoMarco = marcos[0] // vem ordenado desc do backend
-  const proximoTipo = marcos.length === 0 ? TIPO_MARCO.Baseline : TIPO_MARCO.Verificacao
   // Sinal de confiança HONESTO: verde só quando o saldo de hoje ainda bate com o último marco
   // (nada se moveu desde então). Se houve movimento, o saldo atual não está conferido → "a conferir".
   const delta = ultimoMarco ? saldoAtual - ultimoMarco.saldoDeclarado : 0
@@ -119,6 +126,25 @@ export default function ReconciliacaoPage() {
   const isoDoDia = (dia: number) => `${ano}-${pad(mes + 1)}-${pad(dia)}`
 
   const marcoDoDiaSel = diaSel ? marcos.find((m) => isoDoMarco(m) === diaSel) : undefined
+
+  // Marco gravado (não o derivado do saldo inicial): o saldo do app até a data DELE é recalculado ao
+  // vivo — a pessoa pode ter salvo o saldo do banco, ido "lançar o que falta" e voltado. A diferença
+  // mostrada (e o que o "Ajustar" vai lançar) é a de AGORA, não a do momento em que salvou.
+  const marcoRealId = marcoDoDiaSel && !marcoDoDiaSel.derivado ? marcoDoDiaSel.id : undefined
+  const marcoRealDataHora = marcoRealId ? marcoDoDiaSel?.dataHora : undefined
+  const [calcMarco, setCalcMarco] = useState<number | null>(null)
+  const [fecharKey, setFecharKey] = useState("")
+  const [fechando, setFechando] = useState(false)
+  useEffect(() => {
+    setCalcMarco(null)
+    if (!contaId || !marcoRealId || !marcoRealDataHora) return
+    setFecharKey(crypto.randomUUID())
+    let vivo = true
+    getSaldoCalculado(contaId, marcoRealDataHora)
+      .then((v) => { if (vivo) setCalcMarco(v) })
+      .catch(() => { if (vivo) setCalcMarco(null) })
+    return () => { vivo = false }
+  }, [contaId, marcoRealId, marcoRealDataHora, versao])
 
   // Abrir um dia: calcula sempre o saldo do app até lá (o render decide marco × conferir).
   const abrirDia = useCallback(async (iso: string) => {
@@ -179,18 +205,33 @@ export default function ReconciliacaoPage() {
   const diferenca = calculado != null && preenchido ? declarado - calculado : 0
   const bate = calculado != null && preenchido && Math.abs(diferenca) < 0.005
 
-  const gravar = async (resolucao?: "ajustar") => {
+  // 1º passo: SALVAR o saldo do banco (marco de verificação, sem ajuste). Só depois de salvo, se houver
+  // diferença, a tela oferece "Lançar o que falta" / "Ajustar" — nunca durante a digitação.
+  const gravar = async () => {
     if (!diaSel || calculado == null || !preenchido) return
     setSalvando(true)
     try {
       const dataHora = combinarDataHora(diaSel, diaSel === hojeISO ? horaLocalHHMM() : "23:59")
-      await criarMarco({ contaId, dataHora, saldoDeclarado: declarado, tipo: proximoTipo, resolucao }, idemKey)
-      notify({ open: true, message: bate ? "Conferido — saldo bate ✓" : "Marco gravado + ajuste lançado", severity: "success" })
+      await criarMarco({ contaId, dataHora, saldoDeclarado: declarado, tipo: TIPO_MARCO.Verificacao }, idemKey)
+      notify({ open: true, message: bate ? "Conferido — saldo bate ✓" : "Saldo do banco salvo", severity: "success" })
       setSaldoReal("")
       recarregar()
     } catch {
-      notify({ open: true, message: "Erro ao gravar o marco", severity: "error" })
+      notify({ open: true, message: "Erro ao salvar o saldo do banco", severity: "error" })
     } finally { setSalvando(false) }
+  }
+
+  // 2º passo (marco já salvo): fecha a diferença — lança o ajuste da diferença de agora, ou, se a
+  // pessoa já lançou o que faltava, só confirma que passou a bater.
+  const fechar = async (m: ReconciliacaoMarco) => {
+    setFechando(true)
+    try {
+      const r = await fecharDiferenca(m.id, fecharKey)
+      notify({ open: true, message: r.temAjuste ? "Ajuste lançado — saldo bate ✓" : "Conferido — saldo bate ✓", severity: "success" })
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao ajustar o marco", severity: "error" })
+    } finally { setFechando(false) }
   }
 
   const handleRemover = async () => {
@@ -301,10 +342,20 @@ export default function ReconciliacaoPage() {
               )
             }
             const m = marcoDoDiaSel
-            const calc = m ? m.saldoCalculado : calculado
+            const real = m && !m.derivado ? m : undefined
+            // Marco salvo: diferença de AGORA (recalculada até a data do marco). Com ajuste, o calculado
+            // mostrado é o de antes do ajuste e a linha "Ajuste lançado" explica a ponte até o declarado.
+            const calcAgora = real ? (calcMarco ?? real.saldoCalculado) : undefined
+            const calc = m ? (real && !real.temAjuste ? calcAgora! : m.saldoCalculado) : calculado
             const decl = m ? m.saldoDeclarado : declarado
-            const dif = m ? m.diferenca : diferenca
-            const bateu = m ? m.diferenca === 0 : bate
+            const dif = real
+              ? (real.temAjuste ? (calcMarco != null ? real.saldoDeclarado - calcMarco : 0) : real.saldoDeclarado - calcAgora!)
+              : m ? m.diferenca : diferenca
+            const bateu = m ? Math.abs(dif) < 0.005 : bate
+            // Salvo e ainda com diferença (sem ajuste) → aí sim: "Lançar o que falta" / "Ajustar".
+            const pendente = real != null && !real.temAjuste && Math.abs(dif) >= 0.005
+            // Salvo com diferença, mas a pessoa já lançou o que faltava → só confirmar.
+            const passouABater = real != null && !real.temAjuste && !pendente && Math.abs(real.diferenca) >= 0.005
             const temResultado = m != null || calculado != null
             // Sem o saldo do banco digitado: mostra só o calculado; declarado/diferença ficam em "—".
             const comparavel = m != null || preenchido
@@ -317,9 +368,9 @@ export default function ReconciliacaoPage() {
                     : <><Flag size={15} strokeWidth={2.2} /> Conferir <strong className={styles.diaSelLabel}>{diaSel === hojeISO ? `hoje, ${fmtDiaMes(diaSel)}` : fmtDataBR(diaSel)}</strong></>}
                 </div>
 
-                {/* Saldo do banco — o que a pessoa digita (ou, num marco, o que foi conferido). */}
+                {/* Saldo do banco — o que a pessoa digita (ou, num marco, o que foi salvo). */}
                 <div className={styles.painelInput}>
-                  <PontesField label={m ? "Saldo conferido" : "Saldo que aparece no seu banco"} helper={m ? undefined : "Abre o app do seu banco e põe o valor aqui."}>
+                  <PontesField label={m ? "Saldo do banco" : "Saldo que aparece no seu banco"} helper={m ? undefined : "Abre o app do seu banco e põe o valor aqui."}>
                     <PontesInput
                       iconStart="R$"
                       inputMode="decimal"
@@ -332,11 +383,17 @@ export default function ReconciliacaoPage() {
                   </PontesField>
                 </div>
 
-                {/* App × você × diferença — mesmas 3 linhas em todo modo. */}
+                {/* App × você × (ajuste) × diferença — o ajuste é uma linha da conta, não uma etiqueta. */}
                 {temResultado && (
                   <div className={styles.resultado} data-bate={bateu ? "true" : "false"}>
                     <div className={styles.resultLinha}><span>Calculado (app)</span><strong>{formatMoney(calc ?? 0)}</strong></div>
                     <div className={styles.resultLinha}><span>Declarado (você)</span><strong>{comparavel ? formatMoney(decl) : "—"}</strong></div>
+                    {m?.temAjuste && (
+                      <div className={styles.resultLinha}>
+                        <span>Ajuste lançado</span>
+                        <strong className={m.diferenca > 0 ? styles.ajusteEntrada : styles.ajusteSaida}>{formatMoney(Math.abs(m.diferenca))}</strong>
+                      </div>
+                    )}
                     <div className={styles.resultLinha} data-destaque="true">
                       <span>Diferença</span>
                       {comparavel
@@ -346,12 +403,11 @@ export default function ReconciliacaoPage() {
                   </div>
                 )}
 
-                {/* Slot de aviso com altura fixa → as caixas não dançam. */}
+                {/* Slot de aviso com altura fixa → as caixas não dançam. Aviso de diferença só DEPOIS de salvo. */}
                 <div className={styles.statusSlot}>
                   {m?.derivado && <div className={styles.notaDerivado}>Ponto de partida da conta.</div>}
-                  {m?.temAjuste && <div className={styles.tag}>lançamento de ajuste criado</div>}
                   {!m && calculado == null && <span className={styles.painelSub}>Calculando o saldo do dia…</span>}
-                  {!m && calculado != null && preenchido && !bate && (
+                  {pendente && (
                     <div className={styles.resultAviso}>
                       <TriangleAlert size={14} strokeWidth={2.5} />
                       {dif > 0
@@ -366,18 +422,27 @@ export default function ReconciliacaoPage() {
                   {m?.derivado && (
                     <PontesButton variant="outline" size="sm" fullWidth onClick={() => abrirEdicaoInicial(m)}>Alterar valor</PontesButton>
                   )}
-                  {m && !m.derivado && (
+                  {pendente && (
                     <>
-                      <PontesButton variant="outline" size="sm" fullWidth onClick={() => alterarMarco(m)}>Alterar valor</PontesButton>
-                      <PontesButton variant="danger-outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(m)}>Remover</PontesButton>
+                      <PontesButton variant="outline" size="sm" fullWidth onClick={() => navigate("/transactions")}>Lançar o que falta</PontesButton>
+                      <PontesButton variant="primary" size="sm" fullWidth loading={fechando} onClick={() => fechar(real!)}>Ajustar (cria lançamento)</PontesButton>
                     </>
                   )}
-                  {!m && calculado != null && preenchido && (bate
-                    ? <PontesButton variant="primary" size="sm" fullWidth loading={salvando} iconStart={<Check size={14} strokeWidth={3} />} onClick={() => gravar()}>Confere — gravar marco</PontesButton>
-                    : <>
-                        <PontesButton variant="outline" size="sm" fullWidth onClick={() => navigate("/transactions")}>Lançar o que falta</PontesButton>
-                        <PontesButton variant="primary" size="sm" fullWidth loading={salvando} onClick={() => gravar("ajustar")}>Ajustar (cria lançamento)</PontesButton>
-                      </>)}
+                  {passouABater && (
+                    <PontesButton variant="primary" size="sm" fullWidth loading={fechando} iconStart={<Check size={14} strokeWidth={3} />} onClick={() => fechar(real!)}>Confere — atualizar marco</PontesButton>
+                  )}
+                  {real && (
+                    <div className={styles.footerPar}>
+                      <PontesButton variant="outline" size="sm" fullWidth onClick={() => alterarMarco(real)}>Alterar valor</PontesButton>
+                      <PontesButton variant="danger-outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(real)}>Remover</PontesButton>
+                    </div>
+                  )}
+                  {!m && calculado != null && (
+                    <PontesButton variant="primary" size="sm" fullWidth loading={salvando} disabled={!preenchido}
+                      iconStart={<Check size={14} strokeWidth={3} />} onClick={() => gravar()}>
+                      Salvar saldo do banco
+                    </PontesButton>
+                  )}
                 </div>
               </>
             )
@@ -400,7 +465,7 @@ export default function ReconciliacaoPage() {
               if (dia === null) return <div key={`e${i}`} className={styles.calVazio} />
               const iso = isoDoDia(dia)
               const marco = marcoPorDia.get(dia)
-              const tom = marco ? (marco.tipo === TIPO_MARCO.Baseline ? "inicial" : marco.temAjuste ? "ajuste" : "bateu") : undefined
+              const tom = marco ? tomDoMarco(marco) : undefined
               const pendente = !marco && ultimoMarco != null && iso > isoDoMarco(ultimoMarco) && iso <= hojeISO
               return (
                 <button
@@ -422,6 +487,7 @@ export default function ReconciliacaoPage() {
           <div className={styles.calLegenda}>
             <span><span className={styles.legDot} data-t="bateu" /> conferido</span>
             <span><span className={styles.legDot} data-t="ajuste" /> ajuste</span>
+            <span><span className={styles.legDot} data-t="diferenca" /> com diferença</span>
             <span><span className={styles.legDot} data-t="pendente" /> a conferir</span>
           </div>
 
@@ -431,11 +497,12 @@ export default function ReconciliacaoPage() {
           ) : (
             <button type="button" className={styles.histLinha} data-sel={isoDoMarco(ultimoMarco) === diaSel ? "true" : undefined} onClick={() => abrirDia(isoDoMarco(ultimoMarco))}>
               <span className={styles.histEsq}>
-                {ultimoMarco.tipo === TIPO_MARCO.Baseline
-                  ? <Landmark size={13} strokeWidth={2.5} className={styles.histIconInicial} />
-                  : ultimoMarco.temAjuste
-                    ? <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconAjuste} />
-                    : <Check size={13} strokeWidth={3} className={styles.histIconOk} />}
+                {{
+                  inicial: <Landmark size={13} strokeWidth={2.5} className={styles.histIconInicial} />,
+                  ajuste: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconAjuste} />,
+                  diferenca: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconDif} />,
+                  bateu: <Check size={13} strokeWidth={3} className={styles.histIconOk} />,
+                }[tomDoMarco(ultimoMarco)]}
                 {fmtDiaMes(isoDoMarco(ultimoMarco))}{ultimoMarco.tipo === TIPO_MARCO.Baseline && <span className={styles.histTagPartida}>partida</span>}
               </span>
               <span className={styles.histValor}>{formatMoney(ultimoMarco.saldoDeclarado)}</span>
@@ -452,7 +519,7 @@ export default function ReconciliacaoPage() {
           id="reconciliacao-movimentos"
           titulo={diaSel ? `Movimentos desde ${marcoAnterior ? fmtDiaMes(isoDoMarco(marcoAnterior)) : "o começo"} até ${fmtDiaMes(diaSel)}` : "Movimentos"}
           colunas={[
-            { key: "data", header: "Data", render: (t) => fmtDiaHora(t.data, t.hora) },
+            { key: "data", header: "Data/Hora", render: (t) => fmtDiaHora(t.data, t.hora) },
             { key: "descricao", header: "Lançamento", render: (t) => t.descricao },
             { key: "valor", header: "Valor", numerica: true, render: (t) => (
               <span className={t.tipo === 2 ? styles.movValorPos : styles.movValorNeg}>{formatMoney(t.valor)}</span>

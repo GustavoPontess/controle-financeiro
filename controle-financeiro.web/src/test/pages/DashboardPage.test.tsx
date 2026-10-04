@@ -495,9 +495,11 @@ describe("DashboardPage", () => {
       expect(grafico.serie).toHaveLength(6)
     })
 
-    it("eixo do valor: compacto com o olho aberto, em branco com o olho fechado", async () => {
+    it("eixo do valor: compacto e SEM 'R$' (com o símbolo o rótulo era cortado), em branco com o olho fechado", async () => {
       await renderCarregado()
-      expect(grafico.formatarEixo!(5000)).toMatch(/R\$\s?5\s?mil/)
+      expect(grafico.formatarEixo!(5000)).toMatch(/^5\s?mil$/)
+      expect(grafico.formatarEixo!(13500)).toMatch(/^13,5\s?mil$/)
+      expect(grafico.formatarEixo!(13500)).not.toMatch(/R\$/)
 
       act(() => setHideBalance(true))
       await waitFor(() => expect(grafico.formatarEixo!(5000)).toBe(""))

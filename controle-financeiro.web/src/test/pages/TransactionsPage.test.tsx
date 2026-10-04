@@ -251,7 +251,7 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     renderPage()
     await screen.findByText("Salário")
     const headers = screen.getAllByRole("columnheader").map((th) => th.textContent)
-    expect(headers).toEqual(["Descrição / Conta", "Tipo", "Data", "Status", "Valor", "Ações"])
+    expect(headers).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Status", "Valor", "Ações"])
     expect(screen.queryByRole("columnheader", { name: "Categoria" })).not.toBeInTheDocument()
     expect(screen.queryByRole("columnheader", { name: "Pagamento" })).not.toBeInTheDocument()
     // Conteúdo delas também não vaza pra tela.

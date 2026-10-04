@@ -1195,8 +1195,8 @@ function TokensSection({ p }: { p: Palette }) {
 
       <Group title="Tipografia">
         <p className={styles.helper}>
-          Títulos (H1/H2) usam a fonte de marca <code>--pontes-font-heading</code> (Fraunces, fixa).
-          Do H3 pra baixo é a fonte do tema <code>--pontes-font</code> (trocável no topo).
+          Títulos usam <code>--pontes-font-heading</code>, que no app é a mesma fonte do tema
+          (<code>--pontes-font</code>, trocável no topo). A Fraunces fica só no site público.
         </p>
         <div className={styles.typoCol}>
           <div className={styles.typoH1}>H1 título · 56 / 600</div>
