@@ -165,3 +165,40 @@ describe("PontesPopover — closeOnMouseLeave", () => {
     expect(screen.getByRole("menu")).toBeInTheDocument()
   })
 })
+
+describe("PontesTabela — modo 'Mostrar mais' (alternativa à paginação)", () => {
+  it("com restantes > 0 mostra o botão largo 'Mostrar mais' com quantos faltam e chama onCarregarMais", () => {
+    const onCarregarMais = vi.fn()
+    render(tabela({ carregarMais: { restantes: 35, onCarregarMais } }))
+    const botao = screen.getByRole("button", { name: /Mostrar mais/ })
+    expect(botao).toHaveTextContent("faltam 35")
+    fireEvent.click(botao)
+    expect(onCarregarMais).toHaveBeenCalledTimes(1)
+  })
+
+  it("sem nada faltando (restantes 0) o botão some", () => {
+    render(tabela({ carregarMais: { restantes: 0, onCarregarMais: vi.fn() } }))
+    expect(screen.queryByRole("button", { name: /Mostrar mais/ })).not.toBeInTheDocument()
+  })
+
+  it("carregando: o botão fica desabilitado (não dispara 2 lotes)", () => {
+    const onCarregarMais = vi.fn()
+    render(tabela({ carregarMais: { restantes: 5, carregando: true, onCarregarMais } }))
+    const botao = screen.getByRole("button", { name: /Mostrar mais/ })
+    expect(botao).toBeDisabled()
+    fireEvent.click(botao)
+    expect(onCarregarMais).not.toHaveBeenCalled()
+  })
+
+  it("com `paginacao` junto, a paginação vence e o 'Mostrar mais' não aparece (um modo só)", () => {
+    render(tabela({ paginacao: <div>rodapé de páginas</div>, carregarMais: { restantes: 9, onCarregarMais: vi.fn() } }))
+    expect(screen.getByText("rodapé de páginas")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Mostrar mais/ })).not.toBeInTheDocument()
+  })
+
+  it("lista vazia não mostra o botão (vale o estado vazio)", () => {
+    render(tabela({ itens: [], carregarMais: { restantes: 3, onCarregarMais: vi.fn() } }))
+    expect(screen.getByText("Vazio")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Mostrar mais/ })).not.toBeInTheDocument()
+  })
+})

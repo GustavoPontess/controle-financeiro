@@ -10,8 +10,8 @@ import type { ReconciliacaoMarco } from "../../types/Reconciliacao"
 //  - HERO: "Saldo em conta" + chip de confiança HONESTO ("Conferido dd/mm" verde quando o saldo de hoje ainda
 //    bate com o último marco, senão "A conferir") + delta desde a última conferência + botão "Conferir hoje".
 //  - Coluna esquerda = painel UNIFORME de conferir: seletor "Conta a conferir" (mora DENTRO do painel, não numa
-//    topbar) → título → input → 3 linhas (Calculado / Declarado / Diferença) → slot de status (aviso
-//    "Sobrou"/"Faltou", nota de partida) → ações no rodapé.
+//    topbar) → título → input → 3 linhas (Calculado / Declarado / Diferença) → slot de nota (só a nota
+//    de partida; SEM cartão de aviso Sobrou/Faltou — a linha Diferença vermelha/verde já diz) → ações no rodapé.
 //  - Coluna direita = calendário de marcos + "Última conferência".
 //  - Embaixo: PontesTabela full-width SEMPRE visível com os movimentos (do marco ANTERIOR ao dia até o dia).
 // Baseline REMOVIDO da tela: o saldo inicial vem só do cadastro da conta (marco derivado); a tela só confere e
@@ -23,7 +23,7 @@ import type { ReconciliacaoMarco } from "../../types/Reconciliacao"
 //     verificação (tipo 2), sem `resolucao`. Nada de aviso Sobrou/Faltou nem Ajustar/Lançar nesse passo.
 //  2) dia COM marco gravado ("Saldo do banco", desabilitado): a tela recalcula o saldo do app AO VIVO até a
 //     data do marco (getSaldoCalculado) e a diferença mostrada é `declarado − calculadoAgora` (não a gravada).
-//     Marco "pendente" (sem ajuste e diferença ≠ 0) → aviso + "Lançar o que falta" + "Ajustar (cria
+//     Marco "pendente" (sem ajuste e diferença ≠ 0) → Diferença vermelha + "Lançar o que falta" + "Ajustar (cria
 //     lançamento)", que chama fecharDiferenca(marco.id, key). Se a pessoa já lançou o que faltava (agora
 //     bate, mas a gravada era ≠ 0) → "Confere — atualizar marco" (também fecharDiferenca).
 //
@@ -260,7 +260,7 @@ describe("ReconciliacaoPage", () => {
     await waitFor(() => expect(getSaldoCalculado).toHaveBeenLastCalledWith("c2", HOJE_CALCULO))
     expect(await screen.findByText(`hoje, ${diaMes(HOJE)}`)).toBeInTheDocument()
     expect(screen.getByText(ROTULO_SALDO_BANCO)).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ contaId: "c2" })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ contaId: "c2" })))
   })
 
   // ---------------------------------------------------------------- hero
@@ -806,7 +806,9 @@ describe("ReconciliacaoPage", () => {
 
     // passo 2: o marco salvo (recarregado) agora oferece resolver a diferença
     expect(await screen.findByText(ROTULO_SALDO_SALVO)).toBeInTheDocument()
-    expect(await screen.findByText(/Sobrou R\$\s?50,00 — tem mais no banco do que o app contabilizou\./)).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: AJUSTAR })).toBeInTheDocument()
+    expect(linha("Diferença")).toHaveTextContent(/\+R\$\s?50,00/)
+    expect(screen.queryByText(/Sobrou|Faltou/)).not.toBeInTheDocument() // sem cartão de aviso: a linha Diferença já diz
     expect(screen.getByRole("button", { name: LANCAR })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: SALVAR })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: AJUSTAR }))
@@ -940,23 +942,23 @@ describe("ReconciliacaoPage", () => {
     expect(linha("Declarado (você)")).toHaveTextContent(/R\$\s?500,00/)
     expect(linha("Diferença")).toHaveTextContent(/\+R\$\s?20,00/)
     expect(screen.getByText("Calculado (app)").closest("[data-bate]")).toHaveAttribute("data-bate", "false")
-    // diferença de agora ≠ 0 → pendente: aviso + as duas ações
-    expect(screen.getByText(/Sobrou R\$\s?20,00 — tem mais no banco do que o app contabilizou\./)).toBeInTheDocument()
+    // diferença de agora ≠ 0 → pendente: Diferença em vermelho (sem cartão de aviso) + as duas ações
+    expect(screen.queryByText(/Sobrou|Faltou/)).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: LANCAR })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: AJUSTAR })).toBeInTheDocument()
     // o calendário segue pintando pelo que foi GRAVADO (diferenca 0 → conferido)
     expect(botaoDia(DIA_MARCO)).toHaveAttribute("data-marco", "bateu")
   })
 
-  it("marco pendente (salvo, sem ajuste, ainda com diferença) mostra aviso 'Sobrou' + 'Lançar o que falta' + 'Ajustar (cria lançamento)' e esconde 'Salvar'", async () => {
+  it("marco pendente (salvo, sem ajuste, ainda com diferença) mostra a Diferença em vermelho (sem cartão de aviso) + 'Lançar o que falta' + 'Ajustar (cria lançamento)' e esconde 'Salvar'", async () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO, { saldoDeclarado: 150, saldoCalculado: 100, diferenca: 50 })])
     calculoAoVivoDoMarco(DIA_MARCO, 100)
     await renderPage()
     await abrirMarcoSalvo(DIA_MARCO)
 
     expect(screen.getByText(ROTULO_SALDO_SALVO)).toBeInTheDocument()
-    expect(screen.getByText(/Sobrou R\$\s?50,00 — tem mais no banco do que o app contabilizou\./)).toBeInTheDocument()
-    expect(screen.queryByText(/Faltou/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Sobrou|Faltou/)).not.toBeInTheDocument() // sem cartão de aviso
+    expect(screen.getByText("Calculado (app)").closest("[data-bate]")).toHaveAttribute("data-bate", "false")
     expect(linha("Diferença")).toHaveTextContent(/\+R\$\s?50,00/)
     expect(screen.getByRole("button", { name: LANCAR })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: AJUSTAR })).toBeInTheDocument()
@@ -967,15 +969,14 @@ describe("ReconciliacaoPage", () => {
     expectOrdem(screen.getByRole("button", { name: LANCAR }), screen.getByRole("button", { name: AJUSTAR }), screen.getByRole("button", { name: "Alterar valor" }), screen.getByRole("button", { name: "Remover" }))
   })
 
-  it("aviso por sinal num marco salvo: declarou menos que o app → 'Faltou R$ X — tem menos no banco…' (valor sem sinal; Diferença com sinal de menos)", async () => {
+  it("marco salvo com declarado MENOR que o app: sem cartão de aviso; a linha Diferença (vermelha) leva o sinal de menos", async () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO, { saldoDeclarado: 40, saldoCalculado: 100, diferenca: -60 })])
     calculoAoVivoDoMarco(DIA_MARCO, 100)
     await renderPage()
     await abrirMarcoSalvo(DIA_MARCO)
 
-    expect(screen.getByText(/Faltou R\$\s?60,00 — tem menos no banco do que o app contabilizou\./)).toBeInTheDocument()
-    expect(screen.queryByText(/Sobrou/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Faltou -/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Sobrou|Faltou/)).not.toBeInTheDocument()
+    expect(screen.getByText("Calculado (app)").closest("[data-bate]")).toHaveAttribute("data-bate", "false")
     expect(linha("Diferença")).toHaveTextContent(/-R\$\s?60,00/)
     expect(linha("Diferença")).not.toHaveTextContent(/\+R\$/)
     expect(screen.getByRole("button", { name: AJUSTAR })).toBeInTheDocument() // negativa também cai em Ajustar
@@ -1106,7 +1107,7 @@ describe("ReconciliacaoPage", () => {
     await abrirMarcoSalvo(DIA_MARCO)
     expect(linha("Calculado (app)")).toHaveTextContent(/R\$\s?100,00/) // o gravado
     expect(linha("Diferença")).toHaveTextContent(/\+R\$\s?50,00/)
-    expect(screen.getByText(/Sobrou R\$\s?50,00/)).toBeInTheDocument()
+    expect(screen.queryByText(/Sobrou|Faltou/)).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: AJUSTAR })).toBeInTheDocument()
     expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ severity: "error" }))
   })
@@ -1195,10 +1196,40 @@ describe("ReconciliacaoPage", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument() // a lista do dia anterior não vaza
   })
 
-  it("busca os movimentos da conta, do marco anterior ao dia até o dia seguinte ao selecionado, só caixa (100 por vez)", async () => {
+  it("'Mostrar mais': busca o PRÓXIMO lote no servidor com o mesmo filtro, acumula na lista e some quando não falta nada", async () => {
+    const lote1 = Array.from({ length: 20 }, (_, i) => tx(`a${i}`, `Lote1 ${i}`, 10, 1, 3))
+    const lote2 = Array.from({ length: 5 }, (_, i) => tx(`b${i}`, `Lote2 ${i}`, 10, 1, 2))
+    listTransactionsPage.mockImplementation((page: number) =>
+      Promise.resolve(page === 1 ? { items: lote1, total: 25 } : { items: lote2, total: 25 }))
+    await renderPage()
+    const botao = await screen.findByRole("button", { name: /Mostrar mais/ })
+    expect(botao).toHaveTextContent("faltam 5")
+    expect(screen.queryByText("Lote2 0")).not.toBeInTheDocument()
+    const filtro = listTransactionsPage.mock.calls.at(-1)![2]
+
+    fireEvent.click(botao)
+
+    expect(await screen.findByText("Lote2 4")).toBeInTheDocument()
+    expect(screen.getByText("Lote1 0")).toBeInTheDocument() // acumula, não troca
+    expect(listTransactionsPage).toHaveBeenLastCalledWith(2, 20, filtro)
+    expect(screen.queryByRole("button", { name: /Mostrar mais/ })).not.toBeInTheDocument()
+  })
+
+  it("'Mostrar mais' que falha: toast de erro e a lista que já estava fica", async () => {
+    const lote1 = Array.from({ length: 20 }, (_, i) => tx(`a${i}`, `Lote1 ${i}`, 10, 1, 3))
+    listTransactionsPage.mockImplementation((page: number) =>
+      page === 1 ? Promise.resolve({ items: lote1, total: 30 }) : Promise.reject(new Error("boom")))
+    await renderPage()
+    fireEvent.click(await screen.findByRole("button", { name: /Mostrar mais/ }))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Não deu pra carregar mais movimentos", severity: "error" })))
+    expect(screen.getByText("Lote1 19")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Mostrar mais/ })).toBeEnabled() // dá pra tentar de novo
+  })
+
+  it("busca os movimentos da conta, do marco anterior ao dia até o dia seguinte ao selecionado, só caixa (lote de 20 — o resto no 'Mostrar mais')", async () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO)])
     await renderPage()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, {
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, {
       contaId: "c1", from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1), apenasCaixa: true,
     }))
   })
@@ -1207,9 +1238,9 @@ describe("ReconciliacaoPage", () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO)])
     await renderPage()
     clicarDia(17)
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: isoDia(DIA_MARCO), to: isoDia(18) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: isoDia(DIA_MARCO), to: isoDia(18) })))
     clicarDia(30)
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: isoDia(DIA_MARCO), to: `${ANO}-07-01` })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: isoDia(DIA_MARCO), to: `${ANO}-07-01` })))
   })
 
   it("o 'desde' é o marco ANTERIOR ao dia selecionado, não o último marco global (marcos nos dias 5 e 15)", async () => {
@@ -1219,11 +1250,11 @@ describe("ReconciliacaoPage", () => {
     // dia 10: o marco anterior é o do dia 5 (o do dia 15 ainda não existia)
     clicarDia(DIA_LIVRE)
     expect(await tituloMov(`Movimentos desde ${diaMes(5)} até ${diaMes(DIA_LIVRE)}`)).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: isoDia(5), to: isoDia(DIA_LIVRE + 1) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: isoDia(5), to: isoDia(DIA_LIVRE + 1) })))
     // dia 20 (hoje): o anterior é o do dia 15
     clicarDia(HOJE)
     expect(await tituloMov(`Movimentos desde ${diaMes(DIA_MARCO)} até ${diaMes(HOJE)}`)).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1) })))
   })
 
   it("dia ANTERIOR a todos os marcos: busca sem limite inferior e o título é 'Movimentos desde o começo até dd/mm'", async () => {
@@ -1235,7 +1266,7 @@ describe("ReconciliacaoPage", () => {
     clicarDia(DIA_LIVRE) // 10 < marco do dia 15: não há marco anterior
     await screen.findByText(ROTULO_SALDO_BANCO)
     expect(await tituloMov(`Movimentos desde o começo até ${diaMes(DIA_LIVRE)}`)).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: undefined, to: isoDia(DIA_LIVRE + 1) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: undefined, to: isoDia(DIA_LIVRE + 1) })))
     expect(await screen.findByText("Mercado")).toBeInTheDocument()
   })
 
@@ -1244,7 +1275,7 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     expect(await tituloMov(`Movimentos desde o começo até ${diaMes(HOJE)}`)).toBeInTheDocument()
     expect(await screen.findByText("Compra")).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: undefined, to: isoDia(HOJE + 1) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: undefined, to: isoDia(HOJE + 1) })))
   })
 
   it("erro ao buscar os movimentos é silencioso: sem toast, a tabela cai no estado vazio e o painel segue conferível", async () => {
@@ -1267,7 +1298,7 @@ describe("ReconciliacaoPage", () => {
     // o marco do dia 15 é o dia selecionado; o ANTERIOR a ele é o do dia 5
     expect(await tituloMov(`Movimentos desde ${diaMes(5)} até ${diaMes(DIA_MARCO)}`)).toBeInTheDocument()
     expect(await screen.findByText("Mercado")).toBeInTheDocument()
-    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 100, expect.objectContaining({ from: isoDia(5), to: isoDia(DIA_MARCO + 1) })))
+    await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ from: isoDia(5), to: isoDia(DIA_MARCO + 1) })))
   })
 
   it("marco DERIVADO também mostra os movimentos do dia (só as ações de remover somem)", async () => {

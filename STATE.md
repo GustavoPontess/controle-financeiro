@@ -60,6 +60,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - Coluna "Data" → "Data/Hora" (Reconciliação + Transações; a transação já guarda date + time separados). Fonte de título = fonte normal no app todo (Fraunces só no site público).
 - **Back 1166 · front 828** verdes, lint+build limpos. Verificado ao vivo (Carteira da cônjuge: salvar → ajustar → remover; voltou ao saldo original).
 - Pergunta aberta ao Gustavo: separar também a data/hora do MARCO da conferência (`ReconciliacaoSaldo.DataHora`)?
+- **`PontesTabela` modo "Mostrar mais"** (`carregarMais`, alternativa à paginação): movimentos da reconciliação em lotes de 20 no servidor + botão "Mostrar mais · faltam N". Cartão vermelho "Sobrou/Faltou" removido (a linha Diferença já diz). **Front 835** verde.
 
 **Próxima ação concreta (quando voltar):**
 0. 🟠 Decisão do Gustavo: como o gráfico de saldo compara com o mês anterior (ROADMAP, Pendências do Dashboard).

@@ -30,7 +30,7 @@ import {
   PontesTagInput, PontesColorPicker, PontesRating, PontesKbd, PontesKbdGroup,
   // dados
   PontesBadge, PontesAvatar, PontesAvatarStack, PontesAlert,
-  PontesProgress, PontesStatCard, PontesCategoryDonut, PontesCard, PontesTable,
+  PontesProgress, PontesStatCard, PontesCategoryDonut, PontesCard, PontesTable, PontesTabela,
   // feedback
   PontesToast, PontesModal, PontesDialog, PontesSkeleton, PontesSkeletonList,
   PontesEmptyState, PontesLoadingDots, PontesDrawer,
@@ -551,6 +551,8 @@ function FormSection({ p }: { p: Palette }) {
 
 function DataSection({ p }: { p: Palette }) {
   type Row = { date: string; desc: string; cat: string; account: string; member: string; v: number }
+  // Demo do modo "Mostrar mais" do PontesTabela: quantas linhas já vieram (lotes de 10).
+  const [mostrados, setMostrados] = useState(10)
   // Lista grande pra mostrar o paginator real funcionando (47 linhas → 5 páginas a 10/pág).
   const paginationRows: Row[] = Array.from({ length: 47 }, (_, i) => {
     const cats = ["Mercado", "Renda", "Lazer", "Casa", "Alimentação", "Transporte"]
@@ -681,6 +683,28 @@ function DataSection({ p }: { p: Palette }) {
           ]}
           rows={paginationRows}
           pagination={{ pageSize: 10 }}
+        />
+      </Group>
+
+      <Group title="PontesTabela — modo &quot;Mostrar mais&quot;">
+        <p className={styles.helper}>
+          Alternativa à paginação: <code>carregarMais={"{{ restantes, carregando, onCarregarMais }}"}</code>.
+          A página busca o próximo lote no servidor e acumula em <code>itens</code>; o botão some quando
+          não falta nada. Use <strong>ou</strong> <code>paginacao</code> <strong>ou</strong> este.
+        </p>
+        <PontesTabela<Row>
+          titulo="Movimentos"
+          colunas={[
+            { key: "date", header: "Data/Hora", render: (r) => r.date },
+            { key: "desc", header: "Lançamento", render: (r) => r.desc },
+            { key: "v", header: "Valor", numerica: true, render: (r) => (
+              <span className={r.v > 0 ? styles.cellPos : styles.cellNeg}>R$ {Math.abs(r.v).toFixed(2).replace(".", ",")}</span>
+            ) },
+          ]}
+          itens={paginationRows.slice(0, mostrados)}
+          chave={(r) => r.desc}
+          vazio={{ icone: null, titulo: "Nenhum movimento" }}
+          carregarMais={{ restantes: paginationRows.length - mostrados, onCarregarMais: () => setMostrados((n) => Math.min(n + 10, paginationRows.length)) }}
         />
       </Group>
     </div>

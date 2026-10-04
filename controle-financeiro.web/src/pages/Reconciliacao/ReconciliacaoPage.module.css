@@ -26,7 +26,7 @@
 .painelConf { display: flex; flex-direction: column; }
 .painelCal { display: flex; flex-direction: column; }
 .painelInput { margin-top: 10px; }
-.statusSlot { min-height: 44px; margin-top: 10px; display: flex; align-items: flex-start; }
+.statusSlot { min-height: 18px; margin-top: 8px; display: flex; align-items: flex-start; }
 .painelFooter { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
 @media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
 

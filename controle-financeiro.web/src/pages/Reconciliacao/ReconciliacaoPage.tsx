@@ -6,7 +6,7 @@
  * transactionService). Spec: docs/features/reconciliacao.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext, useNavigate } from "react-router-dom"
 import {
   Check, TriangleAlert, ChevronLeft, ChevronRight, Flag, Trash2,
@@ -28,6 +28,8 @@ type Notification = { open: boolean; message: string; severity: "success" | "err
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
+/** Tamanho do lote da lista de movimentos ("Mostrar mais" busca o próximo lote no servidor). */
+const LOTE_MOVIMENTOS = 20
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -178,14 +180,39 @@ export default function ReconciliacaoPage() {
   // (não o último marco global — pra um dia passado, o relevante é o marco que veio antes dele).
   const marcoAnterior = diaSel ? marcos.find((m) => isoDoMarco(m) < diaSel) : undefined
   const fromMov = marcoAnterior ? isoDoMarco(marcoAnterior) : undefined
+  // Em lotes, NO SERVIDOR: o 1º lote ao abrir o dia e o resto sob demanda ("Mostrar mais") — nunca
+  // tudo de uma vez (antes buscava até 100 e cortava calado). `movPedido` invalida o "mostrar mais"
+  // de uma consulta antiga quando a conta/dia muda no meio.
+  const [movTotal, setMovTotal] = useState(0)
+  const [movPagina, setMovPagina] = useState(1)
+  const [carregandoMaisMov, setCarregandoMaisMov] = useState(false)
+  const movPedido = useRef(0)
   useEffect(() => {
-    if (!contaId || !diaSel) { setMovimentos([]); return }
-    let vivo = true
-    listTransactionsPage(1, 100, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true })
-      .then((r) => { if (vivo) setMovimentos(r.items) })
-      .catch(() => { if (vivo) setMovimentos([]) })
-    return () => { vivo = false }
+    const pedido = ++movPedido.current
+    setCarregandoMaisMov(false)
+    if (!contaId || !diaSel) { setMovimentos([]); setMovTotal(0); return }
+    listTransactionsPage(1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true })
+      .then((r) => { if (pedido === movPedido.current) { setMovimentos(r.items); setMovTotal(r.total); setMovPagina(1) } })
+      .catch(() => { if (pedido === movPedido.current) { setMovimentos([]); setMovTotal(0) } })
   }, [contaId, diaSel, fromMov, versao])
+
+  const carregarMaisMovimentos = async () => {
+    if (!contaId || !diaSel) return
+    const pedido = movPedido.current
+    setCarregandoMaisMov(true)
+    try {
+      const r = await listTransactionsPage(movPagina + 1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true })
+      if (pedido !== movPedido.current) return
+      // Sem duplicar se algo entrou/saiu entre um lote e outro (a página "anda").
+      setMovimentos((atuais) => [...atuais, ...r.items.filter((t) => !atuais.some((a) => a.id === t.id))])
+      setMovTotal(r.total)
+      setMovPagina((p) => p + 1)
+    } catch {
+      if (pedido === movPedido.current) notify({ open: true, message: "Não deu pra carregar mais movimentos", severity: "error" })
+    } finally {
+      if (pedido === movPedido.current) setCarregandoMaisMov(false)
+    }
+  }
 
   const mudarMes = (delta: number) => {
     setMesRef(new Date(ano, mes + delta, 1))
@@ -403,18 +430,11 @@ export default function ReconciliacaoPage() {
                   </div>
                 )}
 
-                {/* Slot de aviso com altura fixa → as caixas não dançam. Aviso de diferença só DEPOIS de salvo. */}
+                {/* Slot de nota com altura fixa → as caixas não dançam. Sem cartão de aviso de diferença:
+                    a própria linha "Diferença" já diz (vermelha = não bate, verde = bate). */}
                 <div className={styles.statusSlot}>
                   {m?.derivado && <div className={styles.notaDerivado}>Ponto de partida da conta.</div>}
                   {!m && calculado == null && <span className={styles.painelSub}>Calculando o saldo do dia…</span>}
-                  {pendente && (
-                    <div className={styles.resultAviso}>
-                      <TriangleAlert size={14} strokeWidth={2.5} />
-                      {dif > 0
-                        ? `Sobrou ${formatMoney(dif)} — tem mais no banco do que o app contabilizou.`
-                        : `Faltou ${formatMoney(Math.abs(dif))} — tem menos no banco do que o app contabilizou.`}
-                    </div>
-                  )}
                 </div>
 
                 {/* Ações ancoradas no rodapé. */}
@@ -527,6 +547,7 @@ export default function ReconciliacaoPage() {
           ]}
           itens={movimentos}
           chave={(t) => t.id}
+          carregarMais={{ restantes: Math.max(0, movTotal - movimentos.length), carregando: carregandoMaisMov, onCarregarMais: carregarMaisMovimentos }}
           vazio={{ icone: <Flag size={28} strokeWidth={1.8} />, titulo: "Nenhum movimento neste período", descricao: diaSel ? undefined : "Escolha um dia no calendário pra ver os movimentos até ele." }}
         />
       )}

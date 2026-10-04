@@ -8,7 +8,7 @@
  */
 
 import { useState, type ReactNode } from "react"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, ChevronDown } from "lucide-react"
 import { PontesToolbar } from "../layout/Toolbar"
 import { PontesSegmented } from "../nav/Segmented"
 import { PontesSkeletonList } from "../feedback/Skeleton"
@@ -76,12 +76,19 @@ export type PontesTabelaProps<T> = {
   vazio: { icone: ReactNode; titulo: string; descricao?: string }
   /** Rodapé de paginação (PontesTablePagination), dentro do cartão. */
   paginacao?: ReactNode
+  /**
+   * Modo "Mostrar mais" — a alternativa à paginação (use UM dos dois; com `paginacao`, este é
+   * ignorado). A página busca o próximo lote NO SERVIDOR e acumula em `itens`; aqui só sai o botão
+   * largo no rodapé do cartão, que some quando `restantes` chega a 0. Bom pra lista que se lê de
+   * cima pra baixo (movimentos, histórico) sem carregar tudo de uma vez.
+   */
+  carregarMais?: { restantes: number; carregando?: boolean; onCarregarMais: () => void }
 }
 
 export function PontesTabela<T>({
   id, titulo, acao, resumo, busca, filtros, filtrosAvancados, ferramentas, ferramentasFim, tags,
   colunas, colunasPadraoOcultas, itens, chave, acoes, renderAcoes, onLinhaClick,
-  carregando, erro, onTentarDeNovo, vazio, paginacao,
+  carregando, erro, onTentarDeNovo, vazio, paginacao, carregarMais,
 }: PontesTabelaProps<T>) {
   const temAcoes = !!(acoes || renderAcoes)
   const tagsTodas = [...(tags ?? []), ...tagsDeFiltrosAvancados(filtrosAvancados ?? [])]
@@ -167,7 +174,14 @@ export function PontesTabela<T>({
             </tbody>
           </table>
         </div>
-        {paginacao}
+        {paginacao ?? (carregarMais && carregarMais.restantes > 0 && (
+          <div className={styles.carregarMais}>
+            <PontesButton variant="ghost" size="sm" fullWidth loading={carregarMais.carregando}
+              iconEnd={<ChevronDown size={14} strokeWidth={2.5} />} onClick={carregarMais.onCarregarMais}>
+              Mostrar mais <span className={styles.carregarMaisResto}>· faltam {carregarMais.restantes}</span>
+            </PontesButton>
+          </div>
+        ))}
       </>
     )
   }

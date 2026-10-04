@@ -38,6 +38,9 @@
 .tag:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
 
 .rolagem { width: 100%; overflow-x: auto; }
+/* Modo "Mostrar mais": botão largo no rodapé do cartão (alternativa à paginação). */
+.carregarMais { padding: 6px 12px; border-top: 1px solid var(--pontes-border); }
+.carregarMaisResto { font-weight: 500; color: var(--pontes-text-muted); }
 .tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
 
 .th {
