@@ -36,23 +36,24 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 // UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
-const formatDate = (d?: string) =>
+const formatDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
 const today = () => dataLocalISO()
 
-// Dias até a data (negativo = passou). null se sem data.
-const diasAte = (iso?: string): number | null => {
+// Dias até a data (negativo = passou). null se sem data. Lê ano/mês/dia do TEXTO: new Date("2026-10-05")
+// é meia-noite UTC = dia 4 às 21h no Brasil, e o "em N dias" saía com 1 dia a menos.
+const diasAte = (iso?: string | null): number | null => {
   if (!iso) return null
-  const d = new Date(iso)
+  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number)
   const now = new Date()
   const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const b = new Date(ano, mes - 1, dia)
   return Math.round((b.getTime() - a.getTime()) / 86400000)
 }
 
 // Rótulo humano de "quando cobra": hoje / amanhã / em N dias / data.
-const cobraLabel = (iso?: string): string => {
+const cobraLabel = (iso?: string | null): string => {
   const n = diasAte(iso)
   if (n == null) return "—"
   if (n === 0) return "hoje"
@@ -432,8 +433,8 @@ export default function RecorrentesPage() {
   // Vem pronto do servidor (soma semanal/mensal/anual no mesmo período); mensal × 12 esquecia as outras.
   const projecaoAnual = stats.custoAnualDespesas
   const proximasCobrancas = baseProximas
-    .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
-    .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
+    .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.proximaCobranca && (diasAte(r.proximaCobranca) ?? -1) >= 0)
+    .sort((a, b) => new Date(a.proximaCobranca!).getTime() - new Date(b.proximaCobranca!).getTime())
     .slice(0, 6)
 
   // Esqueleto até a 1ª resposta do resumo também: o vazio "Nenhuma conta fixa" depende do total
@@ -513,14 +514,14 @@ export default function RecorrentesPage() {
           <div className={styles.proxTitle}>Próximas cobranças</div>
           <div className={styles.proxGrid}>
             {proximasCobrancas.map((r) => {
-              const dias = diasAte(r.dataProximaGeracao) ?? 0
+              const dias = diasAte(r.proximaCobranca) ?? 0
               const urgente = dias <= 7
               return (
                 <div key={r.id} className={styles.proxCard} data-urgent={urgente ? "true" : undefined}>
                   <div className={styles.proxCardTop}>
                     <span className={styles.proxCardNome}>{r.descricao}</span>
                     <span className={styles.proxCardWhen} data-urgent={urgente ? "true" : undefined}>
-                      {cobraLabel(r.dataProximaGeracao)}
+                      {cobraLabel(r.proximaCobranca)}
                     </span>
                   </div>
                   <span className={styles.proxCardValor}>{formatMoney(r.valor)}</span>
@@ -565,7 +566,7 @@ export default function RecorrentesPage() {
             {recorrentes.map((r) => {
               const isDespesa = r.tipo === 1
               const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
-              const dias = diasAte(r.dataProximaGeracao)
+              const dias = diasAte(r.proximaCobranca)
               const ativa = r.situacao === "ativa"
               const urgente = ativa && dias != null && dias >= 0 && dias <= 7
               const badge = r.situacao !== "ativa" ? SITUACAO_BADGE[r.situacao] : undefined
@@ -590,9 +591,9 @@ export default function RecorrentesPage() {
                       {r.categoriaNome && <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>}
                       {r.contaNome && <span className={styles.cardSub}>{r.contaNome}</span>}
                     </div>
-                    {ativa && r.dataProximaGeracao && (
+                    {ativa && r.proximaCobranca && (
                       <span className={styles.cardProx} data-urgent={urgente ? "true" : undefined}>
-                        próxima cobrança {cobraLabel(r.dataProximaGeracao)}
+                        próxima cobrança {cobraLabel(r.proximaCobranca)}
                       </span>
                     )}
                     {r.situacao === "cancelada" && r.motivoCancelamento && (
@@ -817,7 +818,7 @@ export default function RecorrentesPage() {
       <PontesDialog
         open={excluirAlvo !== null}
         title="Excluir conta fixa?"
-        description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As transações já geradas serão mantidas.` : undefined}
+        description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As cobranças já feitas continuam no histórico; as próximas são canceladas.` : undefined}
         tone="danger"
         confirmLabel="Excluir"
         onConfirm={() => void handleExcluir()}

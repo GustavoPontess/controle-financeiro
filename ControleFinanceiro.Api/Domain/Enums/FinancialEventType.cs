@@ -34,6 +34,9 @@ public enum FinancialEventType
     RecorrenteCriada = 40,
     RecorrenteCancelada = 41,
     RecorrenteExecutada = 42,
+    RecorrentePausada = 43,
+    RecorrenteRetomada = 44,
+    RecorrenteExcluida = 45,
 
     // Transação
     TransacaoCriada = 50,

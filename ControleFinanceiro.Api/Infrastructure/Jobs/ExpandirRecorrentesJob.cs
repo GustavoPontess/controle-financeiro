@@ -10,32 +10,40 @@ public class ExpandirRecorrentesJob
 {
     private readonly AppDbContext _context;
     private readonly FaturaService _faturaService;
+    private readonly RecorrenteService _recorrenteService;
     private readonly ILogger<ExpandirRecorrentesJob> _logger;
 
-    public ExpandirRecorrentesJob(AppDbContext context, FaturaService faturaService, ILogger<ExpandirRecorrentesJob> logger)
+    public ExpandirRecorrentesJob(AppDbContext context, FaturaService faturaService, RecorrenteService recorrenteService, ILogger<ExpandirRecorrentesJob> logger)
     {
         _context = context;
         _faturaService = faturaService;
+        _recorrenteService = recorrenteService;
         _logger = logger;
     }
 
     public async Task ExecuteAsync()
     {
         var hoje = DateTime.UtcNow.Date;
-        var dataProximaJanela = new DateTime(hoje.Year + 1, 1, 1); // previsão até o fim do ano corrente (inclusive Dez/31)
-
-        var recorrentes = await _context.Recorrentes
-            .Where(r => r.Ativo && (r.DataFim == null || r.DataFim.Value.Date >= hoje))
-            .ToListAsync();
+        var hojeD = DateOnly.FromDateTime(hoje);
+        var horizonte = AgendaRecorrente.HorizonteExpansao(hojeD); // previsão até o fim do ano corrente (inclusive Dez/31)
 
         // Conserto de dado antigo (ocorrência no cartão sem fatura) — roda todo dia, é barato quando não há nada.
         bool houveMudanca = await AnexarOcorrenciasSemFaturaAsync();
+
+        // Antes de expandir (e antes do ExecutarRecorrentesJob, 30 min depois): cancela previsão de conta fixa
+        // que não deve mais cobrar e realinha ao Dia as geradas no dia errado. Idempotente.
+        houveMudanca |= await _recorrenteService.RealinharAsync(hojeD) > 0;
+
+        var recorrentes = await _context.Recorrentes
+            .Where(r => r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null
+                        && (r.DataFim == null || r.DataFim.Value.Date >= hoje))
+            .ToListAsync();
 
         foreach (var r in recorrentes)
         {
             try
             {
-                houveMudanca |= await ExpandirAsync(r, dataProximaJanela);
+                houveMudanca |= await _recorrenteService.GerarOcorrenciasAsync(r, horizonte, StatusTransacao.Previsao) > 0;
             }
             catch (KeyNotFoundException ex)
             {
@@ -89,60 +97,10 @@ public class ExpandirRecorrentesJob
             {
                 // Cartão de outro usuário (dado gravado antes da checagem de dono): fica como está — fora
                 // do limite dos dois, a regra exige o mesmo dono no lançamento e no cartão — e não trava
-                // as demais. Mesmo tratamento da expansão logo abaixo.
+                // as demais. Mesmo tratamento da expansão no ExecuteAsync.
                 _logger.LogWarning(ex, "Ocorrência {TransacaoId} sem fatura não foi anexada: {Motivo}", t.Id, ex.Message);
             }
         }
         return anexou;
     }
-
-    // Gera as previsões desta recorrente até o fim da janela. Retorna se criou alguma.
-    private async Task<bool> ExpandirAsync(Recorrente r, DateTime dataProximaJanela)
-    {
-        var criou = false;
-        var proxima = (r.DataProximaGeracao ?? r.DataInicio).Date;
-
-        while (proxima < dataProximaJanela && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
-        {
-            Guid? faturaId = null;
-            if (r.CartaoCreditoId.HasValue)
-            {
-                var fatura = await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, DateOnly.FromDateTime(proxima), r.CriadoPor);
-                faturaId = fatura.Id;
-            }
-
-            _context.Transacoes.Add(new Transacao
-            {
-                Id = Guid.NewGuid(),
-                Descricao = r.Descricao,
-                Valor = r.Valor,
-                Tipo = r.Tipo,
-                CategoriaId = r.CategoriaId,
-                ContaId = r.ContaId,
-                CartaoCreditoId = r.CartaoCreditoId,
-                FaturaId = faturaId,
-                UsadoComoCredito = r.CartaoCreditoId.HasValue, // sem isso DetalheAsync exclui o lançamento da fatura
-                StatusTransacao = StatusTransacao.Previsao,
-                Ativo = true,
-                CriadoPor = r.CriadoPor,
-                Data = DateOnly.FromDateTime(proxima),
-                Hora = null, // ocorrência de recorrente é datada (sem hora de relógio)
-                RecorrenteOrigemId = r.Id,
-                CriadoEm = DateTime.UtcNow
-            });
-            proxima = ProximaData(proxima, r.Frequencia);
-            criou = true;
-        }
-
-        r.DataProximaGeracao = proxima;
-        return criou;
-    }
-
-    private static DateTime ProximaData(DateTime atual, FrequenciaRecorrencia freq) => freq switch
-    {
-        FrequenciaRecorrencia.Semanal => atual.AddDays(7),
-        FrequenciaRecorrencia.Mensal => atual.AddMonths(1),
-        FrequenciaRecorrencia.Anual => atual.AddYears(1),
-        _ => atual.AddMonths(1)
-    };
 }

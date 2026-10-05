@@ -20,6 +20,10 @@ public class ExecutarRecorrentesJob
 
         var transacoes = await _context.Transacoes
             .Where(t => t.StatusTransacao == StatusTransacao.Previsao && t.Data <= hojeData && t.Ativo && t.RecorrenteOrigemId != null)
+            // Só cobra conta fixa que ainda deve cobrar: pausada, cancelada, excluída ou apagada (sem a linha)
+            // NÃO efetiva. Antes efetivava toda previsão com RecorrenteOrigemId — pausar/excluir não parava a cobrança.
+            .Where(t => _context.Recorrentes.Any(r => r.Id == t.RecorrenteOrigemId
+                                                      && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null))
             .ToListAsync();
 
         foreach (var t in transacoes)

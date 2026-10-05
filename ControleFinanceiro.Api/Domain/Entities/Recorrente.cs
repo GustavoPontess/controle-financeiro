@@ -56,6 +56,10 @@ public class Recorrente
     [MaxLength(400)]
     public string? MotivoCancelamento { get; set; }
 
+    /// <summary>Quando foi EXCLUÍDA (exclusão lógica — some das listas, o histórico de cobranças fica).
+    /// Antes excluir apagava a linha e as previsões futuras ficavam soltas e continuavam sendo cobradas.</summary>
+    public DateTime? ExcluidoEm { get; set; }
+
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

@@ -528,17 +528,27 @@ public class RecorrenteServiceTests
     // ── DeletarAsync ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task DeletarAsync_RemoveRecorrente()
+    public async Task DeletarAsync_ExclusaoLogica_SomeDaLista_CancelaPrevisoes_MantemHistorico()
     {
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
+        var prevista = SeedTransacaoPrevisao(ctx, u, rec.Id, c);
+        var jaCobrada = SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(-20));
+        jaCobrada.StatusTransacao = StatusTransacao.Executado;
+        ctx.SaveChanges();
 
         var svc = CreateService(ctx);
         await svc.DeletarAsync(rec.Id, u);
 
-        Assert.Null(await ctx.Recorrentes.FindAsync(rec.Id));
+        var linha = await ctx.Recorrentes.AsNoTracking().SingleAsync(r => r.Id == rec.Id); // não apaga a linha
+        Assert.NotNull(linha.ExcluidoEm);
+        Assert.False(linha.Ativo);
+        Assert.False((await ctx.Transacoes.IgnoreQueryFilters().AsNoTracking().SingleAsync(t => t.Id == prevista.Id)).Ativo); // futura cancelada (o filtro global esconde cancelada)
+        Assert.True((await ctx.Transacoes.AsNoTracking().SingleAsync(t => t.Id == jaCobrada.Id)).Ativo);  // histórico fica
+        Assert.DoesNotContain((await svc.ListarAsync(u)).Items, r => r.Id == rec.Id);                      // some da lista
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.DeletarAsync(rec.Id, u));               // de novo = 404
     }
 
     [Fact]
@@ -626,14 +636,12 @@ public class RecorrenteServiceTests
         SeedRecorrente(ctx, uid, conta, ativo: false);              // inativo
         SeedRecorrente(ctx, outroUid, SeedConta(ctx, outroUid));   // outro usuário
 
-        // Próxima 30 dias: 2 com dataProximaGeracao em 10 dias, 1 em 60 dias, 1 nulo
-        var hoje = DateTime.UtcNow;
+        // Próximos 30 dias = cobrança PREVISTA de hoje a hoje+30: 2 em 10 dias, 1 em 60 dias, 1 sem previsão.
+        var hoje = DateTime.UtcNow.Date;
         var ativos = await ctx.Recorrentes.Where(r => r.CriadoPor == uid && r.Ativo).ToListAsync();
-        ativos[0].DataProximaGeracao = hoje.AddDays(10);
-        ativos[1].DataProximaGeracao = hoje.AddDays(10);
-        ativos[2].DataProximaGeracao = hoje.AddDays(60);  // fora dos 30
-        ativos[3].DataProximaGeracao = null;
-        await ctx.SaveChangesAsync();
+        SeedTransacaoPrevisao(ctx, uid, ativos[0].Id, conta, hoje.AddDays(10));
+        SeedTransacaoPrevisao(ctx, uid, ativos[1].Id, conta, hoje.AddDays(10));
+        SeedTransacaoPrevisao(ctx, uid, ativos[2].Id, conta, hoje.AddDays(60)); // fora dos 30
 
         var stats = await svc.ObterStatsAsync(uid);
 
@@ -957,12 +965,15 @@ public class RecorrenteServiceTests
         var conta = SeedConta(ctx, u1);
         var cartaoDeOutro = SeedCartao(ctx, u2);
         var hoje = DateTime.UtcNow.Date;
+        // Dia = hoje: a cobrança de hoje está no compasso (AgendaRecorrente) — com Dia 1 a próxima seria dia 1º.
         var valida = SeedRecorrente(ctx, u1, conta);
         valida.DataProximaGeracao = hoje;
+        valida.Dia = hoje.Day;
         var ruim = SeedRecorrente(ctx, u1, conta);
         ruim.ContaId = null;
         ruim.CartaoCreditoId = cartaoDeOutro;
         ruim.DataProximaGeracao = hoje;
+        ruim.Dia = hoje.Day;
         ctx.SaveChanges();
 
         await CreateService(ctx).GerarPendentesAsync(u1);

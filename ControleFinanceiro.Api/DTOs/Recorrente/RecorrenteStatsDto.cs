@@ -16,7 +16,7 @@ public class RecorrenteStatsDto
     /// <summary>Custo por ano das despesas ativas de todas as frequências (semanal × 52 + mensal × 12 + anual).</summary>
     public decimal CustoAnualDespesas { get; init; }
 
-    /// <summary>Quantidade de recorrentes ativos com `dataProximaGeracao` nos próximos 30 dias.</summary>
+    /// <summary>Quantidade de contas fixas ativas com cobrança prevista nos próximos 30 dias (de hoje a hoje+30).</summary>
     public int Proximas30Dias { get; init; }
 
     /// <summary>Quantidade total de recorrentes (ativos + cancelados).</summary>

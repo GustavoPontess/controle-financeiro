@@ -16,7 +16,10 @@ export interface Recorrente {
   dataInicio: string
   dataFim?: string
   ativo: boolean
+  /** Cursor interno da geração (até onde já há previsões) — NÃO é a próxima cobrança. */
   dataProximaGeracao?: string
+  /** Próxima cobrança de verdade ("YYYY-MM-DD"): a previsão pendente mais próxima. Null se pausada/cancelada. */
+  proximaCobranca?: string | null
   canceladoEm?: string
   motivoCancelamento?: string
   /**

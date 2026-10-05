@@ -31,7 +31,8 @@ public class MigrationSepararDataHoraTransacaoTests
         var reconciliacao = ids.IndexOf("20260930175534_AddReconciliacaoSaldo");
         Assert.True(separar >= 0, "A migration SepararDataHoraTransacao não foi descoberta pelo EF.");
         Assert.True(reconciliacao >= 0 && separar > reconciliacao);
-        Assert.Equal(ids.Count - 1, separar); // é a mais recente: nada foi gerado por cima sem querer
+        // Depois dela só vem a AddExcluidoEmRecorrente (2026-10-05) — nada gerado por cima sem querer.
+        Assert.Equal("20261005071851_AddExcluidoEmRecorrente", ids[separar + 1]);
     }
 
     [Fact]

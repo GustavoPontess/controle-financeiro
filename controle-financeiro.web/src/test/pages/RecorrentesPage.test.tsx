@@ -64,6 +64,7 @@ function makeRecorrente(overrides: Partial<Recorrente> = {}): Recorrente {
     dataInicio: "2026-01-01T00:00:00Z",
     ativo: true,
     dataProximaGeracao: "2026-06-10T00:00:00Z",
+    proximaCobranca: "2026-06-10",
     situacao: "ativa",
     ...overrides,
   }
@@ -128,9 +129,29 @@ describe("RecorrentesPage", () => {
     expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
   })
 
+  // A "próxima cobrança" vem do servidor (a previsão pendente de verdade, DateOnly "YYYY-MM-DD") — antes a
+  // tela mostrava o cursor interno da geração. E "amanhã" é amanhã: new Date("YYYY-MM-DD") é meia-noite UTC
+  // (= hoje às 21h no Brasil) e o rótulo saía com 1 dia a menos.
+  it("próxima cobrança: lê a data do servidor sem deslocar o dia (amanhã = 'amanhã')", async () => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    const amanha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ proximaCobranca: amanha })]))
+    renderPage()
+    expect(await screen.findByText(/próxima cobrança amanhã/)).toBeInTheDocument()
+  })
+
+  it("pausada (sem próxima cobrança do servidor) não anuncia cobrança", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", proximaCobranca: null })]))
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(screen.queryByText(/próxima cobrança/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Próximas cobranças")).not.toBeInTheDocument()
+  })
+
   it("'Próximas cobranças' não muda com a busca (usa a última lista sem filtro)", async () => {
-    const futura = new Date(Date.now() + 3 * 86400000).toISOString()
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ dataProximaGeracao: futura })]))
+    const futura = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) // DateOnly da API
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ proximaCobranca: futura })]))
     renderPage()
     expect(await screen.findByText("Próximas cobranças")).toBeInTheDocument()
 
@@ -143,9 +164,9 @@ describe("RecorrentesPage", () => {
   // Com busca ligada o recarregar() só traz a lista filtrada: a faixa (última lista SEM filtro) não
   // pode continuar anunciando como próxima cobrança o que acabou de ser pausado/cancelado.
   describe("ação com busca ligada atualiza 'Próximas cobranças'", () => {
-    const futura = () => new Date(Date.now() + 3 * 86400000).toISOString()
-    const netflix = () => makeRecorrente({ dataProximaGeracao: futura() })
-    const spotify = () => makeRecorrente({ id: "rec-s", descricao: "Spotify", dataProximaGeracao: futura() })
+    const futura = () => new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) // DateOnly da API
+    const netflix = () => makeRecorrente({ proximaCobranca: futura() })
+    const spotify = () => makeRecorrente({ id: "rec-s", descricao: "Spotify", proximaCobranca: futura() })
 
     // Carrega sem filtro (Netflix + Spotify na faixa e na lista) e busca "net" (lista só com Netflix).
     async function buscarNet() {
@@ -186,7 +207,7 @@ describe("RecorrentesPage", () => {
       toggleRecorrente.mockResolvedValue(undefined)
       await buscarNet()
 
-      listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", dataProximaGeracao: futura() })]))
+      listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", proximaCobranca: futura() })]))
       fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
 
       expect(await screen.findByText("Pausada")).toBeInTheDocument()

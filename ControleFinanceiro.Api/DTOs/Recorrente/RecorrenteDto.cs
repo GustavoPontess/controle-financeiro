@@ -19,7 +19,12 @@ public class RecorrenteDto
     public DateTime DataInicio { get; set; }
     public DateTime? DataFim { get; set; }
     public bool Ativo { get; set; }
+    /// <summary>Cursor INTERNO da geração (até onde já foram geradas previsões). Não é a próxima cobrança —
+    /// pra tela use <see cref="ProximaCobranca"/>.</summary>
     public DateTime? DataProximaGeracao { get; set; }
+    /// <summary>Data da próxima cobrança de verdade: a previsão pendente mais próxima (hoje ou depois).
+    /// Null quando não há (pausada, cancelada, encerrada).</summary>
+    public DateOnly? ProximaCobranca { get; set; }
     public DateTime? CanceladoEm { get; set; }
     public string? MotivoCancelamento { get; set; }
 

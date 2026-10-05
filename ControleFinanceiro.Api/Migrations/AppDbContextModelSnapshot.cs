@@ -1454,6 +1454,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("Dia")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("Frequencia")
                         .HasColumnType("integer");
 

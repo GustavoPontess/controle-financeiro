@@ -332,32 +332,42 @@ Transferências entre contas do user.
 
 ---
 
-### RECORRENTES (Assinaturas)
-Despesas/receitas que se repetem. Janela móvel de 3 meses (ETAPA 5).
+### RECORRENTES (tabela `Assinaturas`, entidade `Recorrente` — "Contas Fixas" na tela)
+Despesas/receitas que se repetem. Cada cobrança é uma `Transacao` com `RecorrenteOrigemId` (sem FK — é só o id).
 
 | Coluna | Tipo | Constraints | Descrição |
 |--------|------|-------------|-----------|
 | `Id` | UUID | PK | |
-| `UsuarioId` | UUID | FK(Usuarios) NOT NULL | |
-| `ContaId` | UUID | FK(Contas) | NULL se CartãoCredito; XOR CartaoCreditoId |
-| `CartaoCreditoId` | UUID | FK(CartoesCreditito) | NULL se Conta; XOR ContaId (ETAPA 5) |
+| `CriadoPor` | UUID | NOT NULL | dono (isolamento por usuário) |
+| `ContaId` | UUID | FK(Contas) | NULL se cartão; XOR CartaoCreditoId |
+| `CartaoCreditoId` | UUID | FK(CartoesCredito) | NULL se conta; XOR ContaId |
 | `CategoriaId` | UUID | FK(Categorias) | |
-| `Nome` | TEXT | NOT NULL | Ex: "Netflix" |
-| `Valor` | DECIMAL | NOT NULL | |
-| `Tipo` | INT | NOT NULL | 0=Receita, 1=Despesa |
-| `Frequencia` | INT | NOT NULL | 0=Diária, 1=Semanal, 2=Mensal, 3=Anual |
-| `DataProxima` | DateTime | NOT NULL | Próxima execução |
-| `CanceladoEm` | DateTime | NULL | Soft delete timestamp (ETAPA 5) |
-| `MotivoCancelamento` | TEXT | NULL | Por quê foi cancelado (ETAPA 5) |
-| `CriadoEm` | DateTime | NOT NULL | Timestamp de criação (ETAPA 4) |
+| `Descricao` | TEXT(400) | NOT NULL | Ex: "Netflix" |
+| `Valor` | DECIMAL | NOT NULL, > 0 | |
+| `Tipo` | INT | NOT NULL | 1=Despesa, 2=Receita |
+| `Frequencia` | INT | NOT NULL | 1=Semanal, 2=Mensal, 3=Anual |
+| `Dia` | INT | 1–31 | dia da cobrança (mensal/anual; mês curto → último dia) |
+| `DataInicio` / `DataFim` | timestamp | DataFim NULL | vigência |
+| `Ativo` | BOOL | | false = pausada (ou cancelada/excluída) |
+| `DataProximaGeracao` | timestamp | NULL | cursor INTERNO: até onde já há ocorrências geradas (não é a "próxima cobrança") |
+| `CanceladoEm` / `MotivoCancelamento` | timestamp / TEXT | NULL | cancelamento (definitivo) |
+| `ExcluidoEm` | timestamp | NULL | exclusão LÓGICA (2026-10-05): some das listas; histórico fica |
+| `CriadoEm` | timestamp | NOT NULL | |
 
-**Validação (ETAPA 5):** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum)
+**Validação:** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum); conta/cartão/categoria do próprio usuário (`DonoRecursos`).
 
-**Janela Móvel (ETAPA 5):**
-- Ao criar: materializa 3 transações futuras com Status=Previsao
-- `ExpandirRecorrentesJob` (diário 03:00): avança janela se data próxima < 1 mês
-- `ExecutarRecorrentesJob` (diário 03:30): Previsao → Executado pela data
-- Ao cancelar: marca CanceladoEm, cancela Transacoes Previsao futuras, preserva Executadas
+**Datas de cobrança — regra única `Services/AgendaRecorrente.cs` (2026-10-05):** mensal = todo mês no `Dia`; anual = todo ano no `Dia` do mês de início; semanal = a cada 7 dias do início. Dia 31 em mês curto cai no último dia e o mês seguinte volta pro 31. Todo lugar que gera ocorrência usa `RecorrenteService.GerarOcorrenciasAsync` (pula dia que já tem ocorrência viva → nunca cobra duas vezes o mesmo dia).
+
+**Ciclo de vida:**
+- Criar: gera 3 meses de `Previsao` a partir do início, no `Dia`.
+- `ExpandirRecorrentesJob` (diário 03:00 UTC): primeiro `RealinharAsync` (cancela previsão de conta fixa pausada/cancelada/excluída/inexistente e realinha ao `Dia` as geradas no dia errado); depois gera previsões até 31/12 do ano corrente.
+- `ExecutarRecorrentesJob` (diário 03:30 UTC): `Previsao` → `Executado` pela data, **só** de conta fixa ativa (não pausada/cancelada/excluída).
+- GET da lista (`GerarPendentesAsync`): lança como `Executado` o que venceu e ainda não foi gerado (rede de segurança se o job não rodou).
+- Pausar: cancela as previsões pendentes. Retomar: gera de novo a partir de hoje (meses parados não são cobrados).
+- Alterar: cancela as previsões de hoje em diante e gera de novo com os dados novos.
+- Cancelar: `CanceladoEm` + cancela as previsões; Excluir: `ExcluidoEm` + cancela as previsões. Executadas ficam (histórico).
+- Previsão no cartão entra no total da fatura → todo cancelamento de previsão chama `ReconciliarFaturasAposCancelamentoAsync`.
+- "Próxima cobrança" (DTO `ProximaCobranca`) = a previsão pendente mais próxima, não o cursor.
 
 **Delete Behavior:** CartaoCreditoId referência SET NULL (deletar cartão mantém recorrente órfã)
 
