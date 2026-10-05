@@ -46,4 +46,11 @@
 }
 .pageBtn:hover { background: var(--pontes-bg); }
 .pageBtn[data-active="true"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
-.ellipse { color: var(--pontes-text-muted); padding: 0 2px; }
+.ellipse { color: var(--pontes-text-muted); padding: 0 2px; }
+
+/* Celular: alvo de toque de 36px (eram 28-30). */
+@media (max-width: 767px) {
+  .navBtn { width: 36px; height: 36px; }
+  .pageBtn { min-width: 36px; height: 36px; }
+  .sizeSelect :global(button) { min-height: 36px; height: 36px; }
+}

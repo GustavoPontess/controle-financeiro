@@ -134,4 +134,10 @@
   cursor: pointer; font-family: var(--pontes-font); text-underline-offset: 3px;
   transition: color .15s ease, opacity .15s ease;
 }
-.link:hover { color: color-mix(in srgb, var(--pontes-primary) 85%, #000); text-decoration-thickness: 2px; }
+.link:hover { color: color-mix(in srgb, var(--pontes-primary) 85%, #000); text-decoration-thickness: 2px; }
+
+/* Celular: alvo de toque de pelo menos 36px (sm/xs tinham 28 e 24; o dedo erra). Desktop segue denso. */
+@media (max-width: 767px) {
+  .btn[data-size="xs"], .btn[data-size="sm"] { min-height: 36px; }
+  .iconBtn[data-size="24"], .iconBtn[data-size="32"] { width: 36px; height: 36px; }
+}

@@ -143,3 +143,8 @@
 /* "Remover" na lista de ações do marco: vermelho (ícone e texto). */
 .resolverItem[data-perigo="true"], .resolverItem[data-perigo="true"] svg { color: var(--pontes-danger); }
 /* Respiro entre o destaque e a lista de ações do marco. */
+
+/* Celular: navegação do calendário com alvo de toque de 36px. */
+@media (max-width: 767px) {
+  .calNavBtn { min-width: 36px; height: 36px; }
+}

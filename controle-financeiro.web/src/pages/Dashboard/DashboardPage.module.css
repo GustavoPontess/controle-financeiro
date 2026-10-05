@@ -138,3 +138,8 @@
   .heroStats { flex-wrap: wrap; gap: 12px 24px; }
   .heroStatDivider { display: none; }
 }
+
+/* Celular: setas de mês com alvo de toque de 36px. */
+@media (max-width: 767px) {
+  .monthBtn { width: 36px; height: 36px; }
+}
