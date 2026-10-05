@@ -12,7 +12,7 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 // ── Service mocks ────────────────────────────────────────────────────────────
-const statsPadrao = { ativas: 1, custoMensalDespesas: 45.9, proximas30Dias: 1, qtdTotal: 1 }
+const statsPadrao = { ativas: 1, custoMensalDespesas: 45.9, custoAnualDespesas: 550.8, proximas30Dias: 1, qtdTotal: 1 }
 const listRecorrentesPage = vi.fn()
 const getRecorrenteStats = vi.fn()
 const createRecorrente = vi.fn()
@@ -107,6 +107,16 @@ describe("RecorrentesPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Contas Fixas" })).toBeInTheDocument()
     expect(screen.getByText("Aluguel, escola, plano de saúde e outros pagamentos recorrentes")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Nova conta fixa" })).toBeInTheDocument()
+  })
+
+  // Bug 2026-09-28: o "por ano" era mensal × 12 no front e esquecia semanal/anual. Agora vem pronto do servidor.
+  it("hero: custo mensal e 'por ano' vêm do servidor (todas as frequências), não mensal × 12", async () => {
+    // conta anual de R$ 100: mês = 8,33; mensal × 12 daria 99,96 — o "por ano" tem que ser o 100 do servidor
+    getRecorrenteStats.mockResolvedValue({ ...statsPadrao, custoMensalDespesas: 8.33, custoAnualDespesas: 100 })
+    renderPage()
+    expect(await screen.findByText(/R\$\s?8,33/)).toBeInTheDocument()
+    expect(screen.getByText(/R\$\s?100,00 por ano/)).toBeInTheDocument()
+    expect(screen.queryByText(/99,96/)).not.toBeInTheDocument()
   })
 
   it("carrega a lista filtrada NO SERVIDOR com a aba padrão 'Ativas' — numa chamada só", async () => {
@@ -342,6 +352,30 @@ describe("RecorrentesPage", () => {
     expect(createRecorrente).not.toHaveBeenCalled()
   })
 
+  // Bug de dinheiro (2026-09-28): o campo era texto livre e "1.500" (mil e quinhentos) virava R$ 1,50 em
+  // silêncio. Agora é a máscara do app: o campo MOSTRA o que vai ser salvo.
+  it("criar: '1.500' não vira mais R$ 1,50 escondido — o campo mostra o valor que vai ser salvo", async () => {
+    createRecorrente.mockResolvedValue(makeRecorrente())
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    await screen.findByText("Criar conta fixa")
+    const campo = screen.getByPlaceholderText("0,00")
+
+    fireEvent.change(campo, { target: { value: "1.500" } })
+    expect(campo).toHaveValue("15,00") // ponto não é mais lido como decimal: o que aparece é o que vale
+
+    fireEvent.change(campo, { target: { value: "150000" } })
+    expect(campo).toHaveValue("1.500,00")
+    fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), { target: { value: "Aluguel" } })
+    fireEvent.click(screen.getByText("Selecione uma conta"))
+    const opcoes = await screen.findAllByText("Nubank") // a lista atrás também mostra "Nubank": a opção é a última
+    fireEvent.click(opcoes[opcoes.length - 1])
+    fireEvent.click(screen.getByText("Criar conta fixa"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(1))
+    expect(createRecorrente.mock.calls[0][0]).toEqual(expect.objectContaining({ valor: 1500 }))
+  })
+
   it("sem conta selecionada, bloqueia e pede a conta", async () => {
     createRecorrente.mockResolvedValue(makeRecorrente())
     renderPage()
@@ -419,17 +453,34 @@ describe("RecorrentesPage", () => {
     })
   })
 
-  it("valida valor negativo na edição de próxima", async () => {
+  it("edição de próxima: negativo nem dá pra digitar (máscara só aceita dígitos) e zero é bloqueado", async () => {
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     await screen.findByText("Novo valor (opcional)")
+    const campo = screen.getByPlaceholderText("R$ 45,90")
 
-    fireEvent.change(screen.getByPlaceholderText("R$ 45,90"), { target: { value: "-5" } })
+    fireEvent.change(campo, { target: { value: "-5" } })
+    expect(campo).toHaveValue("0,05") // o "-" some
+
+    fireEvent.change(campo, { target: { value: "" } }) // apaga…
+    fireEvent.change(campo, { target: { value: "0" } }) // …e digita zero de propósito
+    expect(campo).toHaveValue("0,00")
     fireEvent.click(screen.getByText("Salvar"))
-
     expect(await screen.findByText("Valor deve ser positivo.")).toBeInTheDocument()
     expect(editarProximaOcorrencia).not.toHaveBeenCalled()
+  })
+
+  it("edição de próxima: o valor salvo é o que o campo mostra (150000 → 1.500,00 → 1500)", async () => {
+    editarProximaOcorrencia.mockResolvedValue(undefined)
+    renderPage()
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
+    await screen.findByText("Novo valor (opcional)")
+    const campo = screen.getByPlaceholderText("R$ 45,90")
+    fireEvent.change(campo, { target: { value: "150000" } })
+    expect(campo).toHaveValue("1.500,00")
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(editarProximaOcorrencia).toHaveBeenCalledWith("rec-001", { valor: 1500 }))
   })
 
   // ── Pausar (via ⋮) ──

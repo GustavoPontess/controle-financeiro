@@ -615,13 +615,13 @@ public class RecorrenteServiceTests
         var conta = SeedConta(ctx, uid);
 
         // Usuário: 2 ativos mensais despesa (1200 + 800), 1 ativo mensal receita,
-        // 1 ativo SEMANAL (não conta no custo mensal), 1 cancelado.
+        // 1 ativo SEMANAL (conta normalizado: ×52/12), 1 cancelado.
         SeedRecorrente(ctx, uid, conta);                            // ativo despesa mensal 1200
         var r2 = SeedRecorrente(ctx, uid, conta);                   // ativo despesa mensal 800
         r2.Valor = 800m; ctx.SaveChanges();
         var rRec = SeedRecorrente(ctx, uid, conta);                 // ativo RECEITA mensal — não soma em custoMensalDespesas
         rRec.Tipo = TipoTransacao.Receita; ctx.SaveChanges();
-        var rSem = SeedRecorrente(ctx, uid, conta);                 // ativo despesa SEMANAL — não soma
+        var rSem = SeedRecorrente(ctx, uid, conta);                 // ativo despesa SEMANAL 1200 — soma ×52 no ano
         rSem.Frequencia = FrequenciaRecorrencia.Semanal; ctx.SaveChanges();
         SeedRecorrente(ctx, uid, conta, ativo: false);              // inativo
         SeedRecorrente(ctx, outroUid, SeedConta(ctx, outroUid));   // outro usuário
@@ -638,9 +638,49 @@ public class RecorrenteServiceTests
         var stats = await svc.ObterStatsAsync(uid);
 
         Assert.Equal(4, stats.Ativas);                  // 4 ativos do usuário
-        Assert.Equal(2000m, stats.CustoMensalDespesas); // 1200 + 800 (mensais despesa)
+        // ano = semanal 1200×52 (62.400) + mensais (1200+800)×12 (24.000) = 86.400 → mês = 7.200
+        Assert.Equal(86400m, stats.CustoAnualDespesas);
+        Assert.Equal(7200m, stats.CustoMensalDespesas);
         Assert.Equal(2, stats.Proximas30Dias);          // só os 2 dentro do cutoff
         Assert.Equal(5, stats.QtdTotal);                // 4 ativos + 1 inativo
+    }
+
+    // Bug 2026-09-28: "custo mensal" só somava as MENSAIS — semanal e anual sumiam do total e do "por ano".
+    [Fact]
+    public async Task ObterStatsAsync_CustoSomaTodasAsFrequencias_NoMesmoPeriodo()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var uid = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, uid);
+        var mensal = SeedRecorrente(ctx, uid, conta); mensal.Valor = 100m;
+        var semanal = SeedRecorrente(ctx, uid, conta); semanal.Valor = 30m; semanal.Frequencia = FrequenciaRecorrencia.Semanal;
+        var anual = SeedRecorrente(ctx, uid, conta); anual.Valor = 600m; anual.Frequencia = FrequenciaRecorrencia.Anual;
+        var receitaAnual = SeedRecorrente(ctx, uid, conta); receitaAnual.Valor = 9999m;
+        receitaAnual.Frequencia = FrequenciaRecorrencia.Anual; receitaAnual.Tipo = TipoTransacao.Receita; // receita não é custo
+        ctx.SaveChanges();
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        // ano = 100×12 + 30×52 + 600 = 1.200 + 1.560 + 600 = 3.360 → mês = 280
+        Assert.Equal(3360m, stats.CustoAnualDespesas);
+        Assert.Equal(280m, stats.CustoMensalDespesas);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_CustoMensal_ArredondaEmCentavos()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var uid = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, uid);
+        var anual = SeedRecorrente(ctx, uid, conta); anual.Valor = 100m; anual.Frequencia = FrequenciaRecorrencia.Anual;
+        ctx.SaveChanges();
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(100m, stats.CustoAnualDespesas);
+        Assert.Equal(8.33m, stats.CustoMensalDespesas); // 100/12 = 8,333… → 8,33
     }
 
     [Fact]

@@ -79,9 +79,7 @@ public class FamiliaService
             throw new KeyNotFoundException("Família não encontrada.");
 
         var membros = familia.Membros
-            .Select(m => new MembroFamiliaDto(
-                m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
-                m.RendaMensal, m.PapelPermissao))
+            .Select(m => ParaDto(m, usuarioId))
             .ToList();
 
         var convites = familia.Convites
@@ -142,9 +140,7 @@ public class FamiliaService
         membro.Papel = dto.Papel.Trim();
         await _context.SaveChangesAsync();
 
-        return new MembroFamiliaDto(membro.Id, membro.UsuarioId, membro.Usuario!.Nome,
-            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal,
-            membro.PapelPermissao);
+        return ParaDto(membro, usuarioId);
     }
 
     public async Task RemoverMembroAsync(Guid familiaId, Guid membroId, Guid usuarioId)
@@ -188,10 +184,16 @@ public class FamiliaService
         membro.PapelPermissao = dto.PapelPermissao;
         await _context.SaveChangesAsync();
 
-        return new MembroFamiliaDto(membro.Id, membro.UsuarioId, membro.Usuario!.Nome,
-            membro.Usuario.Email, membro.Papel, membro.EntrouEm, membro.RendaMensal,
-            membro.PapelPermissao);
+        return ParaDto(membro, usuarioId);
     }
+
+    /// <summary>Monta o DTO do membro pra quem está vendo (<paramref name="quemVe"/>). A renda é dado pessoal:
+    /// o VALOR só vai pro próprio membro — nem o admin vê a dos outros. Pros outros vai só se foi informada.</summary>
+    private static MembroFamiliaDto ParaDto(MembroFamilia m, Guid quemVe) =>
+        new(m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
+            m.UsuarioId == quemVe ? m.RendaMensal : null,
+            m.RendaMensal.HasValue,
+            m.PapelPermissao);
 
     private async Task<Familia> BuscarFamiliaAsync(Guid familiaId)
     {

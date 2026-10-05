@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { formatMoney } from "@/utils/money"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
 import { ChevronLeft } from "lucide-react"
@@ -45,6 +45,10 @@ export default function ParcelamentoDetalhePage() {
 
   const [modalPagar, setModalPagar] = useState(false)
   const [parcelaIdSelecionada, setParcelaIdSelecionada] = useState<string>("")
+  // Idempotency-Key por ABERTURA da janela (não por clique): repetir depois de queda de rede não paga
+  // a parcela duas vezes nem cancela de novo.
+  const chavePagar = useRef("")
+  const chaveCancelar = useRef("")
   const [contaSelecionada, setContaSelecionada] = useState<string>("")
   const [loadingPagar, setLoadingPagar] = useState(false)
   const [erroPagar, setErroPagar] = useState<string | undefined>(undefined)
@@ -83,7 +87,7 @@ export default function ParcelamentoDetalhePage() {
       await ParcelamentoService.pagarParcelaAntecipado(parcelaIdSelecionada, {
         contaPagamentoId: contaSelecionada,
         dataPagamento: new Date().toISOString(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: chavePagar.current,
       })
       notify({ open: true, message: "Parcela paga", severity: "success" })
       setModalPagar(false)
@@ -107,7 +111,7 @@ export default function ParcelamentoDetalhePage() {
     try {
       await ParcelamentoService.cancelar(id, {
         motivo: motivo.trim(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: chaveCancelar.current,
       })
       notify({ open: true, message: "Parcelamento cancelado", severity: "success" })
       navigate("/credit-cards/parcelamentos")
@@ -216,7 +220,7 @@ export default function ParcelamentoDetalhePage() {
                   <td>
                     {parcela.status === 0 && (
                       <PontesButton size="sm" variant="ghost"
-                        onClick={() => { setParcelaIdSelecionada(parcela.id); setModalPagar(true); setErroPagar(undefined) }}>
+                        onClick={() => { setParcelaIdSelecionada(parcela.id); chavePagar.current = crypto.randomUUID(); setModalPagar(true); setErroPagar(undefined) }}>
                         Pagar
                       </PontesButton>
                     )}
@@ -233,7 +237,7 @@ export default function ParcelamentoDetalhePage() {
 
       {parcelamento.ativo && (
         <div className={styles.bottomActions}>
-          <PontesButton variant="danger-outline" onClick={() => { setMotivo(""); setMotivoErr(undefined); setModalCancelar(true) }}>
+          <PontesButton variant="danger-outline" onClick={() => { setMotivo(""); setMotivoErr(undefined); chaveCancelar.current = crypto.randomUUID(); setModalCancelar(true) }}>
             Cancelar Parcelamento
           </PontesButton>
         </div>

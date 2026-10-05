@@ -67,11 +67,12 @@ vi.mock("../../services/familiaService", () => ({
 // ── Fixtures ──
 const membroAdmin = {
   id: "m1", usuarioId: "u1", nomeUsuario: "Dev Test", emailUsuario: "dev@test.com",
-  papel: "Administrador", entrouEm: "2026-01-01T00:00:00", rendaMensal: null,
+  papel: "Administrador", entrouEm: "2026-01-01T00:00:00", rendaMensal: 4000, rendaInformada: true,
 }
 const membroOutro = {
   id: "m2", usuarioId: "u2", nomeUsuario: "Maria", emailUsuario: "maria@test.com",
-  papel: "Esposa", entrouEm: "2026-01-15T00:00:00", rendaMensal: 3000,
+  // a API não manda a renda dos OUTROS (dado pessoal) — só que ela foi informada
+  papel: "Esposa", entrouEm: "2026-01-15T00:00:00", rendaMensal: null, rendaInformada: true,
 }
 const detalhe: FamiliaDetalheType = {
   id: "f1", nome: "Família Silva", criadoPorUsuarioId: "u1",
@@ -169,10 +170,12 @@ describe("FamiliaDetalhe — componente (#85)", () => {
     expect(screen.getByText("Esposa")).toBeInTheDocument()
   })
 
-  it("exibe e-mail e renda do membro", async () => {
+  it("renda: o valor aparece só na PRÓPRIA linha; na dos outros, só 'renda informada'", async () => {
     await renderDetalhe()
     expect(screen.getByText(/maria@test\.com/)).toBeInTheDocument()
-    expect(screen.getByText(/renda R\$\s?3\.000,00/)).toBeInTheDocument()
+    expect(screen.getByText(/dev@test\.com.*renda R\$\s?4\.000,00/)).toBeInTheDocument() // a minha
+    expect(screen.getByText(/maria@test\.com.*renda informada/)).toBeInTheDocument()     // a dela: sem valor
+    expect(screen.queryByText(/maria@test\.com.*R\$/)).not.toBeInTheDocument()
   })
 
   it("erro ao carregar chama onClose", async () => {

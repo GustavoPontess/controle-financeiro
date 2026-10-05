@@ -23,7 +23,10 @@ export const listRecorrentesPage = async (
 
 export type RecorrenteStats = {
   ativas: number
+  /** Média por mês das despesas de todas as frequências (= anual ÷ 12), calculada no servidor. */
   custoMensalDespesas: number
+  /** Por ano: semanal × 52 + mensal × 12 + anual (servidor). */
+  custoAnualDespesas: number
   proximas30Dias: number
   qtdTotal: number
 }

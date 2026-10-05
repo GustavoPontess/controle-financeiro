@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
-import { formatMoney } from "@/utils/money"
+import { formatMoney, maskMoney, parseMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle, SearchX,
@@ -61,20 +61,6 @@ const cobraLabel = (iso?: string): string => {
   return formatDate(iso)
 }
 
-const parseMoneyString = (s: string) => {
-  // Handle BR format "1.234,56" and plain "45.90"/"45,90"
-  let normalized = s
-  if (s.includes(",") && s.includes(".")) {
-    // BR thousands+decimal: "1.234,56" → "1234.56"
-    normalized = s.replace(/\./g, "").replace(",", ".")
-  } else if (s.includes(",")) {
-    // BR decimal only: "45,90" → "45.90"
-    normalized = s.replace(",", ".")
-  }
-  const n = parseFloat(normalized)
-  return isNaN(n) ? 0 : n
-}
-
 // ── tipos de form ─────────────────────────────────────────────────────────────
 
 type CriarForm = {
@@ -106,7 +92,7 @@ const emptyCriarForm = (): CriarForm => ({
 function validateCriar(f: CriarForm): CriarErrors {
   const errs: CriarErrors = {}
   if (!f.descricao.trim()) errs.descricao = "Descrição obrigatória."
-  const v = parseMoneyString(f.valor)
+  const v = parseMoney(f.valor)
   if (!f.valor || v <= 0) errs.valor = "Informe um valor positivo."
   if (!f.contaId) errs.contaId = "Selecione uma conta."
   if (!f.dataInicio) errs.dataInicio = "Data de início obrigatória."
@@ -125,7 +111,7 @@ type EditarProximaErrors = Partial<Record<keyof EditarProximaForm, string>>
 function validateEditarProxima(f: EditarProximaForm): EditarProximaErrors {
   const errs: EditarProximaErrors = {}
   if (f.valor) {
-    const v = parseMoneyString(f.valor)
+    const v = parseMoney(f.valor)
     if (v <= 0) errs.valor = "Valor deve ser positivo."
   }
   return errs
@@ -166,7 +152,7 @@ export default function RecorrentesPage() {
   const [baseProximas, setBaseProximas] = useState<Recorrente[]>([])
   // KPIs exatos via /recorrentes/stats — endpoint dedicado (#179).
   const [stats, setStats] = useState<RecorrenteStats>({
-    ativas: 0, custoMensalDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
+    ativas: 0, custoMensalDespesas: 0, custoAnualDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
   })
   const [resumoCarregado, setResumoCarregado] = useState(false)
   const [total, setTotal] = useState(0)
@@ -285,7 +271,7 @@ export default function RecorrentesPage() {
     try {
       const dto: CriarRecorrente = {
         descricao: criarForm.descricao,
-        valor: parseMoneyString(criarForm.valor),
+        valor: parseMoney(criarForm.valor),
         tipo: parseInt(criarForm.tipo),
         contaId: criarForm.contaId || undefined,
         categoriaId: criarForm.categoriaId || undefined,
@@ -406,7 +392,7 @@ export default function RecorrentesPage() {
     setEditarSaving(true)
     try {
       const dto: EditarProximaDto = {}
-      if (editarForm.valor) dto.valor = parseMoneyString(editarForm.valor)
+      if (editarForm.valor) dto.valor = parseMoney(editarForm.valor)
       if (editarForm.descricao.trim()) dto.descricao = editarForm.descricao
       await editarProximaOcorrencia(editarTarget.id, dto)
       setEditarOpen(false)
@@ -443,7 +429,8 @@ export default function RecorrentesPage() {
   // Projeção anual do custo mensal (×12). Próximas cobranças: contas fixas ATIVAS (não pausadas)
   // de despesa com data futura, ordenadas asc, top 6 — da última lista sem filtro (baseProximas).
   // Caveat (igual antes): usa só a página carregada (1 página = até 25; cobre o caso comum).
-  const projecaoAnual = totalMensalDespesa * 12
+  // Vem pronto do servidor (soma semanal/mensal/anual no mesmo período); mensal × 12 esquecia as outras.
+  const projecaoAnual = stats.custoAnualDespesas
   const proximasCobrancas = baseProximas
     .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
     .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
@@ -675,7 +662,9 @@ export default function RecorrentesPage() {
                 value={criarForm.valor}
                 invalid={!!criarErrors.valor}
                 onChange={e => {
-                  setCriarForm(f => ({ ...f, valor: e.target.value }))
+                  // Máscara do app (dígitos = centavos): "1.500" não vira mais R$ 1,50.
+                  const valor = e.target.value
+                  setCriarForm(f => ({ ...f, valor: maskMoney(valor, f.valor) }))
                   if (criarErrors.valor) setCriarErrors(e2 => ({ ...e2, valor: undefined }))
                 }}
               />
@@ -808,7 +797,8 @@ export default function RecorrentesPage() {
               value={editarForm.valor}
               invalid={!!editarErrors.valor}
               onChange={e => {
-                setEditarForm(f => ({ ...f, valor: e.target.value }))
+                const valor = e.target.value
+                setEditarForm(f => ({ ...f, valor: maskMoney(valor, f.valor) }))
                 if (editarErrors.valor) setEditarErrors(e2 => ({ ...e2, valor: undefined }))
               }}
             />

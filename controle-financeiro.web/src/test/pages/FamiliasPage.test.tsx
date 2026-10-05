@@ -49,8 +49,8 @@ const detalhe: FamiliaDetalhe = {
   id: "f1", nome: "Família Silva", criadoPorUsuarioId: "u1",
   criadoEm: "2026-01-01T00:00:00", ehAdmin: true, modoRateioPadrao: 1,
   membros: [
-    { id: "m1", usuarioId: "u1", nomeUsuario: "Dev Test", emailUsuario: "dev@test.com", papel: "Administrador", entrouEm: "2026-01-01T00:00:00", rendaMensal: null },
-    { id: "m2", usuarioId: "u2", nomeUsuario: "Maria Souza", emailUsuario: "maria@test.com", papel: "Esposa", entrouEm: "2026-01-15T00:00:00", rendaMensal: 3000 },
+    { id: "m1", usuarioId: "u1", nomeUsuario: "Dev Test", emailUsuario: "dev@test.com", papel: "Administrador", entrouEm: "2026-01-01T00:00:00", rendaMensal: null, rendaInformada: false },
+    { id: "m2", usuarioId: "u2", nomeUsuario: "Maria Souza", emailUsuario: "maria@test.com", papel: "Esposa", entrouEm: "2026-01-15T00:00:00", rendaMensal: null, rendaInformada: true },
   ],
   convitesPendentes: [],
   limiteAprovacao: null,

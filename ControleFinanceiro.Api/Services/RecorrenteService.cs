@@ -115,7 +115,7 @@ public class RecorrenteService
     }
 
     /// <summary>
-    /// KPIs agregados — ativas, custo mensal das despesas mensais, próximas 30 dias, total.
+    /// KPIs agregados — ativas, custo mensal/anual das despesas (todas as frequências), próximas 30 dias, total.
     /// Calculado no banco, exato pra qualquer volume.
     /// </summary>
     public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
@@ -129,10 +129,19 @@ public class RecorrenteService
         var ativas = query.Where(EmVigor(hoje)).Where(r => r.Ativo);
 
         var qtdAtivas = await ativas.CountAsync();
-        var custoMensal = await ativas
-            .Where(r => r.Frequencia == FrequenciaRecorrencia.Mensal
-                        && r.Tipo == TipoTransacao.Despesa)
-            .SumAsync(r => (decimal?)r.Valor) ?? 0m;
+        // Custo das despesas de TODAS as frequências, levadas pro mesmo período antes de somar (semanal
+        // acontece 52× no ano, mensal 12×, anual 1×). Antes só a mensal entrava: semanal e anual sumiam do
+        // "custo mensal" e do "por ano" (que a tela fazia mensal × 12).
+        var somaPorFrequencia = await ativas
+            .Where(r => r.Tipo == TipoTransacao.Despesa)
+            .GroupBy(r => r.Frequencia)
+            .Select(g => new { Frequencia = g.Key, Soma = g.Sum(r => r.Valor) })
+            .ToListAsync();
+        decimal SomaDe(FrequenciaRecorrencia f) => somaPorFrequencia.Where(x => x.Frequencia == f).Sum(x => x.Soma);
+        var custoAnual = SomaDe(FrequenciaRecorrencia.Semanal) * 52m
+                         + SomaDe(FrequenciaRecorrencia.Mensal) * 12m
+                         + SomaDe(FrequenciaRecorrencia.Anual);
+        var custoMensal = Math.Round(custoAnual / 12m, 2, MidpointRounding.AwayFromZero);
         // Cutoff +30d calculado no servidor pra não vazar lógica de tempo pro cliente.
         // EF traduz `<=` em SQL nativo.
         var cutoff = DateTime.UtcNow.AddDays(30);
@@ -145,6 +154,7 @@ public class RecorrenteService
         {
             Ativas = qtdAtivas,
             CustoMensalDespesas = custoMensal,
+            CustoAnualDespesas = custoAnual,
             Proximas30Dias = proximas30,
             QtdTotal = qtdTotal,
         };

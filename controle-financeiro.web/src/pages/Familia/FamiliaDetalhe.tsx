@@ -520,7 +520,8 @@ export function FamiliaDetalhe({ familiaId, showBack, onClose }: FamiliaDetalheP
                   </div>
                   <div className={styles.itemSub}>
                     {m.emailUsuario} · desde {formatDate(m.entrouEm)}
-                    {m.rendaMensal != null && ` · renda ${formatMoney(m.rendaMensal)}`}
+                    {/* Renda: o valor só aparece na própria linha (a API nem manda a dos outros). */}
+                    {m.rendaMensal != null ? ` · renda ${formatMoney(m.rendaMensal)}` : m.rendaInformada && " · renda informada"}
                   </div>
                 </div>
                 <div className={styles.rowActions}>

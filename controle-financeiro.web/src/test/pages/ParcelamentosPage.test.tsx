@@ -112,6 +112,38 @@ describe("ParcelamentosPage (#153)", () => {
     expect(payload.taxaJuroMensal).toBeUndefined()   // não manda 0 → não dispara 409
   })
 
+  // Bug de dinheiro (2026-09-28): a Idempotency-Key nascia a cada clique em "Criar" — se a rede caísse
+  // depois de o servidor gravar, tentar de novo criava OUTRO parcelamento. Agora a chave é da janela.
+  it("tentar de novo na mesma janela reusa a Idempotency-Key; abrir a janela de novo gera outra", async () => {
+    criar.mockReset().mockRejectedValueOnce(new Error("Network Error")).mockResolvedValue(undefined)
+    renderPage()
+    await screen.findByText("Notebook")
+    const preencherECriar = async () => {
+      fireEvent.change(screen.getByPlaceholderText("Ex: Notebook, Monitor"), { target: { value: "Geladeira" } })
+      fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "300000" } })
+      fireEvent.click(screen.getByText("Selecione o cartão"))
+      fireEvent.click(await screen.findByText("Nubank"))
+      fireEvent.click(screen.getByText("Criar"))
+    }
+    fireEvent.click(screen.getByText("Novo Parcelamento"))
+    await screen.findByText("Novo parcelamento")
+    await preencherECriar()
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(1)) // caiu a rede
+    fireEvent.click(screen.getByText("Criar"))                  // tenta de novo, mesma janela
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(2))
+    const [k1, k2] = criar.mock.calls.map((c) => (c[0] as { idempotencyKey: string }).idempotencyKey)
+    expect(k1).toBeTruthy()
+    expect(k2).toBe(k1)
+
+    // a 2ª deu certo e fechou a janela; um parcelamento NOVO é outra intenção → outra chave
+    await waitFor(() => expect(screen.queryByText("Novo parcelamento")).not.toBeInTheDocument())
+    fireEvent.click(screen.getByText("Novo Parcelamento"))
+    await screen.findByText("Novo parcelamento")
+    await preencherECriar()
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(3))
+    expect((criar.mock.calls[2][0] as { idempotencyKey: string }).idempotencyKey).not.toBe(k1)
+  })
+
   it("PIX Crédito continua enviando a taxaJuroMensal informada", async () => {
     renderPage()
     await screen.findByText("Notebook")

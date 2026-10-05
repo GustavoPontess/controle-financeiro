@@ -9,8 +9,12 @@ public class RecorrenteStatsDto
     /// <summary>Quantidade de recorrentes ativos.</summary>
     public int Ativas { get; init; }
 
-    /// <summary>Soma do valor mensal das despesas mensais ativas (frequencia=2, tipo=1).</summary>
+    /// <summary>Custo MÉDIO por mês das despesas ativas de todas as frequências (= anual ÷ 12): semanal
+    /// conta 52× no ano, mensal 12×, anual 1×.</summary>
     public decimal CustoMensalDespesas { get; init; }
+
+    /// <summary>Custo por ano das despesas ativas de todas as frequências (semanal × 52 + mensal × 12 + anual).</summary>
+    public decimal CustoAnualDespesas { get; init; }
 
     /// <summary>Quantidade de recorrentes ativos com `dataProximaGeracao` nos próximos 30 dias.</summary>
     public int Proximas30Dias { get; init; }
