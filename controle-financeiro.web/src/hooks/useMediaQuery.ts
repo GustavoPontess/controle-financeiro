@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 
 /** Celular: abaixo de 768px (tablet em pé pra cima continua com o layout de desktop). */
 export const CELULAR = "(max-width: 767px)"
+/** Tablet e menores: abaixo de 1024px (a barra lateral começa recolhida pra sobrar espaço). */
+export const ATE_TABLET = "(max-width: 1023px)"
 
-// Sem matchMedia (SSR / ambiente de teste sem o polyfill): trata como desktop.
-const casa = (query: string) =>
+/** A query casa AGORA (leitura única, sem acompanhar). Sem matchMedia (SSR / teste): trata como desktop. */
+export const casa = (query: string) =>
   typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches
 
 /**

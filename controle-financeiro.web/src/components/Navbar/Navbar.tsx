@@ -124,17 +124,14 @@ export default function Navbar({
       </div>
 
       <div className={styles.right}>
-        {openCommandPalette && (celular ? (
-          <PontesIconButton variant="ghost" size={40} onClick={openCommandPalette} aria-label="Buscar">
-            <Search size={18} strokeWidth={2} />
-          </PontesIconButton>
-        ) : (
+        {/* Abaixo de 1024px (tablet/celular) a busca fica só com a lupa — via CSS (Navbar.module.css). */}
+        {openCommandPalette && (
           <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
             <Search size={16} strokeWidth={2} />
             <span className={styles.searchText}>Buscar telas…</span>
             <kbd className={styles.kbd}>Ctrl K</kbd>
           </button>
-        ))}
+        )}
 
         {showFinance && (
           <PontesIconButton
@@ -161,11 +158,11 @@ export default function Navbar({
             disabled={!canCreateTransaction}
             iconStart={<Plus size={16} strokeWidth={2.5} />}
             title={canCreateTransaction ? undefined : "Cadastre pelo menos uma categoria antes de adicionar transações"}
-            // Celular: só o "+" (o texto não cabe ao lado do título); o nome fica pro leitor de tela.
-            aria-label={celular ? "Nova transação" : undefined}
-            className={celular ? styles.novaIcone : undefined}
+            // Abaixo de 1024px: só o "+" (o texto não cabe ao lado do título) — via CSS; o nome fica pro leitor.
+            aria-label="Nova transação"
+            className={styles.nova}
           >
-            {!celular && "Nova transação"}
+            <span className={styles.novaTexto}>Nova transação</span>
           </PontesButton>
         )}
       </div>

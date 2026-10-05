@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
 import { PontesDrawer, PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
-import { CELULAR, useMediaQuery } from "../../hooks/useMediaQuery"
+import { ATE_TABLET, CELULAR, casa, useMediaQuery } from "../../hooks/useMediaQuery"
 import styles from "./DefaultLayout.module.css"
 import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
@@ -58,7 +58,8 @@ export default function DefaultLayout() {
   // (página atual) inteiro, mascarando/mostrando valores AO VIVO em qualquer tela.
   useHideBalance()
 
-  const [open, setOpen] = useState(true)
+  // Tablet: a barra lateral começa recolhida (trilho) — aberta, o conteúdo ficava com ~540px. Dá pra expandir.
+  const [open, setOpen] = useState(() => !casa(ATE_TABLET))
   const celular = useMediaQuery(CELULAR)
   // Aberta = aberta NESTA tela: tocar num item do menu troca a rota e a gaveta fecha sozinha.
   const [gavetaAbertaEm, setGavetaAbertaEm] = useState<string | null>(null)

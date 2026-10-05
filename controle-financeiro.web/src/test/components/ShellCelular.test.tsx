@@ -100,9 +100,8 @@ describe("Navbar no celular", () => {
     )
     expect(screen.getByRole("heading", { name: "Parcelamentos" })).toBeInTheDocument()
     expect(screen.queryByText("Cartões de Crédito")).not.toBeInTheDocument() // caminho some
-    expect(screen.queryByText("Ctrl K")).not.toBeInTheDocument()
-    expect(screen.queryByText("Nova transação")).not.toBeInTheDocument()    // sem o texto…
-    fireEvent.click(screen.getByRole("button", { name: "Nova transação" }))   // …mas com o nome
+    // Busca só com a lupa e "+" sem texto: é CSS (< 1024px), o jsdom não aplica — aqui só o nome acessível.
+    fireEvent.click(screen.getByRole("button", { name: "Nova transação" }))
     fireEvent.click(screen.getByRole("button", { name: "Buscar" }))
     expect(nova).toHaveBeenCalledOnce()
     expect(busca).toHaveBeenCalledOnce()
@@ -145,6 +144,18 @@ describe("DefaultLayout no celular", () => {
     fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }))
     fireEvent.keyDown(document, { key: "Escape" })
     expect(gaveta()).not.toHaveAttribute("data-open")
+  })
+
+  it("no tablet a barra lateral começa RECOLHIDA (trilho), sem gaveta", () => {
+    const original2 = window.matchMedia
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: query === "(max-width: 1023px)", media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+    renderShell()
+    expect(screen.queryByLabelText("Menu", { selector: "aside" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Expandir menu" })).toBeInTheDocument()
+    window.matchMedia = original2
   })
 
   it("no desktop continua a barra lateral fixa (sem gaveta, com recolher/expandir)", () => {

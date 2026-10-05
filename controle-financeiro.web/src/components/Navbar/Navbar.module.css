@@ -25,8 +25,15 @@
 .searchText { flex: 1; text-align: left; }
 .kbd { font-size: var(--pontes-fs-xs); font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text-muted); }
 
-/* Celular (ver Navbar.tsx: sem caminho, busca e "Nova transação" só com ícone). */
-.novaIcone { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+/* Tablet e celular (< 1024px): busca só com a lupa e "Nova transação" só com o "+" — o texto não cabe ao
+   lado do título com a barra lateral aberta (o título virava "Tran…"). */
+@media (max-width: 1023px) {
+  .search { min-width: 0; width: 40px; height: 40px; padding: 0; justify-content: center; border-color: transparent; background: transparent; }
+  .searchText, .kbd { display: none; }
+  .nova { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+  .novaTexto { display: none; }
+}
+/* Celular (ver Navbar.tsx: sem o caminho, ☰ no lugar do recolher). */
 @media (max-width: 767px) {
   .inner { padding: 0 8px 0 4px; gap: 4px; }
   .left { gap: 2px; }
