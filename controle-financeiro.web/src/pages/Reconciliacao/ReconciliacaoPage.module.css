@@ -119,7 +119,7 @@
 /* flex: 1 → o destaque ocupa a altura que sobra do card (o painel estica até o calendário) em vez de
    deixar um buraco entre ele e as opções do rodapé (pedido do Gustavo, 2026-10-05). */
 .destaque { margin-top: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 16px 12px; border-radius: 12px; background: var(--pontes-bg); text-align: center; }
-.destaqueRot { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pontes-text-muted); }
+.destaqueRot { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pontes-text-muted); }
 .destaqueValor { display: inline-flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 800; color: var(--pontes-text); font-variant-numeric: tabular-nums; }
 .destaqueNum { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; }
 .destaqueValor[data-tom="nok"] svg { color: var(--pontes-danger); }
@@ -127,14 +127,14 @@
 .destaqueValor[data-tom="ok"] svg { color: var(--pontes-success); }
 .destaqueValor[data-tom="ok"] .destaqueNum { text-decoration-color: var(--pontes-success); }
 .destaqueValor svg { flex-shrink: 0; transform: translateY(3px); }
-.destaqueVazio { font-size: 28px; font-weight: 800; color: var(--pontes-text-muted); }
+.destaqueVazio { font-size: 24px; font-weight: 800; color: var(--pontes-text-muted); }
 .destaqueSub { font-size: 11.5px; color: var(--pontes-text-muted); font-variant-numeric: tabular-nums; }
 .destaqueSub .ajusteEntrada { color: var(--pontes-success); }
 .destaqueSub .ajusteSaida { color: var(--pontes-danger); }
 
 /* Com diferença: as 2 opções de resolver, direto no rodapé (sem abrir/fechar). */
 .resolverOpcoes { display: flex; flex-direction: column; border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); overflow: hidden; }
-.resolverItem { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: none; border: 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--pontes-text); text-align: left; cursor: pointer; }
+.resolverItem { display: flex; align-items: center; gap: 8px; padding: 11px 16px; background: none; border: 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--pontes-text); text-align: left; cursor: pointer; }
 .resolverItem:hover { background: var(--pontes-bg); }
 .resolverItem:focus-visible { outline: 2px solid var(--pontes-primary); outline-offset: -2px; }
 .resolverItem + .resolverItem { border-top: 1px solid var(--pontes-border); }
@@ -144,17 +144,16 @@
 
 /* ── Layout "Atual" (2026-10-05): calendário à esquerda (com "Conta a conferir" em cima), painel de
    conferir à direita, só com a altura do conteúdo. Linhas tipo recibo + campo do banco na linha. ── */
-.painelCurto { align-self: start; padding: 18px 20px; }
-.painelConf > .painelTitulo { font-size: 16px; }
-.linhas { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
-.linha { display: flex; justify-content: space-between; align-items: center; min-height: 30px; font-size: 14px; color: var(--pontes-text-muted); }
-.linha strong { color: var(--pontes-text); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.linha + .linha { padding-top: 10px; border-top: 1px solid var(--pontes-border); }
+.painelCurto { align-self: start; }
+.linhas { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.linha { display: flex; justify-content: space-between; align-items: center; min-height: 32px; font-size: 12px; color: var(--pontes-text-muted); }
+.linha strong { color: var(--pontes-text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.linha + .linha { padding-top: 8px; border-top: 1px solid var(--pontes-border); }
 .linha .ajusteEntrada { color: var(--pontes-success); }
 .linha .ajusteSaida { color: var(--pontes-danger); }
 /* Campo do banco "abrindo no lugar": compacto, valor à direita e em negrito como o exibido. */
 .bancoCampo { width: 170px; }
-.bancoCampo .campoBanco { height: 30px; padding: 0 10px 0 32px; text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 8px; }
+.bancoCampo .campoBanco { height: 32px; padding: 0 10px 0 32px; text-align: right; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 10px; }
 .bancoValor { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 2px 4px; margin-right: -4px; border-radius: 6px; font: inherit; cursor: pointer; color: var(--pontes-primary); }
 .bancoValor strong { color: var(--pontes-text); }
 .bancoValor:hover { background: var(--pontes-primary-soft); }
@@ -164,4 +163,3 @@
 /* "Remover" na lista de ações do marco: vermelho (ícone e texto). */
 .resolverItem[data-perigo="true"], .resolverItem[data-perigo="true"] svg { color: var(--pontes-danger); }
 /* Respiro entre o destaque e a lista de ações do marco. */
-.painelCurto .painelFooter { padding-top: 14px; }

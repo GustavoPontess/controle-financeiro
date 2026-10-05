@@ -546,19 +546,19 @@ export default function ReconciliacaoPage() {
                       {pendente && (
                         <>
                           <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => void fechar(real!)}>
-                            <Scale size={16} strokeWidth={2.4} /> {fechando ? "Ajustando…" : "Ajustar (cria lançamento)"}
+                            <Scale size={14} strokeWidth={2.5} /> {fechando ? "Ajustando…" : "Ajustar (cria lançamento)"}
                           </button>
                           <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => navigate("/transactions")}>
-                            <Plus size={16} strokeWidth={2.4} /> Lançar o que falta
+                            <Plus size={14} strokeWidth={2.5} /> Lançar o que falta
                           </button>
                         </>
                       )}
                       <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => (m.derivado ? abrirEdicaoInicial(m) : alterarMarco(m))}>
-                        <Pencil size={16} strokeWidth={2.4} /> Alterar valor
+                        <Pencil size={14} strokeWidth={2.5} /> Alterar valor
                       </button>
                       {real && (
                         <button type="button" className={styles.resolverItem} data-perigo="true" disabled={fechando} onClick={() => setRemovendo(real)}>
-                          <Trash2 size={16} strokeWidth={2.4} /> Remover
+                          <Trash2 size={14} strokeWidth={2.5} /> Remover
                         </button>
                       )}
                     </div>
