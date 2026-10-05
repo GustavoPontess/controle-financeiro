@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pontes — brag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,600&family=Plus+Jakarta+Sans:wght@700&display=block" rel="stylesheet">
+<style>
+  /* Identidade tirada do código do Pontes (tokens.css, paleta A) */
+  :root {
+    --primary: #1E40AF; --primary-dark: #1E3A8A; --accent: #F59E0B; --bg: #F7F9FC; --surface: #FFFFFF;
+    --text: #0B1220; --muted: #5A6679; --border: #E5EAF2; --success: #10B981; --danger: #DC2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  body { font-family: 'Inter', system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  .abs { position: absolute; }
+  .layer { position: absolute; inset: 0; }
+
+  /* fundos */
+  #bgLight { background:
+      radial-gradient(1200px 700px at 85% 110%, rgba(245,158,11,0.10), transparent 60%),
+      radial-gradient(900px 600px at 0% 0%, rgba(30,64,175,0.07), transparent 60%), var(--bg); }
+  #bgDark { background:
+      radial-gradient(900px 620px at 88% 108%, rgba(245,158,11,0.28), transparent 62%),
+      radial-gradient(1100px 700px at 8% -10%, rgba(255,255,255,0.10), transparent 60%),
+      linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+
+  /* tipografia */
+  .eyebrow { font-weight: 800; font-size: 24px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; }
+  .h1 { font-weight: 800; font-size: 82px; line-height: 1.04; letter-spacing: -0.035em; color: var(--text); }
+  .sub { font-weight: 500; font-size: 42px; line-height: 1.2; letter-spacing: -0.02em; color: var(--muted); }
+  .em { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+  .logo { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.035em; line-height: 0.85; display: inline-block; position: relative; }
+  .logo svg { position: absolute; left: 0; width: 100%; overflow: visible; }
+
+  /* cena 1 */
+  #s1 .l1 { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-weight: 800; font-size: 118px; letter-spacing: -0.04em; color: #fff; }
+  #s1 .l1 span { display: inline-block; margin: 0 14px; }
+  #s1 .l2 { position: absolute; left: 0; right: 0; top: 480px; text-align: center; }
+  #s1 .l2 .em { font-size: 168px; display: inline-block; position: relative; }
+  #s1 .arc { position: absolute; left: 4%; width: 92%; bottom: -50px; height: 40px; overflow: visible; }
+
+  /* cena 2 */
+  #s2 .head { position: absolute; left: 0; right: 0; top: 92px; text-align: center; }
+  #s2 .tag { font-weight: 700; font-size: 46px; letter-spacing: -0.025em; color: var(--text); margin-top: 34px; }
+  .frame { position: absolute; border-radius: 22px; overflow: hidden; background: #fff;
+    box-shadow: 0 40px 90px -30px rgba(15,23,42,0.40), 0 0 0 1px rgba(15,23,42,0.06); }
+  .frame img { display: block; width: 100%; }
+  #s2 .frame { left: 210px; top: 330px; width: 1500px; transform-origin: 50% 0%; }
+  #s2 .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 260px;
+    background: linear-gradient(to bottom, rgba(247,249,252,0), var(--bg) 85%); }
+
+  /* colunas de texto (cenas 3-5) */
+  .col { position: absolute; left: 150px; top: 0; bottom: 0; width: 760px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+  .col .h1 { margin-top: 4px; }
+  .card { position: absolute; border-radius: 26px; overflow: hidden; background: #fff;
+    box-shadow: 0 34px 80px -34px rgba(15,23,42,0.35), 0 0 0 1px rgba(15,23,42,0.05); }
+  .card img { display: block; width: 100%; }
+  .ring { position: absolute; border-radius: 14px; pointer-events: none; }
+
+  /* cena 4: card reconstruído no estilo Pontes */
+  #s4 .rateio { left: 1010px; top: 300px; width: 760px; padding: 40px 44px 38px; }
+  .rt-top { display: flex; align-items: center; justify-content: space-between; }
+  .rt-title { font-weight: 700; font-size: 30px; letter-spacing: -0.02em; }
+  .badge { font-weight: 700; font-size: 20px; color: var(--primary); background: #EEF2FF; border-radius: 999px; padding: 8px 16px; }
+  .rt-row { display: grid; grid-template-columns: 64px 1fr 84px; gap: 20px; align-items: center; margin-top: 34px; }
+  .av { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 22px; }
+  .rt-name { font-weight: 700; font-size: 26px; }
+  .rt-renda { font-size: 20px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+  .bar { height: 14px; border-radius: 999px; background: #EEF1F6; margin-top: 12px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; }
+  .pct { font-weight: 800; font-size: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+  .lock { margin-top: 36px; display: inline-flex; align-items: center; gap: 12px; font-weight: 600; font-size: 22px; color: var(--text);
+    background: #F3F5F9; border: 1px solid var(--border); border-radius: 999px; padding: 12px 22px; }
+
+  /* cena 5 */
+  #s5 .card { left: 1000px; top: 232px; width: 780px; }
+  #typed { position: absolute; display: flex; align-items: center; justify-content: flex-end; background: #fff; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  #caret { display: inline-block; width: 2px; background: var(--primary); margin-left: 3px; }
+
+  /* cena 6 */
+  #s6 .center { position: absolute; left: 0; right: 0; top: 330px; text-align: center; }
+  #s6 .logo { font-size: 176px; color: #fff; }
+  #s6 .tl { margin-top: 90px; font-weight: 700; font-size: 60px; letter-spacing: -0.03em; color: #fff; }
+  #s6 .tl .em { font-size: 70px; }
+  #s6 .chip { margin-top: 40px; display: inline-flex; align-items: center; gap: 12px; font-weight: 700; font-size: 26px; color: #fff;
+    border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.10); border-radius: 999px; padding: 12px 26px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); position: relative; }
+  .dot b { position: absolute; inset: 0; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgLight" class="layer"></div>
+  <div id="bgDark" class="layer"></div>
+
+  <!-- 1. Gancho -->
+  <div id="s1" class="layer">
+    <div class="l1"><span>Dinheiro</span><span>de</span><span>casal</span></div>
+    <div class="l2"><span class="em" id="s1em">sem briga.
+      <svg class="arc" viewBox="0 0 200 16" preserveAspectRatio="none"><path id="s1arc" d="M4 12 Q100 -4 196 12" stroke="#F59E0B" stroke-width="7" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="210" stroke-dashoffset="210"/></svg>
+    </span></div>
+  </div>
+
+  <!-- 2. Revelação -->
+  <div id="s2" class="layer">
+    <div class="head">
+      <div class="logo" id="s2logo" style="font-size:84px;color:#1E40AF">Pontes
+        <svg viewBox="0 0 200 16" preserveAspectRatio="none" style="bottom:-12px;height:18px"><path id="s2arc" d="M4 12 Q100 -4 196 12" stroke="#1E40AF" stroke-width="5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="210" stroke-dashoffset="210"/></svg>
+      </div>
+      <div class="tag" id="s2tag">Finanças pra casal e família.</div>
+    </div>
+    <div class="frame" id="s2frame"><img src="../work/shots/dashboard.png" alt=""></div>
+    <div class="fade"></div>
+  </div>
+
+  <!-- 3. Acerto -->
+  <div id="s3" class="layer">
+    <div class="col">
+      <div class="eyebrow" id="s3e">Acerto do mês</div>
+      <div class="h1" id="s3t">Quem pagou o quê.</div>
+      <div class="sub" id="s3s">E quanto falta pra equilibrar.</div>
+    </div>
+    <div class="card" id="s3card" style="left:1000px;top:322px;width:800px">
+      <img src="../work/shots/familia-balanco.png" alt="">
+      <div class="ring" id="s3r1"></div>
+      <div class="ring" id="s3r2"></div>
+    </div>
+  </div>
+
+  <!-- 4. Renda -->
+  <div id="s4" class="layer">
+    <div class="col">
+      <div class="eyebrow" id="s4e">Rateio</div>
+      <div class="h1" id="s4t">Divide pela renda.</div>
+      <div class="sub" id="s4s"><span class="em" style="font-size:54px">Sem mostrar a renda.</span></div>
+    </div>
+    <div class="card rateio" id="s4card">
+      <div class="rt-top"><div class="rt-title">Modo de rateio</div><div class="badge">Proporcional à renda</div></div>
+      <div class="rt-row">
+        <div class="av" style="background:#EEF2FF;color:#1E40AF">GD</div>
+        <div><div class="rt-name">Gabriel</div><div class="bar"><i id="s4b1" style="background:#1E40AF;width:0%"></i></div></div>
+        <div class="pct" id="s4p1">0%</div>
+      </div>
+      <div class="rt-row">
+        <div class="av" style="background:#FEF3C7;color:#B45309">MD</div>
+        <div><div class="rt-name">Marina</div><div class="bar"><i id="s4b2" style="background:#F59E0B;width:0%"></i></div></div>
+        <div class="pct" id="s4p2">0%</div>
+      </div>
+      <div class="lock" id="s4lock">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Cada um vê só a própria renda
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Reconciliação -->
+  <div id="s5" class="layer">
+    <div class="col">
+      <div class="eyebrow" id="s5e">Reconciliação</div>
+      <div class="h1" id="s5t">Confere com o banco.</div>
+      <div class="sub" id="s5s">Centavo por centavo.</div>
+    </div>
+    <div class="card" id="s5card">
+      <img id="s5a" src="../work/shots/rec-vazio.png" alt="" style="position:relative">
+      <img id="s5b" src="../work/shots/rec-bate.png" alt="" style="position:absolute;left:0;top:0;opacity:0">
+      <div id="typed"><span id="typedTxt"></span><span id="caret"></span></div>
+      <div class="ring" id="s5r"></div>
+    </div>
+  </div>
+
+  <!-- 6. Fechamento -->
+  <div id="s6" class="layer">
+    <div class="center">
+      <div class="logo" id="s6logo">Pontes
+        <svg viewBox="0 0 200 16" preserveAspectRatio="none" style="bottom:-46px;height:36px"><path id="s6arc" d="M4 12 Q100 -4 196 12" stroke="#fff" stroke-width="9" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="210" stroke-dashoffset="210"/></svg>
+      </div>
+      <div class="tl" id="s6tl">Dinheiro de casal <span class="em">sem briga.</span></div>
+      <div><div class="chip" id="s6chip"><span class="dot"><b id="s6pulse"></b></span>Beta aberto</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Cada quadro é função PURA do tempo t (segundos): renderAt(t) desenha o quadro exato.
+const $ = (id) => document.getElementById(id)
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const p = (t, a, b) => clamp((t - a) / (b - a))                    // progresso 0..1 no intervalo
+const outC = (x) => 1 - Math.pow(1 - x, 3)
+const inOut = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+const back = (x) => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2) }
+function show(el, o, y = 0, s = 1, x = 0) { el.style.opacity = o; el.style.transform = `translate(${x}px, ${y}px) scale(${s})` }
+// entra (a→a+d) e sai (o→o+d2): opacidade e deslocamento
+function inOutEl(el, t, a, d, o, d2, dy = 34) {
+  const i = outC(p(t, a, a + d)), s = inOut(p(t, o, o + d2))
+  show(el, i * (1 - s), (1 - i) * dy - s * 18)
+}
+const T = 21.5
+const S = { s1: [0, 3.5], s2: [3.35, 6.85], s3: [6.75, 11.05], s4: [10.95, 14.45], s5: [14.35, 18.3], s6: [18.3, T] }
+
+// digitação na máscara do app: dígitos = centavos
+const DIG = '154338'
+function mask(d) { if (!d) return ''; const v = Number(d) / 100; return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+
+function renderAt(t) {
+  for (const [id, [a, b]] of Object.entries(S)) $(id).style.visibility = t >= a && t <= b ? 'visible' : 'hidden'
+
+  // fundos: escuro na 1 e na 6, claro no meio (passa pela cor de fundo, sem fusão de conteúdo)
+  const dark = 1 - inOut(p(t, 3.3, 3.7)) + inOut(p(t, 18.15, 18.45))
+  $('bgDark').style.opacity = clamp(dark)
+
+  // 1. Gancho
+  const words = document.querySelectorAll('#s1 .l1 span')
+  const out1 = inOut(p(t, 3.0, 3.35))
+  words.forEach((w, i) => { const k = outC(p(t, 0.12 + i * 0.13, 0.72 + i * 0.13)); show(w, k * (1 - out1), (1 - k) * 46 - out1 * 30) })
+  const k2 = outC(p(t, 0.8, 1.45))
+  show($('s1em'), k2 * (1 - out1), (1 - k2) * 30 - out1 * 30, 0.95 + 0.05 * k2)
+  desenhaArco('s1arc', inOut(p(t, 1.3, 2.05)))
+
+  // 2. Revelação
+  const o2 = inOut(p(t, 6.35, 6.75))
+  show($('s2logo'), outC(p(t, 3.55, 4.1)) * (1 - inOut(p(t, 6.5, 6.8))), (1 - outC(p(t, 3.55, 4.1))) * 24)
+  desenhaArco('s2arc', inOut(p(t, 3.85, 4.4)))
+  inOutEl($('s2tag'), t, 3.85, 0.55, 6.45, 0.35, 26)
+  const e2 = outC(p(t, 3.65, 4.65)), push = inOut(p(t, 4.2, 6.6))
+  const fr = $('s2frame')
+  fr.style.opacity = e2 * (1 - o2)
+  fr.style.transform = `perspective(2200px) translateY(${(1 - e2) * 300 + o2 * 90}px) rotateX(${16 - 10 * e2 - 3 * push}deg) scale(${0.9 + 0.06 * push})`
+
+  // 3. Acerto
+  inOutEl($('s3e'), t, 6.85, 0.5, 10.55, 0.35)
+  inOutEl($('s3t'), t, 6.98, 0.55, 10.6, 0.35)
+  inOutEl($('s3s'), t, 7.2, 0.55, 10.65, 0.35)
+  const c3 = outC(p(t, 7.05, 7.8)), o3 = inOut(p(t, 10.45, 10.85))
+  show($('s3card'), c3 * (1 - o3), -o3 * 18, 1, (1 - c3) * 140)
+  ring($('s3r1'), t, 8.35, '#DC2626', [612, 226, 280, 60], 800 / 920)
+  ring($('s3r2'), t, 8.85, '#10B981', [606, 324, 286, 60], 800 / 920)
+
+  // 4. Renda
+  inOutEl($('s4e'), t, 11.05, 0.5, 13.95, 0.35)
+  inOutEl($('s4t'), t, 11.18, 0.55, 14.0, 0.35)
+  inOutEl($('s4s'), t, 11.45, 0.55, 14.05, 0.35)
+  const c4 = outC(p(t, 11.2, 11.95)), o4 = inOut(p(t, 13.85, 14.25))
+  show($('s4card'), c4 * (1 - o4), -o4 * 18, 1, (1 - c4) * 140)
+  const b = inOut(p(t, 11.85, 12.85))
+  $('s4b1').style.width = (59 * b) + '%'; $('s4b2').style.width = (41 * b) + '%'
+  $('s4p1').textContent = Math.round(59 * b) + '%'; $('s4p2').textContent = Math.round(41 * b) + '%'
+  const l4 = back(p(t, 12.75, 13.25))
+  show($('s4lock'), clamp(p(t, 12.75, 13.05)), (1 - clamp(l4)) * 12, 0.9 + 0.1 * l4)
+
+  // 5. Reconciliação
+  inOutEl($('s5e'), t, 14.45, 0.5, 17.95, 0.35)
+  inOutEl($('s5t'), t, 14.58, 0.55, 18.0, 0.35)
+  inOutEl($('s5s'), t, 14.85, 0.55, 18.05, 0.35)
+  const c5 = outC(p(t, 14.55, 15.3)), o5 = inOut(p(t, 17.85, 18.25))
+  show($('s5card'), c5 * (1 - o5), -o5 * 18, 1, (1 - c5) * 140)
+  const sc = 780 / 1304                                   // px da imagem → px do card
+  const ty = $('typed')
+  Object.assign(ty.style, { left: 1000 * sc + 'px', top: 406 * sc + 'px', width: 262 * sc + 'px', height: 52 * sc + 'px', fontSize: 26 * sc + 'px', paddingRight: 20 * sc + 'px' })
+  const n = clamp(Math.floor((t - 15.45) / 0.16) + 1, 0, DIG.length)
+  const digitando = t >= 15.3 && t < 16.55
+  ty.style.visibility = digitando ? 'visible' : 'hidden'
+  $('typedTxt').textContent = t < 15.45 ? '' : mask(DIG.slice(0, n))
+  $('caret').style.height = 26 * sc * 1.15 + 'px'
+  $('caret').style.opacity = Math.floor(t * 2.4) % 2 === 0 || n < DIG.length ? 1 : 0
+  $('s5b').style.opacity = inOut(p(t, 16.5, 16.75))
+  ring($('s5r'), t, 16.8, '#10B981', [508, 640, 300, 140], sc)
+
+  // 6. Fechamento
+  const l6 = outC(p(t, 18.4, 19.1))
+  show($('s6logo'), l6, (1 - l6) * 30, 0.94 + 0.06 * l6)
+  desenhaArco('s6arc', inOut(p(t, 18.75, 19.4)))
+  inOutEl($('s6tl'), t, 19.35, 0.55, 99, 1, 26)
+  const ch = back(p(t, 19.85, 20.3))
+  show($('s6chip'), clamp(p(t, 19.85, 20.1)), (1 - clamp(ch)) * 16, 0.92 + 0.08 * ch)
+  const ph = ((t - 19.9) % 1.2 + 1.2) % 1.2 / 1.2
+  $('s6pulse').style.transform = `scale(${1 + ph * 1.6})`; $('s6pulse').style.opacity = t > 19.9 ? 0.55 * (1 - ph) : 0
+}
+
+// anel de destaque: aparece com leve "pop" e fica com brilho
+function ring(el, t, a, cor, [x, y, w, h], esc) {
+  const k = back(p(t, a, a + 0.45)), o = clamp(p(t, a, a + 0.2))
+  Object.assign(el.style, { left: x * esc + 'px', top: y * esc + 'px', width: w * esc + 'px', height: h * esc + 'px',
+    border: `3px solid ${cor}`, boxShadow: `0 0 0 ${6 * o}px ${cor}22, 0 0 28px ${cor}55`,
+    opacity: o, transform: `scale(${1.12 - 0.12 * clamp(k, 0, 1.2)})` })
+}
+
+// Arco do logo: com vector-effect non-scaling-stroke o tracejado conta em px de TELA, então o "210" do
+// componente (feito pra logo de 32px) abre buraco em logo grande. Mede o comprimento real na tela.
+// mede cada arco com a cena já assentada (sem escala de entrada)
+const ARCOS = [['s1arc', 2.6], ['s2arc', 5.5], ['s6arc', 21]]
+function medirArcos() {
+  for (const [id, quando] of ARCOS) {
+    renderAt(quando)
+    const el = $(id), m = el.getScreenCTM(), n = el.getTotalLength()
+    let L = 0, ant = null
+    for (let i = 0; i <= 200; i++) {
+      const q = el.getPointAtLength(n * i / 200), pt = new DOMPoint(q.x, q.y).matrixTransform(m)
+      if (ant) L += Math.hypot(pt.x - ant.x, pt.y - ant.y)
+      ant = pt
+    }
+    el.dataset.len = Math.ceil(L + 4)
+    el.setAttribute('stroke-dasharray', el.dataset.len)
+  }
+}
+const desenhaArco = (id, k) => $(id).setAttribute('stroke-dashoffset', (+$(id).dataset.len || 210) * (1 - k))
+
+window.renderAt = renderAt
+window.DURACAO = T
+window.pronto = (async () => {
+  await document.fonts.ready
+  await Promise.all(['800 40px Inter', '700 40px Inter', '600 40px Inter', '500 40px Inter', 'italic 600 40px Fraunces', '700 40px "Plus Jakarta Sans"'].map((f) => document.fonts.load(f)))
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = r; i.onerror = r })))
+  medirArcos()
+  renderAt(0)
+  return true
+})()
+</script>
+</body>
+</html>

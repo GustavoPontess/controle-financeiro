@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pontes — tour vertical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,600&family=Plus+Jakarta+Sans:wght@700&display=block" rel="stylesheet">
+<style>
+  /* Identidade do Pontes (tokens.css, paleta A). Vertical 1080×1920. */
+  :root { --primary:#1E40AF; --primary-dark:#1E3A8A; --accent:#F59E0B; --bg:#F7F9FC; --text:#0B1220; --muted:#5A6679; --border:#E5EAF2; --success:#10B981; --danger:#DC2626; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
+  body { font-family: 'Inter', system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; }
+  #bgLight { background:
+      radial-gradient(900px 800px at 100% 100%, rgba(245,158,11,0.12), transparent 60%),
+      radial-gradient(900px 700px at 0% 0%, rgba(30,64,175,0.08), transparent 60%), var(--bg); }
+  #bgDark { background:
+      radial-gradient(800px 900px at 100% 105%, rgba(245,158,11,0.30), transparent 62%),
+      radial-gradient(900px 800px at 0% -5%, rgba(255,255,255,0.12), transparent 60%),
+      linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 100%); }
+  .logo { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.035em; line-height: 0.85; display: inline-block; position: relative; }
+  .logo svg, .arcw svg { position: absolute; left: 0; width: 100%; overflow: visible; }
+  .em { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; color: var(--accent); }
+
+  /* marca d'água das cenas claras */
+  #marca { position: absolute; left: 0; right: 0; top: 96px; text-align: center; }
+  #marca .logo { font-size: 46px; color: var(--primary); }
+
+  /* cabeçalho das cenas de recurso */
+  .head { position: absolute; left: 80px; right: 80px; top: 230px; display: flex; flex-direction: column; gap: 22px; }
+  .eyebrow { font-weight: 800; font-size: 30px; letter-spacing: 0.16em; color: var(--accent); text-transform: uppercase; }
+  .title { font-weight: 800; font-size: 96px; line-height: 1.02; letter-spacing: -0.04em; }
+  .sub { font-weight: 500; font-size: 46px; line-height: 1.18; letter-spacing: -0.02em; color: var(--muted); }
+
+  /* card = janela com a tela real dentro (a "câmera" mexe a imagem) */
+  .card { position: absolute; overflow: hidden; border-radius: 30px; background: #fff;
+    box-shadow: 0 40px 90px -36px rgba(15,23,42,0.42), 0 0 0 1px rgba(15,23,42,0.06); }
+  .card img { position: absolute; left: 0; top: 0; display: block; }
+  .ring { position: absolute; border-radius: 16px; pointer-events: none; }
+  .pill { position: absolute; display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 36px; border-radius: 999px; padding: 18px 30px; white-space: nowrap; }
+
+  /* gancho / fechamento */
+  .big { position: absolute; left: 0; right: 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgLight" class="layer"></div>
+  <div id="bgDark" class="layer"></div>
+  <div id="marca"><span class="logo">Pontes</span></div>
+  <div id="cenas"></div>
+</div>
+
+<script>
+// Cada quadro = renderAt(t), função PURA do tempo. Cenas montadas a partir de dados.
+const $ = (id) => document.getElementById(id)
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const p = (t, a, b) => clamp((t - a) / (b - a))
+const outC = (x) => 1 - Math.pow(1 - x, 3)
+const inOut = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+const back = (x) => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2) }
+const R = '../work/recortes/'
+const DUR = 57.5
+
+// Recorte: arquivo, tamanho em px de CSS do app (a imagem é dpr 3; a reconciliação é dpr 2)
+const IMG = {
+  hero: ['dash-hero.png', 1166, 152], heroOc: ['dash-hero-oculto.png', 1166, 152], gastos: ['dash-gastos.png', 480, 265],
+  recentes: ['dash-recentes.png', 672, 397], trans: ['transacoes.png', 1166, 560], arte: ['cartao-arte.png', 380, 313],
+  fatura: ['fatura.png', 1164, 470], parc: ['parcelamentos.png', 1166, 298], fixasHero: ['fixas-hero.png', 1166, 141],
+  fixasProx: ['fixas-proximas.png', 1166, 104], empHero: ['emprestimos-hero.png', 1166, 127], empLista: ['emprestimos-lista.png', 1166, 258],
+  balanco: ['familia-balanco.png', 460, 224], recVazio: ['rec-vazio.png', 653, 515], recBate: ['rec-bate.png', 653, 515],
+  metas: ['metas.png', 1166, 185], limites: ['limites.png', 1166, 238], relComp: ['relatorios-comparacao.png', 1166, 196],
+  relGraf: ['relatorios-grafico.png', 1166, 403], ctrlk: ['ctrlk.png', 542, 107],
+}
+
+// ── Cenas ────────────────────────────────────────────────────────────────────────────────
+// card: { k: recorte, x, y (no palco), w, h (janela), z (zoom px-vídeo por px-CSS), px:[ini,fim] (deslocamento x em CSS),
+//         py:[ini,fim], at: entrada relativa (s), mov:[t0,t1] relativo pro movimento da câmera }
+const CENAS = [
+  { id: 'gancho', ini: 0, fim: 3.4, escuro: true },
+  { id: 'revela', ini: 3.4, fim: 7.6, titulo: 'Tudo da casa num app só.', semEyebrow: true,
+    cards: [ { k: 'hero', x: 60, y: 600, w: 960, h: 252, z: 1.66, at: 0.35 },
+             { k: 'gastos', x: 84, y: 905, w: 912, h: 504, z: 1.9, at: 0.65 },
+             { k: 'recentes', x: 84, y: 1462, w: 912, h: 380, z: 1.357, at: 0.9 } ] },
+  { id: 'trans', ini: 7.6, fim: 11.6, eyebrow: 'Transações', titulo: 'Cada real no lugar.', sub: 'Entrou, saiu, transferiu — com data e hora.',
+    cards: [ { k: 'trans', x: 60, y: 690, w: 960, h: 868, z: 1.55, px: [0, 300], at: 0.4, mov: [1.4, 3.7] } ] },
+  { id: 'olho', ini: 11.6, fim: 15.0, eyebrow: 'Privacidade', titulo: 'Alguém olhando?', sub: 'Um toque e os valores somem.',
+    cards: [ { k: 'hero', troca: 'heroOc', trocaEm: 1.55, x: 60, y: 720, w: 960, h: 252, z: 1.66, px: [0, 0], at: 0.35 },
+             { k: 'hero', troca: 'heroOc', trocaEm: 1.65, x: 60, y: 1010, w: 960, h: 252, z: 1.66, px: [578, 578], at: 0.5 } ] },
+  { id: 'cartao', ini: 15.0, fim: 20.0, eyebrow: 'Cartão de crédito', titulo: 'Fatura sem susto.', sub: 'Limite, vencimento e cada parcela.',
+    cards: [ { k: 'arte', x: 204, y: 650, w: 672, h: 354, z: 1.768, at: 0.35 },
+             { k: 'fatura', x: 60, y: 1060, w: 960, h: 594, z: 1.45, px: [0, 0], py: [60, 60], at: 0.75 } ],
+    aneis: [ { card: 1, r: [36, 381, 300, 46], cor: '#F59E0B', em: 2.0 } ] },
+  { id: 'parc', ini: 20.0, fim: 24.0, eyebrow: 'Parcelamentos', titulo: 'Parcelou? Ele acompanha.', sub: 'Quanto falta e em qual fatura cai.',
+    cards: [ { k: 'parc', x: 60, y: 700, w: 960, h: 432, z: 1.45, at: 0.4 } ],
+    aneis: [ { card: 0, r: [14, 202, 300, 34], cor: '#F59E0B', em: 1.0 } ] },
+  { id: 'fixas', ini: 24.0, fim: 28.0, eyebrow: 'Contas fixas', titulo: 'Contas fixas no automático.', sub: 'Veja o que vence antes de vencer.',
+    cards: [ { k: 'fixasHero', x: 60, y: 700, w: 960, h: 226, z: 1.6, at: 0.4 },
+             { k: 'fixasProx', x: 60, y: 980, w: 960, h: 143, z: 1.37, at: 0.7 } ],
+    aneis: [ { card: 1, r: [0, 28, 222, 76], cor: '#F59E0B', em: 1.7 } ] },
+  { id: 'emp', ini: 28.0, fim: 32.0, eyebrow: 'Empréstimos', titulo: 'Emprestou? Ninguém esquece.', sub: 'O que tem a receber e a pagar.',
+    cards: [ { k: 'empHero', x: 60, y: 700, w: 960, h: 264, z: 2.08, at: 0.4 },
+             { k: 'empLista', x: 60, y: 1020, w: 960, h: 387, z: 1.5, at: 0.7 } ] },
+  { id: 'familia', ini: 32.0, fim: 37.2, eyebrow: 'Família', titulo: 'Divide do jeito de vocês.', sub: 'Igual, pela renda ou personalizado.',
+    cards: [ { k: 'balanco', x: 80, y: 710, w: 920, h: 448, z: 2.0, at: 0.4 } ],
+    aneis: [ { card: 0, r: [306, 112, 142, 32], cor: '#DC2626', em: 1.4 }, { card: 0, r: [303, 162, 145, 32], cor: '#10B981', em: 1.8 } ],
+    pilulas: [ { txt: 'Igualitário', x: 80, y: 1210, em: 2.2 }, { txt: 'Pela renda', x: 380, y: 1210, em: 2.35 }, { txt: 'Personalizado', x: 690, y: 1210, em: 2.5, menor: true },
+               { txt: 'Cada um vê só a própria renda', x: 80, y: 1340, em: 2.9, cadeado: true } ] },
+  { id: 'rec', ini: 37.2, fim: 42.2, eyebrow: 'Reconciliação', titulo: 'Confere com o banco.', sub: 'Centavo por centavo.',
+    cards: [ { k: 'recVazio', troca: 'recBate', trocaEm: 2.95, x: 60, y: 690, w: 960, h: 757, z: 1.47, at: 0.35 } ],
+    digita: { card: 0, ini: 1.4, aneis: [ { r: [254, 318, 150, 70], cor: '#10B981', em: 3.15 } ] } },
+  { id: 'metas', ini: 42.2, fim: 46.6, eyebrow: 'Metas e limites', titulo: 'Guarde. E não estoure.', sub: 'Avisa antes de passar do limite.',
+    cards: [ { k: 'metas', x: 60, y: 690, w: 960, h: 230, z: 1.245, at: 0.35 },
+             { k: 'limites', x: 60, y: 970, w: 960, h: 296, z: 1.243, at: 0.65 } ],
+    aneis: [ { card: 1, r: [196, 26, 92, 22], cor: '#F59E0B', em: 1.6 } ] },
+  { id: 'rel', ini: 46.6, fim: 50.6, eyebrow: 'Relatórios', titulo: 'O mês num olhar.', sub: 'Comparado com o mês anterior.',
+    cards: [ { k: 'relComp', x: 60, y: 690, w: 960, h: 235, z: 1.2, at: 0.35 },
+             { k: 'relGraf', x: 60, y: 975, w: 960, h: 332, z: 0.823, at: 0.65 } ] },
+  { id: 'ctrlk', ini: 50.6, fim: 53.8, eyebrow: 'Atalho', titulo: 'Ache qualquer tela.', sub: 'Ctrl K e pronto.',
+    cards: [ { k: 'ctrlk', x: 60, y: 720, w: 960, h: 190, z: 1.771, at: 0.35 } ], busca: { card: 0, ini: 0.9 } },
+  { id: 'fim', ini: 53.8, fim: DUR, escuro: true },
+]
+
+// ── Monta o DOM ──────────────────────────────────────────────────────────────────────────
+const raizCenas = $('cenas')
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e }
+const ARCO = (cor, esp, id) => `<svg viewBox="0 0 200 16" preserveAspectRatio="none"><path id="${id}" d="M4 12 Q100 -4 196 12" stroke="${cor}" stroke-width="${esp}" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg>`
+for (const c of CENAS) {
+  const g = el('div', 'layer'); g.id = 'c_' + c.id; raizCenas.appendChild(g); c.g = g
+  if (c.id === 'gancho') {
+    g.innerHTML = `<div class="big" style="top:640px"><div id="g1" style="font-weight:800;font-size:150px;letter-spacing:-0.045em;color:#fff;line-height:1">Dinheiro<br>de casal</div></div>
+      <div class="big" style="top:1010px"><span class="em arcw" id="g2" style="font-size:200px;display:inline-block;position:relative">sem briga.${ARCO('#F59E0B', 9, 'arcG').replace('<svg', '<svg style="bottom:-62px;height:46px"')}</span></div>`
+    continue
+  }
+  if (c.id === 'fim') {
+    g.innerHTML = `<div class="big" style="top:640px"><span class="logo" id="f1" style="font-size:210px;color:#fff">Pontes${ARCO('#fff', 11, 'arcF').replace('<svg', '<svg style="bottom:-56px;height:44px"')}</span></div>
+      <div class="big" id="f2" style="top:1010px;font-weight:700;font-size:74px;letter-spacing:-0.035em;color:#fff;line-height:1.1">Dinheiro de casal<br><span class="em" style="font-size:92px">sem briga.</span></div>
+      <div class="big" style="top:1330px"><span id="f3" style="display:inline-flex;align-items:center;gap:16px;font-weight:700;font-size:38px;color:#fff;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);border-radius:999px;padding:18px 36px"><span style="position:relative;width:20px;height:20px;border-radius:50%;background:#F59E0B"><b id="fpulse" style="position:absolute;inset:0;border-radius:50%;background:#F59E0B"></b></span>Beta aberto</span></div>`
+    continue
+  }
+  const head = el('div', 'head'); g.appendChild(head)
+  if (c.id === 'revela') {
+    head.style.top = '250px'; head.style.alignItems = 'center'; head.style.textAlign = 'center'
+    head.innerHTML = `<span class="logo" id="rLogo" style="font-size:120px;color:#1E40AF">Pontes${ARCO('#1E40AF', 7, 'arcR').replace('<svg', '<svg style="bottom:-26px;height:28px"')}</span>`
+    const tt = el('div', 'title', c.titulo); tt.style.fontSize = '72px'; tt.style.marginTop = '40px'; head.appendChild(tt)
+  } else {
+    if (c.eyebrow) head.appendChild(el('div', 'eyebrow', c.eyebrow))
+    head.appendChild(el('div', 'title', c.titulo))
+    if (c.sub) head.appendChild(el('div', 'sub', c.sub))
+  }
+  c.textos = [...head.children]
+  c.cardsEl = (c.cards || []).map((k) => {
+    const [arq, cw, ch] = IMG[k.k]
+    const card = el('div', 'card'); Object.assign(card.style, { left: k.x + 'px', top: k.y + 'px', width: k.w + 'px', height: k.h + 'px' })
+    const img = el('img'); img.src = R + arq; img.style.width = cw * k.z + 'px'; card.appendChild(img)
+    let img2 = null
+    if (k.troca) { const [a2, w2] = IMG[k.troca]; img2 = el('img'); img2.src = R + a2; img2.style.width = w2 * k.z + 'px'; img2.style.opacity = 0; card.appendChild(img2) }
+    g.appendChild(card)
+    return { k, card, img, img2 }
+  })
+  c.aneisEl = (c.aneis || []).map((a) => { const r = el('div', 'ring'); c.cardsEl[a.card].card.appendChild(r); return { a, r } })
+  c.pilEl = (c.pilulas || []).map((pl) => {
+    const e = el('div', 'pill', (pl.cadeado ? `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>` : '') + pl.txt)
+    Object.assign(e.style, pl.cadeado ? { left: pl.x + 'px', top: pl.y + 'px', background: '#fff', color: '#0B1220', border: '2px solid #E5EAF2', boxShadow: '0 20px 40px -24px rgba(15,23,42,.35)' }
+      : { left: pl.x + 'px', top: pl.y + 'px', background: '#EEF2FF', color: '#1E40AF', fontSize: pl.menor ? '34px' : '36px' })
+    g.appendChild(e); return { pl, e }
+  })
+  if (c.digita) {
+    const d = el('div', null, '<span class="dt"></span><span class="cr" style="display:inline-block;width:3px;background:#1E40AF;margin-left:4px"></span>')
+    Object.assign(d.style, { position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: '#fff', fontWeight: 700, color: '#0B1220', fontVariantNumeric: 'tabular-nums' })
+    c.cardsEl[c.digita.card].card.appendChild(d); c.digEl = d
+    c.digAneis = c.digita.aneis.map((a) => { const r = el('div', 'ring'); c.cardsEl[c.digita.card].card.appendChild(r); return { a, r } })
+  }
+  if (c.busca) {
+    const d = el('div', null, '<span class="bt"></span><span class="bc" style="display:inline-block;width:3px;background:#1E40AF;margin-left:3px"></span>')
+    const k = c.cards[c.busca.card]
+    Object.assign(d.style, { position: 'absolute', left: 48 * k.z + 'px', top: 7 * k.z + 'px', width: 420 * k.z + 'px', height: 38 * k.z + 'px', background: '#fff', display: 'flex', alignItems: 'center', fontSize: 15 * k.z + 'px', color: '#0B1220' })
+    const cobre = el('div'); Object.assign(cobre.style, { position: 'absolute', left: 0, top: 52 * k.z + 'px', width: '100%', height: 60 * k.z + 'px', background: '#fff' })
+    c.cardsEl[c.busca.card].card.appendChild(d); c.cardsEl[c.busca.card].card.appendChild(cobre); c.buscaEl = d; c.cobreEl = cobre
+  }
+}
+
+// ── Desenho por quadro ───────────────────────────────────────────────────────────────────
+function show(e, o, y = 0, s = 1, x = 0) { e.style.opacity = o; e.style.transform = `translate(${x}px,${y}px) scale(${s})` }
+function anel(r, t0, t, cor, [x, y, w, h], z, dx = 0, dy = 0) {
+  const k = back(p(t, t0, t0 + 0.45)), o = clamp(p(t, t0, t0 + 0.2))
+  Object.assign(r.style, { left: x * z - dx * z - 8 + 'px', top: y * z - dy * z - 8 + 'px', width: w * z + 16 + 'px', height: h * z + 16 + 'px',
+    border: `5px solid ${cor}`, boxShadow: `0 0 0 ${8 * o}px ${cor}22, 0 0 36px ${cor}66`, opacity: o, transform: `scale(${1.12 - 0.12 * clamp(k, 0, 1.2)})` })
+}
+const mask = (d) => d ? (Number(d) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''
+
+function renderAt(t) {
+  const escuro = 1 - inOut(p(t, 3.15, 3.55)) + inOut(p(t, 53.6, 53.95))
+  $('bgDark').style.opacity = clamp(escuro)
+  const marcaVis = clamp(inOut(p(t, 7.4, 7.9))) * (1 - inOut(p(t, 53.4, 53.7)))
+  $('marca').style.opacity = marcaVis
+
+  for (const c of CENAS) {
+    const vis = t >= c.ini - 0.05 && t <= c.fim + 0.05
+    c.g.style.visibility = vis ? 'visible' : 'hidden'
+    if (!vis) continue
+    const rel = t - c.ini, dur = c.fim - c.ini
+    if (c.id === 'gancho') {
+      const out = inOut(p(t, 2.95, 3.3)), a = outC(p(t, 0.1, 0.8)), b = outC(p(t, 0.75, 1.4))
+      show($('g1'), a * (1 - out), (1 - a) * 60 - out * 40)
+      show($('g2'), b * (1 - out), (1 - b) * 40 - out * 40, 0.95 + 0.05 * b)
+      desenha('arcG', inOut(p(t, 1.25, 2.0)))
+      continue
+    }
+    if (c.id === 'fim') {
+      const l = outC(p(rel, 0.15, 0.85))
+      show($('f1'), l, (1 - l) * 40, 0.94 + 0.06 * l); desenha('arcF', inOut(p(rel, 0.45, 1.1)))
+      const f2 = outC(p(rel, 0.9, 1.45)); show($('f2'), f2, (1 - f2) * 30)
+      const ch = back(p(rel, 1.4, 1.85)); show($('f3'), clamp(p(rel, 1.4, 1.65)), (1 - clamp(ch)) * 18, 0.92 + 0.08 * ch)
+      const ph = ((rel - 1.5) % 1.2 + 1.2) % 1.2 / 1.2
+      $('fpulse').style.transform = `scale(${1 + ph * 1.6})`; $('fpulse').style.opacity = rel > 1.5 ? 0.55 * (1 - ph) : 0
+      continue
+    }
+    const sai = inOut(p(rel, dur - 0.38, dur - 0.04))
+    c.textos.forEach((e, i) => { const k = outC(p(rel, 0.08 + i * 0.12, 0.68 + i * 0.12)); show(e, k * (1 - sai), (1 - k) * 46 - sai * 26) })
+    if (c.id === 'revela') desenha('arcR', inOut(p(rel, 0.4, 1.0)))
+    for (const { k, card, img, img2 } of c.cardsEl) {
+      const e = outC(p(rel, k.at, k.at + 0.7))
+      show(card, e * (1 - sai), (1 - e) * 120 - sai * 30, 0.965 + 0.035 * e)
+      const m = k.mov ? inOut(p(rel, k.mov[0], k.mov[1])) : 0
+      const dx = k.px ? k.px[0] + (k.px[1] - k.px[0]) * m : 0, dy = k.py ? k.py[0] + (k.py[1] - k.py[0]) * m : 0
+      const push = 1 + 0.025 * p(rel, 0, dur)                      // aproximação lenta
+      for (const im of [img, img2]) if (im) im.style.transform = `translate(${-dx * k.z}px, ${-dy * k.z}px) scale(${push})`, im.style.transformOrigin = `${dx * k.z}px ${dy * k.z + k.h / 2}px`
+      if (img2) img2.style.opacity = inOut(p(rel, k.trocaEm, k.trocaEm + 0.3))
+      card._dx = dx; card._dy = dy
+    }
+    for (const { a, r } of c.aneisEl) { const cd = c.cardsEl[a.card]; anel(r, c.ini + a.em, t, a.cor, a.r, cd.k.z, cd.card._dx, cd.card._dy) }
+    for (const { pl, e } of c.pilEl) { const k = back(p(rel, pl.em, pl.em + 0.45)); show(e, clamp(p(rel, pl.em, pl.em + 0.2)) * (1 - sai), (1 - clamp(k)) * 30 - sai * 20, 0.9 + 0.1 * clamp(k, 0, 1.1)) }
+    if (c.digita) {
+      const k = c.cards[c.digita.card], z = k.z, D = '154338'
+      Object.assign(c.digEl.style, { left: 500 * z + 'px', top: 203 * z + 'px', width: 131 * z + 'px', height: 26 * z + 'px', fontSize: 13 * z + 'px', paddingRight: 10 * z + 'px' })
+      const n = clamp(Math.floor((rel - c.digita.ini) / 0.2) + 1, 0, D.length)
+      c.digEl.style.visibility = rel >= c.digita.ini - 0.2 && rel < k.trocaEm ? 'visible' : 'hidden'
+      c.digEl.querySelector('.dt').textContent = rel < c.digita.ini ? '' : mask(D.slice(0, n))
+      const cr = c.digEl.querySelector('.cr'); cr.style.height = 15 * z + 'px'; cr.style.opacity = Math.floor(rel * 2.4) % 2 === 0 || n < D.length ? 1 : 0
+      for (const { a, r } of c.digAneis) anel(r, c.ini + a.em, t, a.cor, a.r, z)
+    }
+    if (c.busca) {
+      const k = c.cards[c.busca.card], txt = 'car', n = clamp(Math.floor((rel - c.busca.ini) / 0.22) + 1, 0, txt.length)
+      c.buscaEl.querySelector('.bt').textContent = rel < c.busca.ini ? '' : txt.slice(0, n)
+      const bc = c.buscaEl.querySelector('.bc'); bc.style.height = 20 * k.z + 'px'; bc.style.opacity = Math.floor(rel * 2.4) % 2 === 0 ? 1 : 0
+      c.cobreEl.style.opacity = 1 - inOut(p(rel, c.busca.ini + 0.75, c.busca.ini + 1.0))
+    }
+  }
+}
+
+// arcos do logo: tracejado em px de TELA (non-scaling-stroke) → mede o comprimento real
+const ARCOS = [['arcG', 2.5], ['arcR', 6.0], ['arcF', 57]]
+function medirArcos() {
+  for (const [id, quando] of ARCOS) {
+    renderAt(quando)
+    const e = $(id), m = e.getScreenCTM(), n = e.getTotalLength(); let L = 0, ant = null
+    for (let i = 0; i <= 200; i++) { const q = e.getPointAtLength(n * i / 200), pt = new DOMPoint(q.x, q.y).matrixTransform(m); if (ant) L += Math.hypot(pt.x - ant.x, pt.y - ant.y); ant = pt }
+    e.dataset.len = Math.ceil(L + 6); e.setAttribute('stroke-dasharray', e.dataset.len)
+  }
+}
+const desenha = (id, k) => $(id).setAttribute('stroke-dashoffset', (+$(id).dataset.len || 2000) * (1 - k))
+
+window.renderAt = renderAt
+window.DURACAO = DUR
+window.pronto = (async () => {
+  await document.fonts.ready
+  await Promise.all(['800 40px Inter', '700 40px Inter', '600 40px Inter', '500 40px Inter', 'italic 600 40px Fraunces', '700 40px "Plus Jakarta Sans"'].map((f) => document.fonts.load(f)))
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = r; i.onerror = r })))
+  medirArcos(); renderAt(0); return true
+})()
+</script>
+</body>
+</html>

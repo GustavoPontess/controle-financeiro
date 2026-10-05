@@ -1,0 +1,6 @@
+# Saída gerada (capturas, quadros, áudio, vídeos) — regenera com os scripts, nunca versionar (centenas de MB).
+work/
+*.mp4
+*.wav
+*.jpg
+*.png
