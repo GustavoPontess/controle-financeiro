@@ -225,9 +225,10 @@ describe("RecorrentesPage", () => {
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Pausar" }))
 
-    expect(await screen.findByText("Pausada")).toBeInTheDocument()
-    expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes)
-    expect(screen.getByRole("button", { name: "Ações" })).toHaveFocus()
+    // Margem de tempo: na suíte cheia (CPU disputada) o 1s padrão do findBy estourava às vezes — falso vermelho.
+    expect(await screen.findByText("Pausada", {}, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes), { timeout: 4000 })
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ações" })).toHaveFocus(), { timeout: 4000 })
   })
 
   it("trocar pra 'Encerradas' refaz a consulta com status=encerradas", async () => {
