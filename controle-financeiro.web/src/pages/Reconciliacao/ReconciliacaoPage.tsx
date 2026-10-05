@@ -1,15 +1,16 @@
 /**
  * Reconciliação — /reconciliacao. Ancora a confiança no saldo: "nesta conta, nesta data, o saldo
- * real era X". Layout: seletor de conta → hero (saldo + sinal de confiança honesto + conferir hoje)
- * → coluna esquerda = painel conferir (protagonista, com os movimentos desde o último marco) +
- * coluna direita = calendário de marcos + histórico. Dados REAIS (reconciliacaoService +
- * transactionService). Spec: docs/features/reconciliacao.
+ * real era X". Layout (2026-10-05): hero (saldo + sinal de confiança honesto + conferir hoje) → coluna
+ * esquerda = "Conta a conferir" + calendário de marcos (com "Hoje") + última conferência; coluna direita
+ * = painel de conferir (linhas Calculado/Banco com o campo do banco na linha, diferença em destaque,
+ * ações do marco numa lista embaixo) → movimentos desde o marco anterior (PontesTabela, "Mostrar mais").
+ * Dados REAIS (reconciliacaoService + transactionService). Spec: docs/features/reconciliacao.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext, useNavigate } from "react-router-dom"
 import {
-  Check, TriangleAlert, ChevronLeft, ChevronRight, Flag, Trash2,
+  Check, TriangleAlert, ChevronLeft, ChevronRight, Flag, Scale, Plus, Pencil, Trash2,
   Landmark, ArrowUpRight, ArrowDownRight,
 } from "lucide-react"
 import { PontesButton, PontesField, PontesInput, PontesSelect, PontesDateInput, PontesDialog, PontesTabela } from "@/components/pontes"
@@ -229,6 +230,10 @@ export default function ReconciliacaoPage() {
   // Campo vazio não é zero: sem o saldo do banco digitado não há o que comparar nem gravar.
   // (Antes o vazio valia 0 e "Ajustar" lançava o saldo inteiro como ajuste.) "0,00" digitado vale.
   const preenchido = saldoReal.trim() !== ""
+  // Campo do banco na linha "Banco": aberto enquanto vazio ou com foco; preenchido e fora do foco vira
+  // o valor + lápis (o lápis reabre).
+  const [editandoBanco, setEditandoBanco] = useState(false)
+  const campoBancoAberto = editandoBanco || !preenchido
   const diferenca = calculado != null && preenchido ? declarado - calculado : 0
   const bate = calculado != null && preenchido && Math.abs(diferenca) < 0.005
 
@@ -332,8 +337,8 @@ export default function ReconciliacaoPage() {
       </div>
 
       <div className={styles.cols}>
-        {/* ESQUERDA: painel conferir (protagonista). O seletor de conta mora no topo deste painel. */}
-        <div className={`${styles.painel} ${styles.painelConf}`}>
+        {/* ESQUERDA: conta a conferir + calendário + última conferência. */}
+        <div className={`${styles.painel} ${styles.painelCal}`}>
           <div className={styles.painelSel}>
             <PontesField label="Conta a conferir" helper="Tudo nesta tela é desta conta.">
               <PontesSelect
@@ -343,143 +348,12 @@ export default function ReconciliacaoPage() {
               />
             </PontesField>
           </div>
-
-          {!diaSel && <p className={styles.painelSub}>Escolha um dia no calendário pra conferir o saldo daquele dia.</p>}
-
-          {diaSel && (() => {
-            // Modo edição do saldo inicial (ponto de partida) — edita valor + data aqui mesmo.
-            if (editandoInicial) {
-              return (
-                <>
-                  <div className={styles.painelTitulo}><Flag size={15} strokeWidth={2.2} /> Saldo inicial <strong className={styles.diaSelLabel}>da conta</strong></div>
-                  <p className={styles.painelSub}>O ponto de partida da conta — vale a partir desta data.</p>
-                  <div className={styles.painelInput} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <PontesField label="Valor">
-                      <PontesInput iconStart="R$" inputMode="decimal" placeholder="0,00" value={inicialValor} onChange={(e) => setInicialValor(maskMoney(e.target.value, inicialValor))} autoFocus />
-                    </PontesField>
-                    <PontesField label="Desde">
-                      <PontesDateInput value={inicialData} onChange={setInicialData} max={hojeISO} />
-                    </PontesField>
-                  </div>
-                  <div className={styles.painelFooter}>
-                    <PontesButton variant="primary" size="sm" fullWidth loading={salvandoInicial} iconStart={<Check size={14} strokeWidth={3} />} onClick={salvarInicial}>Salvar saldo inicial</PontesButton>
-                    <PontesButton variant="outline" size="sm" fullWidth onClick={() => setEditandoInicial(false)}>Cancelar</PontesButton>
-                  </div>
-                </>
-              )
-            }
-            const m = marcoDoDiaSel
-            const real = m && !m.derivado ? m : undefined
-            // Marco salvo: diferença de AGORA (recalculada até a data do marco). Com ajuste, o calculado
-            // mostrado é o de antes do ajuste e a linha "Ajuste lançado" explica a ponte até o declarado.
-            const calcAgora = real ? (calcMarco ?? real.saldoCalculado) : undefined
-            const calc = m ? (real && !real.temAjuste ? calcAgora! : m.saldoCalculado) : calculado
-            const decl = m ? m.saldoDeclarado : declarado
-            const dif = real
-              ? (real.temAjuste ? (calcMarco != null ? real.saldoDeclarado - calcMarco : 0) : real.saldoDeclarado - calcAgora!)
-              : m ? m.diferenca : diferenca
-            const bateu = m ? Math.abs(dif) < 0.005 : bate
-            // Salvo e ainda com diferença (sem ajuste) → aí sim: "Lançar o que falta" / "Ajustar".
-            const pendente = real != null && !real.temAjuste && Math.abs(dif) >= 0.005
-            // Salvo com diferença, mas a pessoa já lançou o que faltava → só confirmar.
-            const passouABater = real != null && !real.temAjuste && !pendente && Math.abs(real.diferenca) >= 0.005
-            const temResultado = m != null || calculado != null
-            // Sem o saldo do banco digitado: mostra só o calculado; declarado/diferença ficam em "—".
-            const comparavel = m != null || preenchido
-            return (
-              <>
-                {/* Título — mesma posição em todo modo. */}
-                <div className={styles.painelTitulo}>
-                  {m
-                    ? <>Marco de <strong className={styles.diaSelLabel}>{fmtDataBR(diaSel)}</strong></>
-                    : <><Flag size={15} strokeWidth={2.2} /> Conferir <strong className={styles.diaSelLabel}>{diaSel === hojeISO ? `hoje, ${fmtDiaMes(diaSel)}` : fmtDataBR(diaSel)}</strong></>}
-                </div>
-
-                {/* Saldo do banco — o que a pessoa digita (ou, num marco, o que foi salvo). */}
-                <div className={styles.painelInput}>
-                  <PontesField label={m ? "Saldo do banco" : "Saldo que aparece no seu banco"} helper={m ? undefined : "Abre o app do seu banco e põe o valor aqui."}>
-                    <PontesInput
-                      iconStart="R$"
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={m ? decl.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : saldoReal}
-                      onChange={(e) => setSaldoReal(maskMoney(e.target.value, saldoReal))}
-                      disabled={!!m}
-                      autoFocus={!m}
-                    />
-                  </PontesField>
-                </div>
-
-                {/* App × você × (ajuste) × diferença — o ajuste é uma linha da conta, não uma etiqueta. */}
-                {temResultado && (
-                  <div className={styles.resultado} data-bate={bateu ? "true" : "false"}>
-                    <div className={styles.resultLinha}><span>Calculado (app)</span><strong>{formatMoney(calc ?? 0)}</strong></div>
-                    <div className={styles.resultLinha}><span>Declarado (você)</span><strong>{comparavel ? formatMoney(decl) : "—"}</strong></div>
-                    {m?.temAjuste && (
-                      <div className={styles.resultLinha}>
-                        <span>Ajuste lançado</span>
-                        <strong className={m.diferenca > 0 ? styles.ajusteEntrada : styles.ajusteSaida}>{formatMoney(Math.abs(m.diferenca))}</strong>
-                      </div>
-                    )}
-                    <div className={styles.resultLinha} data-destaque="true">
-                      <span>Diferença</span>
-                      {/* Destaque = ícone colorido + traço embaixo (verde ✓ bate, vermelho ⚠ não bate). O valor
-                          fica em PRETO: vermelho no número parecia "negativo" mesmo com a diferença positiva. */}
-                      {comparavel
-                        ? <strong className={bateu ? styles.difOk : styles.difNok}>
-                            {bateu ? <Check size={20} strokeWidth={3} aria-hidden /> : <TriangleAlert size={20} strokeWidth={2.5} aria-hidden />}
-                            <span className={styles.difValor}>{dif > 0 ? "+" : ""}{formatMoney(dif)}</span>
-                          </strong>
-                        : <strong>—</strong>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Slot de nota com altura fixa → as caixas não dançam. Sem cartão de aviso de diferença:
-                    a própria linha "Diferença" já diz (vermelha = não bate, verde = bate). */}
-                <div className={styles.statusSlot}>
-                  {m?.derivado && <div className={styles.notaDerivado}>Ponto de partida da conta.</div>}
-                  {!m && calculado == null && <span className={styles.painelSub}>Calculando o saldo do dia…</span>}
-                </div>
-
-                {/* Ações ancoradas no rodapé. */}
-                <div className={styles.painelFooter}>
-                  {m?.derivado && (
-                    <PontesButton variant="outline" size="sm" fullWidth onClick={() => abrirEdicaoInicial(m)}>Alterar valor</PontesButton>
-                  )}
-                  {pendente && (
-                    <>
-                      <PontesButton variant="outline" size="sm" fullWidth onClick={() => navigate("/transactions")}>Lançar o que falta</PontesButton>
-                      <PontesButton variant="primary" size="sm" fullWidth loading={fechando} onClick={() => fechar(real!)}>Ajustar (cria lançamento)</PontesButton>
-                    </>
-                  )}
-                  {passouABater && (
-                    <PontesButton variant="primary" size="sm" fullWidth loading={fechando} iconStart={<Check size={14} strokeWidth={3} />} onClick={() => fechar(real!)}>Confere — atualizar marco</PontesButton>
-                  )}
-                  {real && (
-                    <div className={styles.footerPar}>
-                      <PontesButton variant="outline" size="sm" fullWidth onClick={() => alterarMarco(real)}>Alterar valor</PontesButton>
-                      <PontesButton variant="danger-outline" size="sm" fullWidth iconStart={<Trash2 size={14} strokeWidth={2.5} />} onClick={() => setRemovendo(real)}>Remover</PontesButton>
-                    </div>
-                  )}
-                  {!m && calculado != null && (
-                    <PontesButton variant="primary" size="sm" fullWidth loading={salvando} disabled={!preenchido}
-                      iconStart={<Check size={14} strokeWidth={3} />} onClick={() => gravar()}>
-                      Salvar saldo do banco
-                    </PontesButton>
-                  )}
-                </div>
-              </>
-            )
-          })()}
-        </div>
-
-        {/* DIREITA: calendário + histórico */}
-        <div className={`${styles.painel} ${styles.painelCal}`}>
           <div className={styles.calTopo}>
             <div className={styles.painelTitulo}>{MESES[mes]} {ano}</div>
             <div className={styles.calNav}>
               <button type="button" className={styles.calNavBtn} aria-label="Mês anterior" onClick={() => mudarMes(-1)}><ChevronLeft size={15} strokeWidth={2.5} /></button>
+              {/* "Hoje" entre as setas: volta pro mês atual e confere o dia de hoje. */}
+              <button type="button" className={`${styles.calNavBtn} ${styles.calHoje}`} onClick={conferirHoje}>Hoje</button>
               <button type="button" className={styles.calNavBtn} aria-label="Próximo mês" onClick={() => mudarMes(1)}><ChevronRight size={15} strokeWidth={2.5} /></button>
             </div>
           </div>
@@ -533,6 +407,167 @@ export default function ReconciliacaoPage() {
               <span className={styles.histValor}>{formatMoney(ultimoMarco.saldoDeclarado)}</span>
             </button>
           )}
+        </div>
+
+        {/* DIREITA: painel de conferir (só a altura do conteúdo — não estica até o calendário). */}
+        <div className={`${styles.painel} ${styles.painelConf} ${styles.painelCurto}`}>
+          {!diaSel && <p className={styles.painelSub}>Escolha um dia no calendário pra conferir o saldo daquele dia.</p>}
+
+          {diaSel && (() => {
+            // Modo edição do saldo inicial (ponto de partida) — edita valor + data aqui mesmo.
+            if (editandoInicial) {
+              return (
+                <>
+                  <div className={styles.painelTitulo}><Flag size={15} strokeWidth={2.2} /> Saldo inicial <strong className={styles.diaSelLabel}>da conta</strong></div>
+                  <p className={styles.painelSub}>O ponto de partida da conta — vale a partir desta data.</p>
+                  <div className={styles.painelInput} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <PontesField label="Valor">
+                      <PontesInput iconStart="R$" inputMode="decimal" placeholder="0,00" value={inicialValor} onChange={(e) => setInicialValor(maskMoney(e.target.value, inicialValor))} autoFocus />
+                    </PontesField>
+                    <PontesField label="Desde">
+                      <PontesDateInput value={inicialData} onChange={setInicialData} max={hojeISO} />
+                    </PontesField>
+                  </div>
+                  <div className={styles.painelFooter}>
+                    <PontesButton variant="primary" size="sm" fullWidth loading={salvandoInicial} iconStart={<Check size={14} strokeWidth={3} />} onClick={salvarInicial}>Salvar saldo inicial</PontesButton>
+                    <PontesButton variant="outline" size="sm" fullWidth onClick={() => setEditandoInicial(false)}>Cancelar</PontesButton>
+                  </div>
+                </>
+              )
+            }
+            const m = marcoDoDiaSel
+            const real = m && !m.derivado ? m : undefined
+            // Marco salvo: diferença de AGORA (recalculada até a data do marco). Com ajuste, o calculado
+            // mostrado é o de antes do ajuste e a linha "Ajuste lançado" explica a ponte até o declarado.
+            const calcAgora = real ? (calcMarco ?? real.saldoCalculado) : undefined
+            const calc = m ? (real && !real.temAjuste ? calcAgora! : m.saldoCalculado) : calculado
+            const decl = m ? m.saldoDeclarado : declarado
+            const dif = real
+              ? (real.temAjuste ? (calcMarco != null ? real.saldoDeclarado - calcMarco : 0) : real.saldoDeclarado - calcAgora!)
+              : m ? m.diferenca : diferenca
+            const bateu = m ? Math.abs(dif) < 0.005 : bate
+            // Salvo e ainda com diferença (sem ajuste) → aí sim: "Lançar o que falta" / "Ajustar".
+            const pendente = real != null && !real.temAjuste && Math.abs(dif) >= 0.005
+            // Salvo com diferença, mas a pessoa já lançou o que faltava → só confirmar.
+            const passouABater = real != null && !real.temAjuste && !pendente && Math.abs(real.diferenca) >= 0.005
+            const temResultado = m != null || calculado != null
+            // Sem o saldo do banco digitado: mostra só o calculado; declarado/diferença ficam em "—".
+            const comparavel = m != null || preenchido
+            return (
+              <>
+                {/* Título (as ações do marco ficam na lista do rodapé). */}
+                <div className={styles.painelTitulo}>
+                  {m
+                    ? <>Marco de <strong className={styles.diaSelLabel}>{fmtDataBR(diaSel)}</strong></>
+                    : <><Flag size={15} strokeWidth={2.2} /> Conferir <strong className={styles.diaSelLabel}>{diaSel === hojeISO ? `hoje, ${fmtDiaMes(diaSel)}` : fmtDataBR(diaSel)}</strong></>}
+                </div>
+
+                {/* Linhas tipo recibo: Calculado (app) / Banco (/ Ajuste lançado). O saldo do banco mora na
+                    linha "Banco": antes de salvar o campo JÁ VEM ABERTO ali; preenchido e fora do foco vira o
+                    valor + lápis (clicou → reabre). Marco salvo: só o valor (alterar = link no título). */}
+                {temResultado && (
+                  <div className={styles.linhas}>
+                    <div className={styles.linha}><span>Calculado (app)</span><strong>{formatMoney(calc ?? 0)}</strong></div>
+                    <div className={styles.linha}>
+                      <span>Banco</span>
+                      {m
+                        ? <strong>{formatMoney(decl)}</strong>
+                        : campoBancoAberto
+                          ? (
+                            <span className={styles.bancoCampo}>
+                              <PontesInput
+                                iconStart="R$"
+                                inputMode="decimal"
+                                placeholder="0,00"
+                                aria-label="Saldo que aparece no seu banco"
+                                className={styles.campoBanco}
+                                value={saldoReal}
+                                onChange={(e) => setSaldoReal(maskMoney(e.target.value, saldoReal))}
+                                onFocus={() => setEditandoBanco(true)}
+                                onBlur={() => setEditandoBanco(false)}
+                                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
+                                autoFocus
+                              />
+                            </span>
+                          )
+                          : (
+                            <button type="button" className={styles.bancoValor} aria-label="Editar saldo do banco" onClick={() => setEditandoBanco(true)}>
+                              <strong>{formatMoney(declarado)}</strong>
+                              <Pencil size={14} strokeWidth={2.5} />
+                            </button>
+                          )}
+                    </div>
+                    {m?.temAjuste && (
+                      <div className={styles.linha}>
+                        <span>Ajuste lançado</span>
+                        <strong className={m.diferenca > 0 ? styles.ajusteEntrada : styles.ajusteSaida}>{formatMoney(Math.abs(m.diferenca))}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* RESULTADO EM DESTAQUE: a diferença no centro (preta + traço + ícone ⚠/✓), no tamanho do conteúdo. */}
+                {temResultado && (
+                  <div className={styles.destaque} data-bate={bateu ? "true" : "false"}>
+                    <span className={styles.destaqueRot}>Diferença</span>
+                    {comparavel
+                      ? (
+                        <span className={styles.destaqueValor} data-tom={bateu ? "ok" : "nok"}>
+                          {/* Ícone do topo das letras até o traço embaixo (medido: 34px + desce 3px no CSS). */}
+                          {bateu ? <Check size={34} strokeWidth={3} aria-hidden /> : <TriangleAlert size={34} strokeWidth={2.5} aria-hidden />}
+                          {/* Bate (|dif| < meio centavo) = R$ 0,00 sem sinal — antes saía "✓ -R$ 0,00" no arredondamento. */}
+                          <span className={styles.destaqueNum}>{bateu ? formatMoney(0) : `${dif > 0 ? "+" : ""}${formatMoney(dif)}`}</span>
+                        </span>
+                      )
+                      : <span className={styles.destaqueVazio}>—</span>}
+                  </div>
+                )}
+
+                {/* Só aparece enquanto calcula — vazio, deixava um buraco entre o destaque e as opções. */}
+                {!m && calculado == null && (
+                  <div className={styles.statusSlot}><span className={styles.painelSub}>Calculando o saldo do dia…</span></div>
+                )}
+
+                {/* Rodapé: no máximo UMA ação principal. */}
+                <div className={styles.painelFooter}>
+                  {!m && calculado != null && (
+                    <PontesButton variant="primary" size="sm" fullWidth loading={salvando} disabled={!preenchido}
+                      iconStart={<Check size={14} strokeWidth={3} />} onClick={() => gravar()}>
+                      Salvar saldo do banco
+                    </PontesButton>
+                  )}
+                  {passouABater && (
+                    <PontesButton variant="primary" size="sm" fullWidth loading={fechando} iconStart={<Check size={14} strokeWidth={3} />} onClick={() => fechar(real!)}>Confere — atualizar marco</PontesButton>
+                  )}
+                  {/* Marco salvo: TODAS as ações numa lista só, embaixo (pedido do Gustavo, 2026-10-05) — com diferença,
+                      Ajustar / Lançar o que falta; sempre Alterar valor; Remover (vermelho) no marco real. */}
+                  {m && (
+                    <div className={styles.resolverOpcoes}>
+                      {pendente && (
+                        <>
+                          <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => void fechar(real!)}>
+                            <Scale size={16} strokeWidth={2.4} /> {fechando ? "Ajustando…" : "Ajustar (cria lançamento)"}
+                          </button>
+                          <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => navigate("/transactions")}>
+                            <Plus size={16} strokeWidth={2.4} /> Lançar o que falta
+                          </button>
+                        </>
+                      )}
+                      <button type="button" className={styles.resolverItem} disabled={fechando} onClick={() => (m.derivado ? abrirEdicaoInicial(m) : alterarMarco(m))}>
+                        <Pencil size={16} strokeWidth={2.4} /> Alterar valor
+                      </button>
+                      {real && (
+                        <button type="button" className={styles.resolverItem} data-perigo="true" disabled={fechando} onClick={() => setRemovendo(real)}>
+                          <Trash2 size={16} strokeWidth={2.4} /> Remover
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* Sem selo "Conferido" quando bate — o ✓ verde na diferença já diz (pedido do Gustavo). */}
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
 

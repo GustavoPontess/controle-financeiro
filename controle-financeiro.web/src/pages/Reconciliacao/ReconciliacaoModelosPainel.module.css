@@ -1,0 +1,73 @@
+/* Modelos ANTIGOS do painel de conferir (galeria DEV). Tokens do DS, padrão denso. */
+.grupoTitulo { margin: 0; font-size: 20px; font-weight: 700; color: var(--pontes-text); }
+
+.modelo { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 14px 16px 18px; }
+.modeloNome { margin: 0; font-size: 16px; font-weight: 700; color: var(--pontes-text); }
+.modeloIdeia { margin: 4px 0 12px; font-size: 12px; color: var(--pontes-text-muted); }
+.momentos { display: grid; grid-template-columns: repeat(3, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+.momento { display: flex; flex-direction: column; gap: 6px; }
+.momentoRot { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--pontes-text-muted); }
+@media (max-width: 1000px) { .momentos { grid-template-columns: 1fr; } }
+
+/* Painel (mesma casca do painel real) */
+.painel { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 260px; }
+.topo { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.titulo { font-size: 13.5px; font-weight: 700; color: var(--pontes-text); }
+.icones, .linksTopo { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; color: var(--pontes-text-muted); font-size: 12px; }
+.linksTopo { gap: 6px; }
+
+/* Diferença: preto + traço + ícone */
+.dif { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: var(--pontes-text); }
+.dif[data-grande="true"] { font-size: 22px; font-weight: 800; gap: 8px; }
+.difValor { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.dif[data-grande="true"] .difValor { text-decoration-thickness: 3px; text-underline-offset: 6px; }
+.dif[data-tom="nok"] svg { color: var(--pontes-danger); }
+.dif[data-tom="nok"] .difValor { text-decoration-color: var(--pontes-danger); }
+.dif[data-tom="ok"] svg { color: var(--pontes-success); }
+.dif[data-tom="ok"] .difValor { text-decoration-color: var(--pontes-success); }
+
+.rodape { margin-top: auto; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.link { background: none; border: 0; padding: 2px 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--pontes-primary); cursor: pointer; align-self: center; }
+.link:hover { text-decoration: underline; }
+.link[data-perigo="true"] { color: var(--pontes-danger); }
+.chipOk { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--pontes-success); background: var(--pontes-success-soft); border-radius: 999px; padding: 4px 10px; }
+
+/* A — tiles */
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tile { border: 1px solid var(--pontes-border); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile strong { font-size: 13px; color: var(--pontes-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile[data-destaque="true"] { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }
+.tileRot { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--pontes-text-muted); }
+
+/* B / D — linhas tipo recibo */
+.linhas { display: flex; flex-direction: column; gap: 7px; }
+.linha { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--pontes-text-muted); }
+.linha strong { color: var(--pontes-text); font-size: 13px; }
+.linha[data-total="true"] { padding-top: 7px; border-top: 1px solid var(--pontes-border); }
+
+/* B — lista de ações */
+.listaAcoes { display: flex; flex-direction: column; border: 1px solid var(--pontes-border); border-radius: 10px; overflow: hidden; }
+.acaoLinha { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: none; border: 0; border-bottom: 1px solid var(--pontes-border); font: inherit; font-size: 12.5px; font-weight: 600; color: var(--pontes-text); cursor: pointer; text-align: left; }
+.acaoLinha:last-child { border-bottom: 0; }
+.acaoLinha:hover { background: var(--pontes-bg); }
+.acaoIcone { width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--pontes-primary-soft); color: var(--pontes-primary); }
+.acaoTexto { flex: 1; }
+.acaoSeta { color: var(--pontes-text-muted); }
+.linksPequenos { display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--pontes-text-muted); font-size: 12px; }
+
+/* C — destaque */
+.destaque { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px; border-radius: 12px; background: var(--pontes-bg); text-align: center; }
+.destaqueRot { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pontes-text-muted); }
+.destaqueSub { font-size: 11.5px; color: var(--pontes-text-muted); }
+.resolverWrap { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.menu { border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.2); overflow: hidden; display: flex; flex-direction: column; }
+.menuItem { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: none; border: 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--pontes-text); text-align: left; cursor: pointer; }
+.menuItem:hover { background: var(--pontes-bg); }
+.menuItem + .menuItem { border-top: 1px solid var(--pontes-border); }
+
+/* D — valor editável */
+.valorEditavel { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed var(--pontes-border); border-radius: 10px; background: none; font: inherit; cursor: pointer; text-align: left; }
+.valorEditavel:hover { border-color: var(--pontes-primary); }
+.valorRot { font-size: 12px; color: var(--pontes-text-muted); flex: 1; }
+.valorNum { font-size: 15px; font-weight: 800; color: var(--pontes-text); font-variant-numeric: tabular-nums; }
+.valorLapis { color: var(--pontes-primary); }

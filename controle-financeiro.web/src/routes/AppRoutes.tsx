@@ -43,6 +43,7 @@ import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
 import ReconciliacaoPage from "../pages/Reconciliacao/ReconciliacaoPage"
 import ReconciliacaoEstados from "../pages/Reconciliacao/ReconciliacaoEstados"
+import ReconciliacaoModelos from "../pages/Reconciliacao/ReconciliacaoModelos"
 
 // /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
 function RedirecionarParcelamento() {
@@ -82,6 +83,10 @@ export default function AppRoutes() {
         {/* Galeria DEV dos estados do painel de conferir da Reconciliação (revisão de design). */}
         {import.meta.env.DEV && (
           <Route path="/reconciliacao-estados" element={<ReconciliacaoEstados />} />
+        )}
+        {/* Galeria DEV de MODELOS alternativos do painel de conferir (escolha de layout). */}
+        {import.meta.env.DEV && (
+          <Route path="/reconciliacao-modelos" element={<ReconciliacaoModelos />} />
         )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
