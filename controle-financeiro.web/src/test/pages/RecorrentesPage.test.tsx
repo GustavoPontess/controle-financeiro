@@ -314,6 +314,12 @@ describe("RecorrentesPage", () => {
     expect(screen.queryByLabelText("Cancelar conta fixa")).not.toBeInTheDocument()
   })
 
+  it("valor sem +/− pelo tipo (a cor conta a direção)", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(screen.queryByText(/^[−+-]\s?R\$/)).not.toBeInTheDocument()
+  })
+
   // ── Pausada × Cancelada (bug: cancelada aparecia como "Pausada" e oferecia "Ativar") ──
 
   it("pausada: badge 'Pausada' e ação 'Retomar' (sem 'Pausar')", async () => {

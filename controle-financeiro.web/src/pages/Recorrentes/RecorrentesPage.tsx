@@ -577,7 +577,8 @@ export default function RecorrentesPage() {
 
                   <div className={styles.cardRight}>
                     <span className={styles.cardValor} data-tipo={isDespesa ? "despesa" : "receita"}>
-                      {isDespesa ? "−" : "+"}{formatMoney(r.valor)}
+                      {/* Sem +/− pelo tipo: a cor conta a direção (regra de exibição de valor do app). */}
+                      {formatMoney(r.valor)}
                     </span>
                     <PontesRowActions actions={acoesDaLinha(r)} />
                   </div>

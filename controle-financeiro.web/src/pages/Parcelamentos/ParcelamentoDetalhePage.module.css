@@ -45,3 +45,8 @@
 
 .cancelInfo { font-size: var(--pontes-fs-md); color: var(--pontes-text); margin: 0; }
 .cancelWarning { font-size: var(--pontes-fs-sm); color: var(--pontes-danger); margin: 0; }
+
+/* Celular: números 2 por linha (1 por linha deixava a tela comprida demais). */
+@media (max-width: 767px) {
+  .miniStats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

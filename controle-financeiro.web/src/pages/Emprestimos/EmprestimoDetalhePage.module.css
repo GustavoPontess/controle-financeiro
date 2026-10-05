@@ -42,3 +42,8 @@
 
 .obs { font-size: var(--pontes-fs-md); color: var(--pontes-text-muted); margin: 0; line-height: 1.5; }
 .obsLabel { font-size: var(--pontes-fs-2xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); margin: 0 0 6px; }
+
+/* Celular: números 2 por linha (1 por linha deixava a tela comprida demais). */
+@media (max-width: 767px) {
+  .miniStats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

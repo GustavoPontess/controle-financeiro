@@ -218,3 +218,11 @@
 .contributeInfo strong {
   color: var(--pontes-text);
 }
+
+/* Celular: o hero empilha (valor em cima, números embaixo, à esquerda). Lado a lado em 343px o rótulo
+   virava coluna estreita e o número das stats ficava POR CIMA do valor. */
+@media (max-width: 767px) {
+  .hero { flex-direction: column; align-items: stretch; padding: 20px; gap: 16px; }
+  .heroStats { justify-content: flex-start; gap: 24px; }
+  .heroStat { align-items: flex-start; }
+}

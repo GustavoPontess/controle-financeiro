@@ -131,3 +131,10 @@
   .heroStat { align-items: flex-start; }
   .pendencias { justify-content: flex-start; }
 }
+
+/* Celular: Entrou/Saiu/Sobrou não cabem lado a lado (o 3º ficava escondido fora do hero) — quebram em
+   linhas, sem os divisores verticais. */
+@media (max-width: 767px) {
+  .heroStats { flex-wrap: wrap; gap: 12px 24px; }
+  .heroStatDivider { display: none; }
+}

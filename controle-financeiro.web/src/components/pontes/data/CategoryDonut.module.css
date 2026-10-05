@@ -58,3 +58,11 @@
   .grid { grid-template-columns: 1fr; gap: 16px; }
   .list { max-height: 200px; }
 }
+
+/* Celular: empilha (rosca em cima, legenda inteira embaixo). Lado a lado o nome da categoria virava
+   "Alime…"; aqui não há card vizinho pra esticar (as colunas já estão empilhadas). */
+@media (max-width: 767px) {
+  .grid { grid-template-columns: 1fr; gap: 12px; }
+  .donutWrap { width: 100%; max-width: 180px; margin: 0 auto; }
+  .list { max-height: none; }
+}

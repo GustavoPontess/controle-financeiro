@@ -53,3 +53,8 @@
   border-color: var(--pontes-danger);
   color: var(--pontes-danger);
 }
+
+/* Celular: ícone em cima do texto — 3 opções lado a lado em ~300px ("Transferência" cortava à direita). */
+@media (max-width: 767px) {
+  .card { flex-direction: column; gap: 4px; padding: 10px 6px; font-size: var(--pontes-fs-sm); min-width: 0; }
+}

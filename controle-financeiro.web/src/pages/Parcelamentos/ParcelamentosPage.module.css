@@ -40,3 +40,8 @@
 
 .formCol { display: flex; flex-direction: column; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Celular: números 2 por linha (1 por linha deixava a tela comprida demais). */
+@media (max-width: 767px) {
+  .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

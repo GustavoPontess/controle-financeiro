@@ -100,7 +100,7 @@
 
 .cardRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .cardValor { font-size: var(--pontes-fs-lg); font-weight: 800; letter-spacing: -0.01em; }
-.cardValor[data-tipo="despesa"] { color: var(--pontes-text); }
+.cardValor[data-tipo="despesa"] { color: var(--pontes-danger); }
 .cardValor[data-tipo="receita"] { color: var(--pontes-success); }
 
 /* ── Form (inside modals) ────────────────────────────────────────────────── */
@@ -133,4 +133,16 @@
   color: var(--pontes-text-secondary, #6b7280);
   margin: 0;
   line-height: 1.5;
+}
+
+/* Celular: o hero empilha (valor em cima, números embaixo, à esquerda). Lado a lado em 343px o rótulo
+   virava coluna estreita e o número das stats ficava POR CIMA do valor. */
+@media (max-width: 767px) {
+  .hero { flex-direction: column; align-items: stretch; padding: 20px; gap: 16px; }
+  .card { padding: 12px 14px; gap: 12px; }
+  .cardIcon { width: 34px; height: 34px; border-radius: 9px; }
+  .cardNome, .cardValor { font-size: var(--pontes-fs-linha); }
+  .cardRight { gap: 4px; }
+  .heroStats { justify-content: flex-start; gap: 24px; }
+  .heroStat { align-items: flex-start; }
 }
