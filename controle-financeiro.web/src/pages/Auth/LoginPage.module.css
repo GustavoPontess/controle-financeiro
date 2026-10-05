@@ -160,3 +160,8 @@
 .acctChip:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
 .acctChipEmail { font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acctChipCaret { color: var(--pontes-text-muted); flex-shrink: 0; }
+
+/* Celular: 40px de cada lado roubavam espaço do formulário (sobravam ~295px). */
+@media (max-width: 767px) {
+  .form { padding: 24px 20px; }
+}

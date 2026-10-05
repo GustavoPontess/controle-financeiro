@@ -68,3 +68,8 @@
   display: flex; align-items: center; justify-content: center;
   background: var(--pontes-primary-soft, rgba(0,0,0,0.05)); color: var(--pontes-primary);
 }
+
+/* Celular: 40px de cada lado roubavam espaço do formulário (sobravam ~295px). */
+@media (max-width: 767px) {
+  .form { padding: 24px 20px; }
+}

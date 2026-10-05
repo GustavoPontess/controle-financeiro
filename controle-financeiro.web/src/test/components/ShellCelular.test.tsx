@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { PontesDrawer, PontesNavbar, PontesThemeProvider } from "../../components/pontes"
 import Navbar from "../../components/Navbar/Navbar"
 import DefaultLayout from "../../layouts/Default/DefaultLayout"
+import AdminLayout from "../../layouts/Admin/AdminLayout"
 import { CELULAR, useMediaQuery } from "../../hooks/useMediaQuery"
 
 // Responsivo P0 (2026-10-05): no celular a barra lateral ficava fixa em 208px e o conteúdo com ~150px.
@@ -20,6 +21,7 @@ vi.mock("../../components/AddAccountDialog/AddAccountDialog", () => ({ default: 
 vi.mock("../../components/Pwa/InstallPrompt", () => ({ default: () => null }))
 vi.mock("../../pages/Transactions/components/NewTransactionDialog/NewTransactionDialog", () => ({ default: () => null }))
 vi.mock("../../services/categoryService", () => ({ getCategories: vi.fn().mockResolvedValue([]) }))
+vi.mock("../../pages/Admin/AdminNotificationBell", () => ({ default: () => null }))
 
 // matchMedia controlável: `largura` decide se a query de celular casa; `mudar` avisa os ouvintes.
 let celular = false
@@ -180,5 +182,30 @@ describe("PontesNavbar (site) no celular", () => {
     expect(ir).toHaveBeenCalledWith("/casais")
     expect(screen.getAllByText("Para Casais")).toHaveLength(1)                 // painel fechou
     expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument()
+  })
+})
+
+describe("AdminLayout no celular", () => {
+  it("mesma gaveta do app: fechada, ☰ abre, tocar num item navega e fecha", () => {
+    celular = true
+    render(
+      <PontesThemeProvider>
+        <MemoryRouter initialEntries={["/admin/pendentes"]}>
+          <Routes>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/pendentes" element={<p>fila</p>} />
+              <Route path="/admin/usuarios" element={<p>tela usuários</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </PontesThemeProvider>,
+    )
+    const gaveta = () => screen.getByLabelText("Menu", { selector: "aside" })
+    expect(gaveta()).not.toHaveAttribute("data-open")
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }))
+    expect(gaveta()).toHaveAttribute("data-open", "true")
+    fireEvent.click(screen.getByText("Usuários"))
+    expect(screen.getByText("tela usuários")).toBeInTheDocument()
+    expect(gaveta()).not.toHaveAttribute("data-open")
   })
 })
