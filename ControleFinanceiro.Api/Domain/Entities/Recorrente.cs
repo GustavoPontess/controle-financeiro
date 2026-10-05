@@ -62,4 +62,9 @@ public class Recorrente
 
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Token de concorrência otimista — coluna de sistema <c>xmin</c> do Postgres (igual à
+    /// <c>Fatura.Versao</c>). Duas operações simultâneas na mesma conta fixa (duplo clique em Retomar/Salvar,
+    /// job × requisição): a segunda afeta 0 linhas → 409, em vez de gerar as previsões 2×.</summary>
+    public uint Versao { get; set; }
 }

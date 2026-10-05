@@ -87,4 +87,31 @@ public class AppDbContextModeloNpgsqlTests
         Assert.NotNull(indice);
         Assert.True(indice!.IsUnique);
     }
+
+    [Fact]
+    public void Recorrente_Versao_EhTokenDeConcorrencia_MapeadoNaColunaDeSistemaXmin()
+    {
+        // Duplo clique em Retomar/Salvar: sem isto as duas requisições geravam as previsões (P1-2 da revisão).
+        using var ctx = ContextoNpgsqlSemBanco();
+        var versao = Modelo(ctx).FindEntityType(typeof(Recorrente))!.FindProperty(nameof(Recorrente.Versao))!;
+
+        Assert.True(versao.IsConcurrencyToken);
+        Assert.Equal(ValueGenerated.OnAddOrUpdate, versao.ValueGenerated);
+        Assert.Equal("xmin", versao.GetColumnName());
+    }
+
+    [Fact]
+    public void Transacao_ContaFixaUmaOcorrenciaVivaPorCompetencia_IndiceUnicoParcial()
+    {
+        // É o índice que segura a cobrança dobrada quando duas requisições geram ao mesmo tempo (P1-1/P1-2).
+        // Parcial: cancelada (Ativo = false) e ocorrência antiga sem competência ficam de fora.
+        using var ctx = ContextoNpgsqlSemBanco();
+        var indice = Modelo(ctx).FindEntityType(typeof(Transacao))!.GetIndexes()
+            .SingleOrDefault(i => i.Properties.Select(p => p.Name)
+                .SequenceEqual([nameof(Transacao.RecorrenteOrigemId), nameof(Transacao.Competencia)]));
+
+        Assert.NotNull(indice);
+        Assert.True(indice!.IsUnique);
+        Assert.Equal("\"Ativo\" AND \"Competencia\" IS NOT NULL", indice.GetFilter());
+    }
 }

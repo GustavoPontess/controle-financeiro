@@ -81,6 +81,12 @@ public class Transacao
 
     public Guid? RecorrenteOrigemId { get; set; }
 
+    /// <summary>Período que esta ocorrência de conta fixa cobre (<c>M2026-10</c>, <c>A2026</c>, <c>S12</c> —
+    /// ver <c>AgendaRecorrente.Competencia</c>). Uma conta fixa tem no máximo UMA ocorrência viva por período
+    /// (índice único parcial): trocar o Dia ou realinhar não cobra o mês 2× nem o perde. Null fora de conta fixa.</summary>
+    [MaxLength(16)]
+    public string? Competencia { get; set; }
+
     // ── Novos vínculos ao sistema de Parcelamento (ARQUITETURA_PARCELAMENTO.md § "Transacao (Mudanças)") ──
 
     /// <summary>Vincula esta Transacao ao Parcelamento que a originou (se aplicável).</summary>

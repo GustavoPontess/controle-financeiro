@@ -1178,4 +1178,131 @@ public class RecorrenteContaFixaMotorTests
         Assert.Equal(AgendaRecorrente.MaxDatasPorGeracao, maisUmLote);
         Assert.Equal(2 * AgendaRecorrente.MaxDatasPorGeracao, ctx.Transacoes.Local.Select(t => t.Data).Distinct().Count());
     }
+
+    // ══ Competência: período já cobrado não repete, período sem cobrança não some (P1-1) ══════════════════
+
+    private static DateOnly PrimeiroDoMes(DateOnly d) => D(d.Year, d.Month, 1);
+    private static DateOnly UltimoDoMes(DateOnly d) => D(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
+    private static string Mes(DateOnly d) => $"M{d.Year:D4}-{d.Month:D2}";
+
+    private static async Task<List<Transacao>> VivasNoMesAsync(AppDbContext ctx, Guid recorrenteId, DateOnly mes) =>
+        (await VivasAsync(ctx, recorrenteId)).Where(t => t.Data.Year == mes.Year && t.Data.Month == mes.Month).ToList();
+
+    [Fact]
+    public async Task AtualizarAsync_TrocarODia_ComOMesJaCobrado_NaoCobraOMesDeNovo()
+    {
+        // O caso da revisão: Dia 5→20 com o dia 5 já efetivado gerava o dia 20 (o mês 2×). Aqui: dia 1 efetivado
+        // (sem competência — dado de antes da coluna, conta pela data) e troca pro 28.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 1, inicio: mes.AddMonths(-2));
+        var efetivada = SeedTransacao(ctx, r, mes, StatusTransacao.Executado);
+
+        await CreateService(ctx).AtualizarAsync(r.Id, Dto(r, dia: 28), u);
+
+        var noMes = await VivasNoMesAsync(ctx, r.Id, mes);
+        Assert.Equal(efetivada.Id, Assert.Single(noMes).Id); // só a que já foi cobrada
+        var previstas = (await VivasAsync(ctx, r.Id)).Where(t => t.StatusTransacao == StatusTransacao.Previsao).ToList();
+        Assert.Equal(DatasMensais(mes.AddMonths(1), D(Hoje.Year, 12, 31), 28), previstas.Select(t => t.Data).ToList());
+        Assert.All(previstas, t => Assert.Equal(Mes(t.Data), t.Competencia)); // ocorrência nova sai com a competência
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_TrocarProDiaQueJaPassou_SemOMesCobrado_NaoPerdeOMes()
+    {
+        // O outro lado: Dia 20→5 no dia 10 cancelava o 20 e o cursor ia pro 5 do mês QUE VEM (o mês sumia).
+        // Aqui: previsão no último dia do mês (Dia 31) e troca pro dia 1 — que já chegou.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 31, inicio: mes.AddMonths(-2));
+        SeedTransacao(ctx, r, UltimoDoMes(mes.AddMonths(-1)), StatusTransacao.Executado); // mês passado, cobrado
+        var antiga = SeedTransacao(ctx, r, UltimoDoMes(mes), StatusTransacao.Previsao);
+
+        await CreateService(ctx).AtualizarAsync(r.Id, Dto(r, dia: 1), u);
+
+        var cobranca = Assert.Single(await VivasNoMesAsync(ctx, r.Id, mes));
+        Assert.Equal(mes, cobranca.Data);                                   // dia 1 deste mês…
+        // …que já passou: lança como efetivado (se hoje É o dia 1, fica prevista e o job efetiva).
+        Assert.Equal(mes < Hoje ? StatusTransacao.Executado : StatusTransacao.Previsao, cobranca.StatusTransacao);
+        Assert.Equal(Mes(mes), cobranca.Competencia);
+        Assert.False((await TodasAsync(ctx, r.Id)).Single(t => t.Id == antiga.Id).Ativo);
+        Assert.Single(await VivasNoMesAsync(ctx, r.Id, mes.AddMonths(-1))); // o mês passado não é mexido
+    }
+
+    [Fact]
+    public async Task RealinharAsync_DadoLegadoCobradoNoDiaErrado_NaoCobraOMesDeNovo()
+    {
+        // Motor antigo cobrava no dia do início: Dia 28 já efetivada no dia 1 deste mês + previsão futura no dia 1
+        // do mês que vem. Realinhar + expandir (o job das 03:00) gerava o 28 deste mês: o mês 2×.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: mes.AddMonths(-3));
+        var efetivada = SeedTransacao(ctx, r, mes, StatusTransacao.Executado);
+        SeedTransacao(ctx, r, mes.AddMonths(1), StatusTransacao.Previsao);
+        var svc = CreateService(ctx);
+
+        await svc.RealinharAsync(Hoje);
+        await svc.GerarOcorrenciasAsync(r, AgendaRecorrente.HorizonteExpansao(Hoje), StatusTransacao.Previsao);
+        await ctx.SaveChangesAsync();
+
+        Assert.Equal(efetivada.Id, Assert.Single(await VivasNoMesAsync(ctx, r.Id, mes)).Id);
+        Assert.Equal(DatasMensais(mes.AddMonths(1), D(Hoje.Year, 12, 31), 28), await DatasPrevistasVivasAsync(ctx, r.Id));
+    }
+
+    [Fact]
+    public async Task RealinharAsync_MesSemCobrancaViva_GanhaASuaNoDiaCerto_MesmoJaPassado()
+    {
+        // Dia 1 com a previsão legada no último dia deste mês (fora do compasso): cancelada no realinhamento, o
+        // mês ficaria sem cobrança. Agora recomeça do início do período → previsão no dia 1 (o job efetiva).
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 1, inicio: mes.AddMonths(-3));
+        SeedTransacao(ctx, r, UltimoDoMes(mes), StatusTransacao.Previsao);
+        var svc = CreateService(ctx);
+
+        await svc.RealinharAsync(Hoje);
+        await svc.GerarOcorrenciasAsync(r, AgendaRecorrente.HorizonteExpansao(Hoje), StatusTransacao.Previsao);
+        await ctx.SaveChangesAsync();
+
+        var cobranca = Assert.Single(await VivasNoMesAsync(ctx, r.Id, mes));
+        Assert.Equal(mes, cobranca.Data);
+        Assert.Equal(Mes(mes), cobranca.Competencia);
+    }
+
+    // ══ Pausar/retomar pelo estado pedido (P1-2: duplo clique) ═════════════════════════════════════════
+
+    [Fact]
+    public async Task ToggleAtivoAsync_RetomarDuasVezes_NaoDesfazNemDuplica()
+    {
+        // Antes era só "inverte": o 2º clique em Retomar pausava de novo (ou, simultâneo, gerava 2×).
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 15, inicio: PrimeiroDoMes(Hoje).AddMonths(-1), ativo: false);
+        var svc = CreateService(ctx);
+
+        await svc.ToggleAtivoAsync(r.Id, u, ativo: true);
+        var depoisDoPrimeiro = await DatasPrevistasVivasAsync(ctx, r.Id);
+        await svc.ToggleAtivoAsync(r.Id, u, ativo: true);
+
+        Assert.True((await LinhaAsync(ctx, r.Id)).Ativo);
+        Assert.Equal(depoisDoPrimeiro, await DatasPrevistasVivasAsync(ctx, r.Id));
+        Assert.Single(await EventosAsync(ctx, r.Id), e => e.Tipo == FinancialEventType.RecorrenteRetomada);
+    }
+
+    [Fact]
+    public async Task ToggleAtivoAsync_PausarJaPausada_NaoFazNada()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 15, inicio: PrimeiroDoMes(Hoje), ativo: false);
+
+        await CreateService(ctx).ToggleAtivoAsync(r.Id, u, ativo: false);
+
+        Assert.False((await LinhaAsync(ctx, r.Id)).Ativo);
+        Assert.Empty(await EventosAsync(ctx, r.Id));
+    }
 }

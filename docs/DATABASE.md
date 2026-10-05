@@ -353,18 +353,22 @@ Despesas/receitas que se repetem. Cada cobrança é uma `Transacao` com `Recorre
 | `CanceladoEm` / `MotivoCancelamento` | timestamp / TEXT | NULL | cancelamento (definitivo) |
 | `ExcluidoEm` | timestamp | NULL | exclusão LÓGICA (2026-10-05): some das listas; histórico fica |
 | `CriadoEm` | timestamp | NOT NULL | |
+| `xmin` (`Versao`) | xid | sistema | concorrência otimista (2026-10-05): duas operações simultâneas → a 2ª leva 409 |
 
-**Validação:** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum); conta/cartão/categoria do próprio usuário (`DonoRecursos`).
+**Validação:** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum); conta/cartão/categoria do próprio usuário (`DonoRecursos`). Criar: `DataInicio` entre hoje − 12 meses e hoje + 5 anos; `DataFim` ≥ início (`AgendaRecorrente.ValidarPeriodo`). O gerador percorre no máximo 400 datas por chamada.
 
-**Datas de cobrança — regra única `Services/AgendaRecorrente.cs` (2026-10-05):** mensal = todo mês no `Dia`; anual = todo ano no `Dia` do mês de início; semanal = a cada 7 dias do início. Dia 31 em mês curto cai no último dia e o mês seguinte volta pro 31. Todo lugar que gera ocorrência usa `RecorrenteService.GerarOcorrenciasAsync` (pula dia que já tem ocorrência viva → nunca cobra duas vezes o mesmo dia).
+**Datas de cobrança — regra única `Services/AgendaRecorrente.cs` (2026-10-05):** mensal = todo mês no `Dia`; anual = todo ano no `Dia` do mês de início; semanal = a cada 7 dias do início. Dia 31 em mês curto cai no último dia e o mês seguinte volta pro 31. Todo lugar que gera ocorrência usa `RecorrenteService.GerarOcorrenciasAsync`.
+
+**Competência (2026-10-05):** cada ocorrência grava em `Transacoes.Competencia` o PERÍODO que cobre — `M2026-10` (mensal), `A2026` (anual), `S{n}` (semanal: n-ésimo bloco de 7 dias desde o início). Uma conta fixa tem no máximo **uma ocorrência viva por período**: o gerador pula período ocupado (não a data — trocar o Dia de 5 pra 20 com o 5 já cobrado não cobra o mês de novo) e o índice único parcial `UX_Transacoes_Recorrente_Competencia (RecorrenteOrigemId, Competencia) WHERE Ativo AND Competencia IS NOT NULL` segura a corrida entre requisições (23505 → 409 nas operações do usuário; descartado em silêncio no GET da lista e no job). Ocorrência antiga sem competência conta pela data. A migration `AddCompetenciaTransacao` preencheu as vivas com a mesma conta, em SQL.
 
 **Ciclo de vida:**
 - Criar: gera 3 meses de `Previsao` a partir do início, no `Dia`.
 - `ExpandirRecorrentesJob` (diário 03:00 UTC): primeiro `RealinharAsync` (cancela previsão de conta fixa pausada/cancelada/excluída/inexistente e realinha ao `Dia` as geradas no dia errado); depois gera previsões até 31/12 do ano corrente.
 - `ExecutarRecorrentesJob` (diário 03:30 UTC): `Previsao` → `Executado` pela data, **só** de conta fixa ativa (não pausada/cancelada/excluída).
 - GET da lista (`GerarPendentesAsync`): lança como `Executado` o que venceu e ainda não foi gerado (rede de segurança se o job não rodou).
-- Pausar: cancela as previsões pendentes. Retomar: gera de novo a partir de hoje (meses parados não são cobrados).
-- Alterar: cancela as previsões de hoje em diante e gera de novo com os dados novos.
+- Pausar: cancela as previsões pendentes. Retomar: gera de novo a partir de hoje (meses parados não são cobrados). `PATCH toggle?ativo=` recebe o estado PEDIDO: repetir não desfaz.
+- Alterar: cancela as previsões de hoje em diante e gera de novo com os dados novos, a partir do INÍCIO DO PERÍODO atual — período já cobrado não repete; período sem cobrança ganha a sua (dia já passado entra `Executado`).
+- Realinhar (job): também recomeça do início do período atual — o mês cobrado no dia antigo não é cobrado de novo, e o que ficou sem cobrança ganha a sua.
 - Cancelar: `CanceladoEm` + cancela as previsões; Excluir: `ExcluidoEm` + cancela as previsões. Executadas ficam (histórico).
 - Previsão no cartão entra no total da fatura → todo cancelamento de previsão chama `ReconciliarFaturasAposCancelamentoAsync`.
 - "Próxima cobrança" (DTO `ProximaCobranca`) = a previsão pendente mais próxima, não o cursor.

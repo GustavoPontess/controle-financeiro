@@ -1470,6 +1470,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("Valor")
                         .HasColumnType("numeric");
 
+                    b.Property<uint>("Versao")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CartaoCreditoId");
@@ -1689,6 +1695,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Competencia")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<Guid?>("ContaId")
                         .HasColumnType("uuid");
 
@@ -1800,6 +1810,11 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("ParcelamentoId");
 
                     b.HasIndex("SubcategoriaId");
+
+                    b.HasIndex("RecorrenteOrigemId", "Competencia")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Transacoes_Recorrente_Competencia")
+                        .HasFilter("\"Ativo\" AND \"Competencia\" IS NOT NULL");
 
                     b.ToTable("Transacoes");
                 });

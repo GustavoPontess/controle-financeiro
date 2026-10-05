@@ -392,9 +392,11 @@ public class ContaFixaJobsTests
 
         await ExpandirJob(ctx).ExecuteAsync();
 
+        // A semana corrente (inicio+7 … inicio+13) tinha a cobrança no dia errado (inicio+11, cancelada): ganha a
+        // sua no dia certo, inicio+7 — já passado, o ExecutarRecorrentesJob efetiva. Antes a semana sumia.
         var esperado = new List<DateOnly>();
         for (var d = inicio; d < D(hoje.Year + 1, 1, 1); d = d.AddDays(7))
-            if (d >= hoje) esperado.Add(d);
+            if (d > hoje.AddDays(-7)) esperado.Add(d);
         Assert.Equal(esperado, await DatasPrevistasVivasAsync(ctx, r.Id));
         var todas = await TodasAsync(ctx, r.Id);
         Assert.False(todas.Single(t => t.Id == erradaA.Id).Ativo);

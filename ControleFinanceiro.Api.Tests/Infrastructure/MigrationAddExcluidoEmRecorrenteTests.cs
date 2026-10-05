@@ -18,14 +18,15 @@ public class MigrationAddExcluidoEmRecorrenteTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_NaOrdem()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
         var excluido = ids.IndexOf("20261005071851_AddExcluidoEmRecorrente");
         Assert.True(excluido >= 0, "A migration AddExcluidoEmRecorrente não foi descoberta pelo EF.");
-        Assert.Equal(ids.Count - 1, excluido); // nada gerado por cima sem querer
+        // Logo depois dela vem só a AddCompetenciaTransacao (nada gerado no meio sem querer).
+        Assert.Equal("20261005170111_AddCompetenciaTransacao", ids[excluido + 1]);
     }
 
     [Fact]

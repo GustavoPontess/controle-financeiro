@@ -392,4 +392,60 @@ public class AgendaRecorrenteTests
         Assert.Throws<ArgumentException>(() =>
             AgendaRecorrente.ValidarPeriodo(D(2020, 1, 1), D(2019, 12, 31), hoje, validarInicio: false));
     }
+
+    // ── Competência (P1-1: deduplicar por período, não por data) ─────────────
+
+    [Fact]
+    public void Competencia_Mensal_EhOMes_QualquerDia()
+    {
+        var inicio = D(2026, 1, 15);
+        Assert.Equal("M2026-10", AgendaRecorrente.Competencia(D(2026, 10, 5), inicio, Mensal));
+        Assert.Equal("M2026-10", AgendaRecorrente.Competencia(D(2026, 10, 20), inicio, Mensal)); // dia 5 e 20 = mesmo mês
+        Assert.Equal("M2026-11", AgendaRecorrente.Competencia(D(2026, 11, 1), inicio, Mensal));
+        Assert.Equal("M0987-03", AgendaRecorrente.Competencia(D(987, 3, 1), inicio, Mensal));   // sempre 4 dígitos (igual ao SQL)
+    }
+
+    [Fact]
+    public void Competencia_Anual_EhOAno()
+    {
+        Assert.Equal("A2026", AgendaRecorrente.Competencia(D(2026, 3, 1), D(2025, 3, 1), Anual));
+        Assert.Equal("A2026", AgendaRecorrente.Competencia(D(2026, 12, 31), D(2025, 3, 1), Anual));
+    }
+
+    [Fact]
+    public void Competencia_Semanal_EhOBlocoDe7DiasDesdeOInicio()
+    {
+        var inicio = D(2026, 10, 1);
+        Assert.Equal("S0", AgendaRecorrente.Competencia(D(2026, 10, 1), inicio, Semanal));
+        Assert.Equal("S0", AgendaRecorrente.Competencia(D(2026, 10, 7), inicio, Semanal));
+        Assert.Equal("S1", AgendaRecorrente.Competencia(D(2026, 10, 8), inicio, Semanal));
+        Assert.Equal("S52", AgendaRecorrente.Competencia(D(2027, 9, 30), inicio, Semanal));
+    }
+
+    [Theory]
+    [InlineData(Mensal)]
+    [InlineData(Anual)]
+    [InlineData(Semanal)]
+    public void Competencia_CadaCobrancaDoCompasso_TemPeriodoProprio(FrequenciaRecorrencia freq)
+    {
+        // Duas cobranças seguidas nunca caem no mesmo período (senão o gerador pularia uma de verdade).
+        foreach (var dia in new[] { 1, 15, 28, 31 })
+        {
+            var datas = Agenda(D(2026, 1, 31), dia, freq, 60);
+            var periodos = datas.Select(d => AgendaRecorrente.Competencia(d, D(2026, 1, 31), freq)).ToList();
+            Assert.Equal(periodos.Count, periodos.Distinct().Count());
+        }
+    }
+
+    [Fact]
+    public void InicioDoPeriodo_MesAnoESemana()
+    {
+        Assert.Equal(D(2026, 10, 1), AgendaRecorrente.InicioDoPeriodo(D(2026, 10, 10), D(2025, 1, 20), Mensal));
+        Assert.Equal(D(2026, 1, 1), AgendaRecorrente.InicioDoPeriodo(D(2026, 10, 10), D(2025, 1, 20), Anual));
+        // Semanal: blocos de 7 dias desde 01/10 → 08/10 a 14/10 é o bloco do dia 10.
+        Assert.Equal(D(2026, 10, 8), AgendaRecorrente.InicioDoPeriodo(D(2026, 10, 10), D(2026, 10, 1), Semanal));
+        Assert.Equal(D(2026, 10, 1), AgendaRecorrente.InicioDoPeriodo(D(2026, 10, 1), D(2026, 10, 1), Semanal));
+        // Início no futuro: não há período corrente — fica o próprio dia (o gerador nunca vai antes do início).
+        Assert.Equal(D(2026, 10, 10), AgendaRecorrente.InicioDoPeriodo(D(2026, 10, 10), D(2026, 12, 1), Semanal));
+    }
 }

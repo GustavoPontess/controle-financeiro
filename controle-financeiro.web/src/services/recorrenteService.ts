@@ -52,8 +52,9 @@ export const updateRecorrente = async (id: string, dto: CriarRecorrente): Promis
   await api.put(`${BASE}/${id}`, dto)
 }
 
-export const toggleRecorrente = async (id: string): Promise<void> => {
-  await api.patch(`${BASE}/${id}/toggle`)
+// Manda o estado PEDIDO (pausar = false, retomar = true): repetir o pedido não desfaz no servidor.
+export const toggleRecorrente = async (id: string, ativo: boolean): Promise<void> => {
+  await api.patch(`${BASE}/${id}/toggle`, null, { params: { ativo } })
 }
 
 export const cancelarRecorrente = async (id: string, dto: CancelarRecorrenteDto): Promise<void> => {

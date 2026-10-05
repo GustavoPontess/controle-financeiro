@@ -323,7 +323,7 @@ describe("RecorrentesPage", () => {
     const menu = await abrirMenu()
     expect(within(menu).queryByRole("menuitem", { name: "Pausar" })).not.toBeInTheDocument()
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Retomar" }))
-    await waitFor(() => expect(toggleRecorrente).toHaveBeenCalledWith("rec-p"))
+    await waitFor(() => expect(toggleRecorrente).toHaveBeenCalledWith("rec-p", true)) // estado pedido: retomar
   })
 
   it("cancelada: badge 'Cancelada' (não 'Pausada'), motivo, e SEM retomar/ativar — só Excluir", async () => {
@@ -506,13 +506,24 @@ describe("RecorrentesPage", () => {
 
   // ── Pausar (via ⋮) ──
 
-  it("chama toggleRecorrente ao clicar Pausar", async () => {
+  it("chama toggleRecorrente ao clicar Pausar, com o estado pedido (pausar = false)", async () => {
     toggleRecorrente.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
     await waitFor(() => {
-      expect(toggleRecorrente).toHaveBeenCalledWith("rec-001")
+      expect(toggleRecorrente).toHaveBeenCalledWith("rec-001", false)
     })
+  })
+
+  it("enquanto o Pausar não voltou, a ação some do ⋮ (sem 2º clique pro servidor)", async () => {
+    let terminar: () => void = () => {}
+    toggleRecorrente.mockReturnValue(new Promise<void>((ok) => { terminar = ok }))
+    renderPage()
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
+    expect(within(await abrirMenu()).queryByRole("menuitem", { name: "Pausar" })).not.toBeInTheDocument()
+    expect(toggleRecorrente).toHaveBeenCalledTimes(1)
+    terminar()
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ message: "Conta fixa pausada." })))
   })
 
   // ── Excluir (via ⋮ + confirmação) ──

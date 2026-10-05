@@ -51,6 +51,34 @@ public static class AgendaRecorrente
         }
     }
 
+    /// <summary>
+    /// Período (competência) que uma cobrança na <paramref name="data"/> cobre: <b>mensal</b> <c>M2026-10</c>,
+    /// <b>anual</b> <c>A2026</c>, <b>semanal</b> <c>S{n}</c> (n-ésimo bloco de 7 dias desde o início). Uma conta
+    /// fixa cobra no máximo uma vez por período — é isso que o gerador confere, não a data exata (com a data,
+    /// trocar o Dia de 5 pra 20 com o dia 5 já cobrado cobrava o mês de novo no dia 20).
+    /// <para>A migration <c>AddCompetenciaTransacao</c> preenche as antigas com a MESMA conta em SQL — mudar
+    /// o formato aqui exige mudar lá.</para>
+    /// </summary>
+    public static string Competencia(DateOnly data, DateOnly inicio, FrequenciaRecorrencia freq) => freq switch
+    {
+        FrequenciaRecorrencia.Semanal => $"S{(data.DayNumber - inicio.DayNumber) / 7}",
+        FrequenciaRecorrencia.Anual => $"A{data.Year:D4}",
+        _ => $"M{data.Year:D4}-{data.Month:D2}",
+    };
+
+    /// <summary>
+    /// Primeiro dia do período de <paramref name="hoje"/> (mês, ano, ou bloco de 7 dias desde o início). Alterar
+    /// e realinhar recomeçam DAQUI, não de hoje: Dia 20→5 no dia 10 sem o mês cobrado gera o dia 5 deste mês
+    /// (de hoje, o mês sumia — próxima seria só o mês que vem).
+    /// </summary>
+    public static DateOnly InicioDoPeriodo(DateOnly hoje, DateOnly inicio, FrequenciaRecorrencia freq) => freq switch
+    {
+        FrequenciaRecorrencia.Semanal when hoje >= inicio => inicio.AddDays((hoje.DayNumber - inicio.DayNumber) / 7 * 7),
+        FrequenciaRecorrencia.Semanal => hoje,
+        FrequenciaRecorrencia.Anual => new DateOnly(hoje.Year, 1, 1),
+        _ => new DateOnly(hoje.Year, hoje.Month, 1),
+    };
+
     /// <summary>A data cai no compasso da conta fixa (dia certo)?</summary>
     public static bool NoCompasso(DateOnly data, DateOnly inicio, int dia, FrequenciaRecorrencia freq) =>
         data >= inicio && ProximaEmOuDepois(data, inicio, dia, freq) == data;

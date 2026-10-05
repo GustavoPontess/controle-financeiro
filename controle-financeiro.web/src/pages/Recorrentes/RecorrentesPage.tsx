@@ -270,23 +270,38 @@ export default function RecorrentesPage() {
   // ── pausar / retomar ─────────────────────────────────────────────────────────
   // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
 
+  // Uma ida ao servidor por conta fixa de cada vez: enquanto a 1ª não voltou, Pausar/Retomar some do ⋮
+  // daquela linha (o servidor também não desfaz — recebe o estado pedido, não "inverte").
+  const [togglesEmAndamento, setTogglesEmAndamento] = useState<ReadonlySet<string>>(new Set())
+  const marcarToggle = (id: string, emAndamento: boolean) =>
+    setTogglesEmAndamento((s) => {
+      const n = new Set(s)
+      if (emAndamento) n.add(id)
+      else n.delete(id)
+      return n
+    })
+
   async function handleToggle(r: Recorrente) {
+    if (togglesEmAndamento.has(r.id)) return
+    marcarToggle(r.id, true)
+    const retomou = r.situacao === "pausada"
     try {
-      await toggleRecorrente(r.id)
+      await toggleRecorrente(r.id, retomou)
       // Troca a situação em vez de remover: pausar e depois retomar (com a busca ligada) devolve o
       // item à faixa.
-      const retomou = r.situacao === "pausada"
       const aplicar = (x: Recorrente): Recorrente => ({ ...x, ativo: retomou, situacao: retomou ? "ativa" : "pausada" })
       mudarNaBase(r.id, aplicar)
       mudarNaLista(r.id, aplicar)
       recarregar()
       notify({
         open: true,
-        message: r.situacao === "pausada" ? "Conta fixa retomada." : "Conta fixa pausada.",
+        message: retomou ? "Conta fixa retomada." : "Conta fixa pausada.",
         severity: "success",
       })
     } catch {
       notify({ open: true, message: "Erro ao atualizar conta fixa.", severity: "error" })
+    } finally {
+      marcarToggle(r.id, false)
     }
   }
 
@@ -403,17 +418,18 @@ export default function RecorrentesPage() {
   // retoma; cancelada/encerrada só podem ser excluídas.
   function acoesDaLinha(r: Recorrente): PontesRowAction[] {
     const acoes: PontesRowAction[] = []
+    const togglando = togglesEmAndamento.has(r.id)
     if (r.situacao === "ativa") {
       acoes.push({
         key: "editar-proxima", label: "Editar próxima ocorrência",
         icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => openEditarProxima(r),
       })
-      acoes.push({
+      if (!togglando) acoes.push({
         key: "pausar", label: "Pausar",
         icon: <PauseCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),
       })
     }
-    if (r.situacao === "pausada") {
+    if (r.situacao === "pausada" && !togglando) {
       acoes.push({
         key: "retomar", label: "Retomar",
         icon: <PlayCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),

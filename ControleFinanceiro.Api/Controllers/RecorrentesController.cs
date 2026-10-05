@@ -71,11 +71,15 @@ public class RecorrentesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Pausa ou retoma a conta fixa. <c>?ativo=false</c> pausa e <c>?ativo=true</c> retoma — já no estado pedido,
+    /// não faz nada (duplo clique não desfaz). Sem o parâmetro, inverte.
+    /// </summary>
     [HttpPatch("{id}/toggle")]
-    public async Task<IActionResult> ToggleAtivo(Guid id)
+    public async Task<IActionResult> ToggleAtivo(Guid id, [FromQuery] bool? ativo = null)
     {
         var uid = GetUserId();
-        await _service.ToggleAtivoAsync(id, uid);
+        await _service.ToggleAtivoAsync(id, uid, ativo);
         return NoContent();
     }
 

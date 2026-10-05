@@ -3,6 +3,7 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ControleFinanceiro.Api.Infrastructure.Jobs;
 
@@ -28,11 +29,14 @@ public class ExpandirRecorrentesJob
         var horizonte = AgendaRecorrente.HorizonteExpansao(hojeD); // previsão até o fim do ano corrente (inclusive Dez/31)
 
         // Conserto de dado antigo (ocorrência no cartão sem fatura) — roda todo dia, é barato quando não há nada.
-        bool houveMudanca = await AnexarOcorrenciasSemFaturaAsync();
-
         // Antes de expandir (e antes do ExecutarRecorrentesJob, 30 min depois): cancela previsão de conta fixa
         // que não deve mais cobrar e realinha ao Dia as geradas no dia errado. Idempotente.
-        houveMudanca |= await _recorrenteService.RealinharAsync(hojeD) > 0;
+        // Cada etapa grava sozinha: conflito com uma requisição do usuário no meio (xmin da conta fixa/fatura,
+        // índice único da competência) perde só aquela etapa/conta fixa — tenta de novo amanhã —, não o job de
+        // todos os usuários (mesma regra do FaturaAtrasoJob).
+        var anexou = await AnexarOcorrenciasSemFaturaAsync();
+        await SalvarOuDescartarAsync(anexou, "anexar ocorrências sem fatura");
+        await SalvarOuDescartarAsync(await _recorrenteService.RealinharAsync(hojeD) > 0, "realinhar contas fixas");
 
         var recorrentes = await _context.Recorrentes
             .Where(r => r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null
@@ -43,7 +47,9 @@ public class ExpandirRecorrentesJob
         {
             try
             {
-                houveMudanca |= await _recorrenteService.GerarOcorrenciasAsync(r, horizonte, StatusTransacao.Previsao) > 0;
+                var criadas = await _recorrenteService.GerarOcorrenciasAsync(r, horizonte, StatusTransacao.Previsao);
+                await SalvarOuDescartarAsync(criadas > 0 || _context.Entry(r).State == EntityState.Modified,
+                    $"expandir conta fixa {r.Id}");
             }
             catch (KeyNotFoundException ex)
             {
@@ -51,11 +57,32 @@ public class ExpandirRecorrentesJob
                 // cartão apagado). Pula só esta recorrente — sem isso uma linha ruim derrubava a expansão
                 // de todos os usuários. O cartão falha já na 1ª iteração, então nada dela ficou pendente.
                 _logger.LogWarning(ex, "Recorrente {RecorrenteId} ignorada na expansão: {Motivo}", r.Id, ex.Message);
+                Descartar();
             }
         }
+    }
 
-        if (houveMudanca)
+    // Grava o que está pendente; conflito (concorrência ou unicidade) descarta só isso e segue.
+    private async Task SalvarOuDescartarAsync(bool houveMudanca, string etapa)
+    {
+        if (!houveMudanca) return;
+        try
+        {
             await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException
+                                           || ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            _logger.LogWarning(ex, "Conflito ao {Etapa}; descartado, tenta de novo na próxima execução.", etapa);
+            Descartar();
+        }
+    }
+
+    // Solta do contexto o que não foi gravado (o que já foi gravado fica como está).
+    private void Descartar()
+    {
+        foreach (var e in _context.ChangeTracker.Entries().Where(e => e.State != EntityState.Unchanged).ToList())
+            e.State = EntityState.Detached;
     }
 
     /// <summary>

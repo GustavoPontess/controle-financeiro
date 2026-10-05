@@ -217,6 +217,21 @@ public class AppDbContext : DbContext
             .Property(f => f.Versao)
             .IsRowVersion();
 
+        // Recorrente (conta fixa): mesma concorrência otimista da Fatura (xmin).
+        modelBuilder.Entity<Recorrente>()
+            .Property(r => r.Versao)
+            .IsRowVersion();
+
+        // Conta fixa: no máximo UMA ocorrência VIVA por período (competência). É o que segura a cobrança
+        // dobrada quando duas requisições geram ao mesmo tempo (a segunda estoura 23505) — a checagem em
+        // memória do gerador sozinha não vê o que a outra ainda não gravou. Parcial: cancelada não conta, e
+        // ocorrência antiga sem competência (de antes da coluna) não entra.
+        modelBuilder.Entity<Transacao>()
+            .HasIndex(t => new { t.RecorrenteOrigemId, t.Competencia })
+            .IsUnique()
+            .HasFilter("\"Ativo\" AND \"Competencia\" IS NOT NULL")
+            .HasDatabaseName("UX_Transacoes_Recorrente_Competencia");
+
         // RegistroIdempotencia: o índice ÚNICO é o que torna a idempotência atômica — a segunda
         // requisição concorrente com a mesma chave estoura aqui (23505) em vez de pagar de novo.
         modelBuilder.Entity<RegistroIdempotencia>()
