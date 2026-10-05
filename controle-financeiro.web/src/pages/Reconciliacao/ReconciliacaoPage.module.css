@@ -22,7 +22,7 @@
 /* Duas colunas: ESQUERDA = conferir (protagonista, seletor no topo, ações no rodapé), DIREITA = calendário + última.
    O painel de conferir é flex-column e estica até a altura da linha; a coluna do calendário fica na altura
    natural (align-self: start). Assim as ações ancoram no rodapé sem buraco, e o modo "marco" não encolhe. */
-.cols { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1.3fr); gap: 12px; align-items: stretch; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); gap: 12px; align-items: stretch; }
 .painelConf { display: flex; flex-direction: column; }
 .painelCal { display: flex; flex-direction: column; }
 .painelInput { margin-top: 10px; }
@@ -144,7 +144,9 @@
 
 /* ── Layout "Atual" (2026-10-05): calendário à esquerda (com "Conta a conferir" em cima), painel de
    conferir à direita, só com a altura do conteúdo. Linhas tipo recibo + campo do banco na linha. ── */
-.painelCurto { align-self: start; }
+/* Os 2 cards com a MESMA altura (o grid estica): no painel de conferir quem cresce é o destaque da
+   diferença, só o que falta — sem buraco entre ele e o rodapé. */
+.painelCurto .destaque { flex: 1; }
 .linhas { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .linha { display: flex; justify-content: space-between; align-items: center; min-height: 32px; font-size: 12px; color: var(--pontes-text-muted); }
 .linha strong { color: var(--pontes-text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }

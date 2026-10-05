@@ -1,9 +1,9 @@
 /**
  * Reconciliação — /reconciliacao. Ancora a confiança no saldo: "nesta conta, nesta data, o saldo
  * real era X". Layout (2026-10-05): hero (saldo + sinal de confiança honesto + conferir hoje) → coluna
- * esquerda = "Conta a conferir" + calendário de marcos (com "Hoje") + última conferência; coluna direita
- * = painel de conferir (linhas Calculado/Banco com o campo do banco na linha, diferença em destaque,
- * ações do marco numa lista embaixo) → movimentos desde o marco anterior (PontesTabela, "Mostrar mais").
+ * esquerda = painel de conferir ("Conta a conferir" em cima; linhas Calculado/Banco com o campo do banco
+ * na linha, diferença em destaque, ações do marco numa lista embaixo); coluna direita = calendário de
+ * marcos (com "Hoje") + última conferência → movimentos desde o marco anterior (PontesTabela, "Mostrar mais").
  * Dados REAIS (reconciliacaoService + transactionService). Spec: docs/features/reconciliacao.
  */
 
@@ -337,8 +337,8 @@ export default function ReconciliacaoPage() {
       </div>
 
       <div className={styles.cols}>
-        {/* ESQUERDA: conta a conferir + calendário + última conferência. */}
-        <div className={`${styles.painel} ${styles.painelCal}`}>
+        {/* ESQUERDA: painel de conferir, com "Conta a conferir" em cima (só a altura do conteúdo). */}
+        <div className={`${styles.painel} ${styles.painelConf} ${styles.painelCurto}`}>
           <div className={styles.painelSel}>
             <PontesField label="Conta a conferir" helper="Tudo nesta tela é desta conta.">
               <PontesSelect
@@ -348,69 +348,6 @@ export default function ReconciliacaoPage() {
               />
             </PontesField>
           </div>
-          <div className={styles.calTopo}>
-            <div className={styles.painelTitulo}>{MESES[mes]} {ano}</div>
-            <div className={styles.calNav}>
-              <button type="button" className={styles.calNavBtn} aria-label="Mês anterior" onClick={() => mudarMes(-1)}><ChevronLeft size={15} strokeWidth={2.5} /></button>
-              {/* "Hoje" entre as setas: volta pro mês atual e confere o dia de hoje. */}
-              <button type="button" className={`${styles.calNavBtn} ${styles.calHoje}`} onClick={conferirHoje}>Hoje</button>
-              <button type="button" className={styles.calNavBtn} aria-label="Próximo mês" onClick={() => mudarMes(1)}><ChevronRight size={15} strokeWidth={2.5} /></button>
-            </div>
-          </div>
-
-          <div className={styles.calGrid}>
-            {SEMANA.map((d) => <div key={d} className={styles.calWeekday}>{d}</div>)}
-            {celulas.map((dia, i) => {
-              if (dia === null) return <div key={`e${i}`} className={styles.calVazio} />
-              const iso = isoDoDia(dia)
-              const marco = marcoPorDia.get(dia)
-              const tom = marco ? tomDoMarco(marco) : undefined
-              const pendente = !marco && ultimoMarco != null && iso > isoDoMarco(ultimoMarco) && iso <= hojeISO
-              return (
-                <button
-                  key={dia}
-                  type="button"
-                  className={styles.calDia}
-                  data-marco={tom}
-                  data-hoje={iso === hojeISO ? "true" : undefined}
-                  data-sel={iso === diaSel ? "true" : undefined}
-                  data-pendente={pendente ? "true" : undefined}
-                  onClick={() => abrirDia(iso)}
-                >
-                  <span className={styles.calDiaNum}>{dia}{marco && <Check size={9} strokeWidth={3.5} />}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className={styles.calLegenda}>
-            <span><span className={styles.legDot} data-t="bateu" /> conferido</span>
-            <span><span className={styles.legDot} data-t="ajuste" /> ajuste</span>
-            <span><span className={styles.legDot} data-t="diferenca" /> com diferença</span>
-            <span><span className={styles.legDot} data-t="pendente" /> a conferir</span>
-          </div>
-
-          <div className={styles.histTitulo}>Última conferência</div>
-          {ultimoMarco == null ? (
-            <p className={styles.painelSub}>Nenhuma conferência ainda. Confira o saldo de hoje pra começar.</p>
-          ) : (
-            <button type="button" className={styles.histLinha} data-sel={isoDoMarco(ultimoMarco) === diaSel ? "true" : undefined} onClick={() => abrirDia(isoDoMarco(ultimoMarco))}>
-              <span className={styles.histEsq}>
-                {{
-                  inicial: <Landmark size={13} strokeWidth={2.5} className={styles.histIconInicial} />,
-                  ajuste: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconAjuste} />,
-                  diferenca: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconDif} />,
-                  bateu: <Check size={13} strokeWidth={3} className={styles.histIconOk} />,
-                }[tomDoMarco(ultimoMarco)]}
-                {fmtDiaMes(isoDoMarco(ultimoMarco))}{ultimoMarco.tipo === TIPO_MARCO.Baseline && <span className={styles.histTagPartida}>partida</span>}
-              </span>
-              <span className={styles.histValor}>{formatMoney(ultimoMarco.saldoDeclarado)}</span>
-            </button>
-          )}
-        </div>
-
-        {/* DIREITA: painel de conferir (só a altura do conteúdo — não estica até o calendário). */}
-        <div className={`${styles.painel} ${styles.painelConf} ${styles.painelCurto}`}>
           {!diaSel && <p className={styles.painelSub}>Escolha um dia no calendário pra conferir o saldo daquele dia.</p>}
 
           {diaSel && (() => {
@@ -568,6 +505,69 @@ export default function ReconciliacaoPage() {
               </>
             )
           })()}
+        </div>
+
+        {/* DIREITA: calendário de marcos (com "Hoje") + última conferência. */}
+        <div className={`${styles.painel} ${styles.painelCal}`}>
+          <div className={styles.calTopo}>
+            <div className={styles.painelTitulo}>{MESES[mes]} {ano}</div>
+            <div className={styles.calNav}>
+              <button type="button" className={styles.calNavBtn} aria-label="Mês anterior" onClick={() => mudarMes(-1)}><ChevronLeft size={15} strokeWidth={2.5} /></button>
+              {/* "Hoje" entre as setas: volta pro mês atual e confere o dia de hoje. */}
+              <button type="button" className={`${styles.calNavBtn} ${styles.calHoje}`} onClick={conferirHoje}>Hoje</button>
+              <button type="button" className={styles.calNavBtn} aria-label="Próximo mês" onClick={() => mudarMes(1)}><ChevronRight size={15} strokeWidth={2.5} /></button>
+            </div>
+          </div>
+
+          <div className={styles.calGrid}>
+            {SEMANA.map((d) => <div key={d} className={styles.calWeekday}>{d}</div>)}
+            {celulas.map((dia, i) => {
+              if (dia === null) return <div key={`e${i}`} className={styles.calVazio} />
+              const iso = isoDoDia(dia)
+              const marco = marcoPorDia.get(dia)
+              const tom = marco ? tomDoMarco(marco) : undefined
+              const pendente = !marco && ultimoMarco != null && iso > isoDoMarco(ultimoMarco) && iso <= hojeISO
+              return (
+                <button
+                  key={dia}
+                  type="button"
+                  className={styles.calDia}
+                  data-marco={tom}
+                  data-hoje={iso === hojeISO ? "true" : undefined}
+                  data-sel={iso === diaSel ? "true" : undefined}
+                  data-pendente={pendente ? "true" : undefined}
+                  onClick={() => abrirDia(iso)}
+                >
+                  <span className={styles.calDiaNum}>{dia}{marco && <Check size={9} strokeWidth={3.5} />}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className={styles.calLegenda}>
+            <span><span className={styles.legDot} data-t="bateu" /> conferido</span>
+            <span><span className={styles.legDot} data-t="ajuste" /> ajuste</span>
+            <span><span className={styles.legDot} data-t="diferenca" /> com diferença</span>
+            <span><span className={styles.legDot} data-t="pendente" /> a conferir</span>
+          </div>
+
+          <div className={styles.histTitulo}>Última conferência</div>
+          {ultimoMarco == null ? (
+            <p className={styles.painelSub}>Nenhuma conferência ainda. Confira o saldo de hoje pra começar.</p>
+          ) : (
+            <button type="button" className={styles.histLinha} data-sel={isoDoMarco(ultimoMarco) === diaSel ? "true" : undefined} onClick={() => abrirDia(isoDoMarco(ultimoMarco))}>
+              <span className={styles.histEsq}>
+                {{
+                  inicial: <Landmark size={13} strokeWidth={2.5} className={styles.histIconInicial} />,
+                  ajuste: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconAjuste} />,
+                  diferenca: <TriangleAlert size={13} strokeWidth={2.5} className={styles.histIconDif} />,
+                  bateu: <Check size={13} strokeWidth={3} className={styles.histIconOk} />,
+                }[tomDoMarco(ultimoMarco)]}
+                {fmtDiaMes(isoDoMarco(ultimoMarco))}{ultimoMarco.tipo === TIPO_MARCO.Baseline && <span className={styles.histTagPartida}>partida</span>}
+              </span>
+              <span className={styles.histValor}>{formatMoney(ultimoMarco.saldoDeclarado)}</span>
+            </button>
+          )}
         </div>
       </div>
 

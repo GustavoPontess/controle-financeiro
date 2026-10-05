@@ -245,27 +245,19 @@ describe("ReconciliacaoPage", () => {
 
   // ---------------------------------------------------------------- seletor de conta (dentro do painel)
 
-  it("o seletor 'Conta a conferir' mora no TOPO do painel do calendário (não no de conferir nem no hero), já vem na 1ª conta e carrega os marcos dela", async () => {
+  it("o seletor 'Conta a conferir' mora no TOPO do painel de conferir (não no calendário nem no hero), já vem na 1ª conta e carrega os marcos dela", async () => {
     await renderPage()
-    const cal = painelCalendario()
-    expect(within(cal).getByText("Conta a conferir")).toBeInTheDocument()
-    expect(within(cal).getByText("Tudo nesta tela é desta conta.")).toBeInTheDocument()
-    expect(within(cal).getByRole("button", { name: "Conta Corrente" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Poupança" })).not.toBeInTheDocument() // menu fechado
-    // no TOPO do painel: acima do título do mês, da grade de dias e da "Última conferência"
-    expectOrdem(
-      screen.getByText("Conta a conferir"),
-      screen.getByText(`Junho ${ANO}`),
-      botaoDia(1),
-      screen.getByText("Última conferência"),
-    )
-    // e NÃO está no painel de conferir (a outra coluna) — lá só vive o campo do banco, inline
     const conferir = painelConferir()
-    expect(cal).not.toContainElement(conferir)
-    expect(within(conferir).queryByText("Conta a conferir")).not.toBeInTheDocument()
-    expect(within(conferir).queryByText("Tudo nesta tela é desta conta.")).not.toBeInTheDocument()
-    expect(within(conferir).queryByRole("button", { name: "Conta Corrente" })).not.toBeInTheDocument()
-    expect(within(conferir).getByRole("textbox", { name: ROTULO_SALDO_BANCO })).toBeInTheDocument()
+    expect(within(conferir).getByText("Conta a conferir")).toBeInTheDocument()
+    expect(within(conferir).getByText("Tudo nesta tela é desta conta.")).toBeInTheDocument()
+    expect(within(conferir).getByRole("button", { name: "Conta Corrente" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Poupança" })).not.toBeInTheDocument() // menu fechado
+    // no TOPO do painel de conferir: acima do título do dia e das linhas do recibo
+    expectOrdem(screen.getByText("Conta a conferir"), within(conferir).getByText(CALCULADO))
+    // e NÃO está no calendário (a outra coluna)
+    const cal = painelCalendario()
+    expect(within(cal).queryByText("Conta a conferir")).not.toBeInTheDocument()
+    expect(within(cal).queryByRole("button", { name: "Conta Corrente" })).not.toBeInTheDocument()
     // o hero NÃO tem seletor
     const hero = heroEl()
     expect(within(hero).queryByText("Conta a conferir")).not.toBeInTheDocument()
@@ -273,13 +265,13 @@ describe("ReconciliacaoPage", () => {
     expect(listMarcos).toHaveBeenCalledWith("c1")
   })
 
-  it("colunas trocadas: o calendário é a coluna da ESQUERDA e o painel de conferir a da DIREITA (irmãos, nessa ordem)", async () => {
+  it("colunas: o painel de conferir é a coluna da ESQUERDA e o calendário a da DIREITA (irmãos, nessa ordem)", async () => {
     await renderPage()
     const cal = painelCalendario()
     const conferir = painelConferir()
     expect(cal).not.toBe(conferir)
     expect(cal.parentElement).toBe(conferir.parentElement) // as duas colunas do mesmo grid
-    expect(cal.nextElementSibling).toBe(conferir) // calendário 1º (esquerda), conferir 2º (direita)
+    expect(conferir.nextElementSibling).toBe(cal) // conferir 1º (esquerda), calendário 2º (direita)
     expect(within(cal).getByText(`Junho ${ANO}`)).toBeInTheDocument()
     expect(within(cal).getByText("Última conferência")).toBeInTheDocument()
     expect(within(conferir).queryByText(`Junho ${ANO}`)).not.toBeInTheDocument()
@@ -728,7 +720,7 @@ describe("ReconciliacaoPage", () => {
     expect(dto).not.toHaveProperty("resolucao")
   })
 
-  it("trocar de mês limpa o dia selecionado: painel volta a pedir um dia, o campo de saldo some e o seletor de conta (no calendário) fica", async () => {
+  it("trocar de mês limpa o dia selecionado: painel volta a pedir um dia, o campo de saldo some e o seletor de conta (no painel de conferir) fica", async () => {
     await renderPage()
     expect(campoBanco()).toBeInTheDocument() // hoje aberto
     digitarSaldoReal("10000")
@@ -739,9 +731,9 @@ describe("ReconciliacaoPage", () => {
     expect(screen.queryByText(CALCULADO)).not.toBeInTheDocument() // as linhas "recibo" somem junto com o dia
     expect(screen.queryByText("Diferença")).not.toBeInTheDocument() // o bloco em destaque some junto com o dia
     expect(painelConferir().querySelector("[data-bate]")).toBeNull()
-    // o seletor mora no painel do calendário: continua lá mesmo sem dia aberto
-    expect(within(painelCalendario()).getByText("Conta a conferir")).toBeInTheDocument()
-    expect(within(painelCalendario()).getByRole("button", { name: "Conta Corrente" })).toBeInTheDocument()
+    // o seletor mora no painel de conferir: continua lá mesmo sem dia aberto
+    expect(within(painelConferir()).getByText("Conta a conferir")).toBeInTheDocument()
+    expect(within(painelConferir()).getByRole("button", { name: "Conta Corrente" })).toBeInTheDocument()
     // e voltar pro mês de hoje não traz a seleção (nem o valor digitado) de volta
     fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }))
     expect(screen.getByText(MSG_ESCOLHA_DIA)).toBeInTheDocument()
