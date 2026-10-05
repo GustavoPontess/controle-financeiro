@@ -232,6 +232,11 @@ public class AppDbContext : DbContext
             .HasFilter("\"Ativo\" AND \"Competencia\" IS NOT NULL")
             .HasDatabaseName("UX_Transacoes_Recorrente_Competencia");
 
+        // Ocorrências de uma conta fixa (o gerador lê todas as dela; o índice acima é parcial e não serve).
+        modelBuilder.Entity<Transacao>()
+            .HasIndex(t => new { t.RecorrenteOrigemId, t.Data })
+            .HasDatabaseName("IX_Transacoes_RecorrenteOrigemId_Data");
+
         // RegistroIdempotencia: o índice ÚNICO é o que torna a idempotência atômica — a segunda
         // requisição concorrente com a mesma chave estoura aqui (23505) em vez de pagar de novo.
         modelBuilder.Entity<RegistroIdempotencia>()

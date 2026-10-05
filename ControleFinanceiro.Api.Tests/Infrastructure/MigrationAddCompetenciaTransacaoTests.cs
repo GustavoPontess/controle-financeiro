@@ -20,12 +20,12 @@ public class MigrationAddCompetenciaTransacaoTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.Equal("20261005170111_AddCompetenciaTransacao", ids[^1]); // nada gerado por cima sem querer
+        Assert.Contains("20261005170111_AddCompetenciaTransacao", ids); // a seguinte é a MotorContaFixaP2
     }
 
     [Fact]

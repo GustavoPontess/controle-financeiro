@@ -323,6 +323,10 @@ namespace ControleFinanceiro.Api.Services
             transacao.MeioPagamento = dados.MeioPagamento;
             transacao.Data = dados.Data;
             transacao.Hora = dados.Hora;
+            // Ocorrência de conta fixa editada à mão (valor, dia…): alterar a conta fixa e o realinhamento
+            // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
+            if (transacao.RecorrenteOrigemId != null)
+                transacao.EditadaPeloUsuario = true;
 
             await _context.SaveChangesAsync();
             return true;

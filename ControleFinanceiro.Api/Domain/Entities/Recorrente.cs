@@ -60,6 +60,11 @@ public class Recorrente
     /// Antes excluir apagava a linha e as previsões futuras ficavam soltas e continuavam sendo cobradas.</summary>
     public DateTime? ExcluidoEm { get; set; }
 
+    /// <summary>Quando passou pelo conserto ÚNICO de dado legado (previsões geradas no dia errado pelo motor
+    /// antigo, realinhadas ao <c>Dia</c>). Null = ainda não passou — o ExpandirRecorrentesJob realinha e marca.
+    /// Conta fixa criada pelo motor novo já nasce marcada (não tem o que consertar).</summary>
+    public DateTime? RealinhadoEm { get; set; }
+
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

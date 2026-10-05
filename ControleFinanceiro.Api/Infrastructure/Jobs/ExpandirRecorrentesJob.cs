@@ -30,26 +30,33 @@ public class ExpandirRecorrentesJob
 
         // Conserto de dado antigo (ocorrência no cartão sem fatura) — roda todo dia, é barato quando não há nada.
         // Antes de expandir (e antes do ExecutarRecorrentesJob, 30 min depois): cancela previsão de conta fixa
-        // que não deve mais cobrar e realinha ao Dia as geradas no dia errado. Idempotente.
-        // Cada etapa grava sozinha: conflito com uma requisição do usuário no meio (xmin da conta fixa/fatura,
-        // índice único da competência) perde só aquela etapa/conta fixa — tenta de novo amanhã —, não o job de
-        // todos os usuários (mesma regra do FaturaAtrasoJob).
-        var anexou = await AnexarOcorrenciasSemFaturaAsync();
-        await SalvarOuDescartarAsync(anexou, "anexar ocorrências sem fatura");
-        await SalvarOuDescartarAsync(await _recorrenteService.RealinharAsync(hojeD) > 0, "realinhar contas fixas");
+        // que não deve mais cobrar e faz o conserto único de legado (geradas no dia errado). Idempotente.
+        // Cada etapa/conta fixa grava sozinha: conflito com uma requisição do usuário no meio (xmin da conta
+        // fixa/fatura, índice único da competência) perde só aquela — tenta de novo amanhã —, não o job de todos
+        // os usuários (mesma regra do FaturaAtrasoJob).
+        await AnexarOcorrenciasSemFaturaAsync();
+        await SalvarOuDescartarAsync("anexar ocorrências sem fatura");
 
+        foreach (var id in await _recorrenteService.IdsParaRealinharAsync())
+        {
+            await _recorrenteService.RealinharAsync(id, hojeD);
+            await SalvarOuDescartarAsync($"realinhar conta fixa {id}");
+        }
+
+        // Só as que ainda não foram expandidas até o horizonte (as em dia nem são lidas).
+        var horizonteDt = horizonte.ToDateTime(TimeOnly.MinValue);
         var recorrentes = await _context.Recorrentes
             .Where(r => r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null
-                        && (r.DataFim == null || r.DataFim.Value.Date >= hoje))
+                        && (r.DataFim == null || r.DataFim.Value.Date >= hoje)
+                        && (r.DataProximaGeracao == null || r.DataProximaGeracao < horizonteDt))
             .ToListAsync();
 
         foreach (var r in recorrentes)
         {
             try
             {
-                var criadas = await _recorrenteService.GerarOcorrenciasAsync(r, horizonte, StatusTransacao.Previsao);
-                await SalvarOuDescartarAsync(criadas > 0 || _context.Entry(r).State == EntityState.Modified,
-                    $"expandir conta fixa {r.Id}");
+                await _recorrenteService.GerarOcorrenciasAsync(r, horizonte, StatusTransacao.Previsao);
+                await SalvarOuDescartarAsync($"expandir conta fixa {r.Id}");
             }
             catch (KeyNotFoundException ex)
             {
@@ -63,9 +70,9 @@ public class ExpandirRecorrentesJob
     }
 
     // Grava o que está pendente; conflito (concorrência ou unicidade) descarta só isso e segue.
-    private async Task SalvarOuDescartarAsync(bool houveMudanca, string etapa)
+    private async Task SalvarOuDescartarAsync(string etapa)
     {
-        if (!houveMudanca) return;
+        if (!_context.ChangeTracker.HasChanges()) return;
         try
         {
             await _context.SaveChangesAsync();

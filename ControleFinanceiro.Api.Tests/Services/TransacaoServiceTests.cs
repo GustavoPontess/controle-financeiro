@@ -1179,4 +1179,31 @@ public class TransacaoServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarParcelamentoAsync(dto, usuarioId));
         Assert.Equal(0, await ctx.Transacoes.CountAsync());
     }
+
+    [Fact]
+    public async Task AtualizarAsync_OcorrenciaDeContaFixa_MarcaEditadaPeloUsuario_LancamentoComumNao()
+    {
+        // A marca é o que faz alterar a conta fixa / realinhar preservarem a edição (P2-4 do motor).
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        Transacao Nova(Guid? recorrente) => new()
+        {
+            Id = Guid.NewGuid(), ContaId = contaId, Descricao = "X", Valor = 100, Tipo = TipoTransacao.Despesa,
+            Data = hoje.AddDays(5), CriadoPor = usuarioId, StatusTransacao = StatusTransacao.Previsao,
+            RecorrenteOrigemId = recorrente,
+        };
+        var ocorrencia = Nova(Guid.NewGuid());
+        var comum = Nova(null);
+        ctx.Transacoes.AddRange(ocorrencia, comum);
+        await ctx.SaveChangesAsync();
+        var edicao = new Transacao { Descricao = "Y", Valor = 80, Tipo = TipoTransacao.Despesa, Data = hoje.AddDays(6) };
+
+        await svc.AtualizarAsync(ocorrencia.Id, edicao, usuarioId);
+        await svc.AtualizarAsync(comum.Id, edicao, usuarioId);
+
+        ctx.ChangeTracker.Clear();
+        Assert.True((await ctx.Transacoes.SingleAsync(t => t.Id == ocorrencia.Id)).EditadaPeloUsuario);
+        Assert.False((await ctx.Transacoes.SingleAsync(t => t.Id == comum.Id)).EditadaPeloUsuario);
+    }
 }

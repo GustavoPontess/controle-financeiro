@@ -1464,6 +1464,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
+                    b.Property<DateTime?>("RealinhadoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
 
@@ -1719,6 +1722,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
+                    b.Property<bool>("EditadaPeloUsuario")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("EhAjusteReconciliacao")
                         .HasColumnType("boolean");
 
@@ -1815,6 +1821,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsUnique()
                         .HasDatabaseName("UX_Transacoes_Recorrente_Competencia")
                         .HasFilter("\"Ativo\" AND \"Competencia\" IS NOT NULL");
+
+                    b.HasIndex("RecorrenteOrigemId", "Data")
+                        .HasDatabaseName("IX_Transacoes_RecorrenteOrigemId_Data");
 
                     b.ToTable("Transacoes");
                 });

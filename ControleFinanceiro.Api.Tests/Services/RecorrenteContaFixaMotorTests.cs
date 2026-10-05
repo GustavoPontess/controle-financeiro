@@ -1305,4 +1305,161 @@ public class RecorrenteContaFixaMotorTests
         Assert.False((await LinhaAsync(ctx, r.Id)).Ativo);
         Assert.Empty(await EventosAsync(ctx, r.Id));
     }
+
+    // ══ P2 da revisão: desempenho, conserto único, preservar o que o usuário fez ══════════════════════════
+
+    private static Recorrente Realinhada(AppDbContext ctx, Recorrente r)
+    {
+        r.RealinhadoEm = DateTime.UtcNow;
+        ctx.SaveChanges();
+        return r;
+    }
+
+    [Fact]
+    public async Task GerarOcorrenciasAsync_EmDia_NaoGeraNada_ESoNormalizaOCursor()
+    {
+        // P2-1: conta fixa já gerada até o limite volta antes de ir ao banco (caso de quase toda no GET e no job).
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 5, inicio: D(2030, 1, 5), cursor: D(2031, 1, 3));
+
+        var criadas = await CreateService(ctx).GerarOcorrenciasAsync(r, D(2031, 1, 1), StatusTransacao.Previsao);
+
+        Assert.Equal(0, criadas);
+        Assert.Empty(ctx.Transacoes.Local);
+        Assert.Equal(D(2031, 1, 5), DateOnly.FromDateTime(r.DataProximaGeracao!.Value)); // cursor no compasso do Dia
+    }
+
+    [Fact]
+    public async Task CriarAsync_NasceComOConsertoUnicoFeito_NaoEntraNoRealinhamento()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+        var svc = CreateService(ctx);
+
+        var dto = await svc.CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Aluguel", Valor = 1500m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
+            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = Utc(Hoje),
+        }, u);
+
+        Assert.NotNull((await LinhaAsync(ctx, dto.Id)).RealinhadoEm);
+        Assert.Empty(await svc.IdsParaRealinharAsync());
+    }
+
+    [Fact]
+    public async Task RealinharAsync_ConsertoDeLegadoEhUnico_DepoisNaoMexeMais()
+    {
+        // P2-2: antes realinhava (e carregava todas as previsões de todos) TODO dia; agora uma vez por conta fixa.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: mes.AddMonths(-3));
+        var legado = SeedTransacao(ctx, r, mes.AddMonths(1), StatusTransacao.Previsao); // dia 1: fora do Dia 28
+        var svc = CreateService(ctx);
+
+        Assert.Equal(new[] { r.Id }, await svc.IdsParaRealinharAsync());
+        Assert.Equal(1, await svc.RealinharAsync(Hoje));
+        await ctx.SaveChangesAsync();
+        Assert.False((await TodasAsync(ctx, r.Id)).Single(t => t.Id == legado.Id).Ativo);
+        Assert.NotNull((await LinhaAsync(ctx, r.Id)).RealinhadoEm);
+
+        // Outra fora do dia aparecendo depois: o conserto não roda de novo.
+        var depois = SeedTransacao(ctx, r, mes.AddMonths(2), StatusTransacao.Previsao);
+        Assert.Empty(await svc.IdsParaRealinharAsync());
+        Assert.Equal(0, await svc.RealinharAsync(Hoje));
+        Assert.True((await TodasAsync(ctx, r.Id)).Single(t => t.Id == depois.Id).Ativo);
+    }
+
+    [Fact]
+    public async Task IdsParaRealinharAsync_SoQuemPrecisa_PausadaComPrevisao_Orfa_ESemConserto()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+        var mes = PrimeiroDoMes(Hoje);
+        var emDia = Realinhada(ctx, SeedRecorrente(ctx, u, conta, dia: 1, inicio: mes));
+        SeedTransacao(ctx, emDia, mes.AddMonths(1), StatusTransacao.Previsao);
+        var pausada = Realinhada(ctx, SeedRecorrente(ctx, u, conta, dia: 1, inicio: mes, ativo: false));
+        SeedTransacao(ctx, pausada, mes.AddMonths(1), StatusTransacao.Previsao);
+        var semConserto = SeedRecorrente(ctx, u, conta, dia: 1, inicio: mes);
+        var orfa = SeedTransacao(ctx, emDia, mes.AddMonths(2), StatusTransacao.Previsao);
+        orfa.RecorrenteOrigemId = Guid.NewGuid(); // conta fixa apagada antes da exclusão lógica
+        ctx.SaveChanges();
+
+        var ids = await CreateService(ctx).IdsParaRealinharAsync();
+
+        Assert.Equal(
+            new[] { pausada.Id, semConserto.Id, orfa.RecorrenteOrigemId!.Value }.OrderBy(x => x),
+            ids.OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task EditarProxima_DepoisAlterarAContaFixa_AEdicaoDoUsuarioFica()
+    {
+        // P2-4: alterar a conta fixa regerava por cima da previsão que o usuário tinha editado.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var seguinte = mes.AddMonths(1);
+        var r = Realinhada(ctx, SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: mes.AddMonths(-1),
+            cursor: mes.AddMonths(2)));
+        SeedTransacao(ctx, r, mes, StatusTransacao.Executado);                       // este mês: cobrado
+        var proxima = SeedTransacao(ctx, r, D(seguinte.Year, seguinte.Month, 28), StatusTransacao.Previsao);
+        var svc = CreateService(ctx);
+
+        await svc.EditarProximaOcorrenciaAsync(r.Id, new EditarProximaOcorrenciaDto { Valor = 50m }, u);
+        await svc.AtualizarAsync(r.Id, Dto(r, valor: 999m), u);
+
+        var editada = Assert.Single(await VivasNoMesAsync(ctx, r.Id, seguinte)); // nem cancelada, nem duplicada
+        Assert.Equal(proxima.Id, editada.Id);
+        Assert.Equal(50m, editada.Valor);
+        Assert.True(editada.EditadaPeloUsuario);
+        Assert.All((await VivasAsync(ctx, r.Id)).Where(t => t.Data > editada.Data), t => Assert.Equal(999m, t.Valor));
+    }
+
+    [Fact]
+    public async Task MesQueOUsuarioExcluiu_NaoVoltaAoAlterarNemAoRetomar()
+    {
+        // P2-4: excluir a ocorrência de um mês (pular o mês) e depois alterar/retomar ressuscitava o mês.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var seguinte = mes.AddMonths(1);
+        var r = Realinhada(ctx, SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: mes.AddMonths(-1),
+            cursor: mes.AddMonths(2)));
+        SeedTransacao(ctx, r, mes, StatusTransacao.Executado);
+        var pulada = SeedTransacao(ctx, r, D(seguinte.Year, seguinte.Month, 28), StatusTransacao.Previsao);
+        var svc = CreateService(ctx);
+
+        Assert.True(await new TransacaoService(ctx, new FaturaService(ctx)).DeletarAsync(pulada.Id, u));
+        ctx.ChangeTracker.Clear(); // cada passo é uma requisição: a excluída tem que vir do BANCO, não da memória
+        await svc.AtualizarAsync(r.Id, Dto(r, dia: 15), u);
+        Assert.Empty(await VivasNoMesAsync(ctx, r.Id, seguinte));
+
+        ctx.ChangeTracker.Clear();
+        await svc.ToggleAtivoAsync(r.Id, u, ativo: false);
+        ctx.ChangeTracker.Clear();
+        await svc.ToggleAtivoAsync(r.Id, u, ativo: true);
+        Assert.Empty(await VivasNoMesAsync(ctx, r.Id, seguinte));
+    }
+
+    [Fact]
+    public async Task RealinharAsync_PrevisaoForaDoDiaQueOUsuarioEditou_Fica()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var mes = PrimeiroDoMes(Hoje);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: mes.AddMonths(-3));
+        var movida = SeedTransacao(ctx, r, mes.AddMonths(1), StatusTransacao.Previsao); // dia 1, movida à mão
+        movida.EditadaPeloUsuario = true;
+        ctx.SaveChanges();
+
+        await CreateService(ctx).RealinharAsync(Hoje);
+        await ctx.SaveChangesAsync();
+
+        Assert.True((await TodasAsync(ctx, r.Id)).Single(t => t.Id == movida.Id).Ativo);
+        Assert.NotNull((await LinhaAsync(ctx, r.Id)).RealinhadoEm);
+    }
 }

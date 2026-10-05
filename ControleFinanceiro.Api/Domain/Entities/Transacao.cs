@@ -87,6 +87,11 @@ public class Transacao
     [MaxLength(16)]
     public string? Competencia { get; set; }
 
+    /// <summary>Ocorrência de conta fixa que o USUÁRIO alterou (editar transação, "Editar próxima"). Alterar a
+    /// conta fixa e o realinhamento não a cancelam nem regeram — a edição dele vale pra ela. Pausar/cancelar/
+    /// excluir a conta fixa ainda cancelam (não deve mais cobrar).</summary>
+    public bool EditadaPeloUsuario { get; set; }
+
     // ── Novos vínculos ao sistema de Parcelamento (ARQUITETURA_PARCELAMENTO.md § "Transacao (Mudanças)") ──
 
     /// <summary>Vincula esta Transacao ao Parcelamento que a originou (se aplicável).</summary>

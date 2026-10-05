@@ -114,4 +114,18 @@ public class AppDbContextModeloNpgsqlTests
         Assert.True(indice!.IsUnique);
         Assert.Equal("\"Ativo\" AND \"Competencia\" IS NOT NULL", indice.GetFilter());
     }
+
+    [Fact]
+    public void Transacao_IndiceDasOcorrenciasPorContaFixa_RecorrenteOrigemIdEData()
+    {
+        // O gerador lê todas as ocorrências da conta fixa; o índice único da competência é parcial e não serve.
+        using var ctx = ContextoNpgsqlSemBanco();
+        var indice = Modelo(ctx).FindEntityType(typeof(Transacao))!.GetIndexes()
+            .SingleOrDefault(i => i.Properties.Select(p => p.Name)
+                .SequenceEqual([nameof(Transacao.RecorrenteOrigemId), nameof(Transacao.Data)]));
+
+        Assert.NotNull(indice);
+        Assert.False(indice!.IsUnique);
+        Assert.Null(indice.GetFilter());
+    }
 }

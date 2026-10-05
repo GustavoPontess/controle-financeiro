@@ -579,4 +579,23 @@ public class ContaFixaJobsTests
             Assert.Equal(cartao, t.CartaoCreditoId);
         });
     }
+
+    [Fact]
+    public async Task Expandir_ContaFixaQueJaPassouPeloConsertoUnico_NaoEhRealinhadaDeNovo()
+    {
+        // P2-2: o conserto de legado roda uma vez por conta fixa (RealinhadoEm); depois o job não mexe mais nas
+        // previsões dela — nem lê (antes carregava toda previsão pendente de todos os usuários, todo dia).
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var hoje = Hoje;
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: hoje.AddMonths(-2),
+            cursor: D(hoje.Year + 1, 1, 28));
+        r.RealinhadoEm = DateTime.UtcNow.AddDays(-1);
+        ctx.SaveChanges();
+        var foraDoDia = SeedTransacao(ctx, r, D(hoje.AddMonths(1).Year, hoje.AddMonths(1).Month, 1), StatusTransacao.Previsao);
+
+        await ExpandirJob(ctx).ExecuteAsync();
+
+        Assert.True((await TodasAsync(ctx, r.Id)).Single(t => t.Id == foraDoDia.Id).Ativo);
+    }
 }

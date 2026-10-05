@@ -76,16 +76,27 @@ public class RecorrenteService
         var proxima = AgendaRecorrente.ProximaEmOuDepois(
             r.DataProximaGeracao is { } cursor ? DateOnly.FromDateTime(cursor) : inicio, inicio, r.Dia, r.Frequencia);
 
-        // Do banco E da memória: cancelada agora (ainda não salva) não conta; criada agora conta. Carrega as
-        // entidades (não projeção): a projeção leria o Ativo do BANCO e contaria a cancelada-ainda-não-salva.
-        // Todas as vivas, não só a partir do cursor: a cobrança do período pode estar num dia antes dele.
-        // Ocorrência antiga sem competência (de antes da coluna) conta pela data.
+        // Em dia (nada a gerar até o limite): só normaliza o cursor, sem ir ao banco — é o caso de quase toda
+        // conta fixa no GET da lista e no job diário.
+        if (proxima >= ateExclusivo || (fim != null && proxima > fim))
+        {
+            r.DataProximaGeracao = proxima.ToDateTime(TimeOnly.MinValue);
+            return 0;
+        }
+
+        // Períodos ocupados, do banco E da memória: ocorrência VIVA, ou que o USUÁRIO excluiu (status Cancelado —
+        // o motor só desliga o Ativo, nunca põe Cancelado): mês que ele pulou não volta ao alterar/retomar.
+        // Cancelada pelo motor agora (ainda não salva) não conta; criada agora conta. Carrega as entidades (não
+        // projeção): a projeção leria o Ativo do BANCO e contaria a cancelada-ainda-não-salva. Todas, não só a
+        // partir do cursor: a cobrança do período pode estar num dia antes dele. Ocorrência antiga sem
+        // competência (de antes da coluna) conta pela data.
         var doBanco = await _context.Transacoes
-            .Where(t => t.RecorrenteOrigemId == r.Id)
+            .IgnoreQueryFilters()
+            .Where(t => t.RecorrenteOrigemId == r.Id && (t.Ativo || t.StatusTransacao == StatusTransacao.Cancelado))
             .ToListAsync();
         var ocupadas = doBanco
             .Concat(_context.Transacoes.Local.Where(t => t.RecorrenteOrigemId == r.Id))
-            .Where(t => t.Ativo)
+            .Where(t => t.Ativo || t.StatusTransacao == StatusTransacao.Cancelado)
             .Select(t => t.Competencia ?? AgendaRecorrente.Competencia(t.Data, inicio, r.Frequencia))
             .ToHashSet();
 
@@ -132,14 +143,18 @@ public class RecorrenteService
     }
 
     // Cancela (exclusão lógica) as previsões dessa conta fixa que ainda não viraram cobrança — todas, ou só as
-    // de `aPartirDe` em diante. Devolve as canceladas (pra reconciliar a fatura do cartão). Não salva.
-    private async Task<List<Transacao>> CancelarPrevisoesAsync(Guid recorrenteId, string motivo, DateTime agora, DateOnly? aPartirDe = null)
+    // de `aPartirDe` em diante. `preservarEditadas`: a ocorrência que o usuário alterou fica (alterar a conta
+    // fixa não apaga a edição dele). Devolve as canceladas (pra reconciliar a fatura do cartão). Não salva.
+    private async Task<List<Transacao>> CancelarPrevisoesAsync(
+        Guid recorrenteId, string motivo, DateTime agora, DateOnly? aPartirDe = null, bool preservarEditadas = false)
     {
         var query = _context.Transacoes.Where(t => t.RecorrenteOrigemId == recorrenteId
                                                    && t.StatusTransacao == StatusTransacao.Previsao
                                                    && t.Ativo);
         if (aPartirDe is { } desde)
             query = query.Where(t => t.Data >= desde);
+        if (preservarEditadas)
+            query = query.Where(t => !t.EditadaPeloUsuario);
         var canceladas = await query.ToListAsync();
         foreach (var t in canceladas)
         {
@@ -159,25 +174,45 @@ public class RecorrenteService
             usuarioId, correlationId, agora);
 
     /// <summary>
-    /// Conserto de dado, idempotente (sem nada torto não mexe) — roda na expansão diária, ANTES de expandir e
-    /// antes do ExecutarRecorrentesJob: (1) previsão pendente de conta fixa que não deve mais cobrar (pausada,
-    /// cancelada, excluída, ou apagada antes da exclusão lógica) é cancelada; (2) conta fixa ativa com previsão
-    /// futura FORA do dia certo (gerada antes da regra do <c>Dia</c>) tem as futuras canceladas e o cursor volta
-    /// pro INÍCIO DO PERÍODO atual — a expansão logo depois gera de novo no compasso, só nos períodos que ficaram
-    /// sem cobrança viva (o mês já cobrado no dia antigo não é cobrado de novo; o que ficou sem cobrança ganha a
-    /// sua, mesmo que o dia certo já tenha passado — o ExecutarRecorrentesJob efetiva). Não salva.
-    /// Devolve quantas previsões cancelou.
+    /// Quem o realinhamento precisa ver hoje — duas consultas que normalmente voltam VAZIAS (antes carregava toda
+    /// previsão pendente de todos os usuários, todo dia): (1) conta fixa com previsão pendente que não deve mais
+    /// cobrar (pausada, cancelada, excluída, ou sem a linha); (2) conta fixa ativa que ainda não passou pelo
+    /// conserto único de legado (<see cref="Recorrente.RealinhadoEm"/> nulo).
     /// </summary>
-    public async Task<int> RealinharAsync(DateOnly hoje)
+    public async Task<List<Guid>> IdsParaRealinharAsync()
+    {
+        var naoDeveCobrar = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId != null && t.StatusTransacao == StatusTransacao.Previsao && t.Ativo
+                        && !_context.Recorrentes.Any(r => r.Id == t.RecorrenteOrigemId
+                                                          && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null))
+            .Select(t => t.RecorrenteOrigemId!.Value)
+            .Distinct()
+            .ToListAsync();
+        var semConserto = await _context.Recorrentes
+            .Where(r => r.RealinhadoEm == null && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null)
+            .Select(r => r.Id)
+            .ToListAsync();
+        return naoDeveCobrar.Union(semConserto).ToList();
+    }
+
+    /// <summary>
+    /// Conserto de dado de UMA conta fixa (unidade do job: cada uma grava sozinha, conflito numa não adia as
+    /// outras). Roda na expansão diária, ANTES de expandir e antes do ExecutarRecorrentesJob: (1) não deve mais
+    /// cobrar (pausada, cancelada, excluída, ou apagada antes da exclusão lógica) → cancela as previsões
+    /// pendentes; (2) ativa sem o conserto único → se tem previsão futura FORA do dia certo (gerada antes da
+    /// regra do <c>Dia</c>), cancela as futuras e volta o cursor pro INÍCIO DO PERÍODO atual — a expansão logo
+    /// depois gera de novo no compasso, só nos períodos sem cobrança (o mês já cobrado no dia antigo não é
+    /// cobrado de novo; o que ficou sem ganha a sua, mesmo com o dia já passado — o ExecutarRecorrentesJob
+    /// efetiva); e marca <see cref="Recorrente.RealinhadoEm"/> (não repete). Ocorrência que o usuário alterou
+    /// fica como ele deixou. Não salva. Devolve quantas previsões cancelou.
+    /// </summary>
+    public async Task<int> RealinharAsync(Guid recorrenteOrigemId, DateOnly hoje)
     {
         var agora = DateTime.UtcNow;
+        var r = await _context.Recorrentes.FirstOrDefaultAsync(x => x.Id == recorrenteOrigemId);
         var pendentes = await _context.Transacoes
-            .Where(t => t.RecorrenteOrigemId != null && t.StatusTransacao == StatusTransacao.Previsao && t.Ativo)
+            .Where(t => t.RecorrenteOrigemId == recorrenteOrigemId && t.StatusTransacao == StatusTransacao.Previsao && t.Ativo)
             .ToListAsync();
-        if (pendentes.Count == 0) return 0;
-
-        var ids = pendentes.Select(t => t.RecorrenteOrigemId!.Value).Distinct().ToList();
-        var recorrentes = await _context.Recorrentes.Where(r => ids.Contains(r.Id)).ToDictionaryAsync(r => r.Id);
 
         var canceladas = new List<Transacao>();
         void Cancelar(IEnumerable<Transacao> lista, string motivo)
@@ -191,29 +226,37 @@ public class RecorrenteService
             }
         }
 
-        foreach (var grupo in pendentes.GroupBy(t => t.RecorrenteOrigemId!.Value))
+        if (r == null || !r.Ativo || r.CanceladoEm != null || r.ExcluidoEm != null)
         {
-            recorrentes.TryGetValue(grupo.Key, out var r);
-            if (r == null || !r.Ativo || r.CanceladoEm != null || r.ExcluidoEm != null)
-            {
-                Cancelar(grupo, "Conta fixa não está mais ativa");
-                continue;
-            }
-
+            Cancelar(pendentes, "Conta fixa não está mais ativa");
+        }
+        else if (r.RealinhadoEm == null)
+        {
             var inicio = DateOnly.FromDateTime(r.DataInicio);
-            var futuras = grupo.Where(t => t.Data >= hoje).ToList();
-            if (futuras.All(t => AgendaRecorrente.NoCompasso(t.Data, inicio, r.Dia, r.Frequencia)))
-                continue;
-
-            Cancelar(futuras, "Realinhada ao dia da conta fixa");
-            r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
-                AgendaRecorrente.InicioDoPeriodo(hoje, inicio, r.Frequencia), inicio, r.Dia, r.Frequencia)
-                .ToDateTime(TimeOnly.MinValue);
+            var futuras = pendentes.Where(t => t.Data >= hoje && !t.EditadaPeloUsuario).ToList();
+            if (!futuras.All(t => AgendaRecorrente.NoCompasso(t.Data, inicio, r.Dia, r.Frequencia)))
+            {
+                Cancelar(futuras, "Realinhada ao dia da conta fixa");
+                r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
+                    AgendaRecorrente.InicioDoPeriodo(hoje, inicio, r.Frequencia), inicio, r.Dia, r.Frequencia)
+                    .ToDateTime(TimeOnly.MinValue);
+            }
+            r.RealinhadoEm = agora;
         }
 
         foreach (var doUsuario in canceladas.GroupBy(t => t.CriadoPor))
             await ReconciliarFaturasDasCanceladasAsync(doUsuario, doUsuario.Key, Guid.NewGuid(), agora);
         return canceladas.Count;
+    }
+
+    /// <summary>Realinha todas as que precisam (<see cref="IdsParaRealinharAsync"/>), sem salvar. O job usa a
+    /// versão por conta fixa pra gravar uma a uma.</summary>
+    public async Task<int> RealinharAsync(DateOnly hoje)
+    {
+        var total = 0;
+        foreach (var id in await IdsParaRealinharAsync())
+            total += await RealinharAsync(id, hoje);
+        return total;
     }
 
     public async Task GerarPendentesAsync(Guid usuarioId)
@@ -222,7 +265,9 @@ public class RecorrenteService
         var amanha = DateOnly.FromDateTime(hoje).AddDays(1);
         var recorrentes = await _context.Recorrentes
             .Where(r => r.CriadoPor == usuarioId && r.Ativo && r.ExcluidoEm == null &&
-                        (r.DataFim == null || r.DataFim.Value.Date >= hoje))
+                        (r.DataFim == null || r.DataFim.Value.Date >= hoje) &&
+                        // Só as que têm cobrança vencida a lançar (cursor até hoje) — as em dia nem são lidas.
+                        (r.DataProximaGeracao == null || r.DataProximaGeracao <= hoje))
             .ToListAsync();
 
         bool houveMudanca = false;
@@ -490,6 +535,7 @@ public class RecorrenteService
                 Ativo = true,
                 CriadoPor = usuarioId,
                 DataProximaGeracao = null, // sem cursor: a geração abaixo começa do início, no Dia
+                RealinhadoEm = DateTime.UtcNow, // nasce no motor novo: não tem legado pra consertar
                 CriadoEm = DateTime.UtcNow
             };
 
@@ -543,6 +589,8 @@ public class RecorrenteService
         }
         if (dto.Descricao != null)
             proxima.Descricao = dto.Descricao;
+        // Editada à mão: alterar a conta fixa e o realinhamento não desfazem (antes regeravam por cima).
+        proxima.EditadaPeloUsuario = true;
         if (dto.CategoriaId.HasValue)
         {
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
@@ -635,7 +683,8 @@ public class RecorrenteService
         r.DataFim = dto.DataFim?.ToUniversalTime();
 
         // As PRÓXIMAS cobranças seguem o que vale agora (dia, valor, conta…): cancela as previsões de hoje em
-        // diante e gera de novo. Antes ficavam com o dia/valor antigos. Recomeça do INÍCIO DO PERÍODO atual, não
+        // diante (menos a que o usuário editou — a edição dele vale pra ela, e o período dela segue ocupado) e
+        // gera de novo. Antes ficavam com o dia/valor antigos. Recomeça do INÍCIO DO PERÍODO atual, não
         // de hoje: período já cobrado não repete (Dia 5→20 com o 5 efetivado), e o que ficou sem cobrança ganha
         // a sua (Dia 20→5 no dia 10: o dia 5 deste mês entra como efetivado, igual ao "lançar o que passou";
         // a de HOJE fica prevista — o ExecutarRecorrentesJob efetiva, como sempre).
@@ -644,7 +693,7 @@ public class RecorrenteService
             var agora = DateTime.UtcNow;
             var hoje = DateOnly.FromDateTime(agora);
             var inicio = DateOnly.FromDateTime(r.DataInicio);
-            var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa alterada", agora, aPartirDe: hoje);
+            var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa alterada", agora, aPartirDe: hoje, preservarEditadas: true);
             await ReconciliarFaturasDasCanceladasAsync(canceladas, usuarioId, Guid.NewGuid(), agora);
             r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
                 AgendaRecorrente.InicioDoPeriodo(hoje, inicio, r.Frequencia), inicio, r.Dia, r.Frequencia)
