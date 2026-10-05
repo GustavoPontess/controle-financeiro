@@ -353,4 +353,43 @@ public class AgendaRecorrenteTests
     {
         Assert.Equal(D(ey, em, ed), AgendaRecorrente.HorizonteExpansao(D(ay, am, ad)));
     }
+
+    // ── Faixa do período (P1-3: início sem faixa = DoS) ───────────────────────
+
+    [Theory]
+    [InlineData(2025, 10, 5)]  // exatamente 12 meses atrás
+    [InlineData(2026, 10, 5)]  // hoje
+    [InlineData(2031, 10, 5)]  // exatamente 5 anos à frente
+    public void ValidarPeriodo_InicioNaFaixa_Passa(int y, int m, int d)
+    {
+        AgendaRecorrente.ValidarPeriodo(D(y, m, d), null, D(2026, 10, 5));
+    }
+
+    [Theory]
+    [InlineData(1, 1, 1)]      // o caso do ataque: semanal desde o ano 1 gerava ~105 mil lançamentos
+    [InlineData(2025, 10, 4)]  // um dia antes do limite de trás
+    [InlineData(2031, 10, 6)]  // um dia depois do limite da frente
+    [InlineData(9999, 12, 31)]
+    public void ValidarPeriodo_InicioForaDaFaixa_Lanca(int y, int m, int d)
+    {
+        Assert.Throws<ArgumentException>(() => AgendaRecorrente.ValidarPeriodo(D(y, m, d), null, D(2026, 10, 5)));
+    }
+
+    [Fact]
+    public void ValidarPeriodo_FimAntesDoInicio_Lanca_FimIgualAoInicio_Passa()
+    {
+        var hoje = D(2026, 10, 5);
+        Assert.Throws<ArgumentException>(() => AgendaRecorrente.ValidarPeriodo(hoje, hoje.AddDays(-1), hoje));
+        AgendaRecorrente.ValidarPeriodo(hoje, hoje, hoje);
+    }
+
+    [Fact]
+    public void ValidarPeriodo_SemValidarInicio_AceitaInicioAntigo_MasConfereOFim()
+    {
+        // Edição: o início é o do cadastro (pode ser dado antigo) — só o fim é conferido.
+        var hoje = D(2026, 10, 5);
+        AgendaRecorrente.ValidarPeriodo(D(2020, 1, 1), null, hoje, validarInicio: false);
+        Assert.Throws<ArgumentException>(() =>
+            AgendaRecorrente.ValidarPeriodo(D(2020, 1, 1), D(2019, 12, 31), hoje, validarInicio: false));
+    }
 }

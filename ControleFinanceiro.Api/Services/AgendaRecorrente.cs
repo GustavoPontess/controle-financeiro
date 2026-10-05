@@ -55,6 +55,33 @@ public static class AgendaRecorrente
     public static bool NoCompasso(DateOnly data, DateOnly inicio, int dia, FrequenciaRecorrencia freq) =>
         data >= inicio && ProximaEmOuDepois(data, inicio, dia, freq) == data;
 
+    /// <summary>Quanto pra trás a data de início pode ir (lança como efetivado o que já passou).</summary>
+    public const int MesesRetroativosMax = 12;
+
+    /// <summary>Quanto pra frente a data de início pode ir.</summary>
+    public const int AnosFuturosMax = 5;
+
+    /// <summary>
+    /// Teto de datas percorridas numa geração. Com a faixa da data de início, o pior caso real (semanal, 12
+    /// meses pra trás até o fim do ano seguinte) fica em ~120; o teto segura dado antigo de antes da faixa
+    /// (início no ano 1 gerava ~105 mil lançamentos numa requisição) — a próxima chamada continua de onde parou.
+    /// </summary>
+    public const int MaxDatasPorGeracao = 400;
+
+    /// <summary>
+    /// Valida o período da conta fixa: início entre hoje − <see cref="MesesRetroativosMax"/> meses e hoje +
+    /// <see cref="AnosFuturosMax"/> anos (só ao criar — <paramref name="validarInicio"/>); fim, se houver, não
+    /// antes do início. Fora disso → <see cref="ArgumentException"/> (400).
+    /// </summary>
+    public static void ValidarPeriodo(DateOnly inicio, DateOnly? fim, DateOnly hoje, bool validarInicio = true)
+    {
+        if (validarInicio && (inicio < hoje.AddMonths(-MesesRetroativosMax) || inicio > hoje.AddYears(AnosFuturosMax)))
+            throw new ArgumentException(
+                $"Data de início deve estar entre {MesesRetroativosMax} meses atrás e {AnosFuturosMax} anos à frente.");
+        if (fim is { } f && f < inicio)
+            throw new ArgumentException("Data fim não pode ser antes da data de início.");
+    }
+
     /// <summary>Até onde a expansão gera previsões: o fim do ano corrente (exclusivo = 1º de janeiro seguinte).</summary>
     public static DateOnly HorizonteExpansao(DateOnly hoje) => new(hoje.Year + 1, 1, 1);
 

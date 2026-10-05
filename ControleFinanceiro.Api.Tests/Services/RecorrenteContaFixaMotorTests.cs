@@ -1103,4 +1103,79 @@ public class RecorrenteContaFixaMotorTests
         Assert.Equal(1, (await svc.ListarAsync(dono)).Total);
         Assert.Equal(0, (await svc.ListarAsync(intruso)).Total);
     }
+
+    // ══ Faixa do período e teto do gerador (P1-3: DoS) ════════════════════════
+
+    [Fact]
+    public async Task CriarAsync_InicioNoAnoUm_Recusa_SemGerarNada()
+    {
+        // O ataque: semanal desde 0001-01-01 fazia o GET da lista gerar ~105 mil lançamentos numa requisição.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Ataque", Valor = 1m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
+            Frequencia = (int)FrequenciaRecorrencia.Semanal, Dia = 1,
+            DataInicio = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        }, u));
+
+        Assert.Empty(await ctx.Recorrentes.IgnoreQueryFilters().ToListAsync());
+        Assert.Empty(await ctx.Transacoes.IgnoreQueryFilters().ToListAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_FimAntesDoInicio_Recusa()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Aluguel", Valor = 1500m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
+            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5,
+            DataInicio = Utc(Hoje), DataFim = Utc(Hoje.AddDays(-1)),
+        }, u));
+
+        Assert.Empty(await ctx.Recorrentes.IgnoreQueryFilters().ToListAsync());
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_FimAntesDoInicio_Recusa_SemMexerNaLinha()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 5, inicio: Hoje);
+        var dto = Dto(r);
+        dto.DataFim = Utc(Hoje.AddDays(-1));
+        dto.Descricao = "Mudou";
+
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).AtualizarAsync(r.Id, dto, u));
+
+        var linha = await ctx.Recorrentes.AsNoTracking().SingleAsync(x => x.Id == r.Id);
+        Assert.Equal("Aluguel", linha.Descricao);
+        Assert.Null(linha.DataFim);
+    }
+
+    [Fact]
+    public async Task GerarOcorrenciasAsync_DadoAntigoSemFaixa_ParaNoTeto_ECursorContinuaDeOndeParou()
+    {
+        // Linha de antes da validação (início no ano 1, semanal): cada chamada percorre no máximo o teto.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 1, inicio: D(1, 1, 1), freq: FrequenciaRecorrencia.Semanal);
+        var svc = CreateService(ctx);
+
+        var criadas = await svc.GerarOcorrenciasAsync(r, Hoje, StatusTransacao.Executado);
+
+        Assert.Equal(AgendaRecorrente.MaxDatasPorGeracao, criadas);
+        var ultima = ctx.Transacoes.Local.Max(t => t.Data);
+        Assert.Equal(ultima.AddDays(7), DateOnly.FromDateTime(r.DataProximaGeracao!.Value)); // continua na seguinte
+
+        var maisUmLote = await svc.GerarOcorrenciasAsync(r, Hoje, StatusTransacao.Executado);
+        Assert.Equal(AgendaRecorrente.MaxDatasPorGeracao, maisUmLote);
+        Assert.Equal(2 * AgendaRecorrente.MaxDatasPorGeracao, ctx.Transacoes.Local.Select(t => t.Data).Distinct().Count());
+    }
 }

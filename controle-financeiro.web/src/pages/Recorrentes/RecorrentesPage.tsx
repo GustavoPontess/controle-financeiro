@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react"
-import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney, maskMoney, parseMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
@@ -27,6 +26,7 @@ import type {
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import styles from "./RecorrentesPage.module.css"
+import { emptyCriarForm, faixaInicio, validateCriar, type CriarErrors, type CriarForm } from "./recorrenteForm"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -38,8 +38,6 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
 const formatDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
-
-const today = () => dataLocalISO()
 
 // Dias até a data (negativo = passou). null se sem data. Lê ano/mês/dia do TEXTO: new Date("2026-10-05")
 // é meia-noite UTC = dia 4 às 21h no Brasil, e o "em N dias" saía com 1 dia a menos.
@@ -60,46 +58,6 @@ const cobraLabel = (iso?: string | null): string => {
   if (n === 1) return "amanhã"
   if (n > 0 && n <= 30) return `em ${n} dias`
   return formatDate(iso)
-}
-
-// ── tipos de form ─────────────────────────────────────────────────────────────
-
-type CriarForm = {
-  descricao: string
-  valor: string
-  tipo: string
-  categoriaId: string
-  contaId: string
-  frequencia: string
-  dia: string
-  dataInicio: string
-  dataFim: string
-}
-
-type CriarErrors = Partial<Record<keyof CriarForm, string>>
-
-const emptyCriarForm = (): CriarForm => ({
-  descricao: "",
-  valor: "",
-  tipo: "1",
-  categoriaId: "",
-  contaId: "",
-  frequencia: "2",
-  dia: "1",
-  dataInicio: today(),
-  dataFim: "",
-})
-
-function validateCriar(f: CriarForm): CriarErrors {
-  const errs: CriarErrors = {}
-  if (!f.descricao.trim()) errs.descricao = "Descrição obrigatória."
-  const v = parseMoney(f.valor)
-  if (!f.valor || v <= 0) errs.valor = "Informe um valor positivo."
-  if (!f.contaId) errs.contaId = "Selecione uma conta."
-  if (!f.dataInicio) errs.dataInicio = "Data de início obrigatória."
-  const dia = parseInt(f.dia)
-  if (isNaN(dia) || dia < 1 || dia > 31) errs.dia = "Dia de 1 a 31."
-  return errs
 }
 
 type EditarProximaForm = {
@@ -721,6 +679,8 @@ export default function RecorrentesPage() {
             <PontesField label="Data início" required error={criarErrors.dataInicio}>
               <PontesDateInput
                 value={criarForm.dataInicio}
+                min={faixaInicio().min}
+                max={faixaInicio().max}
                 invalid={!!criarErrors.dataInicio}
                 onChange={(v) => {
                   setCriarForm(f => ({ ...f, dataInicio: v }))
@@ -728,10 +688,15 @@ export default function RecorrentesPage() {
                 }}
               />
             </PontesField>
-            <PontesField label="Data fim (opcional)">
+            <PontesField label="Data fim (opcional)" error={criarErrors.dataFim}>
               <PontesDateInput
                 value={criarForm.dataFim}
-                onChange={(v) => setCriarForm(f => ({ ...f, dataFim: v }))}
+                min={criarForm.dataInicio || undefined}
+                invalid={!!criarErrors.dataFim}
+                onChange={(v) => {
+                  setCriarForm(f => ({ ...f, dataFim: v }))
+                  if (criarErrors.dataFim) setCriarErrors(e2 => ({ ...e2, dataFim: undefined }))
+                }}
               />
             </PontesField>
           </div>

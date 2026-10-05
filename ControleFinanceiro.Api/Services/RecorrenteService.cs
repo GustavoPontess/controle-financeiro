@@ -63,7 +63,8 @@ public class RecorrenteService
     /// alterar. Ocorrência no cartão é compra no crédito: entra na fatura do período com <c>UsadoComoCredito</c>
     /// (sem a flag ficava fora do total e do limite). Dia que já tem ocorrência VIVA dessa conta fixa
     /// (efetivada ou prevista) é pulado — retomar/alterar no dia em que a de hoje já foi efetivada não cobra de
-    /// novo. Retorna quantas criou. Não salva.
+    /// novo. Percorre no máximo <see cref="AgendaRecorrente.MaxDatasPorGeracao"/> datas por chamada (o cursor
+    /// fica onde parou). Retorna quantas criou. Não salva.
     /// </summary>
     public async Task<int> GerarOcorrenciasAsync(Recorrente r, DateOnly ateExclusivo, StatusTransacao status)
     {
@@ -83,7 +84,9 @@ public class RecorrenteService
             .ToHashSet();
 
         var criadas = 0;
-        while (proxima < ateExclusivo && (fim == null || proxima <= fim))
+        var percorridas = 0;
+        while (proxima < ateExclusivo && (fim == null || proxima <= fim)
+               && percorridas++ < AgendaRecorrente.MaxDatasPorGeracao)
         {
             if (!ocupadas.Contains(proxima))
             {
@@ -408,6 +411,10 @@ public class RecorrenteService
         Guid recorrenteId = Guid.NewGuid();
         var correlationId = Guid.NewGuid();
         var dataInicio = dto.DataInicio.ToUniversalTime();
+        AgendaRecorrente.ValidarPeriodo(
+            DateOnly.FromDateTime(dataInicio),
+            dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
+            DateOnly.FromDateTime(DateTime.UtcNow));
         var idempotencyKey = ObterIdempotencyKey();
 
         using var transaction = await _context.Database.BeginTransactionAsync();
@@ -571,6 +578,11 @@ public class RecorrenteService
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
         await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
+        // O início não muda na edição (fica o do cadastro); só o fim é conferido contra ele.
+        AgendaRecorrente.ValidarPeriodo(
+            DateOnly.FromDateTime(r.DataInicio),
+            dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
+            DateOnly.FromDateTime(DateTime.UtcNow), validarInicio: false);
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;
