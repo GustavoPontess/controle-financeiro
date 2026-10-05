@@ -44,8 +44,17 @@
   .totalValue { font-size: 12px; }
 }
 
-/* Card estreito → empilha donut sobre a lista */
+/* Card estreito (ex.: Dashboard em tela ~1200px) → donut menor, legenda AINDA ao lado: empilhar
+   dobrava a altura do card e esticava o card vizinho (o gráfico de saldo ficava com um vazio). */
 @container (max-width: 380px) {
+  .grid { grid-template-columns: minmax(0, 120px) 1fr; gap: 10px; }
+  .center { max-width: 72px; }
+  .totalLabel { font-size: 9px; }
+  .totalValue { font-size: 11px; }
+}
+
+/* Muito estreito → aí sim empilha donut sobre a lista */
+@container (max-width: 300px) {
   .grid { grid-template-columns: 1fr; gap: 16px; }
   .list { max-height: 200px; }
 }

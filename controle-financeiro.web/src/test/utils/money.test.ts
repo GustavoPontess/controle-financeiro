@@ -76,6 +76,21 @@ describe("maskMoney", () => {
     expect(maskMoney("000")).toBe("0,00")
   })
 
+  it("APAGANDO até zerar o campo fica vazio (não sobra '0,00' que passaria como zero digitado)", () => {
+    expect(maskMoney("0,0", "0,01")).toBe("") // backspace em "0,01"
+    expect(maskMoney("0,0", "0,00")).toBe("") // backspace no zero digitado
+    expect(maskMoney("", "1,50")).toBe("")   // apagou tudo
+  })
+
+  it("DIGITANDO zero de propósito continua '0,00' (banco zerado de verdade)", () => {
+    expect(maskMoney("0", "")).toBe("0,00")
+    expect(maskMoney("0,000", "0,00")).toBe("0,00") // mais um 0 depois do zero: segue zero
+  })
+
+  it("apagar sem chegar a zero só recalcula o valor", () => {
+    expect(maskMoney("1,0", "1,00")).toBe("0,10")
+  })
+
   it("zeros à esquerda não contam", () => {
     expect(maskMoney("007")).toBe("0,07")
     expect(maskMoney("00150")).toBe("1,50")

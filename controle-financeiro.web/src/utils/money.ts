@@ -28,10 +28,18 @@ export function parseMoney(texto: string): number {
   return Number(texto.replace(/\./g, "").replace(",", ".")) || 0
 }
 
-/** Máscara de digitação pt-BR: só dígitos, lidos como centavos ("394420" → "3.944,20"). */
-export function maskMoney(raw: string): string {
+/**
+ * Máscara de digitação pt-BR: só dígitos, lidos como centavos ("394420" → "3.944,20").
+ * `anterior` = o texto que o campo tinha: APAGANDO até zerar ("0,01" → backspace) o campo fica
+ * VAZIO — sem isso sobrava "0,00" e o zero passava como valor digitado. Digitar "0" de propósito
+ * continua dando "0,00".
+ */
+export function maskMoney(raw: string, anterior = ""): string {
   const d = raw.replace(/\D/g, "")
-  return d ? (Number(d) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
+  if (!d) return ""
+  const valor = Number(d) / 100
+  if (valor === 0 && d.length < anterior.replace(/\D/g, "").length) return ""
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /** Número → texto de campo pt-BR sem símbolo (2500 → "2.500,00"), pra pré-preencher um input. */

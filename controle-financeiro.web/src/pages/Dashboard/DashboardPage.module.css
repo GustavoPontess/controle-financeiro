@@ -79,7 +79,10 @@
 .linkBtn:hover { background: var(--pontes-primary-soft); }
 .linkBtn:focus-visible { outline: 2px solid var(--pontes-primary); outline-offset: 1px; }
 
-.chartBox { height: 190px; padding: 12px 12px 8px 4px; }
+/* Os 2 gráficos ficam lado a lado com a MESMA altura (o grid estica): o do saldo cresce pra
+   preencher o card em vez de deixar um vazio embaixo quando o "Maiores gastos" fica mais alto. */
+.grid2 > .caixa { display: flex; flex-direction: column; }
+.chartBox { flex: 1; min-height: 190px; padding: 12px 12px 8px 4px; }
 .donutBox { padding: 8px 16px 12px; }
 .vazio { padding: 20px 16px; text-align: center; font-size: 12px; color: var(--pontes-text-muted); }
 

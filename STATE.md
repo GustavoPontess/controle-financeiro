@@ -60,6 +60,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - Coluna "Data" → "Data/Hora" (Reconciliação + Transações; a transação já guarda date + time separados). Fonte de título = fonte normal no app todo (Fraunces só no site público).
 - **Back 1166 · front 828** verdes, lint+build limpos. Verificado ao vivo (Carteira da cônjuge: salvar → ajustar → remover; voltou ao saldo original).
 - Pergunta aberta ao Gustavo: separar também a data/hora do MARCO da conferência (`ReconciliacaoSaldo.DataHora`)?
+- **2026-10-05:** diferença da reconciliação = valor PRETO + traço embaixo + ícone (⚠ vermelho / ✓ verde) do tamanho "topo da letra → traço" (cor no número parecia negativo); bug de CSS que nunca deixava a cor aparecer corrigido. Fix: digitar e APAGAR deixava "0,00" e liberava salvar zero (`maskMoney(raw, anterior)` — apagar até zerar esvazia; digitar "0" segue "0,00"). Dashboard: card do gráfico de saldo não estica mais vazio (rosca não empilha entre 300–380px; gráfico preenche o card). Fraunces de volta SÓ no título da página (Navbar, `--pontes-font-marca`). **Front 839** verde.
 - **`PontesTabela` modo "Mostrar mais"** (`carregarMais`, alternativa à paginação): movimentos da reconciliação em lotes de 20 no servidor + botão "Mostrar mais · faltam N". Cartão vermelho "Sobrou/Faltou" removido (a linha Diferença já diz). **Front 835** verde.
 
 **Próxima ação concreta (quando voltar):**

@@ -355,7 +355,7 @@ export default function ReconciliacaoPage() {
                   <p className={styles.painelSub}>O ponto de partida da conta — vale a partir desta data.</p>
                   <div className={styles.painelInput} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <PontesField label="Valor">
-                      <PontesInput iconStart="R$" inputMode="decimal" placeholder="0,00" value={inicialValor} onChange={(e) => setInicialValor(maskMoney(e.target.value))} autoFocus />
+                      <PontesInput iconStart="R$" inputMode="decimal" placeholder="0,00" value={inicialValor} onChange={(e) => setInicialValor(maskMoney(e.target.value, inicialValor))} autoFocus />
                     </PontesField>
                     <PontesField label="Desde">
                       <PontesDateInput value={inicialData} onChange={setInicialData} max={hojeISO} />
@@ -403,7 +403,7 @@ export default function ReconciliacaoPage() {
                       inputMode="decimal"
                       placeholder="0,00"
                       value={m ? decl.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : saldoReal}
-                      onChange={(e) => setSaldoReal(maskMoney(e.target.value))}
+                      onChange={(e) => setSaldoReal(maskMoney(e.target.value, saldoReal))}
                       disabled={!!m}
                       autoFocus={!m}
                     />
@@ -423,8 +423,13 @@ export default function ReconciliacaoPage() {
                     )}
                     <div className={styles.resultLinha} data-destaque="true">
                       <span>Diferença</span>
+                      {/* Destaque = ícone colorido + traço embaixo (verde ✓ bate, vermelho ⚠ não bate). O valor
+                          fica em PRETO: vermelho no número parecia "negativo" mesmo com a diferença positiva. */}
                       {comparavel
-                        ? <strong className={bateu ? styles.difOk : styles.difNok}>{dif > 0 ? "+" : ""}{formatMoney(dif)}</strong>
+                        ? <strong className={bateu ? styles.difOk : styles.difNok}>
+                            {bateu ? <Check size={20} strokeWidth={3} aria-hidden /> : <TriangleAlert size={20} strokeWidth={2.5} aria-hidden />}
+                            <span className={styles.difValor}>{dif > 0 ? "+" : ""}{formatMoney(dif)}</span>
+                          </strong>
                         : <strong>—</strong>}
                     </div>
                   </div>

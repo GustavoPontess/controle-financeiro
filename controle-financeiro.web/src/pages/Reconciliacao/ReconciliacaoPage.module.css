@@ -40,8 +40,16 @@
 .resultLinha { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--pontes-text-muted); }
 .resultLinha strong { color: var(--pontes-text); font-size: 13px; }
 .resultLinha[data-destaque="true"] { padding-top: 6px; border-top: 1px solid var(--pontes-border); }
-.difOk { color: var(--pontes-success); }
-.difNok { color: var(--pontes-danger); }
+/* `.resultLinha` na frente pra vencer `.resultLinha strong` — sem isso a cor nunca aparecia. */
+/* Valor em preto + traço colorido embaixo; só o ícone e o traço carregam a cor. */
+.resultLinha .difOk, .resultLinha .difNok { display: inline-flex; align-items: center; gap: 6px; color: var(--pontes-text); }
+.difValor { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+/* Ícone do tamanho do valor+traço: do topo das letras até o traço (desce 2,5px do centro da linha). */
+.resultLinha .difOk svg, .resultLinha .difNok svg { flex-shrink: 0; transform: translateY(2.5px); }
+.resultLinha .difOk svg { color: var(--pontes-success); }
+.resultLinha .difOk .difValor { text-decoration-color: var(--pontes-success); }
+.resultLinha .difNok svg { color: var(--pontes-danger); }
+.resultLinha .difNok .difValor { text-decoration-color: var(--pontes-danger); }
 /* Linha "Ajuste lançado": sem sinal — a cor diz se entrou (faltava no app) ou saiu (sobrava). */
 .resultLinha .ajusteEntrada { color: var(--pontes-success); }
 .resultLinha .ajusteSaida { color: var(--pontes-danger); }

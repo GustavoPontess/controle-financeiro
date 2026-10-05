@@ -329,7 +329,7 @@ export default function AccountsPage() {
               value={saldoValor}
               disabled={saldoCarregando}
               invalid={!!saldoErro}
-              onChange={(e) => { setSaldoErro(undefined); setSaldoValor(maskMoney(e.target.value)) }}
+              onChange={(e) => { setSaldoErro(undefined); setSaldoValor(maskMoney(e.target.value, saldoValor)) }}
             />
           </PontesField>
           <PontesField label="Desde" required>

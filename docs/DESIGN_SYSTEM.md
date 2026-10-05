@@ -362,7 +362,7 @@ abaixo foram tirados do CSS real dessas três telas — é a referência, não u
 | Espaço entre blocos | 12–16px | 24px |
 | Caixa / card | raio 14 · padding 14px 16px (painel) ou 12px (card pequeno) | raio 16–18 · padding 20–24px |
 | Banda de cabeçalho da caixa | padding 10px 16px | 18px 24px |
-| Título de caixa | 18px/600 na fonte de título (`--pontes-font-heading` = a fonte do tema; a Fraunces saiu do app em 2026-10-04 e ficou só no site público), ou 13.5px/700 em painel pequeno | 16px/700 |
+| Título de caixa | 18px/600 na fonte de título (`--pontes-font-heading` = a fonte do tema; a Fraunces (`--pontes-font-marca`) ficou só no título da página no Navbar e no site público — decisão 2026-10-04/05), ou 13.5px/700 em painel pequeno | 16px/700 |
 | Texto de linha | 12px (nome 600; número 700 `tabular-nums`) | 14–15px |
 | Texto secundário | 11px (sub da linha) · 12px (descrição) | 12–14px |
 | Label / cabeçalho de coluna | 11px · 700 · MAIÚSCULAS · tracking 0.08em · `text-muted` | 12px |

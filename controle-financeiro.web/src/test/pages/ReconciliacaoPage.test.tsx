@@ -506,6 +506,20 @@ describe("ReconciliacaoPage", () => {
     expect(linha("Declarado (você)")).not.toHaveTextContent(/100,00/)
   })
 
+  it("regressão: digitar e APAGAR deixa o campo vazio — 'Salvar' volta a ficar bloqueado (não salva zero sem querer)", async () => {
+    await renderPage()
+    await abrirDiaLivre()
+    await screen.findByText("Calculado (app)")
+    digitarSaldoReal("1") // "0,01"
+    expect(screen.getByPlaceholderText("0,00")).toHaveValue("0,01")
+    expect(screen.getByRole("button", { name: SALVAR })).toBeEnabled()
+    digitarSaldoReal("0,0") // backspace
+    expect(screen.getByPlaceholderText("0,00")).toHaveValue("")
+    expect(screen.getByRole("button", { name: SALVAR })).toBeDisabled()
+    expect(linha("Declarado (você)")).toHaveTextContent("—")
+    expect(criarMarco).not.toHaveBeenCalled()
+  })
+
   it("regressão: campo do banco VAZIO não libera salvar nem aviso — clicar antes de digitar não grava o saldo inteiro como se fosse o do banco", async () => {
     getSaldoCalculado.mockResolvedValue(3944.2)
     await renderPage()

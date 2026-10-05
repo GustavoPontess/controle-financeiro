@@ -1220,7 +1220,7 @@ function TokensSection({ p }: { p: Palette }) {
       <Group title="Tipografia">
         <p className={styles.helper}>
           Títulos usam <code>--pontes-font-heading</code>, que no app é a mesma fonte do tema
-          (<code>--pontes-font</code>, trocável no topo). A Fraunces fica só no site público.
+          (<code>--pontes-font</code>, trocável no topo). A Fraunces (<code>--pontes-font-marca</code>) fica só no título da página (Navbar) e no site público.
         </p>
         <div className={styles.typoCol}>
           <div className={styles.typoH1}>H1 título · 56 / 600</div>
