@@ -104,7 +104,7 @@ export default function Navbar({
           </PontesIconButton>
         )}
         <div className={styles.titleBox}>
-          {!isHome && (
+          {!isHome && !celular && (
             <div className={styles.crumb}>
               {crumbs.map((c, i) => {
                 const ultimo = i === crumbs.length - 1
@@ -124,13 +124,17 @@ export default function Navbar({
       </div>
 
       <div className={styles.right}>
-        {openCommandPalette && (
+        {openCommandPalette && (celular ? (
+          <PontesIconButton variant="ghost" size={40} onClick={openCommandPalette} aria-label="Buscar">
+            <Search size={18} strokeWidth={2} />
+          </PontesIconButton>
+        ) : (
           <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
             <Search size={16} strokeWidth={2} />
             <span className={styles.searchText}>Buscar telas…</span>
             <kbd className={styles.kbd}>Ctrl K</kbd>
           </button>
-        )}
+        ))}
 
         {showFinance && (
           <PontesIconButton
@@ -157,8 +161,11 @@ export default function Navbar({
             disabled={!canCreateTransaction}
             iconStart={<Plus size={16} strokeWidth={2.5} />}
             title={canCreateTransaction ? undefined : "Cadastre pelo menos uma categoria antes de adicionar transações"}
+            // Celular: só o "+" (o texto não cabe ao lado do título); o nome fica pro leitor de tela.
+            aria-label={celular ? "Nova transação" : undefined}
+            className={celular ? styles.novaIcone : undefined}
           >
-            Nova transação
+            {!celular && "Nova transação"}
           </PontesButton>
         )}
       </div>

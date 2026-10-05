@@ -87,6 +87,26 @@ describe("Navbar no celular", () => {
     fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }))
     expect(toggle).toHaveBeenCalledOnce()
   })
+
+  it("compacta: sem caminho, busca e Nova transação só com ícone (nome acessível mantido)", () => {
+    const busca = vi.fn(); const nova = vi.fn()
+    render(
+      <PontesThemeProvider>
+        <MemoryRouter initialEntries={["/credit-cards/parcelamentos"]}>
+          <Navbar toggleDrawer={() => {}} sidebarOpen={false} celular openTransaction={nova} canCreateTransaction
+            openCommandPalette={busca} />
+        </MemoryRouter>
+      </PontesThemeProvider>,
+    )
+    expect(screen.getByRole("heading", { name: "Parcelamentos" })).toBeInTheDocument()
+    expect(screen.queryByText("Cartões de Crédito")).not.toBeInTheDocument() // caminho some
+    expect(screen.queryByText("Ctrl K")).not.toBeInTheDocument()
+    expect(screen.queryByText("Nova transação")).not.toBeInTheDocument()    // sem o texto…
+    fireEvent.click(screen.getByRole("button", { name: "Nova transação" }))   // …mas com o nome
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }))
+    expect(nova).toHaveBeenCalledOnce()
+    expect(busca).toHaveBeenCalledOnce()
+  })
 })
 
 describe("DefaultLayout no celular", () => {

@@ -5,6 +5,8 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   font-family: var(--pontes-font); font-weight: 600; border: none; line-height: 1.2;
   cursor: pointer;
+  /* Rótulo em UMA linha (no celular "Novo Parcelamento" quebrava em 2 e o botão virava um bloco alto). */
+  white-space: nowrap; flex-shrink: 0;
   transition: background-color .15s ease, color .15s ease, border-color .15s ease,
     transform .15s ease, box-shadow .2s ease, filter .15s ease;
 }
