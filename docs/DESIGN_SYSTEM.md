@@ -414,3 +414,12 @@ card com hover de "levantar" quando não é clicável; mais de uma altura de bar
 
 **Lista de itens = `PontesTabela`** (só passar parâmetros). Tela de gráficos/cards não precisa de tabela,
 só dos tamanhos acima.
+
+## 📱 Responsivo — celular (P0, desde 2026-10-05)
+
+- **Corte único:** celular = abaixo de **768px** (`CELULAR` em `src/hooks/useMediaQuery.ts`; no CSS, `@media (max-width: 767px)`). Tablet em pé pra cima segue o layout de desktop.
+- **Aparência** muda só por `@media` no CSS Module. **Comportamento** (algo que abre/fecha, componente diferente) usa `useMediaQuery(CELULAR)` — nunca ler `window.innerWidth` na mão.
+- **Shell:** no celular a barra lateral vira gaveta por cima (`PontesDrawer bare side="left"`), fechada por padrão; o ☰ do topo abre; tocar num item, tocar fora ou Esc fecha. O conteúdo ocupa a tela inteira (sem a margem e os cantos de cartão), com padding 16px.
+- **`PontesDrawer bare`:** sem cabeçalho/fechar e sem recuo — o conteúdo é o painel inteiro. Passe `ariaLabel` (sem título, é o nome acessível). Fechada fica `inert` + `aria-hidden` (fora do Tab e do leitor de tela).
+- **Toda tela nova ou mexida já sai conferida a 375px** (levantamento das telas e fila no ROADMAP → P0 Responsivo).
+

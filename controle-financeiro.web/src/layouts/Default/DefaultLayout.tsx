@@ -12,7 +12,8 @@ import {
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
-import { PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
+import { PontesDrawer, PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
+import { CELULAR, useMediaQuery } from "../../hooks/useMediaQuery"
 import styles from "./DefaultLayout.module.css"
 import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
@@ -25,6 +26,8 @@ import { getCategories } from "../../services/categoryService"
 
 const DRAWER_WIDTH = 208
 const RAIL_WIDTH = 64
+// No celular a barra lateral vira gaveta por cima do conteúdo (antes ficava fixa em 208px e sobravam ~150px).
+const GAVETA_CELULAR = 264
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 
@@ -56,6 +59,10 @@ export default function DefaultLayout() {
   useHideBalance()
 
   const [open, setOpen] = useState(true)
+  const celular = useMediaQuery(CELULAR)
+  // Aberta = aberta NESTA tela: tocar num item do menu troca a rota e a gaveta fecha sozinha.
+  const [gavetaAbertaEm, setGavetaAbertaEm] = useState<string | null>(null)
+  const gavetaAberta = gavetaAbertaEm === location.pathname
   const [openTransaction, setOpenTransaction] = useState(false)
   const [canCreateTransaction, setCanCreateTransaction] = useState(false)
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
@@ -136,16 +143,24 @@ export default function DefaultLayout() {
 
   return (
     <div className={styles.shell}>
-      {/* Sidebar transparente — "atrás", no canvas */}
-      <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
+      {/* Sidebar transparente — "atrás", no canvas. No celular: gaveta por cima, fechada por padrão. */}
+      {celular ? (
+        <PontesDrawer bare side="left" width={GAVETA_CELULAR} open={gavetaAberta}
+          onClose={() => setGavetaAbertaEm(null)} ariaLabel="Menu">
+          <Sidebar open drawerWidth={GAVETA_CELULAR} railWidth={RAIL_WIDTH} />
+        </PontesDrawer>
+      ) : (
+        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
+      )}
 
       {/* Conteúdo flutuante — card arredondado por cima do canvas */}
       <div className={styles.card}>
         {/* Faixa accent — detalhe de marca no topo do card (discreta) */}
         <div className={styles.accentStrip} />
         <Navbar
-          toggleDrawer={() => setOpen((o) => !o)}
-          sidebarOpen={open}
+          toggleDrawer={() => (celular ? setGavetaAbertaEm(location.pathname) : setOpen((o) => !o))}
+          sidebarOpen={celular ? gavetaAberta : open}
+          celular={celular}
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}

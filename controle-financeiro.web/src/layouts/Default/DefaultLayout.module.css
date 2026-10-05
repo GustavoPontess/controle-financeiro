@@ -19,3 +19,12 @@
 .page { max-width: 1800px; margin: 0 auto; animation: pontes-page-in 320ms cubic-bezier(.4, 0, .2, 1); }
 @keyframes pontes-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .toastWrap { position: fixed; bottom: 24px; right: 24px; z-index: 10001; }
+
+/* Celular: a barra lateral sai do fluxo (vira gaveta, ver DefaultLayout.tsx) e o conteúdo ocupa a tela
+   inteira — sem a margem e os cantos de "cartão flutuando no canvas", que no celular só roubam espaço. */
+@media (max-width: 767px) {
+  .shell { padding: 0; gap: 0; }
+  .card { border-radius: 0; border: none; box-shadow: none; }
+  .main { padding: 16px; }
+  .toastWrap { left: 16px; right: 16px; bottom: 16px; }
+}

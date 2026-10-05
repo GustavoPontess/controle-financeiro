@@ -13,4 +13,8 @@
 .title { font-size: var(--pontes-fs-lg); font-weight: 700; color: var(--pontes-text); }
 .close { background: transparent; border: none; color: var(--pontes-text-muted); font-size: 18px; cursor: pointer; }
 .body { flex: 1; overflow-y: auto; padding: 24px; }
+/* Sem cabeçalho nem recuo: o conteúdo ocupa o painel (ex.: barra lateral no celular). */
+.panel[data-bare="true"] .body { padding: 0; display: flex; flex-direction: column; }
+/* Fechado: fora da tela E fora do caminho do teclado/leitor de tela (com o `inert` no componente). */
+.panel:not([data-open="true"]) { visibility: hidden; transition: transform 280ms cubic-bezier(.2, .8, .2, 1), visibility 0s linear 280ms; }
 .footer { padding: 16px 24px; border-top: 1px solid var(--pontes-border); background: var(--pontes-bg); }
