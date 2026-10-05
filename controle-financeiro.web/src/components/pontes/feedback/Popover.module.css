@@ -12,7 +12,7 @@
 .divider { height: 1px; background: var(--pontes-border); margin: 4px 0; }
 .item {
   width: 100%; text-align: left; background: transparent; border: none;
-  display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: 14px;
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: var(--pontes-fs-base);
   color: var(--pontes-text); cursor: pointer; border-radius: 8px; font-family: var(--pontes-font);
   transition: background-color .12s ease;
 }

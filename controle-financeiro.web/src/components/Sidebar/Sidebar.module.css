@@ -16,12 +16,12 @@
 .userTrigger:hover { background: var(--pontes-bg); }
 /* Colapsado: avatar NÃO se move — mesmo padding-left e tamanho; só some o texto. */
 .aside[data-open="false"] .userTrigger { gap: 0; }
-.avatar { width: 27px; height: 27px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; box-shadow: 0 0 0 2px var(--pontes-surface), 0 0 0 4px var(--pontes-primary-soft); }
+.avatar { width: 27px; height: 27px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--pontes-fs-xs); flex-shrink: 0; box-shadow: 0 0 0 2px var(--pontes-surface), 0 0 0 4px var(--pontes-primary-soft); }
 .userInfo { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; opacity: 1; max-width: 200px; overflow: hidden; transition: opacity 160ms ease, max-width 220ms ease; }
 .aside[data-open="false"] .userInfo { opacity: 0; max-width: 0; }
 /* Uma linha só: "Nome · Free" (referência: chip de usuário do Claude). */
 .userText { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 5px; overflow: hidden; }
-.userName { font-size: 12.5px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.userPlan { flex-shrink: 0; font-size: 11px; font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; }
+.userName { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.userPlan { flex-shrink: 0; font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; }
 .userPlan::before { content: "· "; }
-.miniAvatar { width: 18px; height: 18px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.miniAvatar { width: 18px; height: 18px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); font-size: var(--pontes-fs-2xs); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }

@@ -3,8 +3,8 @@
   display: inline-flex; align-items: center; gap: 4px;
   border-radius: 999px; font-weight: 600; font-family: var(--pontes-font);
 }
-.badge[data-size="sm"] { padding: 2px 8px; font-size: 11px; }
-.badge[data-size="md"] { padding: 4px 12px; font-size: 12px; }
+.badge[data-size="sm"] { padding: 2px 8px; font-size: var(--pontes-fs-xs); }
+.badge[data-size="md"] { padding: 4px 12px; font-size: var(--pontes-fs-sm); }
 .badge[data-tone="primary"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
 .badge[data-tone="accent"] { background: var(--pontes-accent); color: #0B1220; }
 .badge[data-tone="soft"] { background: var(--pontes-primary-soft); color: var(--pontes-primary); }

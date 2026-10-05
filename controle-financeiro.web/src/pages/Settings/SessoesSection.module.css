@@ -1,17 +1,17 @@
 /* SessoesSection — específico da SettingsPage. CSS Modules + var(--pontes-*). */
 .section { display: flex; flex-direction: column; gap: 14px; }
 .sectionHead { display: flex; flex-direction: column; gap: 2px; }
-.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-primary); margin: 0; }
-.sectionTitle { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--pontes-text); margin: 0; }
+.eyebrow { font-size: var(--pontes-fs-rotulo); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-primary); margin: 0; }
+.sectionTitle { display: flex; align-items: center; gap: 8px; font-size: var(--pontes-fs-titulo-caixa); font-weight: 700; color: var(--pontes-text); margin: 0; }
 .sectionIcon { color: var(--pontes-primary); flex-shrink: 0; }
-.sectionHint { font-size: 12px; color: var(--pontes-text-muted); margin: 0; }
+.sectionHint { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); margin: 0; }
 
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1.5px solid var(--pontes-border); border-radius: 12px; overflow: hidden; background: var(--pontes-surface); }
 .item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--pontes-border); }
 .item:last-child { border-bottom: none; }
 .itemMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.device { font-size: 14px; font-weight: 600; color: var(--pontes-text); }
-.meta { font-size: 12px; color: var(--pontes-text-muted); }
+.device { font-size: var(--pontes-fs-base); font-weight: 600; color: var(--pontes-text); }
+.meta { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 .actions { display: flex; }
 

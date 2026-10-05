@@ -11,14 +11,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOutletContext, useNavigate } from "react-router-dom"
 import {
   Check, TriangleAlert, ChevronLeft, ChevronRight, Flag, Scale, Plus, Pencil, Trash2,
-  Landmark, ArrowUpRight, ArrowDownRight,
+  Landmark, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, ArrowLeftRight, CreditCard,
 } from "lucide-react"
-import { PontesButton, PontesField, PontesInput, PontesSelect, PontesDateInput, PontesDialog, PontesTabela } from "@/components/pontes"
+import {
+  PontesButton, PontesField, PontesInput, PontesSelect, PontesDateInput, PontesDialog, PontesTabela,
+  PontesCelulaIdentidade, PontesBadge, type PontesTabelaColuna,
+} from "@/components/pontes"
 import { formatMoney, parseMoney, maskMoney, moneyParaCampo } from "@/utils/money"
 import { combinarDataHora, horaLocalHHMM, dataLocalISO } from "@/utils/dateTime"
 import { getContas, atualizarSaldoInicial } from "@/services/contaService"
 import { listMarcos, getSaldoCalculado, criarMarco, removerMarco, fecharDiferenca } from "@/services/reconciliacaoService"
 import { listTransactionsPage } from "@/services/transactionService"
+import { getCategories } from "@/services/categoryService"
 import type { Conta } from "@/types/Conta"
 import type { Transaction } from "@/types/Transaction"
 import type { ReconciliacaoMarco } from "@/types/Reconciliacao"
@@ -38,10 +42,12 @@ const pad = (n: number) => String(n).padStart(2, "0")
 const isoDoMarco = (m: ReconciliacaoMarco) => m.dataHora.slice(0, 10)
 const fmtDiaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 const fmtDataBR = (iso: string) => iso.split("-").reverse().join("/")
-// dd/mm + HH:MM da transação. Campos separados (data "YYYY-MM-DD" + hora "HH:MM:SS"|null), sem fuso.
-// Lançamento sem hora (null) mostra só o dia.
-const fmtDiaHora = (data: string, hora?: string | null) =>
-  hora ? `${fmtDiaMes(data)} ${hora.slice(0, 5)}` : fmtDiaMes(data)
+// Data/hora do movimento: data "YYYY-MM-DD" + hora "HH:MM:SS"|null, campos separados, sem fuso.
+// Lançamento sem hora (null) mostra só a data — não inventa "00:00".
+const fmtDataHora = (data: string, hora?: string | null) => (hora ? `${fmtDataBR(data)} ${hora.slice(0, 5)}` : fmtDataBR(data))
+// Natureza do movimento. Transferência e pagamento de fatura são neutros (não são gasto/renda).
+const naturezaMov = (t: Transaction): "transferencia" | "fatura" | "entrada" | "saida" =>
+  t.ehTransferencia ? "transferencia" : t.ehPagamentoFatura ? "fatura" : t.tipo === 2 ? "entrada" : "saida"
 // Cor do marco no calendário/histórico. "diferenca" = saldo do banco salvo que ainda não bate e não
 // foi ajustado (a pessoa ainda vai lançar o que falta ou ajustar).
 type TomMarco = "inicial" | "ajuste" | "diferenca" | "bateu"
@@ -77,6 +83,7 @@ export default function ReconciliacaoPage() {
   const [inicialData, setInicialData] = useState("")
   const [salvandoInicial, setSalvandoInicial] = useState(false)
   const [movimentos, setMovimentos] = useState<Transaction[]>([])
+  const [catNome, setCatNome] = useState<Record<string, string>>({}) // id da categoria → nome (coluna Categoria)
   const [versao, setVersao] = useState(0)
   const recarregar = useCallback(() => setVersao((v) => v + 1), [])
 
@@ -125,7 +132,10 @@ export default function ReconciliacaoPage() {
   const mes = mesRef.getMonth()
   const offset = new Date(ano, mes, 1).getDay()
   const diasNoMes = new Date(ano, mes + 1, 0).getDate()
+  const diasMesAnterior = new Date(ano, mes, 0).getDate()
   const celulas: (number | null)[] = [...Array(offset).fill(null), ...Array.from({ length: diasNoMes }, (_, i) => i + 1)]
+  // Sempre 6 semanas: o calendário tem a mesma altura em todo mês e é ele quem dita a altura dos 2 cards.
+  celulas.push(...Array(42 - celulas.length).fill(null))
   const isoDoDia = (dia: number) => `${ano}-${pad(mes + 1)}-${pad(dia)}`
 
   const marcoDoDiaSel = diaSel ? marcos.find((m) => isoDoMarco(m) === diaSel) : undefined
@@ -309,6 +319,57 @@ export default function ReconciliacaoPage() {
       notify({ open: true, message: "Erro ao salvar o saldo inicial", severity: "error" })
     } finally { setSalvandoInicial(false) }
   }
+
+  // Nome das categorias (a transação só traz o id) — pra coluna Categoria dos movimentos.
+  useEffect(() => {
+    let vivo = true
+    getCategories()
+      .then((cats) => { if (vivo) setCatNome(Object.fromEntries(cats.map((c) => [c.id, c.descricao]))) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [])
+
+  // Colunas dos movimentos (Categoria e Pagamento começam ocultas; liga pelo seletor de colunas).
+  const colunasMov: PontesTabelaColuna<Transaction>[] = [
+    {
+      key: "descricao", header: "Descrição / Conta",
+      render: (t) => {
+        const n = naturezaMov(t)
+        const icone = n === "transferencia" ? <ArrowLeftRight size={17} strokeWidth={2.2} />
+          : n === "fatura" ? <CreditCard size={17} strokeWidth={2.2} />
+          : n === "entrada" ? <TrendingUp size={17} strokeWidth={2.2} />
+          : <TrendingDown size={17} strokeWidth={2.2} />
+        const tom = n === "entrada" ? "entrada" : n === "saida" ? "saida" : "neutro"
+        return <PontesCelulaIdentidade icone={icone} tom={tom} nome={t.descricao} sub={t.contaNome} />
+      },
+    },
+    {
+      key: "tipo", header: "Tipo",
+      render: (t) => {
+        const n = naturezaMov(t)
+        const label = n === "entrada" ? "Entrada" : n === "saida" ? "Saída" : n === "transferencia" ? "Transferência" : "Pagto. fatura"
+        const tone = n === "entrada" ? "success" : n === "saida" ? "danger" : n === "transferencia" ? "primary" : "neutral"
+        return <PontesBadge tone={tone} size="sm">{label}</PontesBadge>
+      },
+    },
+    { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
+    { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
+    { key: "data", header: "Data/Hora", render: (t) => fmtDataHora(t.data, t.hora) },
+    {
+      key: "status", header: "Status",
+      render: (t) => t.statusTransacao === 0
+        ? <PontesBadge tone="warning" size="sm">Previsto</PontesBadge>
+        : <PontesBadge tone="success" size="sm">Efetivado</PontesBadge>,
+    },
+    {
+      key: "valor", header: "Valor", numerica: true,
+      render: (t) => {
+        const n = naturezaMov(t)
+        const cls = n === "entrada" ? styles.valEntrada : n === "saida" || n === "fatura" ? styles.valSaida : styles.valNeutro
+        return <span className={cls}>{formatMoney(t.valor)}</span>
+      },
+    },
+  ]
 
   return (
     <div className={styles.wrap}>
@@ -522,7 +583,11 @@ export default function ReconciliacaoPage() {
           <div className={styles.calGrid}>
             {SEMANA.map((d) => <div key={d} className={styles.calWeekday}>{d}</div>)}
             {celulas.map((dia, i) => {
-              if (dia === null) return <div key={`e${i}`} className={styles.calVazio} />
+              if (dia === null) {
+                // Dia do mês vizinho (só completa as 6 semanas): apagado e sem clique.
+                const vizinho = i < offset ? diasMesAnterior - offset + 1 + i : i - offset - diasNoMes + 1
+                return <div key={`e${i}`} className={styles.calVazio} aria-hidden="true">{vizinho}</div>
+              }
               const iso = isoDoDia(dia)
               const marco = marcoPorDia.get(dia)
               const tom = marco ? tomDoMarco(marco) : undefined
@@ -578,13 +643,8 @@ export default function ReconciliacaoPage() {
         <PontesTabela<Transaction>
           id="reconciliacao-movimentos"
           titulo={diaSel ? `Movimentos desde ${marcoAnterior ? fmtDiaMes(isoDoMarco(marcoAnterior)) : "o começo"} até ${fmtDiaMes(diaSel)}` : "Movimentos"}
-          colunas={[
-            { key: "data", header: "Data/Hora", render: (t) => fmtDiaHora(t.data, t.hora) },
-            { key: "descricao", header: "Lançamento", render: (t) => t.descricao },
-            { key: "valor", header: "Valor", numerica: true, render: (t) => (
-              <span className={t.tipo === 2 ? styles.movValorPos : styles.movValorNeg}>{formatMoney(t.valor)}</span>
-            ) },
-          ]}
+          colunas={colunasMov}
+          colunasPadraoOcultas={["categoria", "pagamento"]}
           itens={movimentos}
           chave={(t) => t.id}
           carregarMais={{ restantes: Math.max(0, movTotal - movimentos.length), carregando: carregandoMaisMov, onCarregarMais: carregarMaisMovimentos }}

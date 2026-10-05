@@ -1,7 +1,7 @@
 .wrap { display: flex; flex-direction: column; gap: 20px; }
 
 .head { display: flex; flex-direction: column; gap: 4px; }
-.title { font-size: 24px; font-weight: 700; color: var(--pontes-text); letter-spacing: -0.02em; margin: 0; }
+.title { font-size: var(--pontes-fs-3xl); font-weight: 700; color: var(--pontes-text); letter-spacing: -0.02em; margin: 0; }
 
 .section { margin-top: 4px; }
 

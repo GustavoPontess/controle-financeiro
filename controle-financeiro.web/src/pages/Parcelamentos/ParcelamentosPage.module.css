@@ -5,8 +5,8 @@
 .statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 
 .listHead { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--pontes-border); }
-.listHeadTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.listHeadMeta { font-size: 12px; color: var(--pontes-text-muted); }
+.listHeadTitle { font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-text); }
+.listHeadMeta { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 .emptyWrap { padding: 32px 20px; }
 
@@ -20,21 +20,21 @@
 
 /* Linha 1: descrição + (badge PIX) + parcelas/pago ... valor total (empurrado pra direita) */
 .itemHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.itemDesc { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.itemPills { font-size: 12px; color: var(--pontes-text-muted); }
-.itemAmount { margin-left: auto; font-size: 16px; font-weight: 800; color: var(--pontes-text); }
+.itemDesc { font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-text); }
+.itemPills { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.itemAmount { margin-left: auto; font-size: var(--pontes-fs-lg); font-weight: 800; color: var(--pontes-text); }
 
 /* Linha 2: barra de progresso ocupando a largura cheia */
 .progressWrap { display: flex; align-items: center; gap: 10px; }
 .bar { flex: 1; height: 6px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
 .barFill { height: 100%; border-radius: 99px; background: var(--pontes-primary); transition: width .3s ease; }
-.progressPct { font-size: 12px; font-weight: 700; color: var(--pontes-text); min-width: 32px; text-align: right; }
+.progressPct { font-size: var(--pontes-fs-sm); font-weight: 700; color: var(--pontes-text); min-width: 32px; text-align: right; }
 
 /* Linha 3: próxima parcela (esq.) + restante (dir.) */
 .itemFoot { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.footItem { font-size: 13px; color: var(--pontes-text); display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.footItem { font-size: var(--pontes-fs-md); color: var(--pontes-text); display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .footItem strong { font-weight: 700; }
-.metricLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); }
+.metricLabel { font-size: var(--pontes-fs-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); }
 
 .itemActions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 

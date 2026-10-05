@@ -10,7 +10,7 @@
 .segBtn {
   display: inline-flex; align-items: center; justify-content: center;
   border: none; background: transparent; cursor: pointer; font-family: var(--pontes-font);
-  font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 0 14px; border-radius: 8px;
+  font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text-muted); padding: 0 14px; border-radius: 8px;
   white-space: nowrap; transition: background-color .12s ease, color .12s ease;
 }
 .segBtn:hover { color: var(--pontes-text); }

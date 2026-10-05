@@ -47,22 +47,55 @@ const colors = {
 
 ## 🔤 Tipografia
 
-### Fontes
-- **Display:** `"Dm Sans"` ou `"Poppins"` (bold, para headers)
-- **Body:** `"Inter"` (regular, para textos)
+### Fontes (família)
+- **Corpo e títulos do app:** `--pontes-font` (a fonte do tema, trocável em `/perfil`); `--pontes-font-heading` aponta pra ela.
+- **Marca:** `--pontes-font-marca` (Fraunces) — só no título da página (Navbar) e no site público.
 
-### Escala
-```typescript
-const typography = {
-  h1: { fontSize: '28px', fontWeight: 700, lineHeight: 1.2 },  // Page titles
-  h2: { fontSize: '24px', fontWeight: 600, lineHeight: 1.3 },  // Section titles
-  h3: { fontSize: '20px', fontWeight: 600, lineHeight: 1.3 },  // Subheadings
-  h4: { fontSize: '16px', fontWeight: 600, lineHeight: 1.4 },  // Small headings
-  body: { fontSize: '14px', fontWeight: 400, lineHeight: 1.5 }, // Body text
-  caption: { fontSize: '12px', fontWeight: 400, lineHeight: 1.4 }, // Labels, captions
-  code: { fontSize: '13px', fontFamily: 'Monospace' },          // Code
-};
-```
+### Tamanho — escala central `--pontes-fs-*` (2026-10-05) ⭐
+**Todo tamanho de letra sai de `controle-financeiro.web/src/components/pontes/styles/tokens.css`. Mudou lá, muda no app todo.**
+Nunca escrever `font-size: 13px` num componente/tela — usar o token. Vitrine ao vivo: `/design-system` → aba Tokens.
+
+**Escala (degraus que existem):** `2xs` 10 · `xs` 11 · `sm` 12 · `md` 13 · `base` 14 · `lg` 16 · `xl` 18 · `2xl` 20 · `3xl` 24 · `4xl` 28 · `5xl` 32 · `6xl` 40.
+
+**Papéis (use o papel sempre que existir — é ele que muda tudo de uma vez):**
+
+| Token | Papel | Valor |
+|---|---|---|
+| `--pontes-fs-rotulo` | rótulo MAIÚSCULO, cabeçalho de coluna | xs (11) |
+| `--pontes-fs-linha` | texto de linha de tabela/lista (nome, valor, data) | sm (12) |
+| `--pontes-fs-secundario` | linha de baixo (sub), ajuda e erro de campo, dica | xs (11) |
+| `--pontes-fs-corpo` | texto corrido, descrição, mensagem de vazio | md (13) |
+| `--pontes-fs-controle` | texto digitado/escolhido em campo, select, data | base (14) |
+| `--pontes-fs-titulo-painel` | título de painel pequeno | 13.5 |
+| `--pontes-fs-titulo-caixa` | título de caixa/tabela/seção ("Todas as transações", "Saldo nos últimos meses") | lg (16) — decidido 2026-10-05 (era 18 nas tabelas × 16 no Dashboard) |
+| `--pontes-fs-titulo-modal` | título de modal/diálogo | 2xl (20) |
+| `--pontes-fs-titulo-pagina` | título da página no topo (Navbar) | 2xl (20) |
+| `--pontes-fs-stat-valor` | número do `PontesStatCard` | 22 |
+| `--pontes-fs-valor-destaque` | valor grande dentro de card (saldo da carteira, fatura atual) | 4xl (28) |
+| `--pontes-fs-hero-valor` | valor grande do hero de saldo | 38 |
+| `--pontes-fs-hero-valor-duplo` | hero com DOIS valores lado a lado (Empréstimos) | 5xl (32) |
+| `--pontes-fs-hero-numero` | números ao lado do hero (Entrou/Saiu/Sobrou) | 2xl (20) |
+| `--pontes-fs-display` | chamada grande das telas de entrada (Login/Cadastro) | 6xl (40) |
+
+**Fora da escala (fica em px, de propósito):** tamanho de ícone/glifo (não é texto), tamanho proporcional
+calculado em runtime (`PontesAvatar`, `PontesBankBadge`), campo de dinheiro grande (`clamp`), dígito do OTP, e o
+site público (landing tem tamanhos próprios).
+
+**Trava automática:** `src/test/components/tipografiaTokens.test.ts` quebra se uma tela escrever QUALQUER tamanho
+em px/rem, se um componente do DS escrever fora da lista de ícone/glifo, ou se usar um token que não existe.
+
+**Estado da migração — COMPLETA (2026-10-05):**
+- Componentes do DS (`src/components/pontes/`) ✅ — 114 tamanhos, sem mudança visual.
+- Telas (`src/pages/` + `src/components/` fora do DS) ✅ — 325 tamanhos (+ 3 inline em HTML) pro token de MESMO
+  valor (sem mudança visual, medido em 16 telas) + os 46 que estavam fora da escala PADRONIZADOS ("padroniza tudo",
+  Gustavo): meio-tamanhos arredondados (12.5→12, 11.5/10.5→11, 9.5→10); 15→16; 22→`stat-valor`; heros de
+  Limites/Metas/Contas Fixas → padrão 38/20; Empréstimos → `hero-valor-duplo`; 28/30 → `valor-destaque`;
+  Login/Cadastro → `display`/`4xl`; desenho do cartão 19/21 → 18/20. Zero px/rem nas telas.
+- Título de caixa = **16** (`titulo-caixa`): tabelas (Transações, Empréstimos, movimentos) desceram de 18;
+  Dashboard, Ajustes, Categorias, Relatórios e Fatura passaram a usar o papel.
+- CSS morto da Reconciliação (layouts antigos: `resultLinha`, `tag`, `notaDerivado`, `destaqueSub`…) apagado.
+- Fora de propósito: site público, vitrine do DS, galerias DEV, rótulo de eixo dos gráficos (atributo SVG não
+  lê `var()`), tamanho calculado em runtime (Logo/Avatar/BankBadge).
 
 ---
 
@@ -362,7 +395,7 @@ abaixo foram tirados do CSS real dessas três telas — é a referência, não u
 | Espaço entre blocos | 12–16px | 24px |
 | Caixa / card | raio 14 · padding 14px 16px (painel) ou 12px (card pequeno) | raio 16–18 · padding 20–24px |
 | Banda de cabeçalho da caixa | padding 10px 16px | 18px 24px |
-| Título de caixa | 18px/600 na fonte de título (`--pontes-font-heading` = a fonte do tema; a Fraunces (`--pontes-font-marca`) ficou só no título da página no Navbar e no site público — decisão 2026-10-04/05), ou 13.5px/700 em painel pequeno | 16px/700 |
+| Título de caixa | `--pontes-fs-titulo-caixa` (16px, era 18 — 2026-10-05)/600 na fonte de título (`--pontes-font-heading` = a fonte do tema; a Fraunces (`--pontes-font-marca`) ficou só no título da página no Navbar e no site público — decisão 2026-10-04/05), ou 13.5px/700 em painel pequeno | 16px/700 |
 | Texto de linha | 12px (nome 600; número 700 `tabular-nums`) | 14–15px |
 | Texto secundário | 11px (sub da linha) · 12px (descrição) | 12–14px |
 | Label / cabeçalho de coluna | 11px · 700 · MAIÚSCULAS · tracking 0.08em · `text-muted` | 12px |

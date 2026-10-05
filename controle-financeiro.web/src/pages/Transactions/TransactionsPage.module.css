@@ -6,15 +6,15 @@
 .hero { position: relative; overflow: hidden; border-radius: 20px; padding: 28px 32px; color: var(--pontes-hero-fg); background: linear-gradient(135deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); font-family: var(--pontes-font); display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
 .heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.10); pointer-events: none; }
 .heroMain { position: relative; min-width: 0; }
-.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroLabel { font-size: var(--pontes-fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: var(--pontes-fs-hero-valor); font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
 .heroFluxo { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 340px; }
 .heroStats { position: relative; display: flex; align-items: stretch; gap: 18px; }
 .heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.heroStatValue { font-size: var(--pontes-fs-hero-numero); font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
 .heroStatValue[data-tone="up"] { color: #4ADE80; }
 .heroStatValue[data-tone="down"] { color: #FB7185; }
-.heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatLabel { font-size: var(--pontes-fs-rotulo); opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
 .heroStatDivider { width: 1px; background: rgba(255,255,255,0.22); }
 @media (max-width: 720px) {
   .hero { gap: 20px; }
@@ -29,7 +29,7 @@
 .valNeutro { color: var(--pontes-text); }
 
 /* Modais de família/rateio (compartilhar, atribuir, definir rateio). */
-.modalIntro { font-size: 13px; color: var(--pontes-text-muted); margin: 0 0 12px; font-family: var(--pontes-font); }
-.modalMuted { font-size: 13px; color: var(--pontes-text-muted); font-family: var(--pontes-font); }
+.modalIntro { font-size: var(--pontes-fs-corpo); color: var(--pontes-text-muted); margin: 0 0 12px; font-family: var(--pontes-font); }
+.modalMuted { font-size: var(--pontes-fs-md); color: var(--pontes-text-muted); font-family: var(--pontes-font); }
 .optionList { display: flex; flex-direction: column; gap: 8px; }
-.rateioErro { margin: 8px 0 0; font-size: 13px; color: var(--pontes-danger); font-family: var(--pontes-font); }
+.rateioErro { margin: 8px 0 0; font-size: var(--pontes-fs-md); color: var(--pontes-danger); font-family: var(--pontes-font); }

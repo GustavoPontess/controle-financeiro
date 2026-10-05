@@ -1187,6 +1187,58 @@ function LayoutTokensSection() {
   )
 }
 
+// Papéis e degraus da escala de tamanho (tokens.css). O px mostrado é lido AO VIVO do :root.
+const PAPEIS_FS = [
+  { token: "display", papel: "Chamada das telas de entrada", exemplo: "Suas finanças em dupla", peso: 700 },
+  { token: "hero-valor", papel: "Valor grande do hero", exemplo: "R$ 21.535,81", peso: 800 },
+  { token: "hero-valor-duplo", papel: "Hero com dois valores", exemplo: "R$ 4.200,00", peso: 800 },
+  { token: "valor-destaque", papel: "Valor grande em card", exemplo: "R$ 1.461,39", peso: 800 },
+  { token: "stat-valor", papel: "Número do StatCard", exemplo: "R$ 9.551,19", peso: 800 },
+  { token: "hero-numero", papel: "Números ao lado do hero", exemplo: "R$ 25.887,00", peso: 800 },
+  { token: "titulo-modal", papel: "Título de modal/diálogo", exemplo: "Remover marco?", peso: 600 },
+  { token: "titulo-pagina", papel: "Título da página (Navbar)", exemplo: "Reconciliação", peso: 600 },
+  { token: "titulo-caixa", papel: "Título de caixa/tabela", exemplo: "Todas as transações", peso: 600 },
+  { token: "controle", papel: "Texto em campo/select", exemplo: "Conta Corrente", peso: 400 },
+  { token: "titulo-painel", papel: "Título de painel pequeno", exemplo: "Conferir hoje, 05/10", peso: 700 },
+  { token: "corpo", papel: "Texto corrido / descrição", exemplo: "Nenhum movimento neste período", peso: 400 },
+  { token: "linha", papel: "Texto de linha (nome, valor)", exemplo: "Supermercado · R$ 476,23", peso: 600 },
+  { token: "secundario", papel: "Linha de baixo, ajuda, erro", exemplo: "Conta Corrente", peso: 400 },
+  { token: "rotulo", papel: "Rótulo / cabeçalho de coluna", exemplo: "DESCRIÇÃO / CONTA", peso: 700 },
+] as const
+const ESCALA_FS = ["6xl", "5xl", "4xl", "3xl", "2xl", "xl", "lg", "base", "md", "sm", "xs", "2xs"] as const
+
+function EscalaTipografia() {
+  const [px, setPx] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const raiz = getComputedStyle(document.documentElement)
+    const nomes = [...PAPEIS_FS.map((p) => p.token), ...ESCALA_FS]
+    setPx(Object.fromEntries(nomes.map((n) => [n, raiz.getPropertyValue(`--pontes-fs-${n}`).trim()])))
+  }, [])
+  return (
+    <div className={styles.fsGrid}>
+      <div className={styles.fsColuna}>
+        <div className={styles.fsCabecalho}>Papéis</div>
+        {PAPEIS_FS.map((p) => (
+          <div key={p.token} className={styles.fsLinha}>
+            {/* inline: o token da linha é dado da demo (exceção de valor dinâmico) */}
+            <span className={styles.fsExemplo} style={{ fontSize: `var(--pontes-fs-${p.token})`, fontWeight: p.peso }}>{p.exemplo}</span>
+            <span className={styles.fsMeta}><code>--pontes-fs-{p.token}</code> · {px[p.token] ?? ""} · {p.papel}</span>
+          </div>
+        ))}
+      </div>
+      <div className={styles.fsColuna}>
+        <div className={styles.fsCabecalho}>Escala</div>
+        {ESCALA_FS.map((n) => (
+          <div key={n} className={styles.fsLinha}>
+            <span className={styles.fsExemplo} style={{ fontSize: `var(--pontes-fs-${n})` }}>Aa Pontes</span>
+            <span className={styles.fsMeta}><code>--pontes-fs-{n}</code> · {px[n] ?? ""}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TokensSection({ p }: { p: Palette }) {
   const tokens: { key: keyof Palette; label: string }[] = [
     { key: "primary", label: "primary" },
@@ -1217,12 +1269,21 @@ function TokensSection({ p }: { p: Palette }) {
         </div>
       </Group>
 
-      <Group title="Tipografia">
+      <Group title="Tipografia — tamanhos (escala central)">
+        <p className={styles.helper}>
+          Todo tamanho de letra do app sai de <code>--pontes-fs-*</code> em <code>tokens.css</code>: mudou lá, muda em tudo.
+          Use o <strong>papel</strong> (o que o texto é); a escala crua só pra texto sem papel.
+        </p>
+        <EscalaTipografia />
+      </Group>
+
+      <Group title="Tipografia — fontes">
         <p className={styles.helper}>
           Títulos usam <code>--pontes-font-heading</code>, que no app é a mesma fonte do tema
           (<code>--pontes-font</code>, trocável no topo). A Fraunces (<code>--pontes-font-marca</code>) fica só no título da página (Navbar) e no site público.
         </p>
         <div className={styles.typoCol}>
+          {/* Tamanhos do SITE PÚBLICO (landing) — fora da escala do app. */}
           <div className={styles.typoH1}>H1 título · 56 / 600</div>
           <div className={styles.typoH2}>H2 título · 42 / 600</div>
           <div className={styles.typoH3}>H3 · 28 / 700</div>

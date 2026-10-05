@@ -10,12 +10,12 @@
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--pontes-border); }
 /* Nome da tabela — tipografia do DS (fonte de título --pontes-font-heading + peso/tracking padrão), sub-heading
    (16px: menor que modal 20 / página 24). */
-.titulo { margin: 0; font-family: var(--pontes-font-heading); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); }
+.titulo { margin: 0; font-family: var(--pontes-font-heading); font-size: var(--pontes-fs-titulo-caixa); font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); }
 /* Controles à direita, compactos, lado a lado e TODOS na MESMA altura (36px). O DS varia a altura
    por componente (input 42, segmented 34, botão sm 29); aqui uniformizamos pra ficar alinhado. */
 .controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .busca { flex: 0 1 220px; min-width: 160px; }
-.busca :global(input) { display: block; box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0; font-size: 13px; }
+.busca :global(input) { display: block; box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0; font-size: var(--pontes-fs-md); }
 /* Ícone da busca menor (proporcional ao texto 13px) e centrado. */
 .busca :global(svg.lucide-search) { width: 14px; height: 14px; }
 .controles :global([role="tablist"]) { height: 32px; box-sizing: border-box; }
@@ -28,12 +28,12 @@
 
 /* Tags do que está filtrado. */
 .tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--pontes-border); background: var(--pontes-bg); }
-.tagsLabel { font-size: 12px; font-weight: 700; color: var(--pontes-text-muted); }
+.tagsLabel { font-size: var(--pontes-fs-sm); font-weight: 700; color: var(--pontes-text-muted); }
 .tag {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 10px; border-radius: 999px;
   border: 1px solid var(--pontes-border); background: var(--pontes-surface);
-  font: inherit; font-size: 12px; font-weight: 600; color: var(--pontes-text); cursor: pointer;
+  font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); cursor: pointer;
 }
 .tag:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
 
@@ -41,11 +41,11 @@
 /* Modo "Mostrar mais": botão largo no rodapé do cartão (alternativa à paginação). */
 .carregarMais { padding: 6px 12px; border-top: 1px solid var(--pontes-border); }
 .carregarMaisResto { font-weight: 500; color: var(--pontes-text-muted); }
-.tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tabela { width: 100%; border-collapse: collapse; font-size: var(--pontes-fs-linha); }
 
 .th {
   padding: 12px 16px; background: var(--pontes-bg); border-bottom: 1px solid var(--pontes-border);
-  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: var(--pontes-fs-rotulo); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--pontes-text-muted); text-align: left; white-space: nowrap;
 }
 .th:first-child, .td:first-child { padding-left: 20px; }
@@ -72,7 +72,7 @@
 /* Texto empilhado: nome em cima, sub (conta/detalhe) embaixo. */
 .identTexto { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
 .identNome { font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub { font-size: 11px; color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .soLeitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -93,7 +93,7 @@
 .filtrosCorpo { display: flex; flex-direction: column; gap: 16px; }
 .filtrosFaixa { display: flex; align-items: center; gap: 8px; }
 .filtrosFaixa > * { flex: 1; min-width: 0; }
-.filtrosAte { flex: 0 0 auto; font-size: 12px; color: var(--pontes-text-muted); }
+.filtrosAte { flex: 0 0 auto; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 .filtrosFooter { display: flex; justify-content: space-between; gap: 8px; }
 
 /* Popover de colunas (mostrar/ocultar) — ancorado no botão de colunas. */
@@ -104,14 +104,14 @@
   padding: 10px; display: flex; flex-direction: column; gap: 2px;
   z-index: 1000; font-family: var(--pontes-font);
 }
-.colunasTitulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pontes-text-muted); padding: 4px 8px 6px; }
+.colunasTitulo { font-size: var(--pontes-fs-rotulo); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pontes-text-muted); padding: 4px 8px 6px; }
 /* Atalhos de padrão (definir/aplicar). */
-.colunasAcao { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-surface); font: inherit; font-size: 13px; color: var(--pontes-text); cursor: pointer; margin-bottom: 6px; }
+.colunasAcao { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-surface); font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; margin-bottom: 6px; }
 .colunasAcao:hover:not(:disabled) { background: var(--pontes-bg); border-color: var(--pontes-primary); }
 .colunasAcao:disabled { opacity: .5; cursor: default; }
 .colunasSep { height: 1px; background: var(--pontes-border); margin: 6px 0 8px; }
 /* Itens: linha clicável com check (✓), sem checkbox nativo. */
-.colunasItem { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: none; background: transparent; border-radius: 8px; font: inherit; font-size: 13px; color: var(--pontes-text); cursor: pointer; text-align: left; }
+.colunasItem { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: none; background: transparent; border-radius: 8px; font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; text-align: left; }
 .colunasItem:hover:not(:disabled) { background: var(--pontes-bg); }
 .colunasItem:disabled { cursor: default; }
 .colunasItem[data-oculta="true"] { color: var(--pontes-text-muted); }

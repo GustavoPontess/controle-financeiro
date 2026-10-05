@@ -4,4 +4,4 @@
 .star:not(:disabled) { cursor: pointer; }
 .star svg { stroke: var(--pontes-accent); fill: none; }
 .star[data-filled="true"] svg { fill: var(--pontes-accent); }
-.label { margin-left: 10px; font-size: 14px; color: var(--pontes-text); font-weight: 600; font-family: var(--pontes-font); }
+.label { margin-left: 10px; font-size: var(--pontes-fs-base); color: var(--pontes-text); font-weight: 600; font-family: var(--pontes-font); }

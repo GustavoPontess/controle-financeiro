@@ -46,7 +46,7 @@ import type { ReconciliacaoMarco } from "../../types/Reconciliacao"
 // movimentos comparando dia × hoje, então o teste não pode depender do dia em que roda.
 const {
   notify, navigateSpy, getContas, atualizarSaldoInicial,
-  listMarcos, getSaldoCalculado, criarMarco, fecharDiferenca, removerMarco, listTransactionsPage,
+  listMarcos, getSaldoCalculado, criarMarco, fecharDiferenca, removerMarco, listTransactionsPage, getCategories,
 } = vi.hoisted(() => ({
   notify: vi.fn(),
   navigateSpy: vi.fn(),
@@ -58,6 +58,7 @@ const {
   fecharDiferenca: vi.fn(),
   removerMarco: vi.fn(),
   listTransactionsPage: vi.fn(),
+  getCategories: vi.fn(),
 }))
 
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -76,6 +77,7 @@ vi.mock("../../services/reconciliacaoService", () => ({
   removerMarco: (...a: unknown[]) => removerMarco(...a),
 }))
 vi.mock("../../services/transactionService", () => ({ listTransactionsPage: (...a: unknown[]) => listTransactionsPage(...a) }))
+vi.mock("../../services/categoryService", () => ({ getCategories: (...a: unknown[]) => getCategories(...a) }))
 
 // --- Datas (relógio fixo: 20/06/2026 10:30, hora local). ---
 const AGORA = new Date(2026, 5, 20, 10, 30, 0)
@@ -237,6 +239,8 @@ describe("ReconciliacaoPage", () => {
     fecharDiferenca.mockReset().mockResolvedValue(marco(DIA_MARCO, { temAjuste: true }))
     removerMarco.mockReset().mockResolvedValue(undefined)
     listTransactionsPage.mockReset().mockResolvedValue({ items: [], total: 0 })
+    getCategories.mockReset().mockResolvedValue([{ id: "cat1", descricao: "Supermercado" }])
+    localStorage.clear() // colunas visíveis ficam salvas por id da tabela
   })
 
   afterEach(() => {
@@ -278,6 +282,19 @@ describe("ReconciliacaoPage", () => {
     expect(within(conferir).queryByText("Última conferência")).not.toBeInTheDocument()
     expect(within(conferir).getByText(CALCULADO)).toBeInTheDocument()
     expect(within(cal).queryByText(CALCULADO)).not.toBeInTheDocument()
+  })
+
+  it("calendário sempre com 6 semanas: completa com os dias dos meses vizinhos, apagados e sem clique", async () => {
+    await renderPage()
+    const grade = painelCalendario().querySelector('[class*="_calGrid_"]') as HTMLElement
+    // Junho/2026 começa numa segunda e tem 30 dias: 1 dia de maio antes + 11 de julho depois = 42 casas.
+    const vizinhos = [...grade.querySelectorAll('[class*="_calVazio_"]')]
+    expect(vizinhos.map((v) => v.textContent)).toEqual(["31", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"])
+    vizinhos.forEach((v) => {
+      expect(v.tagName).toBe("DIV") // não é botão: não seleciona dia
+      expect(v).toHaveAttribute("aria-hidden", "true")
+    })
+    expect(within(grade).getAllByRole("button")).toHaveLength(30) // só os dias do mês são clicáveis
   })
 
   it("o seletor oferece todas as contas do usuário", async () => {
@@ -1506,7 +1523,7 @@ describe("ReconciliacaoPage", () => {
 
   // ---------------------------------------------------------------- movimentos (PontesTabela full-width)
 
-  it("movimentos = PontesTabela com Data/Hora / Lançamento / Valor: hora aparece como 'dd/mm HH:MM' e, sem hora (null), só 'dd/mm'", async () => {
+  it("movimentos = mesmas colunas da tela de Transações (Categoria/Pagamento ocultas); hora como 'dd/mm/aaaa HH:MM' e, sem hora (null), só a data", async () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO)])
     listTransactionsPage.mockResolvedValue({
       items: [tx("t1", "Mercado", 50, 1, 16), tx("t2", "Salário", 1000, 2, 18, null)],
@@ -1515,15 +1532,17 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     expect(await tituloMov(`Movimentos desde ${diaMes(DIA_MARCO)} até ${diaMes(HOJE)}`)).toBeInTheDocument()
     const tabela = await screen.findByRole("table")
-    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Data/Hora", "Lançamento", "Valor"])
+    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Status", "Valor"])
 
     const [mercado, salario] = linhasMov()
-    const [mData, mDesc] = celulas(mercado)
-    expect(mData).toHaveTextContent(`${diaMes(16)} 12:00`) // hora "12:00:00" → HH:MM (sem segundos)
+    const [mDesc, mTipo, mData] = celulas(mercado)
+    expect(mData).toHaveTextContent(`${dataLabel(16)} 12:00`) // hora "12:00:00" → HH:MM (sem segundos)
     expect(mDesc).toHaveTextContent("Mercado")
-    const [sData, sDesc] = celulas(salario)
-    expect(sData).toHaveTextContent(new RegExp(`^${diaMes(18)}$`)) // hora null → só o dia, sem inventar 00:00
+    expect(mTipo).toHaveTextContent("Saída")
+    const [sDesc, sTipo, sData] = celulas(salario)
+    expect(sData).toHaveTextContent(new RegExp(`^${dataLabel(18)}$`)) // hora null → só o dia, sem inventar 00:00
     expect(sDesc).toHaveTextContent("Salário")
+    expect(sTipo).toHaveTextContent("Entrada")
     expect(within(tabela).queryByText(/00:00/)).not.toBeInTheDocument()
   })
 
@@ -1536,18 +1555,37 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     await screen.findByRole("table")
     const [mercado, salario] = linhasMov()
-    const valorMercado = celulas(mercado)[2]
-    const valorSalario = celulas(salario)[2]
+    const valorMercado = celulas(mercado)[4]
+    const valorSalario = celulas(salario)[4]
     expect(valorMercado).toHaveTextContent(/^R\$\s?50,00$/)
     expect(valorSalario).toHaveTextContent(/^R\$\s?1\.000,00$/)
     for (const c of [valorMercado, valorSalario]) {
       expect(c.textContent).not.toMatch(/[+−-]/)
       expect(c).toHaveAttribute("data-num", "true") // numérica: alinhada à direita
     }
-    expect(valorMercado.firstElementChild!.className).toMatch(/movValorNeg/) // despesa
-    expect(valorSalario.firstElementChild!.className).toMatch(/movValorPos/) // receita
-    expect(valorMercado.firstElementChild!.className).not.toMatch(/movValorPos/)
-    expect(valorSalario.firstElementChild!.className).not.toMatch(/movValorNeg/)
+    expect(valorMercado.firstElementChild!.className).toMatch(/valSaida/) // despesa (mesma cor da tela de Transações)
+    expect(valorSalario.firstElementChild!.className).toMatch(/valEntrada/) // receita
+    expect(valorMercado.firstElementChild!.className).not.toMatch(/valEntrada/)
+    expect(valorSalario.firstElementChild!.className).not.toMatch(/valSaida/)
+  })
+
+  it("Categoria e Pagamento aparecem pelo seletor de colunas (nome da categoria vem do getCategories)", async () => {
+    listMarcos.mockResolvedValue([marco(DIA_MARCO)])
+    listTransactionsPage.mockResolvedValue({
+      items: [{ ...tx("t1", "Mercado", 50, 1, 16), categoriaId: "cat1", meioPagamentoDescricao: "Pix" }],
+      total: 1,
+    })
+    await renderPage()
+    await screen.findByRole("table")
+    expect(screen.queryByText("Supermercado")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar ou ocultar colunas" }))
+    const seletor = screen.getByRole("dialog", { name: "Colunas" })
+    fireEvent.click(within(seletor).getByRole("button", { name: "Categoria" }))
+    fireEvent.click(within(seletor).getByRole("button", { name: "Pagamento" }))
+    expect(await screen.findByRole("columnheader", { name: "Categoria" })).toBeInTheDocument()
+    expect(screen.getByText("Supermercado")).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: "Pagamento" })).toBeInTheDocument()
+    expect(within(screen.getByRole("table")).getByText("Pix")).toBeInTheDocument()
   })
 
   it("a data do movimento sai do string, sem fuso: 23:30 fica no MESMO dia e a hora 00:00:00 (meia-noite real) aparece", async () => {
@@ -1559,8 +1597,8 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     await screen.findByRole("table")
     const [noite, virada] = linhasMov()
-    expect(celulas(noite)[0]).toHaveTextContent(`${diaMes(16)} 23:30`)
-    expect(celulas(virada)[0]).toHaveTextContent(`${diaMes(17)} 00:00`) // hora "00:00:00" ≠ null → mostra
+    expect(celulas(noite)[2]).toHaveTextContent(`${dataLabel(16)} 23:30`)
+    expect(celulas(virada)[2]).toHaveTextContent(`${dataLabel(17)} 00:00`) // hora "00:00:00" ≠ null → mostra
   })
 
   it("a tabela é SEMPRE visível (full-width): sem lançamentos mostra o estado vazio do próprio componente, sem toast", async () => {

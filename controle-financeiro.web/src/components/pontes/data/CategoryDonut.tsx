@@ -52,7 +52,7 @@ export function PontesCategoryDonut({
   const total = data.reduce((s, c) => s + c.valor, 0)
   const tooltipStyle = {
     background: "var(--pontes-surface)", border: "1px solid var(--pontes-border)",
-    borderRadius: 10, fontSize: 13, color: "var(--pontes-text)",
+    borderRadius: 10, fontSize: "var(--pontes-fs-md)", color: "var(--pontes-text)",
     boxShadow: "0 6px 20px -8px rgba(0,0,0,0.18)",
   } as const
 

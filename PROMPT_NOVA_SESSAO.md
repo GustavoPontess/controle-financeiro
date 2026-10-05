@@ -63,7 +63,7 @@ Atualize `STATE.md` com o que vai atacar. `gh issue` é opcional pra rastrear �
 
 1. **Biblioteca, nunca inline.** Toda UI vem de `@/components/pontes`. Zero `<button style>`, zero MUI, zero `<select>` nativo. **Estilo em `*.module.css` (CSS Modules), nunca `style={{}}` de cor/fonte/tema.** Exceção única a inline: valor dinâmico de runtime que CSS não alcança (`width: %`, cor vinda de dado tipo `conta.cor`). **Boy-scout:** achou `style={{}}` de tema/estático, arruma na hora.
 2. **Componente reutilizável novo (2+ telas) → vai pra biblioteca** (`src/components/pontes/`) ANTES de usar: arquivo + barrel `index.ts` + demo no `/design-system` + smoke test em `src/test/components/pontes.test.tsx`. Específico de 1 tela → fica na pasta da tela.
-3. **Cor e fonte SEMPRE via `var(--pontes-*)`** em `*.module.css`. Vars injetadas no `:root` pelo `PontesThemeProvider`. `usePontesTheme()` só onde precisa de cor REAL hex (atributo SVG/recharts). Feedback = `var(--pontes-success|warning|danger|info)`.
+3. **Cor, fonte e TAMANHO de letra SEMPRE via `var(--pontes-*)`** em `*.module.css` (tamanho = `var(--pontes-fs-<papel>)`, escala central em `tokens.css` — nunca `font-size: 13px`). Vars injetadas no `:root` pelo `PontesThemeProvider`. `usePontesTheme()` só onde precisa de cor REAL hex (atributo SVG/recharts). Feedback = `var(--pontes-success|warning|danger|info)`.
 4. **Personalização é global + persistida.** `PontesThemeProvider` no root, localStorage. Vale em todas as telas, sobrevive reload.
 5. **Site público usa `SiteLayout`.** Páginas = só conteúdo; navbar/footer vêm do layout.
 6. **Teste automatizado SEMPRE** — front (vitest) E back (xUnit) cobrindo o que mudou. Sem teste = não fecha. Exceção: só copy/CSS/docs.

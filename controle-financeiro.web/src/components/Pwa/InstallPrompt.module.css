@@ -11,5 +11,5 @@
 }
 .icon { color: var(--pontes-text); flex-shrink: 0; }
 .body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.title { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
-.desc { font-size: 12px; color: var(--pontes-text-muted); }
+.title { font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-text); }
+.desc { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }

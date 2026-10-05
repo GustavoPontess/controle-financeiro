@@ -11,7 +11,7 @@
   display: flex; align-items: center; justify-content: center; font-size: 26px;
 }
 .title { font-size: 15px; font-weight: 700; color: var(--pontes-text); margin-bottom: 4px; }
-.helper { font-size: 13px; color: var(--pontes-text-muted); margin-bottom: 16px; }
+.helper { font-size: var(--pontes-fs-corpo); color: var(--pontes-text-muted); margin-bottom: 16px; }
 .helperLink { color: var(--pontes-primary); font-weight: 600; }
-.formats { font-size: 11px; color: var(--pontes-text-muted); }
+.formats { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
 .hidden { display: none; }

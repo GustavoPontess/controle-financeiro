@@ -18,7 +18,7 @@
   border-radius: 10px;
   cursor: pointer;
   font-family: var(--pontes-font);
-  font-size: 14px;
+  font-size: var(--pontes-fs-controle);
   color: var(--pontes-text);
   text-align: left;
   box-sizing: border-box;

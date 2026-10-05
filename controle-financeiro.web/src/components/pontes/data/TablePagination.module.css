@@ -7,17 +7,17 @@
   background: var(--pontes-surface);
   border-top: 1px solid var(--pontes-border);
   font-family: var(--pontes-font);
-  font-size: 13px;
+  font-size: var(--pontes-fs-md);
   color: var(--pontes-text-muted);
 }
 
 .sizeGroup { display: flex; align-items: center; gap: 8px; }
-.sizeLabel { font-size: 13px; color: var(--pontes-text-muted); }
+.sizeLabel { font-size: var(--pontes-fs-md); color: var(--pontes-text-muted); }
 /* PontesSelect default ocupa 100% — caixinha compacta (mesma altura dos botões da paginação). */
 .sizeSelect { width: 72px; }
-.sizeSelect :global(button) { min-height: 30px; height: 30px; padding: 0 10px; font-size: 13px; }
+.sizeSelect :global(button) { min-height: 30px; height: 30px; padding: 0 10px; font-size: var(--pontes-fs-md); }
 
-.range { font-size: 13px; color: var(--pontes-text-muted); text-align: center; flex: 1 1 auto; }
+.range { font-size: var(--pontes-fs-md); color: var(--pontes-text-muted); text-align: center; flex: 1 1 auto; }
 
 .nav { display: flex; align-items: center; gap: 4px; }
 
@@ -40,7 +40,7 @@
   min-width: 28px; height: 28px; padding: 0 6px;
   border: none; border-radius: 8px;
   background: transparent; color: var(--pontes-text);
-  font: inherit; font-size: 13px; font-weight: 600;
+  font: inherit; font-size: var(--pontes-fs-md); font-weight: 600;
   cursor: pointer;
   transition: background-color .15s ease, color .15s ease;
 }

@@ -3,7 +3,7 @@
 .tip {
   position: absolute; left: 50%; transform: translateX(-50%);
   background: var(--pontes-text); color: #fff; padding: 6px 12px; border-radius: 8px;
-  font-size: 12px; font-weight: 500; white-space: nowrap; font-family: var(--pontes-font); z-index: 100;
+  font-size: var(--pontes-fs-sm); font-weight: 500; white-space: nowrap; font-family: var(--pontes-font); z-index: 100;
 }
 .tip[data-side="top"] { top: -42px; }
 .tip[data-side="bottom"] { bottom: -42px; }

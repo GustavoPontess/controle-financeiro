@@ -13,20 +13,20 @@
 .heroPrimary { position: relative; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
 .heroPrimaryDivider { align-self: stretch; width: 1px; background: rgba(255, 255, 255, 0.22); }
 .heroMain { position: relative; min-width: 0; }
-.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-.heroValue { font-size: 32px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroLabel { font-size: var(--pontes-fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: var(--pontes-fs-hero-valor-duplo); font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
 .heroValue[data-tone="up"] { color: #4ADE80; }
 .heroValue[data-tone="down"] { color: #FB7185; }
 /* Linha do vencido sob cada valor: discreta quando em dia, âmbar quando há atraso. */
-.heroVencido { font-size: 12px; font-weight: 600; margin-top: 4px; opacity: .7; }
+.heroVencido { font-size: var(--pontes-fs-sm); font-weight: 600; margin-top: 4px; opacity: .7; }
 .heroVencido[data-venc="true"] { color: #FDBA74; opacity: 1; }
 .heroSide { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .heroStats { display: flex; align-items: stretch; gap: 18px; }
 .heroStat { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.heroStatValue { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+.heroStatValue { font-size: var(--pontes-fs-hero-numero); font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
 .heroStatValue[data-tone="up"] { color: #4ADE80; }
 .heroStatValue[data-tone="down"] { color: #FB7185; }
-.heroStatLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatLabel { font-size: var(--pontes-fs-rotulo); opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
 .heroStatDivider { width: 1px; background: rgba(255, 255, 255, 0.22); }
 
 @media (max-width: 720px) {
@@ -38,7 +38,7 @@
 
 /* Banners de convite / consolidação (acima da tabela). */
 .banner { display: flex; flex-direction: column; gap: 6px; }
-.bannerRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12.5px; }
+.bannerRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: var(--pontes-fs-sm); }
 
 /* Helpers de célula da tabela. */
 .pessoaBanco { display: inline-flex; align-items: center; gap: 6px; }

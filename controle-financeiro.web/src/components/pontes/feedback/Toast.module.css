@@ -10,7 +10,7 @@
 .toast[data-tone="warning"] .icon { background: var(--pontes-warning); }
 .toast[data-tone="error"] .icon { background: var(--pontes-danger); }
 .body { flex: 1; }
-.title { font-size: 13px; font-weight: 700; color: #0B1220; }
-.desc { font-size: 11px; color: #64748B; }
-.time { font-size: 11px; color: #64748B; }
+.title { font-size: var(--pontes-fs-md); font-weight: 700; color: #0B1220; }
+.desc { font-size: var(--pontes-fs-secundario); color: #64748B; }
+.time { font-size: var(--pontes-fs-secundario); color: #64748B; }
 .close { background: transparent; border: none; color: #64748B; cursor: pointer; font-size: 16px; }

@@ -174,7 +174,7 @@ export default function DashboardPage() {
                     <YAxis width={52} tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} tickFormatter={fmtAxis} />
                     <Tooltip
                       formatter={(v) => [hide ? MONEY_MASK : formatMoney(Number(v)), "Saldo"] as [string, string]}
-                      contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: 12 }}
+                      contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: "var(--pontes-fs-sm)" }}
                     />
                     <Area type="monotone" dataKey="saldo" stroke={p.primary} strokeWidth={2} fill="url(#dash-saldo)" />
                   </AreaChart>

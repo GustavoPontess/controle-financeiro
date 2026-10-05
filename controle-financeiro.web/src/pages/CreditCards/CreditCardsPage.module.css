@@ -6,8 +6,8 @@
 /* Resumo slim */
 .summary { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px 20px; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; }
 .sumItem { display: flex; flex-direction: column; gap: 2px; }
-.sumLabel { font-size: 11px; font-weight: 600; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.sumValue { font-size: 18px; font-weight: 800; color: var(--pontes-text); }
+.sumLabel { font-size: var(--pontes-fs-rotulo); font-weight: 600; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.sumValue { font-size: var(--pontes-fs-xl); font-weight: 800; color: var(--pontes-text); }
 .sumValue[data-pos="true"] { color: var(--pontes-success); }
 .sumDiv { width: 1px; align-self: stretch; background: var(--pontes-border); }
 
@@ -15,7 +15,7 @@
 .cardsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 340px)); justify-content: start; gap: 22px; }
 
 /* Modo foco: voltar + cartão único no topo */
-.backCards { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); font-size: 13px; font-weight: 600; color: var(--pontes-text-muted); padding: 4px 0; transition: color .15s ease; }
+.backCards { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text-muted); padding: 4px 0; transition: color .15s ease; }
 .backCards:hover { color: var(--pontes-primary); }
 .focusCard { width: 100%; max-width: 380px; margin: 0 auto; }
 
@@ -48,48 +48,48 @@
 .cardFace { position: relative; z-index: 1; flex: 1 1 auto; min-height: 168px; padding: 20px 22px 18px; display: flex; flex-direction: column; }
 .faceTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-right: 50px; }
 .cardNameWrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.cardName { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cardEmissor { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardName { font-size: var(--pontes-fs-lg); font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardEmissor { font-size: var(--pontes-fs-xs); font-weight: 600; letter-spacing: 0.02em; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chipRow { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; }
 .contactless { transform: rotate(90deg); opacity: 0.78; flex-shrink: 0; }
 .cardChip { position: relative; width: 46px; height: 34px; border-radius: 6px; background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 45%, #d97706 100%); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 -6px 8px -6px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25); flex-shrink: 0; overflow: hidden; }
 .cardChip::before { content: ""; position: absolute; inset: 6px 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.22); }
 .cardChip::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1px; transform: translateX(-50%); background: rgba(0, 0, 0, 0.22); box-shadow: -8px 0 0 rgba(0, 0, 0, 0.12), 8px 0 0 rgba(0, 0, 0, 0.12); }
 .faceBottom { margin-top: auto; padding-top: 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.cardNumber { font-family: ui-monospace, "SF Mono", monospace; font-size: 19px; font-weight: 600; letter-spacing: 0.16em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 -1px 0 rgba(255, 255, 255, 0.14); }
+.cardNumber { font-family: ui-monospace, "SF Mono", monospace; font-size: var(--pontes-fs-xl); font-weight: 600; letter-spacing: 0.16em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 -1px 0 rgba(255, 255, 255, 0.14); }
 
 /* Bandeira: canto inferior direito (Mastercard SVG ou wordmark) */
 .bandeiraSlot { display: flex; align-items: center; justify-content: flex-end; min-height: 30px; }
-.bandeiraWordmark { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 16px; font-weight: 900; font-style: italic; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.96); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.bandeiraWordmark { font-family: "Helvetica Neue", Arial, sans-serif; font-size: var(--pontes-fs-lg); font-weight: 900; font-style: italic; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.96); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
 
 /* Bloco de info — separado do cartão, fundo neutro (não vermelho) */
 .cardMeta { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; padding: 13px 16px; display: flex; flex-direction: column; gap: 8px; }
 .panelTop { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
 .cardDispWrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.cardInfoLabel { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); }
-.cardDisp { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--pontes-text); }
+.cardInfoLabel { font-size: var(--pontes-fs-2xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pontes-text-muted); }
+.cardDisp { font-size: var(--pontes-fs-2xl); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--pontes-text); }
 .cardInfoRight { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }
-.cardPct { font-size: 14px; font-weight: 800; color: var(--pontes-text); }
+.cardPct { font-size: var(--pontes-fs-base); font-weight: 800; color: var(--pontes-text); }
 .cardPct[data-over="true"] { color: var(--pontes-danger); }
-.cardOfLimit { font-size: 11px; color: var(--pontes-text-muted); white-space: nowrap; }
-.cardFootValue { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardOfLimit { font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); white-space: nowrap; }
+.cardFootValue { font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar { height: 5px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; }
 .barFill { height: 100%; border-radius: 99px; background: var(--pontes-primary); transition: width .3s ease; }
 .barFill[data-over="true"] { background: var(--pontes-danger); }
-.cardMetaRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: var(--pontes-text-muted); }
+.cardMetaRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
 .urgentDate { font-weight: 700; }
 .urgentDate[data-tone="warning"] { color: var(--pontes-warning); }
 .urgentDate[data-tone="danger"] { color: var(--pontes-danger); }
-.verFaturas { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--pontes-primary); flex-shrink: 0; }
+.verFaturas { display: inline-flex; align-items: center; gap: 5px; font-size: var(--pontes-fs-xs); font-weight: 700; color: var(--pontes-primary); flex-shrink: 0; }
 
-.muted { font-size: 12px; color: var(--pontes-text-muted); }
+.muted { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 /* Painel de faturas */
 .faturaHead { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--pontes-border); }
 .faturaHeadIcon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: var(--pontes-hero-fg); flex-shrink: 0; }
-.faturaTitle { font-size: 15px; font-weight: 700; color: var(--pontes-text); }
-.faturaSub { font-size: 12px; color: var(--pontes-text-muted); }
-.faturaEmpty { padding: 36px 22px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
+.faturaTitle { font-size: var(--pontes-fs-titulo-caixa); font-weight: 700; color: var(--pontes-text); }
+.faturaSub { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.faturaEmpty { padding: 36px 22px; text-align: center; font-size: var(--pontes-fs-corpo); color: var(--pontes-text-muted); }
 .faturaBody { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
 
 /* Navegação por mês */
@@ -98,8 +98,8 @@
 .monthArrow:hover:not(:disabled) { background: var(--pontes-bg); border-color: var(--pontes-primary); color: var(--pontes-primary); }
 .monthArrow:disabled { opacity: .35; cursor: not-allowed; }
 .monthLabel { display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; flex: 1; min-width: 0; }
-.monthName { font-size: 15px; font-weight: 700; color: var(--pontes-text); }
-.monthRange { font-size: 12px; color: var(--pontes-text-muted); }
+.monthName { font-size: var(--pontes-fs-lg); font-weight: 700; color: var(--pontes-text); }
+.monthRange { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 /* Skeleton enquanto carrega faturas */
 .faturaSkeleton { padding: 22px; display: flex; flex-direction: column; gap: 10px; }
 
@@ -107,24 +107,24 @@
 .atual { border: 1px solid var(--pontes-border); border-radius: 14px; padding: 18px; background: var(--pontes-bg); }
 .atual[data-open="true"] { border-color: color-mix(in srgb, var(--pontes-primary) 35%, var(--pontes-border)); background: var(--pontes-primary-soft); }
 .atualTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-.atualLabel { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); letter-spacing: 0.06em; }
-.atualValor { font-size: 30px; font-weight: 800; color: var(--pontes-text); letter-spacing: -0.02em; margin: 4px 0 8px; }
+.atualLabel { font-size: var(--pontes-fs-xs); font-weight: 700; color: var(--pontes-text-muted); letter-spacing: 0.06em; }
+.atualValor { font-size: var(--pontes-fs-valor-destaque); font-weight: 800; color: var(--pontes-text); letter-spacing: -0.02em; margin: 4px 0 8px; }
 .atualMeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .paidBar { height: 6px; border-radius: 99px; background: var(--pontes-border); overflow: hidden; margin-top: 14px; }
 .paidFill { height: 100%; border-radius: 99px; background: var(--pontes-success); transition: width .3s ease; }
-.expandBtn { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); font-size: 12px; font-weight: 600; color: var(--pontes-primary); padding: 0; }
+.expandBtn { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-primary); padding: 0; }
 .chevOpen { transform: rotate(180deg); transition: transform .15s ease; }
 .chevClosed { transition: transform .15s ease; }
 
 /* Histórico */
 .histWrap { display: flex; flex-direction: column; gap: 2px; }
-.histTitle { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.histTitle { font-size: var(--pontes-fs-rotulo); font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
 .histItem { border-bottom: 1px solid var(--pontes-border); }
 .histRow { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 6px; background: transparent; border: none; cursor: pointer; font-family: var(--pontes-font); text-align: left; }
 .histRow:hover { background: var(--pontes-bg); }
-.histPeriodo { font-size: 13px; color: var(--pontes-text); min-width: 130px; }
-.histTotal { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--pontes-text); }
-.histRest { font-size: 12px; min-width: 110px; text-align: right; }
+.histPeriodo { font-size: var(--pontes-fs-md); color: var(--pontes-text); min-width: 130px; }
+.histTotal { margin-left: auto; font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); }
+.histRest { font-size: var(--pontes-fs-sm); min-width: 110px; text-align: right; }
 .histRest[data-rest="open"] { color: var(--pontes-danger); font-weight: 600; }
 .histRest[data-rest="done"] { color: var(--pontes-success); font-weight: 600; }
 .histPagar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; color: var(--pontes-primary); }
@@ -134,10 +134,10 @@
 .txList { display: flex; flex-direction: column; margin-top: 10px; border-top: 1px solid var(--pontes-border); }
 .txRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--pontes-border); }
 .txMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.txDesc { font-size: 13px; color: var(--pontes-text); font-weight: 500; }
-.txMeta { font-size: 11px; color: var(--pontes-text-muted); }
-.txValor { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--pontes-text); }
-.detailMuted { padding: 12px 4px; font-size: 12px; color: var(--pontes-text-muted); }
+.txDesc { font-size: var(--pontes-fs-md); color: var(--pontes-text); font-weight: 500; }
+.txMeta { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
+.txValor { display: inline-flex; align-items: center; gap: 4px; font-size: var(--pontes-fs-md); font-weight: 700; white-space: nowrap; color: var(--pontes-text); }
+.detailMuted { padding: 12px 4px; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 /* Parcela de parcelamento na linha do tempo: visual de compra + ícone discreto; a descrição é link
    pro parcelamento, sem cara de link até o hover/foco (a linha continua parecendo uma compra). */
@@ -147,14 +147,14 @@
 .txLink:hover, .txLink:focus-visible { text-decoration: underline; }
 
 /* Pagamento na linha do tempo (intercalado com as compras) */
-.payValor { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--pontes-success); white-space: nowrap; }
+.payValor { display: inline-flex; align-items: center; gap: 4px; font-size: var(--pontes-fs-md); font-weight: 700; color: var(--pontes-success); white-space: nowrap; }
 .txRow[data-pagamento="true"] { background: color-mix(in srgb, var(--pontes-success) 7%, transparent); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .txRow[data-pagamento="true"] .txDesc { display: inline-flex; align-items: center; gap: 5px; color: var(--pontes-success); }
 /* Nota final: total pago acumulado */
 .paidNote { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--pontes-border); }
-.paidNoteLabel { font-size: 11px; font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.paidNoteValue { font-size: 14px; font-weight: 800; color: var(--pontes-success); }
-.paidNoteRest { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
+.paidNoteLabel { font-size: var(--pontes-fs-rotulo); font-weight: 700; color: var(--pontes-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.paidNoteValue { font-size: var(--pontes-fs-base); font-weight: 800; color: var(--pontes-success); }
+.paidNoteRest { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
 
 /* Modais */
 .modalCol { display: flex; flex-direction: column; gap: 16px; }
