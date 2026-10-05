@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, renderHook, act } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
-import { PontesDrawer, PontesThemeProvider } from "../../components/pontes"
+import { PontesDrawer, PontesNavbar, PontesThemeProvider } from "../../components/pontes"
 import Navbar from "../../components/Navbar/Navbar"
 import DefaultLayout from "../../layouts/Default/DefaultLayout"
 import { CELULAR, useMediaQuery } from "../../hooks/useMediaQuery"
@@ -162,5 +162,23 @@ describe("DefaultLayout no celular", () => {
     renderShell()
     expect(screen.queryByLabelText("Menu", { selector: "aside" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Recolher menu" })).toBeInTheDocument()
+  })
+})
+
+describe("PontesNavbar (site) no celular", () => {
+  it("☰ abre o painel com links e login/cadastro; tocar num link navega e fecha", () => {
+    const ir = vi.fn()
+    render(<PontesNavbar onNavigate={ir} activePath="/sobre" />)
+    expect(screen.queryByRole("button", { name: "Criar conta", hidden: false })).toBeInTheDocument() // barra (desktop)
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }))
+    // Painel: os 4 links + Entrar/Criar conta de novo (a barra continua no DOM; o CSS esconde no celular).
+    expect(screen.getAllByText("Para Casais")).toHaveLength(2)
+    expect(screen.getAllByRole("button", { name: "Criar conta" })).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByText("Para Casais")[1])
+    expect(ir).toHaveBeenCalledWith("/casais")
+    expect(screen.getAllByText("Para Casais")).toHaveLength(1)                 // painel fechou
+    expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument()
   })
 })
