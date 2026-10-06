@@ -209,7 +209,7 @@ public class FaturaAposCancelamentoTests
         Assert.Equal(EstadoPagamentoFatura.Parcial, fatura.EstadoPagamento);
         Assert.Equal(0m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);
 
-        await new TransacaoService(ctx, new FaturaService(ctx)).CriarTransacaoAsync(new Transacao
+        await new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)).CriarTransacaoAsync(new Transacao
         {
             Descricao = "Farmácia", Valor = 50, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow),
@@ -642,5 +642,119 @@ public class FaturaAposCancelamentoTests
         var fatura = await FaturaAsync(ctx, c.FaturaId);
         Assert.True(fatura.EstaAtrasada); // antes o job pulava a fatura pelo rótulo Pago
         Assert.Equal(1.00m, fatura.Multa); // 2% sobre os 50 que faltam
+    }
+
+    // ══ Excluir/editar compra no cartão pela tela de Transações (Fase 0, achado 2026-10-05) ══════════════
+    // Antes só cancelar parcela/parcelamento reconciliava: excluir a compra "Mercado" baixava o total da
+    // fatura mas ela seguia Parcial com restante 0 (limite preso, "Vencida", pagamento recusado).
+
+    private static TransacaoService Transacoes(AppDbContext ctx) =>
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+
+    private static Task<Guid> MercadoAsync(AppDbContext ctx) =>
+        ctx.Transacoes.Where(t => t.Descricao == "Mercado").Select(t => t.Id).SingleAsync();
+
+    private static Transacao Edicao(decimal valor) => new()
+    {
+        Descricao = "Mercado", Valor = valor, Tipo = TipoTransacao.Despesa,
+        Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-45)),
+    };
+
+    [Fact]
+    public async Task ExcluirCompraNoCartao_FaturaFechadaFicaCoberta_ViraPago_ERegistraQuitacaoEExclusao()
+    {
+        // F (fechada) = Mercado 100 + parcela 200 = 300; pagos 200. Excluir o Mercado → total 200 = pago.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 200m);
+        var mercado = await MercadoAsync(ctx);
+
+        Assert.True(await Transacoes(ctx).DeletarAsync(mercado, c.UsuarioId));
+
+        var fatura = await FaturaAsync(ctx, c.FaturaId);
+        Assert.Equal(EstadoPagamentoFatura.Pago, fatura.EstadoPagamento);
+        Assert.False(fatura.EstaAtrasada);
+        Assert.Equal(0m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);
+        var eventos = await ctx.FinancialEventLogs.AsNoTracking().ToListAsync();
+        Assert.Single(eventos, e => e.Tipo == FinancialEventType.FaturaPagaTotal && e.EntidadeId == c.FaturaId);
+        var exclusao = Assert.Single(eventos, e => e.Tipo == FinancialEventType.TransacaoCancelada && e.EntidadeId == mercado);
+        Assert.Equal(100m, exclusao.ValorAntes);
+        Assert.Equal(0m, exclusao.ValorDepois);
+    }
+
+    [Fact]
+    public async Task ExcluirCompraNoCartao_CicloAberto_SeguraParcialAteFechar()
+    {
+        // Mesma decisão do cancelamento de parcela: ciclo aberto não vira Pago (travaria a próxima compra).
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: false);
+        await PagarFaturaAsync(ctx, c, 200m);
+
+        await Transacoes(ctx).DeletarAsync(await MercadoAsync(ctx), c.UsuarioId);
+
+        Assert.Equal(EstadoPagamentoFatura.Parcial, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+        Assert.Equal(0m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);
+        Assert.DoesNotContain(await ctx.FinancialEventLogs.AsNoTracking().ToListAsync(),
+            e => e.Tipo == FinancialEventType.FaturaPagaTotal);
+    }
+
+    [Fact]
+    public async Task EditarCompraNoCartao_BaixarOValorAteOPago_ViraPago()
+    {
+        // F (fechada) = 300, pagos 250. Mercado 100 → 50: total 250 = pago.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 250m);
+        var mercado = await MercadoAsync(ctx);
+
+        Assert.True(await Transacoes(ctx).AtualizarAsync(mercado, Edicao(50m), c.UsuarioId));
+
+        Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+        var edicao = Assert.Single(await ctx.FinancialEventLogs.AsNoTracking().ToListAsync(),
+            e => e.Tipo == FinancialEventType.TransacaoAtualizada && e.EntidadeId == mercado);
+        Assert.Equal(100m, edicao.ValorAntes);
+        Assert.Equal(50m, edicao.ValorDepois);
+    }
+
+    [Fact]
+    public async Task EditarCompraNoCartao_SubirOValor_NaoMexeNoEstado_SoRegistra()
+    {
+        // Total que sobe nunca "desfaz" estado (a regra só avança); a fatura passa a dever mais pelo restante.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 200m);
+        var mercado = await MercadoAsync(ctx);
+
+        await Transacoes(ctx).AtualizarAsync(mercado, Edicao(150m), c.UsuarioId);
+
+        Assert.Equal(EstadoPagamentoFatura.Parcial, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+        Assert.Equal(150m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);   // 350 cobrados, 200 pagos
+        Assert.Single(await ctx.FinancialEventLogs.AsNoTracking().ToListAsync(),
+            e => e.Tipo == FinancialEventType.TransacaoAtualizada && e.EntidadeId == mercado && e.ValorDepois == 150m);
+    }
+
+    [Fact]
+    public async Task PagamentoDaFatura_NaoSeEditaNemExcluiPelaTelaDeTransacoes()
+    {
+        // Revisão de segurança do #288 (P1): excluir o pagamento devolvia o dinheiro à conta e a fatura seguia
+        // paga (ValorPago intacto) — dinheiro do nada. Editar o valor desemparelhava do mesmo jeito.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 300m);
+        var pagamento = await ctx.Transacoes.Where(t => t.EhPagamentoFatura).Select(t => t.Id).SingleAsync();
+        var svc = Transacoes(ctx);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(pagamento, c.UsuarioId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(pagamento, new Transacao
+        {
+            Descricao = "Pagamento", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        }, c.UsuarioId));
+
+        ctx.ChangeTracker.Clear();
+        var t = await ctx.Transacoes.SingleAsync(x => x.Id == pagamento);
+        Assert.True(t.Ativo);
+        Assert.Equal(300m, t.Valor);
+        Assert.Equal(300m, (await FaturaAsync(ctx, c.FaturaId)).ValorPago);
+        Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
     }
 }

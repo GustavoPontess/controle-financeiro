@@ -767,9 +767,9 @@ public class RecorrenteContaFixaMotorTests
             Assert.False(t.Ativo);
             Assert.Equal("Realinhada ao dia da conta fixa", t.MotivoCancelamento);
         }
-        // Cursor volta pra próxima data certa a partir de hoje (calculada à parte): dia 5 deste mês se ainda não passou, senão do próximo.
-        var proxMes = hoje.Day <= 5 ? hoje : hoje.AddMonths(1);
-        Assert.Equal(D(proxMes.Year, proxMes.Month, 5), DateOnly.FromDateTime((await LinhaAsync(ctx, r.Id)).DataProximaGeracao!.Value));
+        // Cursor volta pro dia certo do INÍCIO DO PERÍODO (dia 5 DESTE mês, mesmo que já tenha passado): o mês sem
+        // cobrança viva ganha a sua (P1-1). Antes era "a partir de hoje" e o teste só passava no dia 5.
+        Assert.Equal(D(hoje.Year, hoje.Month, 5), DateOnly.FromDateTime((await LinhaAsync(ctx, r.Id)).DataProximaGeracao!.Value));
 
         // 2ª passada: nada torto → nada muda.
         Assert.Equal(0, await svc.RealinharAsync(hoje));
@@ -1433,7 +1433,7 @@ public class RecorrenteContaFixaMotorTests
         var pulada = SeedTransacao(ctx, r, D(seguinte.Year, seguinte.Month, 28), StatusTransacao.Previsao);
         var svc = CreateService(ctx);
 
-        Assert.True(await new TransacaoService(ctx, new FaturaService(ctx)).DeletarAsync(pulada.Id, u));
+        Assert.True(await new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)).DeletarAsync(pulada.Id, u));
         ctx.ChangeTracker.Clear(); // cada passo é uma requisição: a excluída tem que vir do BANCO, não da memória
         await svc.AtualizarAsync(r.Id, Dto(r, dia: 15), u);
         Assert.Empty(await VivasNoMesAsync(ctx, r.Id, seguinte));

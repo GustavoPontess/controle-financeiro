@@ -502,15 +502,14 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
   })
 
   it.each([
-    ["receita", 0],             // Salário (tipo 2)
-    ["transferência", 2],       // Para Poupança (ehTransferencia)
-    ["pagamento de fatura", 3], // Fatura Nubank (ehPagamentoFatura)
-  ])("linha de %s não oferece as 3 ações de família (só Editar/Excluir)", async (_rotulo, i) => {
+    ["receita", 0, ["Editar", "Excluir"]],   // Salário (tipo 2)
+    ["transferência", 2, ["Excluir"]],       // Para Poupança — editar uma perna desemparelharia (#288)
+  ])("linha de %s não oferece as 3 ações de família", async (_rotulo, i, esperado) => {
     renderPage()
     await screen.findByText("Salário")
-    const menu = await abrirMenu(i)
+    const menu = await abrirMenu(i as number)
     const itens = within(menu).getAllByRole("menuitem").map((mi) => mi.textContent)
-    expect(itens).toEqual(["Editar", "Excluir"])
+    expect(itens).toEqual(esperado)
     expect(within(menu).queryByRole("menuitem", { name: "Compartilhar com família" })).not.toBeInTheDocument()
     expect(within(menu).queryByRole("menuitem", { name: "Atribuir a dependente" })).not.toBeInTheDocument()
     expect(within(menu).queryByRole("menuitem", { name: "Definir rateio" })).not.toBeInTheDocument()
@@ -546,5 +545,15 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
 
     await waitFor(() => expect(compartilharTransacao).toHaveBeenCalledWith("t2", "fam1"))
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Despesa compartilhada com a família", severity: "success" }))
+  })
+})
+
+describe("TransactionsPage — pagamento de fatura sem ações", () => {
+  // Revisão de segurança do #288: excluir o pagamento devolvia o dinheiro com a fatura seguindo paga; editar
+  // desemparelhava. O servidor recusa; a tela nem oferece — a linha do pagamento fica sem o ⋮.
+  it("a linha do pagamento de fatura não tem o ⋮ (as outras 4 têm)", async () => {
+    renderPage()
+    await screen.findByText("Fatura Nubank")
+    expect(await screen.findAllByRole("button", { name: "Ações" })).toHaveLength(4) // 5 linhas, menos o pagamento
   })
 })

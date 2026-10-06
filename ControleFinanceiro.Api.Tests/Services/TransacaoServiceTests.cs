@@ -23,7 +23,7 @@ public class TransacaoServiceTests
     {
         var ctx = CreateContext();
         var faturaService = new FaturaService(ctx);
-        return (ctx, new TransacaoService(ctx, faturaService));
+        return (ctx, new TransacaoService(ctx, faturaService, new FinancialEventLogService(ctx)));
     }
 
     private static async Task<(Guid contaId, Guid usuarioId)> SeedConta(AppDbContext ctx)

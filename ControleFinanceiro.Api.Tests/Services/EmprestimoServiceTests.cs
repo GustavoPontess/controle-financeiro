@@ -21,7 +21,7 @@ public class EmprestimoServiceTests
     }
 
     private static EmprestimoService NewSvc(AppDbContext ctx) =>
-        new(ctx, TestHelpers.Notif(ctx), TestHelpers.EventLog(ctx), new TransacaoService(ctx, new FaturaService(ctx)));
+        new(ctx, TestHelpers.Notif(ctx), TestHelpers.EventLog(ctx), new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)));
 
     private static Guid SeedUsuario(AppDbContext ctx, string email, string nome = "User")
     {
