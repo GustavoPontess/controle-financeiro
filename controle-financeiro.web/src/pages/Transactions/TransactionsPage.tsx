@@ -338,8 +338,14 @@ export default function TransactionsPage() {
             { key: "rateio", label: "Definir rateio", icon: <Split size={16} strokeWidth={2.5} />, onClick: () => openRatear(t) },
           ]
         : []),
-      { key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setEditando(t) },
-      { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) },
+      // Pagamento de fatura: nem editar nem excluir (está ligado ao que a fatura recebeu — o servidor recusa).
+      // Transferência: excluir apaga as DUAS pernas; editar uma só desemparelharia (o servidor recusa).
+      ...(!t.ehPagamentoFatura && !t.ehTransferencia
+        ? [{ key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setEditando(t) }]
+        : []),
+      ...(!t.ehPagamentoFatura
+        ? [{ key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) }]
+        : []),
     ]
   }
 

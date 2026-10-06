@@ -11,11 +11,37 @@ namespace ControleFinanceiro.Api.Services
     {
         private readonly AppDbContext _context;
         private readonly FaturaService _faturaService;
+        private readonly FinancialEventLogService _eventLog;
 
-        public TransacaoService(AppDbContext context, FaturaService faturaService)
+        public TransacaoService(AppDbContext context, FaturaService faturaService, FinancialEventLogService eventLog)
         {
             _context = context;
             _faturaService = faturaService;
+            _eventLog = eventLog;
+        }
+
+        // Compra no cartão compõe o total da fatura: excluir ou baixar o valor dela baixa o total SEM pagamento
+        // → reconcilia o estado da fatura (pode virar Paga, coberta pelo já pago) e registra FaturaPagaTotal.
+        // Regra de dinheiro do CLAUDE.md; antes só cancelar parcela/parcelamento reconciliava. Não salva.
+        // Usa o usuário da REQUISIÇÃO (não o dono do cartão): mantém o filtro de dono da reconciliação valendo
+        // mesmo pra dado legado com conta de um e cartão de outro (revisão de segurança do #288, P3).
+        private Task ReconciliarFaturaAsync(Transacao transacao, Guid usuarioId, Guid correlationId) =>
+            transacao.FaturaId is { } faturaId && transacao.CartaoCreditoId.HasValue
+                ? RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                    _context, _eventLog, new[] { faturaId }, usuarioId, correlationId, DateTime.UtcNow)
+                : Task.CompletedTask;
+
+        // Pagamento de fatura e perna de transferência não se editam por aqui: mudar só esta linha desemparelha o
+        // outro lado (ValorPago da fatura / a outra perna). Antes passava: excluir o pagamento devolvia o dinheiro
+        // à conta com a fatura seguindo paga (dinheiro do nada). Revisão de segurança do #288 (P1).
+        private static void ExigirEditavel(Transacao transacao)
+        {
+            if (transacao.EhPagamentoFatura)
+                throw new InvalidOperationException(
+                    "Pagamento de fatura não pode ser editado nem excluído por aqui — ele está ligado ao que a fatura já recebeu.");
+            if (transacao.EhTransferencia)
+                throw new InvalidOperationException(
+                    "Transferência não se edita por aqui — exclua e lance de novo.");
         }
 
         /// <summary>
@@ -295,6 +321,7 @@ namespace ControleFinanceiro.Api.Services
                 .FirstOrDefaultAsync();
 
             if (transacao is null) return false;
+            ExigirEditavel(transacao);
 
             if (dados.Valor <= 0)
                 throw new ArgumentException("O valor da transação deve ser positivo.");
@@ -315,6 +342,7 @@ namespace ControleFinanceiro.Api.Services
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
 
+            var valorAntes = transacao.Valor;
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
             transacao.Tipo = dados.Tipo;
@@ -327,6 +355,20 @@ namespace ControleFinanceiro.Api.Services
             // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
             if (transacao.RecorrenteOrigemId != null)
                 transacao.EditadaPeloUsuario = true;
+
+            var correlationId = Guid.NewGuid();
+            if (dados.Valor < valorAntes)
+                await ReconciliarFaturaAsync(transacao, usuarioId, correlationId);
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.TransacaoAtualizada,
+                entidade: "Transacao",
+                entidadeId: transacao.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: valorAntes,
+                valorDepois: transacao.Valor,
+                payload: new { faturaId = transacao.FaturaId });
 
             await _context.SaveChangesAsync();
             return true;
@@ -344,6 +386,33 @@ namespace ControleFinanceiro.Api.Services
 
             if (transacao is null) return false;
 
+            if (transacao.EhPagamentoFatura)
+                ExigirEditavel(transacao); // recusa (409) — ver ExigirEditavel
+
+            // Perna de transferência: exclui a transferência inteira (as DUAS pernas), não só a clicada.
+            if (transacao.EhTransferencia)
+            {
+                var transferencia = await _context.Transferencias.FirstOrDefaultAsync(tr =>
+                    tr.CriadoPor == usuarioId && (tr.TransacaoOrigemId == transacao.Id || tr.TransacaoDestinoId == transacao.Id));
+                if (transferencia != null)
+                {
+                    await TransferenciaService.CancelarComAsPernasAsync(_context, transferencia);
+                    _eventLog.Registrar(
+                        usuarioId: usuarioId,
+                        tipo: FinancialEventType.TransacaoCancelada,
+                        entidade: "Transferencia",
+                        entidadeId: transferencia.Id,
+                        correlationId: Guid.NewGuid(),
+                        origemAcao: "API",
+                        valorAntes: transferencia.Valor,
+                        valorDepois: 0m,
+                        payload: new { motivo = "Transferência excluída", transacaoClicada = transacao.Id });
+                    await _context.SaveChangesAsync();
+                    return true;
+                }
+                // Perna sem o registro de transferência (dado antigo): segue como lançamento avulso.
+            }
+
             // Soft delete (entidade financeira: nunca remover fisicamente — preserva
             // histórico e a referência do FinancialEventLog). O filtro global de Transacao
             // exclui a cancelada de toda query, então o saldo calculado se corrige sozinho.
@@ -351,6 +420,20 @@ namespace ControleFinanceiro.Api.Services
             transacao.StatusTransacao = StatusTransacao.Cancelado;
             transacao.CanceladoEm = DateTime.UtcNow;
             transacao.MotivoCancelamento = "Transação excluída pelo usuário";
+
+            var correlationId = Guid.NewGuid();
+            await ReconciliarFaturaAsync(transacao, usuarioId, correlationId);
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.TransacaoCancelada,
+                entidade: "Transacao",
+                entidadeId: transacao.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: transacao.Valor,
+                valorDepois: 0m,
+                payload: new { motivo = transacao.MotivoCancelamento, faturaId = transacao.FaturaId });
+
             await _context.SaveChangesAsync();
             return true;
         }

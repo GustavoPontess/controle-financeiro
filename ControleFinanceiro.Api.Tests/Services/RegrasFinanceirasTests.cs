@@ -439,7 +439,7 @@ public class RegrasFinanceirasTests
         var dashboard = await new DashboardService(ctx, new LimiteCalculatorService(ctx)).GetResumoAsync(c.UsuarioId, 2026, 5);
 
         // 4. Resumo por conta (/transacoes/resumo/{contaId})
-        var resumo = await new TransacaoService(ctx, new FaturaService(ctx)).ObterResumoPorContaAsync(c.ContaId, c.UsuarioId);
+        var resumo = await new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)).ObterResumoPorContaAsync(c.ContaId, c.UsuarioId);
 
         Assert.Equal(5220m, regra);
         Assert.Equal(regra, lista.Single(x => x.Id == c.ContaId).SaldoAtual);
