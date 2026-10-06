@@ -61,7 +61,7 @@ public class LimiteCartaoRegraUnicaTests
     /// <summary>Compra à vista no crédito pelo caminho real (a fatura do ciclo nasce/é achada no service).</summary>
     private static Task<Transacao> ComprarAsync(
         AppDbContext ctx, Cenario c, decimal valor, StatusTransacao status = StatusTransacao.Executado) =>
-        new TransacaoService(ctx, new FaturaService(ctx)).CriarTransacaoAsync(new Transacao
+        new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)).CriarTransacaoAsync(new Transacao
         {
             Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, StatusTransacao = status,

@@ -11,12 +11,23 @@ namespace ControleFinanceiro.Api.Services
     {
         private readonly AppDbContext _context;
         private readonly FaturaService _faturaService;
+        private readonly FinancialEventLogService _eventLog;
 
-        public TransacaoService(AppDbContext context, FaturaService faturaService)
+        public TransacaoService(AppDbContext context, FaturaService faturaService, FinancialEventLogService eventLog)
         {
             _context = context;
             _faturaService = faturaService;
+            _eventLog = eventLog;
         }
+
+        // Compra no cartão compõe o total da fatura: excluir ou baixar o valor dela baixa o total SEM pagamento
+        // → reconcilia o estado da fatura (pode virar Paga, coberta pelo já pago) e registra FaturaPagaTotal.
+        // Regra de dinheiro do CLAUDE.md; antes só cancelar parcela/parcelamento reconciliava. Não salva.
+        private Task ReconciliarFaturaAsync(Transacao transacao, Guid correlationId) =>
+            transacao.FaturaId is { } faturaId && transacao.CartaoCreditoId.HasValue
+                ? RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                    _context, _eventLog, new[] { faturaId }, transacao.CartaoCredito!.CriadoPor, correlationId, DateTime.UtcNow)
+                : Task.CompletedTask;
 
         /// <summary>
         /// Cria uma transação simples (à vista) e, se for de crédito, associa automaticamente
@@ -315,6 +326,7 @@ namespace ControleFinanceiro.Api.Services
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
 
+            var valorAntes = transacao.Valor;
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
             transacao.Tipo = dados.Tipo;
@@ -327,6 +339,20 @@ namespace ControleFinanceiro.Api.Services
             // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
             if (transacao.RecorrenteOrigemId != null)
                 transacao.EditadaPeloUsuario = true;
+
+            var correlationId = Guid.NewGuid();
+            if (dados.Valor < valorAntes)
+                await ReconciliarFaturaAsync(transacao, correlationId);
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.TransacaoAtualizada,
+                entidade: "Transacao",
+                entidadeId: transacao.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: valorAntes,
+                valorDepois: transacao.Valor,
+                payload: new { faturaId = transacao.FaturaId });
 
             await _context.SaveChangesAsync();
             return true;
@@ -351,6 +377,20 @@ namespace ControleFinanceiro.Api.Services
             transacao.StatusTransacao = StatusTransacao.Cancelado;
             transacao.CanceladoEm = DateTime.UtcNow;
             transacao.MotivoCancelamento = "Transação excluída pelo usuário";
+
+            var correlationId = Guid.NewGuid();
+            await ReconciliarFaturaAsync(transacao, correlationId);
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.TransacaoCancelada,
+                entidade: "Transacao",
+                entidadeId: transacao.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: transacao.Valor,
+                valorDepois: 0m,
+                payload: new { motivo = transacao.MotivoCancelamento, faturaId = transacao.FaturaId });
+
             await _context.SaveChangesAsync();
             return true;
         }

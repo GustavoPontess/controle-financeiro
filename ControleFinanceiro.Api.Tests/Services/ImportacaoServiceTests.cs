@@ -22,7 +22,7 @@ public class ImportacaoServiceTests
 
     private static ImportacaoService CreateService(AppDbContext ctx)
     {
-        var transacaoService = new TransacaoService(ctx, new FaturaService(ctx));
+        var transacaoService = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
         return new ImportacaoService(ctx, new ExtratoImportService(), transacaoService);
     }
 

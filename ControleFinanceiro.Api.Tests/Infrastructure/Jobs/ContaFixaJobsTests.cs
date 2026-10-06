@@ -166,6 +166,12 @@ public class ContaFixaJobsTests
         return lista;
     }
 
+    // Realinhamento (P1-1, 2026-10-05): recomeça do INÍCIO DO PERÍODO — o mês atual sem cobrança viva ganha a
+    // sua no dia certo, mesmo que já tenha passado (o ExecutarRecorrentesJob efetiva). Antes era "a partir de
+    // hoje" e o mês sumia; estes testes só passavam no dia 5 (quando as duas regras coincidem).
+    private static List<DateOnly> DatasMensaisDoMesAtualAteFimDoAno(DateOnly hoje, int dia) =>
+        DatasMensais(D(hoje.Year, hoje.Month, 1), D(hoje.Year, 12, 31), dia);
+
     private static List<DateOnly> DatasMensaisAteFimDoAno(DateOnly hoje, int dia) =>
         DatasMensais(hoje, D(hoje.Year, 12, 31), dia);
 
@@ -364,7 +370,7 @@ public class ContaFixaJobsTests
             Assert.False(errada.Ativo);
             Assert.Equal("Realinhada ao dia da conta fixa", errada.MotivoCancelamento);
         }
-        Assert.Equal(DatasMensaisAteFimDoAno(hoje, 5), await DatasPrevistasVivasAsync(ctx, r.Id));
+        Assert.Equal(DatasMensaisDoMesAtualAteFimDoAno(hoje, 5), await DatasPrevistasVivasAsync(ctx, r.Id));
         Assert.True(todas.Single(t => t.Id == historico.Id).Ativo); // histórico intacto
         Assert.Equal(StatusTransacao.Executado, todas.Single(t => t.Id == historico.Id).StatusTransacao);
         Assert.Equal(D(hoje.Year + 1, 1, 5), DateOnly.FromDateTime((await LinhaAsync(ctx, r.Id)).DataProximaGeracao!.Value));
@@ -465,7 +471,7 @@ public class ContaFixaJobsTests
         foreach (var (r, u, conta) in new[] { (r1, u1, conta1), (r2, u2, conta2) })
         {
             var vivas = (await TodasAsync(ctx, r.Id)).Where(t => t.Ativo).ToList();
-            Assert.Equal(DatasMensaisAteFimDoAno(hoje, 5), vivas.Select(t => t.Data).OrderBy(d => d).ToList());
+            Assert.Equal(DatasMensaisDoMesAtualAteFimDoAno(hoje, 5), vivas.Select(t => t.Data).OrderBy(d => d).ToList());
             Assert.All(vivas, t =>
             {
                 Assert.Equal(u, t.CriadoPor);
@@ -571,7 +577,7 @@ public class ContaFixaJobsTests
         var esperado = novaDoMes < D(hoje.Year + 1, 1, 1) ? 50m : 0m;
         Assert.Equal(esperado, total);
         var novas = (await TodasAsync(ctx, r.Id)).Where(t => t.Ativo).ToList();
-        Assert.Equal(DatasMensaisAteFimDoAno(hoje, 5), novas.Select(t => t.Data).OrderBy(d => d).ToList());
+        Assert.Equal(DatasMensaisDoMesAtualAteFimDoAno(hoje, 5), novas.Select(t => t.Data).OrderBy(d => d).ToList());
         Assert.All(novas, t =>
         {
             Assert.True(t.UsadoComoCredito);
