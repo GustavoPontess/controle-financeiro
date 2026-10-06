@@ -16,9 +16,23 @@ import styles from "./TablePagination.module.css"
 
 /** Opções padrão do projeto. Importe se quiser estender/reusar. */
 export const PONTES_TABLE_PAGE_SIZES = [10, 25, 50, 100] as const
-export const PONTES_TABLE_PAGE_SIZE_DEFAULT = 25
+export const PONTES_TABLE_PAGE_SIZE_DEFAULT = 10
 /** Hard cap — qualquer valor maior é clampado pra cá. */
 export const PONTES_TABLE_PAGE_SIZE_MAX = 100
+
+// Páginas a exibir com reticências: 1 … (atual±1) … último — permite pular pra qualquer página.
+function buildPages(current: number, total: number): (number | "…")[] {
+  const delta = 1
+  const lo = Math.max(1, current - delta)
+  const hi = Math.min(total, current + delta)
+  const nums: number[] = []
+  for (let i = lo; i <= hi; i++) nums.push(i)
+  const out: (number | "…")[] = []
+  if (nums[0] > 1) { out.push(1); if (nums[0] > 2) out.push("…") }
+  out.push(...nums)
+  if (nums[nums.length - 1] < total) { if (nums[nums.length - 1] < total - 1) out.push("…"); out.push(total) }
+  return out
+}
 
 export type PontesTablePaginationProps = {
   p?: Palette
@@ -80,9 +94,22 @@ export function PontesTablePagination({
         >
           <ChevronLeft size={16} strokeWidth={2.5} />
         </button>
-        <span className={styles.pageInfo}>
-          {safePage} <span className={styles.pageOf}>de</span> {totalPages}
-        </span>
+        {buildPages(safePage, totalPages).map((it, i) =>
+          it === "…" ? (
+            <span key={`e${i}`} className={styles.ellipse}>…</span>
+          ) : (
+            <button
+              key={it}
+              type="button"
+              className={styles.pageBtn}
+              data-active={it === safePage ? "true" : undefined}
+              aria-current={it === safePage ? "page" : undefined}
+              onClick={() => onPageChange(it)}
+            >
+              {it}
+            </button>
+          )
+        )}
         <button
           type="button"
           className={styles.navBtn}

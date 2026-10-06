@@ -23,7 +23,10 @@ export const listRecorrentesPage = async (
 
 export type RecorrenteStats = {
   ativas: number
+  /** Média por mês das despesas de todas as frequências (= anual ÷ 12), calculada no servidor. */
   custoMensalDespesas: number
+  /** Por ano: semanal × 52 + mensal × 12 + anual (servidor). */
+  custoAnualDespesas: number
   proximas30Dias: number
   qtdTotal: number
 }
@@ -49,8 +52,9 @@ export const updateRecorrente = async (id: string, dto: CriarRecorrente): Promis
   await api.put(`${BASE}/${id}`, dto)
 }
 
-export const toggleRecorrente = async (id: string): Promise<void> => {
-  await api.patch(`${BASE}/${id}/toggle`)
+// Manda o estado PEDIDO (pausar = false, retomar = true): repetir o pedido não desfaz no servidor.
+export const toggleRecorrente = async (id: string, ativo: boolean): Promise<void> => {
+  await api.patch(`${BASE}/${id}/toggle`, null, { params: { ativo } })
 }
 
 export const cancelarRecorrente = async (id: string, dto: CancelarRecorrenteDto): Promise<void> => {

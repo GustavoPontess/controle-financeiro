@@ -25,11 +25,14 @@ export function StatusBadges({ e }: { e: Emprestimo }) {
 
 /** Mesmas ações da tela real (Ver parcelas/Registrar/Quitar/Histórico/Vincular/Arquivar/Remover),
  * agora num menu kebab (⋮) — ligado no MESMO hook, com as mesmas confirmações de sempre. */
-export function ActionIcons({ e, size = 32, logic, className, mode = "full" }: {
+export function ActionIcons({ e, size = 32, logic, className, mode = "full", mostrarDetalhe = true }: {
   e: Emprestimo; size?: 24 | 32; logic: EmprestimosLogic; className?: string
   /** "full" (padrão): todas as ações. "management": só arquivar/desarquivar/remover — pra lista
    *  enxuta, onde as ações ricas (registrar/quitar/vincular/histórico) vivem na tela de detalhe. */
   mode?: "full" | "management"
+  /** Item "Ver parcelas/detalhe" (expansão inline). Ligado só onde a lista expande de verdade —
+   *  numa PontesTabela (sem expansão inline) a linha já abre o detalhe no clique, então passa false. */
+  mostrarDetalhe?: boolean
 }) {
   const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
   const semVinculo = e.statusVinculo === StatusVinculoEmprestimo.SemVinculo || e.statusVinculo === StatusVinculoEmprestimo.Recusado
@@ -37,7 +40,7 @@ export function ActionIcons({ e, size = 32, logic, className, mode = "full" }: {
   const aberto = logic.expandedId === e.id
   const full = mode === "full"
   const items: PontesPopoverItem[] = [
-    full && {
+    full && mostrarDetalhe && {
       key: "detalhe", icon: <ChevronDown size={16} />,
       // Parcelado abre as parcelas; à vista abre o detalhe (pago/atrasado/vencido).
       label: isParcelado

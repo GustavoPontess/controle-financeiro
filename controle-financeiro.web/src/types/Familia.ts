@@ -14,7 +14,10 @@ export interface MembroFamilia {
   emailUsuario: string
   papel: string
   entrouEm: string
+  /** Só vem com valor pro PRÓPRIO membro (renda é dado pessoal); pros outros é null. */
   rendaMensal: number | null
+  /** Se o membro já informou a renda (o peso do rateio proporcional), sem revelar o valor. */
+  rendaInformada: boolean
 }
 
 // ── Modos de rateio (#25) ──

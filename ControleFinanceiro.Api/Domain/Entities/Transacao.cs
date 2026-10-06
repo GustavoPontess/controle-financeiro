@@ -69,10 +69,28 @@ public class Transacao
 
     public DateTime? AprovadoEm { get; set; }
 
+    /// <summary>Dia do lançamento — <c>date</c> puro, sem fuso. A hora fica em <see cref="Hora"/>.
+    /// Separado de hora (#fuso): timestamp único vinha sem 'Z' no JSON e o front deslocava +3h.</summary>
     [Required]
-    public DateTime Data { get; set; }
+    public DateOnly Data { get; set; }
+
+    /// <summary>Hora do lançamento — <c>time</c> puro, sem fuso. Null = lançamento SEM hora
+    /// (recorrente, saldo inicial, importação, ou data passada sem horário real). A tela só mostra
+    /// a hora quando ela existe.</summary>
+    public TimeOnly? Hora { get; set; }
 
     public Guid? RecorrenteOrigemId { get; set; }
+
+    /// <summary>Período que esta ocorrência de conta fixa cobre (<c>M2026-10</c>, <c>A2026</c>, <c>S12</c> —
+    /// ver <c>AgendaRecorrente.Competencia</c>). Uma conta fixa tem no máximo UMA ocorrência viva por período
+    /// (índice único parcial): trocar o Dia ou realinhar não cobra o mês 2× nem o perde. Null fora de conta fixa.</summary>
+    [MaxLength(16)]
+    public string? Competencia { get; set; }
+
+    /// <summary>Ocorrência de conta fixa que o USUÁRIO alterou (editar transação, "Editar próxima"). Alterar a
+    /// conta fixa e o realinhamento não a cancelam nem regeram — a edição dele vale pra ela. Pausar/cancelar/
+    /// excluir a conta fixa ainda cancelam (não deve mais cobrar).</summary>
+    public bool EditadaPeloUsuario { get; set; }
 
     // ── Novos vínculos ao sistema de Parcelamento (ARQUITETURA_PARCELAMENTO.md § "Transacao (Mudanças)") ──
 
@@ -103,6 +121,11 @@ public class Transacao
     /// <summary>true se esta Transacao é o saldo de abertura de uma conta. Compõe o saldo,
     /// mas NÃO é receita real — excluída de relatórios de P&amp;L.</summary>
     public bool EhSaldoInicial { get; set; }
+
+    /// <summary>true se esta Transacao é um lançamento de AJUSTE criado por um marco de reconciliação
+    /// pra fechar a diferença entre o saldo declarado e o calculado. Compõe o saldo (corrige-o), mas
+    /// NÃO é receita/despesa real — fora de relatórios de P&amp;L. Ver ReconciliacaoSaldo.</summary>
+    public bool EhAjusteReconciliacao { get; set; }
 
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;

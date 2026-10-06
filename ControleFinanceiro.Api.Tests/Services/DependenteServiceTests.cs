@@ -42,7 +42,7 @@ public class DependenteServiceTests
         var t = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Despesa", Valor = valor, Tipo = tipo,
-            CriadoPor = criadoPor, Data = data ?? new DateTime(2026, 5, 10),
+            CriadoPor = criadoPor, Data = DateOnly.FromDateTime(data ?? new DateTime(2026, 5, 10)),
             Ativo = true, StatusTransacao = StatusTransacao.Executado, DependenteId = dependenteId,
         };
         ctx.Transacoes.Add(t);

@@ -109,7 +109,7 @@ public class FaturaService
     /// ou cria uma nova se não existir (lançamentos retroativos incluídos).
     /// Respeita o invariante: faturas fechadas/pagas não são modificadas.
     /// </summary>
-    public async Task<Fatura> ObterOuCriarFaturaAsync(Guid cartaoCreditoId, DateTime dataTransacao, Guid usuarioId)
+    public async Task<Fatura> ObterOuCriarFaturaAsync(Guid cartaoCreditoId, DateOnly dataTransacao, Guid usuarioId)
     {
         var cartao = await _context.CartoesCredito.FindAsync(cartaoCreditoId)
             ?? throw new KeyNotFoundException("Cartão de crédito não encontrado.");
@@ -118,7 +118,7 @@ public class FaturaService
         if (cartao.CriadoPor != usuarioId)
             throw new KeyNotFoundException("Cartão de crédito não encontrado.");
 
-        var (inicio, fechamento) = CalcularPeriodo(dataTransacao.Date, cartao.DiaFechamento);
+        var (inicio, fechamento) = CalcularPeriodo(dataTransacao.ToDateTime(TimeOnly.MinValue), cartao.DiaFechamento);
 
         // Busca pelo fechamento (que sempre foi calculado corretamente).
         // Corrige DataInicio caso tenha sido salvo com lógica anterior (bug: +1 dia).
@@ -170,7 +170,7 @@ public class FaturaService
         string descricaoBase,
         decimal valorTotal,
         int numParcelas,
-        DateTime dataBase,
+        DateOnly dataBase,
         Guid usuarioId,
         Guid? subcategoriaId = null)
     {
@@ -203,6 +203,7 @@ public class FaturaService
                 UsadoComoCredito = true,
                 MeioPagamento = MeioPagamento.Credito,
                 Data = dataTransacao,
+                Hora = null, // parcela de crédito não tem hora real — cai na fatura pela data
                 CriadoPor = usuarioId,
             };
 
@@ -287,7 +288,8 @@ public class FaturaService
             EhPagamentoFatura = true,
             FaturaPagaId = fatura.Id,
             MeioPagamento = (MeioPagamento)dto.MeioPagamento,
-            Data = dto.DataPagamento.ToUniversalTime(),
+            Data = DateOnly.FromDateTime(dto.DataPagamento),
+            Hora = null, // pagamento de fatura é datado (sem hora específica)
             CriadoPor = usuarioId,
         };
 
@@ -449,9 +451,8 @@ public class FaturaService
     private static bool MesmosDadosDoPagamento(Transacao original, PagarFaturaDto dto) =>
         original.ContaId == dto.ContaId
         && original.Valor == dto.Valor
-        // Só a data: o front grava a hora do clique ("hoje → agora"), então o retry do mesmo pedido
-        // chega com outro horário no mesmo dia. ToUniversalTime = a mesma conversão do INSERT.
-        && original.Data.Date == dto.DataPagamento.ToUniversalTime().Date
+        // Só o dia: pagamento de fatura é datado (Data = date, Hora null). Mesma conversão do INSERT.
+        && original.Data == DateOnly.FromDateTime(dto.DataPagamento)
         // Nullable na Transacao: pagamento sem meio gravado não tem o que comparar.
         && (original.MeioPagamento == null || (int)original.MeioPagamento.Value == dto.MeioPagamento);
 
@@ -506,7 +507,7 @@ public class FaturaService
                 Id = t.Id,
                 Descricao = t.Descricao,
                 Valor = t.Valor,
-                Data = t.Data,
+                Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
                 CriadoEm = t.CriadoEm,
                 CategoriaId = t.CategoriaId,
                 CategoriaDescricao = t.Categoria?.Descricao,
@@ -539,14 +540,14 @@ public class FaturaService
         // Materializa antes do switch (árvore de expressão EF não aceita switch).
         var pags = await _context.Transacoes
             .Where(t => t.FaturaPagaId == faturaId && t.Ativo)
-            .OrderBy(t => t.Data)
-            .Select(t => new { t.Id, t.Valor, t.Data, t.CriadoEm, t.MeioPagamento })
+            .OrderBy(t => t.Data).ThenBy(t => t.Hora)
+            .Select(t => new { t.Id, t.Valor, t.Data, t.Hora, t.CriadoEm, t.MeioPagamento })
             .ToListAsync();
         dto.Pagamentos = pags.Select(t => new FaturaPagamentoDto
         {
             Id = t.Id,
             Valor = t.Valor,
-            Data = t.Data,
+            Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
             CriadoEm = t.CriadoEm,
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : 0,
             MeioPagamentoDescricao = t.MeioPagamento switch

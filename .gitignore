@@ -460,4 +460,5 @@ docs/referencias/
 
 # Seeder pessoal de dogfooding (dados financeiros reais do Gustavo + terceiros
 # reais) — nunca comitar. Local-only, cada dev cria o seu se precisar.
-ControleFinanceiro.Api/Data/MeuCenarioSeeder.cs
+# Cobre o .bak (desabilitado em 2026-10-02 — seed passou a ser só contas de teste).
+ControleFinanceiro.Api/Data/MeuCenarioSeeder.cs*

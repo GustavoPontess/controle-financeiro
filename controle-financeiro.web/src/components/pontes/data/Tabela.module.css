@@ -1,0 +1,148 @@
+/* PontesTabela — tela de lista padrão (cabeçalho, busca, filtros, tags, tabela, paginação). Só var(--pontes-*). */
+
+.tela { display: flex; flex-direction: column; gap: 16px; font-family: var(--pontes-font); }
+
+/* Cartão único: toolbar (busca + filtros) + chips + tabela vivem dentro dele — a busca faz PARTE
+   da tabela (não flutua separada). */
+.caixa { border: 1px solid var(--pontes-border); border-radius: 14px; overflow: hidden; background: var(--pontes-surface); container: tabela / inline-size; }
+
+/* Banda do TOPO do cartão: nome da tabela à esquerda, controles compactos à direita. */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--pontes-border); }
+/* Nome da tabela — tipografia do DS (fonte de título --pontes-font-heading + peso/tracking padrão), sub-heading
+   (16px: menor que modal 20 / página 24). */
+.titulo { margin: 0; font-family: var(--pontes-font-heading); font-size: var(--pontes-fs-titulo-caixa); font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); }
+/* Controles à direita, compactos, lado a lado e TODOS na MESMA altura (36px). O DS varia a altura
+   por componente (input 42, segmented 34, botão sm 29); aqui uniformizamos pra ficar alinhado. */
+.controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.busca { flex: 0 1 220px; min-width: 160px; }
+.busca :global(input) { display: block; box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0; font-size: var(--pontes-fs-md); }
+/* Ícone da busca menor (proporcional ao texto 13px) e centrado. */
+.busca :global(svg.lucide-search) { width: 14px; height: 14px; }
+.controles :global([role="tablist"]) { height: 32px; box-sizing: border-box; }
+/* Botão Filtros (dentro do .filtrosWrap). Mantém o azul do DS — só garante a MESMA altura (32) e o
+   mesmo arredondamento (10) dos outros controles pra não parecer maior. */
+.controles :global(button[data-variant]) { height: 32px; box-sizing: border-box; border-radius: 10px; }
+
+/* Estados (carregando / vazio / erro) dentro do cartão, abaixo da toolbar. */
+.estado { padding: 16px; }
+
+/* Tags do que está filtrado. */
+.tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--pontes-border); background: var(--pontes-bg); }
+.tagsLabel { font-size: var(--pontes-fs-sm); font-weight: 700; color: var(--pontes-text-muted); }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--pontes-border); background: var(--pontes-surface);
+  font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); cursor: pointer;
+}
+.tag:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
+
+.rolagem { width: 100%; overflow-x: auto; }
+/* Modo "Mostrar mais": botão largo no rodapé do cartão (alternativa à paginação). */
+.carregarMais { padding: 6px 12px; border-top: 1px solid var(--pontes-border); }
+.carregarMaisResto { font-weight: 500; color: var(--pontes-text-muted); }
+.tabela { width: 100%; border-collapse: collapse; font-size: var(--pontes-fs-linha); }
+
+.th {
+  padding: 12px 16px; background: var(--pontes-bg); border-bottom: 1px solid var(--pontes-border);
+  font-size: var(--pontes-fs-rotulo); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--pontes-text-muted); text-align: left; white-space: nowrap;
+}
+.th:first-child, .td:first-child { padding-left: 20px; }
+.th:last-child, .td:last-child { padding-right: 20px; }
+.td { padding: 11px 16px; color: var(--pontes-text); vertical-align: middle; }
+/* 1ª coluna (identidade) encolhe pro conteúdo — não estica e domina a largura da tabela. */
+.tabela th:first-child, .tabela td:first-child { width: 1%; white-space: nowrap; }
+
+[data-align="right"] { text-align: right; }
+[data-num="true"] { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+[data-acoes="true"] { width: 48px; text-align: right; }
+
+.linha { border-bottom: 1px solid var(--pontes-border); transition: background-color 0.15s ease; }
+.linha:last-child { border-bottom: none; }
+.linha[data-clicavel="true"] { cursor: pointer; }
+.linha[data-clicavel="true"]:hover { background: var(--pontes-bg); }
+
+/* Célula identidade (1ª coluna): quadradinho do ícone + nome + sub. */
+.ident { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.identIcone { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--pontes-info-soft, var(--pontes-primary-soft)); color: var(--pontes-info, var(--pontes-primary)); }
+.identIcone[data-tom="saida"] { background: color-mix(in srgb, var(--pontes-danger) 12%, transparent); color: var(--pontes-danger); }
+.identIcone[data-tom="entrada"] { background: color-mix(in srgb, var(--pontes-success) 12%, transparent); color: var(--pontes-success); }
+.identIcone[data-tom="neutro"] { background: var(--pontes-bg); color: var(--pontes-text-muted); }
+/* Texto empilhado: nome em cima, sub (conta/detalhe) embaixo. */
+.identTexto { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.identNome { font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.soLeitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Filtros avançados — popover ancorado no botão (portalizado). */
+.filtrosWrap { display: inline-flex; position: relative; }
+/* Bolinha vermelha quando há filtro ativo. */
+.filtrosDot { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--pontes-danger); border: 2px solid var(--pontes-surface); pointer-events: none; }
+/* Modo ativo: destaca o botão (fundo/borda/texto na cor primária). */
+.filtrosWrap[data-ativo="true"] :global(button[data-variant]) { background: var(--pontes-primary-soft); border-color: var(--pontes-primary); color: var(--pontes-primary); }
+.filtrosPanel {
+  width: 320px; max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 120px); overflow-y: auto;
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+  border-radius: 12px; box-shadow: var(--pontes-shadow-lg);
+  padding: 16px; display: flex; flex-direction: column; gap: 16px;
+  z-index: 1000; font-family: var(--pontes-font);
+}
+.filtrosCorpo { display: flex; flex-direction: column; gap: 16px; }
+.filtrosFaixa { display: flex; align-items: center; gap: 8px; }
+.filtrosFaixa > * { flex: 1; min-width: 0; }
+.filtrosAte { flex: 0 0 auto; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.filtrosFooter { display: flex; justify-content: space-between; gap: 8px; }
+
+/* Popover de colunas (mostrar/ocultar) — ancorado no botão de colunas. */
+.colunasPanel {
+  width: 220px; max-width: calc(100vw - 32px);
+  background: var(--pontes-surface); border: 1px solid var(--pontes-border);
+  border-radius: 12px; box-shadow: var(--pontes-shadow-lg);
+  padding: 10px; display: flex; flex-direction: column; gap: 2px;
+  z-index: 1000; font-family: var(--pontes-font);
+}
+.colunasTitulo { font-size: var(--pontes-fs-rotulo); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pontes-text-muted); padding: 4px 8px 6px; }
+/* Atalhos de padrão (definir/aplicar). */
+.colunasAcao { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--pontes-border); border-radius: 8px; background: var(--pontes-surface); font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; margin-bottom: 6px; }
+.colunasAcao:hover:not(:disabled) { background: var(--pontes-bg); border-color: var(--pontes-primary); }
+.colunasAcao:disabled { opacity: .5; cursor: default; }
+.colunasSep { height: 1px; background: var(--pontes-border); margin: 6px 0 8px; }
+/* Itens: linha clicável com check (✓), sem checkbox nativo. */
+.colunasItem { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: none; background: transparent; border-radius: 8px; font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; text-align: left; }
+.colunasItem:hover:not(:disabled) { background: var(--pontes-bg); }
+.colunasItem:disabled { cursor: default; }
+.colunasItem[data-oculta="true"] { color: var(--pontes-text-muted); }
+/* Ações do padrão de exibição (empilhadas): Salvar padrão / Voltar ao padrão. */
+.colunasAcao[data-primary="true"] { background: var(--pontes-primary); border-color: var(--pontes-primary); color: var(--pontes-hero-fg); text-align: center; }
+.colunasAcao:not([data-primary="true"]) { text-align: center; }
+.colunasAcao[data-primary="true"]:hover:not(:disabled) { background: var(--pontes-primary-dark); border-color: var(--pontes-primary-dark); }
+.colunasCheck { width: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--pontes-primary); flex-shrink: 0; }
+
+/* ── Caixa estreita (< 640px — celular, tablet com a barra lateral, janela estreita): cada linha vira um
+   CARTÃO — a tabela de 5+ colunas não cabe (Transações tinha 655px e rolava de lado). Medido pela largura
+   da CAIXA (container query), não da tela. Linha 1: identidade (1ª coluna) + valores + ⋮. Embaixo, as
+   demais colunas em texto menor, alinhadas ao nome (depois do ícone de 34px + 10 de espaço). Mesmo DOM. */
+@container tabela (max-width: 639px) {
+  .toolbar { padding: 10px 12px; }
+  .controles { width: 100%; margin-left: 0; }
+  .busca { flex: 1 1 100%; min-width: 0; }
+  /* Controles com 36px no celular (alvo de toque), em vez dos 32 do desktop. */
+  .busca :global(input), .controles :global([role="tablist"]), .controles :global(button[data-variant]) { height: 36px; }
+  .rolagem { overflow-x: visible; }
+  /* Cabeçalho fora da tela, mas no leitor de tela (não display:none — mantém o nome das colunas). */
+  .tabela thead { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabela, .tabela tbody { display: block; }
+  .linha { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 14px; }
+  .linha::after { content: ""; order: 3; flex-basis: 100%; height: 0; }
+  .td { display: block; padding: 0; order: 4; font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
+  .th:first-child, .td:first-child, .th:last-child, .td:last-child { padding: 0; }
+  .tabela td:first-child { order: 0; flex: 1 1 0; min-width: 0; width: auto; white-space: normal; font-size: var(--pontes-fs-linha); color: var(--pontes-text); }
+  .td[data-num="true"] { order: 1; font-size: var(--pontes-fs-linha); color: var(--pontes-text); }
+  .td[data-acoes="true"] { order: 2; width: auto; }
+  /* Demais colunas: começam alinhadas ao nome (ícone 34 + 10). */
+  .td:not(:first-child):not([data-num="true"]):not([data-acoes="true"]) { margin-left: 44px; }
+  .td:not(:first-child):not([data-num="true"]):not([data-acoes="true"]) ~ .td:not([data-num="true"]):not([data-acoes="true"]) { margin-left: 0; }
+}

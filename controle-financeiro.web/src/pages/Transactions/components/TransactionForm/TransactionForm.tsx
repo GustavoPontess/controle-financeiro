@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { dataLocalISO } from "@/utils/dateTime"
+import { dataLocalISO, horaLocalHHMM, mascararHora } from "@/utils/dateTime"
 import { TrendingDown, TrendingUp, ArrowLeftRight } from "lucide-react"
 import {
   PontesButton, PontesToggle, PontesField, PontesInput, PontesDateInput, PontesMoneyInput, PontesSelect,
@@ -48,6 +48,8 @@ export interface TransactionFormData {
   contaDestinoId: string
   valor: string
   data: string
+  /** Hora "HH:MM" do lançamento (default = agora). Ignorada em recorrente. */
+  hora: string
   descricao: string
   parcelas: number
   // já recebido/pago (Executado) vs previsão (Previsao)
@@ -89,6 +91,7 @@ export default function TransactionForm({
     contaDestinoId: "",
     valor: "",
     data: dataLocalISO(),
+    hora: horaLocalHHMM(),
     descricao: "",
     parcelas: 1,
     efetivado: true,
@@ -173,6 +176,14 @@ export default function TransactionForm({
       if (!isCredito && !form.contaId) e.conta = "Conta obrigatória"
     }
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
+    // Hora obrigatória no lançamento único (toda transação tem data E hora). Recorrente não tem hora.
+    if (!isRecorrente) {
+      if (!form.hora.trim()) e.hora = "Informe a hora"
+      else {
+        const m = form.hora.match(/^(\d{2}):(\d{2})$/)
+        if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) e.hora = "Hora inválida (HH:MM)"
+      }
+    }
 
     setErrors(e)
     return Object.keys(e).length === 0
@@ -231,26 +242,53 @@ export default function TransactionForm({
               />
             </PontesField>
           </div>
-          <PontesField label="Data" required>
-            <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
-          </PontesField>
+          <div className={styles.grid2}>
+            <PontesField label="Data" required>
+              <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
+            </PontesField>
+            <PontesField label="Hora" required error={errors.hora}>
+              <PontesInput value={form.hora} onChange={(e) => set("hora", mascararHora(e.target.value))}
+                placeholder="HH:MM" inputMode="numeric" maxLength={5} invalid={!!errors.hora} />
+            </PontesField>
+          </div>
         </>
       ) : (
         /* ── DESPESA / RECEITA ──────────────────────────────────────── */
         <>
-          {/* Data + Meio de pagamento */}
-          <div className={styles.grid2}>
-            <PontesField label={isRecorrente ? "Início" : "Data"} required>
-              <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
-            </PontesField>
-            <PontesField label="Meio de pagamento">
-              <PontesSelect
-                value={String(form.meioPagamento)}
-                onChange={(v) => setForm((f) => ({ ...f, meioPagamento: Number(v), contaId: "", cartaoCreditoId: "" }))}
-                options={meiosDisponiveis}
-              />
-            </PontesField>
-          </div>
+          {/* Recorrente: Início + Meio. Único: Data + Hora, e Meio embaixo. */}
+          {isRecorrente ? (
+            <div className={styles.grid2}>
+              <PontesField label="Início" required>
+                <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
+              </PontesField>
+              <PontesField label="Meio de pagamento">
+                <PontesSelect
+                  value={String(form.meioPagamento)}
+                  onChange={(v) => setForm((f) => ({ ...f, meioPagamento: Number(v), contaId: "", cartaoCreditoId: "" }))}
+                  options={meiosDisponiveis}
+                />
+              </PontesField>
+            </div>
+          ) : (
+            <>
+              <div className={styles.grid2}>
+                <PontesField label="Data" required>
+                  <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
+                </PontesField>
+                <PontesField label="Hora" required error={errors.hora}>
+                  <PontesInput value={form.hora} onChange={(e) => set("hora", mascararHora(e.target.value))}
+                    placeholder="HH:MM" inputMode="numeric" maxLength={5} invalid={!!errors.hora} />
+                </PontesField>
+              </div>
+              <PontesField label="Meio de pagamento">
+                <PontesSelect
+                  value={String(form.meioPagamento)}
+                  onChange={(v) => setForm((f) => ({ ...f, meioPagamento: Number(v), contaId: "", cartaoCreditoId: "" }))}
+                  options={meiosDisponiveis}
+                />
+              </PontesField>
+            </>
+          )}
 
           {/* Conta (não-crédito) */}
           {!isCredito && (

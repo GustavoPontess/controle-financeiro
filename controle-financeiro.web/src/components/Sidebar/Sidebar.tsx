@@ -6,9 +6,9 @@
 import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
-  LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
+  LayoutDashboard, Receipt, CreditCard, BarChart3, Repeat,
   Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
-  Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronRight,
+  Palette, User, Settings, HelpCircle, LogOut, Plus, ChevronDown, Scale,
 } from "lucide-react"
 import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
@@ -34,9 +34,9 @@ const NAV: SidebarNavGroup[] = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={19} strokeWidth={2} /> },
       { to: "/transactions", label: "Transações", icon: <Receipt size={19} strokeWidth={2} /> },
+      { to: "/reconciliacao", label: "Reconciliação", icon: <Scale size={19} strokeWidth={2} /> },
       { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={19} strokeWidth={2} /> },
       { to: "/reports", label: "Relatórios", icon: <BarChart3 size={19} strokeWidth={2} /> },
-      { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={19} strokeWidth={2} /> },
       { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={19} strokeWidth={2} /> },
       { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={19} strokeWidth={2} /> },
       { to: "/importacao", label: "Importar Extrato", icon: <Upload size={19} strokeWidth={2} /> },
@@ -135,16 +135,16 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       {currentUser && (
         <div className={styles.userWrap}>
           <PontesPopover
-            align="left" minWidth={230} direction="up" fullWidth
+            align="left" minWidth={230} direction="up" fullWidth={open} closeOnMouseLeave
             trigger={
               <div className={styles.userTrigger}>
                 <span className={styles.avatar}>{initials}</span>
                 <span className={styles.userInfo}>
                   <span className={styles.userText}>
-                    <span className={styles.userName}>{currentUser.nome}</span>
-                    <span className={styles.userPlan}>Plano Free</span>
+                    <span className={styles.userName}>{currentUser.nome.trim().split(/\s+/)[0]}</span>
+                    <span className={styles.userPlan}>Free</span>
                   </span>
-                  <ChevronRight size={15} strokeWidth={2} color="var(--pontes-text-muted)" style={{ flexShrink: 0 }} />
+                  <ChevronDown size={14} strokeWidth={2} color="var(--pontes-text-muted)" style={{ flexShrink: 0 }} />
                 </span>
               </div>
             }

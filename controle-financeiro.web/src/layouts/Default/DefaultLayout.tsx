@@ -8,11 +8,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import {
-  LayoutDashboard, Receipt, CreditCard, BarChart3, ArrowLeftRight, Repeat,
+  LayoutDashboard, Receipt, CreditCard, BarChart3, Repeat,
   CalendarClock, Handshake, Upload, Landmark, Tags, Users, Target, Settings,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
-import { PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
+import { PontesDrawer, PontesToast, PontesCommandPalette, useHideBalance, type PontesCommandItem } from "@/components/pontes"
+import { ATE_TABLET, CELULAR, casa, useMediaQuery } from "../../hooks/useMediaQuery"
 import styles from "./DefaultLayout.module.css"
 import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
@@ -23,8 +24,10 @@ import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
 import { getCategories } from "../../services/categoryService"
 
-const DRAWER_WIDTH = 248
-const RAIL_WIDTH = 72
+const DRAWER_WIDTH = 208
+const RAIL_WIDTH = 64
+// No celular a barra lateral vira gaveta por cima do conteúdo (antes ficava fixa em 208px e sobravam ~150px).
+const GAVETA_CELULAR = 264
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 
@@ -36,7 +39,6 @@ const COMMANDS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/transactions", label: "Transações", icon: <Receipt size={18} strokeWidth={2} /> },
   { to: "/credit-cards", label: "Cartões de Crédito", icon: <CreditCard size={18} strokeWidth={2} /> },
   { to: "/reports", label: "Relatórios", icon: <BarChart3 size={18} strokeWidth={2} /> },
-  { to: "/transferencias", label: "Transferências", icon: <ArrowLeftRight size={18} strokeWidth={2} /> },
   { to: "/assinaturas", label: "Contas Fixas", icon: <Repeat size={18} strokeWidth={2} /> },
   { to: "/credit-cards/parcelamentos", label: "Parcelamentos", icon: <CalendarClock size={18} strokeWidth={2} /> },
   { to: "/emprestimos", label: "Empréstimos", icon: <Handshake size={18} strokeWidth={2} /> },
@@ -56,7 +58,12 @@ export default function DefaultLayout() {
   // (página atual) inteiro, mascarando/mostrando valores AO VIVO em qualquer tela.
   useHideBalance()
 
-  const [open, setOpen] = useState(true)
+  // Tablet: a barra lateral começa recolhida (trilho) — aberta, o conteúdo ficava com ~540px. Dá pra expandir.
+  const [open, setOpen] = useState(() => !casa(ATE_TABLET))
+  const celular = useMediaQuery(CELULAR)
+  // Aberta = aberta NESTA tela: tocar num item do menu troca a rota e a gaveta fecha sozinha.
+  const [gavetaAbertaEm, setGavetaAbertaEm] = useState<string | null>(null)
+  const gavetaAberta = gavetaAbertaEm === location.pathname
   const [openTransaction, setOpenTransaction] = useState(false)
   const [canCreateTransaction, setCanCreateTransaction] = useState(false)
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
@@ -91,8 +98,8 @@ export default function DefaultLayout() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  // Modal global de Nova Transação — disparado por botões das telas e pela
-  // tecla N (que emitem o evento `openNewTransaction`). Centralizado no Shell
+  // Modal global de Nova Transação — disparado por botões das telas (que emitem o
+  // evento `openNewTransaction`). Centralizado no Shell
   // porque o dialog vive aqui. Sem este listener, os disparos caíam no vazio.
   useEffect(() => {
     const handler = () => {
@@ -137,16 +144,24 @@ export default function DefaultLayout() {
 
   return (
     <div className={styles.shell}>
-      {/* Sidebar transparente — "atrás", no canvas */}
-      <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
+      {/* Sidebar transparente — "atrás", no canvas. No celular: gaveta por cima, fechada por padrão. */}
+      {celular ? (
+        <PontesDrawer bare side="left" width={GAVETA_CELULAR} open={gavetaAberta}
+          onClose={() => setGavetaAbertaEm(null)} ariaLabel="Menu">
+          <Sidebar open drawerWidth={GAVETA_CELULAR} railWidth={RAIL_WIDTH} />
+        </PontesDrawer>
+      ) : (
+        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
+      )}
 
       {/* Conteúdo flutuante — card arredondado por cima do canvas */}
       <div className={styles.card}>
         {/* Faixa accent — detalhe de marca no topo do card (discreta) */}
         <div className={styles.accentStrip} />
         <Navbar
-          toggleDrawer={() => setOpen((o) => !o)}
-          sidebarOpen={open}
+          toggleDrawer={() => (celular ? setGavetaAbertaEm(location.pathname) : setOpen((o) => !o))}
+          sidebarOpen={celular ? gavetaAberta : open}
+          celular={celular}
           openTransaction={() => setOpenTransaction(true)}
           canCreateTransaction={canCreateTransaction}
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}

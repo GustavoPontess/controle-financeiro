@@ -1,7 +1,7 @@
 /* Tabs.module.css — abas. Cor via var(--pontes-*); estados via :hover/data-attr. */
 .underline { border-bottom: 1px solid var(--pontes-border); display: flex; gap: 28px; }
 .utab {
-  background: none; border: none; padding: 10px 0; font-size: 14px; font-weight: 600;
+  background: none; border: none; padding: 10px 0; font-size: var(--pontes-fs-base); font-weight: 600;
   color: var(--pontes-text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px;
   cursor: pointer; font-family: var(--pontes-font); transition: color .15s ease, border-color .15s ease;
 }
@@ -11,7 +11,7 @@
 .pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill {
   background: transparent; color: var(--pontes-text); border: 1px solid var(--pontes-border);
-  padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 8px 18px; border-radius: 999px; font-size: var(--pontes-fs-md); font-weight: 600; cursor: pointer;
   font-family: var(--pontes-font); transition: background-color .15s ease, color .15s ease, border-color .15s ease;
 }
 .pill:hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); border-color: var(--pontes-primary); }

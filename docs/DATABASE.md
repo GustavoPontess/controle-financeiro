@@ -332,32 +332,49 @@ Transferências entre contas do user.
 
 ---
 
-### RECORRENTES (Assinaturas)
-Despesas/receitas que se repetem. Janela móvel de 3 meses (ETAPA 5).
+### RECORRENTES (tabela `Assinaturas`, entidade `Recorrente` — "Contas Fixas" na tela)
+Despesas/receitas que se repetem. Cada cobrança é uma `Transacao` com `RecorrenteOrigemId` (sem FK — é só o id).
 
 | Coluna | Tipo | Constraints | Descrição |
 |--------|------|-------------|-----------|
 | `Id` | UUID | PK | |
-| `UsuarioId` | UUID | FK(Usuarios) NOT NULL | |
-| `ContaId` | UUID | FK(Contas) | NULL se CartãoCredito; XOR CartaoCreditoId |
-| `CartaoCreditoId` | UUID | FK(CartoesCreditito) | NULL se Conta; XOR ContaId (ETAPA 5) |
+| `CriadoPor` | UUID | NOT NULL | dono (isolamento por usuário) |
+| `ContaId` | UUID | FK(Contas) | NULL se cartão; XOR CartaoCreditoId |
+| `CartaoCreditoId` | UUID | FK(CartoesCredito) | NULL se conta; XOR ContaId |
 | `CategoriaId` | UUID | FK(Categorias) | |
-| `Nome` | TEXT | NOT NULL | Ex: "Netflix" |
-| `Valor` | DECIMAL | NOT NULL | |
-| `Tipo` | INT | NOT NULL | 0=Receita, 1=Despesa |
-| `Frequencia` | INT | NOT NULL | 0=Diária, 1=Semanal, 2=Mensal, 3=Anual |
-| `DataProxima` | DateTime | NOT NULL | Próxima execução |
-| `CanceladoEm` | DateTime | NULL | Soft delete timestamp (ETAPA 5) |
-| `MotivoCancelamento` | TEXT | NULL | Por quê foi cancelado (ETAPA 5) |
-| `CriadoEm` | DateTime | NOT NULL | Timestamp de criação (ETAPA 4) |
+| `Descricao` | TEXT(400) | NOT NULL | Ex: "Netflix" |
+| `Valor` | DECIMAL | NOT NULL, > 0 | |
+| `Tipo` | INT | NOT NULL | 1=Despesa, 2=Receita |
+| `Frequencia` | INT | NOT NULL | 1=Semanal, 2=Mensal, 3=Anual |
+| `Dia` | INT | 1–31 | dia da cobrança (mensal/anual; mês curto → último dia) |
+| `DataInicio` / `DataFim` | timestamp | DataFim NULL | vigência |
+| `Ativo` | BOOL | | false = pausada (ou cancelada/excluída) |
+| `DataProximaGeracao` | timestamp | NULL | cursor INTERNO: até onde já há ocorrências geradas (não é a "próxima cobrança") |
+| `CanceladoEm` / `MotivoCancelamento` | timestamp / TEXT | NULL | cancelamento (definitivo) |
+| `ExcluidoEm` | timestamp | NULL | exclusão LÓGICA (2026-10-05): some das listas; histórico fica |
+| `CriadoEm` | timestamp | NOT NULL | |
+| `xmin` (`Versao`) | xid | sistema | concorrência otimista (2026-10-05): duas operações simultâneas → a 2ª leva 409 |
+| `RealinhadoEm` | timestamp | NULL | conserto ÚNICO de legado (2026-10-05): null = o job ainda realinha uma vez; conta fixa nova nasce preenchida |
 
-**Validação (ETAPA 5):** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum)
+**Validação:** ContaId XOR CartaoCreditoId (nunca ambos, nunca nenhum); conta/cartão/categoria do próprio usuário (`DonoRecursos`). Criar: `DataInicio` entre hoje − 12 meses e hoje + 5 anos; `DataFim` ≥ início (`AgendaRecorrente.ValidarPeriodo`). O gerador percorre no máximo 400 datas por chamada.
 
-**Janela Móvel (ETAPA 5):**
-- Ao criar: materializa 3 transações futuras com Status=Previsao
-- `ExpandirRecorrentesJob` (diário 03:00): avança janela se data próxima < 1 mês
-- `ExecutarRecorrentesJob` (diário 03:30): Previsao → Executado pela data
-- Ao cancelar: marca CanceladoEm, cancela Transacoes Previsao futuras, preserva Executadas
+**Datas de cobrança — regra única `Services/AgendaRecorrente.cs` (2026-10-05):** mensal = todo mês no `Dia`; anual = todo ano no `Dia` do mês de início; semanal = a cada 7 dias do início. Dia 31 em mês curto cai no último dia e o mês seguinte volta pro 31. Todo lugar que gera ocorrência usa `RecorrenteService.GerarOcorrenciasAsync`.
+
+**Competência (2026-10-05):** cada ocorrência grava em `Transacoes.Competencia` o PERÍODO que cobre — `M2026-10` (mensal), `A2026` (anual), `S{n}` (semanal: n-ésimo bloco de 7 dias desde o início). Uma conta fixa tem no máximo **uma ocorrência viva por período**: o gerador pula período ocupado (não a data — trocar o Dia de 5 pra 20 com o 5 já cobrado não cobra o mês de novo) e o índice único parcial `UX_Transacoes_Recorrente_Competencia (RecorrenteOrigemId, Competencia) WHERE Ativo AND Competencia IS NOT NULL` segura a corrida entre requisições (23505 → 409 nas operações do usuário; descartado em silêncio no GET da lista e no job). Ocorrência antiga sem competência conta pela data. A migration `AddCompetenciaTransacao` preencheu as vivas com a mesma conta, em SQL. Ocorrência que o **usuário excluiu** (status `Cancelado` — o motor só desliga o `Ativo`) também segura o período: mês pulado não volta ao alterar/retomar.
+
+**O que o usuário mexeu fica (2026-10-05):** `Transacoes.EditadaPeloUsuario` — marcada ao editar a ocorrência (tela de Transações ou "Editar próxima"). Alterar a conta fixa e o realinhamento não a cancelam nem regeram; pausar/cancelar/excluir a conta fixa ainda cancelam. Índice `IX_Transacoes_RecorrenteOrigemId_Data` (o gerador lê as ocorrências da conta fixa; o único da competência é parcial).
+
+**Ciclo de vida:**
+- Criar: gera 3 meses de `Previsao` a partir do início, no `Dia`.
+- `ExpandirRecorrentesJob` (diário 03:00 UTC): primeiro o realinhamento, **uma conta fixa por vez, cada uma grava sozinha** (`IdsParaRealinharAsync` → só as que têm previsão e não devem mais cobrar, ou as ativas sem `RealinhadoEm`; cancela/realinha ao `Dia` e marca — consultas que normalmente voltam vazias); depois gera previsões até 31/12 do ano corrente, só das que ainda não chegaram lá (cursor antes do horizonte), também gravando uma a uma. Conflito com uma requisição perde só aquela conta fixa (tenta de novo amanhã).
+- `ExecutarRecorrentesJob` (diário 03:30 UTC): `Previsao` → `Executado` pela data, **só** de conta fixa ativa (não pausada/cancelada/excluída).
+- GET da lista (`GerarPendentesAsync`): lança como `Executado` o que venceu e ainda não foi gerado (rede de segurança se o job não rodou) — só lê conta fixa com cursor até hoje; o gerador volta antes de ir ao banco quando já está em dia.
+- Pausar: cancela as previsões pendentes. Retomar: gera de novo a partir de hoje (meses parados não são cobrados). `PATCH toggle?ativo=` recebe o estado PEDIDO: repetir não desfaz.
+- Alterar: cancela as previsões de hoje em diante e gera de novo com os dados novos, a partir do INÍCIO DO PERÍODO atual — período já cobrado não repete; período sem cobrança ganha a sua (dia já passado entra `Executado`).
+- Realinhar (job): também recomeça do início do período atual — o mês cobrado no dia antigo não é cobrado de novo, e o que ficou sem cobrança ganha a sua.
+- Cancelar: `CanceladoEm` + cancela as previsões; Excluir: `ExcluidoEm` + cancela as previsões. Executadas ficam (histórico).
+- Previsão no cartão entra no total da fatura → todo cancelamento de previsão chama `ReconciliarFaturasAposCancelamentoAsync`.
+- "Próxima cobrança" (DTO `ProximaCobranca`) = a previsão pendente mais próxima, não o cursor.
 
 **Delete Behavior:** CartaoCreditoId referência SET NULL (deletar cartão mantém recorrente órfã)
 

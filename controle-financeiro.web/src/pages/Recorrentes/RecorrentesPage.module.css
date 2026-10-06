@@ -10,6 +10,12 @@
 
 /* Topo (sem título — mora na Navbar), toolbar, esqueleto e vazio vêm do DS (padrão de tela). */
 
+.subtitle {
+  font-size: var(--pontes-fs-md);
+  color: var(--pontes-text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
 /* ── Hero de custo ───────────────────────────────────────────────────────── */
 
 .hero {
@@ -23,19 +29,19 @@
 }
 .heroBlob { position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.10); pointer-events: none; }
 .heroMain { position: relative; min-width: 0; }
-.heroLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-.heroValue { font-size: 38px; font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
-.heroProj { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; font-weight: 600; opacity: 0.85; }
+.heroLabel { font-size: var(--pontes-fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.heroValue { font-size: var(--pontes-fs-hero-valor); font-weight: 800; letter-spacing: -0.025em; margin-top: 4px; line-height: 1.05; }
+.heroProj { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--pontes-fs-md); font-weight: 600; opacity: 0.85; }
 .heroStats { position: relative; display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
 .heroStat { display: flex; flex-direction: column; align-items: center; }
-.heroStatValue { font-size: 26px; font-weight: 800; line-height: 1; }
-.heroStatLabel { font-size: 11px; opacity: 0.8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.heroStatValue { font-size: var(--pontes-fs-hero-numero); font-weight: 800; line-height: 1; }
+.heroStatLabel { font-size: var(--pontes-fs-rotulo); opacity: 0.8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
 .heroStatDivider { width: 1px; height: 40px; background: rgba(255,255,255,0.25); }
 
 /* ── Próximas cobranças ──────────────────────────────────────────────────── */
 
 .proxSection { display: flex; flex-direction: column; gap: 12px; }
-.proxTitle { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.proxTitle { font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-text); }
 .proxGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .proxCard {
   display: flex; flex-direction: column; gap: 8px;
@@ -45,10 +51,10 @@
 }
 .proxCard[data-urgent="true"] { border-color: var(--pontes-warning); background: var(--pontes-warning-soft); }
 .proxCardTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.proxCardNome { font-size: 13px; font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.proxCardWhen { font-size: 11px; font-weight: 600; color: var(--pontes-text-muted); white-space: nowrap; flex-shrink: 0; }
+.proxCardNome { font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proxCardWhen { font-size: var(--pontes-fs-xs); font-weight: 600; color: var(--pontes-text-muted); white-space: nowrap; flex-shrink: 0; }
 .proxCardWhen[data-urgent="true"] { color: var(--pontes-warning); }
-.proxCardValor { font-size: 18px; font-weight: 800; color: var(--pontes-text); letter-spacing: -0.01em; }
+.proxCardValor { font-size: var(--pontes-fs-xl); font-weight: 800; color: var(--pontes-text); letter-spacing: -0.01em; }
 
 /* ── List card ───────────────────────────────────────────────────────────── */
 
@@ -85,16 +91,16 @@
 
 .cardInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .cardTop { display: flex; align-items: center; gap: 8px; }
-.cardNome { font-size: 15px; font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardNome { font-size: var(--pontes-fs-lg); font-weight: 700; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cardMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cardSub { font-size: 12px; color: var(--pontes-text-muted); }
-.cardProx { font-size: 12px; font-weight: 600; color: var(--pontes-text-muted); }
+.cardSub { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.cardProx { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
 .cardProx[data-urgent="true"] { color: var(--pontes-warning); }
-.cardMotivo { font-size: 12px; color: var(--pontes-text-muted); }
+.cardMotivo { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 .cardRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.cardValor { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
-.cardValor[data-tipo="despesa"] { color: var(--pontes-text); }
+.cardValor { font-size: var(--pontes-fs-lg); font-weight: 800; letter-spacing: -0.01em; }
+.cardValor[data-tipo="despesa"] { color: var(--pontes-danger); }
 .cardValor[data-tipo="receita"] { color: var(--pontes-success); }
 
 /* ── Form (inside modals) ────────────────────────────────────────────────── */
@@ -123,8 +129,20 @@
 
 .cancelarInfo,
 .editarInfo {
-  font-size: 13px;
+  font-size: var(--pontes-fs-md);
   color: var(--pontes-text-secondary, #6b7280);
   margin: 0;
   line-height: 1.5;
+}
+
+/* Celular: o hero empilha (valor em cima, números embaixo, à esquerda). Lado a lado em 343px o rótulo
+   virava coluna estreita e o número das stats ficava POR CIMA do valor. */
+@media (max-width: 767px) {
+  .hero { flex-direction: column; align-items: stretch; padding: 20px; gap: 16px; }
+  .card { padding: 12px 14px; gap: 12px; }
+  .cardIcon { width: 34px; height: 34px; border-radius: 9px; }
+  .cardNome, .cardValor { font-size: var(--pontes-fs-linha); }
+  .cardRight { gap: 4px; }
+  .heroStats { justify-content: flex-start; gap: 24px; }
+  .heroStat { align-items: flex-start; }
 }

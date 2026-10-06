@@ -52,7 +52,7 @@ public class RateioServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Despesa", Valor = valor,
             Tipo = TipoTransacao.Despesa, CriadoPor = criadoPor,
-            Data = new DateTime(2026, 5, 10), Ativo = true,
+            Data = new DateOnly(2026, 5, 10), Ativo = true,
             StatusTransacao = StatusTransacao.Executado, FamiliaId = familiaId,
             ModoRateio = modo,
         };
@@ -143,7 +143,7 @@ public class RateioServiceTests
         var tx = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Pessoal", Valor = 100m,
-            Tipo = TipoTransacao.Despesa, CriadoPor = dono, Data = new DateTime(2026, 5, 10),
+            Tipo = TipoTransacao.Despesa, CriadoPor = dono, Data = new DateOnly(2026, 5, 10),
             Ativo = true, StatusTransacao = StatusTransacao.Executado,
         };
         ctx.Transacoes.Add(tx);

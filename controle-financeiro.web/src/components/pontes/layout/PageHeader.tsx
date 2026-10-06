@@ -1,9 +1,9 @@
 /**
  * PageHeader — topo PADRÃO das telas internas.
  *
- * O título da tela mora SÓ na Navbar; por isso aqui não há <h1> nem subtítulo (antes cada tela
- * repetia o título e inventava o próprio cabeçalho). Estrutura fixa:
- *  - esquerda (opcional): abas / navegação de período (`start`);
+ * Estrutura fixa (igual às outras telas):
+ *  - esquerda: nome da tela (`titulo`) + descrição curta embaixo (`descricao`), ou abas / navegação
+ *    de período (`start`);
  *  - direita: UM botão primário "Novo/Nova <coisa>" (sm, ícone Plus), sempre no mesmo lugar.
  */
 
@@ -14,7 +14,11 @@ import { PontesInline } from "./Layout"
 import styles from "./PageHeader.module.css"
 
 export type PontesPageHeaderProps = {
-  /** Slot à esquerda: abas ou navegação de período. Nunca título (esse fica na Navbar). */
+  /** Nome da tela (ex.: "Transferências"). */
+  titulo?: string
+  /** Descrição curta embaixo do nome (ex.: "Mova dinheiro entre suas contas"). */
+  descricao?: string
+  /** Slot à esquerda: abas ou navegação de período (no lugar do título). */
   start?: ReactNode
   /** Rótulo do botão primário, ex.: "Nova conta fixa". Sem ele, o botão não aparece. */
   actionLabel?: string
@@ -24,10 +28,17 @@ export type PontesPageHeaderProps = {
   actionDisabled?: boolean
 }
 
-export function PontesPageHeader({ start, actionLabel, onAction, actionIcon, actionDisabled }: PontesPageHeaderProps) {
+export function PontesPageHeader({ titulo, descricao, start, actionLabel, onAction, actionIcon, actionDisabled }: PontesPageHeaderProps) {
   return (
     <PontesInline gap="lg" justify="between" wrap className={styles.header}>
-      {start && <div className={styles.start}>{start}</div>}
+      {start
+        ? <div className={styles.start}>{start}</div>
+        : titulo && (
+          <div className={styles.start}>
+            <h1 className={styles.titulo}>{titulo}</h1>
+            {descricao && <p className={styles.descricao}>{descricao}</p>}
+          </div>
+        )}
       {actionLabel && (
         <div className={styles.action}>
           <PontesButton

@@ -16,6 +16,8 @@ export type ListTransactionsFilter = {
   contaId?: string
   /** Filtra por cartão de crédito de origem. */
   cartaoId?: string
+  /** Meio de pagamento: 1=Dinheiro,2=Débito,3=Crédito,4=Pix,5=Ted,6=Boleto. */
+  meioPagamento?: number
   /** Faixa de valor. */
   valorMin?: number
   valorMax?: number
@@ -23,6 +25,10 @@ export type ListTransactionsFilter = {
   status?: number
   /** data_asc | valor_desc | valor_asc (default no back: data desc). */
   ordenacao?: string
+  /** Extrato de caixa: só o que mexe no saldo da conta (exclui compra no crédito e saldo inicial; mantém pagamento de fatura e transferência). */
+  apenasCaixa?: boolean
+  /** Natureza do lançamento: entrada | saida | transferencia | fatura. */
+  natureza?: string
 }
 
 export type TransacaoStats = {
@@ -70,10 +76,13 @@ export const listTransactionsPage = async (
   if (filter.tipo) params.tipo = filter.tipo
   if (filter.contaId) params.contaId = filter.contaId
   if (filter.cartaoId) params.cartaoId = filter.cartaoId
+  if (filter.meioPagamento != null) params.meioPagamento = filter.meioPagamento
   if (filter.valorMin != null) params.valorMin = filter.valorMin
   if (filter.valorMax != null) params.valorMax = filter.valorMax
   if (filter.status != null) params.status = filter.status
   if (filter.ordenacao) params.ordenacao = filter.ordenacao
+  if (filter.apenasCaixa) params.apenasCaixa = true
+  if (filter.natureza) params.natureza = filter.natureza
   const res = await api.get("/transacoes", { params })
   return res.data
 }

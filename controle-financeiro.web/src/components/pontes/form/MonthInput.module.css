@@ -27,7 +27,7 @@
 .nav:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--pontes-primary-soft); }
 .nav:disabled { cursor: not-allowed; opacity: 0.35; }
 
-.title { font-size: 14px; font-weight: 700; color: var(--pontes-text); }
+.title { font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-text); }
 
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
@@ -38,7 +38,7 @@
   background: transparent;
   color: var(--pontes-text);
   font-family: var(--pontes-font);
-  font-size: 13px;
+  font-size: var(--pontes-fs-md);
   font-weight: 500;
   cursor: pointer;
   transition: background .12s ease;

@@ -1,6 +1,6 @@
 /* GroupedSelect.module.css — dropdown agrupado grupo > item. Painel in-flow. */
 .wrap { position: relative; }
-.trigger { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); font-family: var(--pontes-font); font-size: 14px; color: var(--pontes-text); cursor: pointer; text-align: left; }
+.trigger { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); font-family: var(--pontes-font); font-size: var(--pontes-fs-controle); color: var(--pontes-text); cursor: pointer; text-align: left; }
 .trigger:hover { border-color: var(--pontes-primary); }
 .trigger[data-empty="true"] { color: var(--pontes-text-muted); }
 .trigger[data-invalid="true"] { border-color: var(--pontes-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pontes-danger) 13%, transparent); }
@@ -12,14 +12,14 @@
 /* Busca fixa no topo do painel (não rola com a lista) */
 .searchWrap { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: -6px -6px 4px; padding: 8px 10px; background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border); }
 .searchIcon { color: var(--pontes-text-muted); flex-shrink: 0; }
-.search { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; color: var(--pontes-text); }
+.search { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: var(--pontes-font); font-size: var(--pontes-fs-md); color: var(--pontes-text); }
 .search::placeholder { color: var(--pontes-text-muted); }
-.groupRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; font-weight: 700; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
+.groupRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: transparent; font-family: var(--pontes-font); font-size: var(--pontes-fs-md); font-weight: 700; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
 .groupRow:hover { background: var(--pontes-bg); }
 .groupRow[data-active="true"] { color: var(--pontes-primary); }
-.itemRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px 7px 30px; border: none; background: transparent; font-family: var(--pontes-font); font-size: 13px; color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
+.itemRow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px 7px 30px; border: none; background: transparent; font-family: var(--pontes-font); font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; border-radius: 8px; text-align: left; }
 .itemRow:hover { background: var(--pontes-bg); }
 .itemRow[data-active="true"] { color: var(--pontes-primary); background: var(--pontes-primary-soft); }
 .label { flex: 1; min-width: 0; }
 .check { color: var(--pontes-primary); display: inline-flex; flex-shrink: 0; }
-.empty { padding: 14px; text-align: center; font-size: 13px; color: var(--pontes-text-muted); }
+.empty { padding: 14px; text-align: center; font-size: var(--pontes-fs-corpo); color: var(--pontes-text-muted); }

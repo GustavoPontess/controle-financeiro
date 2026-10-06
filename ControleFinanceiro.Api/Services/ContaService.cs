@@ -9,15 +9,17 @@ namespace ControleFinanceiro.Api.Services
     public class ContaService
     {
         private readonly AppDbContext _context;
+        private readonly FinancialEventLogService _eventLog;
 
         // Só dígitos (agência não tem dígito verificador na maioria dos bancos BR).
         private static readonly Regex AgenciaRegex = new(@"^\d{1,10}$", RegexOptions.Compiled);
         // Dígitos, com dígito verificador opcional separado por hífen (ex: 91205195-5).
         private static readonly Regex NumeroContaRegex = new(@"^\d{1,20}(-\d)?$", RegexOptions.Compiled);
 
-        public ContaService(AppDbContext context)
+        public ContaService(AppDbContext context, FinancialEventLogService eventLog)
         {
             _context = context;
+            _eventLog = eventLog;
         }
 
         private static void ValidarFormato(Conta conta)
@@ -57,7 +59,7 @@ namespace ControleFinanceiro.Api.Services
             IEnumerable<Guid> contaIds, Guid usuarioId) =>
             RegrasFinanceiras.SaldosDasContasAsync(_context, contaIds, usuarioId);
 
-        public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0)
+        public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0, DateTime? dataSaldoInicial = null)
         {
             if (string.IsNullOrWhiteSpace(conta.Nome))
                 throw new ArgumentException("Nome é obrigatório.");
@@ -67,6 +69,13 @@ namespace ControleFinanceiro.Api.Services
 
             if (saldoInicial < 0)
                 throw new ArgumentException("Saldo inicial não pode ser negativo.");
+
+            // Ponto de partida da conta: início do dia escolhido (default hoje). Carimbar no começo do
+            // dia deixa o baseline da reconciliação ANTES dos lançamentos daquele dia e permite saldo
+            // inicial retroativo (ex.: "tenho X desde 01/09"). Não pode ser no futuro.
+            var dataAbertura = DateOnly.FromDateTime(dataSaldoInicial ?? DateTime.UtcNow);
+            if (dataAbertura > DateOnly.FromDateTime(DateTime.UtcNow))
+                throw new ArgumentException("A data do saldo inicial não pode ser futura.");
 
             ValidarFormato(conta);
 
@@ -85,13 +94,85 @@ namespace ControleFinanceiro.Api.Services
                     ContaId = conta.Id,
                     CategoriaId = null,
                     CriadoPor = usuarioId,
-                    Data = DateTime.UtcNow,
+                    Data = dataAbertura,
+                    Hora = null, // saldo inicial é datado (sem hora)
                     EhSaldoInicial = true
                 });
             }
 
             await _context.SaveChangesAsync();
             return conta;
+        }
+
+        /// <summary>
+        /// Edita o saldo inicial (ponto de partida) da conta: atualiza a transação <c>EhSaldoInicial</c>
+        /// (valor + data) ou cria uma se não existir. Dinheiro → valida dono (UsuarioId), valor &gt; 0 e
+        /// data não futura, e registra no <see cref="FinancialEventLog"/> (muda o saldo). Começo do dia.
+        /// </summary>
+        public async Task AtualizarSaldoInicialAsync(Guid contaId, Guid usuarioId, decimal valor, DateOnly? data)
+        {
+            var conta = await _context.Contas
+                .FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
+                ?? throw new KeyNotFoundException("Conta não encontrada.");
+
+            if (valor <= 0)
+                throw new ArgumentException("Saldo inicial deve ser maior que zero.");
+
+            var existente = await _context.Transacoes
+                .FirstOrDefaultAsync(t => t.ContaId == contaId && t.EhSaldoInicial && t.Ativo);
+
+            // Data: a informada, ou mantém a atual, ou hoje se for novo. Nunca futura.
+            var dataAbertura = data ?? existente?.Data ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            if (dataAbertura > DateOnly.FromDateTime(DateTime.UtcNow))
+                throw new ArgumentException("A data do saldo inicial não pode ser futura.");
+
+            var correlationId = Guid.NewGuid();
+            if (existente != null)
+            {
+                var valorAntes = existente.Valor;
+                existente.Valor = valor;
+                existente.Data = dataAbertura;
+                existente.Hora = null;
+                _eventLog.Registrar(
+                    usuarioId: usuarioId,
+                    tipo: FinancialEventType.TransacaoAtualizada,
+                    entidade: "Transacao",
+                    entidadeId: existente.Id,
+                    correlationId: correlationId,
+                    origemAcao: "API",
+                    valorAntes: valorAntes,
+                    valorDepois: valor,
+                    payload: new { motivo = "saldo_inicial", contaId });
+            }
+            else
+            {
+                var nova = new Transacao
+                {
+                    Id = Guid.NewGuid(),
+                    Descricao = "Saldo Inicial",
+                    Valor = valor,
+                    Tipo = TipoTransacao.Receita,
+                    ContaId = contaId,
+                    CategoriaId = null,
+                    CriadoPor = usuarioId,
+                    Data = dataAbertura,
+                    Hora = null, // saldo inicial é datado (sem hora)
+                    EhSaldoInicial = true
+                };
+                _context.Transacoes.Add(nova);
+                _eventLog.Registrar(
+                    usuarioId: usuarioId,
+                    tipo: FinancialEventType.TransacaoCriada,
+                    entidade: "Transacao",
+                    entidadeId: nova.Id,
+                    correlationId: correlationId,
+                    origemAcao: "API",
+                    valorAntes: 0m,
+                    valorDepois: valor,
+                    payload: new { motivo = "saldo_inicial", contaId });
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task AtualizarAsync(Guid id, Conta conta, Guid usuarioId)

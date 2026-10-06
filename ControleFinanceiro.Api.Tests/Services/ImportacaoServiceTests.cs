@@ -45,7 +45,7 @@ public class ImportacaoServiceTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = descricao, Valor = valor, Tipo = tipo,
-            Data = data, ContaId = contaId, Ativo = true,
+            Data = DateOnly.FromDateTime(data), ContaId = contaId, Ativo = true,
             StatusTransacao = StatusTransacao.Executado, ImportacaoFitId = fitId,
         });
         ctx.SaveChanges();

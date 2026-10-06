@@ -34,10 +34,14 @@ public enum FinancialEventType
     RecorrenteCriada = 40,
     RecorrenteCancelada = 41,
     RecorrenteExecutada = 42,
+    RecorrentePausada = 43,
+    RecorrenteRetomada = 44,
+    RecorrenteExcluida = 45,
 
     // Transação
     TransacaoCriada = 50,
     TransacaoCancelada = 51,
+    TransacaoAtualizada = 52,
 
     // Família — acerto de contas (settle-up)
     AcertoRegistrado = 60,
@@ -60,4 +64,10 @@ public enum FinancialEventType
     EmprestimoConsolidacaoAceita = 79,
     EmprestimoConsolidacaoRecusada = 80,
     EmprestimoConsolidacaoCancelada = 81,
+
+    // Reconciliação (docs/features/reconciliacao/spec.md)
+    ReconciliacaoRegistrada = 90,
+    ReconciliacaoRemovida = 91,
+    /// <summary>Marco já gravado teve a diferença fechada depois (ajuste lançado ou recálculo que passou a bater).</summary>
+    ReconciliacaoAtualizada = 92,
 }

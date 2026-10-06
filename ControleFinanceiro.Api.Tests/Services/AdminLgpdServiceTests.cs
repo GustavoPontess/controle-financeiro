@@ -55,7 +55,7 @@ public class AdminLgpdServiceTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "T", Valor = 10, Tipo = TipoTransacao.Despesa,
-            Data = DateTime.UtcNow, CriadoPor = usuarioId, CartaoCreditoId = cartao.Id,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, CartaoCreditoId = cartao.Id,
         });
         ctx.FinancialEventLogs.Add(new FinancialEventLog
         {

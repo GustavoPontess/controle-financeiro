@@ -134,3 +134,33 @@
 .ctaTitle { font-size: 56px; font-weight: 600; margin: 0 0 24px; letter-spacing: -0.025em; line-height: 1.05; font-family: 'Fraunces', serif; }
 .ctaLead { font-size: 19px; opacity: 0.88; margin-bottom: 40px; line-height: 1.5; }
 .ctaBtns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ── Celular (< 768px): a página não tinha NENHUMA regra (grades de 2-4 colunas, foto de 420px, títulos de
+   70px+, seções com 48px de lado). Seções mais baixas, grades em 1 coluna (números 2), títulos menores,
+   arte na largura da tela e os cartões flutuantes decorativos escondidos (saíam da tela). */
+@media (max-width: 767px) {
+  /* Mockups decorativos: na largura da tela (tinham 360-420px fixos). */
+  .mockWrap, .mockWrapNarrow { width: 100%; max-width: 420px; }
+  /* Botões do topo/CTA: largura toda e texto pode quebrar (rótulos longos tipo "Começar grátis com…"). */
+  .heroGrid { grid-template-columns: minmax(0, 1fr); }
+  .heroBtns, .ctaBtns { flex-direction: column; align-items: stretch; }
+  .heroBtns :global(button), .ctaBtns :global(button) { white-space: normal; width: 100%; }
+  .hero { padding: 150px 20px 64px; }
+  .h2 { font-size: 34px; }
+  .heroGrid, .featRow, .repGrid { grid-template-columns: 1fr; gap: 32px; }
+  .kpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .heroTitle { font-size: 44px; }
+  .heroLead { font-size: 18px; }
+  .heroArt { min-height: 0; }
+  .heroPhoto { width: 100%; max-width: 360px; transform: none; }
+  .floatCard { display: none; }
+  .stats { padding: 48px 20px; }
+  .statsGrid { grid-template-columns: 1fr; gap: 20px; }
+  .statV { font-size: 32px; }
+  .sectionSurface, .sectionBg, .cta { padding: 64px 20px; }
+  .feat { padding: 32px 0; }
+  .featTitle { font-size: 28px; }
+  .featMock { min-width: 0; }
+  .testiQuote { font-size: 40px; }
+  .ctaTitle { font-size: 36px; }
+}

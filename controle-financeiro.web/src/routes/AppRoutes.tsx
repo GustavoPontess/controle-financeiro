@@ -20,7 +20,6 @@ import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
 import SettingsPage from "../pages/Settings/SettingsPage"
 import DashboardPage from "../pages/Dashboard/DashboardPage"
 import ReportsPage from "../pages/Reports/ReportsPage"
-import TransferenciasPage from "../pages/Transferencias/TransferenciasPage"
 import RecorrentesPage from "../pages/Recorrentes/RecorrentesPage"
 import ParcelamentosPage from "../pages/Parcelamentos"
 import ParcelamentoDetalhePage from "../pages/Parcelamentos/[id]"
@@ -42,6 +41,9 @@ import ConviteEmprestimoPage from "../pages/Convite/ConviteEmprestimoPage"
 import PrivacidadePage from "../pages/Site/PrivacidadePage"
 import TermosDeUsoPage from "../pages/Site/TermosDeUsoPage"
 import DesignSystemPage from "../pages/DesignSystem/DesignSystemPage"
+import ReconciliacaoPage from "../pages/Reconciliacao/ReconciliacaoPage"
+import ReconciliacaoEstados from "../pages/Reconciliacao/ReconciliacaoEstados"
+import ReconciliacaoModelos from "../pages/Reconciliacao/ReconciliacaoModelos"
 
 // /parcelamentos/:id (endereço antigo) → /credit-cards/parcelamentos/:id.
 function RedirecionarParcelamento() {
@@ -78,6 +80,14 @@ export default function AppRoutes() {
         {import.meta.env.DEV && (
           <Route path="/design-system" element={<DesignSystemPage />} />
         )}
+        {/* Galeria DEV dos estados do painel de conferir da Reconciliação (revisão de design). */}
+        {import.meta.env.DEV && (
+          <Route path="/reconciliacao-estados" element={<ReconciliacaoEstados />} />
+        )}
+        {/* Galeria DEV de MODELOS alternativos do painel de conferir (escolha de layout). */}
+        {import.meta.env.DEV && (
+          <Route path="/reconciliacao-modelos" element={<ReconciliacaoModelos />} />
+        )}
 
         {/* Onboarding — protegido, em tela cheia (sem o layout padrão) */}
         <Route
@@ -98,11 +108,11 @@ export default function AppRoutes() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/reconciliacao" element={<ReconciliacaoPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/credit-cards" element={<CreditCardsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/transferencias" element={<TransferenciasPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
           {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.
               Os endereços antigos redirecionam, pra link salvo/notificação não quebrar. */}

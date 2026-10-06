@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Todo PR roda o CI, não só os que apontam pra main — PR empilhado (base = outra branch) passava
+  # sem nenhum teste (#285/#286 nunca tinham rodado). Os NOMES dos jobs não mudam (proteção da main).
   pull_request:
-    branches: [main]
 
 jobs:
   backend:

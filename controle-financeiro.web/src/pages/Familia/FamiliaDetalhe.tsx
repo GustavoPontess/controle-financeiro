@@ -486,6 +486,9 @@ export function FamiliaDetalhe({ familiaId, showBack, onClose }: FamiliaDetalheP
               <h2 className={styles.title}>{detalhe.nome}</h2>
               {meuPapel && <PontesBadge tone="primary" size="sm">{meuPapel}</PontesBadge>}
             </div>
+            <div className={styles.subtitle}>
+              {detalhe.membros.length} {detalhe.membros.length === 1 ? "membro" : "membros"}
+            </div>
           </div>
         </div>
         {detalhe.ehAdmin && (
@@ -517,7 +520,8 @@ export function FamiliaDetalhe({ familiaId, showBack, onClose }: FamiliaDetalheP
                   </div>
                   <div className={styles.itemSub}>
                     {m.emailUsuario} · desde {formatDate(m.entrouEm)}
-                    {m.rendaMensal != null && ` · renda ${formatMoney(m.rendaMensal)}`}
+                    {/* Renda: o valor só aparece na própria linha (a API nem manda a dos outros). */}
+                    {m.rendaMensal != null ? ` · renda ${formatMoney(m.rendaMensal)}` : m.rendaInformada && " · renda informada"}
                   </div>
                 </div>
                 <div className={styles.rowActions}>

@@ -1,8 +1,16 @@
-# Feature — Conferência de caixa (saldo declarado × saldo calculado)
+# Feature — Reconciliação (saldo declarado × saldo calculado)
 
-> Spec curta (spec-driven, CLAUDE.md §Processo). Registrada no ROADMAP como P1 (intake, 2026-07-20).
-> Status: **spec — não implementado**. Origem: caso real do Gustavo (começou a lançar retroativo
-> num app novo, sem ponto de partida claro pra saber se o saldo bateu).
+> Spec curta (spec-driven, CLAUDE.md §Processo). Registrada no ROADMAP como **P0 — fundação**.
+> Status: **spec — não implementado** (mockup pronto em `/demo-reconciliacao`).
+> Origem: caso real do Gustavo (começou a lançar retroativo num app novo, sem ponto de partida
+> claro pra saber se o saldo bateu).
+
+> **Decisões (2026-09-30):**
+> - **Nome = "Reconciliação"** (antes "conferência de caixa", que era só o exemplo que o Gustavo deu).
+> - **Modelo multi-marco datável:** saldo em D = último marco ≤ D + Σ movimentos de caixa depois do marco. Reconcilia só do último marco pra frente (não re-soma desde o dia 1).
+> - **Marco = VERIFICAÇÃO por padrão:** confere calculado × declarado; se não bater, mostra a diferença e força resolver (lançar o que falta / criar ajuste) — não reancora cego. O **1º marco da conta** é naturalmente o **baseline** (saldo inicial real).
+> - **Transação precisa de HORA** (campo data+hora, default = agora) pra marco preciso ("hoje às 13h eu tinha X").
+> - Backend a construir: tabela `ReconciliacaoSaldo` (marco datado por conta), `Transacao += EhAjusteReconciliacao`, migration, service, gate `auditor-seguranca` antes do merge.
 
 ## Problema
 
@@ -92,6 +100,64 @@ Pedido do Gustavo na mesma sessão: um passo-a-passo tipo *product tour* (onde c
 fazer), como outros apps financeiros oferecem no primeiro uso. **Não faz parte desta spec** —
 registrado como item separado no ROADMAP (P3), porque depende de decisão de biblioteca/abordagem
 (ver nota lá) e o próprio Gustavo marcou como menos urgente que a conferência de caixa.
+
+## Evolução — modelo de "marco datável" (decisão do Gustavo, 2026-09-30)
+
+> Responde a pergunta em aberto de "Fora de escopo v1" (reconstrução de saldo histórico por data).
+> Nasceu da confusão real com a hero de Transações: saldo inicial **não** é "Entrou" (correto), mas
+> sem um ponto de referência datável a tela mostra "dado viajado" (ex.: Entrou R$0, Saiu R$8k, saldo
+> positivo) e o usuário não sabe se falta lançamento ou é bug.
+
+**Ideia:** o saldo inicial deixa de ser só o pontapé da criação da conta e vira um **marco** — um
+"saldo real **nesta data**" que o usuário pode cravar em **qualquer data** (retroativa ou não).
+
+> **MULTI-MARCO (correção do modelo de dados vs. a spec v1).** NÃO é 1 checkpoint (`SaldoConferencia`
+> /`DataConferencia` na `Conta`). São **VÁRIOS** marcos por conta ao longo do tempo → **tabela nova**
+> `ConferenciaSaldo` (`Id`, `ContaId`, `Data`, `SaldoDeclarado`, `CriadoEm`, `UsuarioId`), uma linha
+> por marco. A `Conta` NÃO ganha as 2 colunas da spec v1. Cada marco ancora um trecho:
+> - Entre dois marcos consecutivos: `marco_N.saldo + Σ(fluxo de caixa entre eles) = marco_{N+1}.saldo`.
+> - Do **último** marco até hoje: `últimoMarco.saldo + Σ(fluxo depois dele) = saldo atual`.
+> - **Saldo numa data D** = `(marco mais recente com Data ≤ D).SaldoDeclarado + Σ(lançamentos de caixa
+>   com marco.Data < t.Data ≤ D)`. Antes do marco mais antigo = "fds" (não reconstrói).
+> - A conferência de "hoje" é só o caso D = hoje. "Conferir saldo" = **criar um novo marco** naquela data.
+
+O marco é tratado como **âncora temporal**:
+
+- **Do marco pra frente** (marco → hoje) os lançamentos **têm que reconciliar**: `marco +
+  Σ(entradas caixa) − Σ(saídas caixa) = saldo atual`. Se não bater, faltou/sobrou lançamento.
+- **Do marco pra trás = "fds"** — o usuário não precisa lançar retroativo infinito até o 1º dia da
+  conta; o marco é o piso. (Quem quiser histórico mais antigo crava um marco mais antigo.)
+- **Onboarding:** conta nova → usuário registra o saldo de **hoje** como o 1º marco; tudo pra frente
+  é normal. Se ele quiser ver o mês, crava um marco retroativo (ex.: 1º do mês) com o saldo daquele
+  dia e lança dali pra frente.
+- **Aviso de consolidação:** ao lançar algo **retroativo** (data anterior ao último marco, ou que
+  quebra a janela marco→hoje), o app **avisa que os dados precisam ser consolidados** e mostra
+  **como** (cravar um novo marco naquela data / conferir o saldo / lançar o que falta). Informativo,
+  não bloqueia.
+- **Indicador na tela** (Transações/Bancos): "confere até dd/mm" quando há marco recente; "não
+  conferido — pode não bater com seu banco" quando não há.
+
+**Impacto técnico (a decidir no início da frente):** a reconciliação marco→hoje exige **somar
+transações por data de corte** (reconstrução de saldo histórico), que a spec v1 tinha adiado — é a
+parte mais pesada. Decidir no MVP: (a) só o indicador + aviso (sem reconstrução real, compara saldo
+total como hoje), ou (b) reconstrução por data de verdade (soma até a `DataConferencia`). Segurança:
+é dado financeiro — validar dono da conta, isolamento por `UsuarioId`, idempotência nas mutações.
+
+**Relação com o front atual:** a hero de Transações hoje já é honesta (saldo em conta = soma real
+das contas; Entrou/Saiu = fluxo de caixa, crédito fora). O "fechar de verdade" (marco + reconciliação)
+é esta feature. Enquanto ela não existe, a hero não mente — só não reconcilia o saldo inicial.
+
+## UI — tela dedicada (design PENDENTE, Gustavo, 2026-09-30)
+
+Conferência é um fluxo **chato por natureza** (quando o caixa não bate, o usuário teria que re-somar
+tudo). Decisão: **tela dedicada** (não modal apertado) — o Gustavo vai desenhar. O **multi-marco** é
+o que torna isso tolerável: reconcilia só **do último marco pra frente**, não desde o começo; cada
+marco é um "conferido até aqui" e encurta a janela de caça ao erro. Ainda a definir no design: como
+listar/criar marcos, como mostrar a diferença e os dois modos (certinho × ajuste), e onde a ação
+vive (tela própria vs. dentro de Bancos). **Não implementar backend/front até o design fechar** — a
+decisão-chave que trava o service é: marco como **verificação** (saldo atual segue soma cheia; marco
+só detecta divergência) × marco como **baseline** (saldo = último marco + fluxo depois dele; pré-marco
+= "fds"). Resolver no design antes de codar.
 
 ## Referências
 

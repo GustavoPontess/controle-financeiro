@@ -20,6 +20,9 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         // true (default) = já recebido/pago → Executado (entra no saldo real, com hora).
         // false = previsão (ex.: salário do próximo mês ainda não caiu) → Previsao.
         public bool Efetivado { get; set; } = true;
-        public DateTime Data { get; set; }
+        /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>
+        public DateOnly Data { get; set; }
+        /// <summary>Hora do lançamento ("HH:mm:ss") — time puro, sem fuso. Null = sem hora.</summary>
+        public TimeOnly? Hora { get; set; }
     }
 }

@@ -12,7 +12,7 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 // ── Service mocks ────────────────────────────────────────────────────────────
-const statsPadrao = { ativas: 1, custoMensalDespesas: 45.9, proximas30Dias: 1, qtdTotal: 1 }
+const statsPadrao = { ativas: 1, custoMensalDespesas: 45.9, custoAnualDespesas: 550.8, proximas30Dias: 1, qtdTotal: 1 }
 const listRecorrentesPage = vi.fn()
 const getRecorrenteStats = vi.fn()
 const createRecorrente = vi.fn()
@@ -64,6 +64,7 @@ function makeRecorrente(overrides: Partial<Recorrente> = {}): Recorrente {
     dataInicio: "2026-01-01T00:00:00Z",
     ativo: true,
     dataProximaGeracao: "2026-06-10T00:00:00Z",
+    proximaCobranca: "2026-06-10",
     situacao: "ativa",
     ...overrides,
   }
@@ -101,25 +102,56 @@ beforeEach(() => {
 describe("RecorrentesPage", () => {
   // ── Padrão de tela ──
 
-  it("sem <h1> próprio (título mora na Navbar) e botão 'Nova conta fixa' no topo", async () => {
+  it("cabeçalho: nome da tela + descrição e botão 'Nova conta fixa' no topo", async () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Contas Fixas" })).toBeInTheDocument()
+    expect(screen.getByText("Aluguel, escola, plano de saúde e outros pagamentos recorrentes")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Nova conta fixa" })).toBeInTheDocument()
+  })
+
+  // Bug 2026-09-28: o "por ano" era mensal × 12 no front e esquecia semanal/anual. Agora vem pronto do servidor.
+  it("hero: custo mensal e 'por ano' vêm do servidor (todas as frequências), não mensal × 12", async () => {
+    // conta anual de R$ 100: mês = 8,33; mensal × 12 daria 99,96 — o "por ano" tem que ser o 100 do servidor
+    getRecorrenteStats.mockResolvedValue({ ...statsPadrao, custoMensalDespesas: 8.33, custoAnualDespesas: 100 })
+    renderPage()
+    expect(await screen.findByText(/R\$\s?8,33/)).toBeInTheDocument()
+    expect(screen.getByText(/R\$\s?100,00 por ano/)).toBeInTheDocument()
+    expect(screen.queryByText(/99,96/)).not.toBeInTheDocument()
   })
 
   it("carrega a lista filtrada NO SERVIDOR com a aba padrão 'Ativas' — numa chamada só", async () => {
     renderPage()
     await screen.findAllByRole("button", { name: "Ações" })
-    expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+    expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "" })
     // O GET da lista gera as ocorrências vencidas no servidor: 2 chamadas paralelas podiam duplicar.
     expect(listRecorrentesPage).toHaveBeenCalledTimes(1)
     expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
   })
 
+  // A "próxima cobrança" vem do servidor (a previsão pendente de verdade, DateOnly "YYYY-MM-DD") — antes a
+  // tela mostrava o cursor interno da geração. E "amanhã" é amanhã: new Date("YYYY-MM-DD") é meia-noite UTC
+  // (= hoje às 21h no Brasil) e o rótulo saía com 1 dia a menos.
+  it("próxima cobrança: lê a data do servidor sem deslocar o dia (amanhã = 'amanhã')", async () => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    const amanha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ proximaCobranca: amanha })]))
+    renderPage()
+    expect(await screen.findByText(/próxima cobrança amanhã/)).toBeInTheDocument()
+  })
+
+  it("pausada (sem próxima cobrança do servidor) não anuncia cobrança", async () => {
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", proximaCobranca: null })]))
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(screen.queryByText(/próxima cobrança/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Próximas cobranças")).not.toBeInTheDocument()
+  })
+
   it("'Próximas cobranças' não muda com a busca (usa a última lista sem filtro)", async () => {
-    const futura = new Date(Date.now() + 3 * 86400000).toISOString()
-    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ dataProximaGeracao: futura })]))
+    const futura = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) // DateOnly da API
+    listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ proximaCobranca: futura })]))
     renderPage()
     expect(await screen.findByText("Próximas cobranças")).toBeInTheDocument()
 
@@ -132,9 +164,9 @@ describe("RecorrentesPage", () => {
   // Com busca ligada o recarregar() só traz a lista filtrada: a faixa (última lista SEM filtro) não
   // pode continuar anunciando como próxima cobrança o que acabou de ser pausado/cancelado.
   describe("ação com busca ligada atualiza 'Próximas cobranças'", () => {
-    const futura = () => new Date(Date.now() + 3 * 86400000).toISOString()
-    const netflix = () => makeRecorrente({ dataProximaGeracao: futura() })
-    const spotify = () => makeRecorrente({ id: "rec-s", descricao: "Spotify", dataProximaGeracao: futura() })
+    const futura = () => new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) // DateOnly da API
+    const netflix = () => makeRecorrente({ proximaCobranca: futura() })
+    const spotify = () => makeRecorrente({ id: "rec-s", descricao: "Spotify", proximaCobranca: futura() })
 
     // Carrega sem filtro (Netflix + Spotify na faixa e na lista) e busca "net" (lista só com Netflix).
     async function buscarNet() {
@@ -175,7 +207,7 @@ describe("RecorrentesPage", () => {
       toggleRecorrente.mockResolvedValue(undefined)
       await buscarNet()
 
-      listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", dataProximaGeracao: futura() })]))
+      listRecorrentesPage.mockResolvedValue(paged([makeRecorrente({ ativo: false, situacao: "pausada", proximaCobranca: futura() })]))
       fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
 
       expect(await screen.findByText("Pausada")).toBeInTheDocument()
@@ -193,9 +225,10 @@ describe("RecorrentesPage", () => {
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Pausar" }))
 
-    expect(await screen.findByText("Pausada")).toBeInTheDocument()
-    expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes)
-    expect(screen.getByRole("button", { name: "Ações" })).toHaveFocus()
+    // Margem de tempo: na suíte cheia (CPU disputada) o 1s padrão do findBy estourava às vezes — falso vermelho.
+    expect(await screen.findByText("Pausada", {}, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(listRecorrentesPage.mock.calls.length).toBeGreaterThan(antes), { timeout: 4000 })
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ações" })).toHaveFocus(), { timeout: 4000 })
   })
 
   it("trocar pra 'Encerradas' refaz a consulta com status=encerradas", async () => {
@@ -203,7 +236,7 @@ describe("RecorrentesPage", () => {
     await screen.findAllByRole("button", { name: "Ações" })
     fireEvent.click(screen.getByRole("tab", { name: "Encerradas" }))
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "encerradas", busca: "" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "encerradas", busca: "" })
     })
   })
 
@@ -212,7 +245,7 @@ describe("RecorrentesPage", () => {
     await screen.findAllByRole("button", { name: "Ações" })
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar conta fixa" }), { target: { value: "net" } })
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "net" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "net" })
     })
   })
 
@@ -248,7 +281,7 @@ describe("RecorrentesPage", () => {
     listRecorrentesPage.mockClear()
     fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
     await waitFor(() => {
-      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 25, { status: "ativas", busca: "" })
+      expect(listRecorrentesPage).toHaveBeenCalledWith(1, 10, { status: "ativas", busca: "" })
     })
     expect(screen.getByRole("tab", { name: "Ativas" })).toHaveAttribute("aria-selected", "true")
   })
@@ -281,6 +314,12 @@ describe("RecorrentesPage", () => {
     expect(screen.queryByLabelText("Cancelar conta fixa")).not.toBeInTheDocument()
   })
 
+  it("valor sem +/− pelo tipo (a cor conta a direção)", async () => {
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    expect(screen.queryByText(/^[−+-]\s?R\$/)).not.toBeInTheDocument()
+  })
+
   // ── Pausada × Cancelada (bug: cancelada aparecia como "Pausada" e oferecia "Ativar") ──
 
   it("pausada: badge 'Pausada' e ação 'Retomar' (sem 'Pausar')", async () => {
@@ -291,7 +330,7 @@ describe("RecorrentesPage", () => {
     const menu = await abrirMenu()
     expect(within(menu).queryByRole("menuitem", { name: "Pausar" })).not.toBeInTheDocument()
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Retomar" }))
-    await waitFor(() => expect(toggleRecorrente).toHaveBeenCalledWith("rec-p"))
+    await waitFor(() => expect(toggleRecorrente).toHaveBeenCalledWith("rec-p", true)) // estado pedido: retomar
   })
 
   it("cancelada: badge 'Cancelada' (não 'Pausada'), motivo, e SEM retomar/ativar — só Excluir", async () => {
@@ -339,6 +378,30 @@ describe("RecorrentesPage", () => {
     fireEvent.click(await screen.findByText("Criar conta fixa"))
     expect(await screen.findByText("Descrição obrigatória.")).toBeInTheDocument()
     expect(createRecorrente).not.toHaveBeenCalled()
+  })
+
+  // Bug de dinheiro (2026-09-28): o campo era texto livre e "1.500" (mil e quinhentos) virava R$ 1,50 em
+  // silêncio. Agora é a máscara do app: o campo MOSTRA o que vai ser salvo.
+  it("criar: '1.500' não vira mais R$ 1,50 escondido — o campo mostra o valor que vai ser salvo", async () => {
+    createRecorrente.mockResolvedValue(makeRecorrente())
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+    await screen.findByText("Criar conta fixa")
+    const campo = screen.getByPlaceholderText("0,00")
+
+    fireEvent.change(campo, { target: { value: "1.500" } })
+    expect(campo).toHaveValue("15,00") // ponto não é mais lido como decimal: o que aparece é o que vale
+
+    fireEvent.change(campo, { target: { value: "150000" } })
+    expect(campo).toHaveValue("1.500,00")
+    fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), { target: { value: "Aluguel" } })
+    fireEvent.click(screen.getByText("Selecione uma conta"))
+    const opcoes = await screen.findAllByText("Nubank") // a lista atrás também mostra "Nubank": a opção é a última
+    fireEvent.click(opcoes[opcoes.length - 1])
+    fireEvent.click(screen.getByText("Criar conta fixa"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(1))
+    expect(createRecorrente.mock.calls[0][0]).toEqual(expect.objectContaining({ valor: 1500 }))
   })
 
   it("sem conta selecionada, bloqueia e pede a conta", async () => {
@@ -418,28 +481,56 @@ describe("RecorrentesPage", () => {
     })
   })
 
-  it("valida valor negativo na edição de próxima", async () => {
+  it("edição de próxima: negativo nem dá pra digitar (máscara só aceita dígitos) e zero é bloqueado", async () => {
     editarProximaOcorrencia.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
     await screen.findByText("Novo valor (opcional)")
+    const campo = screen.getByPlaceholderText("R$ 45,90")
 
-    fireEvent.change(screen.getByPlaceholderText("R$ 45,90"), { target: { value: "-5" } })
+    fireEvent.change(campo, { target: { value: "-5" } })
+    expect(campo).toHaveValue("0,05") // o "-" some
+
+    fireEvent.change(campo, { target: { value: "" } }) // apaga…
+    fireEvent.change(campo, { target: { value: "0" } }) // …e digita zero de propósito
+    expect(campo).toHaveValue("0,00")
     fireEvent.click(screen.getByText("Salvar"))
-
     expect(await screen.findByText("Valor deve ser positivo.")).toBeInTheDocument()
     expect(editarProximaOcorrencia).not.toHaveBeenCalled()
   })
 
+  it("edição de próxima: o valor salvo é o que o campo mostra (150000 → 1.500,00 → 1500)", async () => {
+    editarProximaOcorrencia.mockResolvedValue(undefined)
+    renderPage()
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Editar próxima ocorrência" }))
+    await screen.findByText("Novo valor (opcional)")
+    const campo = screen.getByPlaceholderText("R$ 45,90")
+    fireEvent.change(campo, { target: { value: "150000" } })
+    expect(campo).toHaveValue("1.500,00")
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(editarProximaOcorrencia).toHaveBeenCalledWith("rec-001", { valor: 1500 }))
+  })
+
   // ── Pausar (via ⋮) ──
 
-  it("chama toggleRecorrente ao clicar Pausar", async () => {
+  it("chama toggleRecorrente ao clicar Pausar, com o estado pedido (pausar = false)", async () => {
     toggleRecorrente.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
     await waitFor(() => {
-      expect(toggleRecorrente).toHaveBeenCalledWith("rec-001")
+      expect(toggleRecorrente).toHaveBeenCalledWith("rec-001", false)
     })
+  })
+
+  it("enquanto o Pausar não voltou, a ação some do ⋮ (sem 2º clique pro servidor)", async () => {
+    let terminar: () => void = () => {}
+    toggleRecorrente.mockReturnValue(new Promise<void>((ok) => { terminar = ok }))
+    renderPage()
+    fireEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Pausar" }))
+    expect(within(await abrirMenu()).queryByRole("menuitem", { name: "Pausar" })).not.toBeInTheDocument()
+    expect(toggleRecorrente).toHaveBeenCalledTimes(1)
+    terminar()
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ message: "Conta fixa pausada." })))
   })
 
   // ── Excluir (via ⋮ + confirmação) ──

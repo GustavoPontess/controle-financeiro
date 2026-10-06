@@ -298,6 +298,20 @@ public class AuthService
                  + "Você receberá acesso assim que for liberada.",
     };
 
+    /// <summary>Todas as contas do banco (e-mail + nome), pro painel DEV do login. O controller
+    /// só chama isto em Development — nunca expõe em produção.</summary>
+    public async Task<List<DevContaDto>> ListarContasDevAsync()
+    {
+        var usuarios = await _context.Usuarios
+            .OrderBy(u => u.CriadoEm)
+            .Select(u => new { u.Email, u.Nome, u.PasswordHash })
+            .ToListAsync();
+        // "senhaPadrao": aceita a senha de dev (Dev@123456) — só nessas o painel faz clica-e-entra.
+        return usuarios
+            .Select(u => new DevContaDto(u.Email, u.Nome, PasswordHasher.VerifyPassword("Dev@123456", u.PasswordHash)))
+            .ToList();
+    }
+
     public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null, bool manterConectado = false)
     {
         // Validate input

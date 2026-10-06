@@ -1,12 +1,14 @@
 /* SidebarItem.module.css — item/section de nav lateral. Cor via var(--pontes-*). */
 .item {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 2px;
-  justify-content: flex-start; border: none; border-radius: 14px; cursor: pointer;
-  background: transparent; color: var(--pontes-text); font-size: 14px; font-weight: 500;
+  /* padding-left 14 + nav(8) = ícone centrado no rail de 64 (32±). Constante aberto/fechado → não anda. */
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 14px; margin-bottom: 1px;
+  justify-content: flex-start; border: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--pontes-text); font-size: var(--pontes-fs-md); font-weight: 500;
   font-family: var(--pontes-font); position: relative;
   transition: gap 200ms ease, background-color .15s ease, color .15s ease;
 }
-.item[data-collapsed="true"] { gap: 0; justify-content: center; padding-left: 0; padding-right: 0; }
+/* Colapsado: só some o label; o ícone NÃO muda de x (mesmo padding-left do aberto). */
+.item[data-collapsed="true"] { gap: 0; }
 .item:hover { background: color-mix(in srgb, var(--pontes-primary-soft) 70%, transparent); }
 .item[data-active="true"], .item[data-active="true"]:hover { background: var(--pontes-primary-soft); color: var(--pontes-primary); font-weight: 700; }
 .bar {
@@ -21,9 +23,9 @@
 .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; max-width: 180px; transition: opacity 160ms ease, max-width 220ms ease; }
 .item[data-collapsed="true"] .label { opacity: 0; max-width: 0; }
 
-.section { position: relative; height: 30px; }
+.section { position: relative; height: 24px; }
 .sectionLabel {
-  position: absolute; left: 12px; right: 12px; bottom: 6px; font-size: 10px; font-weight: 700;
+  position: absolute; left: 12px; right: 12px; bottom: 4px; font-size: var(--pontes-fs-2xs); font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase; color: var(--pontes-text-muted);
   white-space: nowrap; overflow: hidden; opacity: 1; transition: opacity 160ms ease; pointer-events: none;
 }

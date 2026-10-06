@@ -52,7 +52,6 @@ namespace ControleFinanceiro.Api.Controllers
             // Parcelamento → cria N transações e retorna lista
             if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
             {
-                dto.Data = dto.Data.ToUniversalTime();
                 var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId);
                 var retornoParcelas = parcelas.Select(ToDto).ToList();
                 return StatusCode(StatusCodes.Status201Created, retornoParcelas);
@@ -73,7 +72,8 @@ namespace ControleFinanceiro.Api.Controllers
                 MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
                 // Efetivado → entra no saldo real; não efetivado → previsão (futura permitida).
                 StatusTransacao = dto.Efetivado ? StatusTransacao.Executado : StatusTransacao.Previsao,
-                Data = dto.Data.ToUniversalTime()
+                Data = dto.Data,
+                Hora = dto.Hora
             };
 
             var criada = await _service.CriarTransacaoAsync(transacao, usuarioId);
@@ -100,8 +100,10 @@ namespace ControleFinanceiro.Api.Controllers
             ParcelamentoId = t.ParcelamentoId,
             ParcelaTransacaoId = t.ParcelaTransacaoId,
             EhPagamentoFatura = t.EhPagamentoFatura,
+            EhTransferencia = t.EhTransferencia,
             StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
+            Hora = t.Hora,
         };
 
         [HttpGet]
@@ -109,8 +111,8 @@ namespace ControleFinanceiro.Api.Controllers
         public async Task<IActionResult> Listar(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 25,
-            [FromQuery] DateTime? from = null,
-            [FromQuery] DateTime? to = null,
+            [FromQuery] DateOnly? from = null,
+            [FromQuery] DateOnly? to = null,
             [FromQuery] Guid? categoriaId = null,
             [FromQuery] string? q = null,
             [FromQuery] int? tipo = null,
@@ -119,12 +121,15 @@ namespace ControleFinanceiro.Api.Controllers
             [FromQuery] decimal? valorMin = null,
             [FromQuery] decimal? valorMax = null,
             [FromQuery] int? status = null,
-            [FromQuery] string? ordenacao = null)
+            [FromQuery] string? ordenacao = null,
+            [FromQuery] bool apenasCaixa = false,
+            [FromQuery] int? meioPagamento = null,
+            [FromQuery] string? natureza = null)
         {
             var usuarioId = GetUserId();
             var resultado = await _service.ListarAsync(
                 usuarioId, page, pageSize, from, to, categoriaId, q, tipo,
-                contaId, cartaoId, valorMin, valorMax, status, ordenacao);
+                contaId, cartaoId, valorMin, valorMax, status, ordenacao, apenasCaixa, meioPagamento, natureza);
 
             return Ok(new PagedResult<TransacaoDto>
             {
@@ -142,8 +147,8 @@ namespace ControleFinanceiro.Api.Controllers
         [HttpGet("stats")]
         [ProducesResponseType(typeof(DTOs.Transacao.TransacaoStatsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> ObterStats(
-            [FromQuery] DateTime? from = null,
-            [FromQuery] DateTime? to = null,
+            [FromQuery] DateOnly? from = null,
+            [FromQuery] DateOnly? to = null,
             [FromQuery] Guid? categoriaId = null)
         {
             var usuarioId = GetUserId();
@@ -177,7 +182,8 @@ namespace ControleFinanceiro.Api.Controllers
                 CategoriaId = dto.CategoriaId,
                 SubcategoriaId = dto.SubcategoriaId,
                 MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
-                Data = dto.Data.ToUniversalTime()
+                Data = dto.Data,
+                Hora = dto.Hora
             };
             var ok = await _service.AtualizarAsync(id, dados, usuarioId);
             return ok ? NoContent() : NotFound();

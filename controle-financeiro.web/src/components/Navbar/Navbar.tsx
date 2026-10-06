@@ -4,7 +4,7 @@
  */
 
 import { useLocation, useNavigate } from "react-router-dom"
-import { PanelLeftClose, PanelLeftOpen, Search, Plus, Eye, EyeOff } from "lucide-react"
+import { Menu, PanelLeftClose, PanelLeftOpen, Search, Plus, Eye, EyeOff } from "lucide-react"
 import { PontesButton, PontesIconButton, useHideBalance } from "@/components/pontes"
 import NotificationBell from "../Notificacoes/NotificationBell"
 import styles from "./Navbar.module.css"
@@ -12,6 +12,8 @@ import styles from "./Navbar.module.css"
 type Props = {
   toggleDrawer: () => void
   sidebarOpen: boolean
+  /** Celular: a barra lateral é uma gaveta — o botão vira ☰ e só ABRE (fecha tocando fora/Esc/num item). */
+  celular?: boolean
   /** Ações financeiras (Nova transação + ocultar valores). Omitir no painel admin. */
   showFinance?: boolean
   openTransaction?: () => void
@@ -37,10 +39,10 @@ type Props = {
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/transactions": "Transações",
+  "/reconciliacao": "Reconciliação",
   "/credit-cards": "Cartões de Crédito",
   "/credit-cards/parcelamentos": "Parcelamentos",
   "/reports": "Relatórios",
-  "/transferencias": "Transferências",
   "/assinaturas": "Contas Fixas",
   "/emprestimos": "Empréstimos",
   "/importacao": "Importar Extrato",
@@ -67,7 +69,7 @@ function resolveSecao(path: string): { title: string; path: string | null } {
 type Crumb = { label: string; to?: string }
 
 export default function Navbar({
-  toggleDrawer, sidebarOpen, showFinance = true,
+  toggleDrawer, sidebarOpen, celular = false, showFinance = true,
   openTransaction, canCreateTransaction, openCommandPalette,
   title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle, detalhe,
 }: Props) {
@@ -89,12 +91,20 @@ export default function Navbar({
 
   return (
     <header className={styles.header}>
+      <div className={styles.inner}>
       <div className={styles.left}>
-        <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
-          {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
-        </PontesIconButton>
+        {celular ? (
+          <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label="Abrir menu"
+            aria-expanded={sidebarOpen}>
+            <Menu size={20} strokeWidth={2} />
+          </PontesIconButton>
+        ) : (
+          <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
+            {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
+          </PontesIconButton>
+        )}
         <div className={styles.titleBox}>
-          {!isHome && (
+          {!isHome && !celular && (
             <div className={styles.crumb}>
               {crumbs.map((c, i) => {
                 const ultimo = i === crumbs.length - 1
@@ -114,6 +124,7 @@ export default function Navbar({
       </div>
 
       <div className={styles.right}>
+        {/* Abaixo de 1024px (tablet/celular) a busca fica só com a lupa — via CSS (Navbar.module.css). */}
         {openCommandPalette && (
           <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
             <Search size={16} strokeWidth={2} />
@@ -142,15 +153,19 @@ export default function Navbar({
 
         {showFinance && (
           <PontesButton
-            variant="accent" size="md"
+            variant="accent" size="sm"
             onClick={openTransaction}
             disabled={!canCreateTransaction}
             iconStart={<Plus size={16} strokeWidth={2.5} />}
             title={canCreateTransaction ? undefined : "Cadastre pelo menos uma categoria antes de adicionar transações"}
+            // Abaixo de 1024px: só o "+" (o texto não cabe ao lado do título) — via CSS; o nome fica pro leitor.
+            aria-label="Nova transação"
+            className={styles.nova}
           >
-            Nova transação
+            <span className={styles.novaTexto}>Nova transação</span>
           </PontesButton>
         )}
+      </div>
       </div>
     </header>
   )

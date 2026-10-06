@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import TransactionForm from "../../pages/Transactions/components/TransactionForm/TransactionForm"
 import type { TransactionFormData } from "../../pages/Transactions/components/TransactionForm/TransactionForm"
 import type { Category } from "../../types/Category"
@@ -100,6 +100,48 @@ describe("TransactionForm — natureza + regras (#82)", () => {
     expect(data.contaDestinoId).toBe("a2")
   })
 
+  it("campo Hora aparece com a hora atual por padrão (HH:MM)", () => {
+    setup()
+    const hora = screen.getByPlaceholderText("HH:MM") as HTMLInputElement
+    expect(hora.value).toMatch(/^\d{2}:\d{2}$/)
+  })
+
+  it("máscara da hora: digitar '0930' vira '09:30'", () => {
+    setup()
+    const hora = screen.getByPlaceholderText("HH:MM") as HTMLInputElement
+    fireEvent.change(hora, { target: { value: "0930" } })
+    expect(hora.value).toBe("09:30")
+  })
+
+  it("edição pré-preenche a hora vinda do initial", () => {
+    render(
+      <TransactionForm
+        mode="edit"
+        initial={{ natureza: "despesa", tipo: 1, valor: "50,00", descricao: "X", categoriaId: "c1", contaId: "a1", hora: "07:30" }}
+        categories={categories} subcategories={subcategories} contas={contas} cartoes={cartoes}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />
+    )
+    expect((screen.getByPlaceholderText("HH:MM") as HTMLInputElement).value).toBe("07:30")
+  })
+
+  it("submit carrega a hora escolhida (transferência)", async () => {
+    const onSubmit = setup()
+    fireEvent.click(screen.getByText("Transferência"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "10000" } })
+    fireEvent.change(screen.getByPlaceholderText("HH:MM"), { target: { value: "0815" } })
+    fireEvent.click(screen.getByText("De qual conta"))
+    fireEvent.click(screen.getByText("Nubank"))
+    fireEvent.click(screen.getByText("Para qual conta"))
+    fireEvent.click(screen.getByText("Itaú"))
+    fireEvent.change(screen.getByPlaceholderText("Ex: Reserva de emergência"), { target: { value: "Mover grana" } })
+    fireEvent.click(screen.getByText("Transferir"))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const data = onSubmit.mock.calls[0][0] as TransactionFormData
+    expect(data.hora).toBe("08:15")
+  })
+
   it("submit vazio mostra erros e não chama onSubmit", () => {
     const onSubmit = setup()
     fireEvent.click(screen.getByText("Adicionar"))
@@ -198,5 +240,146 @@ describe("TransactionForm — efetivado (previsto vs realizado)", () => {
     fireEvent.click(screen.getByText("Transferência"))
     expect(screen.queryByText("Já paguei")).not.toBeInTheDocument()
     expect(screen.queryByText("Já recebi")).not.toBeInTheDocument()
+  })
+})
+
+describe("TransactionForm — Hora obrigatória (lançamento único e transferência)", () => {
+  // Edição de uma despesa JÁ válida (valor, categoria, conta, descrição) — só a hora é o que varia.
+  function setupEditValido(hora: string, onSubmit = vi.fn().mockResolvedValue(undefined)) {
+    render(
+      <TransactionForm
+        mode="edit"
+        initial={{ natureza: "despesa", tipo: 1, valor: "50,00", descricao: "Mercado", categoriaId: "c1", contaId: "a1", hora }}
+        categories={categories} subcategories={subcategories} contas={contas} cartoes={cartoes}
+        onSubmit={onSubmit}
+      />
+    )
+    return onSubmit
+  }
+  const campoHora = () => screen.getByPlaceholderText("HH:MM") as HTMLInputElement
+  const limparHora = () => fireEvent.change(campoHora(), { target: { value: "" } })
+
+  it("o rótulo 'Hora' é obrigatório (asterisco) no lançamento único e na transferência", () => {
+    setup()
+    expect(screen.getByText("Hora").closest("label")).toHaveTextContent("Hora*")
+    fireEvent.click(screen.getByText("Transferência"))
+    expect(screen.getByText("Hora").closest("label")).toHaveTextContent("Hora*")
+  })
+
+  it("submit com a hora vazia BLOQUEIA e mostra 'Informe a hora' no próprio campo (erro por campo, sem chamar onSubmit)", () => {
+    const onSubmit = setupEditValido("07:30")
+    limparHora()
+    expect(campoHora().value).toBe("")
+
+    fireEvent.click(screen.getByText("Salvar"))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    const erro = screen.getByText("Informe a hora")
+    expect(erro).toBeInTheDocument()
+    expect(campoHora()).toHaveAttribute("data-invalid", "true") // borda vermelha no controle
+    // o erro mora dentro do PontesField da Hora (não é toast, não é outro campo)
+    expect(erro.closest("div[data-error]")).toContainElement(campoHora())
+    // e é SÓ a hora que está errada: nenhum outro erro de campo
+    expect(screen.queryByText("Informe um valor")).not.toBeInTheDocument()
+    expect(screen.queryByText("Categoria obrigatória")).not.toBeInTheDocument()
+    expect(screen.queryByText("Informe a descrição")).not.toBeInTheDocument()
+  })
+
+  it("submit vazio (despesa, hora apagada) mostra TODOS os erros por campo, incluindo 'Informe a hora'", () => {
+    const onSubmit = setup()
+    limparHora()
+    fireEvent.click(screen.getByText("Adicionar"))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Informe um valor")).toBeInTheDocument()
+    expect(screen.getByText("Categoria obrigatória")).toBeInTheDocument()
+    expect(screen.getByText("Conta obrigatória")).toBeInTheDocument()
+    expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
+    expect(screen.getByText("Informe a hora")).toBeInTheDocument()
+  })
+
+  it("transferência com a hora vazia também bloqueia e mostra 'Informe a hora'", () => {
+    const onSubmit = setup()
+    fireEvent.click(screen.getByText("Transferência"))
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "10000" } })
+    fireEvent.click(screen.getByText("De qual conta"))
+    fireEvent.click(screen.getByText("Nubank"))
+    fireEvent.click(screen.getByText("Para qual conta"))
+    fireEvent.click(screen.getByText("Itaú"))
+    fireEvent.change(screen.getByPlaceholderText("Ex: Reserva de emergência"), { target: { value: "Mover grana" } })
+    limparHora()
+
+    fireEvent.click(screen.getByText("Transferir"))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Informe a hora")).toBeInTheDocument()
+    expect(campoHora()).toHaveAttribute("data-invalid", "true")
+    // só a hora falhou: origem/destino/valor/descrição estão ok
+    expect(screen.queryByText("Selecione a conta de origem")).not.toBeInTheDocument()
+    expect(screen.queryByText("Selecione a conta de destino")).not.toBeInTheDocument()
+    expect(screen.queryByText("Informe um valor")).not.toBeInTheDocument()
+  })
+
+  it("hora incompleta/inválida (25:61) bloqueia com 'Hora inválida (HH:MM)' — diferente do 'Informe a hora' da vazia", () => {
+    const onSubmit = setupEditValido("07:30")
+    fireEvent.change(campoHora(), { target: { value: "2561" } }) // máscara → 25:61
+    expect(campoHora().value).toBe("25:61")
+    fireEvent.click(screen.getByText("Salvar"))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Hora inválida (HH:MM)")).toBeInTheDocument()
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument()
+
+    // meia hora digitada ("093" → "09:3") também não é HH:MM
+    fireEvent.change(campoHora(), { target: { value: "093" } })
+    fireEvent.click(screen.getByText("Salvar"))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Hora inválida (HH:MM)")).toBeInTheDocument()
+  })
+
+  it("o erro da hora some assim que a pessoa edita o campo, e aí o submit passa", async () => {
+    const onSubmit = setupEditValido("07:30")
+    limparHora()
+    fireEvent.click(screen.getByText("Salvar"))
+    expect(screen.getByText("Informe a hora")).toBeInTheDocument()
+
+    fireEvent.change(campoHora(), { target: { value: "0945" } })
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument()
+    expect(campoHora()).not.toHaveAttribute("data-invalid")
+
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+  })
+
+  it("submit válido (lançamento único) chama onSubmit levando a hora digitada em HH:MM", async () => {
+    const onSubmit = setupEditValido("07:30")
+    fireEvent.change(campoHora(), { target: { value: "2359" } })
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    const data = onSubmit.mock.calls[0][0] as TransactionFormData
+    expect(data.hora).toBe("23:59")
+    expect(data.natureza).toBe("despesa")
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument()
+  })
+
+  it("meia-noite '00:00' é uma hora válida (não confunde com vazio)", async () => {
+    const onSubmit = setupEditValido("07:30")
+    fireEvent.change(campoHora(), { target: { value: "0000" } })
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect((onSubmit.mock.calls[0][0] as TransactionFormData).hora).toBe("00:00")
+  })
+
+  it("recorrente NÃO tem hora: o campo some e o submit não cobra 'Informe a hora' (mesmo com a hora apagada antes)", () => {
+    const onSubmit = setup()
+    limparHora()
+    fireEvent.click(screen.getByText("Repetir automaticamente (assinatura)"))
+    expect(screen.queryByPlaceholderText("HH:MM")).not.toBeInTheDocument()
+    expect(screen.getByText("Início")).toBeInTheDocument() // recorrente usa "Início" em vez de Data + Hora
+
+    fireEvent.click(screen.getByText("Criar recorrente"))
+
+    expect(onSubmit).not.toHaveBeenCalled() // bloqueado pelos outros campos vazios...
+    expect(screen.getByText("Informe um valor")).toBeInTheDocument()
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument() // ...mas não pela hora
+    expect(screen.queryByText("Hora inválida (HH:MM)")).not.toBeInTheDocument()
   })
 })

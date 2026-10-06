@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { formatMoney } from "@/utils/money"
 import { useNavigate, useOutletContext } from "react-router-dom"
@@ -83,6 +83,9 @@ export default function ParcelamentosPage() {
   // a escolha (se ela ficar antes do mínimo, a validação do submit avisa no campo).
   const [mesEscolhido, setMesEscolhido] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
+  // Idempotency-Key nasce quando a janela ABRE e vale pra toda tentativa dela: se a rede cair depois
+  // de o servidor gravar, tentar de novo devolve o mesmo parcelamento em vez de criar outro.
+  const chaveCriar = useRef("")
 
   const loadData = useCallback(async () => {
     try {
@@ -130,6 +133,7 @@ export default function ParcelamentosPage() {
     setForm(emptyForm())
     setMesEscolhido(false)
     setErrors({})
+    chaveCriar.current = crypto.randomUUID()
     setDialogOpen(true)
   }
 
@@ -165,7 +169,7 @@ export default function ParcelamentosPage() {
         // Taxa só é válida em PIX Crédito (tipo "1"); o backend rejeita (409) qualquer taxa
         // — inclusive 0 — em Compra Parcelada. Enviar undefined pros demais tipos.
         taxaJuroMensal: form.tipo === "1" ? (form.taxaJuroMensal ?? 0) : undefined,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: chaveCriar.current,
       }
       await ParcelamentoService.criar(payload)
       notify({ open: true, message: "Parcelamento criado", severity: "success" })

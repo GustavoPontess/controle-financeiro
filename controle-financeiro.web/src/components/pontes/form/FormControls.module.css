@@ -2,14 +2,16 @@
 .control {
   display: inline-flex; align-items: center; gap: 10px; background: none; border: none;
   cursor: pointer; padding: 0; font-family: var(--pontes-font);
+  /* É um <button>: sem isto o rótulo que quebra em 2 linhas (celular) saía centralizado. */
+  text-align: left;
 }
 .control:disabled { cursor: not-allowed; opacity: .6; }
-.label { font-size: 14px; color: var(--pontes-text); }
-.labelMuted { font-size: 14px; color: var(--pontes-text-muted); }
+.label { font-size: var(--pontes-fs-base); color: var(--pontes-text); }
+.labelMuted { font-size: var(--pontes-fs-base); color: var(--pontes-text-muted); }
 .control[data-checked="true"] .labelMuted { color: var(--pontes-text); }
 
 /* toggle */
-.track { width: 40px; height: 22px; background: var(--pontes-border); border-radius: 999px; position: relative; transition: background .2s; }
+.track { flex-shrink: 0; width: 40px; height: 22px; background: var(--pontes-border); border-radius: 999px; position: relative; transition: background .2s; }
 .control[data-checked="true"] .track { background: var(--pontes-primary); }
 .knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: left .2s; }
 .control[data-checked="true"] .knob { left: 20px; }

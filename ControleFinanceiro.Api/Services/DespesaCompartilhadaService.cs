@@ -134,7 +134,7 @@ public class DespesaCompartilhadaService
         var despesas = await query
             .Select(t => new
             {
-                t.Id, t.Descricao, t.Valor, t.Data,
+                t.Id, t.Descricao, t.Valor, t.Data, t.Hora,
                 CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null,
                 t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId, t.ResponsavelUsuarioId,
             })
@@ -151,7 +151,7 @@ public class DespesaCompartilhadaService
 
         return despesas
             .Select(d => new DespesaCompartilhadaDto(
-                d.Id, d.Descricao, d.Valor, d.Data, d.CategoriaNome,
+                d.Id, d.Descricao, d.Valor, d.Data.ToDateTime(d.Hora ?? TimeOnly.MinValue), d.CategoriaNome,
                 d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "—"),
                 d.StatusAprovacao,
                 d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null,

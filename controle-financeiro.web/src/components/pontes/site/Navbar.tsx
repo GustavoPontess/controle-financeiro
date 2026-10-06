@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from "react"
+import { Menu, X } from "lucide-react"
 import Logo from "../../Logo/Logo"
 import { PontesButton, PontesNavLink } from "../buttons/Button"
 import { scopedThemeVars, type Palette } from "../theme"
@@ -48,7 +49,9 @@ export function PontesNavbar({
   // colada no topo e sobrepõe o banner promocional/dev bar. `solid` (cor/fundo)
   // pode ser forçado por página sem hero, independente de já ter rolado ou não.
   const [scrolled, setScrolled] = useState(false)
-  const solid = forceSolid || scrolled
+  // Celular: links + auth num painel aberto pelo ☰ (a barra tinha min-width 920px e saía da tela).
+  const [menuAberto, setMenuAberto] = useState(false)
+  const solid = forceSolid || scrolled || menuAberto
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80)
@@ -58,6 +61,7 @@ export function PontesNavbar({
   }, [])
 
   const go = (to: string) => {
+    setMenuAberto(false)
     if (onNavigate) onNavigate(to)
     else { window.history.pushState({}, "", to); window.dispatchEvent(new PopStateEvent("popstate")) }
   }
@@ -100,7 +104,31 @@ export function PontesNavbar({
             >Criar conta</PontesButton>
           </div>
         ) : <span style={{ width: 1 }} />}
+
+        {/* Só no celular (CSS): ☰ abre o painel com os links e o login/cadastro. */}
+        <button type="button" className={styles.burger} onClick={() => setMenuAberto((v) => !v)}
+          aria-label={menuAberto ? "Fechar menu" : "Abrir menu"} aria-expanded={menuAberto}
+          style={{ color: textColor }}>
+          {menuAberto ? <X size={22} strokeWidth={2.5} /> : <Menu size={22} strokeWidth={2.5} />}
+        </button>
       </div>
+
+      {menuAberto && (
+        <div className={styles.painel}>
+          {links.map((link) => (
+            <button key={link.to} type="button" className={styles.painelLink}
+              data-ativo={activePath === link.to ? "true" : undefined} onClick={() => go(link.to)}>
+              {link.label}
+            </button>
+          ))}
+          {!hideAuth && (
+            <div className={styles.painelAuth}>
+              <PontesButton variant="outline" size="md" fullWidth onClick={() => go("/auth/login")}>Entrar</PontesButton>
+              <PontesButton variant="primary" size="md" fullWidth onClick={() => go("/auth/register")}>Criar conta</PontesButton>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   )
 }

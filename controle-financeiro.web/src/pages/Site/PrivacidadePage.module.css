@@ -29,3 +29,11 @@
 .contactBox a { color: var(--pontes-primary); font-weight: 600; text-decoration: none; }
 
 .contactBoxLink { color: var(--pontes-primary); font-weight: 600; text-decoration: none; }
+
+/* ── Celular (< 768px): a página não tinha NENHUMA regra (grades de 2-4 colunas, foto de 420px, títulos de
+   70px+, seções com 48px de lado). Seções mais baixas, grades em 1 coluna (números 2), títulos menores,
+   arte na largura da tela e os cartões flutuantes decorativos escondidos (saíam da tela). */
+@media (max-width: 767px) {
+  .wrap { padding: 72px 20px 64px; }
+  .title { font-size: 28px; }
+}

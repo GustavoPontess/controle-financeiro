@@ -82,7 +82,7 @@ public class ParcelaTransacaoServiceTests
                 Valor = saldoConta,
                 Tipo = TipoTransacao.Receita,
                 ContaId = contaId,
-                Data = DateTime.UtcNow.Date,
+                Data = DateOnly.FromDateTime(DateTime.UtcNow),
                 StatusTransacao = StatusTransacao.Executado,
                 Ativo = true,
                 CriadoPor = usuarioId,

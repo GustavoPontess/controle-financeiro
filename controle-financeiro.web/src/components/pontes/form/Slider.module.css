@@ -1,6 +1,6 @@
 /* Slider.module.css — range single thumb. Cor via var(--pontes-*). */
 .wrap { background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 12px; padding: 20px; max-width: 480px; font-family: var(--pontes-font); }
-.head { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; }
+.head { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: var(--pontes-fs-md); }
 .headLabel { color: var(--pontes-text-muted); }
 .headValue { color: var(--pontes-text); font-weight: 700; }
 .rail { position: relative; height: 24px; display: flex; align-items: center; }
@@ -8,4 +8,4 @@
 .fill { position: absolute; left: 0; height: 6px; background: var(--pontes-primary); border-radius: 999px; }
 .input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: grab; margin: 0; }
 .thumb { position: absolute; transform: translateX(-50%); width: 22px; height: 22px; background: #fff; border: 2px solid var(--pontes-primary); border-radius: 50%; box-shadow: 0 4px 12px color-mix(in srgb, var(--pontes-primary) 27%, transparent); pointer-events: none; }
-.ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--pontes-text-muted); }
+.ends { display: flex; justify-content: space-between; margin-top: 8px; font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }

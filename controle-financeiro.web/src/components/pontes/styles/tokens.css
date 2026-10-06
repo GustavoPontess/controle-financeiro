@@ -26,8 +26,48 @@
 
   /* Fonte de corpo/UI (default = Inter). Sobrescrita pelo Provider (#90). */
   --pontes-font: 'Inter', system-ui, sans-serif;
-  /* Fonte de título — fixa da marca (institucional). Não muda com a paleta/fonte. */
-  --pontes-font-heading: 'Fraunces', serif;
+  /* Fonte de título = a MESMA do corpo (decisão do Gustavo, 2026-10-04: "letra normal, não a de
+     destaque pra tudo"). A Fraunces fica no título da página (Navbar, `--pontes-font-marca`) e no site público. */
+  --pontes-font-heading: var(--pontes-font);
+  /* Fonte de MARCA (Fraunces) — só no título da página (Navbar) e no site público. */
+  --pontes-font-marca: 'Fraunces', serif;
+
+  /* ── Tipografia: TAMANHO de letra (2026-10-05) ──────────────────────────────────────────────────
+     Fonte única dos tamanhos. Mudou aqui, muda no app todo. Duas camadas:
+     1) ESCALA (números) — os degraus que existem. Não inventar tamanho fora dela.
+     2) PAPÉIS — o que cada texto É (título de caixa, texto de linha, rótulo…). Telas e componentes
+        usam o PAPEL sempre que ele existir; a escala direto só pra texto sem papel definido.
+     Fica de fora: tamanho de ÍCONE/glifo (não é texto), tamanho proporcional calculado em runtime
+     (Avatar/BankBadge) e o site público (landing tem tamanhos próprios). */
+  --pontes-fs-2xs: 10px;
+  --pontes-fs-xs: 11px;
+  --pontes-fs-sm: 12px;
+  --pontes-fs-md: 13px;
+  --pontes-fs-base: 14px;
+  --pontes-fs-lg: 16px;
+  --pontes-fs-xl: 18px;
+  --pontes-fs-2xl: 20px;
+  --pontes-fs-3xl: 24px;
+  --pontes-fs-4xl: 28px;
+  --pontes-fs-5xl: 32px;
+  --pontes-fs-6xl: 40px;
+
+  /* Papéis (padrão denso — ver docs/DESIGN_SYSTEM.md → "Densidade" e "Tipografia"). */
+  --pontes-fs-rotulo: var(--pontes-fs-xs);        /* rótulo MAIÚSCULO, cabeçalho de coluna */
+  --pontes-fs-linha: var(--pontes-fs-sm);         /* texto de linha de tabela/lista (nome, valor, data) */
+  --pontes-fs-secundario: var(--pontes-fs-xs);    /* linha de baixo (sub), ajuda e erro de campo, dica */
+  --pontes-fs-corpo: var(--pontes-fs-md);         /* texto corrido, descrição, mensagem de vazio */
+  --pontes-fs-controle: var(--pontes-fs-base);    /* texto digitado/escolhido em campo, select, data */
+  --pontes-fs-titulo-painel: 13.5px;              /* título de painel pequeno */
+  --pontes-fs-titulo-caixa: var(--pontes-fs-lg);  /* título de caixa/tabela/seção ("Todas as transações") */
+  --pontes-fs-titulo-modal: var(--pontes-fs-2xl); /* título de modal e diálogo */
+  --pontes-fs-titulo-pagina: var(--pontes-fs-2xl);/* título da página no topo (Navbar) */
+  --pontes-fs-stat-valor: 22px;                   /* número do PontesStatCard */
+  --pontes-fs-valor-destaque: var(--pontes-fs-4xl); /* valor grande dentro de card (saldo da carteira, fatura atual) */
+  --pontes-fs-hero-valor: 38px;                   /* valor grande do hero de saldo */
+  --pontes-fs-hero-valor-duplo: var(--pontes-fs-5xl); /* hero com DOIS valores lado a lado (Empréstimos) */
+  --pontes-fs-display: var(--pontes-fs-6xl);      /* chamada grande das telas de entrada (Login/Cadastro) */
+  --pontes-fs-hero-numero: var(--pontes-fs-2xl);  /* números ao lado do hero (Entrou/Saiu/Sobrou) */
 
   /* Semânticas — fixas (vermelho de erro é sempre vermelho). */
   --pontes-success: #10B981;

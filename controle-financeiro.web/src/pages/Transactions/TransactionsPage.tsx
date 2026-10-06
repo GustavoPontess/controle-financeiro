@@ -1,494 +1,517 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { formatMoney } from "@/utils/money"
-import { useNavigate, useOutletContext } from "react-router-dom"
+/**
+ * Transações — extrato de caixa da conta (linha do tempo). Mostra só o que mexe
+ * no saldo: receita/despesa de conta (pix/débito/boleto), pagamento de fatura e
+ * transferências (neutras). Compra no crédito vive na aba Cartão; saldo inicial
+ * fica fora da lista. Busca/filtros/paginação rodam no servidor; layout e
+ * comportamento vêm do PontesTabela. Criar é o botão global "Nova transação" do
+ * layout (evento `transactionCreated` → recarrega). Editar/excluir no ⋮ da linha.
+ */
+
+import { useCallback, useEffect, useState } from "react"
+import { useOutletContext } from "react-router-dom"
+import { TrendingUp, TrendingDown, Pencil, Trash2, ArrowLeftRight, CreditCard, Users, User, Split } from "lucide-react"
 import {
-  ChevronLeft, ChevronRight, CalendarDays, Wallet, Search, X, SlidersHorizontal,
-} from "lucide-react"
-import {
-  PontesButton, PontesCard, PontesSelect,
-  PontesInput, PontesEmptyState, PontesDrawer, useHideBalance,
+  PontesTabela, PontesCelulaIdentidade, PontesBadge, PontesTablePagination, PontesDialog,
+  PontesModal, PontesButton, PontesField, PontesInput, PontesSelect,
+  PONTES_TABLE_PAGE_SIZE_DEFAULT, type PontesTabelaColuna, type PontesTabelaTag,
 } from "@/components/pontes"
-import { getCategories } from "../../services/categoryService"
-import { listTransactionsPage, getTransactionStats } from "../../services/transactionService"
-import { getContas } from "../../services/contaService"
-import { getCartoes } from "../../services/cartaoCreditoService"
-import type { Category } from "../../types/Category"
-import type { Conta } from "../../types/Conta"
-import type { CartaoCredito } from "../../types/CartaoCredito"
-import type { Transaction } from "../../types/Transaction"
-import TransactionTable, { type TransactionRow } from "./components/TransactionTable/TransactionTable"
+import { formatMoney } from "@/utils/money"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { listTransactionsPage, getTransactionStats, deleteTransaction } from "@/services/transactionService"
+import { getContas } from "@/services/contaService"
+import { getCategories } from "@/services/categoryService"
+import {
+  getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
+  getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
+} from "@/services/familiaService"
+import type { Transaction } from "@/types/Transaction"
+import type { Conta } from "@/types/Conta"
+import type { Familia, Dependente, ModoRateio, RateioTransacao } from "@/types/Familia"
+import EditTransactionDialog, { type EditableTransaction } from "./components/EditTransactionDialog/EditTransactionDialog"
 import styles from "./TransactionsPage.module.css"
 
+// Data + hora — só mostra a hora quando o lançamento tem horário real (≠ meia-noite
+// UTC). Lançamento manual salvo só com data fica sem hora, então não inventa "00:00".
+// Data "YYYY-MM-DD" + hora "HH:MM:SS"|null — campos separados, sem fuso. Mostra a hora só quando existe.
+const fmtData = (data?: string, hora?: string | null) => {
+  if (!data) return "—"
+  const [y, m, d] = data.split("-")
+  const dia = `${d}/${m}/${y}`
+  return hora ? `${dia} ${hora.slice(0, 5)}` : dia
+}
+
+// Meios de pagamento no extrato de caixa (crédito fica na aba Cartão, fora daqui).
+const MEIOS_PAGAMENTO = [
+  { value: "", label: "Qualquer pagamento" },
+  { value: "1", label: "Dinheiro" },
+  { value: "2", label: "Débito" },
+  { value: "4", label: "Pix" },
+  { value: "5", label: "TED" },
+  { value: "6", label: "Boleto" },
+]
+
+// Modos de rateio da despesa compartilhada (override do padrão da família).
+const MODOS_RATEIO = [
+  { value: "1", label: "Igualitário" },
+  { value: "2", label: "Proporcional à renda" },
+  { value: "3", label: "Personalizado" },
+]
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-
-// Chave de persistência da preferência de linhas-por-página.
-const PAGE_SIZE_KEY = "transactions:pageSize"
-
-// Janela ISO do mês [from, to) — usada nos query params do backend.
-// Importante usar Date.UTC: transações são salvas em UTC midnight do dia
-// escolhido (sem offset de TZ). Se calcular janela em LOCAL e converter pra
-// ISO, fica deslocado +3h (BR) e transações do dia 1 às 00:00 UTC ficam
-// fora. Mantém alinhado com o filtro de mês do DashboardService
-// (t.Data.Year/Month UTC raw).
-const monthWindow = (d: Date) => {
-  const from = new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1)).toISOString()
-  const to = new Date(Date.UTC(d.getFullYear(), d.getMonth() + 1, 1)).toISOString()
-  return { from, to }
-}
-
-// Filtros avançados (#1.1) — vivem no PontesDrawer. Vazios = inativos.
-type AdvFilters = {
-  categoriaId: string // "" = todas
-  contaId: string; cartaoId: string
-  valorMin: string; valorMax: string
-  status: string      // "" = qualquer | "1" = efetivado | "0" = previsto
-  ordenacao: string   // "" = data desc (default) | data_asc | valor_desc | valor_asc
-}
-const EMPTY_ADV: AdvFilters = { categoriaId: "", contaId: "", cartaoId: "", valorMin: "", valorMax: "", status: "", ordenacao: "" }
-const ORDENACAO_OPTS = [
-  { value: "", label: "Mais recentes" },
-  { value: "data_asc", label: "Mais antigas" },
-  { value: "valor_desc", label: "Maior valor" },
-  { value: "valor_asc", label: "Menor valor" },
-]
-const STATUS_OPTS = [
-  { value: "", label: "Qualquer status" },
-  { value: "1", label: "Efetivadas" },
-  { value: "0", label: "Previstas" },
-]
+const paraEditavel = (t: Transaction): EditableTransaction => ({
+  id: t.id, descricao: t.descricao, valor: t.valor, tipo: t.tipo,
+  categoriaId: t.categoriaId ?? undefined, subcategoriaId: t.subcategoriaId ?? undefined,
+  contaId: t.contaId, cartaoCreditoId: t.cartaoCreditoId, meioPagamento: t.meioPagamento, data: t.data, hora: t.hora,
+})
 
 export default function TransactionsPage() {
-  const navigate = useNavigate()
   const { notify } = useOutletContext<OutletContextType>()
-  useHideBalance() // assina o olho global → re-render (hero + stats) ao ocultar/mostrar
-  const [categories, setCategories] = useState<Category[]>([])
-  // Janela visível da página atual (vem do backend já paginado+filtrado).
-  const [pageItems, setPageItems] = useState<Transaction[]>([])
-  const [totalNoFiltro, setTotalNoFiltro] = useState(0)
-  // Stats do mês inteiro são separadas — agregamos uma página grande
-  // (max 100) só pros KPIs do topo, sem afetar a tabela.
-  const [monthStats, setMonthStats] = useState({ entradas: 0, saidas: 0, saldoMes: 0 })
-  const [saldoTotal, setSaldoTotal] = useState(0)
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [filterTipo, setFilterTipo] = useState<0 | 1 | 2>(0) // 0=todos, 1=despesa, 2=receita
-  const [searchInput, setSearchInput] = useState("") // valor digitado (imediato)
-  const [search, setSearch] = useState("")             // valor com debounce (query)
-  const searchRef = useRef<HTMLInputElement>(null)
-  // Filtros avançados (#1.1): `adv` = aplicado (entra na query); `draft` = sendo
-  // editado no drawer. Aplicar copia draft→adv. Contas/cartões pras opções.
-  const [contas, setContas] = useState<Conta[]>([])
-  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
-  const [draft, setDraft] = useState<AdvFilters>(EMPTY_ADV)
+  const [itens, setItens] = useState<Transaction[]>([])
+  const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<{ entradas: number; saidas: number; saldo: number } | null>(null)
+  const [saldoTotal, setSaldoTotal] = useState(0) // soma real das contas — o dinheiro que você tem
+  const [contas, setContas] = useState<Conta[]>([]) // pra o filtro por conta
+  const [catNome, setCatNome] = useState<Record<string, string>>({}) // id da categoria → nome
+  const [carregando, setCarregando] = useState(true)
   const [page, setPage] = useState(1)
-  // Default 10, mas respeita a última escolha do usuário (persistida em
-  // localStorage) — sobrevive reload e troca de tela.
-  const [pageSize, setPageSize] = useState<number>(() => {
-    const saved = Number(localStorage.getItem(PAGE_SIZE_KEY))
-    return Number.isFinite(saved) && saved > 0 ? saved : 10
-  })
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
+  const [busca, setBusca] = useState("")
+  const buscaAplicada = useDebouncedValue(busca.trim())
+  // Filtros avançados (todos no servidor): tipo de lançamento (natureza), conta, meio de pagamento, status, faixa, período.
+  const [natureza, setNatureza] = useState("") // "" = todos | entrada | saida | transferencia | fatura
+  const [contaFiltro, setContaFiltro] = useState("") // "" = todas as contas
+  const [meioPag, setMeioPag] = useState("")         // "" = qualquer meio
+  const [status, setStatus] = useState("")           // "" = qualquer | "1" = efetivado | "0" = previsto
+  const [valorMin, setValorMin] = useState<number>()
+  const [valorMax, setValorMax] = useState<number>()
+  const [de, setDe] = useState<string>()
+  const [ate, setAte] = useState<string>()
 
-  // Debounce da busca: 350ms sem digitar → dispara query. Evita request por tecla.
+  const [editando, setEditando] = useState<Transaction | null>(null)
+  const [excluindo, setExcluindo] = useState<Transaction | null>(null)
+
+  // Ações de família/rateio (só despesa real de conta) — estado dos 3 modais.
+  const [sharing, setSharing] = useState<Transaction | null>(null)
+  const [familias, setFamilias] = useState<Familia[]>([])
+  const [assigning, setAssigning] = useState<Transaction | null>(null)
+  const [dependentes, setDependentes] = useState<Dependente[]>([])
+  const [ratear, setRatear] = useState<Transaction | null>(null)
+  const [rateio, setRateio] = useState<RateioTransacao | null>(null)
+  const [rateioModo, setRateioModo] = useState<ModoRateio>(1)
+  const [percentuais, setPercentuais] = useState<Record<string, string>>({})
+  const [rateioErro, setRateioErro] = useState<string | undefined>()
+
+  useEffect(() => { setPage(1) }, [buscaAplicada, natureza, contaFiltro, meioPag, status, valorMin, valorMax, de, ate])
+
+  const [versao, setVersao] = useState(0)
+  const recarregar = useCallback(() => setVersao((v) => v + 1), [])
+
+  // Criar transação é o dialog global do layout; ao criar ele emite
+  // `transactionCreated` — reagimos recarregando a lista, os stats e o saldo.
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 350)
-    return () => clearTimeout(t)
-  }, [searchInput])
-
-  const loadCategories = useCallback(async () => {
-    try {
-      const cats = await getCategories()
-      setCategories(cats)
-    } catch (error) {
-      console.error("Erro ao carregar categorias:", error)
-    }
-  }, [])
-
-  const loadSaldo = useCallback(async () => {
-    try {
-      const lista = await getContas()
-      setContas(lista)
-      setSaldoTotal(lista.reduce((sum, c) => sum + (c.saldoAtual ?? 0), 0))
-    } catch (error) {
-      console.error("Erro ao carregar contas:", error)
-    }
-  }, [])
-
-  const loadCartoes = useCallback(async () => {
-    try {
-      setCartoes(await getCartoes())
-    } catch (error) {
-      console.error("Erro ao carregar cartões:", error)
-    }
-  }, [])
-
-  const loadPage = useCallback(async () => {
-    try {
-      const { from, to } = monthWindow(currentDate)
-      const result = await listTransactionsPage(page, pageSize, {
-        from, to,
-        categoriaId: adv.categoriaId || undefined,
-        q: search || undefined,
-        tipo: filterTipo || undefined,
-        contaId: adv.contaId || undefined,
-        cartaoId: adv.cartaoId || undefined,
-        valorMin: adv.valorMin ? Number(adv.valorMin) : undefined,
-        valorMax: adv.valorMax ? Number(adv.valorMax) : undefined,
-        status: adv.status !== "" ? Number(adv.status) : undefined,
-        ordenacao: adv.ordenacao || undefined,
-      })
-      setPageItems(result.items)
-      setTotalNoFiltro(result.total)
-    } catch (error) {
-      console.error("Erro ao carregar transações:", error)
-      notify({ open: true, message: "Erro ao carregar transações", severity: "error" })
-    }
-  }, [currentDate, page, pageSize, search, filterTipo, adv, notify])
-
-  // KPIs do topo — endpoint /stats dedicado, calculado no banco. Exato em qualquer
-  // volume (#179 — antes agregava 1ª página de 100 e perdia acurácia >100/mês).
-  const loadMonthStats = useCallback(async () => {
-    try {
-      const { from, to } = monthWindow(currentDate)
-      const stats = await getTransactionStats({ from, to })
-      // Cards mostram CAIXA REAL (exclui crédito não-pago) — alinhado com
-      // Dashboard "Entrou/Saiu/Sobrou". `entradas/saidas` totais ficam
-      // disponíveis no DTO pra quem precisar (drilldown, P&L).
-      setMonthStats({
-        entradas: stats.entradasCaixa,
-        saidas: stats.saidasCaixa,
-        saldoMes: stats.saldoPeriodo,
-      })
-    } catch (error) {
-      console.error("Erro ao calcular stats:", error)
-    }
-  }, [currentDate])
-
-  useEffect(() => { void loadCategories(); void loadSaldo(); void loadCartoes() }, [loadCategories, loadSaldo, loadCartoes])
-  useEffect(() => { void loadPage() }, [loadPage])
-  useEffect(() => { void loadMonthStats() }, [loadMonthStats])
-
-  // Filtro/mês muda → volta pra página 1 (senão usuário fica preso em página 5
-  // de um filtro que só tem 2 páginas).
-  useEffect(() => { setPage(1) }, [currentDate, filterTipo, search, pageSize, adv])
-
-  // Atalho "/" foca a busca (fora de input). N abre nova transação.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName
-      const inField = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable
-      if (e.key === "/" && !inField) {
-        e.preventDefault(); searchRef.current?.focus()
-      } else if (e.key.toLowerCase() === "n" && !inField && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault(); window.dispatchEvent(new Event("openNewTransaction"))
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
-
-  // Refetch da página + stats quando transação é criada por dialog global.
-  useEffect(() => {
-    const handler = () => {
-      void loadPage(); void loadMonthStats(); void loadSaldo()
-    }
+    const handler = () => recarregar()
     window.addEventListener("transactionCreated", handler)
     return () => window.removeEventListener("transactionCreated", handler)
-  }, [loadPage, loadMonthStats, loadSaldo])
+  }, [recarregar])
 
-  const loadData = useCallback(() => {
-    void loadPage(); void loadMonthStats(); void loadSaldo()
-  }, [loadPage, loadMonthStats, loadSaldo])
+  // Saldo em conta = soma dos saldos reais das contas (o dinheiro que a pessoa tem).
+  // Consolidado, não depende de mês/filtro. Recarrega quando cria/edita/exclui (versao).
+  useEffect(() => {
+    let vivo = true
+    getContas()
+      .then((cs) => { if (vivo) { setContas(cs); setSaldoTotal(cs.reduce((s, c) => s + (c.saldoAtual ?? 0), 0)) } })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [versao])
 
-  const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
-  const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))
+  // Nome das categorias (a transação só traz o id) — pra coluna Categoria.
+  useEffect(() => {
+    let vivo = true
+    getCategories()
+      .then((cats) => { if (vivo) setCatNome(Object.fromEntries(cats.map((c) => [c.id, c.descricao]))) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [])
 
-  const monthLabel = currentDate
-    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    .replace(/^\w/, (c) => c.toUpperCase())
+  useEffect(() => {
+    let vivo = true
+    setCarregando(true)
+    Promise.all([
+      listTransactionsPage(page, pageSize, {
+        q: buscaAplicada || undefined,
+        natureza: natureza || undefined,
+        contaId: contaFiltro || undefined,
+        meioPagamento: meioPag !== "" ? Number(meioPag) : undefined,
+        status: status !== "" ? Number(status) : undefined,
+        valorMin, valorMax, from: de, to: ate,
+        apenasCaixa: true, // extrato da conta: sem compra de crédito, sem saldo inicial
+      }),
+      getTransactionStats({}).catch(() => null),
+    ])
+      .then(([lista, s]) => {
+        if (!vivo) return
+        setItens(lista.items)
+        setTotal(lista.total)
+        // Caixa: só movimento real da conta (exclui compra no crédito). Bate com o extrato.
+        setStats(s ? { entradas: s.entradasCaixa, saidas: s.saidasCaixa, saldo: s.saldoPeriodo } : null)
+      })
+      .catch(() => { if (vivo) notify({ open: true, message: "Erro ao carregar transações", severity: "error" }) })
+      .finally(() => { if (vivo) setCarregando(false) })
+    return () => { vivo = false }
+  }, [page, pageSize, buscaAplicada, natureza, contaFiltro, meioPag, status, valorMin, valorMax, de, ate, versao, notify])
 
-  const { entradas: totalEntradas, saidas: totalSaidas, saldoMes: saldoFinal } = monthStats
-
-  // Quantos filtros avançados estão ativos (pro badge no botão Filtros).
-  const advCount = useMemo(
-    () => Object.values(adv).filter((v) => v !== "").length,
-    [adv]
-  )
-  // Tipo (Tudo/Receitas/Despesas) é toggle de VISÃO, não filtro → não conta pro "Limpar".
-  const hasFilters = useMemo(
-    () => !!(search || advCount),
-    [search, advCount]
-  )
-  const clearFilters = () => {
-    setSearchInput(""); setSearch("")
-    setAdv(EMPTY_ADV); setDraft(EMPTY_ADV)
+  const handleExcluir = async () => {
+    if (!excluindo) return
+    try {
+      await deleteTransaction(excluindo.id)
+      notify({ open: true, message: "Transação excluída", severity: "success" })
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao excluir transação", severity: "error" })
+    } finally {
+      setExcluindo(null)
+    }
   }
 
-  // Abre o drawer com o estado atual; "Aplicar" copia draft→adv.
-  const openFilters = () => { setDraft(adv); setFiltersOpen(true) }
-  const aplicarFilters = () => { setAdv(draft); setFiltersOpen(false) }
+  // ── Compartilhar despesa com a família ──
+  const openShare = async (t: Transaction) => {
+    setSharing(t)
+    try {
+      setFamilias(await getFamilias())
+    } catch {
+      notify({ open: true, message: "Erro ao carregar famílias", severity: "error" })
+    }
+  }
 
-  const TIPO_CHIPS: { value: 0 | 1 | 2; label: string }[] = [
-    { value: 0, label: "Tudo" },
-    { value: 2, label: "Receitas" },
-    { value: 1, label: "Despesas" },
+  const handleShare = async (familiaId: string) => {
+    if (!sharing) return
+    try {
+      await compartilharTransacao(sharing.id, familiaId)
+      notify({ open: true, message: "Despesa compartilhada com a família", severity: "success" })
+      setSharing(null)
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao compartilhar despesa", severity: "error" })
+    }
+  }
+
+  // ── Atribuir despesa a um dependente ──
+  const openAssign = async (t: Transaction) => {
+    setAssigning(t)
+    try {
+      const fams = await getFamilias()
+      const listas = await Promise.all(fams.map((f) => getDependentes(f.id)))
+      setDependentes(listas.flat())
+    } catch {
+      notify({ open: true, message: "Erro ao carregar dependentes", severity: "error" })
+    }
+  }
+
+  const handleAssign = async (dependenteId: string | null) => {
+    if (!assigning) return
+    try {
+      await atribuirDependente(assigning.id, dependenteId)
+      notify({
+        open: true,
+        message: dependenteId ? "Despesa atribuída ao dependente" : "Atribuição removida",
+        severity: "success",
+      })
+      setAssigning(null)
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao atribuir despesa", severity: "error" })
+    }
+  }
+
+  // ── Rateio específico da despesa (override do padrão da família) ──
+  const openRatear = async (t: Transaction) => {
+    setRatear(t)
+    setRateio(null)
+    setRateioErro(undefined)
+    try {
+      const r = await getRateioTransacao(t.id)
+      setRateio(r)
+      setRateioModo(r.modo ?? 1)
+      setPercentuais(Object.fromEntries(
+        r.membros.map((m) => [m.usuarioId, m.percentual ? String(m.percentual) : ""])))
+    } catch {
+      notify({ open: true, message: "Defina a despesa como compartilhada antes de ratear", severity: "error" })
+      setRatear(null)
+    }
+  }
+
+  const handleSalvarRateio = async () => {
+    if (!ratear) return
+    let itens = null
+    if (rateioModo === 3) {
+      itens = (rateio?.membros ?? []).map((m) => ({
+        usuarioId: m.usuarioId,
+        percentual: Number(percentuais[m.usuarioId] ?? 0),
+      }))
+      const soma = itens.reduce((s, i) => s + i.percentual, 0)
+      // Validação inline (nunca toast pra campo): bloqueia submit e marca os campos.
+      if (Math.abs(soma - 100) > 0.01) {
+        setRateioErro("Os percentuais devem somar 100%")
+        return
+      }
+    }
+    try {
+      await definirRateioTransacao(ratear.id, rateioModo, itens)
+      notify({ open: true, message: "Rateio definido", severity: "success" })
+      setRatear(null)
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao definir rateio", severity: "error" })
+    }
+  }
+
+  const handleRemoverRateio = async () => {
+    if (!ratear) return
+    try {
+      await removerRateioTransacao(ratear.id)
+      notify({ open: true, message: "Override de rateio removido", severity: "success" })
+      setRatear(null)
+      recarregar()
+    } catch {
+      notify({ open: true, message: "Erro ao remover rateio", severity: "error" })
+    }
+  }
+
+  // Natureza da linha no extrato de caixa. Transferência e pagamento de fatura
+  // são neutros — não são gasto/renda, só mexem no caixa.
+  const naturezaLinha = (t: Transaction): "transferencia" | "fatura" | "entrada" | "saida" =>
+    t.ehTransferencia ? "transferencia" : t.ehPagamentoFatura ? "fatura" : t.tipo === 2 ? "entrada" : "saida"
+
+  const colunas: PontesTabelaColuna<Transaction>[] = [
+    {
+      key: "descricao", header: "Descrição / Conta",
+      render: (t) => {
+        const n = naturezaLinha(t)
+        const icone = n === "transferencia" ? <ArrowLeftRight size={17} strokeWidth={2.2} />
+          : n === "fatura" ? <CreditCard size={17} strokeWidth={2.2} />
+          : n === "entrada" ? <TrendingUp size={17} strokeWidth={2.2} />
+          : <TrendingDown size={17} strokeWidth={2.2} />
+        const tom = n === "entrada" ? "entrada" : n === "saida" ? "saida" : "neutro"
+        return <PontesCelulaIdentidade icone={icone} tom={tom} nome={t.descricao} sub={t.contaNome} />
+      },
+    },
+    {
+      // Eixo 1: TIPO (natureza) — o que é o lançamento.
+      key: "tipo", header: "Tipo",
+      render: (t) => {
+        const n = naturezaLinha(t)
+        const label = n === "entrada" ? "Entrada" : n === "saida" ? "Saída" : n === "transferencia" ? "Transferência" : "Pagto. fatura"
+        const tone = n === "entrada" ? "success" : n === "saida" ? "danger" : n === "transferencia" ? "primary" : "neutral"
+        return <PontesBadge tone={tone} size="sm">{label}</PontesBadge>
+      },
+    },
+    { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
+    { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
+    { key: "data", header: "Data/Hora", render: (t) => fmtData(t.data, t.hora) },
+    {
+      // Eixo 2: STATUS — em que estado está (puro, sem misturar com o tipo).
+      key: "status", header: "Status",
+      render: (t) => t.statusTransacao === 0
+        ? <PontesBadge tone="warning" size="sm">Previsto</PontesBadge>
+        : <PontesBadge tone="success" size="sm">Efetivado</PontesBadge>,
+    },
+    {
+      key: "valor", header: "Valor", numerica: true,
+      render: (t) => {
+        const n = naturezaLinha(t)
+        const cls = n === "entrada" ? styles.valEntrada : n === "saida" || n === "fatura" ? styles.valSaida : styles.valNeutro
+        return <span className={cls}>{formatMoney(t.valor)}</span>
+      },
+    },
   ]
 
-  if (categories.length === 0) {
-    return (
-      <PontesEmptyState
-        icon={<Wallet size={28} />}
-        title="Nenhuma categoria cadastrada"
-        description="Crie categorias antes de registrar transações."
-        actions={<PontesButton onClick={() => navigate("/categories")}>Adicionar Categoria</PontesButton>}
-      />
-    )
+  const acoes = (t: Transaction) => {
+    // Família/rateio só valem pra DESPESA real de conta (gasto compartilhável).
+    // Transferência e pagamento de fatura são neutros — não entram.
+    const podeCompartilhar = t.tipo === 1 && !t.ehTransferencia && !t.ehPagamentoFatura
+    return [
+      ...(podeCompartilhar
+        ? [
+            { key: "compartilhar", label: "Compartilhar com família", icon: <Users size={16} strokeWidth={2.5} />, onClick: () => openShare(t) },
+            { key: "atribuir", label: "Atribuir a dependente", icon: <User size={16} strokeWidth={2.5} />, onClick: () => openAssign(t) },
+            { key: "rateio", label: "Definir rateio", icon: <Split size={16} strokeWidth={2.5} />, onClick: () => openRatear(t) },
+          ]
+        : []),
+      { key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setEditando(t) },
+      { key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) },
+    ]
   }
 
+  const tags: PontesTabelaTag[] = []
+  if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBusca("") })
+
   return (
-    <div className={styles.root}>
-      {/* Header padrão — título + ações (igual às outras telas) */}
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Transações</h1>
-        </div>
-      </div>
-
-      {/* Hero composto — saldo total (global) à esquerda; resumo do mês à direita.
-          Mesma linguagem hero das outras telas, mas composição própria desta:
-          junta "quanto tenho" + "como foi o mês" numa peça só. */}
-      <div className={styles.hero}>
-        <div className={styles.heroBlob} />
-        <div className={styles.heroMain}>
-          <div className={styles.heroLabel}>Saldo total</div>
-          <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
-          <div className={styles.heroSub}>Soma de todas as contas</div>
-        </div>
-
-        <div className={styles.heroSide}>
-          <div className={styles.heroMonthNav}>
-            <button type="button" className={styles.heroNavBtn} aria-label="Mês anterior" onClick={prevMonth}>
-              <ChevronLeft size={16} strokeWidth={2.5} />
-            </button>
-            <span className={styles.heroMonthLabel}>{monthLabel}</span>
-            <button type="button" className={styles.heroNavBtn} aria-label="Próximo mês" onClick={nextMonth}>
-              <ChevronRight size={16} strokeWidth={2.5} />
-            </button>
-            <button type="button" className={styles.heroTodayBtn} onClick={() => setCurrentDate(new Date())}>
-              <CalendarDays size={14} strokeWidth={2.5} /> Hoje
-            </button>
-          </div>
-          <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue} data-tone="up">{formatMoney(totalEntradas)}</span>
-              <span className={styles.heroStatLabel}>Entrou</span>
+    <>
+      <PontesTabela
+        id="transacoes"
+        titulo="Todas as transações"
+        resumo={
+          <div className={styles.hero}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroMain}>
+              <div className={styles.heroLabel}>Saldo em conta</div>
+              <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
             </div>
-            <div className={styles.heroStatDivider} />
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue} data-tone="down">{formatMoney(totalSaidas)}</span>
-              <span className={styles.heroStatLabel}>Saiu</span>
+            <div className={styles.heroFluxo}>
+              <div className={styles.heroStats}>
+                <div className={styles.heroStat}>
+                  <span className={styles.heroStatValue} data-tone="up">{formatMoney(stats?.entradas ?? 0)}</span>
+                  <span className={styles.heroStatLabel}>Entrou</span>
+                </div>
+                <div className={styles.heroStatDivider} />
+                <div className={styles.heroStat}>
+                  <span className={styles.heroStatValue} data-tone="down">{formatMoney(stats?.saidas ?? 0)}</span>
+                  <span className={styles.heroStatLabel}>Saiu</span>
+                </div>
+              </div>
             </div>
-            <div className={styles.heroStatDivider} />
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue}>{formatMoney(saldoFinal)}</span>
-              <span className={styles.heroStatLabel}>Sobrou</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar — busca + filtro de tipo + categoria */}
-      <div className={styles.toolbar}>
-        <div className={styles.searchWrap}>
-          <PontesInput
-            ref={searchRef}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Buscar transação…  (/)"
-            iconStart={<Search size={16} />}
-            iconEnd={searchInput ? (
-              <button type="button" className={styles.searchClear} aria-label="Limpar busca"
-                onClick={() => { setSearchInput(""); setSearch(""); searchRef.current?.focus() }}>
-                <X size={15} strokeWidth={2.5} />
-              </button>
-            ) : undefined}
-          />
-        </div>
-        <div className={styles.tipoChips}>
-          {TIPO_CHIPS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              className={styles.tipoChip}
-              data-active={filterTipo === c.value ? "true" : undefined}
-              onClick={() => setFilterTipo(c.value)}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-        <PontesButton
-          size="sm"
-          variant={advCount ? "primary" : "outline"}
-          iconStart={<SlidersHorizontal size={15} strokeWidth={2.5} />}
-          onClick={openFilters}
-        >
-          Filtros{advCount ? ` (${advCount})` : ""}
-        </PontesButton>
-        {hasFilters && (
-          <PontesButton size="sm" variant="ghost" iconStart={<X size={15} strokeWidth={2.5} />} onClick={clearFilters}>
-            Limpar
-          </PontesButton>
-        )}
-      </div>
-
-      {/* Chips dos filtros avançados ativos (#1.1) — clicar remove. */}
-      {advCount > 0 && (
-        <div className={styles.advChips}>
-          {adv.contaId && (
-            <FilterChip label={`Conta: ${contas.find((c) => c.id === adv.contaId)?.nome ?? "—"}`}
-              onClear={() => setAdv((a) => ({ ...a, contaId: "" }))} />
-          )}
-          {adv.cartaoId && (
-            <FilterChip label={`Cartão: ${cartoes.find((c) => c.id === adv.cartaoId)?.nome ?? "—"}`}
-              onClear={() => setAdv((a) => ({ ...a, cartaoId: "" }))} />
-          )}
-          {adv.valorMin && (
-            <FilterChip label={`≥ ${formatMoney(Number(adv.valorMin))}`}
-              onClear={() => setAdv((a) => ({ ...a, valorMin: "" }))} />
-          )}
-          {adv.valorMax && (
-            <FilterChip label={`≤ ${formatMoney(Number(adv.valorMax))}`}
-              onClear={() => setAdv((a) => ({ ...a, valorMax: "" }))} />
-          )}
-          {adv.status !== "" && (
-            <FilterChip label={STATUS_OPTS.find((o) => o.value === adv.status)?.label ?? ""}
-              onClear={() => setAdv((a) => ({ ...a, status: "" }))} />
-          )}
-          {adv.ordenacao && (
-            <FilterChip label={ORDENACAO_OPTS.find((o) => o.value === adv.ordenacao)?.label ?? ""}
-              onClear={() => setAdv((a) => ({ ...a, ordenacao: "" }))} />
-          )}
-        </div>
-      )}
-
-      <PontesCard padding={0} radius={14}>
-        <div className={styles.tableHead}>
-          <span className={styles.tableTitle}>
-            {hasFilters ? "Resultado" : "Todas as transações"}
-          </span>
-          <span className={styles.tableMeta}>{totalNoFiltro} {totalNoFiltro === 1 ? "lançamento" : "lançamentos"}</span>
-        </div>
-        <TransactionTable
-          rows={pageItems.map((t: Transaction): TransactionRow => ({
-            id: t.id,
-            descricao: t.descricao,
-            valor: t.valor,
-            tipo: t.tipo,
-            data: t.data,
-            categoriaId: t.categoriaId ?? undefined,
-            subcategoriaId: t.subcategoriaId ?? undefined,
-            categoriaDescricao: categories.find((c) => c.id === t.categoriaId)?.descricao,
-            contaId: t.contaId,
-            cartaoCreditoId: t.cartaoCreditoId,
-            contaNome: t.contaNome ?? t.cartaoCreditoNome,
-            meioPagamento: t.meioPagamento,
-            meioPagamentoDescricao: t.meioPagamentoDescricao,
-            recorrenteOrigemId: t.recorrenteOrigemId,
-            parcelamentoId: t.parcelamentoId,
-            parcelaTransacaoId: t.parcelaTransacaoId,
-            ehPagamentoFatura: t.ehPagamentoFatura,
-            statusTransacao: t.statusTransacao,
-          }))}
-          onRefresh={loadData}
-          notify={notify}
-          emptyMessage={hasFilters ? "Nada encontrado com esses filtros" : "Nenhuma transação neste período"}
-          pagination={{
-            page, pageSize, total: totalNoFiltro,
-            onPageChange: setPage,
-            onPageSizeChange: (s) => { setPageSize(s); setPage(1); localStorage.setItem(PAGE_SIZE_KEY, String(s)) },
-          }}
-        />
-      </PontesCard>
-
-      {/* Drawer de filtros avançados (#1.1) — edita `draft`; "Aplicar" copia pra `adv`. */}
-      <PontesDrawer
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        title="Filtros"
-        footer={
-          <div className={styles.drawerFooter}>
-            <PontesButton variant="ghost" size="sm" onClick={() => setDraft(EMPTY_ADV)}>
-              Limpar tudo
-            </PontesButton>
-            <PontesButton variant="primary" size="sm" onClick={aplicarFilters}>
-              Aplicar
-            </PontesButton>
           </div>
         }
-      >
-        {/* Só monta o corpo quando aberto — drawer fechado não deixa inputs vivos
-            no DOM (evita colisão de locators e foco em campos invisíveis). */}
-        {filtersOpen && (
-        <div className={styles.drawerBody}>
-          <label className={styles.drawerLabel}>Categoria
-            <PontesSelect
-              value={draft.categoriaId}
-              onChange={(v) => setDraft((d) => ({ ...d, categoriaId: v }))}
-              placeholder="Todas as categorias"
-              options={[{ value: "", label: "Todas as categorias" }, ...categories.map((c) => ({ value: c.id, label: c.descricao }))]}
-            />
-          </label>
-          <label className={styles.drawerLabel}>Conta
-            <PontesSelect
-              value={draft.contaId}
-              onChange={(v) => setDraft((d) => ({ ...d, contaId: v }))}
-              placeholder="Qualquer conta"
-              options={[{ value: "", label: "Qualquer conta" }, ...contas.map((c) => ({ value: c.id, label: c.nome }))]}
-            />
-          </label>
-          <label className={styles.drawerLabel}>Cartão
-            <PontesSelect
-              value={draft.cartaoId}
-              onChange={(v) => setDraft((d) => ({ ...d, cartaoId: v }))}
-              placeholder="Qualquer cartão"
-              options={[{ value: "", label: "Qualquer cartão" }, ...cartoes.map((c) => ({ value: c.id, label: c.nome }))]}
-            />
-          </label>
-          <div className={styles.drawerRow}>
-            <label className={styles.drawerLabel}>Valor mín.
-              <PontesInput type="number" inputMode="decimal" placeholder="0,00"
-                value={draft.valorMin} onChange={(e) => setDraft((d) => ({ ...d, valorMin: e.target.value }))} />
-            </label>
-            <label className={styles.drawerLabel}>Valor máx.
-              <PontesInput type="number" inputMode="decimal" placeholder="—"
-                value={draft.valorMax} onChange={(e) => setDraft((d) => ({ ...d, valorMax: e.target.value }))} />
-            </label>
-          </div>
-          <label className={styles.drawerLabel}>Status
-            <PontesSelect value={draft.status} onChange={(v) => setDraft((d) => ({ ...d, status: v }))} options={STATUS_OPTS} />
-          </label>
-          <label className={styles.drawerLabel}>Ordenar por
-            <PontesSelect value={draft.ordenacao} onChange={(v) => setDraft((d) => ({ ...d, ordenacao: v }))} options={ORDENACAO_OPTS} />
-          </label>
-        </div>
-        )}
-      </PontesDrawer>
-    </div>
-  )
-}
+        busca={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }}
+        filtrosAvancados={[
+          {
+            tipo: "select", id: "natureza", label: "Tipo de lançamento", value: natureza, coluna: "tipo",
+            opcoes: [
+              { value: "", label: "Todos" },
+              { value: "entrada", label: "Entradas" },
+              { value: "saida", label: "Saídas" },
+              { value: "transferencia", label: "Transferências" },
+              { value: "fatura", label: "Pagamento de fatura" },
+            ],
+            onChange: setNatureza,
+          },
+          {
+            // Conta não tem coluna própria (vai no sub da Descrição) → aparece sempre.
+            tipo: "select", id: "conta", label: "Conta", value: contaFiltro,
+            opcoes: [{ value: "", label: "Todas as contas" }, ...contas.map((c) => ({ value: c.id, label: c.nome }))],
+            onChange: setContaFiltro,
+          },
+          {
+            tipo: "select", id: "pagamento", label: "Meio de pagamento", value: meioPag, coluna: "pagamento",
+            opcoes: MEIOS_PAGAMENTO,
+            onChange: setMeioPag,
+          },
+          {
+            tipo: "select", id: "status", label: "Status", value: status, coluna: "status",
+            opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Efetivado" }, { value: "0", label: "Previsto" }],
+            onChange: setStatus,
+          },
+          { tipo: "faixaValor", id: "valor", label: "Valor", coluna: "valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx) } },
+          { tipo: "faixaData", id: "data", label: "Período", coluna: "data", de, ate, onChange: (d, a) => { setDe(d); setAte(a) } },
+        ]}
+        tags={tags}
+        colunas={colunas}
+        colunasPadraoOcultas={["categoria", "pagamento"]}
+        itens={itens}
+        chave={(t) => t.id}
+        acoes={acoes}
+        carregando={carregando}
+        vazio={{ icone: <TrendingUp size={28} strokeWidth={2.5} />, titulo: "Nenhuma transação" }}
+        paginacao={
+          <PontesTablePagination
+            total={total} page={page} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            itemLabel="transações" itemLabelSingular="transação"
+          />
+        }
+      />
 
-/** Chip de filtro avançado ativo — clicar no × remove só ele. */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className={styles.advChip}>
-      {label}
-      <button type="button" className={styles.advChipX} aria-label={`Remover ${label}`} onClick={onClear}>
-        <X size={13} strokeWidth={2.5} />
-      </button>
-    </span>
+      <EditTransactionDialog transaction={editando ? paraEditavel(editando) : null} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); recarregar() }} notify={notify} />
+      <PontesDialog
+        open={excluindo !== null}
+        title="Excluir transação?"
+        description={excluindo ? `${excluindo.descricao} · ${formatMoney(excluindo.valor)}` : undefined}
+        tone="danger"
+        confirmLabel="Excluir"
+        onConfirm={handleExcluir}
+        onCancel={() => setExcluindo(null)}
+      />
+
+      {/* Compartilhar com família */}
+      <PontesModal
+        open={sharing !== null}
+        title="Compartilhar com a família"
+        onClose={() => setSharing(null)}
+        footer={<PontesButton variant="outline" onClick={() => setSharing(null)}>Cancelar</PontesButton>}
+      >
+        {familias.length === 0 ? (
+          <div className={styles.modalMuted}>Você não participa de nenhuma família.</div>
+        ) : (
+          <>
+            <p className={styles.modalIntro}>Em qual família lançar “{sharing?.descricao}”?</p>
+            <div className={styles.optionList}>
+              {familias.map((f) => (
+                <PontesButton key={f.id} variant="outline" fullWidth onClick={() => handleShare(f.id)}>{f.nome}</PontesButton>
+              ))}
+            </div>
+          </>
+        )}
+      </PontesModal>
+
+      {/* Atribuir a dependente */}
+      <PontesModal
+        open={assigning !== null}
+        title="Atribuir a um dependente"
+        onClose={() => setAssigning(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={() => handleAssign(null)}>Remover atribuição</PontesButton>
+          <PontesButton variant="outline" onClick={() => setAssigning(null)}>Cancelar</PontesButton>
+        </>}
+      >
+        {dependentes.length === 0 ? (
+          <div className={styles.modalMuted}>Nenhum dependente cadastrado nas suas famílias.</div>
+        ) : (
+          <>
+            <p className={styles.modalIntro}>A quem atribuir “{assigning?.descricao}”?</p>
+            <div className={styles.optionList}>
+              {dependentes.map((d) => (
+                <PontesButton key={d.id} variant="outline" fullWidth onClick={() => handleAssign(d.id)}>
+                  {d.nome}{d.apelido ? ` (${d.apelido})` : ""}
+                </PontesButton>
+              ))}
+            </div>
+          </>
+        )}
+      </PontesModal>
+
+      {/* Rateio específico da despesa */}
+      <PontesModal
+        open={ratear !== null}
+        title={`Rateio de “${ratear?.descricao ?? ""}”`}
+        onClose={() => setRatear(null)}
+        footer={<>
+          <PontesButton variant="outline" onClick={handleRemoverRateio}>Remover override</PontesButton>
+          <PontesButton variant="outline" onClick={() => setRatear(null)}>Cancelar</PontesButton>
+          <PontesButton onClick={handleSalvarRateio}>Salvar</PontesButton>
+        </>}
+      >
+        <p className={styles.modalIntro}>Define o modo de rateio só para esta despesa, sobrepondo o padrão da família.</p>
+        <PontesField label="Modo">
+          <PontesSelect
+            value={String(rateioModo)}
+            onChange={(v) => setRateioModo(Number(v) as ModoRateio)}
+            options={MODOS_RATEIO}
+          />
+        </PontesField>
+        {rateioModo === 3 && (rateio?.membros ?? []).map((m) => (
+          <PontesField key={m.usuarioId} label={`${m.nome} (%)`}>
+            <PontesInput
+              type="number"
+              value={percentuais[m.usuarioId] ?? ""}
+              onChange={(e) => { setRateioErro(undefined); setPercentuais((p) => ({ ...p, [m.usuarioId]: e.target.value })) }}
+              min={0} max={100} step="0.01"
+              invalid={!!rateioErro}
+            />
+          </PontesField>
+        ))}
+        {rateioErro && <p className={styles.rateioErro}>{rateioErro}</p>}
+      </PontesModal>
+    </>
   )
 }

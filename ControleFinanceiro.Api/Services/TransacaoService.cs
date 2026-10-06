@@ -76,7 +76,7 @@ namespace ControleFinanceiro.Api.Services
             // (ex.: salário do próximo mês) pode ser futura — é justamente o ponto dela.
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                && transacao.Data.Date > DateTime.UtcNow.Date)
+                && transacao.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Transação de crédito → associar à fatura correspondente (invariante 2)
@@ -126,8 +126,8 @@ namespace ControleFinanceiro.Api.Services
             Guid usuarioId,
             int page = 1,
             int pageSize = 25,
-            DateTime? from = null,
-            DateTime? to = null,
+            DateOnly? from = null,
+            DateOnly? to = null,
             Guid? categoriaId = null,
             string? q = null,
             int? tipo = null,
@@ -136,7 +136,10 @@ namespace ControleFinanceiro.Api.Services
             decimal? valorMin = null,
             decimal? valorMax = null,
             int? status = null,
-            string? ordenacao = null)
+            string? ordenacao = null,
+            bool apenasCaixa = false,
+            int? meioPagamento = null,
+            string? natureza = null)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -150,6 +153,13 @@ namespace ControleFinanceiro.Api.Services
                 .Include(t => t.Categoria)
                 .AsQueryable();
 
+            // Escopo "extrato de caixa": só o que mexe no saldo da conta. Compra
+            // no crédito tem só CartaoCreditoId (vive na fatura/aba Cartão) → cai
+            // fora. Pagamento de fatura e pernas de transferência têm ContaId →
+            // ficam. Saldo inicial é patrimônio de abertura, não movimento → fora.
+            if (apenasCaixa)
+                query = query.Where(t => t.ContaId.HasValue && !t.EhSaldoInicial);
+
             // Filtros opcionais aplicados no banco — só assim a paginação serve
             // pra UI: o front pagina o conjunto JÁ filtrado (por mês, categoria
             // etc), em vez de pedir tudo e filtrar no cliente.
@@ -159,6 +169,17 @@ namespace ControleFinanceiro.Api.Services
             if (tipo.HasValue) query = query.Where(t => (int)t.Tipo == tipo.Value);
             if (contaId.HasValue) query = query.Where(t => t.ContaId == contaId.Value);
             if (cartaoId.HasValue) query = query.Where(t => t.CartaoCreditoId == cartaoId.Value);
+            if (meioPagamento.HasValue) query = query.Where(t => t.MeioPagamento != null && (int)t.MeioPagamento == meioPagamento.Value);
+            // Natureza do lançamento — bate 1:1 com a coluna do extrato (entrada/saída
+            // de conta, transferência entre contas, pagamento de fatura).
+            query = natureza switch
+            {
+                "entrada" => query.Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial),
+                "saida" => query.Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa && !t.EhTransferencia && !t.EhPagamentoFatura),
+                "transferencia" => query.Where(t => t.EhTransferencia),
+                "fatura" => query.Where(t => t.EhPagamentoFatura),
+                _ => query,
+            };
             if (valorMin.HasValue) query = query.Where(t => t.Valor >= valorMin.Value);
             if (valorMax.HasValue) query = query.Where(t => t.Valor <= valorMax.Value);
             // status: previsto (Previsao) vs efetivado (Executado). Cancelado já é
@@ -173,13 +194,14 @@ namespace ControleFinanceiro.Api.Services
                 query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
             }
 
-            // Ordenação (default: data desc). Empate sempre por Data desc pra estabilidade.
+            // Ordenação (default: data desc). Dia + hora pra ordem cronológica intradia;
+            // Hora null (sem hora) ordena junto. Empate por Data/Hora desc pra estabilidade.
             var ordered = ordenacao switch
             {
-                "data_asc"  => query.OrderBy(t => t.Data),
-                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data),
-                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data),
-                _            => query.OrderByDescending(t => t.Data),
+                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora),
+                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
+                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
+                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora),
             };
             var total = await ordered.CountAsync();
             var items = await ordered
@@ -203,8 +225,8 @@ namespace ControleFinanceiro.Api.Services
         /// </summary>
         public async Task<DTOs.Transacao.TransacaoStatsDto> ObterStatsAsync(
             Guid usuarioId,
-            DateTime? from = null,
-            DateTime? to = null,
+            DateOnly? from = null,
+            DateOnly? to = null,
             Guid? categoriaId = null)
         {
             var query = _context.Transacoes
@@ -284,7 +306,7 @@ namespace ControleFinanceiro.Api.Services
             // (Editar qualquer campo desses lançamentos legítimos não pode voltar a dar 400.)
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                && dados.Data.Date > DateTime.UtcNow.Date)
+                && dados.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Categoria/subcategoria vêm do cliente: global ou do próprio usuário.
@@ -300,6 +322,11 @@ namespace ControleFinanceiro.Api.Services
             transacao.SubcategoriaId = dados.SubcategoriaId;
             transacao.MeioPagamento = dados.MeioPagamento;
             transacao.Data = dados.Data;
+            transacao.Hora = dados.Hora;
+            // Ocorrência de conta fixa editada à mão (valor, dia…): alterar a conta fixa e o realinhamento
+            // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
+            if (transacao.RecorrenteOrigemId != null)
+                transacao.EditadaPeloUsuario = true;
 
             await _context.SaveChangesAsync();
             return true;

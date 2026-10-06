@@ -107,6 +107,14 @@
 .swatchInfo { padding: 10px; }
 .swatchName { font-size: 12px; font-weight: 700; color: var(--pontes-text); }
 .swatchHex { font-size: 10px; color: var(--pontes-text-muted); font-family: monospace; }
+/* Escala de tamanho (tokens --pontes-fs-*). */
+.fsGrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 760px) { .fsGrid { grid-template-columns: 1fr; } }
+.fsColuna { display: flex; flex-direction: column; }
+.fsCabecalho { font-size: var(--pontes-fs-rotulo); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pontes-text-muted); padding-bottom: 8px; border-bottom: 1px solid var(--pontes-border); }
+.fsLinha { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--pontes-border); }
+.fsExemplo { color: var(--pontes-text); font-family: var(--pontes-font); line-height: 1.2; overflow-wrap: anywhere; }
+.fsMeta { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
 .typoCol { display: flex; flex-direction: column; gap: 14px; }
 .typoH1 { font-size: 56px; font-weight: 600; color: var(--pontes-text); font-family: var(--pontes-font-heading); letter-spacing: -0.025em; line-height: 1.05; }
 .typoH2 { font-size: 42px; font-weight: 600; color: var(--pontes-text); font-family: var(--pontes-font-heading); letter-spacing: -0.02em; }

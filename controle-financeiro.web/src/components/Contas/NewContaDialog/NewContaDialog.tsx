@@ -24,12 +24,12 @@ type Props = {
 export default function NewContaDialog({ open, onClose, onSaved, notify, bancos, editingConta, preSelectedBancoId }: Props) {
   const handleSubmit = async (data: ContaFormData) => {
     try {
-      const { saldoInicial, ...contaBase } = data
+      const { saldoInicial, dataSaldoInicial, ...contaBase } = data
       if (editingConta) {
         await updateConta(editingConta.id, contaBase)
         notify({ open: true, message: "Conta atualizada com sucesso", severity: "success" })
       } else {
-        await createConta({ ...contaBase, saldoInicial })
+        await createConta({ ...contaBase, saldoInicial, dataSaldoInicial })
         notify({ open: true, message: "Conta adicionada com sucesso", severity: "success" })
       }
       await onSaved()

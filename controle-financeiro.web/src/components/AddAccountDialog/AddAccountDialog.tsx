@@ -57,7 +57,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
       </>}
     >
       <form noValidate onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--pontes-text-muted)" }}>
+        <p style={{ margin: 0, fontSize: "var(--pontes-fs-corpo)", color: "var(--pontes-text-muted)" }}>
           Entre com as credenciais da conta que deseja conectar. Você poderá alternar entre contas sem precisar fazer login novamente.
         </p>
         {error && <PontesAlert tone="error">{error}</PontesAlert>}

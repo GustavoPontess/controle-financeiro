@@ -9,18 +9,34 @@ import type { PagedResult } from "../types/Paged"
 /** Lista paginada — backend clampa pageSize em 1..100. `incluirArquivados` (default false) mostra
  * também os que o próprio usuário arquivou — arquivar é por-usuário, não afeta a lista da
  * contraparte. */
+export type ListEmprestimosFiltros = {
+  situacao?: "ativo" | "quitado"
+  forma?: "avista" | "parcelado"
+  valorMin?: number
+  valorMax?: number
+  vencDe?: string
+  vencAte?: string
+}
+
 export const listEmprestimosPage = async (
   page: number,
   pageSize: number,
   incluirArquivados = false,
   busca?: string,
   direcao?: "receber" | "pagar",
+  filtros?: ListEmprestimosFiltros,
 ): Promise<PagedResult<Emprestimo>> => {
   const res = await api.get("/emprestimos", {
     params: {
       page, pageSize, incluirArquivados,
       busca: busca?.trim() || undefined,
       direcao: direcao || undefined,
+      situacao: filtros?.situacao || undefined,
+      forma: filtros?.forma || undefined,
+      valorMin: filtros?.valorMin,
+      valorMax: filtros?.valorMax,
+      vencDe: filtros?.vencDe,
+      vencAte: filtros?.vencAte,
     },
   })
   return res.data
@@ -32,6 +48,7 @@ export type EmprestimoStats = {
   ativos: number
   qtdTotal: number
   totalAReceberVencido: number
+  totalAPagarVencido: number
 }
 
 /** KPIs agregados — a receber, a pagar, ativos, total. */

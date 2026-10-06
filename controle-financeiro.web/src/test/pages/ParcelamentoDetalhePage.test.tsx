@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import ParcelamentoDetalhePage from "../../pages/Parcelamentos/[id]"
@@ -13,14 +13,17 @@ vi.mock("react-router-dom", async (orig) => ({
 }))
 
 const obterDetalhe = vi.fn()
+const pagarParcelaAntecipado = vi.fn()
+const cancelar = vi.fn()
+const getContas = vi.fn()
 vi.mock("../../services/ParcelamentoService", () => ({
   ParcelamentoService: {
     obterDetalhe: (...a: unknown[]) => obterDetalhe(...a),
-    pagarParcelaAntecipado: vi.fn(),
-    cancelar: vi.fn(),
+    pagarParcelaAntecipado: (...a: unknown[]) => pagarParcelaAntecipado(...a),
+    cancelar: (...a: unknown[]) => cancelar(...a),
   },
 }))
-vi.mock("../../services/contaService", () => ({ getContas: () => Promise.resolve([]) }))
+vi.mock("../../services/contaService", () => ({ getContas: (...a: unknown[]) => getContas(...a) }))
 
 function renderPage() {
   return render(
@@ -54,7 +57,12 @@ const detalhe = {
 } as unknown as ParcelamentoDetalhe
 
 describe("ParcelamentoDetalhePage", () => {
-  beforeEach(() => obterDetalhe.mockReset())
+  beforeEach(() => {
+    obterDetalhe.mockReset()
+    pagarParcelaAntecipado.mockReset().mockResolvedValue(undefined)
+    cancelar.mockReset().mockResolvedValue(undefined)
+    getContas.mockReset().mockResolvedValue([])
+  })
 
   it("mostra a fatura pelo mês de FECHAMENTO (rótulo de Cartões) e o vencimento real dela", async () => {
     obterDetalhe.mockResolvedValue(detalhe)
@@ -87,5 +95,45 @@ describe("ParcelamentoDetalhePage", () => {
     renderPage()
     expect(await screen.findByText("Cancelar Parcelamento")).toBeInTheDocument()
     expect(screen.queryByText("Parcelamento cancelado:")).not.toBeInTheDocument()
+  })
+
+  // Bug de dinheiro (2026-09-28): a Idempotency-Key nascia a cada clique — repetir depois de queda de
+  // rede pagava a parcela de novo. Agora a chave é da ABERTURA da janela.
+  const chave = (fn: ReturnType<typeof vi.fn>, i: number) => (fn.mock.calls[i][1] as { idempotencyKey: string }).idempotencyKey
+
+  it("pagar antecipado: tentar de novo na mesma janela reusa a chave; reabrir gera outra", async () => {
+    obterDetalhe.mockResolvedValue(detalhe)
+    getContas.mockResolvedValue([{ id: "k1", nome: "Conta Corrente" }])
+    pagarParcelaAntecipado.mockRejectedValueOnce(new Error("Network Error"))
+    renderPage()
+    fireEvent.click((await screen.findAllByRole("button", { name: "Pagar" }))[0])
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }))
+    await waitFor(() => expect(pagarParcelaAntecipado).toHaveBeenCalledTimes(1)) // caiu a rede
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))           // tenta de novo
+    await waitFor(() => expect(pagarParcelaAntecipado).toHaveBeenCalledTimes(2))
+    expect(chave(pagarParcelaAntecipado, 0)).toBeTruthy()
+    expect(chave(pagarParcelaAntecipado, 1)).toBe(chave(pagarParcelaAntecipado, 0))
+
+    // pagou e fechou; pagar outra vez é outra intenção → outra chave
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument())
+    fireEvent.click((await screen.findAllByRole("button", { name: "Pagar" }))[0])
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }))
+    await waitFor(() => expect(pagarParcelaAntecipado).toHaveBeenCalledTimes(3))
+    expect(chave(pagarParcelaAntecipado, 2)).not.toBe(chave(pagarParcelaAntecipado, 0))
+  })
+
+  it("cancelar: tentar de novo na mesma janela reusa a chave", async () => {
+    obterDetalhe.mockResolvedValue(detalhe)
+    cancelar.mockRejectedValueOnce(new Error("Network Error"))
+    renderPage()
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar Parcelamento" }))
+    const dialogo = await screen.findByRole("dialog")
+    fireEvent.change(within(dialogo).getByRole("textbox"), { target: { value: "Devolvi" } })
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar parcelamento" }))
+    await waitFor(() => expect(cancelar).toHaveBeenCalledTimes(1))
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar parcelamento" }))
+    await waitFor(() => expect(cancelar).toHaveBeenCalledTimes(2))
+    expect(chave(cancelar, 0)).toBeTruthy()
+    expect(chave(cancelar, 1)).toBe(chave(cancelar, 0))
   })
 })

@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Linq.Expressions;
 
 namespace ControleFinanceiro.Api.Services;
@@ -22,14 +23,6 @@ public class RecorrenteService
         _eventLogService = eventLogService;
         _httpContextAccessor = httpContextAccessor;
     }
-
-    private static DateTime ProximaData(DateTime atual, FrequenciaRecorrencia freq) => freq switch
-    {
-        FrequenciaRecorrencia.Semanal => atual.AddDays(7),
-        FrequenciaRecorrencia.Mensal => atual.AddMonths(1),
-        FrequenciaRecorrencia.Anual => atual.AddYears(1),
-        _ => atual.AddMonths(1)
-    };
 
     private static string DescricaoFrequencia(FrequenciaRecorrencia freq) => freq switch
     {
@@ -53,51 +46,237 @@ public class RecorrenteService
         return !string.IsNullOrWhiteSpace(idempotencyKey) ? idempotencyKey : null;
     }
 
+    // Conta fixa do usuário. Excluída não existe mais pra ele (404); de outro usuário segue 403 (contrato atual).
+    private async Task<Recorrente> BuscarDoUsuarioAsync(Guid id, Guid usuarioId)
+    {
+        var r = await _context.Recorrentes.FindAsync(id);
+        if (r == null || r.ExcluidoEm != null)
+            throw new KeyNotFoundException("Recorrente não encontrado.");
+        if (r.CriadoPor != usuarioId)
+            throw new ForbiddenAccessException("Sem permissão.");
+        return r;
+    }
+
+    /// <summary>
+    /// Gera as ocorrências da conta fixa a partir do cursor (<c>DataProximaGeracao</c>; sem cursor, do início)
+    /// até <paramref name="ateExclusivo"/> e até a <c>DataFim</c>, no compasso do <see cref="AgendaRecorrente"/>,
+    /// e avança o cursor pra próxima data. Molde ÚNICO: criar, expansão diária, lançar o que passou, retomar e
+    /// alterar. Ocorrência no cartão é compra no crédito: entra na fatura do período com <c>UsadoComoCredito</c>
+    /// (sem a flag ficava fora do total e do limite). PERÍODO (competência — mês/ano/semana, ver
+    /// <see cref="AgendaRecorrente.Competencia"/>) que já tem ocorrência VIVA dessa conta fixa (efetivada ou
+    /// prevista, em qualquer dia) é pulado: trocar o Dia de 5 pra 20 com o dia 5 já cobrado não cobra o mês de
+    /// novo no dia 20 (antes conferia a data exata e cobrava). Toda ocorrência nova sai com a competência — o
+    /// índice único parcial segura a corrida entre duas requisições. Percorre no máximo <see cref="AgendaRecorrente.MaxDatasPorGeracao"/> datas por chamada (o cursor
+    /// fica onde parou). Retorna quantas criou. Não salva.
+    /// </summary>
+    public async Task<int> GerarOcorrenciasAsync(Recorrente r, DateOnly ateExclusivo, StatusTransacao status)
+    {
+        var inicio = DateOnly.FromDateTime(r.DataInicio);
+        DateOnly? fim = r.DataFim is { } df ? DateOnly.FromDateTime(df) : null;
+        var proxima = AgendaRecorrente.ProximaEmOuDepois(
+            r.DataProximaGeracao is { } cursor ? DateOnly.FromDateTime(cursor) : inicio, inicio, r.Dia, r.Frequencia);
+
+        // Em dia (nada a gerar até o limite): só normaliza o cursor, sem ir ao banco — é o caso de quase toda
+        // conta fixa no GET da lista e no job diário.
+        if (proxima >= ateExclusivo || (fim != null && proxima > fim))
+        {
+            r.DataProximaGeracao = proxima.ToDateTime(TimeOnly.MinValue);
+            return 0;
+        }
+
+        // Períodos ocupados, do banco E da memória: ocorrência VIVA, ou que o USUÁRIO excluiu (status Cancelado —
+        // o motor só desliga o Ativo, nunca põe Cancelado): mês que ele pulou não volta ao alterar/retomar.
+        // Cancelada pelo motor agora (ainda não salva) não conta; criada agora conta. Carrega as entidades (não
+        // projeção): a projeção leria o Ativo do BANCO e contaria a cancelada-ainda-não-salva. Todas, não só a
+        // partir do cursor: a cobrança do período pode estar num dia antes dele. Ocorrência antiga sem
+        // competência (de antes da coluna) conta pela data.
+        var doBanco = await _context.Transacoes
+            .IgnoreQueryFilters()
+            .Where(t => t.RecorrenteOrigemId == r.Id && (t.Ativo || t.StatusTransacao == StatusTransacao.Cancelado))
+            .ToListAsync();
+        var ocupadas = doBanco
+            .Concat(_context.Transacoes.Local.Where(t => t.RecorrenteOrigemId == r.Id))
+            .Where(t => t.Ativo || t.StatusTransacao == StatusTransacao.Cancelado)
+            .Select(t => t.Competencia ?? AgendaRecorrente.Competencia(t.Data, inicio, r.Frequencia))
+            .ToHashSet();
+
+        var criadas = 0;
+        var percorridas = 0;
+        while (proxima < ateExclusivo && (fim == null || proxima <= fim)
+               && percorridas++ < AgendaRecorrente.MaxDatasPorGeracao)
+        {
+            var competencia = AgendaRecorrente.Competencia(proxima, inicio, r.Frequencia);
+            if (!ocupadas.Contains(competencia))
+            {
+                Guid? faturaId = null;
+                if (r.CartaoCreditoId.HasValue)
+                    faturaId = (await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, proxima, r.CriadoPor)).Id;
+
+                _context.Transacoes.Add(new Transacao
+                {
+                    Id = Guid.NewGuid(),
+                    Descricao = r.Descricao,
+                    Valor = r.Valor,
+                    Tipo = r.Tipo,
+                    CategoriaId = r.CategoriaId,
+                    ContaId = r.ContaId,
+                    CartaoCreditoId = r.CartaoCreditoId,
+                    FaturaId = faturaId,
+                    UsadoComoCredito = r.CartaoCreditoId.HasValue,
+                    StatusTransacao = status,
+                    Ativo = true,
+                    CriadoPor = r.CriadoPor,
+                    Data = proxima,
+                    Hora = null, // ocorrência de conta fixa é datada (sem hora de relógio)
+                    RecorrenteOrigemId = r.Id,
+                    Competencia = competencia,
+                    CriadoEm = DateTime.UtcNow
+                });
+                ocupadas.Add(competencia);
+                criadas++;
+            }
+            proxima = AgendaRecorrente.Seguinte(proxima, inicio, r.Dia, r.Frequencia);
+        }
+
+        r.DataProximaGeracao = proxima.ToDateTime(TimeOnly.MinValue);
+        return criadas;
+    }
+
+    // Cancela (exclusão lógica) as previsões dessa conta fixa que ainda não viraram cobrança — todas, ou só as
+    // de `aPartirDe` em diante. `preservarEditadas`: a ocorrência que o usuário alterou fica (alterar a conta
+    // fixa não apaga a edição dele). Devolve as canceladas (pra reconciliar a fatura do cartão). Não salva.
+    private async Task<List<Transacao>> CancelarPrevisoesAsync(
+        Guid recorrenteId, string motivo, DateTime agora, DateOnly? aPartirDe = null, bool preservarEditadas = false)
+    {
+        var query = _context.Transacoes.Where(t => t.RecorrenteOrigemId == recorrenteId
+                                                   && t.StatusTransacao == StatusTransacao.Previsao
+                                                   && t.Ativo);
+        if (aPartirDe is { } desde)
+            query = query.Where(t => t.Data >= desde);
+        if (preservarEditadas)
+            query = query.Where(t => !t.EditadaPeloUsuario);
+        var canceladas = await query.ToListAsync();
+        foreach (var t in canceladas)
+        {
+            t.Ativo = false;
+            t.CanceladoEm = agora;
+            t.MotivoCancelamento = motivo;
+        }
+        return canceladas;
+    }
+
+    // Previsão de conta fixa no cartão entra no total da fatura (RegrasFinanceiras.CompoeTotalFatura): cancelar
+    // baixa o total SEM pagamento → reconcilia o estado da fatura (regra de dinheiro do CLAUDE.md).
+    private Task ReconciliarFaturasDasCanceladasAsync(IEnumerable<Transacao> canceladas, Guid usuarioId, Guid correlationId, DateTime agora) =>
+        RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+            _context, _eventLogService,
+            canceladas.Where(t => t.FaturaId != null).Select(t => t.FaturaId!.Value),
+            usuarioId, correlationId, agora);
+
+    /// <summary>
+    /// Quem o realinhamento precisa ver hoje — duas consultas que normalmente voltam VAZIAS (antes carregava toda
+    /// previsão pendente de todos os usuários, todo dia): (1) conta fixa com previsão pendente que não deve mais
+    /// cobrar (pausada, cancelada, excluída, ou sem a linha); (2) conta fixa ativa que ainda não passou pelo
+    /// conserto único de legado (<see cref="Recorrente.RealinhadoEm"/> nulo).
+    /// </summary>
+    public async Task<List<Guid>> IdsParaRealinharAsync()
+    {
+        var naoDeveCobrar = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId != null && t.StatusTransacao == StatusTransacao.Previsao && t.Ativo
+                        && !_context.Recorrentes.Any(r => r.Id == t.RecorrenteOrigemId
+                                                          && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null))
+            .Select(t => t.RecorrenteOrigemId!.Value)
+            .Distinct()
+            .ToListAsync();
+        var semConserto = await _context.Recorrentes
+            .Where(r => r.RealinhadoEm == null && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null)
+            .Select(r => r.Id)
+            .ToListAsync();
+        return naoDeveCobrar.Union(semConserto).ToList();
+    }
+
+    /// <summary>
+    /// Conserto de dado de UMA conta fixa (unidade do job: cada uma grava sozinha, conflito numa não adia as
+    /// outras). Roda na expansão diária, ANTES de expandir e antes do ExecutarRecorrentesJob: (1) não deve mais
+    /// cobrar (pausada, cancelada, excluída, ou apagada antes da exclusão lógica) → cancela as previsões
+    /// pendentes; (2) ativa sem o conserto único → se tem previsão futura FORA do dia certo (gerada antes da
+    /// regra do <c>Dia</c>), cancela as futuras e volta o cursor pro INÍCIO DO PERÍODO atual — a expansão logo
+    /// depois gera de novo no compasso, só nos períodos sem cobrança (o mês já cobrado no dia antigo não é
+    /// cobrado de novo; o que ficou sem ganha a sua, mesmo com o dia já passado — o ExecutarRecorrentesJob
+    /// efetiva); e marca <see cref="Recorrente.RealinhadoEm"/> (não repete). Ocorrência que o usuário alterou
+    /// fica como ele deixou. Não salva. Devolve quantas previsões cancelou.
+    /// </summary>
+    public async Task<int> RealinharAsync(Guid recorrenteOrigemId, DateOnly hoje)
+    {
+        var agora = DateTime.UtcNow;
+        var r = await _context.Recorrentes.FirstOrDefaultAsync(x => x.Id == recorrenteOrigemId);
+        var pendentes = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId == recorrenteOrigemId && t.StatusTransacao == StatusTransacao.Previsao && t.Ativo)
+            .ToListAsync();
+
+        var canceladas = new List<Transacao>();
+        void Cancelar(IEnumerable<Transacao> lista, string motivo)
+        {
+            foreach (var t in lista)
+            {
+                t.Ativo = false;
+                t.CanceladoEm = agora;
+                t.MotivoCancelamento = motivo;
+                canceladas.Add(t);
+            }
+        }
+
+        if (r == null || !r.Ativo || r.CanceladoEm != null || r.ExcluidoEm != null)
+        {
+            Cancelar(pendentes, "Conta fixa não está mais ativa");
+        }
+        else if (r.RealinhadoEm == null)
+        {
+            var inicio = DateOnly.FromDateTime(r.DataInicio);
+            var futuras = pendentes.Where(t => t.Data >= hoje && !t.EditadaPeloUsuario).ToList();
+            if (!futuras.All(t => AgendaRecorrente.NoCompasso(t.Data, inicio, r.Dia, r.Frequencia)))
+            {
+                Cancelar(futuras, "Realinhada ao dia da conta fixa");
+                r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
+                    AgendaRecorrente.InicioDoPeriodo(hoje, inicio, r.Frequencia), inicio, r.Dia, r.Frequencia)
+                    .ToDateTime(TimeOnly.MinValue);
+            }
+            r.RealinhadoEm = agora;
+        }
+
+        foreach (var doUsuario in canceladas.GroupBy(t => t.CriadoPor))
+            await ReconciliarFaturasDasCanceladasAsync(doUsuario, doUsuario.Key, Guid.NewGuid(), agora);
+        return canceladas.Count;
+    }
+
+    /// <summary>Realinha todas as que precisam (<see cref="IdsParaRealinharAsync"/>), sem salvar. O job usa a
+    /// versão por conta fixa pra gravar uma a uma.</summary>
+    public async Task<int> RealinharAsync(DateOnly hoje)
+    {
+        var total = 0;
+        foreach (var id in await IdsParaRealinharAsync())
+            total += await RealinharAsync(id, hoje);
+        return total;
+    }
+
     public async Task GerarPendentesAsync(Guid usuarioId)
     {
         var hoje = DateTime.UtcNow.Date;
+        var amanha = DateOnly.FromDateTime(hoje).AddDays(1);
         var recorrentes = await _context.Recorrentes
-            .Where(r => r.CriadoPor == usuarioId && r.Ativo &&
-                        (r.DataFim == null || r.DataFim.Value.Date >= hoje))
+            .Where(r => r.CriadoPor == usuarioId && r.Ativo && r.ExcluidoEm == null &&
+                        (r.DataFim == null || r.DataFim.Value.Date >= hoje) &&
+                        // Só as que têm cobrança vencida a lançar (cursor até hoje) — as em dia nem são lidas.
+                        (r.DataProximaGeracao == null || r.DataProximaGeracao <= hoje))
             .ToListAsync();
 
         bool houveMudanca = false;
         foreach (var r in recorrentes)
         {
-            var proxima = (r.DataProximaGeracao ?? r.DataInicio).Date;
             try
             {
-                while (proxima <= hoje && (r.DataFim == null || proxima <= r.DataFim.Value.Date))
-                {
-                    // Ocorrência no cartão é compra no crédito: entra na fatura do período, como no
-                    // ExpandirRecorrentesJob. Antes era gravada sem FaturaId — nenhuma fatura cobrava,
-                    // pagar a fatura não soltava o limite e ela ficava usada pra sempre.
-                    Guid? faturaId = null;
-                    if (r.CartaoCreditoId.HasValue)
-                        faturaId = (await _faturaService.ObterOuCriarFaturaAsync(
-                            r.CartaoCreditoId.Value, proxima, usuarioId)).Id;
-
-                    _context.Transacoes.Add(new Transacao
-                    {
-                        Id = Guid.NewGuid(),
-                        Descricao = r.Descricao,
-                        Valor = r.Valor,
-                        Tipo = r.Tipo,
-                        CategoriaId = r.CategoriaId,
-                        ContaId = r.ContaId,
-                        CartaoCreditoId = r.CartaoCreditoId,
-                        FaturaId = faturaId,
-                        UsadoComoCredito = r.CartaoCreditoId.HasValue,
-                        StatusTransacao = StatusTransacao.Executado,
-                        Ativo = true,
-                        CriadoPor = usuarioId,
-                        Data = proxima,
-                        RecorrenteOrigemId = r.Id,
-                        CriadoEm = DateTime.UtcNow
-                    });
-                    proxima = ProximaData(proxima, r.Frequencia);
-                    houveMudanca = true;
-                }
+                // O que já venceu e ainda não foi gerado (até hoje, inclusive) entra como EFETIVADO.
+                houveMudanca |= await GerarOcorrenciasAsync(r, amanha, StatusTransacao.Executado) > 0;
             }
             catch (KeyNotFoundException)
             {
@@ -106,21 +285,48 @@ public class RecorrenteService
                 // listagem de recorrentes. O cartão falha já na 1ª ocorrência, então nada dela entrou.
                 continue;
             }
-            r.DataProximaGeracao = proxima;
         }
 
-        if (houveMudanca)
+        if (!houveMudanca) return;
+        try
+        {
             await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || EhViolacaoDeUnicidade(ex))
+        {
+            // Corrida GET×GET (duas abas abrindo a lista) ou GET×job: a outra já gerou as MESMAS ocorrências
+            // (índice único da competência) ou mexeu no cursor (xmin). Nada desta tentativa foi gravado
+            // (SaveChanges é atômico) — descarta e segue; a lista lê o que a outra gravou.
+            _context.ChangeTracker.Clear();
+        }
     }
 
+    // Grava a operação do usuário. Ocorrência repetida no mesmo período (índice único — duas requisições
+    // gerando ao mesmo tempo) vira o mesmo 409 da concorrência otimista, não 500.
+    private async Task SalvarAsync()
+    {
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException && EhViolacaoDeUnicidade(ex))
+        {
+            throw new DbUpdateConcurrencyException("Conta fixa alterada por outra operação ao mesmo tempo.", ex);
+        }
+    }
+
+    /// <summary>Violação de índice único no Postgres (SqlState 23505) dentro do DbUpdateException.</summary>
+    private static bool EhViolacaoDeUnicidade(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
     /// <summary>
-    /// KPIs agregados — ativas, custo mensal das despesas mensais, próximas 30 dias, total.
+    /// KPIs agregados — ativas, custo mensal/anual das despesas (todas as frequências), próximas 30 dias, total.
     /// Calculado no banco, exato pra qualquer volume.
     /// </summary>
     public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
     {
         var hoje = DateTime.UtcNow.Date;
-        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
+        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId && r.ExcluidoEm == null);
         // "Ativas" do hero = em vigor (MESMA regra da aba Ativas / do rótulo Situacao) e não pausada
         // (pausada não gera cobrança nem pesa no custo). Só `Ativo` não bastava: ninguém desliga o
         // Ativo quando a DataFim passa, e o hero somava no custo mensal uma conta fixa que a lista
@@ -128,15 +334,27 @@ public class RecorrenteService
         var ativas = query.Where(EmVigor(hoje)).Where(r => r.Ativo);
 
         var qtdAtivas = await ativas.CountAsync();
-        var custoMensal = await ativas
-            .Where(r => r.Frequencia == FrequenciaRecorrencia.Mensal
-                        && r.Tipo == TipoTransacao.Despesa)
-            .SumAsync(r => (decimal?)r.Valor) ?? 0m;
-        // Cutoff +30d calculado no servidor pra não vazar lógica de tempo pro cliente.
-        // EF traduz `<=` em SQL nativo.
-        var cutoff = DateTime.UtcNow.AddDays(30);
+        // Custo das despesas de TODAS as frequências, levadas pro mesmo período antes de somar (semanal
+        // acontece 52× no ano, mensal 12×, anual 1×). Antes só a mensal entrava: semanal e anual sumiam do
+        // "custo mensal" e do "por ano" (que a tela fazia mensal × 12).
+        var somaPorFrequencia = await ativas
+            .Where(r => r.Tipo == TipoTransacao.Despesa)
+            .GroupBy(r => r.Frequencia)
+            .Select(g => new { Frequencia = g.Key, Soma = g.Sum(r => r.Valor) })
+            .ToListAsync();
+        decimal SomaDe(FrequenciaRecorrencia f) => somaPorFrequencia.Where(x => x.Frequencia == f).Sum(x => x.Soma);
+        var custoAnual = SomaDe(FrequenciaRecorrencia.Semanal) * 52m
+                         + SomaDe(FrequenciaRecorrencia.Mensal) * 12m
+                         + SomaDe(FrequenciaRecorrencia.Anual);
+        var custoMensal = Math.Round(custoAnual / 12m, 2, MidpointRounding.AwayFromZero);
+        // Próximos 30 dias = conta fixa com cobrança PREVISTA de hoje a hoje+30 (antes olhava o cursor interno
+        // da geração, que é o fim da janela gerada, não a próxima cobrança). Calculado no servidor.
+        var hojeD = DateOnly.FromDateTime(hoje);
+        var limite30 = hojeD.AddDays(30);
         var proximas30 = await ativas
-            .Where(r => r.DataProximaGeracao != null && r.DataProximaGeracao <= cutoff)
+            .Where(r => _context.Transacoes.Any(t => t.RecorrenteOrigemId == r.Id && t.Ativo
+                                                     && t.StatusTransacao == StatusTransacao.Previsao
+                                                     && t.Data >= hojeD && t.Data <= limite30))
             .CountAsync();
         var qtdTotal = await query.CountAsync();
 
@@ -144,6 +362,7 @@ public class RecorrenteService
         {
             Ativas = qtdAtivas,
             CustoMensalDespesas = custoMensal,
+            CustoAnualDespesas = custoAnual,
             Proximas30Dias = proximas30,
             QtdTotal = qtdTotal,
         };
@@ -184,7 +403,7 @@ public class RecorrenteService
         pageSize = Math.Clamp(pageSize, 1, 100);
         var hoje = DateTime.UtcNow.Date;
 
-        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId);
+        var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId && r.ExcluidoEm == null);
 
         // Filtro de situação no SERVIDOR: a lista é paginada, então filtrar só a página carregada
         // no front esconderia itens das outras páginas e o total ficaria errado.
@@ -224,6 +443,16 @@ public class RecorrenteService
             .ToListAsync();
         var emVigor = EmVigor(hoje).Compile();
 
+        // Próxima cobrança = a previsão pendente mais próxima (hoje ou depois) de cada uma da página.
+        var hojeD = DateOnly.FromDateTime(hoje);
+        var idsPagina = lista.Select(r => (Guid?)r.Id).ToList();
+        var proximaPorId = await _context.Transacoes
+            .Where(t => idsPagina.Contains(t.RecorrenteOrigemId) && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Previsao && t.Data >= hojeD)
+            .GroupBy(t => t.RecorrenteOrigemId)
+            .Select(g => new { Id = g.Key, Data = g.Min(t => t.Data) })
+            .ToDictionaryAsync(x => x.Id!.Value, x => x.Data);
+
         return new PagedResult<RecorrenteDto>
         {
             Items = lista.Select(r => new RecorrenteDto
@@ -246,6 +475,7 @@ public class RecorrenteService
                 DataFim = r.DataFim,
                 Ativo = r.Ativo,
                 DataProximaGeracao = r.DataProximaGeracao,
+                ProximaCobranca = r.Ativo && r.CanceladoEm == null && proximaPorId.TryGetValue(r.Id, out var pc) ? pc : null,
                 CanceladoEm = r.CanceladoEm,
                 MotivoCancelamento = r.MotivoCancelamento,
                 Situacao = CalcularSituacao(r, emVigor)
@@ -266,6 +496,10 @@ public class RecorrenteService
         Guid recorrenteId = Guid.NewGuid();
         var correlationId = Guid.NewGuid();
         var dataInicio = dto.DataInicio.ToUniversalTime();
+        AgendaRecorrente.ValidarPeriodo(
+            DateOnly.FromDateTime(dataInicio),
+            dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
+            DateOnly.FromDateTime(DateTime.UtcNow));
         var idempotencyKey = ObterIdempotencyKey();
 
         using var transaction = await _context.Database.BeginTransactionAsync();
@@ -300,49 +534,16 @@ public class RecorrenteService
                 DataFim = dto.DataFim?.ToUniversalTime(),
                 Ativo = true,
                 CriadoPor = usuarioId,
-                DataProximaGeracao = dataFimJanela,
+                DataProximaGeracao = null, // sem cursor: a geração abaixo começa do início, no Dia
+                RealinhadoEm = DateTime.UtcNow, // nasce no motor novo: não tem legado pra consertar
                 CriadoEm = DateTime.UtcNow
             };
 
             _context.Recorrentes.Add(recorrente);
             await _context.SaveChangesAsync();
 
-            // Materializar 3 meses de transações Previsão
-            var proxima = dataInicio.Date;
-            while (proxima < dataFimJanela && (dto.DataFim == null || proxima <= dto.DataFim.Value.Date))
-            {
-                Guid? faturaId = null;
-                if (dto.CartaoCreditoId.HasValue)
-                {
-                    var fatura = await _faturaService.ObterOuCriarFaturaAsync(dto.CartaoCreditoId.Value, proxima, usuarioId);
-                    faturaId = fatura.Id;
-                }
-
-                var transacao = new Transacao
-                {
-                    Id = Guid.NewGuid(),
-                    Descricao = dto.Descricao,
-                    Valor = dto.Valor,
-                    Tipo = (TipoTransacao)dto.Tipo,
-                    CategoriaId = dto.CategoriaId,
-                    ContaId = dto.ContaId,
-                    CartaoCreditoId = dto.CartaoCreditoId,
-                    FaturaId = faturaId,
-                    // Mesmo molde do ExpandirRecorrentesJob. Sem a flag a ocorrência ficava fora do total
-                    // da fatura (não dava pra pagar) e, efetivada pelo ExecutarRecorrentesJob, fora do
-                    // limite usado — compra feita no cartão sem usar limite.
-                    UsadoComoCredito = dto.CartaoCreditoId.HasValue,
-                    StatusTransacao = StatusTransacao.Previsao,
-                    Ativo = true,
-                    CriadoPor = usuarioId,
-                    Data = proxima,
-                    RecorrenteOrigemId = recorrenteId,
-                    CriadoEm = DateTime.UtcNow
-                };
-
-                _context.Transacoes.Add(transacao);
-                proxima = ProximaData(proxima, (FrequenciaRecorrencia)dto.Frequencia);
-            }
+            // Materializar 3 meses de previsões, no compasso do Dia (AgendaRecorrente)
+            await GerarOcorrenciasAsync(recorrente, DateOnly.FromDateTime(dataFimJanela), StatusTransacao.Previsao);
 
             await _context.SaveChangesAsync();
 
@@ -370,10 +571,7 @@ public class RecorrenteService
 
     public async Task EditarProximaOcorrenciaAsync(Guid id, EditarProximaOcorrenciaDto dto, Guid usuarioId)
     {
-        var recorrente = await _context.Recorrentes.FindAsync(id)
-            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
-        if (recorrente.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Sem permissão.");
+        await BuscarDoUsuarioAsync(id, usuarioId);
 
         var proxima = await _context.Transacoes
             .Where(t => t.RecorrenteOrigemId == id &&
@@ -391,6 +589,8 @@ public class RecorrenteService
         }
         if (dto.Descricao != null)
             proxima.Descricao = dto.Descricao;
+        // Editada à mão: alterar a conta fixa e o realinhamento não desfazem (antes regeravam por cima).
+        proxima.EditadaPeloUsuario = true;
         if (dto.CategoriaId.HasValue)
         {
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
@@ -402,10 +602,7 @@ public class RecorrenteService
 
     public async Task<object> CancelarAsync(Guid id, CancelarRecorrenteDto dto, Guid usuarioId)
     {
-        var recorrente = await _context.Recorrentes.FindAsync(id)
-            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
-        if (recorrente.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Sem permissão.");
+        var recorrente = await BuscarDoUsuarioAsync(id, usuarioId);
 
         var motivo = dto.Motivo;
         if (string.IsNullOrWhiteSpace(motivo))
@@ -430,17 +627,10 @@ public class RecorrenteService
             recorrente.CanceladoEm = DateTime.UtcNow;
             recorrente.MotivoCancelamento = motivo;
 
-            // Cancelar transações futuras (Previsão)
-            var transacoesFuturas = await _context.Transacoes
-                .Where(t => t.RecorrenteOrigemId == id && t.StatusTransacao == StatusTransacao.Previsao)
-                .ToListAsync();
-
-            foreach (var t in transacoesFuturas)
-            {
-                t.Ativo = false;
-                t.CanceladoEm = DateTime.UtcNow;
-                t.MotivoCancelamento = motivo;
-            }
+            // Cancelar as previsões (o que ainda não virou cobrança) e reconciliar a fatura do cartão, cujo
+            // total caiu sem pagamento.
+            var transacoesFuturas = await CancelarPrevisoesAsync(id, motivo, recorrente.CanceladoEm.Value);
+            await ReconciliarFaturasDasCanceladasAsync(transacoesFuturas, usuarioId, correlationId, recorrente.CanceladoEm.Value);
 
             await _context.SaveChangesAsync();
 
@@ -468,10 +658,7 @@ public class RecorrenteService
 
     public async Task AtualizarAsync(Guid id, CriarRecorrenteDto dto, Guid usuarioId)
     {
-        var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
-        if (r.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Sem permissão.");
+        var r = await BuscarDoUsuarioAsync(id, usuarioId);
 
         // Mesmas regras do CriarAsync. Sem isso, editar a recorrente trocava a conta/cartão por um de
         // OUTRO usuário e a geração de ocorrências lançava no saldo dele.
@@ -479,6 +666,11 @@ public class RecorrenteService
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
         await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
+        // O início não muda na edição (fica o do cadastro); só o fim é conferido contra ele.
+        AgendaRecorrente.ValidarPeriodo(
+            DateOnly.FromDateTime(r.DataInicio),
+            dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
+            DateOnly.FromDateTime(DateTime.UtcNow), validarInicio: false);
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;
@@ -490,15 +682,39 @@ public class RecorrenteService
         r.Dia = dto.Dia;
         r.DataFim = dto.DataFim?.ToUniversalTime();
 
-        await _context.SaveChangesAsync();
+        // As PRÓXIMAS cobranças seguem o que vale agora (dia, valor, conta…): cancela as previsões de hoje em
+        // diante (menos a que o usuário editou — a edição dele vale pra ela, e o período dela segue ocupado) e
+        // gera de novo. Antes ficavam com o dia/valor antigos. Recomeça do INÍCIO DO PERÍODO atual, não
+        // de hoje: período já cobrado não repete (Dia 5→20 com o 5 efetivado), e o que ficou sem cobrança ganha
+        // a sua (Dia 20→5 no dia 10: o dia 5 deste mês entra como efetivado, igual ao "lançar o que passou";
+        // a de HOJE fica prevista — o ExecutarRecorrentesJob efetiva, como sempre).
+        if (r.Ativo && r.CanceladoEm == null)
+        {
+            var agora = DateTime.UtcNow;
+            var hoje = DateOnly.FromDateTime(agora);
+            var inicio = DateOnly.FromDateTime(r.DataInicio);
+            var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa alterada", agora, aPartirDe: hoje, preservarEditadas: true);
+            await ReconciliarFaturasDasCanceladasAsync(canceladas, usuarioId, Guid.NewGuid(), agora);
+            r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
+                AgendaRecorrente.InicioDoPeriodo(hoje, inicio, r.Frequencia), inicio, r.Dia, r.Frequencia)
+                .ToDateTime(TimeOnly.MinValue);
+            await GerarOcorrenciasAsync(r, hoje, StatusTransacao.Executado);
+            await GerarOcorrenciasAsync(r, AgendaRecorrente.HorizonteExpansao(hoje), StatusTransacao.Previsao);
+        }
+
+        await SalvarAsync();
     }
 
-    public async Task ToggleAtivoAsync(Guid id, Guid usuarioId)
+    /// <summary>
+    /// Pausa ou retoma. PAUSAR cancela as previsões (o que ainda não virou cobrança) — antes só invertia o
+    /// `Ativo` e o ExecutarRecorrentesJob seguia efetivando tudo. RETOMAR recomeça da próxima data a partir de
+    /// HOJE: os meses parados não são cobrados depois (o período que já tem cobrança viva não repete).
+    /// <paramref name="ativo"/> = o estado PEDIDO (pausar = false, retomar = true): se já está nele, não faz
+    /// nada — o duplo clique em "Retomar" não vira retomar + pausar. Sem ele, inverte (compatível).
+    /// </summary>
+    public async Task ToggleAtivoAsync(Guid id, Guid usuarioId, bool? ativo = null)
     {
-        var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
-        if (r.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Sem permissão.");
+        var r = await BuscarDoUsuarioAsync(id, usuarioId);
 
         // Cancelar é definitivo (as previsões futuras já foram canceladas junto): só a PAUSADA volta.
         // Antes a tela oferecia "Ativar" numa cancelada e este toggle a religava — voltava a gerar
@@ -506,18 +722,52 @@ public class RecorrenteService
         if (r.CanceladoEm != null)
             throw new InvalidOperationException("Conta fixa cancelada não pode ser pausada nem retomada.");
 
-        r.Ativo = !r.Ativo;
-        await _context.SaveChangesAsync();
+        if (ativo is { } pedido && pedido == r.Ativo)
+            return;
+
+        var agora = DateTime.UtcNow;
+        var hoje = DateOnly.FromDateTime(agora);
+        var correlationId = Guid.NewGuid();
+
+        if (r.Ativo)
+        {
+            r.Ativo = false;
+            var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa pausada", agora);
+            await ReconciliarFaturasDasCanceladasAsync(canceladas, usuarioId, correlationId, agora);
+            _eventLogService.Registrar(usuarioId, FinancialEventType.RecorrentePausada, "Recorrente", r.Id,
+                correlationId, "Service:RecorrenteService", payload: new { previsoesCanceladas = canceladas.Count });
+        }
+        else
+        {
+            r.Ativo = true;
+            r.DataProximaGeracao = AgendaRecorrente.ProximaEmOuDepois(
+                hoje, DateOnly.FromDateTime(r.DataInicio), r.Dia, r.Frequencia).ToDateTime(TimeOnly.MinValue);
+            var criadas = await GerarOcorrenciasAsync(r, AgendaRecorrente.HorizonteExpansao(hoje), StatusTransacao.Previsao);
+            _eventLogService.Registrar(usuarioId, FinancialEventType.RecorrenteRetomada, "Recorrente", r.Id,
+                correlationId, "Service:RecorrenteService", payload: new { previsoesCriadas = criadas });
+        }
+
+        await SalvarAsync();
     }
 
+    /// <summary>
+    /// Exclusão LÓGICA: some das listas e as previsões são canceladas; o que já foi cobrado fica no histórico.
+    /// Antes apagava a linha (`Remove`) e as previsões ficavam soltas — e o ExecutarRecorrentesJob seguia
+    /// cobrando. Excluída de novo = 404.
+    /// </summary>
     public async Task DeletarAsync(Guid id, Guid usuarioId)
     {
-        var r = await _context.Recorrentes.FindAsync(id)
-            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
-        if (r.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Sem permissão.");
+        var r = await BuscarDoUsuarioAsync(id, usuarioId);
+        var agora = DateTime.UtcNow;
+        var correlationId = Guid.NewGuid();
 
-        _context.Recorrentes.Remove(r);
+        r.ExcluidoEm = agora;
+        r.Ativo = false;
+        var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa excluída", agora);
+        await ReconciliarFaturasDasCanceladasAsync(canceladas, usuarioId, correlationId, agora);
+        _eventLogService.Registrar(usuarioId, FinancialEventType.RecorrenteExcluida, "Recorrente", r.Id,
+            correlationId, "Service:RecorrenteService", payload: new { previsoesCanceladas = canceladas.Count });
+
         await _context.SaveChangesAsync();
     }
 }

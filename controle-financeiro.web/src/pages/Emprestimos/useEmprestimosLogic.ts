@@ -1,11 +1,11 @@
-// Lógica completa da tela de Empréstimos, extraída pra hook — reaproveitada pelas 3 páginas de
-// bancada (EmprestimosLabA/B/C) pra comparar composições de TELA INTEIRA com ações reais, sem
-// duplicar ~700 linhas de estado/handlers 3x. Não usado pela EmprestimosPage.tsx real (mantida
-// intacta, zero risco pros testes existentes).
+// Lógica completa da tela de Empréstimos, extraída pra hook — usada pela EmprestimosPage real
+// (que consome o PontesTabela) e pela tela de detalhe (via focusId). Concentra ~700 linhas de
+// estado/handlers (busca/direção/paginação server-side, wizard, convites, consolidação) num lugar só.
 import { useCallback, useEffect, useState } from "react"
 import { dataLocalISO } from "@/utils/dateTime"
 import { useOutletContext } from "react-router-dom"
 import { useAuth } from "../../hooks/useAuth"
+import { PONTES_TABLE_PAGE_SIZE_DEFAULT } from "@/components/pontes"
 import {
   listEmprestimosPage, getEmprestimo, getEmprestimoStats, createEmprestimo, quitarEmprestimo, deleteEmprestimo,
   arquivarEmprestimo, desarquivarEmprestimo,
@@ -109,11 +109,11 @@ export function useEmprestimosLogic(focusId?: string) {
 
   const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([])
   const [stats, setStats] = useState<EmprestimoStats>({
-    totalAReceber: 0, totalAPagar: 0, ativos: 0, qtdTotal: 0, totalAReceberVencido: 0,
+    totalAReceber: 0, totalAPagar: 0, ativos: 0, qtdTotal: 0, totalAReceberVencido: 0, totalAPagarVencido: 0,
   })
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(100)
+  const [pageSize, setPageSize] = useState<number>(PONTES_TABLE_PAGE_SIZE_DEFAULT)
   // Busca + direção — filtro SERVER-SIDE (o backend pagina já filtrado).
   const [busca, setBuscaState] = useState("")
   const [buscaDebounced, setBuscaDebounced] = useState("")
@@ -124,6 +124,17 @@ export function useEmprestimosLogic(focusId?: string) {
   }, [busca])
   const setBusca = (v: string) => { setBuscaState(v); setPage(1) }
   const setDirecao = (v: "todos" | "receber" | "pagar") => { setDirecaoState(v); setPage(1) }
+  // Filtros avançados (todos server-side, resetam a página). "" = sem filtro.
+  const [situacao, setSituacaoState] = useState<"" | "ativo" | "quitado">("")
+  const [forma, setFormaState] = useState<"" | "avista" | "parcelado">("")
+  const [valorMin, setValorMin] = useState<number>()
+  const [valorMax, setValorMax] = useState<number>()
+  const [vencDe, setVencDe] = useState<string>()
+  const [vencAte, setVencAte] = useState<string>()
+  const setSituacao = (v: string) => { setSituacaoState(v as "" | "ativo" | "quitado"); setPage(1) }
+  const setForma = (v: string) => { setFormaState(v as "" | "avista" | "parcelado"); setPage(1) }
+  const setFaixaValor = (min?: number, max?: number) => { setValorMin(min); setValorMax(max); setPage(1) }
+  const setVencimento = (de?: string, ate?: string) => { setVencDe(de); setVencAte(ate); setPage(1) }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [quitarId, setQuitarId] = useState<string | null>(null)
   const [delId, setDelId] = useState<string | null>(null)
@@ -230,7 +241,11 @@ export function useEmprestimosLogic(focusId?: string) {
   const loadData = useCallback(async () => {
     try {
       const [pageResult, statsResult, pendentesResult, contasResult, categoriasResult, bancosResult, candidatosResult, consolidacoesResult] = await Promise.all([
-        listEmprestimosPage(page, pageSize, mostrarArquivados, buscaDebounced, direcao === "todos" ? undefined : direcao),
+        listEmprestimosPage(page, pageSize, mostrarArquivados, buscaDebounced, direcao === "todos" ? undefined : direcao, {
+          situacao: situacao || undefined,
+          forma: forma || undefined,
+          valorMin, valorMax, vencDe, vencAte,
+        }),
         getEmprestimoStats(),
         listConvitesPendentesEmprestimo(),
         getContas(),
@@ -260,7 +275,7 @@ export function useEmprestimosLogic(focusId?: string) {
     } catch {
       notify({ open: true, message: "Erro ao carregar empréstimos", severity: "error" })
     }
-  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao, focusId])
+  }, [notify, page, pageSize, mostrarArquivados, buscaDebounced, direcao, situacao, forma, valorMin, valorMax, vencDe, vencAte, focusId])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -747,7 +762,7 @@ export function useEmprestimosLogic(focusId?: string) {
     } finally { setHistoricoInlineLoading(false) }
   }
 
-  const { totalAReceber, totalAPagar, ativos: qtdAtivos, totalAReceberVencido } = stats
+  const { totalAReceber, totalAPagar, ativos: qtdAtivos, totalAReceberVencido, totalAPagarVencido } = stats
   const consolidacoesRecebidas = consolidacoes.filter((c) => !c.souCredor && c.status === StatusConsolidacaoEmprestimo.Pendente)
   const consolidacoesEnviadas = consolidacoes.filter((c) => c.souCredor && c.status === StatusConsolidacaoEmprestimo.Pendente)
   const solicitarEmprestimoAtual = emprestimos.find((x) => x.id === solicitarFor)
@@ -759,6 +774,8 @@ export function useEmprestimosLogic(focusId?: string) {
     currentUser, notify,
     emprestimos, stats, total, page, setPage, pageSize, setPageSize,
     busca, setBusca, direcao, setDirecao,
+    situacao, setSituacao, forma, setForma,
+    valorMin, valorMax, setFaixaValor, vencDe, vencAte, setVencimento,
     dialogOpen, setDialogOpen, quitarId, setQuitarId, delId, setDelId,
     arquivandoId, mostrarArquivados, setMostrarArquivados, loading,
     form, setF, errors, clearErr, contas, categorias, bancos,
@@ -786,7 +803,7 @@ export function useEmprestimosLogic(focusId?: string) {
     recusarConsolidacaoFor, setRecusarConsolidacaoFor, recusarConsolidacaoMotivo, setRecusarConsolidacaoMotivo,
     openRecusarConsolidacao, handleRecusarConsolidacao, handleCancelarConsolidacao,
     expandedId, parcelasPorEmprestimo, parcelasLoadingId, toggleExpand,
-    totalAReceber, totalAPagar, qtdAtivos, totalAReceberVencido,
+    totalAReceber, totalAPagar, qtdAtivos, totalAReceberVencido, totalAPagarVencido,
     isParceladoSolicitar, souCredorSolicitar, historicoEmprestimo,
   }
 }

@@ -169,3 +169,6 @@ public class ForgotPasswordResponseDto
     /// </summary>
     public string Mensagem { get; set; } = string.Empty;
 }
+
+/// <summary>Conta listada no painel DEV do login (só em Development). E-mail + nome, sem segredo.</summary>
+public record DevContaDto(string Email, string Nome, bool SenhaPadrao);

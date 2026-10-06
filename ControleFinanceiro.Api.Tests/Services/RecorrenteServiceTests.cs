@@ -98,7 +98,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Previsao,
             Ativo = true,
             CriadoPor = userId,
-            Data = data ?? DateTime.UtcNow.Date.AddDays(5),
+            Data = DateOnly.FromDateTime(data ?? DateTime.UtcNow.Date.AddDays(5)),
             RecorrenteOrigemId = recorrenteId,
             CriadoEm = DateTime.UtcNow
         };
@@ -330,7 +330,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
             CriadoPor = u,
-            Data = DateTime.UtcNow.Date.AddDays(-5),
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-5)),
             RecorrenteOrigemId = rec.Id,
             CriadoEm = DateTime.UtcNow
         });
@@ -528,17 +528,27 @@ public class RecorrenteServiceTests
     // ── DeletarAsync ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task DeletarAsync_RemoveRecorrente()
+    public async Task DeletarAsync_ExclusaoLogica_SomeDaLista_CancelaPrevisoes_MantemHistorico()
     {
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
+        var prevista = SeedTransacaoPrevisao(ctx, u, rec.Id, c);
+        var jaCobrada = SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(-20));
+        jaCobrada.StatusTransacao = StatusTransacao.Executado;
+        ctx.SaveChanges();
 
         var svc = CreateService(ctx);
         await svc.DeletarAsync(rec.Id, u);
 
-        Assert.Null(await ctx.Recorrentes.FindAsync(rec.Id));
+        var linha = await ctx.Recorrentes.AsNoTracking().SingleAsync(r => r.Id == rec.Id); // não apaga a linha
+        Assert.NotNull(linha.ExcluidoEm);
+        Assert.False(linha.Ativo);
+        Assert.False((await ctx.Transacoes.IgnoreQueryFilters().AsNoTracking().SingleAsync(t => t.Id == prevista.Id)).Ativo); // futura cancelada (o filtro global esconde cancelada)
+        Assert.True((await ctx.Transacoes.AsNoTracking().SingleAsync(t => t.Id == jaCobrada.Id)).Ativo);  // histórico fica
+        Assert.DoesNotContain((await svc.ListarAsync(u)).Items, r => r.Id == rec.Id);                      // some da lista
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.DeletarAsync(rec.Id, u));               // de novo = 404
     }
 
     [Fact]
@@ -615,32 +625,70 @@ public class RecorrenteServiceTests
         var conta = SeedConta(ctx, uid);
 
         // Usuário: 2 ativos mensais despesa (1200 + 800), 1 ativo mensal receita,
-        // 1 ativo SEMANAL (não conta no custo mensal), 1 cancelado.
+        // 1 ativo SEMANAL (conta normalizado: ×52/12), 1 cancelado.
         SeedRecorrente(ctx, uid, conta);                            // ativo despesa mensal 1200
         var r2 = SeedRecorrente(ctx, uid, conta);                   // ativo despesa mensal 800
         r2.Valor = 800m; ctx.SaveChanges();
         var rRec = SeedRecorrente(ctx, uid, conta);                 // ativo RECEITA mensal — não soma em custoMensalDespesas
         rRec.Tipo = TipoTransacao.Receita; ctx.SaveChanges();
-        var rSem = SeedRecorrente(ctx, uid, conta);                 // ativo despesa SEMANAL — não soma
+        var rSem = SeedRecorrente(ctx, uid, conta);                 // ativo despesa SEMANAL 1200 — soma ×52 no ano
         rSem.Frequencia = FrequenciaRecorrencia.Semanal; ctx.SaveChanges();
         SeedRecorrente(ctx, uid, conta, ativo: false);              // inativo
         SeedRecorrente(ctx, outroUid, SeedConta(ctx, outroUid));   // outro usuário
 
-        // Próxima 30 dias: 2 com dataProximaGeracao em 10 dias, 1 em 60 dias, 1 nulo
-        var hoje = DateTime.UtcNow;
+        // Próximos 30 dias = cobrança PREVISTA de hoje a hoje+30: 2 em 10 dias, 1 em 60 dias, 1 sem previsão.
+        var hoje = DateTime.UtcNow.Date;
         var ativos = await ctx.Recorrentes.Where(r => r.CriadoPor == uid && r.Ativo).ToListAsync();
-        ativos[0].DataProximaGeracao = hoje.AddDays(10);
-        ativos[1].DataProximaGeracao = hoje.AddDays(10);
-        ativos[2].DataProximaGeracao = hoje.AddDays(60);  // fora dos 30
-        ativos[3].DataProximaGeracao = null;
-        await ctx.SaveChangesAsync();
+        SeedTransacaoPrevisao(ctx, uid, ativos[0].Id, conta, hoje.AddDays(10));
+        SeedTransacaoPrevisao(ctx, uid, ativos[1].Id, conta, hoje.AddDays(10));
+        SeedTransacaoPrevisao(ctx, uid, ativos[2].Id, conta, hoje.AddDays(60)); // fora dos 30
 
         var stats = await svc.ObterStatsAsync(uid);
 
         Assert.Equal(4, stats.Ativas);                  // 4 ativos do usuário
-        Assert.Equal(2000m, stats.CustoMensalDespesas); // 1200 + 800 (mensais despesa)
+        // ano = semanal 1200×52 (62.400) + mensais (1200+800)×12 (24.000) = 86.400 → mês = 7.200
+        Assert.Equal(86400m, stats.CustoAnualDespesas);
+        Assert.Equal(7200m, stats.CustoMensalDespesas);
         Assert.Equal(2, stats.Proximas30Dias);          // só os 2 dentro do cutoff
         Assert.Equal(5, stats.QtdTotal);                // 4 ativos + 1 inativo
+    }
+
+    // Bug 2026-09-28: "custo mensal" só somava as MENSAIS — semanal e anual sumiam do total e do "por ano".
+    [Fact]
+    public async Task ObterStatsAsync_CustoSomaTodasAsFrequencias_NoMesmoPeriodo()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var uid = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, uid);
+        var mensal = SeedRecorrente(ctx, uid, conta); mensal.Valor = 100m;
+        var semanal = SeedRecorrente(ctx, uid, conta); semanal.Valor = 30m; semanal.Frequencia = FrequenciaRecorrencia.Semanal;
+        var anual = SeedRecorrente(ctx, uid, conta); anual.Valor = 600m; anual.Frequencia = FrequenciaRecorrencia.Anual;
+        var receitaAnual = SeedRecorrente(ctx, uid, conta); receitaAnual.Valor = 9999m;
+        receitaAnual.Frequencia = FrequenciaRecorrencia.Anual; receitaAnual.Tipo = TipoTransacao.Receita; // receita não é custo
+        ctx.SaveChanges();
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        // ano = 100×12 + 30×52 + 600 = 1.200 + 1.560 + 600 = 3.360 → mês = 280
+        Assert.Equal(3360m, stats.CustoAnualDespesas);
+        Assert.Equal(280m, stats.CustoMensalDespesas);
+    }
+
+    [Fact]
+    public async Task ObterStatsAsync_CustoMensal_ArredondaEmCentavos()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var uid = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, uid);
+        var anual = SeedRecorrente(ctx, uid, conta); anual.Valor = 100m; anual.Frequencia = FrequenciaRecorrencia.Anual;
+        ctx.SaveChanges();
+
+        var stats = await svc.ObterStatsAsync(uid);
+
+        Assert.Equal(100m, stats.CustoAnualDespesas);
+        Assert.Equal(8.33m, stats.CustoMensalDespesas); // 100/12 = 8,333… → 8,33
     }
 
     [Fact]
@@ -917,12 +965,15 @@ public class RecorrenteServiceTests
         var conta = SeedConta(ctx, u1);
         var cartaoDeOutro = SeedCartao(ctx, u2);
         var hoje = DateTime.UtcNow.Date;
+        // Dia = hoje: a cobrança de hoje está no compasso (AgendaRecorrente) — com Dia 1 a próxima seria dia 1º.
         var valida = SeedRecorrente(ctx, u1, conta);
         valida.DataProximaGeracao = hoje;
+        valida.Dia = hoje.Day;
         var ruim = SeedRecorrente(ctx, u1, conta);
         ruim.ContaId = null;
         ruim.CartaoCreditoId = cartaoDeOutro;
         ruim.DataProximaGeracao = hoje;
+        ruim.Dia = hoje.Day;
         ctx.SaveChanges();
 
         await CreateService(ctx).GerarPendentesAsync(u1);

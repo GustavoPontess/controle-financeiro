@@ -1,17 +1,18 @@
-// Tela de Empréstimos — painel administrativo: tabela densa, busca + direção server-side,
-// paginação real, ações no menu kebab (⋮), wizard de novo empréstimo e de consolidação.
-// Lógica no hook compartilhado useEmprestimosLogic; modais em EmprestimosLabModals.
-// (Vencedora da bancada B, promovida a tela real em 2026-09-13.)
+// Tela de Empréstimos — lista no padrão Pontes: TODO o cromo (busca, filtro de direção, colunas,
+// paginação, vazio) vem do componente PontesTabela; a página só declara resumo, colunas, filtros e
+// ações. Ferramentas próprias (Arquivados / Consolidar) no slot `ferramentas`. Banners de convite e
+// consolidação ficam acima da tabela. Lógica no hook useEmprestimosLogic; modais em EmprestimosLabModals.
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { formatMoney } from "@/utils/money"
-import { Plus, Layers, Ban, Search, ArrowDownLeft, ArrowUpRight, Archive } from "lucide-react"
+import { Layers, Ban, Archive, HandCoins, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import {
-  PontesButton, PontesAlert, PontesCard, PontesInput, PontesBadge,
-  PontesTablePagination, PontesBankBadge,
+  PontesButton, PontesIconButton, PontesAlert, PontesCard, PontesBadge, PontesBankBadge,
+  PontesTabela, PontesCelulaIdentidade, PontesTablePagination,
+  type PontesTabelaColuna, type PontesTabelaTag,
 } from "@/components/pontes"
-import { FormaPagamentoEmprestimo, TipoEmprestimo } from "../../types/Emprestimo"
-import { useEmprestimosLogic } from "./useEmprestimosLogic"
+import { FormaPagamentoEmprestimo, TipoEmprestimo, type Emprestimo } from "../../types/Emprestimo"
+import { useEmprestimosLogic, formatDate } from "./useEmprestimosLogic"
 import { StatusBadges, ActionIcons, AcaoDupla } from "./EmprestimosLabItemParts"
 import EmprestimosLabModals from "./EmprestimosLabModals"
 import styles from "./EmprestimosPage.module.css"
@@ -23,50 +24,54 @@ export default function EmprestimosPage() {
   // Densidade de admin — 10 por página pra paginação real aparecer.
   useEffect(() => { l.setPageSize(10) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Busca e direção são SERVER-SIDE (o hook manda os params, o backend pagina já filtrado).
-  const visiveis = l.emprestimos
+  const colunas: PontesTabelaColuna<Emprestimo>[] = [
+    {
+      key: "desc", header: "Empréstimo",
+      render: (e) => (
+        <PontesCelulaIdentidade
+          icone={<HandCoins size={17} strokeWidth={2.2} />}
+          tom={e.tipo === TipoEmprestimo.Emprestei ? "entrada" : "saida"}
+          nome={e.descricao}
+          sub={e.bancoId
+            ? <span className={styles.pessoaBanco}><PontesBankBadge name={e.bancoNome ?? "Banco"} logoUrl={e.bancoLogoUrl} cor={e.bancoCor} size={16} />{e.bancoNome}</span>
+            : (e.contraparteNome ?? e.pessoa)}
+        />
+      ),
+    },
+    {
+      key: "status", header: "Status",
+      render: (e) => (
+        <div className={styles.tBadges}>
+          <PontesBadge size="sm" tone={e.tipo === TipoEmprestimo.Emprestei ? "success" : "danger"}>
+            {e.tipo === TipoEmprestimo.Emprestei
+              ? <><ArrowDownLeft size={11} strokeWidth={2.5} /> A receber</>
+              : <><ArrowUpRight size={11} strokeWidth={2.5} /> A pagar</>}
+          </PontesBadge>
+          <StatusBadges e={e} />
+        </div>
+      ),
+    },
+    {
+      key: "forma", header: "Forma",
+      render: (e) => e.formaPagamento === FormaPagamentoEmprestimo.Parcelado ? `${e.quantidadeParcelas}x` : "à vista",
+    },
+    { key: "inicio", header: "Início", render: (e) => formatDate(e.dataInicio) },
+    { key: "vencimento", header: "Vencimento", render: (e) => formatDate(e.dataVencimento) },
+    { key: "valorTotal", header: "Valor total", numerica: true, render: (e) => formatMoney(e.valorTotal) },
+    { key: "pago", header: "Pago", numerica: true, render: (e) => `${formatMoney(e.valorPago)} (${Math.round(e.percentualPago)}%)` },
+    { key: "juros", header: "Juros", render: (e) => e.taxaJuroMensal != null ? `${e.taxaJuroMensal}% a.m.` : "—" },
+    {
+      key: "restante", header: "Restante", numerica: true,
+      render: (e) => <span data-tone={e.tipo === TipoEmprestimo.Emprestei ? undefined : "danger"} className={styles.tValor}>{formatMoney(e.valorRestante)}</span>,
+    },
+  ]
+
+  const tags: PontesTabelaTag[] = []
+  if (l.busca) tags.push({ label: `Busca: "${l.busca}"`, onRemover: () => l.setBusca("") })
+  if (l.mostrarArquivados) tags.push({ label: "Incluindo arquivados", onRemover: () => { l.setMostrarArquivados(false); l.setPage(1) } })
 
   return (
-    <div className={styles.root}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Empréstimos</h1>
-        </div>
-        <div className={styles.headerActions}>
-          <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={l.openCreate}>
-            Novo empréstimo
-          </PontesButton>
-        </div>
-      </div>
-
-      <div className={styles.hero}>
-        <div className={styles.heroBlob} />
-        <div className={styles.heroPrimary}>
-          <div className={styles.heroMain}>
-            <div className={styles.heroLabel}>A receber</div>
-            <div className={styles.heroValue} data-tone="up">{formatMoney(l.totalAReceber)}</div>
-          </div>
-          <div className={styles.heroPrimaryDivider} />
-          <div className={styles.heroMain}>
-            <div className={styles.heroLabel}>A pagar</div>
-            <div className={styles.heroValue} data-tone="down">{formatMoney(l.totalAPagar)}</div>
-          </div>
-        </div>
-        <div className={styles.heroSide}>
-          <div className={styles.heroStats}>
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue} data-tone="down">{formatMoney(l.totalAReceberVencido)}</span>
-              <span className={styles.heroStatLabel}>Vencido</span>
-            </div>
-            <div className={styles.heroStatDivider} />
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatValue}>{l.qtdAtivos}</span>
-              <span className={styles.heroStatLabel}>Ativos</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <>
       {(l.pendentes.length > 0 || l.consolidacoesRecebidas.length > 0) && (
         <PontesAlert tone="warning">
           <div className={styles.banner}>
@@ -105,115 +110,101 @@ export default function EmprestimosPage() {
         </PontesCard>
       )}
 
-      <div className={styles.toolbar}>
-        <div className={styles.searchGrow}>
-          <PontesInput
-            value={l.busca}
-            onChange={(e) => l.setBusca(e.target.value)}
-            placeholder="Buscar por descrição ou pessoa…"
-            iconStart={<Search size={14} />}
-          />
-        </div>
-        <div className={styles.segmented} role="tablist">
-          {([["todos", "Tudo"], ["receber", "A receber"], ["pagar", "A pagar"]] as const).map(([val, label]) => (
-            <button
-              key={val}
-              type="button"
-              role="tab"
-              aria-selected={l.direcao === val}
-              data-active={l.direcao === val ? "true" : undefined}
-              className={styles.segBtn}
-              onClick={() => l.setDirecao(val)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          aria-pressed={l.mostrarArquivados}
-          data-active={l.mostrarArquivados ? "true" : undefined}
-          className={styles.toggleArquivados}
-          onClick={() => { l.setMostrarArquivados(!l.mostrarArquivados); l.setPage(1) }}
-        >
-          <Archive size={14} strokeWidth={2.5} /> Arquivados
-        </button>
-        {l.candidatosConsolidacao.length > 0 && (
-          <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} />}
+      <PontesTabela
+        id="emprestimos"
+        titulo="Empréstimos"
+        acao={{ label: "Novo empréstimo", onClick: l.openCreate }}
+        resumo={
+          <div className={styles.hero}>
+            <div className={styles.heroBlob} />
+            <div className={styles.heroPrimary}>
+              <div className={styles.heroMain}>
+                <div className={styles.heroLabel}>A receber</div>
+                <div className={styles.heroValue} data-tone="up">{formatMoney(l.totalAReceber)}</div>
+                <div className={styles.heroVencido} data-venc={l.totalAReceberVencido > 0 ? "true" : undefined}>
+                  {l.totalAReceberVencido > 0 ? `${formatMoney(l.totalAReceberVencido)} vencido` : "em dia"}
+                </div>
+              </div>
+              <div className={styles.heroPrimaryDivider} />
+              <div className={styles.heroMain}>
+                <div className={styles.heroLabel}>A pagar</div>
+                <div className={styles.heroValue} data-tone="down">{formatMoney(l.totalAPagar)}</div>
+                <div className={styles.heroVencido} data-venc={l.totalAPagarVencido > 0 ? "true" : undefined}>
+                  {l.totalAPagarVencido > 0 ? `${formatMoney(l.totalAPagarVencido)} vencido` : "em dia"}
+                </div>
+              </div>
+            </div>
+            <div className={styles.heroSide}>
+              <div className={styles.heroStats}>
+                <div className={styles.heroStat}>
+                  <span className={styles.heroStatValue}>{l.qtdAtivos}</span>
+                  <span className={styles.heroStatLabel}>Ativos</span>
+                </div>
+                <div className={styles.heroStatDivider} />
+                <div className={styles.heroStat}>
+                  <span className={styles.heroStatValue}>{Math.max(0, l.stats.qtdTotal - l.qtdAtivos)}</span>
+                  <span className={styles.heroStatLabel}>Quitados</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        busca={{ value: l.busca, onChange: l.setBusca, placeholder: "Buscar por descrição ou pessoa…", ariaLabel: "Buscar empréstimo" }}
+        filtrosAvancados={[
+          {
+            // Direção não tem coluna própria (é o Status) → aparece sempre.
+            tipo: "select", id: "direcao", label: "Direção", value: l.direcao, neutro: "todos",
+            opcoes: [{ value: "todos", label: "Tudo" }, { value: "receber", label: "A receber" }, { value: "pagar", label: "A pagar" }],
+            onChange: (v) => l.setDirecao(v as typeof l.direcao),
+          },
+          {
+            tipo: "select", id: "situacao", label: "Situação", value: l.situacao, coluna: "status",
+            opcoes: [{ value: "", label: "Todas" }, { value: "ativo", label: "Ativos" }, { value: "quitado", label: "Quitados" }],
+            onChange: l.setSituacao,
+          },
+          {
+            tipo: "select", id: "forma", label: "Forma", value: l.forma, coluna: "forma",
+            opcoes: [{ value: "", label: "Qualquer" }, { value: "avista", label: "À vista" }, { value: "parcelado", label: "Parcelado" }],
+            onChange: l.setForma,
+          },
+          { tipo: "faixaValor", id: "valor", label: "Restante", coluna: "restante", min: l.valorMin, max: l.valorMax, onChange: l.setFaixaValor },
+          { tipo: "faixaData", id: "vencimento", label: "Vencimento", coluna: "vencimento", de: l.vencDe, ate: l.vencAte, onChange: l.setVencimento },
+        ]}
+        ferramentas={l.candidatosConsolidacao.length > 0 ? (
+          <PontesButton size="sm" variant="outline" iconStart={<Layers size={14} strokeWidth={2.5} />}
             onClick={() => l.openConsolidar(l.candidatosConsolidacao[0])}>
             Consolidar
           </PontesButton>
-        )}
-      </div>
-
-      <PontesCard padding={0} radius={16}>
-        {visiveis.length === 0 ? (
-          <div className={styles.emptyWrap}>Nenhum empréstimo encontrado.</div>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Empréstimo</th><th>Pessoa</th><th>Forma</th><th>Status</th>
-                  <th className={styles.tRight}>Restante</th><th className={styles.tRight}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiveis.map((e) => {
-                  const isParcelado = e.formaPagamento === FormaPagamentoEmprestimo.Parcelado
-                  return (
-                    <tr
-                      key={e.id}
-                      data-quitado={e.quitado ? "true" : undefined}
-                      data-clickable=""
-                      onClick={() => navigate(`/emprestimos/${e.id}`)}
-                    >
-                      <td className={styles.tDesc} title={e.descricao}>
-                        {e.descricao}
-                      </td>
-                      <td>
-                        {e.bancoId ? (
-                          <span className={styles.pessoaBanco}>
-                            <PontesBankBadge name={e.bancoNome ?? "Banco"} logoUrl={e.bancoLogoUrl} cor={e.bancoCor} size={22} />
-                            {e.bancoNome}
-                          </span>
-                        ) : (e.contraparteNome ?? e.pessoa)}
-                      </td>
-                      <td>{isParcelado ? `${e.quantidadeParcelas}x` : "à vista"}</td>
-                      <td>
-                        <div className={styles.tBadges}>
-                          <PontesBadge size="sm" tone={e.tipo === TipoEmprestimo.Emprestei ? "success" : "danger"}>
-                            {e.tipo === TipoEmprestimo.Emprestei
-                              ? <><ArrowDownLeft size={11} strokeWidth={2.5} /> A receber</>
-                              : <><ArrowUpRight size={11} strokeWidth={2.5} /> A pagar</>}
-                          </PontesBadge>
-                          <StatusBadges e={e} />
-                        </div>
-                      </td>
-                      <td className={styles.tRight}>
-                        <strong data-tone={e.tipo === 1 ? undefined : "danger"} className={styles.tValor}>{formatMoney(e.valorRestante)}</strong>
-                      </td>
-                      <td className={styles.tRight} onClick={(ev) => ev.stopPropagation()}>
-                        <ActionIcons e={e} size={24} logic={l} mode="management" className={styles.rowActions} />
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {l.total > 0 && (
+        ) : undefined}
+        ferramentasFim={
+          <PontesIconButton
+            size={32}
+            variant={l.mostrarArquivados ? "primary" : "ghost"}
+            aria-label="Arquivados"
+            title={l.mostrarArquivados ? "Ocultar arquivados" : "Ver arquivados"}
+            onClick={() => { l.setMostrarArquivados(!l.mostrarArquivados); l.setPage(1) }}
+          >
+            <Archive size={16} strokeWidth={2.5} />
+          </PontesIconButton>
+        }
+        tags={tags}
+        colunas={colunas}
+        colunasPadraoOcultas={["forma", "inicio", "pago", "juros"]}
+        itens={l.emprestimos}
+        chave={(e) => e.id}
+        onLinhaClick={(e) => navigate(`/emprestimos/${e.id}`)}
+        renderAcoes={(e) => <ActionIcons e={e} logic={l} mode="full" mostrarDetalhe={false} />}
+        vazio={{ icone: <HandCoins size={28} strokeWidth={2.5} />, titulo: "Nenhum empréstimo" }}
+        paginacao={
           <PontesTablePagination
             total={l.total} page={l.page} pageSize={l.pageSize}
-            onPageChange={l.setPage}
-            onPageSizeChange={(s) => { l.setPageSize(s); l.setPage(1) }}
+            onPageChange={l.setPage} onPageSizeChange={(s) => { l.setPageSize(s); l.setPage(1) }}
             itemLabel="empréstimos" itemLabelSingular="empréstimo"
           />
-        )}
-      </PontesCard>
+        }
+      />
 
       <EmprestimosLabModals logic={l} />
-    </div>
+    </>
   )
 }

@@ -154,7 +154,8 @@ public class ParcelaTransacaoService
                 FaturaPagaId = fatura.Id,
                 StatusTransacao = StatusTransacao.Executado,
                 Ativo = true,
-                Data = dataPagamento,
+                Data = DateOnly.FromDateTime(dataPagamento),
+                Hora = null, // pagamento de parcela é datado (sem hora específica)
                 CriadoPor = usuarioId,
                 CriadoEm = agora,
                 ParcelamentoId = parcela.ParcelamentoId,

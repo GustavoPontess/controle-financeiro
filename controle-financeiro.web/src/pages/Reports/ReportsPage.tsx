@@ -104,6 +104,7 @@ export default function ReportsPage() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Relatórios</h1>
+          <p className={styles.subtitle}>Análise financeira detalhada</p>
         </div>
         <div className={styles.yearNav}>
           <PontesIconButton size={32} variant="outline" aria-label="Ano anterior" onClick={() => setAno((a) => a - 1)}>
@@ -194,7 +195,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
                   <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
+                  <Legend wrapperStyle={{ fontSize: "var(--pontes-fs-md)", paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
                   {/* Saldo é o protagonista: área cheia + linha grossa. Receitas e
                       despesas viram linhas-contexto finas, sem competir. */}
                   <Area type="monotone" dataKey="saldo" name="Saldo"
@@ -236,7 +237,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
                   <RTooltip content={<ChartTooltip />} cursor={{ fill: "color-mix(in srgb, var(--pontes-primary) 6%, transparent)", radius: 6 }} />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
+                  <Legend wrapperStyle={{ fontSize: "var(--pontes-fs-md)", paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
                   <ReferenceLine y={0} stroke={colorBorder} />
                   <Bar dataKey="receitas" name="Receitas" fill="url(#barReceitas)" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="despesas" name="Despesas" fill="url(#barDespesas)" radius={[6, 6, 0, 0]} />

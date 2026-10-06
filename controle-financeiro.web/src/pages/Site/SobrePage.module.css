@@ -65,3 +65,17 @@
 .contatoLead { font-size: 19px; opacity: 0.9; margin-bottom: 36px; line-height: 1.5; }
 .contatoBtns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
 .contatoMail { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; opacity: 0.85; }
+
+/* ── Celular (< 768px): a página não tinha NENHUMA regra (grades de 2-4 colunas, foto de 420px, títulos de
+   70px+, seções com 48px de lado). Seções mais baixas, grades em 1 coluna (números 2), títulos menores,
+   arte na largura da tela e os cartões flutuantes decorativos escondidos (saíam da tela). */
+@media (max-width: 767px) {
+  /* Botões do CTA: largura toda e texto pode quebrar. */
+  .hero { padding: 150px 20px 64px; }
+  .h2 { font-size: 34px; }
+  .heroTitle { font-size: 42px; }
+  .heroLead { font-size: 18px; }
+  .sectionSurface, .sectionBg, .contato { padding: 64px 20px; }
+  .valGrid, .teamGrid, .ondeGrid { grid-template-columns: 1fr; gap: 20px; }
+  .contatoTitle { font-size: 36px; }
+}

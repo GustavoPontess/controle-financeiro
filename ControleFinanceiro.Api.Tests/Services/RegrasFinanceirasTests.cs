@@ -53,7 +53,7 @@ public class RegrasFinanceirasTests
         Tipo = TipoTransacao.Despesa,
         UsadoComoCredito = usadoComoCredito,
         Ativo = ativo,
-        Data = DateTime.UtcNow.Date,
+        Data = DateOnly.FromDateTime(DateTime.UtcNow),
     };
 
     [Fact]
@@ -139,7 +139,7 @@ public class RegrasFinanceirasTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Salário", Valor = 100_000, Tipo = TipoTransacao.Receita,
-            ContaId = conta.Id, Data = DateTime.UtcNow.Date, CriadoPor = usuarioId,
+            ContaId = conta.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -165,7 +165,7 @@ public class RegrasFinanceirasTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = faturaId, UsadoComoCredito = true,
-            MeioPagamento = MeioPagamento.Credito, Data = DateTime.UtcNow.Date, CriadoPor = usuarioId,
+            MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -312,7 +312,7 @@ public class RegrasFinanceirasTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = hoje.AddDays(-30), CriadoPor = usuarioId,
+            Data = DateOnly.FromDateTime(hoje.AddDays(-30)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -352,7 +352,7 @@ public class RegrasFinanceirasTests
             var t = new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "t", Valor = valor, Tipo = tipo, ContaId = contaId,
-                Data = data, StatusTransacao = status, Ativo = ativo, CriadoPor = usuarioId,
+                Data = DateOnly.FromDateTime(data), StatusTransacao = status, Ativo = ativo, CriadoPor = usuarioId,
             };
             cfg?.Invoke(t);
             return t;
@@ -374,7 +374,7 @@ public class RegrasFinanceirasTests
             new()
             {
                 Id = Guid.NewGuid(), Descricao = "compra cartão", Valor = 60, Tipo = TipoTransacao.Despesa,
-                CartaoCreditoId = cartao.Id, UsadoComoCredito = true, Data = data, CriadoPor = usuarioId,
+                CartaoCreditoId = cartao.Id, UsadoComoCredito = true, Data = DateOnly.FromDateTime(data), CriadoPor = usuarioId,
             },
         };
 
@@ -421,7 +421,7 @@ public class RegrasFinanceirasTests
         var regra = (await RegrasFinanceiras.SaldoDaContaAsync(ctx, c.ContaId, c.UsuarioId)).Saldo;
 
         // 2. Tela de contas (listagem e detalhe)
-        var controller = new ContasController(new ContaService(ctx))
+        var controller = new ContasController(new ContaService(ctx, new FinancialEventLogService(ctx)))
         {
             ControllerContext = new ControllerContext
             {
@@ -520,7 +520,7 @@ public class RegrasFinanceirasTests
         var ctx = CreateContext();
         var c = await SeedSaldoAsync(ctx);
 
-        var contas = await new ContaService(ctx).ListarAsync(c.UsuarioId);
+        var contas = await new ContaService(ctx, new FinancialEventLogService(ctx)).ListarAsync(c.UsuarioId);
 
         Assert.All(contas, conta => Assert.Empty(conta.Transacoes));
     }

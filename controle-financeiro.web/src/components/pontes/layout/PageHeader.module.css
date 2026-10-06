@@ -1,5 +1,8 @@
-/* PageHeader — abas/período à esquerda, botão primário à direita. Sem título (mora na Navbar). */
+/* PageHeader — nome da tela + descrição (ou abas) à esquerda, botão primário à direita. */
 .header { width: 100%; }
 .start { min-width: 0; }
+/* Mesmo visual do título das outras telas (fonte de título, 24px). */
+.titulo { font-family: var(--pontes-font-heading); font-size: var(--pontes-fs-3xl); font-weight: 600; letter-spacing: -0.02em; color: var(--pontes-text); margin: 0; }
+.descricao { font-size: var(--pontes-fs-corpo); color: var(--pontes-text-muted); margin: 2px 0 0; }
 /* margin-left:auto: sem slot à esquerda o botão continua colado à direita. */
 .action { margin-left: auto; flex-shrink: 0; }

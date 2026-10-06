@@ -58,7 +58,7 @@ public class ImportacaoService
             var duplicada = linha.FitId is not null
                 ? fitIdsExistentes.Contains(linha.FitId)
                 : existentes.Any(e =>
-                    e.Data.Date == linha.Data.Date
+                    e.Data == DateOnly.FromDateTime(linha.Data)
                     && e.Valor == valor
                     && e.Tipo == tipo
                     && e.Descricao == linha.Descricao);
@@ -95,7 +95,8 @@ public class ImportacaoService
                 Descricao = linha.Descricao,
                 Valor = linha.Valor,
                 Tipo = linha.Tipo,
-                Data = linha.Data,
+                Data = DateOnly.FromDateTime(linha.Data),
+                Hora = null, // lançamento importado de extrato é datado (sem hora de relógio)
                 ContaId = dto.ContaId,
                 CategoriaId = linha.CategoriaId,
                 StatusTransacao = StatusTransacao.Executado,

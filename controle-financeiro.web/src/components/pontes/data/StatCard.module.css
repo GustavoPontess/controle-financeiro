@@ -4,17 +4,23 @@
   border-radius: 12px; padding: 16px; font-family: var(--pontes-font);
 }
 .label {
-  font-size: 11px; color: var(--pontes-text-muted); font-weight: 600;
+  font-size: var(--pontes-fs-rotulo); color: var(--pontes-text-muted); font-weight: 600;
   letter-spacing: .08em; margin-bottom: 6px; text-transform: uppercase;
 }
 .value {
-  font-size: 22px; font-weight: 800; color: var(--pontes-text);
+  font-size: var(--pontes-fs-stat-valor); font-weight: 800; color: var(--pontes-text);
   letter-spacing: -.02em; margin-bottom: 6px;
 }
 .value[data-tone="success"] { color: var(--pontes-success); }
 .value[data-tone="danger"] { color: var(--pontes-danger); }
 .value[data-tone="warning"] { color: var(--pontes-warning); }
-.trend { font-size: 12px; font-weight: 600; }
+.trend { font-size: var(--pontes-fs-sm); font-weight: 600; }
 .trend[data-up="true"] { color: var(--pontes-success); }
 .trend[data-up="false"] { color: var(--pontes-danger); }
-.hint { font-size: 11px; color: var(--pontes-text-muted); }
+.hint { font-size: var(--pontes-fs-secundario); color: var(--pontes-text-muted); }
+
+/* Celular: mais compacto pra caber 2 por linha (R$ 25.887,00 em ~140px). */
+@media (max-width: 767px) {
+  .card { padding: 12px; }
+  .value { font-size: var(--pontes-fs-xl); }
+}

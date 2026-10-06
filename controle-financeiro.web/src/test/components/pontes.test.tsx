@@ -327,8 +327,8 @@ describe("Biblioteca Pontes — smoke tests (#101)", () => {
   })
 
   // ── PontesTable + paginação (padrão DS) ────────────────────────────────────
-  it("PONTES_TABLE_* constantes seguem o padrão decidido (10/25/50/100, default 25, cap 100)", () => {
-    expect(PONTES_TABLE_PAGE_SIZE_DEFAULT).toBe(25)
+  it("PONTES_TABLE_* constantes seguem o padrão decidido (10/25/50/100, default 10, cap 100)", () => {
+    expect(PONTES_TABLE_PAGE_SIZE_DEFAULT).toBe(10)
     expect(PONTES_TABLE_PAGE_SIZE_MAX).toBe(100)
     expect([...PONTES_TABLE_PAGE_SIZES]).toEqual([10, 25, 50, 100])
   })

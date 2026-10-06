@@ -1,7 +1,7 @@
 /* Breadcrumb.module.css — trilha de navegação. Cor via var(--pontes-*). */
-.nav { display: flex; align-items: center; gap: 8px; font-size: 14px; font-family: var(--pontes-font); flex-wrap: wrap; }
+.nav { display: flex; align-items: center; gap: 8px; font-size: var(--pontes-fs-base); font-family: var(--pontes-font); flex-wrap: wrap; }
 .item { display: inline-flex; align-items: center; gap: 8px; }
 .current { color: var(--pontes-text); font-weight: 600; }
-.link { color: var(--pontes-text-muted); text-decoration: none; background: transparent; border: none; cursor: pointer; padding: 0; font-family: var(--pontes-font); font-size: 14px; transition: color .15s ease; }
+.link { color: var(--pontes-text-muted); text-decoration: none; background: transparent; border: none; cursor: pointer; padding: 0; font-family: var(--pontes-font); font-size: var(--pontes-fs-base); transition: color .15s ease; }
 .link:hover { color: var(--pontes-primary); text-decoration: underline; text-underline-offset: 4px; }
 .sep { color: var(--pontes-text-muted); }

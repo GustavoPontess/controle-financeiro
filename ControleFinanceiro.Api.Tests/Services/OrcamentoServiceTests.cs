@@ -159,7 +159,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 5, 10),
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
         });
@@ -192,7 +192,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 5, 15),
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
         });
@@ -223,7 +223,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 5, 20, 0, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 5, 20),
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
         });
@@ -254,7 +254,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 5, 5),
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
             EhTransferencia = true,
@@ -284,7 +284,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 5, 28, 0, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 5, 28),
             StatusTransacao = StatusTransacao.Previsao,
             Ativo = true,
         });
@@ -314,7 +314,7 @@ public class OrcamentoServiceTests
             Tipo = TipoTransacao.Despesa,
             CategoriaId = catId,
             CriadoPor = userId,
-            Data = new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc),
+            Data = new DateOnly(2026, 4, 20),
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
         });

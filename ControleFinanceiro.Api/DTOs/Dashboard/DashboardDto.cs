@@ -3,7 +3,8 @@ namespace ControleFinanceiro.Api.DTOs.Dashboard;
 public class DashboardDto
 {
     public decimal SaldoTotal { get; set; }
-    /// <summary>Saldo no fim do mês anterior — pra hero calcular variação.</summary>
+    /// <summary>Saldo das contas no fim do mês PASSADO (em relação a hoje, não ao mês navegado) —
+    /// mesma base do <see cref="SaldoTotal"/>, pro hero mostrar quanto o saldo andou no mês corrente.</summary>
     public decimal SaldoMesAnterior { get; set; }
     public decimal ReceitasMes { get; set; }
     public decimal DespesasMes { get; set; }
@@ -34,6 +35,34 @@ public class DashboardDto
     public List<SaldoContaDto> SaldoContas { get; set; } = new();
     /// <summary>Top 3 cartões ativos por % do limite usado (desc).</summary>
     public List<CartaoResumoDto> CartoesResumo { get; set; } = new();
+
+    /// <summary>
+    /// Gasto no cartão de crédito no mês — À PARTE do caixa (decisão 2026-10-03): "Saiu" e "Maiores
+    /// gastos" seguem no dinheiro que sai da conta; aqui fica o que foi passado no cartão. Soma de
+    /// <see cref="ComprasCartaoMes"/>.
+    /// </summary>
+    public decimal GastoCartaoMes { get; set; }
+
+    /// <summary>
+    /// O que compõe o <see cref="GastoCartaoMes"/>: compra à vista no crédito pela data da compra e,
+    /// de parcelamento, só a parcela que cai no mês (com o número dela). Nunca o total da compra
+    /// parcelada por cima das parcelas.
+    /// </summary>
+    public List<CompraCartaoDto> ComprasCartaoMes { get; set; } = new();
+}
+
+/// <summary>Uma compra (ou a parcela do mês) no cartão de crédito.</summary>
+public class CompraCartaoDto
+{
+    public string Descricao { get; set; } = string.Empty;
+    public decimal Valor { get; set; }
+    /// <summary>Data da compra (no parcelamento, a da compra original).</summary>
+    public DateOnly Data { get; set; }
+    /// <summary>Número da parcela que cai neste mês (null = à vista).</summary>
+    public int? Parcela { get; set; }
+    public int? TotalParcelas { get; set; }
+    public string? Cartao { get; set; }
+    public string? Categoria { get; set; }
 }
 
 /// <summary>
@@ -43,6 +72,8 @@ public class CartaoResumoDto
 {
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
+    /// <summary>Últimos 4 dígitos do cartão (pra distinguir cartões de mesmo nome).</summary>
+    public string? UltimosDigitos { get; set; }
     public string? BancoNome { get; set; }
     public string? BancoLogoUrl { get; set; }
     public string? BancoCor { get; set; }
@@ -87,7 +118,14 @@ public class TransacaoRecenteDto
     public string? Conta { get; set; }
     public int? MeioPagamento { get; set; }
     public string? MeioPagamentoDescricao { get; set; }
-    public DateTime Data { get; set; }
+    /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>
+    public DateOnly Data { get; set; }
+    /// <summary>Hora do lançamento ("HH:mm:ss") — time puro. Null = sem hora.</summary>
+    public TimeOnly? Hora { get; set; }
+    /// <summary>Perna de transferência entre contas próprias — neutra (não é entrada nem saída).</summary>
+    public bool EhTransferencia { get; set; }
+    /// <summary>Pagamento de fatura de cartão — sai da conta, mas não é gasto novo.</summary>
+    public bool EhPagamentoFatura { get; set; }
 }
 
 public class SaldoContaDto

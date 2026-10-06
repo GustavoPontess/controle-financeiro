@@ -37,7 +37,7 @@ export function PontesChoiceCards<T extends string = string>({
       className={styles.grid}
       style={{
         ...scopedThemeVars(p, font),
-        gridTemplateColumns: `repeat(${columns ?? options.length}, 1fr)`,
+        gridTemplateColumns: `repeat(${columns ?? options.length}, minmax(0, 1fr))`,
       } as CSSProperties}
     >
       {options.map((opt) => (

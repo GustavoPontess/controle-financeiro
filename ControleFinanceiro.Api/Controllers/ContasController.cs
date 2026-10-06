@@ -28,16 +28,6 @@ namespace ControleFinanceiro.Api.Controllers
             return userId;
         }
 
-        private static string DescricaoTipo(TipoConta tipo) => tipo switch
-        {
-            TipoConta.ContaCorrente => "Conta Corrente",
-            TipoConta.ContaPoupanca => "Conta Poupança",
-            TipoConta.CartaoCredito => "Cartão de Crédito",
-            TipoConta.Dinheiro => "Dinheiro",
-            TipoConta.Emprestimo => "Empréstimo",
-            _ => tipo.ToString()
-        };
-
         private static string DescricaoTipoCartao(TipoCartao? tipo) => tipo switch
         {
             TipoCartao.Credito => "Crédito",
@@ -56,7 +46,7 @@ namespace ControleFinanceiro.Api.Controllers
             NumeroConta = c.NumeroConta,
             Agencia = c.Agencia,
             Tipo = (int)c.Tipo,
-            TipoDescricao = DescricaoTipo(c.Tipo),
+            TipoDescricao = c.Tipo.Descricao(),
             TipoCartao = c.TipoCartao != null ? (int)c.TipoCartao : null,
             TipoCartaoDescricao = DescricaoTipoCartao(c.TipoCartao),
             SaldoAtual = saldoAtual,
@@ -116,7 +106,7 @@ namespace ControleFinanceiro.Api.Controllers
                 IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
             };
 
-            var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial);
+            var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial, dto.DataSaldoInicial);
             // Saldo lido do banco (já com o lançamento de saldo inicial gravado) pela mesma regra.
             var saldos = await _service.ObterSaldosAsync(new[] { criada.Id }, usuarioId);
             return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada, saldos[criada.Id].Saldo));
@@ -142,6 +132,18 @@ namespace ControleFinanceiro.Api.Controllers
             };
 
             await _service.AtualizarAsync(id, conta, usuarioId);
+            return NoContent();
+        }
+
+        /// <summary>Edita o saldo inicial (ponto de partida) da conta — valor e data de abertura.</summary>
+        [HttpPut("{id}/saldo-inicial")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AtualizarSaldoInicial(Guid id, [FromBody] AtualizarSaldoInicialDto dto)
+        {
+            var usuarioId = GetUserId();
+            await _service.AtualizarSaldoInicialAsync(id, usuarioId, dto.Valor, dto.Data);
             return NoContent();
         }
 

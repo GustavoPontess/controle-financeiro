@@ -213,15 +213,16 @@ await _context.SaveChangesAsync();
 **Regra de ouro: zero `style={{}}` para cor/fonte/espaçamento de tema. Todo estilo vai em `*.module.css` e lê `var(--pontes-*)`.**
 
 1. **Cada componente/tela tem seu `*.module.css`** ao lado do `.tsx`. Importa `import styles from "./X.module.css"` e usa `className={styles.foo}`. Sem `style={{}}` para layout/cor.
-2. **Cor e fonte SEMPRE via CSS vars** `var(--pontes-primary)`, `var(--pontes-text)`, `var(--pontes-bg)`, `var(--pontes-font)`, etc. As vars são injetadas no `:root` pelo `PontesThemeProvider` (e escopadas localmente no `/design-system`). Nunca hex/fonte hardcoded de tema.
+2. **Tamanho de letra SEMPRE via `var(--pontes-fs-*)`** (escala central em `tokens.css`, por papel — ver `docs/DESIGN_SYSTEM.md` → "Tamanho — escala central"). Nunca `font-size` em px fora das exceções de ícone/glifo.
+3. **Cor e fonte SEMPRE via CSS vars** `var(--pontes-primary)`, `var(--pontes-text)`, `var(--pontes-bg)`, `var(--pontes-font)`, etc. As vars são injetadas no `:root` pelo `PontesThemeProvider` (e escopadas localmente no `/design-system`). Nunca hex/fonte hardcoded de tema.
    - Feedback semântico: `var(--pontes-success|warning|danger|info)` (+ `*-soft`). Imune à paleta.
    - Hover/foco/estado via `:hover`, `:focus`, e atributos `data-*` (ex.: `data-active`, `data-open`, `data-tone`) — **não** via state JS + re-render.
    - Escurecer/alpha: `color-mix(in srgb, var(--pontes-primary) 90%, #000)` / `... 13%, transparent)`.
-3. **Componentes da biblioteca leem as vars sozinhos.** Telas **não** passam mais `p`/`font` para componentes Pontes (`<PontesButton variant="primary">`, sem `p`/`font`). As props `p`/`font` continuam opcionais nos types só para override pontual e compat — não usar em tela.
-4. **`useTheme(...)` (`p`/`font`) só sobrevive onde precisa de cor REAL (hex):** atributos de apresentação SVG e gráficos `recharts` (`fill`, `stroke`, `stop-color`, `Cell`, gradientes). `var(--pontes-*)` **não resolve** em atributo SVG — aí passa o hex da paleta. Ver `DashboardPage.tsx` e `HomePage.tsx`.
-5. **Inline `style={{}}` permitido SÓ para valor genuinamente dinâmico/runtime:** largura de barra de progresso (`width: %`), cor vinda do banco de dados (`conta.cor`), injeção das vars escopadas no root do `/design-system`, swatches que mostram a própria paleta. Nunca para cor de tema fixa.
-6. **Keyframes/animações globais** que são referenciadas por string em `animation:` ficam num `<style>` global (CSS Modules renomeia keyframes e quebra a referência) — ver `HomePage.tsx`.
-7. **Boy-scout (obrigatório):** achou `style={{}}` de tema/estático — legado ou recém-introduzido — **arruma na hora** pra CSS Module + `var(--pontes-*)`. Não deixa passar "porque não é meu", não vira dívida técnica. Só não toca no que é exceção legítima da regra 5 (valor dinâmico de runtime).
+4. **Componentes da biblioteca leem as vars sozinhos.** Telas **não** passam mais `p`/`font` para componentes Pontes (`<PontesButton variant="primary">`, sem `p`/`font`). As props `p`/`font` continuam opcionais nos types só para override pontual e compat — não usar em tela.
+5. **`useTheme(...)` (`p`/`font`) só sobrevive onde precisa de cor REAL (hex):** atributos de apresentação SVG e gráficos `recharts` (`fill`, `stroke`, `stop-color`, `Cell`, gradientes). `var(--pontes-*)` **não resolve** em atributo SVG — aí passa o hex da paleta. Ver `DashboardPage.tsx` e `HomePage.tsx`.
+6. **Inline `style={{}}` permitido SÓ para valor genuinamente dinâmico/runtime:** largura de barra de progresso (`width: %`), cor vinda do banco de dados (`conta.cor`), injeção das vars escopadas no root do `/design-system`, swatches que mostram a própria paleta. Nunca para cor de tema fixa.
+7. **Keyframes/animações globais** que são referenciadas por string em `animation:` ficam num `<style>` global (CSS Modules renomeia keyframes e quebra a referência) — ver `HomePage.tsx`.
+8. **Boy-scout (obrigatório):** achou `style={{}}` de tema/estático — legado ou recém-introduzido — **arruma na hora** pra CSS Module + `var(--pontes-*)`. Não deixa passar "porque não é meu", não vira dívida técnica. Só não toca no que é exceção legítima da regra 5 (valor dinâmico de runtime).
 
 ```tsx
 // ✓ Correto — Q5+

@@ -53,7 +53,7 @@ public class DespesaCompartilhadaServiceTests
         var t = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Despesa", Valor = valor, Tipo = tipo,
-            CriadoPor = criadoPor, Data = new DateTime(2026, 5, 10),
+            CriadoPor = criadoPor, Data = new DateOnly(2026, 5, 10),
             Ativo = true, StatusTransacao = StatusTransacao.Executado, FamiliaId = familiaId,
         };
         ctx.Transacoes.Add(t);

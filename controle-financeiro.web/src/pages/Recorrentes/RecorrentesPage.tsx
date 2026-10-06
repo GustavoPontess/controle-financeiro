@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { dataLocalISO } from "@/utils/dateTime"
-import { formatMoney } from "@/utils/money"
+import { formatMoney, maskMoney, parseMoney } from "@/utils/money"
 import { useOutletContext } from "react-router-dom"
 import {
   Plus, TrendingDown, TrendingUp, Repeat, Pencil, Trash2, PauseCircle, PlayCircle, XCircle, SearchX,
@@ -27,6 +26,7 @@ import type {
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import styles from "./RecorrentesPage.module.css"
+import { emptyCriarForm, faixaInicio, validateCriar, type CriarErrors, type CriarForm } from "./recorrenteForm"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
@@ -36,83 +36,28 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 
 // UTC fixo — data do backend é "dia calendário" (meia-noite UTC), não instante exato; formatar em
 // fuso local desloca 1 dia pra trás em fuso negativo (Brasil inteiro).
-const formatDate = (d?: string) =>
+const formatDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"
 
-const today = () => dataLocalISO()
-
-// Dias até a data (negativo = passou). null se sem data.
-const diasAte = (iso?: string): number | null => {
+// Dias até a data (negativo = passou). null se sem data. Lê ano/mês/dia do TEXTO: new Date("2026-10-05")
+// é meia-noite UTC = dia 4 às 21h no Brasil, e o "em N dias" saía com 1 dia a menos.
+const diasAte = (iso?: string | null): number | null => {
   if (!iso) return null
-  const d = new Date(iso)
+  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number)
   const now = new Date()
   const a = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const b = new Date(ano, mes - 1, dia)
   return Math.round((b.getTime() - a.getTime()) / 86400000)
 }
 
 // Rótulo humano de "quando cobra": hoje / amanhã / em N dias / data.
-const cobraLabel = (iso?: string): string => {
+const cobraLabel = (iso?: string | null): string => {
   const n = diasAte(iso)
   if (n == null) return "—"
   if (n === 0) return "hoje"
   if (n === 1) return "amanhã"
   if (n > 0 && n <= 30) return `em ${n} dias`
   return formatDate(iso)
-}
-
-const parseMoneyString = (s: string) => {
-  // Handle BR format "1.234,56" and plain "45.90"/"45,90"
-  let normalized = s
-  if (s.includes(",") && s.includes(".")) {
-    // BR thousands+decimal: "1.234,56" → "1234.56"
-    normalized = s.replace(/\./g, "").replace(",", ".")
-  } else if (s.includes(",")) {
-    // BR decimal only: "45,90" → "45.90"
-    normalized = s.replace(",", ".")
-  }
-  const n = parseFloat(normalized)
-  return isNaN(n) ? 0 : n
-}
-
-// ── tipos de form ─────────────────────────────────────────────────────────────
-
-type CriarForm = {
-  descricao: string
-  valor: string
-  tipo: string
-  categoriaId: string
-  contaId: string
-  frequencia: string
-  dia: string
-  dataInicio: string
-  dataFim: string
-}
-
-type CriarErrors = Partial<Record<keyof CriarForm, string>>
-
-const emptyCriarForm = (): CriarForm => ({
-  descricao: "",
-  valor: "",
-  tipo: "1",
-  categoriaId: "",
-  contaId: "",
-  frequencia: "2",
-  dia: "1",
-  dataInicio: today(),
-  dataFim: "",
-})
-
-function validateCriar(f: CriarForm): CriarErrors {
-  const errs: CriarErrors = {}
-  if (!f.descricao.trim()) errs.descricao = "Descrição obrigatória."
-  const v = parseMoneyString(f.valor)
-  if (!f.valor || v <= 0) errs.valor = "Informe um valor positivo."
-  if (!f.contaId) errs.contaId = "Selecione uma conta."
-  if (!f.dataInicio) errs.dataInicio = "Data de início obrigatória."
-  const dia = parseInt(f.dia)
-  if (isNaN(dia) || dia < 1 || dia > 31) errs.dia = "Dia de 1 a 31."
-  return errs
 }
 
 type EditarProximaForm = {
@@ -125,7 +70,7 @@ type EditarProximaErrors = Partial<Record<keyof EditarProximaForm, string>>
 function validateEditarProxima(f: EditarProximaForm): EditarProximaErrors {
   const errs: EditarProximaErrors = {}
   if (f.valor) {
-    const v = parseMoneyString(f.valor)
+    const v = parseMoney(f.valor)
     if (v <= 0) errs.valor = "Valor deve ser positivo."
   }
   return errs
@@ -166,7 +111,7 @@ export default function RecorrentesPage() {
   const [baseProximas, setBaseProximas] = useState<Recorrente[]>([])
   // KPIs exatos via /recorrentes/stats — endpoint dedicado (#179).
   const [stats, setStats] = useState<RecorrenteStats>({
-    ativas: 0, custoMensalDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
+    ativas: 0, custoMensalDespesas: 0, custoAnualDespesas: 0, proximas30Dias: 0, qtdTotal: 0,
   })
   const [resumoCarregado, setResumoCarregado] = useState(false)
   const [total, setTotal] = useState(0)
@@ -285,7 +230,7 @@ export default function RecorrentesPage() {
     try {
       const dto: CriarRecorrente = {
         descricao: criarForm.descricao,
-        valor: parseMoneyString(criarForm.valor),
+        valor: parseMoney(criarForm.valor),
         tipo: parseInt(criarForm.tipo),
         contaId: criarForm.contaId || undefined,
         categoriaId: criarForm.categoriaId || undefined,
@@ -325,23 +270,38 @@ export default function RecorrentesPage() {
   // ── pausar / retomar ─────────────────────────────────────────────────────────
   // Só ativa↔pausada. Cancelada/encerrada nem oferece a ação (o backend também recusa cancelada).
 
+  // Uma ida ao servidor por conta fixa de cada vez: enquanto a 1ª não voltou, Pausar/Retomar some do ⋮
+  // daquela linha (o servidor também não desfaz — recebe o estado pedido, não "inverte").
+  const [togglesEmAndamento, setTogglesEmAndamento] = useState<ReadonlySet<string>>(new Set())
+  const marcarToggle = (id: string, emAndamento: boolean) =>
+    setTogglesEmAndamento((s) => {
+      const n = new Set(s)
+      if (emAndamento) n.add(id)
+      else n.delete(id)
+      return n
+    })
+
   async function handleToggle(r: Recorrente) {
+    if (togglesEmAndamento.has(r.id)) return
+    marcarToggle(r.id, true)
+    const retomou = r.situacao === "pausada"
     try {
-      await toggleRecorrente(r.id)
+      await toggleRecorrente(r.id, retomou)
       // Troca a situação em vez de remover: pausar e depois retomar (com a busca ligada) devolve o
       // item à faixa.
-      const retomou = r.situacao === "pausada"
       const aplicar = (x: Recorrente): Recorrente => ({ ...x, ativo: retomou, situacao: retomou ? "ativa" : "pausada" })
       mudarNaBase(r.id, aplicar)
       mudarNaLista(r.id, aplicar)
       recarregar()
       notify({
         open: true,
-        message: r.situacao === "pausada" ? "Conta fixa retomada." : "Conta fixa pausada.",
+        message: retomou ? "Conta fixa retomada." : "Conta fixa pausada.",
         severity: "success",
       })
     } catch {
       notify({ open: true, message: "Erro ao atualizar conta fixa.", severity: "error" })
+    } finally {
+      marcarToggle(r.id, false)
     }
   }
 
@@ -406,7 +366,7 @@ export default function RecorrentesPage() {
     setEditarSaving(true)
     try {
       const dto: EditarProximaDto = {}
-      if (editarForm.valor) dto.valor = parseMoneyString(editarForm.valor)
+      if (editarForm.valor) dto.valor = parseMoney(editarForm.valor)
       if (editarForm.descricao.trim()) dto.descricao = editarForm.descricao
       await editarProximaOcorrencia(editarTarget.id, dto)
       setEditarOpen(false)
@@ -443,10 +403,11 @@ export default function RecorrentesPage() {
   // Projeção anual do custo mensal (×12). Próximas cobranças: contas fixas ATIVAS (não pausadas)
   // de despesa com data futura, ordenadas asc, top 6 — da última lista sem filtro (baseProximas).
   // Caveat (igual antes): usa só a página carregada (1 página = até 25; cobre o caso comum).
-  const projecaoAnual = totalMensalDespesa * 12
+  // Vem pronto do servidor (soma semanal/mensal/anual no mesmo período); mensal × 12 esquecia as outras.
+  const projecaoAnual = stats.custoAnualDespesas
   const proximasCobrancas = baseProximas
-    .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.dataProximaGeracao && (diasAte(r.dataProximaGeracao) ?? -1) >= 0)
-    .sort((a, b) => new Date(a.dataProximaGeracao!).getTime() - new Date(b.dataProximaGeracao!).getTime())
+    .filter((r) => r.situacao === "ativa" && r.tipo === 1 && r.proximaCobranca && (diasAte(r.proximaCobranca) ?? -1) >= 0)
+    .sort((a, b) => new Date(a.proximaCobranca!).getTime() - new Date(b.proximaCobranca!).getTime())
     .slice(0, 6)
 
   // Esqueleto até a 1ª resposta do resumo também: o vazio "Nenhuma conta fixa" depende do total
@@ -457,17 +418,18 @@ export default function RecorrentesPage() {
   // retoma; cancelada/encerrada só podem ser excluídas.
   function acoesDaLinha(r: Recorrente): PontesRowAction[] {
     const acoes: PontesRowAction[] = []
+    const togglando = togglesEmAndamento.has(r.id)
     if (r.situacao === "ativa") {
       acoes.push({
         key: "editar-proxima", label: "Editar próxima ocorrência",
         icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => openEditarProxima(r),
       })
-      acoes.push({
+      if (!togglando) acoes.push({
         key: "pausar", label: "Pausar",
         icon: <PauseCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),
       })
     }
-    if (r.situacao === "pausada") {
+    if (r.situacao === "pausada" && !togglando) {
       acoes.push({
         key: "retomar", label: "Retomar",
         icon: <PlayCircle size={16} strokeWidth={2.5} />, onClick: () => void handleToggle(r),
@@ -494,7 +456,7 @@ export default function RecorrentesPage() {
 
   return (
     <div className={styles.page}>
-      <PontesPageHeader actionLabel="Nova conta fixa" onAction={openCriar} />
+      <PontesPageHeader titulo="Contas Fixas" descricao="Aluguel, escola, plano de saúde e outros pagamentos recorrentes" actionLabel="Nova conta fixa" onAction={openCriar} />
 
       {/* Hero de custo */}
       <div className={styles.hero}>
@@ -526,14 +488,14 @@ export default function RecorrentesPage() {
           <div className={styles.proxTitle}>Próximas cobranças</div>
           <div className={styles.proxGrid}>
             {proximasCobrancas.map((r) => {
-              const dias = diasAte(r.dataProximaGeracao) ?? 0
+              const dias = diasAte(r.proximaCobranca) ?? 0
               const urgente = dias <= 7
               return (
                 <div key={r.id} className={styles.proxCard} data-urgent={urgente ? "true" : undefined}>
                   <div className={styles.proxCardTop}>
                     <span className={styles.proxCardNome}>{r.descricao}</span>
                     <span className={styles.proxCardWhen} data-urgent={urgente ? "true" : undefined}>
-                      {cobraLabel(r.dataProximaGeracao)}
+                      {cobraLabel(r.proximaCobranca)}
                     </span>
                   </div>
                   <span className={styles.proxCardValor}>{formatMoney(r.valor)}</span>
@@ -578,7 +540,7 @@ export default function RecorrentesPage() {
             {recorrentes.map((r) => {
               const isDespesa = r.tipo === 1
               const tone = (freqBadge[r.frequencia] ?? "primary") as "warning" | "neutral" | "primary"
-              const dias = diasAte(r.dataProximaGeracao)
+              const dias = diasAte(r.proximaCobranca)
               const ativa = r.situacao === "ativa"
               const urgente = ativa && dias != null && dias >= 0 && dias <= 7
               const badge = r.situacao !== "ativa" ? SITUACAO_BADGE[r.situacao] : undefined
@@ -603,9 +565,9 @@ export default function RecorrentesPage() {
                       {r.categoriaNome && <PontesBadge tone="primary" size="sm">{r.categoriaNome}</PontesBadge>}
                       {r.contaNome && <span className={styles.cardSub}>{r.contaNome}</span>}
                     </div>
-                    {ativa && r.dataProximaGeracao && (
+                    {ativa && r.proximaCobranca && (
                       <span className={styles.cardProx} data-urgent={urgente ? "true" : undefined}>
-                        próxima cobrança {cobraLabel(r.dataProximaGeracao)}
+                        próxima cobrança {cobraLabel(r.proximaCobranca)}
                       </span>
                     )}
                     {r.situacao === "cancelada" && r.motivoCancelamento && (
@@ -615,7 +577,8 @@ export default function RecorrentesPage() {
 
                   <div className={styles.cardRight}>
                     <span className={styles.cardValor} data-tipo={isDespesa ? "despesa" : "receita"}>
-                      {isDespesa ? "−" : "+"}{formatMoney(r.valor)}
+                      {/* Sem +/− pelo tipo: a cor conta a direção (regra de exibição de valor do app). */}
+                      {formatMoney(r.valor)}
                     </span>
                     <PontesRowActions actions={acoesDaLinha(r)} />
                   </div>
@@ -675,7 +638,9 @@ export default function RecorrentesPage() {
                 value={criarForm.valor}
                 invalid={!!criarErrors.valor}
                 onChange={e => {
-                  setCriarForm(f => ({ ...f, valor: e.target.value }))
+                  // Máscara do app (dígitos = centavos): "1.500" não vira mais R$ 1,50.
+                  const valor = e.target.value
+                  setCriarForm(f => ({ ...f, valor: maskMoney(valor, f.valor) }))
                   if (criarErrors.valor) setCriarErrors(e2 => ({ ...e2, valor: undefined }))
                 }}
               />
@@ -731,6 +696,8 @@ export default function RecorrentesPage() {
             <PontesField label="Data início" required error={criarErrors.dataInicio}>
               <PontesDateInput
                 value={criarForm.dataInicio}
+                min={faixaInicio().min}
+                max={faixaInicio().max}
                 invalid={!!criarErrors.dataInicio}
                 onChange={(v) => {
                   setCriarForm(f => ({ ...f, dataInicio: v }))
@@ -738,10 +705,15 @@ export default function RecorrentesPage() {
                 }}
               />
             </PontesField>
-            <PontesField label="Data fim (opcional)">
+            <PontesField label="Data fim (opcional)" error={criarErrors.dataFim}>
               <PontesDateInput
                 value={criarForm.dataFim}
-                onChange={(v) => setCriarForm(f => ({ ...f, dataFim: v }))}
+                min={criarForm.dataInicio || undefined}
+                invalid={!!criarErrors.dataFim}
+                onChange={(v) => {
+                  setCriarForm(f => ({ ...f, dataFim: v }))
+                  if (criarErrors.dataFim) setCriarErrors(e2 => ({ ...e2, dataFim: undefined }))
+                }}
               />
             </PontesField>
           </div>
@@ -808,7 +780,8 @@ export default function RecorrentesPage() {
               value={editarForm.valor}
               invalid={!!editarErrors.valor}
               onChange={e => {
-                setEditarForm(f => ({ ...f, valor: e.target.value }))
+                const valor = e.target.value
+                setEditarForm(f => ({ ...f, valor: maskMoney(valor, f.valor) }))
                 if (editarErrors.valor) setEditarErrors(e2 => ({ ...e2, valor: undefined }))
               }}
             />
@@ -827,7 +800,7 @@ export default function RecorrentesPage() {
       <PontesDialog
         open={excluirAlvo !== null}
         title="Excluir conta fixa?"
-        description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As transações já geradas serão mantidas.` : undefined}
+        description={excluirAlvo ? `Excluir "${excluirAlvo.descricao}"? As cobranças já feitas continuam no histórico; as próximas são canceladas.` : undefined}
         tone="danger"
         confirmLabel="Excluir"
         onConfirm={() => void handleExcluir()}

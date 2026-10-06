@@ -3,6 +3,7 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
 using ControleFinanceiro.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -69,7 +70,7 @@ public class ExpandirRecorrentesJobTests
 
         await ctx.SaveChangesAsync();
 
-        var job = new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), NullLogger<ExpandirRecorrentesJob>.Instance);
+        var job = new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor()), NullLogger<ExpandirRecorrentesJob>.Instance);
 
         // Não pode lançar mesmo com a recorrente inválida na leva — essa é a regressão.
         await job.ExecuteAsync();

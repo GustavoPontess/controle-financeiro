@@ -52,7 +52,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Salário", Valor = 100_000, Tipo = TipoTransacao.Receita,
-            ContaId = conta.Id, Data = DateTime.UtcNow.Date, CriadoPor = usuarioId,
+            ContaId = conta.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
         return new Cenario(usuarioId, cartao.Id, conta.Id);
@@ -65,7 +65,7 @@ public class LimiteCartaoRegraUnicaTests
         {
             Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, StatusTransacao = status,
-            Data = DateTime.UtcNow.Date,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
         }, c.UsuarioId);
 
     private static ParcelamentoService Parcelamentos(AppDbContext ctx) =>
@@ -234,7 +234,7 @@ public class LimiteCartaoRegraUnicaTests
         Transacao Compra(Fatura f, decimal valor) => new()
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, FaturaId = f.Id, UsadoComoCredito = true, Data = f.DataInicio,
+            CartaoCreditoId = c.CartaoId, FaturaId = f.Id, UsadoComoCredito = true, Data = DateOnly.FromDateTime(f.DataInicio),
             CriadoPor = c.UsuarioId,
         };
         ctx.Faturas.AddRange(a, b);
@@ -399,7 +399,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = 100, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, FaturaId = quitada.Id, UsadoComoCredito = true, Data = dataPassada,
+            CartaoCreditoId = c.CartaoId, FaturaId = quitada.Id, UsadoComoCredito = true, Data = DateOnly.FromDateTime(dataPassada),
             CriadoPor = c.UsuarioId,
         });
 
@@ -407,7 +407,7 @@ public class LimiteCartaoRegraUnicaTests
         Transacao SemFatura(Guid cartaoId, DateTime data) => new()
         {
             Id = Guid.NewGuid(), Descricao = "Streaming", Valor = 80, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = cartaoId, Data = data, CriadoPor = c.UsuarioId, RecorrenteOrigemId = recorrenteId,
+            CartaoCreditoId = cartaoId, Data = DateOnly.FromDateTime(data), CriadoPor = c.UsuarioId, RecorrenteOrigemId = recorrenteId,
         };
         var doCiclo = SemFatura(c.CartaoId, hoje);
         var daQuitada = SemFatura(c.CartaoId, dataPassada);
@@ -417,12 +417,12 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Padaria", Valor = 70, Tipo = TipoTransacao.Despesa,
-            ContaId = c.ContaId, CartaoCreditoId = c.CartaoId, Data = hoje, CriadoPor = c.UsuarioId,
+            ContaId = c.ContaId, CartaoCreditoId = c.CartaoId, Data = DateOnly.FromDateTime(hoje), CriadoPor = c.UsuarioId,
         });
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Previsto", Valor = 60, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, StatusTransacao = StatusTransacao.Previsao, Data = hoje.AddDays(5),
+            CartaoCreditoId = c.CartaoId, StatusTransacao = StatusTransacao.Previsao, Data = DateOnly.FromDateTime(hoje.AddDays(5)),
             CriadoPor = c.UsuarioId,
         });
         await ctx.SaveChangesAsync();
@@ -432,7 +432,7 @@ public class LimiteCartaoRegraUnicaTests
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 160m);
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, outro, 0m);
 
-        await new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), NullLogger<ExpandirRecorrentesJob>.Instance)
+        await new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor()), NullLogger<ExpandirRecorrentesJob>.Instance)
             .ExecuteAsync();
 
         var depois = await ctx.Transacoes.AsNoTracking()
@@ -480,7 +480,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, FaturaId = f1, UsadoComoCredito = true, Data = inicioF1, CriadoPor = c.UsuarioId,
+            CartaoCreditoId = c.CartaoId, FaturaId = f1, UsadoComoCredito = true, Data = DateOnly.FromDateTime(inicioF1), CriadoPor = c.UsuarioId,
         });
         await ctx.SaveChangesAsync();
         await PagarFaturaAsync(ctx, c, f1, 250m);
@@ -568,7 +568,7 @@ public class LimiteCartaoRegraUnicaTests
         {
             Id = Guid.NewGuid(), Descricao = "Assinatura", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = c.CartaoId, FaturaId = primeira.FaturaId, UsadoComoCredito = true,
-            StatusTransacao = StatusTransacao.Previsao, Data = inicioF1, CriadoPor = c.UsuarioId,
+            StatusTransacao = StatusTransacao.Previsao, Data = DateOnly.FromDateTime(inicioF1), CriadoPor = c.UsuarioId,
         });
         await ctx.SaveChangesAsync();
         await PagarFaturaAsync(ctx, c, primeira.FaturaId, 50m); // F1 segura 150; cartão 350
@@ -618,7 +618,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Intruso", Valor = 700, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, Data = DateTime.UtcNow.Date, CriadoPor = outro.UsuarioId,
+            CartaoCreditoId = c.CartaoId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = outro.UsuarioId,
         });
         await ctx.SaveChangesAsync();
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import { PontesThemeProvider } from "../../components/pontes"
 import EmprestimosPage from "../../pages/Emprestimos/EmprestimosPage"
 import {
@@ -118,6 +118,19 @@ function abrirAcoes() {
   fireEvent.click(kebabs[0])
 }
 
+// Filtros avançados moram num popover: abre no botão "Filtros" e devolve o painel.
+async function abrirFiltros() {
+  fireEvent.click(screen.getByRole("button", { name: /^Filtros/ }))
+  return screen.findByRole("dialog", { name: "Filtros" })
+}
+// Escolhe uma opção num PontesSelect do painel (menu portalizado; opções são botões).
+function escolher(painel: HTMLElement, campo: string, opcao: string) {
+  const field = within(painel).getByText(campo).closest("div") as HTMLElement
+  fireEvent.click(within(field).getByRole("button"))
+  fireEvent.click(screen.getByRole("button", { name: opcao }))
+}
+const aplicar = (painel: HTMLElement) => fireEvent.click(within(painel).getByRole("button", { name: "Aplicar" }))
+
 describe("EmprestimosPage (tela real ex-bancada B)", () => {
   beforeEach(() => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([emp]))
@@ -163,7 +176,7 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
   it("empty state sem empréstimos", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([]))
     renderPage()
-    expect(await screen.findByText("Nenhum empréstimo encontrado.")).toBeInTheDocument()
+    expect(await screen.findByText("Nenhum empréstimo")).toBeInTheDocument()
   })
 
   it("wizard bloqueia avançar com passo Básico vazio (descrição/pessoa/valor)", async () => {
@@ -214,13 +227,58 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     )
   })
 
-  it("filtro de direção 'A pagar' recarrega server-side com direcao=pagar", async () => {
+  it("filtro de direção 'A pagar' (no popover Filtros) recarrega server-side com direcao=pagar", async () => {
     renderPage()
     await screen.findByText("Viagem")
-    fireEvent.click(screen.getByRole("tab", { name: "A pagar" }))
+    const painel = await abrirFiltros()
+    escolher(painel, "Direção", "A pagar")
+    aplicar(painel)
     await waitFor(() => {
       const ultima = listEmprestimosPage.mock.calls.at(-1)
       expect(ultima?.[4]).toBe("pagar")
+    })
+  })
+
+  it("filtro 'Situação' = Ativos (no popover Filtros) recarrega server-side com filtros.situacao='ativo'", async () => {
+    renderPage()
+    await screen.findByText("Viagem")
+    // Baseline: sem filtro escolhido, o objeto de filtros vai sem situação (nada de string vazia).
+    const inicial = listEmprestimosPage.mock.calls.at(-1)
+    expect(inicial?.[5]).toBeDefined() // o objeto de filtros é o 6º argumento (índice 5)
+    expect(inicial?.[5]?.situacao).toBeUndefined()
+
+    const painel = await abrirFiltros()
+    escolher(painel, "Situação", "Ativos")
+    aplicar(painel)
+    await waitFor(() => {
+      const ultima = listEmprestimosPage.mock.calls.at(-1)
+      expect(ultima?.[5]).toEqual(expect.objectContaining({ situacao: "ativo" }))
+    })
+  })
+
+  it("filtro 'Situação' = Quitados recarrega server-side com filtros.situacao='quitado'", async () => {
+    renderPage()
+    await screen.findByText("Viagem")
+    const painel = await abrirFiltros()
+    escolher(painel, "Situação", "Quitados")
+    aplicar(painel)
+    await waitFor(() => {
+      const ultima = listEmprestimosPage.mock.calls.at(-1)
+      expect(ultima?.[5]).toEqual(expect.objectContaining({ situacao: "quitado" }))
+    })
+  })
+
+  it("filtro 'Situação' preserva os demais argumentos da busca (direção segue no 5º, filtros no 6º)", async () => {
+    renderPage()
+    await screen.findByText("Viagem")
+    const painel = await abrirFiltros()
+    escolher(painel, "Direção", "A pagar")
+    escolher(painel, "Situação", "Ativos")
+    aplicar(painel)
+    await waitFor(() => {
+      const ultima = listEmprestimosPage.mock.calls.at(-1)
+      expect(ultima?.[4]).toBe("pagar")
+      expect(ultima?.[5]).toEqual(expect.objectContaining({ situacao: "ativo" }))
     })
   })
 
@@ -234,14 +292,15 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     })
   })
 
-  it("lista: kebab é slim (só gestão) — ações ricas vão pro detalhe", async () => {
+  it("lista: kebab traz as ações ricas (registrar/quitar/vincular), sem o expandir inline", async () => {
     renderPage()
     await screen.findByText("Viagem")
     abrirAcoes()
-    expect(await screen.findByText("Remover")).toBeInTheDocument()
-    expect(screen.queryByText("Registrar pagamento")).not.toBeInTheDocument()
-    expect(screen.queryByText("Marcar como quitado")).not.toBeInTheDocument()
-    expect(screen.queryByText("Vincular a uma pessoa")).not.toBeInTheDocument()
+    expect(await screen.findByText("Registrar pagamento")).toBeInTheDocument()
+    expect(screen.getByText("Marcar como quitado")).toBeInTheDocument()
+    expect(screen.getByText("Vincular a uma pessoa")).toBeInTheDocument()
+    expect(screen.getByText("Remover")).toBeInTheDocument()
+    // "Ver parcelas/detalhe" não aparece na lista — a linha já abre o detalhe no clique.
     expect(screen.queryByText(/Ver parcelas|Ver detalhe/)).not.toBeInTheDocument()
   })
 
@@ -253,14 +312,15 @@ describe("EmprestimosPage (tela real ex-bancada B)", () => {
     expect(navigateSpy).toHaveBeenCalledWith("/emprestimos/e3")
   })
 
-  it("devedor vinculado: badge Vinculado na linha + kebab slim sem quitar", async () => {
+  it("devedor vinculado: kebab tem registrar/histórico, sem 'Marcar como quitado' (não é credor)", async () => {
     listEmprestimosPage.mockReset().mockResolvedValue(paged([empDevedorVinculado]))
     renderPage()
     await screen.findByText("Aluguel")
     expect(screen.getByText("Vinculado")).toBeInTheDocument()
     abrirAcoes()
-    expect(await screen.findByText("Remover")).toBeInTheDocument()
-    expect(screen.queryByText("Registrar pagamento")).not.toBeInTheDocument()
+    expect(await screen.findByText("Registrar pagamento")).toBeInTheDocument()
+    expect(screen.getByText("Ver histórico de pagamentos")).toBeInTheDocument()
+    expect(screen.getByText("Remover")).toBeInTheDocument()
     expect(screen.queryByText("Marcar como quitado")).not.toBeInTheDocument()
   })
 

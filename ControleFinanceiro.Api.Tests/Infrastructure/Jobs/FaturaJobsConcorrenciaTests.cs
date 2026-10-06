@@ -72,7 +72,7 @@ public class FaturaJobsConcorrenciaTests
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            MeioPagamento = MeioPagamento.Credito, Data = fechamento.AddDays(-5), CriadoPor = usuarioId,
+            MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(fechamento.AddDays(-5)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
         return fatura.Id;
