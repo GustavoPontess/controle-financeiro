@@ -166,11 +166,20 @@ public class TransferenciaService
         if (transferencia == null)
             throw new KeyNotFoundException("Transferência não encontrada.");
 
-        var transacoes = await _context.Transacoes
+        await CancelarComAsPernasAsync(_context, transferencia);
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Exclui a transferência E as DUAS pernas juntas (soft delete — preserva auditoria). Lugar único: a tela de
+    /// Transações também chega aqui (`TransacaoService.DeletarAsync` numa perna) — antes ela cancelava só a perna
+    /// clicada e o dinheiro sumia (ou aparecia) numa das contas. Não salva.
+    /// </summary>
+    public static async Task CancelarComAsPernasAsync(AppDbContext context, Transferencia transferencia)
+    {
+        var transacoes = await context.Transacoes
             .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)
             .ToListAsync();
-
-        // Soft delete das pernas (preserva auditoria) — não remove fisicamente.
         foreach (var t in transacoes)
         {
             t.Ativo = false;
@@ -178,8 +187,7 @@ public class TransferenciaService
             t.CanceladoEm = DateTime.UtcNow;
             t.MotivoCancelamento = "Transferência excluída";
         }
-        _context.Transferencias.Remove(transferencia);
-        await _context.SaveChangesAsync();
+        context.Transferencias.Remove(transferencia);
     }
 
     private static TransferenciaDto MapToDto(Transferencia t, string nomeOrigem, string nomeDestino) => new()

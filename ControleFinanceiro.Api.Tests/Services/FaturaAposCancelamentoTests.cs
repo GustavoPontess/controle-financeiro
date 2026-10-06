@@ -732,4 +732,29 @@ public class FaturaAposCancelamentoTests
         Assert.Single(await ctx.FinancialEventLogs.AsNoTracking().ToListAsync(),
             e => e.Tipo == FinancialEventType.TransacaoAtualizada && e.EntidadeId == mercado && e.ValorDepois == 150m);
     }
+
+    [Fact]
+    public async Task PagamentoDaFatura_NaoSeEditaNemExcluiPelaTelaDeTransacoes()
+    {
+        // Revisão de segurança do #288 (P1): excluir o pagamento devolvia o dinheiro à conta e a fatura seguia
+        // paga (ValorPago intacto) — dinheiro do nada. Editar o valor desemparelhava do mesmo jeito.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 300m);
+        var pagamento = await ctx.Transacoes.Where(t => t.EhPagamentoFatura).Select(t => t.Id).SingleAsync();
+        var svc = Transacoes(ctx);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(pagamento, c.UsuarioId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(pagamento, new Transacao
+        {
+            Descricao = "Pagamento", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        }, c.UsuarioId));
+
+        ctx.ChangeTracker.Clear();
+        var t = await ctx.Transacoes.SingleAsync(x => x.Id == pagamento);
+        Assert.True(t.Ativo);
+        Assert.Equal(300m, t.Valor);
+        Assert.Equal(300m, (await FaturaAsync(ctx, c.FaturaId)).ValorPago);
+        Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+    }
 }

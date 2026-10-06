@@ -120,4 +120,50 @@ public class TransferenciaServiceTests
         Assert.All(txns, t => Assert.False(t.Ativo));
         Assert.All(txns, t => Assert.Equal(StatusTransacao.Cancelado, t.StatusTransacao));
     }
+
+    // ══ Perna de transferência pela tela de Transações (revisão de segurança do #288) ═══════════════════
+    // Antes "Excluir" numa perna cancelava SÓ ela: o dinheiro sumia (ou aparecia) numa das contas.
+
+    private static TransacaoService Transacoes(AppDbContext ctx) =>
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+
+    [Fact]
+    public async Task ExcluirUmaPernaPelaTelaDeTransacoes_ExcluiAsDuas_EATransferencia()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
+            Data = DateTime.UtcNow, Descricao = "Reserva"
+        }, usuarioId);
+        var pernaDestino = await ctx.Transacoes.SingleAsync(t => t.ContaId == destino.Id);
+
+        Assert.True(await Transacoes(ctx).DeletarAsync(pernaDestino.Id, usuarioId));
+
+        ctx.ChangeTracker.Clear();
+        var pernas = await ctx.Transacoes.IgnoreQueryFilters().Where(t => t.EhTransferencia).ToListAsync();
+        Assert.Equal(2, pernas.Count);
+        Assert.All(pernas, t => Assert.False(t.Ativo));                 // as DUAS, não só a clicada
+        Assert.Empty(await ctx.Transferencias.ToListAsync());
+    }
+
+    [Fact]
+    public async Task EditarUmaPernaPelaTelaDeTransacoes_Recusa_SemMexerEmNada()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
+            Data = DateTime.UtcNow, Descricao = "Reserva"
+        }, usuarioId);
+        var perna = await ctx.Transacoes.SingleAsync(t => t.ContaId == origem.Id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Transacoes(ctx).AtualizarAsync(perna.Id, new Transacao
+        {
+            Descricao = "Reserva", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        }, usuarioId));
+
+        ctx.ChangeTracker.Clear();
+        Assert.All(await ctx.Transacoes.Where(t => t.EhTransferencia).ToListAsync(), t => Assert.Equal(500m, t.Valor));
+    }
 }
