@@ -230,7 +230,7 @@ export function PontesCelulaIdentidade({
     <span className={styles.ident}>
       <span className={styles.identIcone} data-tom={tom} aria-hidden="true">{icone}</span>
       <span className={styles.identTexto}>
-        <span className={styles.identNome}>{nome}</span>
+        <span className={styles.identNome} title={nome}>{nome}</span>
         {sub != null && sub !== "" && <span className={styles.sub}>{sub}</span>}
       </span>
     </span>
