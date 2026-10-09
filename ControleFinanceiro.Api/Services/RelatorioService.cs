@@ -206,6 +206,7 @@ public class RelatorioService
 
         var cultura = new CultureInfo("pt-BR");
         var mesesNomes = cultura.DateTimeFormat.AbbreviatedMonthNames;
+        var saldosFimDoMes = await RegrasFinanceiras.SaldosNoFimDeCadaMesAsync(_context, usuarioId, ano);
 
         var evolucaoMensal = Enumerable.Range(1, 12).Select(mes =>
         {
@@ -221,7 +222,8 @@ public class RelatorioService
                 MesLabel = char.ToUpper(mesesNomes[mes - 1][0]) + mesesNomes[mes - 1][1..],
                 Receitas = receitas,
                 Despesas = despesas,
-                Saldo = receitasCaixa - despesasCaixa
+                Saldo = receitasCaixa - despesasCaixa,
+                SaldoFimDoMes = saldosFimDoMes[mes - 1],
             };
         }).ToList();
 

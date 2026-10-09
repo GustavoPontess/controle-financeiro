@@ -87,12 +87,10 @@ export default function ReportsPage() {
     ant > 0 ? ((atual - ant) / ant) * 100 : null
   const fmtPct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`)
 
-  // Saldo acumulado: patrimônio mês a mês (soma corrida do saldo mensal).
-  // n ≤ 12 → O(n²) é trivial e mantém o cálculo imutável.
-  const saldoAcumulado = evolucaoComDados.map((m, i) => ({
-    mesLabel: m.mesLabel,
-    acumulado: evolucaoComDados.slice(0, i + 1).reduce((s, x) => s + x.saldo, 0),
-  }))
+  // Saldo acumulado: o saldo REAL das contas no fim de cada mês (vem do servidor, com o que já havia
+  // antes do ano). A soma corrida do resultado mensal começava do zero e mostrava "negativo" com a conta
+  // positiva.
+  const saldoAcumulado = evolucaoComDados.map((m) => ({ mesLabel: m.mesLabel, acumulado: m.saldoFimDoMes }))
 
   // Taxa de economia: quanto da receita sobrou no mês (saldo / receitas).
   const taxaEconomia = evolucaoComDados.map((m) => ({
@@ -149,7 +147,7 @@ export default function ReportsPage() {
                 {([
                   { label: "Receitas", atual: ultimo.receitas, ant: penultimo.receitas, bom: "up" as const },
                   { label: "Despesas", atual: ultimo.despesas, ant: penultimo.despesas, bom: "down" as const },
-                  { label: "Resultado", atual: ultimo.saldo, ant: penultimo.saldo, bom: "up" as const },
+                  { label: "Saldo na conta", atual: ultimo.saldoFimDoMes, ant: penultimo.saldoFimDoMes, bom: "up" as const },
                 ]).map((row) => {
                   const v = variacao(row.atual, row.ant)
                   const subiu = v !== null && v >= 0
@@ -175,7 +173,7 @@ export default function ReportsPage() {
           <PontesCard padding={24} radius={14}>
             <div className={styles.cardHead}>
               <span className={styles.cardTitle}>Evolução mensal</span>
-              <span className={styles.cardSub}>Receitas, despesas e o resultado de cada mês</span>
+              <span className={styles.cardSub}>Receitas, despesas e saldo da conta no fim do mês</span>
             </div>
             {evolucaoComDados.length === 0 ? (
               <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
@@ -201,9 +199,9 @@ export default function ReportsPage() {
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
                   <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
                   <Legend wrapperStyle={{ fontSize: "var(--pontes-fs-md)", paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
-                  {/* "Resultado do mês" (entrou − saiu da conta NAQUELE mês, não o saldo da conta) é o
-                      protagonista: negativo = saiu mais do que entrou. Receitas e despesas são contexto. */}
-                  <Area type="monotone" dataKey="saldo" name="Resultado do mês"
+                  {/* Saldo real da conta no fim do mês é o protagonista (o que ficou na conta, nunca
+                      "negativo" sem a conta ter ficado). Receitas e despesas são contexto. */}
+                  <Area type="monotone" dataKey="saldoFimDoMes" name="Saldo na conta"
                     stroke={colorPrimary} strokeWidth={3} fill="url(#gradSaldo)"
                     dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
                   <Area type="monotone" dataKey="receitas" name="Receitas"
@@ -272,7 +270,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="mesLabel" tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} dy={4} />
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
                   <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
-                  <Area type="monotone" dataKey="acumulado" name="Acumulado"
+                  <Area type="monotone" dataKey="acumulado" name="Saldo na conta"
                     stroke={colorPrimary} strokeWidth={3} fill="url(#gradAcum)"
                     dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
                 </AreaChart>

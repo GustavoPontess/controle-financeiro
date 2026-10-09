@@ -83,6 +83,39 @@ public static class RegrasFinanceiras
     public static async Task<MovimentoConta> SaldoDaContaAsync(AppDbContext context, Guid contaId, Guid usuarioId) =>
         (await SaldosDasContasAsync(context, new[] { contaId }, usuarioId))[contaId];
 
+    /// <summary>
+    /// Saldo real de TODAS as contas do usuário no fim de cada mês do ano (índice 0 = janeiro): tudo que
+    /// entrou/saiu antes do ano + o acumulado mês a mês. Mesma regra do saldo da conta
+    /// (<see cref="CompoeSaldoReal"/>, inclui saldo inicial, transferência e pagamento de fatura), agregada
+    /// no banco. Compra no cartão não entra (não sai da conta até a fatura ser paga).
+    /// </summary>
+    public static async Task<decimal[]> SaldosNoFimDeCadaMesAsync(AppDbContext context, Guid usuarioId, int ano)
+    {
+        var inicioDoAno = new DateOnly(ano, 1, 1);
+        var fimDoAno = new DateOnly(ano, 12, 31);
+        var daConta = context.Transacoes
+            .Where(CompoeSaldoReal)
+            .Where(t => t.ContaId != null && t.Conta!.UsuarioIdProprietario == usuarioId);
+
+        var antesDoAno = await daConta
+            .Where(t => t.Data < inicioDoAno)
+            .SumAsync(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
+        var porMes = await daConta
+            .Where(t => t.Data >= inicioDoAno && t.Data <= fimDoAno)
+            .GroupBy(t => t.Data.Month)
+            .Select(g => new { Mes = g.Key, Liquido = g.Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor) })
+            .ToListAsync();
+
+        var saldos = new decimal[12];
+        var acumulado = antesDoAno;
+        for (var mes = 1; mes <= 12; mes++)
+        {
+            acumulado += porMes.FirstOrDefault(x => x.Mes == mes)?.Liquido ?? 0m;
+            saldos[mes - 1] = acumulado;
+        }
+        return saldos;
+    }
+
     // ── Total / restante de fatura ────────────────────────────────────────────
 
     /// <summary>

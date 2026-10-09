@@ -167,6 +167,55 @@ public class RelatorioServiceTests
     }
 
     [Fact]
+    public async Task GetRelatorioAsync_SaldoFimDoMes_EhOSaldoRealDasContas_ComOQueVinhaDeAntes()
+    {
+        // Caso real (dogfood 2026-10-09): abril saiu 916,58 a mais do que entrou, mas a conta terminou
+        // com 17,15 porque vinha de março com 933,73. A linha do relatório tem que mostrar os 17,15.
+        await using var ctx = CreateContext();
+        var eu = Guid.NewGuid();
+        var outro = Guid.NewGuid();
+        Conta NovaConta(Guid dono, string nome) => new() { Id = Guid.NewGuid(), Nome = nome, UsuarioIdProprietario = dono, Tipo = TipoConta.ContaCorrente };
+        var corrente = NovaConta(eu, "Corrente");
+        var poupanca = NovaConta(eu, "Poupança");
+        var alheia = NovaConta(outro, "Do outro");
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = eu, TemCredito = true };
+        ctx.AddRange(corrente, poupanca, alheia, cartao);
+
+        Transacao Tx(Conta? conta, decimal valor, TipoTransacao tipo, DateOnly data, Action<Transacao>? ajuste = null)
+        {
+            var t = new Transacao
+            {
+                Id = Guid.NewGuid(), Descricao = "x", Valor = valor, Tipo = tipo, Data = data,
+                ContaId = conta?.Id, CriadoPor = eu, StatusTransacao = StatusTransacao.Executado,
+            };
+            ajuste?.Invoke(t);
+            return t;
+        }
+        ctx.Transacoes.AddRange(
+            Tx(corrente, 100m, TipoTransacao.Receita, new(2025, 12, 31), t => t.EhSaldoInicial = true), // antes do ano
+            Tx(corrente, 833.73m, TipoTransacao.Receita, new(2026, 3, 10)),                         // março: 933,73
+            Tx(corrente, 701.00m, TipoTransacao.Receita, new(2026, 4, 5)),
+            Tx(corrente, 1617.58m, TipoTransacao.Despesa, new(2026, 4, 20)),                       // abril: 17,15
+            Tx(corrente, 10m, TipoTransacao.Despesa, new(2026, 4, 21), t => t.EhTransferencia = true), // sai da corrente…
+            Tx(poupanca, 10m, TipoTransacao.Receita, new(2026, 4, 21), t => t.EhTransferencia = true), // …entra na poupança
+            Tx(corrente, 50m, TipoTransacao.Despesa, new(2026, 4, 22), t => t.StatusTransacao = StatusTransacao.Previsao), // fora
+            Tx(corrente, 70m, TipoTransacao.Despesa, new(2026, 4, 23), t => t.Ativo = false),                // fora
+            Tx(null, 300m, TipoTransacao.Despesa, new(2026, 4, 24), t => { t.CartaoCreditoId = cartao.Id; t.UsadoComoCredito = true; }), // cartão: fora
+            Tx(alheia, 5000m, TipoTransacao.Receita, new(2026, 4, 25), t => t.CriadoPor = outro)              // de outro: fora
+        );
+        await ctx.SaveChangesAsync();
+
+        var rel = await new RelatorioService(ctx).GetRelatorioAsync(eu, 2026);
+        decimal Fim(int mes) => rel.EvolucaoMensal.Single(m => m.Mes == mes).SaldoFimDoMes;
+
+        Assert.Equal(100m, Fim(1));      // só o que vinha de antes do ano
+        Assert.Equal(933.73m, Fim(3));
+        Assert.Equal(17.15m, Fim(4));    // nunca "−916": é o que ficou na conta
+        Assert.Equal(17.15m, Fim(12));   // mês sem movimento repete o saldo
+        Assert.Equal(-916.58m, rel.EvolucaoMensal.Single(m => m.Mes == 4).Saldo); // resultado do mês segue disponível
+    }
+
+    [Fact]
     public async Task ExportarCsvAsync_NormalizaQuebrasDeLinhaSemCriarNovasLinhas()
     {
         await using var ctx = CreateContext();
