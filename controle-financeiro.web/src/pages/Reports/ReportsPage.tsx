@@ -149,7 +149,7 @@ export default function ReportsPage() {
                 {([
                   { label: "Receitas", atual: ultimo.receitas, ant: penultimo.receitas, bom: "up" as const },
                   { label: "Despesas", atual: ultimo.despesas, ant: penultimo.despesas, bom: "down" as const },
-                  { label: "Sobrou", atual: ultimo.saldo, ant: penultimo.saldo, bom: "up" as const },
+                  { label: "Resultado", atual: ultimo.saldo, ant: penultimo.saldo, bom: "up" as const },
                 ]).map((row) => {
                   const v = variacao(row.atual, row.ant)
                   const subiu = v !== null && v >= 0
@@ -175,7 +175,7 @@ export default function ReportsPage() {
           <PontesCard padding={24} radius={14}>
             <div className={styles.cardHead}>
               <span className={styles.cardTitle}>Evolução mensal</span>
-              <span className={styles.cardSub}>Receitas, despesas e o que sobrou em cada mês</span>
+              <span className={styles.cardSub}>Receitas, despesas e o resultado de cada mês</span>
             </div>
             {evolucaoComDados.length === 0 ? (
               <div className={styles.emptyChart}>Nenhuma transação em {ano}</div>
@@ -201,9 +201,9 @@ export default function ReportsPage() {
                   <YAxis tickFormatter={formatMoneyShort} tick={{ fontSize: 12, fill: colorAxis }} axisLine={false} tickLine={false} width={52} />
                   <RTooltip content={<ChartTooltip />} cursor={{ stroke: colorBorder, strokeWidth: 1 }} />
                   <Legend wrapperStyle={{ fontSize: "var(--pontes-fs-md)", paddingTop: 16, color: "var(--pontes-text-muted)" }} iconType="circle" iconSize={9} />
-                  {/* "Sobrou no mês" (entrou − saiu da conta NAQUELE mês, não o saldo da conta) é o
+                  {/* "Resultado do mês" (entrou − saiu da conta NAQUELE mês, não o saldo da conta) é o
                       protagonista: negativo = saiu mais do que entrou. Receitas e despesas são contexto. */}
-                  <Area type="monotone" dataKey="saldo" name="Sobrou no mês"
+                  <Area type="monotone" dataKey="saldo" name="Resultado do mês"
                     stroke={colorPrimary} strokeWidth={3} fill="url(#gradSaldo)"
                     dot={false} activeDot={{ r: 6, strokeWidth: 3, stroke: "var(--pontes-surface)", fill: colorPrimary }} />
                   <Area type="monotone" dataKey="receitas" name="Receitas"
