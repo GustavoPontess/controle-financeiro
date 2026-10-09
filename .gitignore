@@ -462,3 +462,5 @@ docs/referencias/
 # reais) — nunca comitar. Local-only, cada dev cria o seu se precisar.
 # Cobre o .bak (desabilitado em 2026-10-02 — seed passou a ser só contas de teste).
 ControleFinanceiro.Api/Data/MeuCenarioSeeder.cs*
+# Extratos reais (OFX/CSV) que o seeder pessoal importa — nunca comitar.
+ControleFinanceiro.Api/Data/MeuCenario/

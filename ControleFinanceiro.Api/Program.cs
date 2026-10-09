@@ -463,7 +463,8 @@ using (var scope = app.Services.CreateScope())
     // reflection pra Program.cs compilar igual em qualquer checkout, com ou
     // sem o arquivo (CI, outro worktree, clone novo — nenhum deles tem essa
     // classe, e não deveriam precisar).
-    if (app.Environment.IsDevelopment() && seedDadosDev)
+    // Independe do SEED_DADOS_DEV: é o ponto de volta do banco local de uso real.
+    if (app.Environment.IsDevelopment())
     {
         var meuCenarioSeedAsync = Type.GetType("ControleFinanceiro.Api.Data.MeuCenarioSeeder")
             ?.GetMethod("SeedAsync");
