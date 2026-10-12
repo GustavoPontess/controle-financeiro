@@ -9,6 +9,9 @@ export interface ExtratoLinha {
   duplicada: boolean
   categoriaSugeridaId: string | null
   categoriaSugeridaNome: string | null
+  /** Perna do Pix no Crédito (entrada do cartão ou o Pix que ela pagou): entra no saldo, não é
+   *  receita/despesa. Só pra mostrar — a confirmação detecta de novo no servidor. */
+  pixNoCredito?: boolean
 }
 
 export interface PreviewImportacao {

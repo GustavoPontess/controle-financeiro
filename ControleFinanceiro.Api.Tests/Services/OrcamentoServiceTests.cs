@@ -266,6 +266,35 @@ public class OrcamentoServiceTests
         Assert.Equal(0m, lista[0].ValorGasto); // transferência não conta
     }
 
+    [Theory]
+    [InlineData("pix")]    // o Pix pago com Pix no Crédito: o gasto é do cartão, não da conta
+    [InlineData("ajuste")] // ajuste de reconciliação corrige o saldo, não é gasto
+    public async Task ListarAsync_PixNoCreditoEAjusteDeReconciliacao_NaoContamComoGasto(string marca)
+    {
+        var ctx = CreateContext();
+        var userId = SeedUsuario(ctx);
+        var catId = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+
+        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
+
+        Transacao Gasto(decimal valor) => new()
+        {
+            Id = Guid.NewGuid(), Descricao = "Conta de luz", Valor = valor, Tipo = TipoTransacao.Despesa,
+            CategoriaId = catId, CriadoPor = userId, Data = new DateOnly(2026, 5, 5),
+            StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        };
+        var marcado = Gasto(539.22m);
+        if (marca == "pix") marcado.EhPixNoCredito = true;
+        else marcado.EhAjusteReconciliacao = true;
+        ctx.Transacoes.AddRange(Gasto(100m), marcado);
+        await ctx.SaveChangesAsync();
+
+        var lista = await svc.ListarAsync(userId, 5, 2026);
+
+        Assert.Equal(100m, lista[0].ValorGasto);
+    }
+
     [Fact]
     public async Task ListarAsync_TransacaoPrevisao_EhExcluida()
     {

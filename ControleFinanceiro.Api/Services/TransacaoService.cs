@@ -242,9 +242,10 @@ namespace ControleFinanceiro.Api.Services
         }
 
         /// <summary>
-        /// KPIs agregados (entradas, saídas, saldo) calculados no banco. Exclui
-        /// transferência, pagamento de fatura, saldo inicial e soft-deleted —
-        /// mesma regra contábil de saldo×P&amp;L (#128). Exato pra qualquer volume.
+        /// KPIs agregados (entradas, saídas, saldo) calculados no banco. Exclui soft-deleted e o que
+        /// não entra no resultado (<see cref="RegrasFinanceiras.EntraNoResultado"/>: transferência,
+        /// pagamento de fatura, saldo inicial, ajuste de reconciliação, Pix no Crédito) — mesma regra
+        /// contábil de saldo×P&amp;L (#128). Exato pra qualquer volume.
         /// </summary>
         public async Task<DTOs.Transacao.TransacaoStatsDto> ObterStatsAsync(
             Guid usuarioId,
@@ -257,10 +258,8 @@ namespace ControleFinanceiro.Api.Services
                     (t.ContaId.HasValue && t.Conta!.UsuarioIdProprietario == usuarioId) ||
                     (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId))
                 .Where(t => t.Ativo
-                            && t.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                            && !t.EhTransferencia
-                            && !t.EhPagamentoFatura
-                            && !t.EhSaldoInicial)
+                            && t.StatusTransacao == Domain.Enums.StatusTransacao.Executado)
+                .Where(RegrasFinanceiras.EntraNoResultado)
                 .AsQueryable();
 
             if (from.HasValue) query = query.Where(t => t.Data >= from.Value);

@@ -1734,6 +1734,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("EhPixNoCredito")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("EhSaldoInicial")
                         .HasColumnType("boolean");
 

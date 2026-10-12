@@ -30,6 +30,24 @@ public static class RegrasFinanceiras
     public static readonly Expression<Func<Transacao, bool>> CompoeSaldoReal =
         t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado;
 
+    // ── Resultado (P&L) ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// O que entra no RESULTADO — receita/despesa de verdade (Entrou/Saiu, relatórios, dashboard,
+    /// orçamento). Fica de fora o que só move dinheiro sem ser ganho nem gasto: transferência entre
+    /// contas, pagamento de fatura (o gasto é a compra no cartão), saldo inicial, ajuste de reconciliação
+    /// (corrige o saldo) e as pernas do Pix no Crédito (o cartão põe na conta e o Pix tira; o gasto é do
+    /// cartão). Tudo isso CONTINUA no saldo (<see cref="CompoeSaldoReal"/>). Não filtra Ativo/Status —
+    /// cada chamador combina com o recorte dele. Antes a lista estava copiada em cada service, e nenhuma
+    /// cópia tirava o ajuste de reconciliação.
+    /// </summary>
+    public static readonly Expression<Func<Transacao, bool>> EntraNoResultado =
+        t => !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial
+             && !t.EhAjusteReconciliacao && !t.EhPixNoCredito;
+
+    /// <summary><see cref="EntraNoResultado"/> pra lista já carregada em memória.</summary>
+    public static readonly Func<Transacao, bool> EntraNoResultadoEmMemoria = EntraNoResultado.Compile();
+
     /// <summary>Entradas e saídas que formam o saldo real de uma conta.</summary>
     public readonly record struct MovimentoConta(decimal Receitas, decimal Despesas)
     {

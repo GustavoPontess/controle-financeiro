@@ -127,6 +127,12 @@ public class Transacao
     /// NÃO é receita/despesa real — fora de relatórios de P&amp;L. Ver ReconciliacaoSaldo.</summary>
     public bool EhAjusteReconciliacao { get; set; }
 
+    /// <summary>true se esta Transacao é uma das pernas do Pix no Crédito na conta: o cartão põe o valor na
+    /// conta ("Valor adicionado… Pix no Crédito") e o Pix tira na mesma hora. Mexe no saldo (as duas se
+    /// anulam), mas NÃO é receita/despesa — o gasto é do cartão (a compra na fatura, ou o pagamento dela no
+    /// extrato importado sem a fatura). Marcado pela importação. Fora de relatórios de P&amp;L.</summary>
+    public bool EhPixNoCredito { get; set; }
+
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;
 

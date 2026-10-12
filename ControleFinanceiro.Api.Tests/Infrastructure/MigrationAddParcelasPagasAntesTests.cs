@@ -19,13 +19,15 @@ public class MigrationAddParcelasPagasAntesTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_LogoDepoisDoMotorContaFixa()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.Equal("20261012171022_AddParcelasPagasAntes", ids[^1]); // nada gerado por cima sem querer
-        Assert.Equal("20261005180232_MotorContaFixaP2", ids[^2]);
+        // A mais recente agora é a AddEhPixNoCredito (teste próprio); esta segue na ordem em que nasceu.
+        var i = ids.IndexOf("20261012171022_AddParcelasPagasAntes");
+        Assert.True(i > 0);
+        Assert.Equal("20261005180232_MotorContaFixaP2", ids[i - 1]);
     }
 
     [Fact]

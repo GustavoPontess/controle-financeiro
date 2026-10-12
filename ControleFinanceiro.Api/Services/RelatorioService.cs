@@ -43,9 +43,9 @@ public class RelatorioService
                         (t.Conta!.UsuarioIdProprietario == usuarioId ||
                          t.CartaoCredito!.CriadoPor == usuarioId))
             // Relatório de P&L: só movimento real executado. Exclui canceladas/previsões e
-            // o que não é receita/despesa (transferência, pagamento de fatura, saldo inicial).
-            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+            // o que não é receita/despesa (RegrasFinanceiras.EntraNoResultado).
+            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
+            .Where(RegrasFinanceiras.EntraNoResultado)
             .Include(t => t.Categoria)
             .Include(t => t.Conta)
             .Include(t => t.CartaoCredito)
@@ -198,8 +198,8 @@ public class RelatorioService
             .Where(t => t.Data.Year == ano &&
                         (t.Conta!.UsuarioIdProprietario == usuarioId ||
                          t.CartaoCredito!.CriadoPor == usuarioId))
-            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
+            .Where(RegrasFinanceiras.EntraNoResultado)
             .Include(t => t.Categoria)
             .AsNoTracking()
             .ToListAsync();
