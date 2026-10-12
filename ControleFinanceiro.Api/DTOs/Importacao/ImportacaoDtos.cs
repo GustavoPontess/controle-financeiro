@@ -5,7 +5,9 @@ namespace ControleFinanceiro.Api.DTOs.Importacao;
 
 /// <summary>Uma linha do extrato lida do arquivo, já deduplicada e com sugestão.
 /// <c>PixNoCredito</c>: perna do Pix no Crédito (a entrada do cartão ou o Pix que ela pagou) — entra no
-/// saldo, mas não é receita/despesa. A confirmação detecta de novo no servidor (não confia nesta flag).</summary>
+/// saldo, mas não é receita/despesa. <c>PagaFaturaFechamento</c>: "Pagamento de fatura" que vai quitar a
+/// fatura do app que fecha nessa data (o rótulo da tela Cartões); null = fica como despesa. A confirmação
+/// decide as duas de novo no servidor (não confia na prévia).</summary>
 public record ExtratoLinhaDto(
     DateTime Data,
     string Descricao,
@@ -15,7 +17,8 @@ public record ExtratoLinhaDto(
     bool Duplicada,
     Guid? CategoriaSugeridaId,
     string? CategoriaSugeridaNome,
-    bool PixNoCredito = false);
+    bool PixNoCredito = false,
+    DateTime? PagaFaturaFechamento = null);
 
 /// <summary>Resultado do parse de um extrato — nada foi salvo ainda.</summary>
 public record PreviewImportacaoDto(
