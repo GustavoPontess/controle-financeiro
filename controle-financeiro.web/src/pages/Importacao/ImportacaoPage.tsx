@@ -12,6 +12,7 @@ import { previewImportacao, confirmarImportacao } from "../../services/importaca
 import type { Conta } from "../../types/Conta"
 import type { Category } from "../../types/Category"
 import type { PreviewImportacao } from "../../types/Importacao"
+import { rotuloMesFatura } from "../CreditCards/ciclosFatura"
 import styles from "./ImportacaoPage.module.css"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" }
@@ -203,7 +204,12 @@ export default function ImportacaoPage() {
                         <td>
                           {/* Pix no Crédito: entra na conta e sai no Pix — mexe no saldo, mas não é
                               receita nem despesa (o gasto é do cartão). */}
-                          {l.pixNoCredito ? (
+                          {l.pagaFaturaFechamento ? (
+                            // Vira o pagamento da fatura do app (não é despesa: o gasto já está nas compras).
+                            <PontesBadge tone="neutral" size="sm">
+                              Paga a fatura de {rotuloMesFatura(l.pagaFaturaFechamento).toLowerCase()}
+                            </PontesBadge>
+                          ) : l.pixNoCredito ? (
                             <PontesBadge tone="neutral" size="sm">Pix no Crédito</PontesBadge>
                           ) : (
                             <PontesBadge tone={isReceita ? "success" : "danger"} size="sm">
@@ -212,16 +218,19 @@ export default function ImportacaoPage() {
                           )}
                         </td>
                         <td className={styles.alignRight}
-                          data-tone={l.pixNoCredito ? undefined : isReceita ? "success" : "danger"}>
+                          data-tone={l.pixNoCredito || l.pagaFaturaFechamento ? undefined : isReceita ? "success" : "danger"}>
                           <strong>{formatMoney(l.valor)}</strong>
                         </td>
                         <td>
-                          <PontesSelect
-                            value={est?.categoriaId ?? ""}
-                            onChange={(v) => setEstado(i, { categoriaId: v })}
-                            placeholder="Sem categoria"
-                            options={catsCompat.map((c) => ({ value: c.id, label: c.descricao }))}
-                          />
+                          {/* Pagamento de fatura não tem categoria (as compras do cartão é que têm). */}
+                          {!l.pagaFaturaFechamento && (
+                            <PontesSelect
+                              value={est?.categoriaId ?? ""}
+                              onChange={(v) => setEstado(i, { categoriaId: v })}
+                              placeholder="Sem categoria"
+                              options={catsCompat.map((c) => ({ value: c.id, label: c.descricao }))}
+                            />
+                          )}
                         </td>
                       </tr>
                     )

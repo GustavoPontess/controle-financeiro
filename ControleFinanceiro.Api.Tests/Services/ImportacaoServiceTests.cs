@@ -252,6 +252,169 @@ public class ImportacaoServiceTests
         Assert.Equal(16.00m - 41.86m - 132.50m, saldo);    // as pernas do Pix no Crédito se anulam no saldo
     }
 
+    // ══ "Pagamento de fatura" no extrato (decisão do Gustavo, 2026-10-12) ═══════════════════
+    // Fatura no app → a linha vira o PAGAMENTO dela (fatura paga, limite volta, fora das despesas — o gasto já
+    // está nas compras). Fatura que não está no app (histórico) → continua despesa, único registro do gasto.
+    // Cartão como o Nubank: fecha dia 1, vence dia 8, ligado à conta.
+
+    private sealed record Cenario(AppDbContext Ctx, Guid Usuario, Guid ContaId, Guid CartaoId, ImportacaoService Svc);
+
+    private static TransacaoService TransacoesDe(AppDbContext ctx) =>
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+
+    /// <summary>Compras no cartão: (dia da compra, valor) — cada uma cai na fatura do ciclo dela.</summary>
+    private static async Task<Cenario> CenarioCartaoAsync(bool ligadoAConta = true, params (DateOnly Dia, decimal Valor)[] compras)
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Nubank", TemCredito = true, Ativo = true, LimiteTotal = 12000,
+            DiaFechamento = 1, DiaVencimento = 8, CriadoPor = usuario, ContaId = ligadoAConta ? contaId : null,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+        foreach (var (dia, valor) in compras)
+            await TransacoesDe(ctx).CriarTransacaoAsync(new Transacao
+            {
+                Id = Guid.NewGuid(), Descricao = "Compras", Valor = valor, Tipo = TipoTransacao.Despesa,
+                CartaoCreditoId = cartao.Id, UsadoComoCredito = true, Data = dia,
+                StatusTransacao = StatusTransacao.Executado,
+            }, usuario);
+        return new Cenario(ctx, usuario, contaId, cartao.Id, CreateService(ctx));
+    }
+
+    // Compra de 20/10 → fatura que fecha 01/11 e vence 08/11 ("Novembro" na tela Cartões).
+    private static Task<Cenario> CenarioNovembroAsync(bool ligadoAConta = true) =>
+        CenarioCartaoAsync(ligadoAConta, (new DateOnly(2025, 10, 20), 2239.87m));
+
+    private static async Task ImportarTudoAsync(Cenario c, PreviewImportacaoDto preview) =>
+        await c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.ContaId, preview.Linhas
+            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, l.CategoriaSugeridaId))
+            .ToList()), c.Usuario);
+
+    private static Task<Fatura> FaturaQueFechaEm(Cenario c, DateTime fechamento) =>
+        c.Ctx.Faturas.SingleAsync(f => f.CartaoCreditoId == c.CartaoId && f.DataFechamento == fechamento);
+
+    [Fact]
+    public async Task PagamentoDeFatura_FaturaNoApp_ViraOPagamentoDela_EOGastoContaUmaVezSo()
+    {
+        var c = await CenarioNovembroAsync();
+        var ofx = Stmt("20251109", "-2239.87", "PG-NOV", "Pagamento de fatura")
+                  + Stmt("20251110", "-30.00", "M1", "Compra no débito - MERCADO");
+
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", ofx);
+        Assert.Equal(new DateTime(2025, 11, 1), preview.Linhas[0].PagaFaturaFechamento);
+        Assert.Null(preview.Linhas[1].PagaFaturaFechamento);
+
+        await ImportarTudoAsync(c, preview);
+
+        var fatura = await FaturaQueFechaEm(c, new DateTime(2025, 11, 1));
+        Assert.Equal(2239.87m, fatura.ValorPago);
+        Assert.Equal(EstadoPagamentoFatura.Pago, fatura.EstadoPagamento);
+        var pagamento = await c.Ctx.Transacoes.SingleAsync(t => t.EhPagamentoFatura);
+        Assert.Equal((c.ContaId, fatura.Id, "PG-NOV", 2239.87m, new DateOnly(2025, 11, 9)),
+            (pagamento.ContaId!.Value, pagamento.FaturaPagaId!.Value, pagamento.ImportacaoFitId, pagamento.Valor, pagamento.Data));
+        // Saiu: a compra do cartão + o mercado. Antes o pagamento entrava de novo (4.509,74).
+        Assert.Equal(2269.87m, (await TransacoesDe(c.Ctx).ObterStatsAsync(c.Usuario)).Saidas);
+        // O dinheiro saiu da conta do mesmo jeito.
+        var saldo = c.Ctx.Transacoes.Where(t => t.ContaId == c.ContaId).Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
+        Assert.Equal(-2269.87m, saldo);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_DeFaturaQueNaoEstaNoApp_ContinuaDespesa()
+    {
+        // 07/10: paga a fatura que fechou 01/10 e vence 08/10 — de antes do app. A de novembro (no app) não é dela.
+        var c = await CenarioNovembroAsync();
+
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251007", "-696.87", "PG-OUT", "Pagamento de fatura"));
+        Assert.Null(preview.Linhas.Single().PagaFaturaFechamento);
+
+        await ImportarTudoAsync(c, preview);
+
+        Assert.Equal(0m, (await FaturaQueFechaEm(c, new DateTime(2025, 11, 1))).ValorPago);
+        var linha = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "PG-OUT");
+        Assert.False(linha.EhPagamentoFatura);
+        Assert.Equal(TipoTransacao.Despesa, linha.Tipo);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_DepoisDoVencimentoDaAnterior_AdiantaAFaturaAberta()
+    {
+        var c = await CenarioNovembroAsync();
+
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251020", "-500.00", "ADI", "Pagamento de fatura"));
+        Assert.Equal(new DateTime(2025, 11, 1), preview.Linhas.Single().PagaFaturaFechamento);
+
+        await ImportarTudoAsync(c, preview);
+
+        var fatura = await FaturaQueFechaEm(c, new DateTime(2025, 11, 1));
+        Assert.Equal(500m, fatura.ValorPago);
+        Assert.Equal(EstadoPagamentoFatura.Parcial, fatura.EstadoPagamento);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_MaiorQueORestante_OuCartaoSemConta_ContinuaDespesa()
+    {
+        var maior = await CenarioNovembroAsync();
+        var previewMaior = await maior.Svc.PreviewAsync(maior.ContaId, maior.Usuario, "nu.ofx", Stmt("20251109", "-3000.00", "PG", "Pagamento de fatura"));
+        Assert.Null(previewMaior.Linhas.Single().PagaFaturaFechamento);
+
+        var semConta = await CenarioNovembroAsync(ligadoAConta: false);
+        var previewSemConta = await semConta.Svc.PreviewAsync(semConta.ContaId, semConta.Usuario, "nu.ofx", Stmt("20251109", "-2239.87", "PG", "Pagamento de fatura"));
+        Assert.Null(previewSemConta.Linhas.Single().PagaFaturaFechamento);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_ConfirmarDeNovo_NaoPagaDuasVezes()
+    {
+        var c = await CenarioNovembroAsync();
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251020", "-500.00", "ADI", "Pagamento de fatura"));
+
+        await ImportarTudoAsync(c, preview);
+        await ImportarTudoAsync(c, preview); // retry / mesmo arquivo de novo
+
+        Assert.Equal(500m, (await FaturaQueFechaEm(c, new DateTime(2025, 11, 1))).ValorPago);
+        Assert.Single(c.Ctx.Transacoes.Where(t => t.EhPagamentoFatura));
+        // E a prévia seguinte já mostra como duplicada (FITID gravado no pagamento).
+        var deNovo = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251020", "-500.00", "ADI", "Pagamento de fatura"));
+        Assert.True(deNovo.Linhas.Single().Duplicada);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_JaPagoPelaTela_PreviaMarcaComoDuplicado()
+    {
+        var c = await CenarioNovembroAsync();
+        var fatura = await FaturaQueFechaEm(c, new DateTime(2025, 11, 1));
+        await new FaturaService(c.Ctx).PagarFaturaAsync(fatura.Id, new DTOs.Fatura.PagarFaturaDto
+        {
+            ContaId = c.ContaId, Valor = 2239.87m, DataPagamento = new DateTime(2025, 11, 8),
+        }, c.Usuario, Guid.NewGuid().ToString());
+
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251109", "-2239.87", "PG", "Pagamento de fatura"));
+
+        Assert.True(preview.Linhas.Single().Duplicada);
+    }
+
+    [Fact]
+    public async Task PagamentoDeFatura_DoisNoMesmoArquivo_AbateDaFechadaMaisAntigaPraFrente()
+    {
+        // Novembro (100) e dezembro (200) fechadas e sem pagamento; em 09/12 paga 100 e em 10/12 paga 200.
+        var c = await CenarioCartaoAsync(true, (new DateOnly(2025, 10, 20), 100m), (new DateOnly(2025, 11, 20), 200m));
+        var ofx = Stmt("20251209", "-100.00", "P1", "Pagamento de fatura") + Stmt("20251210", "-200.00", "P2", "Pagamento de fatura");
+
+        var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", ofx);
+        Assert.Equal(new DateTime?[] { new DateTime(2025, 11, 1), new DateTime(2025, 12, 1) },
+            preview.Linhas.Select(l => l.PagaFaturaFechamento));
+
+        await ImportarTudoAsync(c, preview);
+
+        Assert.Equal(100m, (await FaturaQueFechaEm(c, new DateTime(2025, 11, 1))).ValorPago);
+        Assert.Equal(200m, (await FaturaQueFechaEm(c, new DateTime(2025, 12, 1))).ValorPago);
+    }
+
     [Fact]
     public async Task ConfirmarAsync_SemLinhas_LancaArgument()
     {

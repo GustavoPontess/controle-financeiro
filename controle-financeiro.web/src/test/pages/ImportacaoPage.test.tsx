@@ -20,9 +20,9 @@ vi.mock("../../services/contaService", () => ({
 }))
 vi.mock("../../services/categoryService", () => ({ getCategories: () => Promise.resolve([]) }))
 
-const linha = (descricao: string, valor: number, tipo: 1 | 2, pixNoCredito = false) => ({
+const linha = (descricao: string, valor: number, tipo: 1 | 2, pixNoCredito = false, pagaFaturaFechamento: string | null = null) => ({
   data: "2026-04-06T00:00:00", descricao, valor, tipo, fitId: descricao, duplicada: false,
-  categoriaSugeridaId: null, categoriaSugeridaNome: null, pixNoCredito,
+  categoriaSugeridaId: null, categoriaSugeridaNome: null, pixNoCredito, pagaFaturaFechamento,
 })
 
 const preview: PreviewImportacao = {
@@ -30,8 +30,10 @@ const preview: PreviewImportacao = {
     linha("Valor adicionado na conta por cartão de crédito - Valor adicionado para Pix no Crédito", 132.5, 2, true),
     linha("Transferência enviada pelo Pix - FULANO", 132.5, 1, true),
     linha("Compra no débito - MERCADO", 41.86, 1),
+    linha("Pagamento de fatura", 2239.87, 1, false, "2026-11-01T00:00:00"),
+    linha("Pagamento de fatura (antiga)", 696.87, 1),
   ],
-  total: 3,
+  total: 5,
   duplicadas: 0,
 }
 
@@ -42,7 +44,7 @@ async function analisar() {
   const input = document.querySelector('input[type="file"]') as HTMLInputElement
   fireEvent.change(input, { target: { files: [new File(["x"], "nubank.ofx")] } })
   fireEvent.click(screen.getByText("Analisar"))
-  await screen.findByText("3 transações lidas")
+  await screen.findByText("5 transações lidas")
 }
 
 describe("ImportacaoPage", () => {
@@ -58,5 +60,16 @@ describe("ImportacaoPage", () => {
       expect(within(l).queryByText("Despesa")).not.toBeInTheDocument()
     }
     expect(within(linhas[2]).getByText("Despesa")).toBeInTheDocument()
+  })
+
+  it("pagamento de fatura que está no app diz qual fatura quita e não pede categoria; o de fatura antiga segue despesa", async () => {
+    await analisar()
+
+    const linhas = screen.getAllByRole("row").slice(1)
+    expect(within(linhas[3]).getByText("Paga a fatura de novembro de 2026")).toBeInTheDocument()
+    expect(within(linhas[3]).queryByText("Despesa")).not.toBeInTheDocument()
+    expect(within(linhas[3]).queryByText("Sem categoria")).not.toBeInTheDocument()
+    expect(within(linhas[4]).getByText("Despesa")).toBeInTheDocument()
+    expect(within(linhas[4]).getByText("Sem categoria")).toBeInTheDocument()
   })
 })
