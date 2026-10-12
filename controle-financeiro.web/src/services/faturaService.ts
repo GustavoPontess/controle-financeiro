@@ -1,5 +1,5 @@
 import { api } from "../api/axiosConfig"
-import type { Fatura, FaturaDetalhe, PagarFaturaPayload } from "../types/Fatura"
+import type { EstornoPagamentoResultado, Fatura, FaturaDetalhe, PagarFaturaPayload } from "../types/Fatura"
 
 export const getFaturasByCartao = async (cartaoCreditoId: string): Promise<Fatura[]> => {
   const res = await api.get(`/cartoes/${cartaoCreditoId}/faturas`)
@@ -23,4 +23,17 @@ export const pagarFatura = async (
   await api.post(`/cartoes/${cartaoCreditoId}/faturas/${faturaId}/pagar`, payload, {
     headers: { "Idempotency-Key": idempotencyKey },
   })
+}
+
+// Estornar devolve dinheiro à conta e faz a fatura voltar a dever: mesma regra de chave do pagar — gerada
+// ao abrir a confirmação e reusada no retry (a API nunca estorna 2x a mesma chave).
+export const estornarPagamento = async (
+  pagamentoId: string,
+  idempotencyKey: string,
+  motivo?: string,
+): Promise<EstornoPagamentoResultado> => {
+  const res = await api.post(`/faturas/pagamentos/${pagamentoId}/estornar`, { motivo }, {
+    headers: { "Idempotency-Key": idempotencyKey },
+  })
+  return res.data
 }

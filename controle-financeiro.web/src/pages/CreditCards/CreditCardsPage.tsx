@@ -21,6 +21,7 @@ import { getBancos } from "../../services/bancoService"
 import { getFaturasByCartao, getFaturaDetalhe, pagarFatura } from "../../services/faturaService"
 import { dataComHora, dataLocalISO } from "../../utils/dateTime"
 import CartoesAbas from "./CartoesAbas"
+import EstornarPagamentoDialog from "./EstornarPagamentoDialog"
 import { notificacaoDeErro } from "../../utils/apiError"
 import { getRecorrentes } from "../../services/recorrenteService"
 import type { Recorrente } from "../../types/Recorrente"
@@ -199,6 +200,8 @@ export default function CreditCardsPage() {
   const [pagarIdemKey, setPagarIdemKey] = useState("")
 
   const [delId, setDelId] = useState<string | null>(null)
+  // Pagamento em confirmação de estorno + a fatura dele (pra recarregar depois).
+  const [estornando, setEstornando] = useState<{ id: string; valor: number; cartaoId: string; faturaId: string } | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -602,7 +605,15 @@ export default function CreditCardsPage() {
                 {new Date(l.p.data).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {new Date(l.p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
-            <span className={styles.payValor}>− {formatMoney(l.p.valor)}</span>
+            <span className={styles.payLado}>
+              <span className={styles.payValor}>− {formatMoney(l.p.valor)}</span>
+              {/* Pagamento errado (ou devolvido pelo banco) tem volta: o dinheiro volta pra conta e a
+                  fatura volta a dever. Editar/excluir pagamento segue bloqueado. */}
+              <PontesButton size="sm" variant="ghost"
+                onClick={() => setEstornando({ id: l.p.id, valor: l.p.valor, cartaoId: f.cartaoCreditoId, faturaId: f.id })}>
+                Estornar
+              </PontesButton>
+            </span>
           </div>
         ))}
       </div>
@@ -985,6 +996,13 @@ export default function CreditCardsPage() {
         confirmLabel="Remover"
         onConfirm={handleDelete}
         onCancel={() => setDelId(null)}
+      />
+
+      <EstornarPagamentoDialog
+        pagamento={estornando}
+        onClose={() => setEstornando(null)}
+        onEstornado={() => { if (estornando) void recarregarFaturaDoPagamento(estornando.cartaoId, estornando.faturaId) }}
+        notify={notify}
       />
     </div>
   )

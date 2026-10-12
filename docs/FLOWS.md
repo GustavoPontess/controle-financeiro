@@ -164,6 +164,16 @@ sequenceDiagram
 - Concorrência: `Fatura.Versao` = `xmin`. Outro pagamento/operação na mesma fatura entre a leitura e o save → 409 `CONCURRENCY_CONFLICT`; corrida com a **mesma** chave (23505 no índice único ou `xmin`) → replay.
 - Front: 4xx com mensagem vira **aviso** com a mensagem do servidor; no 409 o modal fecha e a fatura recarrega (reabrir gera chave nova).
 
+### 4b. Estornar pagamento de fatura
+
+`POST /faturas/pagamentos/{pagamentoId}/estornar` `{ motivo? }` + header `Idempotency-Key` → `FaturaService.EstornarPagamentoAsync`. Editar/excluir pagamento segue bloqueado (revisão do #288); o estorno desfaz os dois lados juntos, num SaveChanges:
+- o pagamento vira `Ativo=false` / `Cancelado` com o motivo (soft delete) → o dinheiro volta pra conta;
+- `Fatura.ValorPago -= valor`; estado pelo **restante**: sobrou dívida → `Parcial` (ou `NaoPago` se o pago zerou) e `DataPagamentoTotal = null`. Vencida volta a atrasar pelo `FaturaAtrasoJob`, que **recalcula** juros/multa sobre o restante (atribui, não soma);
+- pagamento de **parcela antecipada** (`ParcelaTransacaoId`): a parcela volta a `Pendente` — ou vira `Cancelada` se o parcelamento já foi cancelado (é o reembolso de compra desfeita; Pendente cobraria de novo);
+- log `FaturaPagamentoEstornado` + `LimiteBloqueado` (o limite volta a ser ocupado), mesmo `CorrelationId`; `RegistroIdempotencia` (operação `EstornarPagamentoFatura`).
+- Inexistente / de outro usuário / não é pagamento → 404 (mesma resposta); já estornado → 409; mesma chave → replay; chave de outro pagamento → 409.
+- Front: botão "Estornar" no pagamento da linha do tempo da fatura (Cartões) e "Estornar pagamento" no ⋮ da linha nas Transações — o mesmo `EstornarPagamentoDialog` (chave nasce ao abrir a confirmação e vale pro retry).
+
 ---
 
 ## 5. Transferência Entre Contas Flow

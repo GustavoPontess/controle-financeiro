@@ -93,3 +93,23 @@ public class PagarFaturaDto
     public DateTime DataPagamento { get; set; }
     public int MeioPagamento { get; set; } = 4; // Pix por padrão
 }
+
+/// <summary>Estorno de um pagamento de fatura (o pagamento foi feito por engano ou o banco devolveu).</summary>
+public class EstornarPagamentoDto
+{
+    /// <summary>Por quê (opcional) — fica no lançamento cancelado e na trilha de auditoria.</summary>
+    [System.ComponentModel.DataAnnotations.MaxLength(300)]
+    public string? Motivo { get; set; }
+}
+
+/// <summary>Como a fatura ficou depois do estorno.</summary>
+public class EstornoPagamentoResultadoDto
+{
+    public Guid PagamentoId { get; set; }
+    public Guid FaturaId { get; set; }
+    public decimal ValorEstornado { get; set; }
+    /// <summary>Quanto a fatura tem de pago depois do estorno.</summary>
+    public decimal ValorPagoFatura { get; set; }
+    /// <summary>Quanto a fatura volta a dever.</summary>
+    public decimal RestanteFatura { get; set; }
+}

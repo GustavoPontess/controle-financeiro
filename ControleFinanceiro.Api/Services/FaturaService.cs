@@ -460,6 +460,217 @@ public class FaturaService
     private static bool EhViolacaoDeUnicidade(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    // ── Estorno de pagamento ──────────────────────────────────────────────────
+
+    /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves do estorno).</summary>
+    public const string OperacaoEstornarPagamento = "EstornarPagamentoFatura";
+
+    /// <summary>
+    /// Desfaz um pagamento de fatura (feito por engano, ou o banco devolveu): o lançamento do pagamento é
+    /// cancelado (soft delete — o dinheiro volta pra conta e o registro fica), a fatura volta a dever o valor
+    /// (estado recalculado pelo restante) e o limite volta a ser ocupado. Antes não havia volta: a tela de
+    /// Transações bloqueia editar/excluir pagamento (revisão do #288), e um pagamento errado ficava pra
+    /// sempre. Pagamento de parcela antecipada devolve a parcela pra Pendente — ou Cancelada, se o
+    /// parcelamento já foi cancelado (é o reembolso de uma compra desfeita; Pendente a cobraria de novo).
+    /// Idempotente pela chave (<see cref="RegistroIdempotencia"/>, no mesmo SaveChanges); concorrência otimista
+    /// na fatura (xmin → 409). Pagamento inexistente, de outro usuário ou que não é de fatura → 404 (mesma
+    /// resposta); já estornado → 409. Juros/multa: se a fatura voltar a dever vencida, o FaturaAtrasoJob a
+    /// marca de novo e RECALCULA sobre o restante (atribui, não soma).
+    /// </summary>
+    public async Task<EstornoPagamentoResultadoDto> EstornarPagamentoAsync(
+        Guid pagamentoId, EstornarPagamentoDto dto, Guid usuarioId, string? idempotencyKey)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para estornar o pagamento.");
+        if (idempotencyKey.Length > RegistroIdempotencia.ChaveMaxLength)
+            throw new ArgumentException(
+                $"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
+
+        // Replay antes das regras: o retry de um estorno que deu certo cairia em "já estornado".
+        var anterior = await BuscarEstornoPorChaveAsync(usuarioId, idempotencyKey, pagamentoId);
+        if (anterior != null)
+            return anterior;
+
+        // IgnoreQueryFilters pra distinguir "já estornado" (409) de "não existe" (404). Dono pela CONTA do
+        // pagamento aqui e pelo CARTÃO da fatura abaixo: os dois têm que ser do usuário.
+        var pagamento = await _context.Transacoes
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == pagamentoId && t.EhPagamentoFatura && t.FaturaPagaId != null
+                                      && t.CriadoPor == usuarioId && t.Conta!.UsuarioIdProprietario == usuarioId)
+            ?? throw new KeyNotFoundException("Pagamento não encontrado.");
+        if (!pagamento.Ativo || pagamento.StatusTransacao == StatusTransacao.Cancelado)
+            throw new InvalidOperationException("Este pagamento já foi estornado.");
+
+        var fatura = await _context.Faturas
+            .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
+            .FirstOrDefaultAsync(f => f.Id == pagamento.FaturaPagaId && f.CartaoCredito.CriadoPor == usuarioId)
+            ?? throw new KeyNotFoundException("Pagamento não encontrado.");
+        if (fatura.ValorPago < pagamento.Valor)
+            throw new InvalidOperationException(
+                "A fatura registra menos pago do que este pagamento — confira a fatura antes de estornar.");
+
+        ParcelaTransacao? parcela = null;
+        if (pagamento.ParcelaTransacaoId is { } parcelaId)
+            parcela = await _context.ParcelasTransacao
+                .Include(p => p.Parcelamento)
+                .FirstOrDefaultAsync(p => p.Id == parcelaId && p.Parcelamento!.CriadoPor == usuarioId);
+
+        var agora = DateTime.UtcNow;
+        var usadoCartaoAntes = await RegrasFinanceiras.LimiteUsadoDoCartaoAsync(_context, fatura.CartaoCreditoId, usuarioId);
+        var usadoFaturaAntes = RegrasFinanceiras.LimiteUsadoDaFatura(fatura);
+        var valorPagoAntes = fatura.ValorPago;
+        var motivo = string.IsNullOrWhiteSpace(dto.Motivo) ? "Pagamento estornado" : $"Estorno: {dto.Motivo.Trim()}";
+
+        pagamento.Ativo = false;
+        pagamento.StatusTransacao = StatusTransacao.Cancelado;
+        pagamento.CanceladoEm = agora;
+        pagamento.MotivoCancelamento = motivo;
+
+        var parcelaCancelada = false;
+        if (parcela is { Status: StatusParcela.Paga })
+        {
+            if (parcela.Parcelamento!.Ativo)
+            {
+                parcela.Status = StatusParcela.Pendente;
+                parcela.PagoEm = null;
+            }
+            else
+            {
+                parcela.Status = StatusParcela.Cancelada;
+                parcela.CanceladoEm = agora;
+                parcela.MotivoCancelamento = motivo;
+                parcelaCancelada = true;
+            }
+        }
+
+        // A fatura volta a dever: estado pelo RESTANTE (regra única). Ainda coberta (o estorno de parcela de
+        // parcelamento cancelado baixa o pago e o total juntos) → o estado fica. Zerada sem pagamento → NaoPago.
+        fatura.ValorPago -= pagamento.Valor;
+        var restante = RegrasFinanceiras.ValorRestanteFatura(fatura);
+        if (restante > 0 || fatura.ValorPago <= 0)
+        {
+            fatura.EstadoPagamento = fatura.ValorPago > 0 ? EstadoPagamentoFatura.Parcial : EstadoPagamentoFatura.NaoPago;
+            fatura.DataPagamentoTotal = null;
+        }
+
+        var correlationId = Guid.NewGuid();
+        var log = _eventLog.Registrar(
+            usuarioId: usuarioId,
+            tipo: FinancialEventType.FaturaPagamentoEstornado,
+            entidade: "Fatura",
+            entidadeId: fatura.Id,
+            correlationId: correlationId,
+            origemAcao: "API",
+            valorAntes: valorPagoAntes,
+            valorDepois: fatura.ValorPago,
+            payload: new
+            {
+                pagamentoId,
+                contaId = pagamento.ContaId,
+                valor = pagamento.Valor,
+                motivo = dto.Motivo,
+                parcelaId = parcela?.Id,
+                parcelaStatus = parcela?.Status.ToString(),
+                estadoPagamento = fatura.EstadoPagamento.ToString(),
+            });
+        if (parcelaCancelada)
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.ParcelaCancelada,
+                entidade: "ParcelaTransacao",
+                entidadeId: parcela!.Id,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: parcela.ValorComJuros ?? parcela.Valor,
+                valorDepois: 0m,
+                payload: new { parcelamentoId = parcela.ParcelamentoId, numero = parcela.Numero, pagamentoId });
+
+        // Limite: o usado segue o pago da fatura, então o estorno volta a ocupar o que o pagamento tinha
+        // soltado. Antes/depois = limite usado do CARTÃO; só esta fatura mudou.
+        var limiteBloqueado = RegrasFinanceiras.LimiteUsadoDaFatura(fatura) - usadoFaturaAntes;
+        if (limiteBloqueado > 0)
+            _eventLog.Registrar(
+                usuarioId: usuarioId,
+                tipo: FinancialEventType.LimiteBloqueado,
+                entidade: "CartaoCredito",
+                entidadeId: fatura.CartaoCreditoId,
+                correlationId: correlationId,
+                origemAcao: "API",
+                valorAntes: usadoCartaoAntes,
+                valorDepois: usadoCartaoAntes + limiteBloqueado,
+                payload: new { faturaId = fatura.Id, pagamentoId, delta = limiteBloqueado });
+
+        _context.RegistrosIdempotencia.Add(new RegistroIdempotencia
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId,
+            Operacao = OperacaoEstornarPagamento,
+            Chave = idempotencyKey,
+            ReferenciaId = pagamento.Id,
+            CriadoEm = agora,
+        });
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || EhViolacaoDeUnicidade(ex))
+        {
+            // Corrida (outra operação mexeu na fatura, ou a MESMA chave gravou antes): nada desta tentativa
+            // ficou. Mesma chave → replay do estorno vencedor; senão propaga (409, o cliente recarrega).
+            _context.ChangeTracker.Clear();
+            var vencedor = await BuscarEstornoPorChaveAsync(usuarioId, idempotencyKey, pagamentoId);
+            if (vencedor != null)
+                return vencedor;
+            throw;
+        }
+
+        return new EstornoPagamentoResultadoDto
+        {
+            PagamentoId = pagamento.Id,
+            FaturaId = fatura.Id,
+            ValorEstornado = pagamento.Valor,
+            ValorPagoFatura = fatura.ValorPago,
+            RestanteFatura = restante,
+        };
+    }
+
+    /// <summary>
+    /// Estorno já feito com esta chave (replay, com a fatura como está agora) ou null se a chave é nova.
+    /// Chave usada em OUTRO pagamento → 409.
+    /// </summary>
+    private async Task<EstornoPagamentoResultadoDto?> BuscarEstornoPorChaveAsync(
+        Guid usuarioId, string chave, Guid pagamentoId)
+    {
+        var registro = await _context.RegistrosIdempotencia
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId
+                                      && r.Operacao == OperacaoEstornarPagamento
+                                      && r.Chave == chave);
+        if (registro == null)
+            return null;
+        if (registro.ReferenciaId != pagamentoId)
+            throw new InvalidOperationException(
+                "Esta Idempotency-Key já foi usada em outra operação. Gere uma nova chave e tente de novo.");
+
+        var pagamento = await _context.Transacoes.IgnoreQueryFilters().AsNoTracking()
+            .FirstAsync(t => t.Id == pagamentoId);
+        var fatura = await _context.Faturas
+            .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
+            .AsNoTracking()
+            .FirstAsync(f => f.Id == pagamento.FaturaPagaId);
+        return new EstornoPagamentoResultadoDto
+        {
+            PagamentoId = pagamento.Id,
+            FaturaId = fatura.Id,
+            ValorEstornado = pagamento.Valor,
+            ValorPagoFatura = fatura.ValorPago,
+            RestanteFatura = RegrasFinanceiras.ValorRestanteFatura(fatura),
+        };
+    }
+
     // ── Consultas ─────────────────────────────────────────────────────────────
 
     public async Task<List<FaturaDto>> ListarPorCartaoAsync(Guid cartaoCreditoId, Guid usuarioId)

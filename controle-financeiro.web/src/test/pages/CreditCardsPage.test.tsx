@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import CreditCardsPage from "../../pages/CreditCards/CreditCardsPage"
@@ -33,10 +33,12 @@ vi.mock("../../services/recorrenteService", () => ({ getRecorrentes: () => Promi
 const getFaturasByCartao = vi.fn()
 const getFaturaDetalhe = vi.fn()
 const pagarFatura = vi.fn()
+const estornarPagamento = vi.fn()
 vi.mock("../../services/faturaService", () => ({
   getFaturasByCartao: (...a: unknown[]) => getFaturasByCartao(...a),
   getFaturaDetalhe: (...a: unknown[]) => getFaturaDetalhe(...a),
   pagarFatura: (...a: unknown[]) => pagarFatura(...a),
+  estornarPagamento: (...a: unknown[]) => estornarPagamento(...a),
 }))
 
 const cartao = {
@@ -332,6 +334,27 @@ describe("CreditCardsPage (#84)", () => {
     expect(container.querySelector('[data-parcela="true"][data-pagamento]')).toBeNull()
     expect(container.querySelector("[data-paid]")).toBeNull()
     expect(screen.queryByText("Paga")).not.toBeInTheDocument()
+  })
+
+  it("pagamento na fatura tem 'Estornar': confirma, estorna e recarrega a fatura e o limite", async () => {
+    getFaturasByCartao.mockReset().mockResolvedValue([{ ...fatura, valorPago: 150, valorRestante: 0, estadoPagamento: 2 }])
+    getFaturaDetalhe.mockReset().mockResolvedValue({
+      transacoes: [{ id: "t1", descricao: "Mercado", valor: 150, data: "2026-06-01", criadoEm: "2026-06-01T10:00:00Z" }],
+      pagamentos: [{ id: "pg1", valor: 150, data: "2026-06-05", criadoEm: "2026-06-05T10:00:00Z", meioPagamento: 4, meioPagamentoDescricao: "Pix" }],
+    })
+    estornarPagamento.mockReset().mockResolvedValue({ pagamentoId: "pg1", faturaId: fatura.id, valorEstornado: 150, valorPagoFatura: 0, restanteFatura: 150 })
+    renderPage()
+
+    fireEvent.click(await screen.findByRole("button", { name: "Estornar" }))
+    const dialogo = await screen.findByRole("alertdialog", { name: "Estornar pagamento?" })
+    const detalhesAntes = getFaturaDetalhe.mock.calls.length
+    const cartoesAntes = getCartoes.mock.calls.length
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
+
+    await waitFor(() => expect(estornarPagamento).toHaveBeenCalledWith("pg1", expect.any(String)))
+    await waitFor(() => expect(getFaturaDetalhe.mock.calls.length).toBeGreaterThan(detalhesAntes))
+    expect(getCartoes.mock.calls.length).toBeGreaterThan(cartoesAntes) // limite do cartão
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Pagamento estornado", severity: "success" }))
   })
 
   it("'Nenhuma transação nesta fatura.' só quando não há compra, parcela nem pagamento", async () => {
