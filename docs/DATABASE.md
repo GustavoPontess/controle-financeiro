@@ -169,6 +169,7 @@ Parcelamentos flexíveis de compras à vista ou PIX.
 | `TipoParcelamento` | INT | NOT NULL | 0=CompraParcelada, 1=PIXCredito |
 | `TaxaJuroMensal` | DECIMAL | NULL | Se PIX: 1.99%-11.99% |
 | `QuantidadeParcelas` | INT | NOT NULL | 2-36 |
+| `ParcelasPagasAntes` | INT | NOT NULL DEFAULT 0 | Compra em andamento: pagas antes de entrar no app — não viram `ParcelasTransacao` (só as que faltam, `Numero` = ParcelasPagasAntes+1…N) |
 | `Ativo` | BOOL | DEFAULT 1 | Soft delete |
 | `CanceladoEm` | DateTime | NULL | Quando foi cancelado |
 | `MotivoCancelamento` | TEXT | NULL | Por quê |
@@ -177,7 +178,7 @@ Parcelamentos flexíveis de compras à vista ou PIX.
 **Delete Behavior:** Cascade → ParcelasTransacao
 
 **Limits Impact:**
-- `LimiteBloqueado += ValorComJuros ?? ValorTotal` ao criar
+- `LimiteBloqueado += ValorComJuros ?? ValorTotal` ao criar (compra em andamento: só a soma das parcelas registradas — as já pagas soltaram o limite delas)
 - `LimiteBloqueado -= ...` ao cancelar
 
 ---

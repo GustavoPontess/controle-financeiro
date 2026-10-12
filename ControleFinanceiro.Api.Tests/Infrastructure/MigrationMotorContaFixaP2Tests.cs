@@ -19,13 +19,15 @@ public class MigrationMotorContaFixaP2Tests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_LogoDepoisDaCompetencia()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.Equal("20261005180232_MotorContaFixaP2", ids[^1]); // nada gerado por cima sem querer
-        Assert.Equal("20261005170111_AddCompetenciaTransacao", ids[^2]);
+        // A mais recente agora é a AddParcelasPagasAntes (teste próprio); esta segue na ordem em que nasceu.
+        var i = ids.IndexOf("20261005180232_MotorContaFixaP2");
+        Assert.True(i > 0);
+        Assert.Equal("20261005170111_AddCompetenciaTransacao", ids[i - 1]);
     }
 
     [Fact]

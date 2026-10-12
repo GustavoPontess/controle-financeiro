@@ -22,7 +22,11 @@ export interface Parcelamento {
   cartaoCreditoNome: string
   categoriaId?: string
   quantidadeParcelas: number
+  /** Pagas no total — inclui as pagas antes de registrar. */
   parcelasPagas: number
+  /** Compra em andamento: pagas antes de o parcelamento entrar no app (fora da lista de parcelas). */
+  parcelasPagasAntes: number
+  valorPagoAntes: number
   valorOriginal: number
   valorComJuros?: number
   taxaJuroMensal?: number
@@ -87,6 +91,9 @@ export interface CriarParcelamentoPayload {
   cartaoCreditoId: string
   dataCompra: string
   parcelas: number
+  /** Compra em andamento: quantas já foram pagas (0 = compra nova). */
+  parcelasJaPagas?: number
+  /** Fatura (mês em que fecha) da parcela 1 — mesmo na compra em andamento. */
   primeiraParcelaMes: string
   categoriaId?: string
   taxaJuroMensal?: number

@@ -288,6 +288,72 @@ describe("ParcelamentosPage (#153)", () => {
       expect(criar.mock.calls[0][0].dataCompra).toBe("2026-06-15")
     })
 
+    // Compra em andamento ("estou na 4 de 12" → 3 já pagas): só as que faltam entram. O campo do mês vira
+    // a PRÓXIMA a pagar; o backend recebe o mês da parcela 1 e quantas já foram pagas.
+    const jaPagas = () => screen.getByLabelText("Parcelas já pagas")
+
+    it("compra em andamento: campo vira 'Próxima parcela', sugere a aberta e manda o mês da parcela 1", async () => {
+      await abrirForm()
+      mudarCompraPara15DeJunho() // fatura de julho
+      await escolherCartao()
+      fireEvent.change(screen.getByDisplayValue("3"), { target: { value: "12" } }) // parcelas
+      fireEvent.change(jaPagas(), { target: { value: "3" } })
+
+      expect(screen.getByText("Próxima parcela (mês)")).toBeInTheDocument()
+      expect(screen.queryByText("Primeira parcela (mês)")).not.toBeInTheDocument()
+      // Julho + 3 pagas = outubro, que é a aberta (28/09, fecha dia 10).
+      fireEvent.click(screen.getByRole("button", { name: "Outubro de 2026" }))
+      expect(screen.getByRole("button", { name: "Novembro de 2026" })).toBeDisabled() // depois da aberta
+      fireEvent.click(screen.getByRole("button", { name: "Outubro de 2026", pressed: true }))
+
+      fireEvent.click(screen.getByText("Criar"))
+      await waitFor(() => expect(criar).toHaveBeenCalledTimes(1))
+      expect(criar.mock.calls[0][0]).toMatchObject({
+        parcelas: 12, parcelasJaPagas: 3, primeiraParcelaMes: "2026-07", dataCompra: "2026-06-15",
+      })
+    })
+
+    it("compra de hoje não tem parcela paga: bloqueia nas já pagas", async () => {
+      await abrirForm()
+      await escolherCartao()
+      fireEvent.change(jaPagas(), { target: { value: "1" } })
+
+      fireEvent.click(screen.getByText("Criar"))
+      expect(await screen.findByText("Compra dessa data ainda não tem parcela paga")).toBeInTheDocument()
+      expect(criar).not.toHaveBeenCalled()
+    })
+
+    it("compra antiga com mais já pagas do que faturas desde a compra: diz o máximo", async () => {
+      await abrirForm()
+      mudarCompraPara15DeJunho() // julho → outubro (aberta): no máximo 3 pagas
+      await escolherCartao()
+      fireEvent.change(screen.getByDisplayValue("3"), { target: { value: "12" } })
+      fireEvent.change(jaPagas(), { target: { value: "4" } })
+
+      fireEvent.click(screen.getByText("Criar"))
+      expect(await screen.findByText("Compra dessa data tem no máximo 3 já pagas")).toBeInTheDocument()
+      expect(criar).not.toHaveBeenCalled()
+    })
+
+    it("já pagas não pode cobrir todas as parcelas", async () => {
+      await abrirForm()
+      await escolherCartao()
+      fireEvent.change(jaPagas(), { target: { value: "3" } }) // 3 de 3
+
+      fireEvent.click(screen.getByText("Criar"))
+      expect(await screen.findByText("Precisa sobrar pelo menos 1 parcela")).toBeInTheDocument()
+      expect(criar).not.toHaveBeenCalled()
+    })
+
+    it("compra nova manda zero já pagas e o próprio mês como o da parcela 1", async () => {
+      await abrirForm()
+      await escolherCartao()
+
+      fireEvent.click(screen.getByText("Criar"))
+      await waitFor(() => expect(criar).toHaveBeenCalledTimes(1))
+      expect(criar.mock.calls[0][0]).toMatchObject({ parcelasJaPagas: 0, primeiraParcelaMes: "2026-10" })
+    })
+
     it("compra antiga com mês escolhido numa fatura vencida bloqueia no campo", async () => {
       await abrirForm()
       fireEvent.click(screen.getByRole("button", { name: "Setembro de 2026" }))

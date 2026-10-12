@@ -310,12 +310,13 @@ public class ParcelamentoServiceTests
 
     private static Task<ParcelamentoDetalheDto> CriarAsync(
         Ctx c, DateTime dataCompra, string primeiraParcelaMes, int parcelas = 3,
-        TipoParcelamento tipo = TipoParcelamento.CompraParcelada, decimal? taxa = null, decimal valor = 900) =>
+        TipoParcelamento tipo = TipoParcelamento.CompraParcelada, decimal? taxa = null, decimal valor = 900,
+        int jaPagas = 0) =>
         c.Service.CriarAsync(new CriarParcelamentoDto
         {
             Descricao = "Geladeira", Valor = valor, Tipo = tipo, CartaoCreditoId = c.Cartao.Id,
             DataCompra = dataCompra, Parcelas = parcelas, PrimeiraParcelaMes = primeiraParcelaMes,
-            TaxaJuroMensal = taxa, IdempotencyKey = Guid.NewGuid().ToString(),
+            ParcelasJaPagas = jaPagas, TaxaJuroMensal = taxa, IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
 
     private static async Task<List<Fatura>> FaturasDasParcelasAsync(Ctx c, ParcelamentoDetalheDto p)
@@ -600,5 +601,186 @@ public class ParcelamentoServiceTests
         var parcela = detalhe.Parcelas.Single();
         Assert.Equal(new DateTime(2025, 10, 10), parcela.FaturaMesReferencia);
         Assert.Equal(new DateTime(2025, 10, 20), parcela.FaturaDataVencimento);
+    }
+
+    // ══ Compra em andamento: "estou na parcela 3 de 7" ══════════════════════════════════
+    //
+    // Dogfood 2026-10-09: parcelamento já no meio não entrava — a 1ª parcela caía numa fatura vencida e
+    // o service recusava, então o jeito era registrar "parcelas 3 a 7 de 7" como uma compra nova de 5×.
+    // Cartão como o Nubank (fecha dia 1, vence dia 8); hoje 12/10/2026 → a anterior (fechou 01/10)
+    // venceu dia 8, a 1ª não vencida é a aberta, de novembro.
+
+    private static Task<Ctx> CtxNubankAsync() =>
+        CriarCtxAsync(diaFechamento: 1, diaVencimento: 8, hoje: new DateTime(2026, 10, 12));
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_RegistraSoAsQueFaltam_ComONumeroCerto_EBloqueiaSoORestante()
+    {
+        var c = await CtxNubankAsync();
+
+        // Compra 15/08 → 1ª na fatura de setembro; 2 pagas (set, out) → a próxima (3ª) vai em novembro.
+        var p = await CriarAsync(c, new DateTime(2026, 8, 15), "2026-09", parcelas: 7, valor: 700, jaPagas: 2);
+
+        Assert.Equal(new[] { 3, 4, 5, 6, 7 }, p.Parcelas.Select(x => x.Numero));
+        Assert.All(p.Parcelas, x => Assert.Equal(7, x.QuantidadeTotal));
+        Assert.All(p.Parcelas, x => Assert.Equal(StatusParcela.Pendente, x.Status));
+        var faturas = await FaturasDasParcelasAsync(c, p);
+        Assert.Equal(new[]
+        {
+            new DateTime(2026, 11, 1), new DateTime(2026, 12, 1), new DateTime(2027, 1, 1),
+            new DateTime(2027, 2, 1), new DateTime(2027, 3, 1),
+        }, faturas.Select(f => f.DataFechamento));
+        // Nenhuma fatura de antes do app nasce (set/out já foram pagas no banco).
+        Assert.Equal(5, await c.Db.Faturas.CountAsync());
+
+        Assert.Equal(7, p.QuantidadeParcelas);
+        Assert.Equal(2, p.ParcelasPagas);
+        Assert.Equal(2, p.ParcelasPagasAntes);
+        Assert.Equal(200m, p.ValorPagoAntes);
+        Assert.Equal(200m, p.ValorPago);
+        Assert.Equal(500m, p.ValorRestante);
+        Assert.Equal(3, p.ProximaParcela!.Numero);
+        Assert.Equal(700m, p.ValorOriginal);
+
+        // Limite: só os 500 que faltam — as já pagas soltaram o limite delas no banco.
+        var limite = await new LimiteCalculatorService(c.Db).CalcularAsync(c.Cartao.Id, c.UsuarioId);
+        Assert.Equal(500m, limite.LimiteBloqueado);
+        var bloqueio = await c.Db.FinancialEventLogs.SingleAsync(e => e.Tipo == FinancialEventType.LimiteBloqueado);
+        Assert.Equal(500m, bloqueio.ValorDepois - bloqueio.ValorAntes);
+
+        // Card da lista e KPI do topo contam do mesmo jeito.
+        var item = (await c.Service.ListarAsync(c.UsuarioId)).Items.Single();
+        Assert.Equal(2, item.ParcelasPagas);
+        Assert.Equal(500m, item.ValorRestante);
+        Assert.Equal(500m, (await c.Service.ObterStatsAsync(c.UsuarioId)).TotalRestante);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_LimiteCobreSoORestante_Aceita()
+    {
+        // Limite 600, compra de 700 com 2 de 7 pagas: no banco ocupa só 500 — tem que caber.
+        var c = await CtxNubankAsync();
+        c.Cartao.LimiteTotal = 600;
+        await c.Db.SaveChangesAsync();
+
+        var p = await CriarAsync(c, new DateTime(2026, 8, 15), "2026-09", parcelas: 7, valor: 700, jaPagas: 2);
+
+        Assert.Equal(500m, p.ValorRestante);
+        var limite = await new LimiteCalculatorService(c.Db).CalcularAsync(c.Cartao.Id, c.UsuarioId);
+        Assert.Equal(100m, limite.LimiteDisponivel);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_CentavosDoRateio_PagoAntesMaisRestanteFechaOTotal()
+    {
+        var c = await CtxNubankAsync();
+
+        // 1000 em 3× = 333,33 + 333,33 + 333,34 (o resto vai na última, que é registrada).
+        var p = await CriarAsync(c, new DateTime(2026, 9, 15), "2026-10", parcelas: 3, valor: 1000, jaPagas: 1);
+
+        Assert.Equal(new[] { 333.33m, 333.34m }, p.Parcelas.OrderBy(x => x.Numero).Select(x => x.Valor));
+        Assert.Equal(333.33m, p.ValorPagoAntes);
+        Assert.Equal(1000m, p.ValorPago + p.ValorRestante);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_PIXCredito_JurosDaCompraInteira_PagoAntesComJuros()
+    {
+        var c = await CtxNubankAsync();
+
+        // Juros simples da compra inteira: 1000 × 2,5% × 3 = 75 → 1075 = 358,33 + 358,33 + 358,34.
+        var p = await CriarAsync(c, new DateTime(2026, 9, 15), "2026-10", parcelas: 3,
+            tipo: TipoParcelamento.PIXCredito, taxa: 2.5m, valor: 1000, jaPagas: 1);
+
+        Assert.Equal(1075m, p.ValorComJuros);
+        Assert.Equal(358.33m, p.ValorPagoAntes);
+        Assert.Equal(716.67m, p.ValorRestante);
+        var limite = await new LimiteCalculatorService(c.Db).CalcularAsync(c.Cartao.Id, c.UsuarioId);
+        Assert.Equal(716.67m, limite.LimiteBloqueado);
+    }
+
+    [Theory]
+    [InlineData(7)]  // todas pagas: não sobra nada pra registrar
+    [InlineData(-1)]
+    public async Task CriarAsync_ParcelasJaPagasForaDaFaixa_Recusa_SemGravarNada(int jaPagas)
+    {
+        var c = await CtxNubankAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 8, 15), "2026-09", parcelas: 7, jaPagas: jaPagas));
+
+        Assert.Contains("precisa sobrar pelo menos uma", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+        Assert.Empty(c.Db.ParcelasTransacao);
+        Assert.Empty(c.Db.Faturas);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_ProximaNumaFaturaQueJaVenceu_Recusa()
+    {
+        var c = await CtxNubankAsync();
+
+        // Compra 15/07 (fatura de agosto) + 2 pagas → próxima em outubro, que venceu dia 8.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 7, 15), "2026-08", parcelas: 7, jaPagas: 2));
+
+        Assert.Equal("A próxima parcela não pode ser antes da fatura de novembro de 2026 — as anteriores já venceram.", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_PagasNaoCabemDesdeACompra_Recusa()
+    {
+        var c = await CtxNubankAsync();
+
+        // Compra 05/10 cai na fatura de novembro: 2 já pagas exigiriam a 1ª em setembro, antes da compra.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 10, 5), "2026-09", parcelas: 7, jaPagas: 2));
+
+        Assert.Equal("A próxima parcela não pode ser antes da fatura de janeiro de 2027: com 2 já pagas, " +
+                     "a primeira cairia antes da fatura da compra.", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraEmAndamento_ProximaDepoisDaFaturaAberta_Recusa()
+    {
+        var c = await CtxNubankAsync();
+
+        // Próxima em dezembro → a 2ª (já paga) seria a de novembro, que nem fechou.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CriarAsync(c, new DateTime(2026, 8, 15), "2026-10", parcelas: 7, jaPagas: 2));
+
+        Assert.Contains("não pode passar da fatura de novembro de 2026", ex.Message);
+        Assert.Empty(c.Db.Parcelamentos);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CompraNova_SemTeto_PodeComecarDepoisDaFaturaAberta()
+    {
+        // O teto é só da compra em andamento: compra nova pode jogar a 1ª pra frente (ex.: carência).
+        var c = await CtxNubankAsync();
+
+        var p = await CriarAsync(c, new DateTime(2026, 10, 12), "2027-01", parcelas: 2);
+
+        Assert.Equal(new[] { 1, 2 }, p.Parcelas.Select(x => x.Numero));
+        Assert.Equal(0, p.ParcelasPagasAntes);
+        Assert.Equal(0m, p.ValorPagoAntes);
+    }
+
+    [Fact]
+    public async Task CancelarAsync_CompraEmAndamento_AsPagasAntesContamComoJaPagas_ERequeremEstorno()
+    {
+        var c = await CtxNubankAsync();
+        var p = await CriarAsync(c, new DateTime(2026, 8, 15), "2026-09", parcelas: 7, valor: 700, jaPagas: 2);
+
+        var r = await c.Service.CancelarAsync(p.Id,
+            new CancelarParcelamentoDto { Motivo = "Devolvi", IdempotencyKey = Guid.NewGuid().ToString() }, c.UsuarioId);
+
+        Assert.Equal(5, r.Canceladas);
+        Assert.Equal(2, r.JaPagas);
+        Assert.True(r.RequerEstorno);
+        Assert.Equal(0m, r.NovoLimite.LimiteBloqueado);
+        Assert.Equal(0m, (await c.Service.ObterStatsAsync(c.UsuarioId)).TotalRestante);
     }
 }

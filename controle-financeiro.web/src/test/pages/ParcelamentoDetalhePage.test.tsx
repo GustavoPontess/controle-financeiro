@@ -79,6 +79,30 @@ describe("ParcelamentoDetalhePage", () => {
     expect(screen.queryByText(/SET\/2026/)).not.toBeInTheDocument()
   })
 
+  it("compra em andamento: linha única das pagas antes de registrar + número real de cada parcela", async () => {
+    // 7× de 100, 4 pagas antes de registrar: o app só tem a 5ª, 6ª e 7ª.
+    const emAndamento = {
+      ...detalhe, quantidadeParcelas: 7, parcelasPagas: 4, parcelasPagasAntes: 4, valorPagoAntes: 400,
+      valorOriginal: 700, valorPago: 400, valorRestante: 300,
+      parcelas: [5, 6, 7].map((n) => ({
+        id: `x${n}`, numero: n, quantidadeTotal: 7, dataVencimento: "2026-10-20T00:00:00", valor: 100, status: 0,
+        faturaId: `f${n}`, faturaMesReferencia: "2026-10-10T00:00:00", faturaDataVencimento: "2026-10-20T00:00:00",
+      })),
+    } as unknown as ParcelamentoDetalhe
+    obterDetalhe.mockResolvedValue(emAndamento)
+    renderPage()
+
+    expect(await screen.findByText("Parcelas (7)")).toBeInTheDocument()
+    const linhas = screen.getAllByRole("row").slice(1)
+    expect(linhas).toHaveLength(4)
+    expect(within(linhas[0]).getByText("1–4")).toBeInTheDocument()
+    expect(within(linhas[0]).getByText("Pagas antes de registrar")).toBeInTheDocument()
+    expect(within(linhas[0]).getByText("Paga")).toBeInTheDocument()
+    expect(within(linhas[0]).getByText(/400,00/)).toBeInTheDocument()
+    expect(linhas.slice(1).map((l) => l.querySelector("td")?.textContent)).toEqual(["5", "6", "7"])
+    expect(screen.getByText("57%")).toBeInTheDocument() // 4 de 7
+  })
+
   it("cancelado: aviso com data e motivo, selo 'Cancelado' e sem botão de cancelar de novo", async () => {
     obterDetalhe.mockResolvedValue({
       ...detalhe, ativo: false, canceladoEm: "2026-09-28T15:00:00", motivoCancelamento: "Devolvido",

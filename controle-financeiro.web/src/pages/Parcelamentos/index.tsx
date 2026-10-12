@@ -14,7 +14,7 @@ import { TipoParcelamento } from "../../types/Parcelamento"
 import type { Parcelamento, CriarParcelamentoPayload } from "../../types/Parcelamento"
 import type { CartaoCredito } from "../../types/CartaoCredito"
 import { notificacaoDeErro } from "@/utils/apiError"
-import { mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura } from "../CreditCards/ciclosFatura"
+import { indiceMes, mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura, somarMeses } from "../CreditCards/ciclosFatura"
 import styles from "./ParcelamentosPage.module.css"
 import CartoesAbas from "../CreditCards/CartoesAbas"
 
@@ -44,11 +44,15 @@ type FormState = {
   cartaoCreditoId: string
   dataCompra: string
   parcelas: number
-  primeiraParcelaMes: string
+  /** Compra em andamento: quantas já foram pagas antes de registrar (0 = compra nova). */
+  jaPagas: number
+  /** Mês do campo: a fatura da 1ª parcela a registrar — a 1ª, ou a PRÓXIMA a pagar se `jaPagas` > 0.
+   *  O payload manda o mês da parcela 1 (`mesInicio − jaPagas`). */
+  mesInicio: string
   taxaJuroMensal?: number
 }
 type Errors = Partial<Record<
-  "descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "primeiraParcelaMes" | "taxaJuroMensal", string
+  "descricao" | "valor" | "cartaoCreditoId" | "parcelas" | "jaPagas" | "mesInicio" | "taxaJuroMensal", string
 >>
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
@@ -62,7 +66,7 @@ const emptyForm = (): FormState => {
   return {
     descricao: "", valor: undefined, tipo: "0", cartaoCreditoId: "",
     dataCompra,
-    parcelas: 3, primeiraParcelaMes: mesMinimoPrimeiraParcela(dataCompra, dataCompra), taxaJuroMensal: undefined,
+    parcelas: 3, jaPagas: 0, mesInicio: mesMinimoPrimeiraParcela(dataCompra, dataCompra), taxaJuroMensal: undefined,
   }
 }
 
@@ -112,21 +116,28 @@ export default function ParcelamentosPage() {
   const diaVencimentoDo = (cartaoId: string) => cartoes.find((c) => c.id === cartaoId)?.diaVencimento
   // Primeira parcela mais cedo possível no cartão escolhido (o backend recusa antes dela): a fatura em
   // que a compra cai ou, compra antiga, a 1ª que ainda não venceu — as anteriores já venceram. Mínimo do seletor e
-  // sugestão enquanto o usuário não escolhe o mês.
+  // sugestão enquanto o usuário não escolhe o mês. Compra em andamento: o campo é a PRÓXIMA a pagar.
   const diaFechamento = diaFechamentoDo(form.cartaoCreditoId)
-  const mesMinimo = mesMinimoPrimeiraParcela(form.dataCompra, dataLocalISO(), diaFechamento, diaVencimentoDo(form.cartaoCreditoId))
-  const minimoEhAFaturaDaCompra = mesMinimo === mesDaFaturaDoDia(form.dataCompra, diaFechamento)
+  const emAndamento = form.jaPagas > 0
+  const mesMinimo = mesMinimoPrimeiraParcela(form.dataCompra, dataLocalISO(), diaFechamento, diaVencimentoDo(form.cartaoCreditoId), form.jaPagas)
+  const minimoEhAFaturaDaCompra = mesMinimo === somarMeses(mesDaFaturaDoDia(form.dataCompra, diaFechamento), form.jaPagas)
+  // Compra em andamento: a última já paga é de fatura que fechou → a próxima vai no máximo na aberta.
+  const mesMaximo = emAndamento ? mesDaFaturaDoDia(dataLocalISO(), diaFechamento) : ""
+  // …e por isso a compra precisa ser antiga o bastante: no máximo uma paga por fatura entre a da compra
+  // e a aberta (compra de hoje ainda não tem parcela paga).
+  const mesDaCompra = mesDaFaturaDoDia(form.dataCompra, diaFechamento)
+  const maxJaPagas = mesMaximo && mesDaCompra ? indiceMes(mesMaximo) - indiceMes(mesDaCompra) : Infinity
 
-  const mudarCompra = (patch: Partial<Pick<FormState, "dataCompra" | "cartaoCreditoId">>) => {
+  const mudarCompra = (patch: Partial<Pick<FormState, "dataCompra" | "cartaoCreditoId" | "jaPagas">>) => {
     setForm((f) => {
       const next = { ...f, ...patch }
       if (mesEscolhido) return next
       return {
         ...next,
-        primeiraParcelaMes: mesMinimoPrimeiraParcela(next.dataCompra, dataLocalISO(), diaFechamentoDo(next.cartaoCreditoId), diaVencimentoDo(next.cartaoCreditoId)),
+        mesInicio: mesMinimoPrimeiraParcela(next.dataCompra, dataLocalISO(), diaFechamentoDo(next.cartaoCreditoId), diaVencimentoDo(next.cartaoCreditoId), next.jaPagas),
       }
     })
-    clearErr("primeiraParcelaMes")
+    clearErr("mesInicio")
   }
 
   const openCreate = () => {
@@ -144,11 +155,24 @@ export default function ParcelamentosPage() {
     else if (form.valor <= 0) e.valor = "Valor deve ser maior que zero"
     if (!form.cartaoCreditoId) e.cartaoCreditoId = "Selecione o cartão"
     if (form.parcelas < 2 || form.parcelas > 36) e.parcelas = "Entre 2 e 36 parcelas"
-    if (!form.primeiraParcelaMes) e.primeiraParcelaMes = "Informe o mês da primeira parcela"
-    else if (mesMinimo && form.primeiraParcelaMes < mesMinimo)
-      e.primeiraParcelaMes = minimoEhAFaturaDaCompra
-        ? `Não pode ser antes da fatura da compra (${rotuloMesFatura(`${mesMinimo}-01`)})`
-        : `Não pode ser antes da fatura de ${rotuloMesFatura(`${mesMinimo}-01`)} — as anteriores já venceram`
+    if (!Number.isInteger(form.jaPagas) || form.jaPagas < 0) e.jaPagas = "Informe um número inteiro"
+    else if (form.jaPagas >= form.parcelas) e.jaPagas = "Precisa sobrar pelo menos 1 parcela"
+    else if (form.jaPagas > maxJaPagas)
+      e.jaPagas = maxJaPagas <= 0
+        ? "Compra dessa data ainda não tem parcela paga"
+        : `Compra dessa data tem no máximo ${maxJaPagas} já ${maxJaPagas === 1 ? "paga" : "pagas"}`
+    const rotuloMin = rotuloMesFatura(`${mesMinimo}-01`)
+    // A faixa do mês depende das já pagas: com erro lá, o aviso fica só nas já pagas.
+    const faixaDoMes = !e.jaPagas
+    if (!form.mesInicio) e.mesInicio = emAndamento ? "Informe o mês da próxima parcela" : "Informe o mês da primeira parcela"
+    else if (faixaDoMes && mesMinimo && form.mesInicio < mesMinimo)
+      e.mesInicio = !minimoEhAFaturaDaCompra
+        ? `Não pode ser antes da fatura de ${rotuloMin} — as anteriores já venceram`
+        : emAndamento
+          ? `Com ${form.jaPagas} já ${form.jaPagas === 1 ? "paga" : "pagas"} desde a compra, não pode ser antes de ${rotuloMin}`
+          : `Não pode ser antes da fatura da compra (${rotuloMin})`
+    else if (faixaDoMes && mesMaximo && form.mesInicio > mesMaximo)
+      e.mesInicio = `Não pode passar da fatura aberta (${rotuloMesFatura(`${mesMaximo}-01`)})`
     if (form.tipo === "1") {
       const t = form.taxaJuroMensal ?? 0
       if (t < 1.99 || t > 11.99) e.taxaJuroMensal = "PIX Crédito exige juros entre 1,99 e 11,99%"
@@ -165,7 +189,9 @@ export default function ParcelamentosPage() {
         cartaoCreditoId: form.cartaoCreditoId,
         dataCompra: form.dataCompra,
         parcelas: form.parcelas,
-        primeiraParcelaMes: form.primeiraParcelaMes,
+        parcelasJaPagas: form.jaPagas,
+        // O backend quer o mês da parcela 1; o campo mostra a próxima a pagar na compra em andamento.
+        primeiraParcelaMes: somarMeses(form.mesInicio, -form.jaPagas),
         // Taxa só é válida em PIX Crédito (tipo "1"); o backend rejeita (409) qualquer taxa
         // — inclusive 0 — em Compra Parcelada. Enviar undefined pros demais tipos.
         taxaJuroMensal: form.tipo === "1" ? (form.taxaJuroMensal ?? 0) : undefined,
@@ -293,7 +319,7 @@ export default function ParcelamentosPage() {
           </PontesField>
 
           <div className={styles.grid2}>
-            <PontesField label="Valor" required error={errors.valor}>
+            <PontesField label="Valor total" required error={errors.valor}>
               <PontesInput
                 iconStart="R$"
                 value={fmtMoney(form.valor)}
@@ -318,19 +344,33 @@ export default function ParcelamentosPage() {
             <PontesField label="Data da compra" required>
               <PontesDateInput value={form.dataCompra} onChange={(v) => mudarCompra({ dataCompra: v })} />
             </PontesField>
-            <PontesField label="Primeira parcela (mês)" required error={errors.primeiraParcelaMes}>
-              <PontesMonthInput
-                value={form.primeiraParcelaMes}
-                min={mesMinimo || undefined}
-                onChange={(v) => { setF("primeiraParcelaMes", v); setMesEscolhido(true); clearErr("primeiraParcelaMes") }}
-                invalid={!!errors.primeiraParcelaMes}
+            {/* Compra em andamento ("estou na 3 de 7" → 2): só as que faltam entram no app. */}
+            <PontesField label="Parcelas já pagas" error={errors.jaPagas} htmlFor="parcelamento-ja-pagas">
+              <PontesInput
+                id="parcelamento-ja-pagas"
+                type="number"
+                value={String(form.jaPagas)}
+                onChange={(e) => { mudarCompra({ jaPagas: Number(e.target.value) }); clearErr("jaPagas") }}
+                invalid={!!errors.jaPagas}
+                min={0} max={Math.max(0, form.parcelas - 1)} step={1} inputMode="numeric"
               />
             </PontesField>
           </div>
 
-          <PontesField label="Tipo" required>
-            <PontesSelect value={form.tipo} onChange={(v) => setF("tipo", v)} options={TIPOS_OPTS} />
-          </PontesField>
+          <div className={styles.grid2}>
+            <PontesField label={emAndamento ? "Próxima parcela (mês)" : "Primeira parcela (mês)"} required error={errors.mesInicio}>
+              <PontesMonthInput
+                value={form.mesInicio}
+                min={mesMinimo || undefined}
+                max={mesMaximo || undefined}
+                onChange={(v) => { setF("mesInicio", v); setMesEscolhido(true); clearErr("mesInicio") }}
+                invalid={!!errors.mesInicio}
+              />
+            </PontesField>
+            <PontesField label="Tipo" required>
+              <PontesSelect value={form.tipo} onChange={(v) => setF("tipo", v)} options={TIPOS_OPTS} />
+            </PontesField>
+          </div>
 
           <PontesField label="Cartão" required error={errors.cartaoCreditoId}>
             <PontesSelect

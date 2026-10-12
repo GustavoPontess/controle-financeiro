@@ -16,7 +16,15 @@ public class ParcelamentoDto
     public Guid? CategoriaId { get; set; }
 
     public int QuantidadeParcelas { get; set; }
+
+    /// <summary>Pagas no total — inclui as pagas antes de registrar (<see cref="ParcelasPagasAntes"/>).</summary>
     public int ParcelasPagas { get; set; }
+
+    /// <summary>Pagas antes de o parcelamento entrar no app (não aparecem na lista de parcelas).</summary>
+    public int ParcelasPagasAntes { get; set; }
+
+    /// <summary>Quanto as parcelas pagas antes de registrar somam (já incluído em <see cref="ValorPago"/>).</summary>
+    public decimal ValorPagoAntes { get; set; }
 
     /// <summary>Valor total sem juros (principal).</summary>
     public decimal ValorOriginal { get; set; }
@@ -26,10 +34,10 @@ public class ParcelamentoDto
 
     public decimal? TaxaJuroMensal { get; set; }
 
-    /// <summary>Soma dos valores das parcelas Pagas.</summary>
+    /// <summary>Soma das parcelas Pagas + as pagas antes de registrar.</summary>
     public decimal ValorPago { get; set; }
 
-    /// <summary>(ValorComJuros ?? ValorOriginal) - ValorPago.</summary>
+    /// <summary>Soma das parcelas Pendentes (cancelada não entra).</summary>
     public decimal ValorRestante { get; set; }
 
     /// <summary>Próxima parcela Pendente (ordenada por DataVencimento). Null se nenhuma.</summary>

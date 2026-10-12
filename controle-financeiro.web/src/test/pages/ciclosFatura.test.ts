@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   cicloDoDia, cicloQueFechaEm, vencimentoDe, montarCiclos, indiceMes, indiceMesDeHoje,
-  mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura,
+  mesDaFaturaDoDia, mesMinimoPrimeiraParcela, rotuloMesFatura, somarMeses,
   type FaturaView,
 } from "../../pages/CreditCards/ciclosFatura"
 import type { Fatura } from "../../types/Fatura"
@@ -130,6 +130,20 @@ describe("mesDaFaturaDoDia / rotuloMesFatura", () => {
     expect(mesMinimoPrimeiraParcela("2026-09-12", "2026-09-28", 10, 20)).toBe("2026-10")
     // Sem dia de fechamento: mês calendário de hoje.
     expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28")).toBe("2026-09")
+  })
+
+  it("compra em andamento: mínimo da PRÓXIMA = fatura da compra + já pagas, nunca antes da 1ª não vencida", () => {
+    // Compra 15/06 (fatura de julho), hoje 28/09 (fecha 10, vence 20): a 1ª não vencida é outubro.
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10, 20, 3)).toBe("2026-10") // jul + 3
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10, 20, 1)).toBe("2026-10") // ago < out
+    expect(mesMinimoPrimeiraParcela("2026-06-15", "2026-09-28", 10, 20, 5)).toBe("2026-12") // jul + 5
+  })
+
+  it("somarMeses vira o ano nos dois sentidos", () => {
+    expect(somarMeses("2026-11", 3)).toBe("2027-02")
+    expect(somarMeses("2027-01", -2)).toBe("2026-11")
+    expect(somarMeses("2026-10", 0)).toBe("2026-10")
+    expect(somarMeses("", 1)).toBe("")
   })
 
   it("fatura que já fechou mas ainda não venceu vale (é nela que o banco cobra)", () => {
