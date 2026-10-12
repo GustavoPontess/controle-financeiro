@@ -57,10 +57,9 @@ public class DashboardService
             .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado)
             .ToList();
 
-        // P&L: receita/despesa REAL exclui o que só move saldo (transferência, pagamento de
-        // fatura, saldo inicial). Saldo/caixa abaixo continuam contando esses.
-        static bool EhPnl(Domain.Entities.Transacao t) =>
-            !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial;
+        // P&L: receita/despesa REAL exclui o que só move saldo (transferência, pagamento de fatura, saldo
+        // inicial, ajuste de reconciliação, Pix no Crédito) — regra única em RegrasFinanceiras.
+        static bool EhPnl(Domain.Entities.Transacao t) => RegrasFinanceiras.EntraNoResultadoEmMemoria(t);
 
         // 6 KPIs (#81): Executado = realizado (Recebido/Pago);
         // Previsao = futuro (A receber / A pagar). Receitas = Recebido + AReceber.
@@ -81,13 +80,12 @@ public class DashboardService
         var despesasMes = pago + aPagar;
 
         // Caixa do mês anterior — pros cards "Entrou/Saiu" mostrarem variação % (#1.3).
-        // Mesma base do EntradasCaixa/SaidasCaixa (Executado, exclui crédito não-pago,
-        // transferência, pagamento de fatura e saldo inicial).
+        // Mesma base do EntradasCaixa/SaidasCaixa (Executado, exclui crédito não-pago e o que não
+        // entra no resultado).
         var inicioMesAnterior = new DateTime(ano, mes, 1).AddMonths(-1);
         var transacoesMesAnterior = todasTransacoes
             .Where(t => t.Data.Year == inicioMesAnterior.Year && t.Data.Month == inicioMesAnterior.Month)
-            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito
-                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito && EhPnl(t))
             .ToList();
         var entradasCaixaMesAnterior = transacoesMesAnterior
             .Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
@@ -98,16 +96,14 @@ public class DashboardService
         // Também filtra Ativo + Executado pra bater com /transacoes/stats.
         var receitasCaixaMes = transacoesMes
             .Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito
-                        && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+                        && t.StatusTransacao == StatusTransacao.Executado && EhPnl(t))
             .Sum(t => t.Valor);
 
         // As saídas de caixa do mês — a lista fica à mão porque "Maiores gastos" usa a MESMA base
         // (o donut tem que somar o "Saiu").
         var saidasDeCaixaDoMes = transacoesMes
             .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito
-                        && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial)
+                        && t.StatusTransacao == StatusTransacao.Executado && EhPnl(t))
             .ToList();
         var despesasCaixaMes = saidasDeCaixaDoMes.Sum(t => t.Valor);
 

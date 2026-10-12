@@ -201,11 +201,18 @@ export default function ImportacaoPage() {
                           )}
                         </td>
                         <td>
-                          <PontesBadge tone={isReceita ? "success" : "danger"} size="sm">
-                            {isReceita ? "Receita" : "Despesa"}
-                          </PontesBadge>
+                          {/* Pix no Crédito: entra na conta e sai no Pix — mexe no saldo, mas não é
+                              receita nem despesa (o gasto é do cartão). */}
+                          {l.pixNoCredito ? (
+                            <PontesBadge tone="neutral" size="sm">Pix no Crédito</PontesBadge>
+                          ) : (
+                            <PontesBadge tone={isReceita ? "success" : "danger"} size="sm">
+                              {isReceita ? "Receita" : "Despesa"}
+                            </PontesBadge>
+                          )}
                         </td>
-                        <td className={styles.alignRight} data-tone={isReceita ? "success" : "danger"}>
+                        <td className={styles.alignRight}
+                          data-tone={l.pixNoCredito ? undefined : isReceita ? "success" : "danger"}>
                           <strong>{formatMoney(l.valor)}</strong>
                         </td>
                         <td>

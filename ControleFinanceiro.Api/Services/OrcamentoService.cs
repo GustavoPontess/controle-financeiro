@@ -125,10 +125,8 @@ public class OrcamentoService
                         t.Tipo == TipoTransacao.Despesa &&
                         t.Ativo &&
                         t.StatusTransacao == StatusTransacao.Executado &&
-                        !t.EhTransferencia &&
-                        !t.EhSaldoInicial &&
-                        !t.EhPagamentoFatura &&
                         t.Data >= inicio && t.Data < fim)
+            .Where(RegrasFinanceiras.EntraNoResultado)
             .GroupBy(t => t.CategoriaId)
             .Select(g => new { CategoriaId = g.Key, Total = g.Sum(t => t.Valor) })
             .ToListAsync();

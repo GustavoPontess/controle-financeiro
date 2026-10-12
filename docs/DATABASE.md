@@ -133,13 +133,15 @@ Movimentações financeiras. Core entity.
 | `EhPagamentoFatura` | BOOL | DEFAULT 0 | Pagamento de fatura (usa `FaturaPagaId`, não `FaturaId`) — fora do P&L |
 | `EhTransferencia` | BOOL | DEFAULT 0 | Perna de transferência entre contas — fora do P&L (#128) |
 | `EhSaldoInicial` | BOOL | DEFAULT 0 | Saldo de abertura de conta — fora do P&L (#128) |
+| `EhAjusteReconciliacao` | BOOL | DEFAULT 0 | Ajuste criado por marco de reconciliação — corrige o saldo, fora do P&L |
+| `EhPixNoCredito` | BOOL | DEFAULT 0 | Perna do Pix no Crédito na conta (a entrada do cartão ou o Pix que ela pagou) — marcada pela importação; fora do P&L |
 | `Ativo` | BOOL | DEFAULT 1 | Soft delete flag (ETAPA 2) |
 | `CanceladoEm` | DateTime | NULL | Data do soft delete |
 | `MotivoCancelamento` | TEXT | NULL | Razão do soft delete |
 | `Data` | DateTime | NOT NULL | Quando a transação ocorreu |
 | `CriadoEm` | DateTime | NOT NULL | Timestamp de criação |
 
-> **Saldo ≠ Relatório de P&L (#128):** o **saldo** da conta conta TODO movimento real (`Ativo` + `StatusTransacao=Executado`), incluindo transferência, pagamento de fatura e saldo inicial (movem dinheiro). Já os **relatórios de receita/despesa** (RelatorioService, KPIs do Dashboard) **excluem** `EhTransferencia`, `EhPagamentoFatura` e `EhSaldoInicial` — não são receita/despesa real (evita inflar totais e dupla contagem). Migration `AddFlagsContabeisTransacao` faz backfill dos dados existentes.
+> **Saldo ≠ Relatório de P&L (#128):** o **saldo** da conta conta TODO movimento real (`Ativo` + `StatusTransacao=Executado`), incluindo transferência, pagamento de fatura e saldo inicial (movem dinheiro). Já os **relatórios de receita/despesa** (RelatorioService, KPIs do Dashboard, Entrou/Saiu de Transações, Orçamento) **excluem** `EhTransferencia`, `EhPagamentoFatura`, `EhSaldoInicial`, `EhAjusteReconciliacao` e `EhPixNoCredito` — não são receita/despesa real (evita inflar totais e dupla contagem). A regra mora num lugar só: `RegrasFinanceiras.EntraNoResultado`. Migration `AddFlagsContabeisTransacao` faz backfill dos dados existentes.
 
 **Parcelamento (NEW — ETAPA 2):**
 - Parcelamentos criados em tabela separada `Parcelamentos`

@@ -147,7 +147,10 @@ public class DashboardServiceTests
             Tx(conta.Id, TipoTransacao.Despesa, 100, d),                          // despesa real
             Flag(TipoTransacao.Receita, 5000, t => t.EhSaldoInicial = true),      // saldo inicial
             Flag(TipoTransacao.Despesa, 200, t => t.EhTransferencia = true),      // transferência saída
-            Flag(TipoTransacao.Despesa, 300, t => t.EhPagamentoFatura = true)     // pagamento fatura
+            Flag(TipoTransacao.Despesa, 300, t => t.EhPagamentoFatura = true),    // pagamento fatura
+            Flag(TipoTransacao.Receita, 132.50m, t => t.EhPixNoCredito = true),  // Pix no Crédito: o cartão põe…
+            Flag(TipoTransacao.Despesa, 132.50m, t => t.EhPixNoCredito = true),  // …e o Pix tira
+            Flag(TipoTransacao.Receita, 40, t => t.EhAjusteReconciliacao = true)  // ajuste de reconciliação
         );
         await ctx.SaveChangesAsync();
 
@@ -156,8 +159,10 @@ public class DashboardServiceTests
         // KPIs de P&L: só o que é receita/despesa real
         Assert.Equal(1000m, r.Recebido);
         Assert.Equal(100m, r.Pago);
-        // Saldo conta TODO movimento real: 1000 - 100 + 5000 - 200 - 300 = 5400
-        Assert.Equal(5400m, r.SaldoTotal);
+        Assert.Equal(1000m, r.EntradasCaixa);
+        Assert.Equal(100m, r.SaidasCaixa);
+        // Saldo conta TODO movimento real: 1000 - 100 + 5000 - 200 - 300 + 132,50 - 132,50 + 40 = 5440
+        Assert.Equal(5440m, r.SaldoTotal);
     }
 
     [Fact]

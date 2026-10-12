@@ -154,7 +154,10 @@ public class RelatorioServiceTests
             Tx("Saldo Inicial", 9000m, TipoTransacao.Receita, t => t.EhSaldoInicial = true), // fora
             Tx("Pagamento fatura", 300m, TipoTransacao.Despesa, t => t.EhPagamentoFatura = true), // fora
             Tx("Cancelada", 50m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.Ativo = false; }), // fora
-            Tx("Prevista", 70m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.StatusTransacao = StatusTransacao.Previsao; }) // fora
+            Tx("Prevista", 70m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.StatusTransacao = StatusTransacao.Previsao; }), // fora
+            Tx("Valor adicionado para Pix no Crédito", 132.50m, TipoTransacao.Receita, t => t.EhPixNoCredito = true), // fora
+            Tx("Transferência enviada pelo Pix", 132.50m, TipoTransacao.Despesa, t => { t.CategoriaId = cat.Id; t.EhPixNoCredito = true; }), // fora
+            Tx("Ajuste de reconciliação", 40m, TipoTransacao.Receita, t => t.EhAjusteReconciliacao = true) // fora
         );
         await ctx.SaveChangesAsync();
 
@@ -163,7 +166,7 @@ public class RelatorioServiceTests
 
         Assert.Equal(100m, rel.TotalDespesas);   // só a despesa real
         Assert.Equal(200m, rel.TotalReceitas);   // saldo inicial fora
-        Assert.Equal(2, rel.TotalTransacoes);    // transferência/pagamento/saldo/cancelada/prevista fora
+        Assert.Equal(2, rel.TotalTransacoes);    // transferência/pagamento/saldo/cancelada/prevista/Pix no Crédito/ajuste fora
     }
 
     [Fact]
@@ -201,7 +204,10 @@ public class RelatorioServiceTests
             Tx(corrente, 50m, TipoTransacao.Despesa, new(2026, 4, 22), t => t.StatusTransacao = StatusTransacao.Previsao), // fora
             Tx(corrente, 70m, TipoTransacao.Despesa, new(2026, 4, 23), t => t.Ativo = false),                // fora
             Tx(null, 300m, TipoTransacao.Despesa, new(2026, 4, 24), t => { t.CartaoCreditoId = cartao.Id; t.UsadoComoCredito = true; }), // cartão: fora
-            Tx(alheia, 5000m, TipoTransacao.Receita, new(2026, 4, 25), t => t.CriadoPor = outro)              // de outro: fora
+            Tx(alheia, 5000m, TipoTransacao.Receita, new(2026, 4, 25), t => t.CriadoPor = outro),             // de outro: fora
+            // Pix no Crédito: entra e sai no mesmo dia — saldo intacto, fora de receitas/despesas.
+            Tx(corrente, 132.50m, TipoTransacao.Receita, new(2026, 4, 26), t => t.EhPixNoCredito = true),
+            Tx(corrente, 132.50m, TipoTransacao.Despesa, new(2026, 4, 26), t => t.EhPixNoCredito = true)
         );
         await ctx.SaveChangesAsync();
 
@@ -212,7 +218,10 @@ public class RelatorioServiceTests
         Assert.Equal(933.73m, Fim(3));
         Assert.Equal(17.15m, Fim(4));    // nunca "−916": é o que ficou na conta
         Assert.Equal(17.15m, Fim(12));   // mês sem movimento repete o saldo
-        Assert.Equal(-916.58m, rel.EvolucaoMensal.Single(m => m.Mes == 4).Saldo); // resultado do mês segue disponível
+        var abril = rel.EvolucaoMensal.Single(m => m.Mes == 4);
+        Assert.Equal(-916.58m, abril.Saldo); // resultado do mês segue disponível
+        Assert.Equal(701m, abril.Receitas);  // a entrada do Pix no Crédito não é receita
+        Assert.Equal(1917.58m, abril.Despesas); // 1617,58 da conta + 300 do cartão; o Pix pago pelo cartão não
     }
 
     [Fact]
