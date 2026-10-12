@@ -14,7 +14,10 @@ public class EvolucaoMensalDto
     public string MesLabel { get; set; } = string.Empty;
     public decimal Receitas { get; set; }
     public decimal Despesas { get; set; }
+    /// <summary>Resultado do mês no caixa (entrou − saiu da conta naquele mês).</summary>
     public decimal Saldo { get; set; }
+    /// <summary>Saldo real de todas as contas no fim do mês (o que ficou na conta).</summary>
+    public decimal SaldoFimDoMes { get; set; }
 }
 
 public class GastoPorCategoriaDto

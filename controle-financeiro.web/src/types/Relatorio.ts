@@ -4,7 +4,10 @@ export interface EvolucaoMensal {
   mesLabel: string
   receitas: number
   despesas: number
+  /** Resultado do mês no caixa (entrou − saiu da conta naquele mês). */
   saldo: number
+  /** Saldo real de todas as contas no fim do mês. */
+  saldoFimDoMes: number
 }
 
 export interface GastoPorCategoria {

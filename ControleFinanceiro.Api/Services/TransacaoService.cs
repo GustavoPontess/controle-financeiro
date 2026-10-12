@@ -50,24 +50,21 @@ namespace ControleFinanceiro.Api.Services
         /// </summary>
         public async Task<Transacao> CriarTransacaoAsync(Transacao transacao, Guid usuarioId)
         {
+            // Lançamento é de uma conta OU de um cartão (mesma regra da Recorrente). Com os dois, o cartão
+            // passava sem conferir o dono e o lançamento caía na lista do cartão de outro usuário.
+            if (transacao.ContaId.HasValue && transacao.CartaoCreditoId.HasValue)
+                throw new ArgumentException("Informe uma conta ou um cartão de crédito, não os dois.");
             if (transacao.ContaId.HasValue)
-            {
-                var conta = await _context.Contas
-                    .FirstOrDefaultAsync(c => c.Id == transacao.ContaId && c.UsuarioIdProprietario == usuarioId);
-                if (conta == null)
-                    throw new KeyNotFoundException("Conta não encontrada ou você não tem permissão.");
-            }
+                await DonoRecursos.ExigirContaAsync(_context, transacao.ContaId.Value, usuarioId);
             else if (transacao.CartaoCreditoId.HasValue)
-            {
-                var cartao = await _context.CartoesCredito
-                    .FirstOrDefaultAsync(c => c.Id == transacao.CartaoCreditoId && c.CriadoPor == usuarioId);
-                if (cartao == null)
-                    throw new KeyNotFoundException("Cartão não encontrado ou você não tem permissão.");
-            }
+                await DonoRecursos.ExigirCartaoAsync(_context, transacao.CartaoCreditoId.Value, usuarioId);
             else
-            {
                 throw new ArgumentException("Informe uma conta ou um cartão de crédito.");
-            }
+
+            // Crédito só existe no cartão. Em conta, a flag tirava o lançamento do Entrou/Saiu, mas ele
+            // seguia mexendo no saldo (e não estava em fatura nenhuma).
+            if (transacao.UsadoComoCredito && !transacao.CartaoCreditoId.HasValue)
+                throw new ArgumentException("Compra no crédito precisa de um cartão.");
 
             if (transacao.CategoriaId.HasValue)
             {

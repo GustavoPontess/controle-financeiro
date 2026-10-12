@@ -427,4 +427,110 @@ public class TransacoesHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(80m, intacta.Valor);
         Assert.True(intacta.Ativo);
     }
+
+    // ------------------------------------------------------------------ conta + cartão (Fase 0)
+    // Antes, com conta E cartão no corpo só a conta era conferida: o lançamento era gravado ligado ao
+    // cartão de outro usuário e aparecia na lista do dono do cartão.
+
+    private Guid SeedCartao(Guid usuarioId)
+    {
+        using var scope = _factory.CreateScopeComBanco();
+        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = usuarioId, Ativo = true, TemCredito = true,
+            LimiteTotal = 5000m, DiaFechamento = 10, DiaVencimento = 20,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.SaveChanges();
+        return cartao.Id;
+    }
+
+    private int TransacoesDoCartao(Guid cartaoId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return ctx.Transacoes.IgnoreQueryFilters().Count(t => t.CartaoCreditoId == cartaoId);
+    }
+
+    [Fact]
+    public async Task Criar_ComMinhaContaECartaoDeOutroUsuario_Retorna400_ENadaApareceProDonoDoCartao()
+    {
+        const string emailDono = "transacoes-cartao-dono@test.com";
+        var donoId = SeedUsuario(emailDono);
+        var cartaoDoDono = SeedCartao(donoId);
+        const string emailAtacante = "transacoes-cartao-atacante@test.com";
+        var atacanteId = SeedUsuario(emailAtacante);
+        var contaDoAtacante = SeedConta(atacanteId);
+        var (client, csrf) = await LoginClientAsync(emailAtacante);
+
+        var corpo = CorpoDeDespesa(contaDoAtacante, Iso(Hoje.AddDays(-1)), "10:00:00");
+        corpo["cartaoCreditoId"] = cartaoDoDono;
+        corpo["usadoComoCredito"] = false;
+        var resp = await client.SendAsync(Req(HttpMethod.Post, "/api/v1/transacoes", csrf, corpo));
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Equal(0, TransacoesDoCartao(cartaoDoDono));
+        Assert.Equal(0, TransacoesDaConta(contaDoAtacante));
+        // O dono do cartão não vê nada na lista dele.
+        var (clientDono, _) = await LoginClientAsync(emailDono);
+        var lista = await clientDono.GetFromJsonAsync<JsonElement>("/api/v1/transacoes");
+        Assert.Empty(IdsDaPagina(lista));
+    }
+
+    [Fact]
+    public async Task Criar_ComContaECartaoDoProprioUsuario_Retorna400()
+    {
+        // Lançamento é de uma conta OU de um cartão, mesmo sendo os dois do próprio usuário.
+        const string email = "transacoes-conta-e-cartao@test.com";
+        var usuarioId = SeedUsuario(email);
+        var contaId = SeedConta(usuarioId);
+        var cartaoId = SeedCartao(usuarioId);
+        var (client, csrf) = await LoginClientAsync(email);
+
+        var corpo = CorpoDeDespesa(contaId, Iso(Hoje.AddDays(-1)), "10:00:00");
+        corpo["cartaoCreditoId"] = cartaoId;
+        corpo["usadoComoCredito"] = true;
+        var resp = await client.SendAsync(Req(HttpMethod.Post, "/api/v1/transacoes", csrf, corpo));
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Equal(0, TransacoesDaConta(contaId));
+        Assert.Equal(0, TransacoesDoCartao(cartaoId));
+    }
+
+    [Fact]
+    public async Task Criar_SoNoCartaoDeOutroUsuario_Retorna404_ENaoGrava()
+    {
+        var donoId = SeedUsuario("transacoes-so-cartao-dono@test.com");
+        var cartaoDoDono = SeedCartao(donoId);
+        const string emailAtacante = "transacoes-so-cartao-atacante@test.com";
+        SeedUsuario(emailAtacante);
+        var (client, csrf) = await LoginClientAsync(emailAtacante);
+
+        var resp = await client.SendAsync(Req(HttpMethod.Post, "/api/v1/transacoes", csrf, new Dictionary<string, object?>
+        {
+            ["descricao"] = "Mercado", ["valor"] = 42.5m, ["tipo"] = (int)TipoTransacao.Despesa,
+            ["cartaoCreditoId"] = cartaoDoDono, ["usadoComoCredito"] = true, ["data"] = Iso(Hoje.AddDays(-1)),
+        }));
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        Assert.Equal(0, TransacoesDoCartao(cartaoDoDono));
+    }
+
+    [Fact]
+    public async Task Criar_CreditoEmContaSemCartao_Retorna400_ENaoGrava()
+    {
+        // Em conta, "crédito" tirava o lançamento do Entrou/Saiu sem ele estar em fatura nenhuma.
+        const string email = "transacoes-credito-em-conta@test.com";
+        var usuarioId = SeedUsuario(email);
+        var contaId = SeedConta(usuarioId);
+        var (client, csrf) = await LoginClientAsync(email);
+
+        var corpo = CorpoDeDespesa(contaId, Iso(Hoje.AddDays(-1)), "10:00:00");
+        corpo["usadoComoCredito"] = true;
+        var resp = await client.SendAsync(Req(HttpMethod.Post, "/api/v1/transacoes", csrf, corpo));
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Equal(0, TransacoesDaConta(contaId));
+    }
 }

@@ -16,8 +16,8 @@ vi.mock("recharts", () => {
 
 const mockData: RelatorioData = {
   evolucaoMensal: [
-    { ano: 2026, mes: 4, mesLabel: "Abr.", receitas: 9000, despesas: 3000, saldo: 6000 },
-    { ano: 2026, mes: 5, mesLabel: "Mai.", receitas: 9900, despesas: 3200, saldo: 6700 },
+    { ano: 2026, mes: 4, mesLabel: "Abr.", receitas: 9000, despesas: 3000, saldo: 6000, saldoFimDoMes: 6000 },
+    { ano: 2026, mes: 5, mesLabel: "Mai.", receitas: 9900, despesas: 3200, saldo: 6700, saldoFimDoMes: 12700 },
   ],
   gastosPorCategoria: [
     { descricao: "Moradia", valor: 4000, percentual: 65 },
@@ -58,11 +58,40 @@ describe("ReportsPage", () => {
     expect(screen.getByText("+10.0%")).toBeInTheDocument()
   })
 
+  it("comparação de saldo usa o saldo real da conta, não o resultado do mês", async () => {
+    renderReports()
+    expect(await screen.findByText("Saldo na conta")).toBeInTheDocument()
+    // saldo real 6.000 → 12.700 = +111.7% (o resultado do mês, 6.000 → 6.700, daria +11.7%)
+    expect(screen.getByText("+111.7%")).toBeInTheDocument()
+  })
+
+  it("mês que ainda não chegou fica fora da comparação (não vira −100%)", async () => {
+    // Data fixa (só o Date): junho/2026. Julho tem só uma compra no cartão lançada pra frente.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 5, 15))
+    try {
+      getRelatorio.mockResolvedValue({
+        ...mockData,
+        evolucaoMensal: [
+          ...mockData.evolucaoMensal,
+          { ano: 2026, mes: 6, mesLabel: "Jun.", receitas: 9000, despesas: 3000, saldo: 6000, saldoFimDoMes: 18700 },
+          { ano: 2026, mes: 7, mesLabel: "Jul.", receitas: 0, despesas: 130.49, saldo: 0, saldoFimDoMes: 18700 },
+        ],
+      })
+      renderReports()
+      expect(await screen.findByText("Jun. vs Mai.")).toBeInTheDocument()
+      expect(screen.queryByText("Jul. vs Jun.")).not.toBeInTheDocument()
+      expect(screen.queryByText("-100.0%")).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("renderiza todos os blocos de gráfico", async () => {
     renderReports()
     await screen.findByText("Saldo acumulado")
     for (const titulo of [
-      "Evolução do saldo mensal", "Receitas vs despesas por mês",
+      "Evolução mensal", "Receitas vs despesas por mês",
       "Saldo acumulado", "Taxa de economia", "Distribuição de despesas",
     ]) {
       expect(screen.getByText(titulo)).toBeInTheDocument()

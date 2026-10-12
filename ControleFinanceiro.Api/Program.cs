@@ -452,7 +452,10 @@ using (var scope = app.Services.CreateScope())
 
     // Dados de exemplo para o atlas Playwright / revisão visual do redesign.
     // Só em Development e idempotente (não roda se o usuário dev já existir).
-    if (app.Environment.IsDevelopment())
+    // SEED_DADOS_DEV=false desliga (banco local limpo pra uso real); o CI/E2E não define → segue ligado.
+    var seedDadosDev = !string.Equals(
+        Environment.GetEnvironmentVariable("SEED_DADOS_DEV"), "false", StringComparison.OrdinalIgnoreCase);
+    if (app.Environment.IsDevelopment() && seedDadosDev)
         await DevDataSeeder.SeedAsync(context);
 
     // Seeder pessoal de dogfooding — Data/MeuCenarioSeeder.cs é gitignored (cada
@@ -460,6 +463,7 @@ using (var scope = app.Services.CreateScope())
     // reflection pra Program.cs compilar igual em qualquer checkout, com ou
     // sem o arquivo (CI, outro worktree, clone novo — nenhum deles tem essa
     // classe, e não deveriam precisar).
+    // Independe do SEED_DADOS_DEV: é o ponto de volta do banco local de uso real.
     if (app.Environment.IsDevelopment())
     {
         var meuCenarioSeedAsync = Type.GetType("ControleFinanceiro.Api.Data.MeuCenarioSeeder")
