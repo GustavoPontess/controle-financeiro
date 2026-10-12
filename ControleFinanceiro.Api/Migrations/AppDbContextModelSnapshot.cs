@@ -1278,6 +1278,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
+                    b.Property<int>("ParcelasPagasAntes")
+                        .HasColumnType("integer");
+
                     b.Property<int>("QuantidadeParcelas")
                         .HasColumnType("integer");
 

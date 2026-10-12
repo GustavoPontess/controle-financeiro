@@ -35,6 +35,14 @@ public class Parcelamento
     [Range(2, 36)]
     public int QuantidadeParcelas { get; set; }
 
+    /// <summary>
+    /// Parcelas pagas ANTES de o parcelamento entrar no app (compra em andamento: "estou na 3 de 7" → 2).
+    /// Não viram ParcelaTransacao — as faturas delas são de antes do app e já foram pagas; só as que
+    /// faltam (Numero = ParcelasPagasAntes+1 … QuantidadeParcelas) são registradas e bloqueiam limite.
+    /// </summary>
+    [Range(0, 35)]
+    public int ParcelasPagasAntes { get; set; }
+
     /// <summary>Taxa mensal (PIX Crédito). Null se sem juros.</summary>
     public decimal? TaxaJuroMensal { get; set; }
 

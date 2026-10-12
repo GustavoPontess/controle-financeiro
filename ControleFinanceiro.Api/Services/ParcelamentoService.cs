@@ -87,6 +87,12 @@ public class ParcelamentoService
         if (dto.Parcelas < 2 || dto.Parcelas > 36)
             throw new InvalidOperationException("Quantidade de parcelas deve estar entre 2 e 36.");
 
+        // Compra em andamento: as já pagas ficam fora (faturas de antes do app); sobra pelo menos uma.
+        var jaPagas = dto.ParcelasJaPagas;
+        if (jaPagas < 0 || jaPagas >= dto.Parcelas)
+            throw new InvalidOperationException(
+                "Parcelas já pagas deve ficar entre 0 e o total menos 1 — precisa sobrar pelo menos uma.");
+
         var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
         if (dto.DataCompra.Date > agoraUtc.Date)
             throw new InvalidOperationException("Data da compra não pode ser futura.");
@@ -117,9 +123,11 @@ public class ParcelamentoService
         if (!cartao.Ativo)
             throw new InvalidOperationException("Cartão inativo.");
 
-        // 4b. Piso da 1ª parcela = a MAIS TARDE entre:
+        // 4b. Piso da 1ª parcela REGISTRADA (a 1ª; na compra em andamento, a próxima a pagar, nº jaPagas+1)
+        // = a MAIS TARDE entre:
         //  (a) a fatura em que a compra cai (a que fecha depois da DataCompra, mesma regra do lançamento
-        //      à vista) — o banco não cobra parcela numa fatura que fechou antes da compra;
+        //      à vista), mais uma por parcela já paga — o banco não cobra parcela numa fatura que fechou
+        //      antes da compra;
         //  (b) a 1ª fatura que ainda NÃO VENCEU — é a mais antiga que ainda pode receber cobrança.
         //      Compra retroativa (ex.: de junho, lançada em setembro) com parcela numa fatura vencida
         //      nascia Pendente lá: o FaturaAtrasoJob cobrava juros e multa dela e uma fatura já paga
@@ -137,12 +145,28 @@ public class ParcelamentoService
             FaturaService.CalcularVencimento(fechamentoDaAnterior, cartao.DiaVencimento) >= hojeNoBrasil
                 ? fechamentoDaAnterior
                 : fechamentoDaAberta;
-        var pisoEhACompra = fechamentoDaCompra >= fechamentoNaoVencido;
-        var piso = pisoEhACompra ? fechamentoDaCompra : fechamentoNaoVencido;
-        if (mesPrimeiraParcela < new DateTime(piso.Year, piso.Month, 1))
+        static DateTime MesDe(DateTime fechamento) => new(fechamento.Year, fechamento.Month, 1);
+        var mesPrimeiraRegistrada = mesPrimeiraParcela.AddMonths(jaPagas);
+        var pisoPelaCompra = MesDe(fechamentoDaCompra).AddMonths(jaPagas);
+        var pisoEhACompra = pisoPelaCompra >= MesDe(fechamentoNaoVencido);
+        var piso = pisoEhACompra ? pisoPelaCompra : MesDe(fechamentoNaoVencido);
+        if (mesPrimeiraRegistrada < piso)
+        {
+            var qualParcela = jaPagas == 0 ? "A primeira parcela" : "A próxima parcela";
             throw new InvalidOperationException(pisoEhACompra
-                ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
-                : $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)} — as anteriores já venceram.");
+                ? jaPagas == 0
+                    ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
+                    : $"A próxima parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}: com {jaPagas} já " +
+                      $"{(jaPagas == 1 ? "paga" : "pagas")}, a primeira cairia antes da fatura da compra."
+                : $"{qualParcela} não pode ser antes da fatura de {RotuloMesFatura(piso)} — as anteriores já venceram.");
+        }
+
+        // Teto da compra em andamento: a última já paga é da fatura anterior à próxima, e parcela paga é
+        // de fatura que já fechou — a próxima vai no máximo na fatura aberta hoje.
+        if (jaPagas > 0 && mesPrimeiraRegistrada > MesDe(fechamentoDaAberta))
+            throw new InvalidOperationException(
+                $"A próxima parcela não pode passar da fatura de {RotuloMesFatura(fechamentoDaAberta)} — " +
+                "a última já paga cairia numa fatura que ainda não fechou.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa
         if (dto.CategoriaId.HasValue)
@@ -180,19 +204,21 @@ public class ParcelamentoService
             throw new InvalidOperationException("TaxaJuroMensal só é válida em PIXCredito.");
         }
 
-        // 7. Validação de limite — recalcula on-the-fly, não confia em coluna stale
-        var valorBloquear = valorComJurosTotal ?? dto.Valor;
+        // 7. Calcular valores das parcelas (principal + opcional com juros) — rateio da compra inteira,
+        // inclusive das já pagas, pra cada parcela ter o mesmo valor que teria desde o início.
+        var valoresPorParcela = RatearValor(dto.Valor, dto.Parcelas);
+        decimal[]? valoresComJuros = null;
+        if (valorComJurosTotal.HasValue)
+            valoresComJuros = RatearValor(valorComJurosTotal.Value, dto.Parcelas);
+
+        // 8. Validação de limite — recalcula on-the-fly, não confia em coluna stale. Bloqueia só as
+        // parcelas registradas: as já pagas soltaram o limite delas no banco. Sem já pagas = o total.
+        var valorBloquear = (valoresComJuros ?? valoresPorParcela).Skip(jaPagas).Sum();
         var limiteAtual = await _limiteCalc.CalcularAsync(dto.CartaoCreditoId, usuarioId);
         if (limiteAtual.LimiteDisponivel < valorBloquear)
             throw new InvalidOperationException(
                 $"Limite insuficiente. Precisa de {valorBloquear:C}, " +
                 $"disponível {limiteAtual.LimiteDisponivel:C}.");
-
-        // 8. Calcular valores das parcelas (principal + opcional com juros)
-        var valoresPorParcela = RatearValor(dto.Valor, dto.Parcelas);
-        decimal[]? valoresComJuros = null;
-        if (valorComJurosTotal.HasValue)
-            valoresComJuros = RatearValor(valorComJurosTotal.Value, dto.Parcelas);
 
         // 9. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
         var correlationId = Guid.NewGuid();
@@ -212,6 +238,7 @@ public class ParcelamentoService
                 ValorTotal = dto.Valor,
                 ValorComJuros = valorComJurosTotal,
                 QuantidadeParcelas = dto.Parcelas,
+                ParcelasPagasAntes = jaPagas,
                 TaxaJuroMensal = dto.TaxaJuroMensal,
                 CartaoCreditoId = dto.CartaoCreditoId,
                 CategoriaId = dto.CategoriaId,
@@ -220,7 +247,8 @@ public class ParcelamentoService
             };
             _context.Parcelamentos.Add(parcelamento);
 
-            for (int i = 0; i < dto.Parcelas; i++)
+            // Compra em andamento: começa na próxima a pagar (nº jaPagas+1), na fatura primeiraParcelaMes+jaPagas.
+            for (int i = jaPagas; i < dto.Parcelas; i++)
             {
                 // Parcela N na fatura que FECHA em primeiraParcelaMes + N-1 (o rótulo da tela Cartões).
                 // Antes a parcela ganhava o DIA DA COMPRA naquele mês e a fatura saía do ciclo dessa
@@ -271,6 +299,7 @@ public class ParcelamentoService
                     tipo = dto.Tipo.ToString(),
                     cartaoCreditoId = dto.CartaoCreditoId,
                     parcelas = dto.Parcelas,
+                    parcelasJaPagas = jaPagas,
                     valorTotal = dto.Valor,
                     valorComJuros = valorComJurosTotal,
                     primeiraParcelaMes = dto.PrimeiraParcelaMes,
@@ -358,7 +387,8 @@ public class ParcelamentoService
         var pendentes = parcelamento.Parcelas
             .Where(p => p.Status == StatusParcela.Pendente && !quitadasPelaFatura.Contains(p))
             .ToList();
-        var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga) + quitadasPelaFatura.Count;
+        var pagas = parcelamento.ParcelasPagasAntes
+            + parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga) + quitadasPelaFatura.Count;
         // Só as faturas das Pendentes canceladas mudam de total: a quitada pela fatura vira Paga e segue
         // no total (o pagamento dela já está no ValorPago).
         var faturasAfetadas = pendentes.Select(p => p.Fatura!).Distinct().ToList();
@@ -476,7 +506,7 @@ public class ParcelamentoService
     // ── Listagem ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// KPIs agregados — ativos e soma do valor restante (efetivo - pago). Total inclui cancelados.
+    /// KPIs agregados — ativos e soma do valor restante (parcelas Pendentes). Total inclui cancelados.
     /// Calculado no banco, exato pra qualquer volume.
     /// </summary>
     public async Task<ParcelamentoStatsDto> ObterStatsAsync(Guid usuarioId)
@@ -487,21 +517,19 @@ public class ParcelamentoService
         var qtdAtivos = await ativos.CountAsync();
         var qtdTotal = await query.CountAsync();
 
-        // Valor restante = valor total efetivo (com juros se houver) - soma das parcelas pagas.
-        // Cálculo em duas queries (sum vs sum) — EF traduz sem N+1.
-        var totalEfetivoAtivos = await ativos
-            .SumAsync(p => (decimal?)(p.ValorComJuros ?? p.ValorTotal)) ?? 0m;
-        var pagoAtivos = await _context.ParcelasTransacao
+        // Restante = soma das parcelas Pendentes — a mesma regra do card (MontarDto). Antes era total −
+        // pagas, o que cobrava as pagas antes de registrar (compra em andamento) e a parcela cancelada.
+        var totalRestante = await _context.ParcelasTransacao
             .Where(par => par.Parcelamento != null
                           && par.Parcelamento.CriadoPor == usuarioId
                           && par.Parcelamento.Ativo
-                          && par.Status == StatusParcela.Paga)
+                          && par.Status == StatusParcela.Pendente)
             .SumAsync(par => (decimal?)(par.ValorComJuros ?? par.Valor)) ?? 0m;
 
         return new ParcelamentoStatsDto
         {
             Ativos = qtdAtivos,
-            TotalRestante = totalEfetivoAtivos - pagoAtivos,
+            TotalRestante = totalRestante,
             QtdTotal = qtdTotal,
         };
     }
@@ -606,8 +634,13 @@ public class ParcelamentoService
     {
         ParcelamentoDto dto = detalhe ? new ParcelamentoDetalheDto() : new ParcelamentoDto();
 
-        var parcelasPagas = p.Parcelas.Count(par => par.Status == StatusParcela.Paga);
-        var valorPago = p.Parcelas
+        // Compra em andamento: as pagas antes de registrar não têm ParcelaTransacao. O valor delas é o que o
+        // total tem a mais que as registradas (o rateio põe o resto dos centavos na última, que é registrada).
+        var valorPagoAntes = p.ParcelasPagasAntes > 0
+            ? (p.ValorComJuros ?? p.ValorTotal) - p.Parcelas.Sum(par => par.ValorComJuros ?? par.Valor)
+            : 0m;
+        var parcelasPagas = p.ParcelasPagasAntes + p.Parcelas.Count(par => par.Status == StatusParcela.Paga);
+        var valorPago = valorPagoAntes + p.Parcelas
             .Where(par => par.Status == StatusParcela.Paga)
             .Sum(par => par.ValorComJuros ?? par.Valor);
         // Restante = só o que ainda está Pendente. Antes era total − pago, o que contava parcela
@@ -630,6 +663,8 @@ public class ParcelamentoService
         dto.CategoriaId = p.CategoriaId;
         dto.QuantidadeParcelas = p.QuantidadeParcelas;
         dto.ParcelasPagas = parcelasPagas;
+        dto.ParcelasPagasAntes = p.ParcelasPagasAntes;
+        dto.ValorPagoAntes = valorPagoAntes;
         dto.ValorOriginal = p.ValorTotal;
         dto.ValorComJuros = p.ValorComJuros;
         dto.TaxaJuroMensal = p.TaxaJuroMensal;
@@ -668,7 +703,8 @@ public class ParcelamentoService
             ?? throw new InvalidOperationException("Parcelamento não encontrado.");
 
         var canceladas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Cancelada);
-        var pagas = parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga);
+        // As pagas antes de registrar também foram pagas (fora do app) — o estorno vale pra elas.
+        var pagas = parcelamento.ParcelasPagasAntes + parcelamento.Parcelas.Count(p => p.Status == StatusParcela.Paga);
         var snapshot = await _limiteCalc.CalcularAsync(parcelamento.CartaoCreditoId, usuarioId);
 
         return new CancelamentoResultadoDto

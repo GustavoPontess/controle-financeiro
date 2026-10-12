@@ -189,7 +189,7 @@ export default function ParcelamentoDetalhePage() {
 
       <PontesCard padding={0} radius={14}>
         <div className={styles.tableHead}>
-          <span>Parcelas ({parcelamento.parcelas.length})</span>
+          <span>Parcelas ({parcelamento.quantidadeParcelas})</span>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -204,9 +204,22 @@ export default function ParcelamentoDetalhePage() {
               </tr>
             </thead>
             <tbody>
-              {parcelamento.parcelas.map((parcela, i) => (
+              {/* Compra em andamento: as pagas antes de registrar não têm fatura no app — uma linha só. */}
+              {parcelamento.parcelasPagasAntes > 0 && (
+                <tr>
+                  <td className={styles.cellBold}>
+                    {parcelamento.parcelasPagasAntes === 1 ? "1" : `1–${parcelamento.parcelasPagasAntes}`}
+                  </td>
+                  <td colSpan={2}>Pagas antes de registrar</td>
+                  <td className={styles.alignRight + " " + styles.cellBold}>{formatMoney(parcelamento.valorPagoAntes)}</td>
+                  <td><PontesBadge tone="success" size="sm">Paga</PontesBadge></td>
+                  <td />
+                </tr>
+              )}
+              {parcelamento.parcelas.map((parcela) => (
                 <tr key={parcela.id}>
-                  <td className={styles.cellBold}>{i + 1}</td>
+                  {/* Número real (3 de 7), não a posição na lista — na compra em andamento a lista começa no meio. */}
+                  <td className={styles.cellBold}>{parcela.numero}</td>
                   {/* Fatura pelo mês em que FECHA (o rótulo de Cartões) e o vencimento real dela — não a
                       DataVencimento da parcela, que em parcelamentos antigos é o dia da compra. */}
                   <td>{rotuloMesFatura(parcela.faturaMesReferencia)}</td>

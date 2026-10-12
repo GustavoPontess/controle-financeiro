@@ -30,10 +30,18 @@ public class CriarParcelamentoDto
     public int Parcelas { get; set; }
 
     /// <summary>
+    /// Compra em andamento: quantas parcelas já foram pagas antes de registrar (0 = compra nova).
+    /// Só as que faltam são criadas. Precisa sobrar pelo menos uma.
+    /// </summary>
+    [Range(0, 35)]
+    public int ParcelasJaPagas { get; set; }
+
+    /// <summary>
     /// Mês (yyyy-MM) da fatura da primeira parcela — o mês em que essa fatura FECHA (rótulo da
     /// tela Cartões). Ex: "2026-10" = fatura que fecha em outubro. A parcela N cai na fatura que
-    /// fecha N-1 meses depois. Não pode ser anterior à fatura em que a compra cai nem à fatura
-    /// aberta hoje (as anteriores já fecharam).
+    /// fecha N-1 meses depois. Não pode ser anterior à fatura em que a compra cai; a primeira
+    /// parcela REGISTRADA (a 1ª, ou a próxima a pagar com <see cref="ParcelasJaPagas"/>) não pode
+    /// estar numa fatura que já venceu.
     /// </summary>
     [Required]
     [RegularExpression(@"^\d{4}-(0[1-9]|1[0-2])$", ErrorMessage = "Formato deve ser yyyy-MM.")]

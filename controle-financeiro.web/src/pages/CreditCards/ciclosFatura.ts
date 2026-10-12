@@ -51,13 +51,23 @@ export function mesDaFaturaDoDia(iso: string, diaFechamento?: number): string {
   return cicloDoDia(ano, mes - 1, dia, diaFechamento).fechamento.toISOString().slice(0, 7)
 }
 
+/** "YYYY-MM" somado de `n` meses (negativo volta). "" se o mês for inválido. */
+export function somarMeses(mes: string, n: number): string {
+  const [ano, m] = mes.split("-").map(Number)
+  if (!ano || !m) return ""
+  const i = ano * 12 + (m - 1) + n
+  return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`
+}
+
 /** Primeira parcela mais cedo que o parcelamento aceita ("YYYY-MM") — espelha o piso do
  * ParcelamentoService: a MAIS TARDE entre a fatura em que a compra cai e a 1ª fatura que ainda NÃO
  * VENCEU (`hojeIso` = dia LOCAL de quem usa). A fatura que já fechou mas ainda não venceu vale — é nela
  * que o banco cobra a compra feita antes do fechamento e lançada depois. Fatura vencida não: a parcela
- * nasceria pendente numa fatura vencida (juros/multa) ou já paga. "" se a data da compra for inválida. */
+ * nasceria pendente numa fatura vencida (juros/multa) ou já paga. Compra em andamento (`jaPagas` > 0):
+ * mínimo da PRÓXIMA a pagar — a fatura da compra anda uma por parcela já paga. "" se a data da compra
+ * for inválida. */
 export function mesMinimoPrimeiraParcela(
-  dataCompraIso: string, hojeIso: string, diaFechamento?: number, diaVencimento?: number,
+  dataCompraIso: string, hojeIso: string, diaFechamento?: number, diaVencimento?: number, jaPagas = 0,
 ): string {
   const daCompra = mesDaFaturaDoDia(dataCompraIso, diaFechamento)
   const [ano, mes, dia] = hojeIso.split("-").map(Number)
@@ -67,7 +77,8 @@ export function mesMinimoPrimeiraParcela(
   // A anterior à aberta fechou em `aberta.inicio`; ainda aceita cobrança se não venceu.
   const naoVencida = vencimentoDe(aberta.inicio, diaVencimento) >= hoje ? aberta.inicio : aberta.fechamento
   const piso = naoVencida.toISOString().slice(0, 7)
-  return piso > daCompra ? piso : daCompra
+  const pelaCompra = somarMeses(daCompra, jaPagas)
+  return piso > pelaCompra ? piso : pelaCompra
 }
 
 /** Rótulo da fatura pelo mês de fechamento ("Outubro de 2026") — o mesmo em Cartões e Parcelamentos.
