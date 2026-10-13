@@ -4,31 +4,24 @@
  * transferências (neutras). Compra no crédito vive na aba Cartão; saldo inicial
  * fica fora da lista. Busca/filtros/paginação rodam no servidor; layout e
  * comportamento vêm do PontesTabela. Criar é o botão global "Nova transação" do
- * layout (evento `transactionCreated` → recarrega). Editar/excluir no ⋮ da linha.
+ * layout (evento `transactionCreated` → recarrega). Ver/editar/excluir e as ações de
+ * família ficam na tela da transação: aqui a linha (ou o olhinho) só abre ela.
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { useOutletContext } from "react-router-dom"
-import { TrendingUp, TrendingDown, Pencil, Trash2, ArrowLeftRight, CreditCard, Users, User, Split, Undo2 } from "lucide-react"
+import { useNavigate, useOutletContext } from "react-router-dom"
+import { TrendingUp, TrendingDown, ArrowLeftRight, CreditCard, Eye } from "lucide-react"
 import {
-  PontesTabela, PontesCelulaIdentidade, PontesBadge, PontesTablePagination, PontesDialog,
-  PontesModal, PontesButton, PontesField, PontesInput, PontesSelect,
+  PontesTabela, PontesCelulaIdentidade, PontesBadge, PontesTablePagination, PontesIconButton,
   PONTES_TABLE_PAGE_SIZE_DEFAULT, type PontesTabelaColuna, type PontesTabelaTag,
 } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import { listTransactionsPage, getTransactionStats, deleteTransaction } from "@/services/transactionService"
+import { listTransactionsPage, getTransactionStats } from "@/services/transactionService"
 import { getContas } from "@/services/contaService"
 import { getCategories } from "@/services/categoryService"
-import {
-  getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
-  getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
-} from "@/services/familiaService"
 import type { Transaction } from "@/types/Transaction"
 import type { Conta } from "@/types/Conta"
-import type { Familia, Dependente, ModoRateio, RateioTransacao } from "@/types/Familia"
-import EstornarPagamentoDialog from "../CreditCards/EstornarPagamentoDialog"
-import EditTransactionDialog, { type EditableTransaction } from "./components/EditTransactionDialog/EditTransactionDialog"
 import styles from "./TransactionsPage.module.css"
 
 // Data + hora — só mostra a hora quando o lançamento tem horário real (≠ meia-noite
@@ -51,20 +44,9 @@ const MEIOS_PAGAMENTO = [
   { value: "6", label: "Boleto" },
 ]
 
-// Modos de rateio da despesa compartilhada (override do padrão da família).
-const MODOS_RATEIO = [
-  { value: "1", label: "Igualitário" },
-  { value: "2", label: "Proporcional à renda" },
-  { value: "3", label: "Personalizado" },
-]
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const paraEditavel = (t: Transaction): EditableTransaction => ({
-  id: t.id, descricao: t.descricao, valor: t.valor, tipo: t.tipo,
-  categoriaId: t.categoriaId ?? undefined, subcategoriaId: t.subcategoriaId ?? undefined,
-  contaId: t.contaId, cartaoCreditoId: t.cartaoCreditoId, meioPagamento: t.meioPagamento, data: t.data, hora: t.hora,
-})
 
 export default function TransactionsPage() {
   const { notify } = useOutletContext<OutletContextType>()
@@ -89,20 +71,7 @@ export default function TransactionsPage() {
   const [de, setDe] = useState<string>()
   const [ate, setAte] = useState<string>()
 
-  const [editando, setEditando] = useState<Transaction | null>(null)
-  const [excluindo, setExcluindo] = useState<Transaction | null>(null)
-  const [estornando, setEstornando] = useState<{ id: string; valor: number } | null>(null)
-
-  // Ações de família/rateio (só despesa real de conta) — estado dos 3 modais.
-  const [sharing, setSharing] = useState<Transaction | null>(null)
-  const [familias, setFamilias] = useState<Familia[]>([])
-  const [assigning, setAssigning] = useState<Transaction | null>(null)
-  const [dependentes, setDependentes] = useState<Dependente[]>([])
-  const [ratear, setRatear] = useState<Transaction | null>(null)
-  const [rateio, setRateio] = useState<RateioTransacao | null>(null)
-  const [rateioModo, setRateioModo] = useState<ModoRateio>(1)
-  const [percentuais, setPercentuais] = useState<Record<string, string>>({})
-  const [rateioErro, setRateioErro] = useState<string | undefined>()
+  const navigate = useNavigate()
 
   useEffect(() => { setPage(1) }, [buscaAplicada, natureza, contaFiltro, meioPag, status, valorMin, valorMax, de, ate])
 
@@ -163,123 +132,6 @@ export default function TransactionsPage() {
     return () => { vivo = false }
   }, [page, pageSize, buscaAplicada, natureza, contaFiltro, meioPag, status, valorMin, valorMax, de, ate, versao, notify])
 
-  const handleExcluir = async () => {
-    if (!excluindo) return
-    try {
-      await deleteTransaction(excluindo.id)
-      notify({ open: true, message: "Transação excluída", severity: "success" })
-      recarregar()
-    } catch {
-      notify({ open: true, message: "Erro ao excluir transação", severity: "error" })
-    } finally {
-      setExcluindo(null)
-    }
-  }
-
-  // ── Compartilhar despesa com a família ──
-  const openShare = async (t: Transaction) => {
-    setSharing(t)
-    try {
-      setFamilias(await getFamilias())
-    } catch {
-      notify({ open: true, message: "Erro ao carregar famílias", severity: "error" })
-    }
-  }
-
-  const handleShare = async (familiaId: string) => {
-    if (!sharing) return
-    try {
-      await compartilharTransacao(sharing.id, familiaId)
-      notify({ open: true, message: "Despesa compartilhada com a família", severity: "success" })
-      setSharing(null)
-      recarregar()
-    } catch {
-      notify({ open: true, message: "Erro ao compartilhar despesa", severity: "error" })
-    }
-  }
-
-  // ── Atribuir despesa a um dependente ──
-  const openAssign = async (t: Transaction) => {
-    setAssigning(t)
-    try {
-      const fams = await getFamilias()
-      const listas = await Promise.all(fams.map((f) => getDependentes(f.id)))
-      setDependentes(listas.flat())
-    } catch {
-      notify({ open: true, message: "Erro ao carregar dependentes", severity: "error" })
-    }
-  }
-
-  const handleAssign = async (dependenteId: string | null) => {
-    if (!assigning) return
-    try {
-      await atribuirDependente(assigning.id, dependenteId)
-      notify({
-        open: true,
-        message: dependenteId ? "Despesa atribuída ao dependente" : "Atribuição removida",
-        severity: "success",
-      })
-      setAssigning(null)
-      recarregar()
-    } catch {
-      notify({ open: true, message: "Erro ao atribuir despesa", severity: "error" })
-    }
-  }
-
-  // ── Rateio específico da despesa (override do padrão da família) ──
-  const openRatear = async (t: Transaction) => {
-    setRatear(t)
-    setRateio(null)
-    setRateioErro(undefined)
-    try {
-      const r = await getRateioTransacao(t.id)
-      setRateio(r)
-      setRateioModo(r.modo ?? 1)
-      setPercentuais(Object.fromEntries(
-        r.membros.map((m) => [m.usuarioId, m.percentual ? String(m.percentual) : ""])))
-    } catch {
-      notify({ open: true, message: "Defina a despesa como compartilhada antes de ratear", severity: "error" })
-      setRatear(null)
-    }
-  }
-
-  const handleSalvarRateio = async () => {
-    if (!ratear) return
-    let itens = null
-    if (rateioModo === 3) {
-      itens = (rateio?.membros ?? []).map((m) => ({
-        usuarioId: m.usuarioId,
-        percentual: Number(percentuais[m.usuarioId] ?? 0),
-      }))
-      const soma = itens.reduce((s, i) => s + i.percentual, 0)
-      // Validação inline (nunca toast pra campo): bloqueia submit e marca os campos.
-      if (Math.abs(soma - 100) > 0.01) {
-        setRateioErro("Os percentuais devem somar 100%")
-        return
-      }
-    }
-    try {
-      await definirRateioTransacao(ratear.id, rateioModo, itens)
-      notify({ open: true, message: "Rateio definido", severity: "success" })
-      setRatear(null)
-      recarregar()
-    } catch {
-      notify({ open: true, message: "Erro ao definir rateio", severity: "error" })
-    }
-  }
-
-  const handleRemoverRateio = async () => {
-    if (!ratear) return
-    try {
-      await removerRateioTransacao(ratear.id)
-      notify({ open: true, message: "Override de rateio removido", severity: "success" })
-      setRatear(null)
-      recarregar()
-    } catch {
-      notify({ open: true, message: "Erro ao remover rateio", severity: "error" })
-    }
-  }
-
   // Natureza da linha no extrato de caixa. Transferência e pagamento de fatura
   // são neutros — não são gasto/renda, só mexem no caixa.
   const naturezaLinha = (t: Transaction): "transferencia" | "fatura" | "entrada" | "saida" =>
@@ -328,205 +180,90 @@ export default function TransactionsPage() {
     },
   ]
 
-  const acoes = (t: Transaction) => {
-    // Família/rateio só valem pra DESPESA real de conta (gasto compartilhável).
-    // Transferência e pagamento de fatura são neutros — não entram.
-    const podeCompartilhar = t.tipo === 1 && !t.ehTransferencia && !t.ehPagamentoFatura
-    return [
-      ...(podeCompartilhar
-        ? [
-            { key: "compartilhar", label: "Compartilhar com família", icon: <Users size={16} strokeWidth={2.5} />, onClick: () => openShare(t) },
-            { key: "atribuir", label: "Atribuir a dependente", icon: <User size={16} strokeWidth={2.5} />, onClick: () => openAssign(t) },
-            { key: "rateio", label: "Definir rateio", icon: <Split size={16} strokeWidth={2.5} />, onClick: () => openRatear(t) },
-          ]
-        : []),
-      // Pagamento de fatura: nem editar nem excluir (está ligado ao que a fatura recebeu — o servidor recusa).
-      // Transferência: excluir apaga as DUAS pernas; editar uma só desemparelharia (o servidor recusa).
-      ...(!t.ehPagamentoFatura && !t.ehTransferencia
-        ? [{ key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setEditando(t) }]
-        : []),
-      ...(!t.ehPagamentoFatura
-        ? [{ key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) }]
-        // Pagamento de fatura não se exclui, mas tem volta: o estorno devolve à conta e a fatura volta a dever.
-        : [{ key: "estornar", label: "Estornar pagamento", icon: <Undo2 size={16} strokeWidth={2.5} />, onClick: () => setEstornando({ id: t.id, valor: t.valor }) }]),
-    ]
-  }
-
   const tags: PontesTabelaTag[] = []
   if (busca) tags.push({ label: `Busca: "${busca}"`, onRemover: () => setBusca("") })
 
   return (
-    <>
-      <PontesTabela
-        id="transacoes"
-        titulo="Todas as transações"
-        resumo={
-          <div className={styles.hero}>
-            <div className={styles.heroBlob} />
-            <div className={styles.heroMain}>
-              <div className={styles.heroLabel}>Saldo em conta</div>
-              <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
-            </div>
-            <div className={styles.heroFluxo}>
-              <div className={styles.heroStats}>
-                <div className={styles.heroStat}>
-                  <span className={styles.heroStatValue} data-tone="up">{formatMoney(stats?.entradas ?? 0)}</span>
-                  <span className={styles.heroStatLabel}>Entrou</span>
-                </div>
-                <div className={styles.heroStatDivider} />
-                <div className={styles.heroStat}>
-                  <span className={styles.heroStatValue} data-tone="down">{formatMoney(stats?.saidas ?? 0)}</span>
-                  <span className={styles.heroStatLabel}>Saiu</span>
-                </div>
+    <PontesTabela
+      id="transacoes"
+      titulo="Todas as transações"
+      resumo={
+        <div className={styles.hero}>
+          <div className={styles.heroBlob} />
+          <div className={styles.heroMain}>
+            <div className={styles.heroLabel}>Saldo em conta</div>
+            <div className={styles.heroValue}>{formatMoney(saldoTotal)}</div>
+          </div>
+          <div className={styles.heroFluxo}>
+            <div className={styles.heroStats}>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone="up">{formatMoney(stats?.entradas ?? 0)}</span>
+                <span className={styles.heroStatLabel}>Entrou</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatValue} data-tone="down">{formatMoney(stats?.saidas ?? 0)}</span>
+                <span className={styles.heroStatLabel}>Saiu</span>
               </div>
             </div>
           </div>
-        }
-        busca={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }}
-        filtrosAvancados={[
-          {
-            tipo: "select", id: "natureza", label: "Tipo de lançamento", value: natureza, coluna: "tipo",
-            opcoes: [
-              { value: "", label: "Todos" },
-              { value: "entrada", label: "Entradas" },
-              { value: "saida", label: "Saídas" },
-              { value: "transferencia", label: "Transferências" },
-              { value: "fatura", label: "Pagamento de fatura" },
-            ],
-            onChange: setNatureza,
-          },
-          {
-            // Conta não tem coluna própria (vai no sub da Descrição) → aparece sempre.
-            tipo: "select", id: "conta", label: "Conta", value: contaFiltro,
-            opcoes: [{ value: "", label: "Todas as contas" }, ...contas.map((c) => ({ value: c.id, label: c.nome }))],
-            onChange: setContaFiltro,
-          },
-          {
-            tipo: "select", id: "pagamento", label: "Meio de pagamento", value: meioPag, coluna: "pagamento",
-            opcoes: MEIOS_PAGAMENTO,
-            onChange: setMeioPag,
-          },
-          {
-            tipo: "select", id: "status", label: "Status", value: status, coluna: "status",
-            opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Efetivado" }, { value: "0", label: "Previsto" }],
-            onChange: setStatus,
-          },
-          { tipo: "faixaValor", id: "valor", label: "Valor", coluna: "valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx) } },
-          { tipo: "faixaData", id: "data", label: "Período", coluna: "data", de, ate, onChange: (d, a) => { setDe(d); setAte(a) } },
-        ]}
-        tags={tags}
-        colunas={colunas}
-        colunasPadraoOcultas={["categoria", "pagamento"]}
-        itens={itens}
-        chave={(t) => t.id}
-        acoes={acoes}
-        carregando={carregando}
-        vazio={{ icone: <TrendingUp size={28} strokeWidth={2.5} />, titulo: "Nenhuma transação" }}
-        paginacao={
-          <PontesTablePagination
-            total={total} page={page} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-            itemLabel="transações" itemLabelSingular="transação"
-          />
-        }
-      />
-
-      <EditTransactionDialog transaction={editando ? paraEditavel(editando) : null} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); recarregar() }} notify={notify} />
-      <PontesDialog
-        open={excluindo !== null}
-        title="Excluir transação?"
-        description={excluindo ? `${excluindo.descricao} · ${formatMoney(excluindo.valor)}` : undefined}
-        tone="danger"
-        confirmLabel="Excluir"
-        onConfirm={handleExcluir}
-        onCancel={() => setExcluindo(null)}
-      />
-      <EstornarPagamentoDialog
-        pagamento={estornando}
-        onClose={() => setEstornando(null)}
-        onEstornado={recarregar}
-        notify={notify}
-      />
-
-      {/* Compartilhar com família */}
-      <PontesModal
-        open={sharing !== null}
-        title="Compartilhar com a família"
-        onClose={() => setSharing(null)}
-        footer={<PontesButton variant="outline" onClick={() => setSharing(null)}>Cancelar</PontesButton>}
-      >
-        {familias.length === 0 ? (
-          <div className={styles.modalMuted}>Você não participa de nenhuma família.</div>
-        ) : (
-          <>
-            <p className={styles.modalIntro}>Em qual família lançar “{sharing?.descricao}”?</p>
-            <div className={styles.optionList}>
-              {familias.map((f) => (
-                <PontesButton key={f.id} variant="outline" fullWidth onClick={() => handleShare(f.id)}>{f.nome}</PontesButton>
-              ))}
-            </div>
-          </>
-        )}
-      </PontesModal>
-
-      {/* Atribuir a dependente */}
-      <PontesModal
-        open={assigning !== null}
-        title="Atribuir a um dependente"
-        onClose={() => setAssigning(null)}
-        footer={<>
-          <PontesButton variant="outline" onClick={() => handleAssign(null)}>Remover atribuição</PontesButton>
-          <PontesButton variant="outline" onClick={() => setAssigning(null)}>Cancelar</PontesButton>
-        </>}
-      >
-        {dependentes.length === 0 ? (
-          <div className={styles.modalMuted}>Nenhum dependente cadastrado nas suas famílias.</div>
-        ) : (
-          <>
-            <p className={styles.modalIntro}>A quem atribuir “{assigning?.descricao}”?</p>
-            <div className={styles.optionList}>
-              {dependentes.map((d) => (
-                <PontesButton key={d.id} variant="outline" fullWidth onClick={() => handleAssign(d.id)}>
-                  {d.nome}{d.apelido ? ` (${d.apelido})` : ""}
-                </PontesButton>
-              ))}
-            </div>
-          </>
-        )}
-      </PontesModal>
-
-      {/* Rateio específico da despesa */}
-      <PontesModal
-        open={ratear !== null}
-        title={`Rateio de “${ratear?.descricao ?? ""}”`}
-        onClose={() => setRatear(null)}
-        footer={<>
-          <PontesButton variant="outline" onClick={handleRemoverRateio}>Remover override</PontesButton>
-          <PontesButton variant="outline" onClick={() => setRatear(null)}>Cancelar</PontesButton>
-          <PontesButton onClick={handleSalvarRateio}>Salvar</PontesButton>
-        </>}
-      >
-        <p className={styles.modalIntro}>Define o modo de rateio só para esta despesa, sobrepondo o padrão da família.</p>
-        <PontesField label="Modo">
-          <PontesSelect
-            value={String(rateioModo)}
-            onChange={(v) => setRateioModo(Number(v) as ModoRateio)}
-            options={MODOS_RATEIO}
-          />
-        </PontesField>
-        {rateioModo === 3 && (rateio?.membros ?? []).map((m) => (
-          <PontesField key={m.usuarioId} label={`${m.nome} (%)`}>
-            <PontesInput
-              type="number"
-              value={percentuais[m.usuarioId] ?? ""}
-              onChange={(e) => { setRateioErro(undefined); setPercentuais((p) => ({ ...p, [m.usuarioId]: e.target.value })) }}
-              min={0} max={100} step="0.01"
-              invalid={!!rateioErro}
-            />
-          </PontesField>
-        ))}
-        {rateioErro && <p className={styles.rateioErro}>{rateioErro}</p>}
-      </PontesModal>
-    </>
+        </div>
+      }
+      busca={{ value: busca, onChange: setBusca, placeholder: "Buscar lançamento…", ariaLabel: "Buscar transação" }}
+      filtrosAvancados={[
+        {
+          tipo: "select", id: "natureza", label: "Tipo de lançamento", value: natureza, coluna: "tipo",
+          opcoes: [
+            { value: "", label: "Todos" },
+            { value: "entrada", label: "Entradas" },
+            { value: "saida", label: "Saídas" },
+            { value: "transferencia", label: "Transferências" },
+            { value: "fatura", label: "Pagamento de fatura" },
+          ],
+          onChange: setNatureza,
+        },
+        {
+          // Conta não tem coluna própria (vai no sub da Descrição) → aparece sempre.
+          tipo: "select", id: "conta", label: "Conta", value: contaFiltro,
+          opcoes: [{ value: "", label: "Todas as contas" }, ...contas.map((c) => ({ value: c.id, label: c.nome }))],
+          onChange: setContaFiltro,
+        },
+        {
+          tipo: "select", id: "pagamento", label: "Meio de pagamento", value: meioPag, coluna: "pagamento",
+          opcoes: MEIOS_PAGAMENTO,
+          onChange: setMeioPag,
+        },
+        {
+          tipo: "select", id: "status", label: "Status", value: status, coluna: "status",
+          opcoes: [{ value: "", label: "Qualquer status" }, { value: "1", label: "Efetivado" }, { value: "0", label: "Previsto" }],
+          onChange: setStatus,
+        },
+        { tipo: "faixaValor", id: "valor", label: "Valor", coluna: "valor", min: valorMin, max: valorMax, onChange: (mn, mx) => { setValorMin(mn); setValorMax(mx) } },
+        { tipo: "faixaData", id: "data", label: "Período", coluna: "data", de, ate, onChange: (d, a) => { setDe(d); setAte(a) } },
+      ]}
+      tags={tags}
+      colunas={colunas}
+      colunasPadraoOcultas={["categoria", "pagamento"]}
+      itens={itens}
+      chave={(t) => t.id}
+      // Ações moram na tela da transação (editar, excluir/estornar, família). Aqui só o olhinho que abre
+      // ela — o mesmo que clicar na linha.
+      renderAcoes={(t) => (
+        <PontesIconButton size={32} variant="ghost" title="Ver transação" aria-label={`Ver ${t.descricao}`}
+          onClick={() => navigate(`/transactions/${t.id}`)}>
+          <Eye size={16} strokeWidth={2.5} />
+        </PontesIconButton>
+      )}
+      onLinhaClick={(t) => navigate(`/transactions/${t.id}`)}
+      carregando={carregando}
+      vazio={{ icone: <TrendingUp size={28} strokeWidth={2.5} />, titulo: "Nenhuma transação" }}
+      paginacao={
+        <PontesTablePagination
+          total={total} page={page} pageSize={pageSize}
+          onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+          itemLabel="transações" itemLabelSingular="transação"
+        />
+      }
+    />
   )
 }

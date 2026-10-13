@@ -19,7 +19,6 @@ vi.mock("../../hooks/useAuth", () => ({
 vi.mock("../../components/Notificacoes/NotificationBell", () => ({ default: () => null }))
 vi.mock("../../components/AddAccountDialog/AddAccountDialog", () => ({ default: () => null }))
 vi.mock("../../components/Pwa/InstallPrompt", () => ({ default: () => null }))
-vi.mock("../../pages/Transactions/components/NewTransactionDialog/NewTransactionDialog", () => ({ default: () => null }))
 vi.mock("../../services/categoryService", () => ({ getCategories: vi.fn().mockResolvedValue([]) }))
 vi.mock("../../pages/Admin/AdminNotificationBell", () => ({ default: () => null }))
 

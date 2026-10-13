@@ -72,10 +72,12 @@ type Props = {
   mode?: TransactionFormMode
   /** Valores iniciais (edição). Mesclados sobre os defaults. */
   initial?: Partial<TransactionFormData>
+  /** Na página (não popup): Salvar/Cancelar presos ao pé da tela enquanto o formulário rola. */
+  acoesFixas?: boolean
 }
 
 export default function TransactionForm({
-  categories, subcategories, contas, cartoes, onSubmit, onCancel, mode = "create", initial,
+  categories, subcategories, contas, cartoes, onSubmit, onCancel, mode = "create", initial, acoesFixas,
 }: Props) {
   const isEdit = mode === "edit"
   const [form, setForm] = useState<TransactionFormData>({
@@ -397,7 +399,7 @@ export default function TransactionForm({
         />
       </PontesField>
 
-      <div className={styles.actions}>
+      <div className={styles.actions} data-fixo={acoesFixas ? "true" : undefined}>
         <PontesButton type="button" variant="outline" onClick={onCancel}>Cancelar</PontesButton>
         <PontesButton type="submit" variant="primary" loading={loading} disabled={loading}>
           {isEdit ? "Salvar" : isTransferencia ? "Transferir" : isRecorrente ? "Criar recorrente" : "Adicionar"}

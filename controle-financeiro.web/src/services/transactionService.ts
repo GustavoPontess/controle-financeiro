@@ -109,3 +109,9 @@ export const updateTransaction = async (id: string, transaction: Omit<Transactio
 export const deleteTransaction = async (id: string): Promise<void> => {
   await api.delete(`/transacoes/${id}`)
 }
+
+/** Uma transação pelo id (tela de ver/editar). 404 se não existe ou é de outro usuário. */
+export const getTransaction = async (id: string): Promise<Transaction> => {
+  const res = await api.get(`/transacoes/${id}`)
+  return res.data
+}

@@ -19,7 +19,6 @@ import type { DetalheNoCaminho } from "./useDetalheNoCaminho"
 
 import Navbar from "../../components/Navbar/Navbar"
 import Sidebar from "../../components/Sidebar/Sidebar"
-import NewTransactionDialog from "../../pages/Transactions/components/NewTransactionDialog/NewTransactionDialog"
 import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
 import { getCategories } from "../../services/categoryService"
@@ -64,7 +63,6 @@ export default function DefaultLayout() {
   // Aberta = aberta NESTA tela: tocar num item do menu troca a rota e a gaveta fecha sozinha.
   const [gavetaAbertaEm, setGavetaAbertaEm] = useState<string | null>(null)
   const gavetaAberta = gavetaAbertaEm === location.pathname
-  const [openTransaction, setOpenTransaction] = useState(false)
   const [canCreateTransaction, setCanCreateTransaction] = useState(false)
   const [notification, setNotification] = useState<Notification>({ open: false, message: "", severity: "success" })
 
@@ -98,20 +96,20 @@ export default function DefaultLayout() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  // Modal global de Nova Transação — disparado por botões das telas (que emitem o
-  // evento `openNewTransaction`). Centralizado no Shell
-  // porque o dialog vive aqui. Sem este listener, os disparos caíam no vazio.
-  useEffect(() => {
-    const handler = () => {
-      if (canCreateTransaction) {
-        setOpenTransaction(true)
-      } else {
-        setNotification({ open: true, message: "Cadastre uma categoria antes de criar transações.", severity: "error" })
-      }
+  // Nova transação é uma TELA (/transactions/nova), não mais popup. O "Voltar"/salvar leva de volta pra
+  // onde a pessoa estava. Botão do topo e evento `openNewTransaction` (disparado por telas) passam aqui.
+  const abrirNovaTransacao = useCallback(() => {
+    if (!canCreateTransaction) {
+      setNotification({ open: true, message: "Cadastre uma categoria antes de criar transações.", severity: "error" })
+      return
     }
-    window.addEventListener("openNewTransaction", handler)
-    return () => window.removeEventListener("openNewTransaction", handler)
-  }, [canCreateTransaction])
+    navigate("/transactions/nova", { state: { voltarPara: location.pathname + location.search } })
+  }, [canCreateTransaction, navigate, location.pathname, location.search])
+
+  useEffect(() => {
+    window.addEventListener("openNewTransaction", abrirNovaTransacao)
+    return () => window.removeEventListener("openNewTransaction", abrirNovaTransacao)
+  }, [abrirNovaTransacao])
 
   // Rede de segurança: erro de API (disparado pelo interceptor do axios) vira toast de erro —
   // garante que nenhum erro do backend passe silencioso, mesmo se a tela não tratar.
@@ -162,7 +160,7 @@ export default function DefaultLayout() {
           toggleDrawer={() => (celular ? setGavetaAbertaEm(location.pathname) : setOpen((o) => !o))}
           sidebarOpen={celular ? gavetaAberta : open}
           celular={celular}
-          openTransaction={() => setOpenTransaction(true)}
+          openTransaction={abrirNovaTransacao}
           canCreateTransaction={canCreateTransaction}
           openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
           detalhe={detalheNoCaminho?.path === location.pathname ? detalheNoCaminho.label : undefined}
@@ -178,7 +176,6 @@ export default function DefaultLayout() {
         </main>
       </div>
 
-      <NewTransactionDialog open={openTransaction} onClose={() => setOpenTransaction(false)} notify={setNotification} />
       <InstallPrompt />
 
       <PontesCommandPalette
