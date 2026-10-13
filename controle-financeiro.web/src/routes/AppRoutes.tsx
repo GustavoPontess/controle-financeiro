@@ -16,6 +16,7 @@ import RegisterPage from "../pages/Auth/RegisterPage"
 
 import CategoriesPage from "../pages/Categories/CategoriesPage"
 import TransactionsPage from "../pages/Transactions/TransactionsPage"
+import TransactionPage from "../pages/Transactions/TransactionPage"
 import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
 import SettingsPage from "../pages/Settings/SettingsPage"
 import DashboardPage from "../pages/Dashboard/DashboardPage"
@@ -111,6 +112,10 @@ export default function AppRoutes() {
           <Route path="/reconciliacao" element={<ReconciliacaoPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          {/* Tela única da transação (criar/ver/editar) — substituiu os popups. */}
+          <Route path="/transactions/nova" element={<TransactionPage />} />
+          <Route path="/transactions/:id" element={<TransactionPage />} />
+          <Route path="/transactions/:id/editar" element={<TransactionPage />} />
           <Route path="/credit-cards" element={<CreditCardsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />

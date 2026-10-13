@@ -7,12 +7,13 @@ import TransactionsPage from "../../pages/Transactions/TransactionsPage"
 // escopo `apenasCaixa`, hero (saldo das contas + Entrou/Saiu de caixa), colunas ocultas por padrão,
 // filtros avançados server-side (natureza/conta/meio/status), busca, criar (evento global) e excluir.
 const {
-  notify, listTransactionsPage, getTransactionStats, deleteTransaction, getContas, getCategories,
+  notify, navigate, listTransactionsPage, getTransactionStats, deleteTransaction, getContas, getCategories,
   getSubcategories, getCartoes,
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
   getRateioTransacao, definirRateioTransacao, removerRateioTransacao, estornarPagamento,
 } = vi.hoisted(() => ({
   notify: vi.fn(),
+  navigate: vi.fn(),
   listTransactionsPage: vi.fn(),
   getTransactionStats: vi.fn(),
   deleteTransaction: vi.fn(),
@@ -34,7 +35,7 @@ const {
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>()
-  return { ...actual, useOutletContext: () => ({ notify }) }
+  return { ...actual, useOutletContext: () => ({ notify }), useNavigate: () => navigate }
 })
 vi.mock("../../services/transactionService", () => ({
   listTransactionsPage: (...a: unknown[]) => listTransactionsPage(...a),
@@ -490,41 +491,23 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     expect(estornarPagamento.mock.calls[1][1]).toBe(estornarPagamento.mock.calls[0][1])
   })
 
-  it("editar (no ⋮) abre o dialog 'Editar transação' com a linha escolhida", async () => {
+  // Editar/ver não são mais popup: vão pra tela única da transação (o formulário e a data/hora são
+  // testados em TransactionPage.test).
+  it("editar (no ⋮) leva à tela da transação em modo edição", async () => {
     renderPage()
     await screen.findByText("Mercado")
 
     const menu = await abrirMenu(1)
     fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
 
-    const modal = await screen.findByRole("dialog", { name: "Editar transação" })
-    expect(within(modal).getByDisplayValue("Mercado")).toBeInTheDocument()
+    expect(navigate).toHaveBeenCalledWith("/transactions/t2/editar")
+    expect(screen.queryByRole("dialog", { name: "Editar transação" })).not.toBeInTheDocument()
   })
 
-  it("editar: o dialog recebe data e hora SEPARADAS da linha (21/05 + 14:32), sem passar por fuso", async () => {
+  it("clicar na linha abre a transação (ver)", async () => {
     renderPage()
-    await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1) // 2ª linha = Mercado (data "2026-05-21", hora "14:32:00")
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
-
-    const modal = await screen.findByRole("dialog", { name: "Editar transação" })
-    expect(within(modal).getByPlaceholderText("HH:MM")).toHaveValue("14:32") // "14:32:00" → HH:MM
-    expect(within(modal).getByRole("button", { name: "21/05/2026" })).toBeInTheDocument() // dia exato, sem recuar pra 20/05
-  })
-
-  it("editar lançamento SEM hora (null): o campo Hora abre vazio (e, sendo obrigatório, o submit é bloqueado até preencher)", async () => {
-    renderPage()
-    await screen.findByText("Salário")
-
-    const menu = await abrirMenu(0) // 1ª linha = Salário (data "2026-05-20", hora null)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
-
-    const modal = await screen.findByRole("dialog", { name: "Editar transação" })
-    expect(within(modal).getByPlaceholderText("HH:MM")).toHaveValue("")
-    expect(within(modal).getByRole("button", { name: "20/05/2026" })).toBeInTheDocument()
-    fireEvent.click(within(modal).getByRole("button", { name: "Salvar" }))
-    expect(await within(modal).findByText("Informe a hora")).toBeInTheDocument()
+    fireEvent.click(await screen.findByText("Mercado"))
+    expect(navigate).toHaveBeenCalledWith("/transactions/t2")
   })
 
   // ── Ações de família/rateio no ⋮ (só despesa real de conta) ──

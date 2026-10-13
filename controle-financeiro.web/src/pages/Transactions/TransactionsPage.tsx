@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { useOutletContext } from "react-router-dom"
+import { useNavigate, useOutletContext } from "react-router-dom"
 import { TrendingUp, TrendingDown, Pencil, Trash2, ArrowLeftRight, CreditCard, Users, User, Split, Undo2 } from "lucide-react"
 import {
   PontesTabela, PontesCelulaIdentidade, PontesBadge, PontesTablePagination, PontesDialog,
@@ -28,7 +28,6 @@ import type { Transaction } from "@/types/Transaction"
 import type { Conta } from "@/types/Conta"
 import type { Familia, Dependente, ModoRateio, RateioTransacao } from "@/types/Familia"
 import EstornarPagamentoDialog from "../CreditCards/EstornarPagamentoDialog"
-import EditTransactionDialog, { type EditableTransaction } from "./components/EditTransactionDialog/EditTransactionDialog"
 import styles from "./TransactionsPage.module.css"
 
 // Data + hora — só mostra a hora quando o lançamento tem horário real (≠ meia-noite
@@ -60,11 +59,6 @@ const MODOS_RATEIO = [
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
-const paraEditavel = (t: Transaction): EditableTransaction => ({
-  id: t.id, descricao: t.descricao, valor: t.valor, tipo: t.tipo,
-  categoriaId: t.categoriaId ?? undefined, subcategoriaId: t.subcategoriaId ?? undefined,
-  contaId: t.contaId, cartaoCreditoId: t.cartaoCreditoId, meioPagamento: t.meioPagamento, data: t.data, hora: t.hora,
-})
 
 export default function TransactionsPage() {
   const { notify } = useOutletContext<OutletContextType>()
@@ -89,7 +83,7 @@ export default function TransactionsPage() {
   const [de, setDe] = useState<string>()
   const [ate, setAte] = useState<string>()
 
-  const [editando, setEditando] = useState<Transaction | null>(null)
+  const navigate = useNavigate()
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
   const [estornando, setEstornando] = useState<{ id: string; valor: number } | null>(null)
 
@@ -343,7 +337,7 @@ export default function TransactionsPage() {
       // Pagamento de fatura: nem editar nem excluir (está ligado ao que a fatura recebeu — o servidor recusa).
       // Transferência: excluir apaga as DUAS pernas; editar uma só desemparelharia (o servidor recusa).
       ...(!t.ehPagamentoFatura && !t.ehTransferencia
-        ? [{ key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => setEditando(t) }]
+        ? [{ key: "editar", label: "Editar", icon: <Pencil size={16} strokeWidth={2.5} />, onClick: () => navigate(`/transactions/${t.id}/editar`) }]
         : []),
       ...(!t.ehPagamentoFatura
         ? [{ key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) }]
@@ -420,6 +414,8 @@ export default function TransactionsPage() {
         itens={itens}
         chave={(t) => t.id}
         acoes={acoes}
+        // Clicar na linha abre a transação (tela única de ver/editar); o ⋮ segue com as ações rápidas.
+        onLinhaClick={(t) => navigate(`/transactions/${t.id}`)}
         carregando={carregando}
         vazio={{ icone: <TrendingUp size={28} strokeWidth={2.5} />, titulo: "Nenhuma transação" }}
         paginacao={
@@ -431,7 +427,6 @@ export default function TransactionsPage() {
         }
       />
 
-      <EditTransactionDialog transaction={editando ? paraEditavel(editando) : null} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); recarregar() }} notify={notify} />
       <PontesDialog
         open={excluindo !== null}
         title="Excluir transação?"

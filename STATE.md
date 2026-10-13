@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-09-30
+last_reviewed: 2026-10-13
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,20 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `feat/transacao-em-pagina`
+
+**Marcos combinados (ver topo do `ROADMAP.md`):** M1 Fase 0 + transação em página **24/10** · M2 beta no ar **07/11** (Gustavo contrata VPS + domínio até 27/10) · M3 usável no dia a dia **28/11** · M4 1.0 com cobrança **29/01/2027**.
+
+**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura). **PR aberto:** #295 (reconciliação lista só efetivado).
+
+**Nesta branch (M1):** tela única da transação — `/transactions/nova` (criar), `/transactions/:id` (ver, com Editar/Excluir/Estornar), `/transactions/:id/editar` (mesma tela). `NewTransactionDialog`/`EditTransactionDialog` apagados; "+ Nova transação" e o evento `openNewTransaction` navegam (voltam pra tela de origem ao salvar); linha das Transações abre a transação. Conferido ao vivo (desktop + celular), front 936 testes.
+
+**Banco local:** recriado pelo `MeuCenarioSeeder` (gitignored) — conta real do Gustavo; pode resetar à vontade (`DROP DATABASE` + subir a API).
+
+**Próxima ação:** PR da transação em página → resto do M1 (transferência/hora + editar sem hora, conta fixa idempotência, write skew, sobras do extrato).
+
+---
 
 ### 📌 Sessão 2026-10-02 — Reconciliação: redesenho do painel + saldo inicial com data + editar saldo inicial · branch `exp/consistencia-front`
 

@@ -17,6 +17,19 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ---
 
+## 🗓️ Metas e prazos (combinado com o Gustavo em 2026-10-13)
+
+> **A fila obedece os marcos.** Sem data, a lista de bugs nunca acaba. Toda sexta: ponto verde + "onde estamos vs prazo" (5 min). **Achado novo não fura a fila** — só P0/P1 de dinheiro/segurança; P2/P3 vão pro backlog pós-marco. **Fases 2–4 (família avançada, paridade Monarch, Open Finance) ficam DEPOIS da 1.0**, salvo o que testador pedir muito.
+
+| Marco | O que entra | Prazo |
+|---|---|---|
+| **M1 — Fase 0 fechada + transação em página** | os P2 de dinheiro restantes da Fase 0 (transferência/hora, conta fixa idempotência, write skew, sobras do extrato importado) + **tela única de transação (criar/ver/editar) no lugar dos popups** — ✅ feita 2026-10-13 | sex **24/10/2026** |
+| **M2 — Beta fechado no ar** | Hostinger + domínio, segredos de produção, ambiente `Production`, backup diário; Gustavo + 3–5 convidados (de preferência um casal) usando de verdade. **Depende do Gustavo contratar VPS (~R$28/mês) + domínio até 27/10.** | sex **07/11/2026** |
+| **M3 — Usável no dia a dia** | os outros formulários em página (parcelamento, conta fixa, pagar fatura…), **simulador de quitação de dívidas** (projeção mês a mês: parcelar a fatura, renda extra), regras de categorização na importação + o que os testadores pedirem com força | sex **28/11/2026** |
+| **M4 — 1.0 pública com cobrança** | gate de segurança/LGPD fechado (abaixo), termos revisados, CAPTCHA, plano pago (Pix/cartão via gateway), landing. Dezembro com 2 semanas de folga (festas) | sex **29/01/2027** |
+
+---
+
 ## 🏁 Caminho até pronto (fases) — visão de linha de chegada
 
 > Consolidado em 2026-09-30 dos docs (Monarch `docs/concorrentes/monarch/roubar-priorizado.md`, `ACHADOS_ACIONAVEIS.md`, `familia/visao.md`, este ROADMAP). Visão macro; o detalhe acionável fica na 🎯 Fila abaixo e nas seções deste arquivo. Esforço S/M/L.
@@ -56,7 +69,7 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
    - 🟠 **P1 (conferir ao vivo) — contradição no mesmo dia do saldo inicial:** o "Calculado (app)" do marco derivado (saldo inicial) pode ficar congelado no valor de abertura enquanto o saldo real do dia já tem lançamentos depois dele. O saldo inicial já ganhou data (`ContaService.cs:76`) e o "✓ Confere até" falso sumiu no redesenho (2026-10-02..05) — falta olhar se a contradição ainda aparece.
    - 🧹 **Apagar a conta de teste do dogfood** `reconc.teste@local.test` (Postgres local, id `acf724e4-…`) e os 150 `PAGTESTE #n` da conta `verificacao.p1` (testes de paginação).
 4. 🟡 **Frentes de produto (uma por sessão):**
-   - **Formulários de criar/editar em PÁGINA, não popup** (P2 — Gustavo odeia editar transação num modal apertado). Rotas tipo `/transactions/nova` e `/transactions/:id/editar`; tirar o form do `NewTransactionDialog`/`EditTransactionDialog`; o "+ Nova transação" global navega; testes. Vale pra outras entidades depois.
+   - **Formulários de criar/editar em PÁGINA, não popup** (P2 — Gustavo odeia editar transação num modal apertado). ✅ **Transação feita (2026-10-13, M1):** tela única `/transactions/nova` · `/transactions/:id` (ver) · `/transactions/:id/editar` (`TransactionPage`), popups apagados. **Falta (M3), um por vez, mesmo padrão:** parcelamento, conta fixa, pagar fatura, cartão, conta, empréstimo.
    - **Migrar as telas de lista restantes pro `PontesTabela`** (P2) — Contas Fixas, Importação, Parcelamentos, Admin Pendentes/Auditoria/LGPD — **manual, uma a uma**, só passando params (workflow automático foi abandonado por divergir).
 5. **Erro de CSRF chega no front como "falha de rede"** (P2, pequeno) — item em "Backend / débito técnico".
 6. ✅ ~~Importar o extrato do banco do Gustavo~~ — **destravado e em uso (2026-10-09..12):** é a **Nubank**; o OFX dela importa (10 meses do Gustavo no banco local), com Pix no Crédito e "Pagamento de fatura" tratados (#291, #292). Sobras no item P2 "Extrato importado" da Fase 0.
