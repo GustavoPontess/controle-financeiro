@@ -1532,7 +1532,7 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     expect(await tituloMov(`Movimentos desde ${diaMes(DIA_MARCO)} até ${diaMes(HOJE)}`)).toBeInTheDocument()
     const tabela = await screen.findByRole("table")
-    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Status", "Valor"])
+    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Valor"])
 
     const [mercado, salario] = linhasMov()
     const [mDesc, mTipo, mData] = celulas(mercado)
@@ -1555,8 +1555,8 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     await screen.findByRole("table")
     const [mercado, salario] = linhasMov()
-    const valorMercado = celulas(mercado)[4]
-    const valorSalario = celulas(salario)[4]
+    const valorMercado = celulas(mercado)[3]
+    const valorSalario = celulas(salario)[3]
     expect(valorMercado).toHaveTextContent(/^R\$\s?50,00$/)
     expect(valorSalario).toHaveTextContent(/^R\$\s?1\.000,00$/)
     for (const c of [valorMercado, valorSalario]) {
@@ -1660,7 +1660,7 @@ describe("ReconciliacaoPage", () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO)])
     await renderPage()
     await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, {
-      contaId: "c1", from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1), apenasCaixa: true,
+      contaId: "c1", from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1), apenasCaixa: true, status: 1, // só efetivado: é o que forma o saldo do app
     }))
   })
 
