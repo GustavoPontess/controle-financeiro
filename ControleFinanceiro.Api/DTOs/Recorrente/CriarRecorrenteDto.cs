@@ -30,6 +30,4 @@ public class CriarRecorrenteDto
     public DateTime DataInicio { get; set; }
 
     public DateTime? DataFim { get; set; }
-
-    public string? IdempotencyKey { get; set; }
 }

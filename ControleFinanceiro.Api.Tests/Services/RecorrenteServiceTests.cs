@@ -24,14 +24,8 @@ public class RecorrenteServiceTests
         return new AppDbContext(options);
     }
 
-    private static RecorrenteService CreateService(AppDbContext ctx, IHttpContextAccessor? accessor = null)
-    {
-        accessor ??= new Mock<IHttpContextAccessor>().Object;
-        return new RecorrenteService(ctx,
-            new FaturaService(ctx),
-            new FinancialEventLogService(ctx),
-            accessor);
-    }
+    private static RecorrenteService CreateService(AppDbContext ctx) =>
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 
     private static Guid SeedUsuario(AppDbContext ctx)
     {
@@ -385,6 +379,143 @@ public class RecorrenteServiceTests
         var svc = CreateService(ctx);
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             svc.CancelarAsync(Guid.NewGuid(), new CancelarRecorrenteDto { Motivo = "x" }, u));
+    }
+
+    [Fact]
+    public async Task CancelarAsync_JaCancelada_DevolveOPrimeiroCancelamento_SemMexerNemRegistrarDeNovo()
+    {
+        // Duplo clique / retry: o 2º pedido não reescreve motivo nem data, nem grava outro evento.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var rec = SeedRecorrente(ctx, u, c);
+        var svc = CreateService(ctx);
+
+        await svc.CancelarAsync(rec.Id, new CancelarRecorrenteDto { Motivo = "Mudei de plano" }, u);
+        var canceladoEm = (await ctx.Recorrentes.FindAsync(rec.Id))!.CanceladoEm;
+        await svc.CancelarAsync(rec.Id, new CancelarRecorrenteDto { Motivo = "Outro motivo" }, u);
+
+        var depois = await ctx.Recorrentes.AsNoTracking().SingleAsync(r => r.Id == rec.Id);
+        Assert.Equal("Mudei de plano", depois.MotivoCancelamento);
+        Assert.Equal(canceladoEm, depois.CanceladoEm);
+        Assert.Equal(1, await ctx.FinancialEventLogs.CountAsync(e => e.Tipo == FinancialEventType.RecorrenteCancelada));
+    }
+
+    // ── CriarAsync — idempotência ─────────────────────────────────────────────
+
+    private static CriarRecorrenteDto NovaContaFixa(Guid contaId, string descricao = "Internet", decimal valor = 120m) => new()
+    {
+        Descricao = descricao, Valor = valor, Tipo = (int)TipoTransacao.Despesa, ContaId = contaId,
+        Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 10,
+        DataInicio = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc),
+    };
+
+    private static Task<int> PrevisoesAsync(AppDbContext ctx, Guid usuarioId) =>
+        ctx.Transacoes.CountAsync(t => t.CriadoPor == usuarioId && t.RecorrenteOrigemId != null && t.Ativo);
+
+    [Fact]
+    public async Task CriarAsync_MesmaChaveDuasVezes_DevolveAOriginal_ECriaUmaSo()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var chave = Guid.NewGuid().ToString();
+
+        var primeira = await CreateService(ctx).CriarAsync(NovaContaFixa(c), u, chave);
+        var previsoes = await PrevisoesAsync(ctx, u);
+        var retry = await CreateService(ctx).CriarAsync(NovaContaFixa(c), u, chave);
+
+        Assert.Equal(primeira.Id, retry.Id);
+        Assert.Equal(1, await ctx.Recorrentes.CountAsync(r => r.CriadoPor == u));
+        Assert.True(previsoes > 0);
+        Assert.Equal(previsoes, await PrevisoesAsync(ctx, u)); // previsões não dobraram
+        Assert.Equal(1, await ctx.FinancialEventLogs.CountAsync(e => e.Tipo == FinancialEventType.RecorrenteCriada));
+        var registro = await ctx.RegistrosIdempotencia.SingleAsync();
+        Assert.Equal(RecorrenteService.OperacaoCriarContaFixa, registro.Operacao);
+        Assert.Equal(primeira.Id, registro.ReferenciaId);
+    }
+
+    [Fact]
+    public async Task CriarAsync_MesmaChaveComOutrosDados_409_ENaoCriaOutra()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var chave = Guid.NewGuid().ToString();
+        await CreateService(ctx).CriarAsync(NovaContaFixa(c, valor: 120m), u, chave);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateService(ctx).CriarAsync(NovaContaFixa(c, valor: 99m), u, chave));
+
+        Assert.Equal(RecorrenteService.MensagemChaveComOutrosDados, ex.Message);
+        Assert.Equal(1, await ctx.Recorrentes.CountAsync(r => r.CriadoPor == u));
+    }
+
+    [Fact]
+    public async Task CriarAsync_ChaveDeContaFixaJaExcluida_409_NaoRecria()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        var chave = Guid.NewGuid().ToString();
+        var criada = await CreateService(ctx).CriarAsync(NovaContaFixa(c), u, chave);
+        await CreateService(ctx).DeletarAsync(criada.Id, u);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateService(ctx).CriarAsync(NovaContaFixa(c), u, chave));
+
+        Assert.Equal(1, await ctx.Recorrentes.IgnoreQueryFilters().CountAsync(r => r.CriadoPor == u));
+    }
+
+    [Fact]
+    public async Task CriarAsync_MesmaChaveDeOutroUsuario_NaoEhReplay_CriaPraCadaUm()
+    {
+        // A chave só é única dentro do usuário: a de outro não devolve (nem vaza) a conta fixa dele.
+        var ctx = CreateContext();
+        var u1 = SeedUsuario(ctx);
+        var u2 = SeedUsuario(ctx);
+        var chave = Guid.NewGuid().ToString();
+
+        var dele = await CreateService(ctx).CriarAsync(NovaContaFixa(SeedConta(ctx, u1)), u1, chave);
+        var minha = await CreateService(ctx).CriarAsync(NovaContaFixa(SeedConta(ctx, u2)), u2, chave);
+
+        Assert.NotEqual(dele.Id, minha.Id);
+        Assert.Equal(1, await ctx.Recorrentes.CountAsync(r => r.CriadoPor == u2));
+    }
+
+    [Fact]
+    public async Task CriarAsync_ChaveMaiorQue100_LancaArgumentException_SemCriar()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService(ctx).CriarAsync(NovaContaFixa(c), u, new string('k', 101)));
+
+        Assert.Equal(0, await ctx.Recorrentes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComMaisDe25ContasFixas_DevolveARecemCriada()
+    {
+        // O criar devolvia a nova procurando na 1ª página da lista (25, por nome): "Zelador" cai na 26ª
+        // posição e a API respondia erro DEPOIS de gravar — o usuário tentava de novo e duplicava.
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var c = SeedConta(ctx, u);
+        for (var i = 0; i < 25; i++)
+        {
+            var r = SeedRecorrente(ctx, u, c);
+            r.Descricao = $"Assinatura {i:00}";
+        }
+        ctx.SaveChanges();
+
+        var dto = await CreateService(ctx).CriarAsync(NovaContaFixa(c, descricao: "Zelador"), u, Guid.NewGuid().ToString());
+
+        Assert.Equal("Zelador", dto.Descricao);
+        Assert.Equal(c, dto.ContaId);
+        Assert.NotNull(dto.ProximaCobranca);
     }
 
     // ── EditarProximaOcorrenciaAsync ──────────────────────────────────────────

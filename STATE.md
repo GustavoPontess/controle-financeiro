@@ -15,17 +15,17 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `feat/transacao-em-pagina`
+### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `fix/conta-fixa-idempotencia`
 
 **Marcos combinados (ver topo do `ROADMAP.md`):** M1 Fase 0 + transação em página **24/10** · M2 beta no ar **07/11** (Gustavo contrata VPS + domínio até 27/10) · M3 usável no dia a dia **28/11** · M4 1.0 com cobrança **29/01/2027**.
 
-**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura) · #295 (reconciliação lista só efetivado).
+**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura) · #295 (reconciliação lista só efetivado) · #296 (transação em página: criar/ver/editar numa tela só, ações saem do ⋮ — popups apagados).
 
-**Nesta branch (M1, PR aberto — rebaseada na main depois do #295):** tela única da transação — `/transactions/nova` (criar), `/transactions/:id` (ver), `/transactions/:id/editar` (mesma tela); popups `NewTransactionDialog`/`EditTransactionDialog` apagados; "+ Nova transação" e `openNewTransaction` navegam (voltam pra tela de origem ao salvar). **Todas as ações saíram do ⋮ da lista e foram pra tela** (Editar, Excluir/Estornar, bloco "Família": compartilhar/atribuir/rateio via `useAcoesFamilia`); na lista a coluna Ações é só o olhinho "Ver". Front 932 testes, lint/build OK, conferido ao vivo (desktop + celular).
+**Nesta branch (M1, sem PR ainda):** conta fixa idempotente — `RegistroIdempotencia` (`CriarContaFixa`), header obrigatório no `POST /recorrentes`, front manda chave por abertura do form (Contas fixas + Nova transação modo recorrente). Junto: criar devolvia a nova pela 1ª página da lista (erro depois de gravar com >25 contas fixas), cancelar já cancelada vira no-op, factory HTTP ignora aviso de transação do InMemory. Back 1424 + front 934 verdes, lint/build OK, mutações conferidas. **Não conferido ao vivo:** Postgres (Docker) estava parado e o pane não tem login.
 
 **Banco local:** recriado pelo `MeuCenarioSeeder` (gitignored) — conta real do Gustavo; pode resetar à vontade (`DROP DATABASE` + subir a API). Vite: edição por `sed` às vezes não dispara o recarregamento — `touch` no arquivo resolve.
 
-**Próxima ação:** mergear o PR da `feat/transacao-em-pagina` (quando verde) → resto do M1 até 24/10 (transferência/hora + editar sem hora, conta fixa idempotência, write skew, sobras do extrato).
+**Próxima ação:** PR da `fix/conta-fixa-idempotencia` → resto do M1 até 24/10: transferência/hora + editar sem hora (**precisa de decisão do Gustavo**), write skew compra × pagamento, sobras do extrato (Pix entre contas, empréstimo, resgate RDB).
 
 ---
 

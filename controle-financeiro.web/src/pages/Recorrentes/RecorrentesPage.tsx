@@ -136,6 +136,8 @@ export default function RecorrentesPage() {
   const [criarForm, setCriarForm] = useState<CriarForm>(emptyCriarForm())
   const [criarErrors, setCriarErrors] = useState<CriarErrors>({})
   const [criarSaving, setCriarSaving] = useState(false)
+  // Idempotency-Key: nasce ao abrir o modal, reusada no retry (duplo clique/rede não cria 2 contas fixas).
+  const chaveCriar = useRef("")
 
   // modal cancelar
   const [cancelarOpen, setCancelarOpen] = useState(false)
@@ -220,6 +222,7 @@ export default function RecorrentesPage() {
   function openCriar() {
     setCriarForm(emptyCriarForm())
     setCriarErrors({})
+    chaveCriar.current = crypto.randomUUID()
     setCriarOpen(true)
   }
 
@@ -239,7 +242,7 @@ export default function RecorrentesPage() {
         dataInicio: new Date(criarForm.dataInicio).toISOString(),
         dataFim: criarForm.dataFim ? new Date(criarForm.dataFim).toISOString() : undefined,
       }
-      await createRecorrente(dto)
+      await createRecorrente(dto, chaveCriar.current)
       setCriarOpen(false)
       recarregar()
       window.dispatchEvent(new Event("transactionCreated"))

@@ -42,7 +42,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 (d.ServiceType.FullName?.Contains("IDbContextOptionsConfiguration") == true &&
                  d.ServiceType.GenericTypeArguments.Contains(typeof(AppDbContext)))).ToList();
             foreach (var d in efDescriptors) services.Remove(d);
-            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_dbName));
+            // InMemory não tem transação: sem ignorar o aviso, todo fluxo com BeginTransaction (criar conta
+            // fixa, parcelamento…) estourava InvalidOperationException → 409. Mesmo ajuste dos testes de service.
+            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_dbName)
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning)));
 
             // Sem Hangfire em Testing → o dispatcher de reset vira no-op (não enfileira job).
             var disp = services.SingleOrDefault(d => d.ServiceType == typeof(IPasswordResetDispatcher));

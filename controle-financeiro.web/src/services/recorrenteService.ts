@@ -43,8 +43,11 @@ export const getRecorrentes = async (): Promise<Recorrente[]> => {
   return res.data.items
 }
 
-export const createRecorrente = async (dto: CriarRecorrente): Promise<Recorrente> => {
-  const res = await api.post(BASE, dto)
+// A API exige o header Idempotency-Key (400 sem ele). Quem chama gera a chave ao ABRIR o formulário
+// e reusa no retry: a mesma chave devolve a conta fixa já criada em vez de criar outra (e as cobranças
+// em dobro); com outros dados → 409.
+export const createRecorrente = async (dto: CriarRecorrente, idempotencyKey: string): Promise<Recorrente> => {
+  const res = await api.post(BASE, dto, { headers: { "Idempotency-Key": idempotencyKey } })
   return res.data
 }
 
