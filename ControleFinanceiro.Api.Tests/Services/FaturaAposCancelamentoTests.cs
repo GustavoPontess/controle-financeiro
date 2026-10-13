@@ -733,6 +733,87 @@ public class FaturaAposCancelamentoTests
             e => e.Tipo == FinancialEventType.TransacaoAtualizada && e.EntidadeId == mercado && e.ValorDepois == 150m);
     }
 
+    // ══ Editar a DATA da compra no cartão (Fase 0, achado 2026-10-05) ══════════════════════════════════
+    // Antes a data mudava e o FaturaId não: a compra seguia cobrada na fatura velha.
+
+    private static Transacao EdicaoComData(decimal valor, DateTime data) => new()
+    {
+        Descricao = "Mercado", Valor = valor, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(data),
+    };
+
+    [Fact]
+    public async Task EditarDataDaCompra_ParaForaDoPeriodo_VaiPraFaturaDoNovoPeriodo_EAAntigaSeReconcilia()
+    {
+        // F (fechada) = Mercado 100 + parcela 200 = 300; pagos 200. O Mercado foi de outro mês: sai de F,
+        // que fica 200 = pago → Pago.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        await PagarFaturaAsync(ctx, c, 200m);
+        var mercado = await MercadoAsync(ctx);
+        var novaData = DateTime.UtcNow.Date.AddDays(-5);
+
+        Assert.True(await Transacoes(ctx).AtualizarAsync(mercado, EdicaoComData(100m, novaData), c.UsuarioId));
+
+        ctx.ChangeTracker.Clear();
+        var (_, fechamentoNovo) = FaturaService.CalcularPeriodo(novaData, DiaFechamento);
+        var compra = await ctx.Transacoes.SingleAsync(t => t.Id == mercado);
+        var destino = await ctx.Faturas.SingleAsync(f => f.Id == compra.FaturaId);
+        Assert.Equal(fechamentoNovo, destino.DataFechamento);
+        Assert.NotEqual(c.FaturaId, destino.Id);
+        Assert.Equal(EstadoPagamentoFatura.Pago, (await FaturaAsync(ctx, c.FaturaId)).EstadoPagamento);
+        Assert.Equal(0m, (await DtoAsync(ctx, c, c.FaturaId)).ValorRestante);
+        var eventos = await ctx.FinancialEventLogs.AsNoTracking().ToListAsync();
+        Assert.Single(eventos, e => e.Tipo == FinancialEventType.FaturaPagaTotal && e.EntidadeId == c.FaturaId);
+        var edicao = Assert.Single(eventos, e => e.Tipo == FinancialEventType.TransacaoAtualizada && e.EntidadeId == mercado);
+        Assert.Contains(c.FaturaId.ToString(), edicao.PayloadJson);   // de onde saiu
+        Assert.Contains(destino.Id.ToString(), edicao.PayloadJson);   // pra onde foi
+    }
+
+    [Fact]
+    public async Task EditarDataDaCompra_DentroDoPeriodoDaFatura_FicaOndeEsta()
+    {
+        // F vai de hoje−50 a hoje−20: mudar o dia dentro disso não mexe em fatura (nem cria outra).
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, cicloFechado: true);
+        var mercado = await MercadoAsync(ctx);
+        var faturasAntes = await ctx.Faturas.CountAsync();
+
+        await Transacoes(ctx).AtualizarAsync(mercado, EdicaoComData(100m, DateTime.UtcNow.Date.AddDays(-30)), c.UsuarioId);
+
+        ctx.ChangeTracker.Clear();
+        Assert.Equal(c.FaturaId, (await ctx.Transacoes.SingleAsync(t => t.Id == mercado)).FaturaId);
+        Assert.Equal(faturasAntes, await ctx.Faturas.CountAsync());
+    }
+
+    [Fact]
+    public async Task EditarDataDaCompra_CicloRealDoCartao_DoDia5ProDia15_PassaPraFaturaSeguinte()
+    {
+        // Fecha dia 10: compra de 05/09 cai na fatura de setembro; trocada pra 15/09, é da de outubro.
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Cartão", TemCredito = true, LimiteTotal = 5000,
+            DiaFechamento = DiaFechamento, DiaVencimento = DiaVencimento, CriadoPor = usuario, Ativo = true,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+        var compra = await Transacoes(ctx).CriarTransacaoAsync(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 80m, Tipo = TipoTransacao.Despesa, CartaoCreditoId = cartao.Id,
+            UsadoComoCredito = true, Data = new DateOnly(2025, 9, 5), StatusTransacao = StatusTransacao.Executado,
+        }, usuario);
+        var setembro = compra.FaturaId;
+
+        await Transacoes(ctx).AtualizarAsync(compra.Id, EdicaoComData(80m, new DateTime(2025, 9, 15)), usuario);
+
+        ctx.ChangeTracker.Clear();
+        var movida = await ctx.Transacoes.SingleAsync(t => t.Id == compra.Id);
+        Assert.NotEqual(setembro, movida.FaturaId);
+        Assert.Equal(new DateTime(2025, 10, 10), (await ctx.Faturas.SingleAsync(f => f.Id == movida.FaturaId)).DataFechamento);
+        Assert.Equal(new DateOnly(2025, 9, 15), movida.Data);
+    }
+
     [Fact]
     public async Task PagamentoDaFatura_NaoSeEditaNemExcluiPelaTelaDeTransacoes()
     {

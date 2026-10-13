@@ -338,6 +338,27 @@ namespace ControleFinanceiro.Api.Services
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
 
+            // Compra no cartão com a data nova FORA do período da fatura dela vai pra fatura desse período — a
+            // mesma regra de quando é lançada (ObterOuCriarFaturaAsync). Antes a data mudava e o FaturaId não:
+            // a compra seguia cobrada na fatura velha. Dentro do período, fica onde está (dado antigo com
+            // período fora do padrão do cartão não é mexido à toa). Resolvido ANTES de alterar os campos:
+            // ObterOuCriarFaturaAsync salva (cria a fatura), e não pode levar a edição pela metade junto.
+            var dataAntes = transacao.Data;
+            Guid? faturaAnteriorId = null;
+            Guid? faturaNovaId = null;
+            if (transacao.UsadoComoCredito && transacao.CartaoCreditoId is { } cartaoId
+                && transacao.FaturaId is { } faturaAtualId && dados.Data != transacao.Data)
+            {
+                var atual = await _context.Faturas.AsNoTracking().FirstOrDefaultAsync(f => f.Id == faturaAtualId);
+                var dia = dados.Data.ToDateTime(TimeOnly.MinValue);
+                if (atual is null || dia < atual.DataInicio || dia >= atual.DataFechamento)
+                {
+                    var nova = await _faturaService.ObterOuCriarFaturaAsync(cartaoId, dados.Data, usuarioId);
+                    if (nova.Id != faturaAtualId)
+                        (faturaAnteriorId, faturaNovaId) = (faturaAtualId, nova.Id);
+                }
+            }
+
             var valorAntes = transacao.Valor;
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
@@ -353,7 +374,21 @@ namespace ControleFinanceiro.Api.Services
                 transacao.EditadaPeloUsuario = true;
 
             var correlationId = Guid.NewGuid();
-            if (dados.Valor < valorAntes)
+            // Troca de fatura: grava a compra na nova ANTES de reconciliar a antiga, numa transação (atômico).
+            // Com a troca só em memória, o Include da antiga ainda traz a compra (a linha no banco segue com o
+            // FaturaId velho e o EF devolve a instância rastreada) e o total dela não baixava.
+            await using var tx = faturaNovaId is null ? null : await _context.Database.BeginTransactionAsync();
+            if (faturaNovaId is { } faturaNova)
+            {
+                // A fatura de onde a compra saiu perdeu o valor sem pagamento: reconcilia como num
+                // cancelamento (pode ficar coberta pelo já pago e virar Pago). A que recebeu passa a dever
+                // mais pelo restante — mesma regra de compra nova numa fatura já paga.
+                transacao.FaturaId = faturaNova;
+                await _context.SaveChangesAsync();
+                await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                    _context, _eventLog, new[] { faturaAnteriorId!.Value }, usuarioId, correlationId, DateTime.UtcNow);
+            }
+            else if (dados.Valor < valorAntes)
                 await ReconciliarFaturaAsync(transacao, usuarioId, correlationId);
             _eventLog.Registrar(
                 usuarioId: usuarioId,
@@ -364,9 +399,17 @@ namespace ControleFinanceiro.Api.Services
                 origemAcao: "API",
                 valorAntes: valorAntes,
                 valorDepois: transacao.Valor,
-                payload: new { faturaId = transacao.FaturaId });
+                payload: new
+                {
+                    faturaId = transacao.FaturaId,
+                    faturaAnteriorId,
+                    dataAntes = dataAntes.ToString("yyyy-MM-dd"),
+                    dataDepois = transacao.Data.ToString("yyyy-MM-dd"),
+                });
 
             await _context.SaveChangesAsync();
+            if (tx != null)
+                await tx.CommitAsync();
             return true;
         }
 
