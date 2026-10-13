@@ -19,13 +19,13 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Marcos combinados (ver topo do `ROADMAP.md`):** M1 Fase 0 + transação em página **24/10** · M2 beta no ar **07/11** (Gustavo contrata VPS + domínio até 27/10) · M3 usável no dia a dia **28/11** · M4 1.0 com cobrança **29/01/2027**.
 
-**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura). **PR aberto:** #295 (reconciliação lista só efetivado).
+**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura) · #295 (reconciliação lista só efetivado).
 
-**Nesta branch (M1):** tela única da transação — `/transactions/nova` (criar), `/transactions/:id` (ver, com Editar/Excluir/Estornar), `/transactions/:id/editar` (mesma tela). `NewTransactionDialog`/`EditTransactionDialog` apagados; "+ Nova transação" e o evento `openNewTransaction` navegam (voltam pra tela de origem ao salvar); linha das Transações abre a transação. Conferido ao vivo (desktop + celular), front 936 testes.
+**Nesta branch (M1, PR aberto — rebaseada na main depois do #295):** tela única da transação — `/transactions/nova` (criar), `/transactions/:id` (ver), `/transactions/:id/editar` (mesma tela); popups `NewTransactionDialog`/`EditTransactionDialog` apagados; "+ Nova transação" e `openNewTransaction` navegam (voltam pra tela de origem ao salvar). **Todas as ações saíram do ⋮ da lista e foram pra tela** (Editar, Excluir/Estornar, bloco "Família": compartilhar/atribuir/rateio via `useAcoesFamilia`); na lista a coluna Ações é só o olhinho "Ver". Front 932 testes, lint/build OK, conferido ao vivo (desktop + celular).
 
-**Banco local:** recriado pelo `MeuCenarioSeeder` (gitignored) — conta real do Gustavo; pode resetar à vontade (`DROP DATABASE` + subir a API).
+**Banco local:** recriado pelo `MeuCenarioSeeder` (gitignored) — conta real do Gustavo; pode resetar à vontade (`DROP DATABASE` + subir a API). Vite: edição por `sed` às vezes não dispara o recarregamento — `touch` no arquivo resolve.
 
-**Próxima ação:** PR da transação em página → resto do M1 (transferência/hora + editar sem hora, conta fixa idempotência, write skew, sobras do extrato).
+**Próxima ação:** mergear o PR da `feat/transacao-em-pagina` (quando verde) → resto do M1 até 24/10 (transferência/hora + editar sem hora, conta fixa idempotência, write skew, sobras do extrato).
 
 ---
 
