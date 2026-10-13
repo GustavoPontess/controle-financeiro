@@ -21,9 +21,14 @@
 .dado dt { font-size: var(--pontes-fs-rotulo); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); }
 .dado dd { margin: 0; font-size: var(--pontes-fs-corpo); font-weight: 600; color: var(--pontes-text); overflow-wrap: anywhere; }
 
+/* Ações de família (compartilhar, atribuir, rateio) — moravam no ⋮ da lista. */
+.secaoTitulo { font-size: var(--pontes-fs-rotulo); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); margin-bottom: 12px; }
+.secaoAcoes { display: flex; flex-wrap: wrap; gap: 8px; }
+
 /* Celular: 1 coluna, ações embaixo do título ocupando a largura. */
 @media (max-width: 767px) {
   .dados { grid-template-columns: 1fr; }
   .acoes { width: 100%; }
   .acoes > * { flex: 1; }
+  .secaoAcoes > * { flex: 1 1 100%; }
 }

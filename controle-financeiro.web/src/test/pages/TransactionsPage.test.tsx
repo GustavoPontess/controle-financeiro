@@ -115,11 +115,6 @@ const aplicar = (painel: HTMLElement) => fireEvent.click(within(painel).getByRol
 // Filtros da última busca (3º argumento de listTransactionsPage).
 const ultimoFiltro = () => listTransactionsPage.mock.calls.at(-1)?.[2] as Record<string, unknown>
 
-// Abre o ⋮ da linha i e devolve o menu (ações moram no menu, não soltas na linha).
-async function abrirMenu(i = 0) {
-  fireEvent.click((await screen.findAllByRole("button", { name: "Ações" }))[i])
-  return screen.findByRole("menu")
-}
 
 // Alterna uma coluna no popover "Colunas" (abre se ainda não estiver aberto — o botão é toggle).
 function alternarColuna(nome: string) {
@@ -401,187 +396,22 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     expect(getContas.mock.calls.length).toBeGreaterThan(contasAntes)
   })
 
-  it("excluir (no ⋮) pede confirmação e só então chama o serviço", async () => {
+  // Ações (editar, excluir/estornar, família) moram na tela da transação — testadas em TransactionPage.test.
+  // Aqui a coluna Ações é só o olhinho que abre a transação, igual clicar na linha.
+  it("coluna Ações tem só o olhinho 'Ver' em cada linha, sem menu ⋮ — ele abre a transação", async () => {
     renderPage()
     await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1) // 2ª linha = Mercado
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /excluir/i }))
-    expect(deleteTransaction).not.toHaveBeenCalled()
-
-    // Confirmação mostra o que vai ser excluído.
-    const dialogo = await screen.findByRole("alertdialog", { name: "Excluir transação?" })
-    expect(within(dialogo).getByText(/Mercado · R\$\s?250,00/)).toBeInTheDocument()
-
-    const antes = listTransactionsPage.mock.calls.length
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Excluir" }))
-    await waitFor(() => expect(deleteTransaction).toHaveBeenCalledWith("t2"))
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Transação excluída", severity: "success" }))
-    // Recarrega a lista depois de excluir.
-    await waitFor(() => expect(listTransactionsPage.mock.calls.length).toBeGreaterThan(antes))
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
-  })
-
-  it("cancelar a confirmação não exclui nada", async () => {
-    renderPage()
-    await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /excluir/i }))
-    const dialogo = await screen.findByRole("alertdialog", { name: "Excluir transação?" })
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
-
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
-    expect(deleteTransaction).not.toHaveBeenCalled()
-  })
-
-  it("erro do servidor ao excluir avisa por toast de erro e fecha a confirmação", async () => {
-    deleteTransaction.mockRejectedValue(new Error("500"))
-    renderPage()
-    await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /excluir/i }))
-    const dialogo = await screen.findByRole("alertdialog", { name: "Excluir transação?" })
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Excluir" }))
-
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Erro ao excluir transação", severity: "error" }))
-    )
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
-  })
-
-  it("pagamento de fatura: no ⋮ só 'Estornar pagamento' (sem editar/excluir); confirma e recarrega", async () => {
-    estornarPagamento.mockResolvedValue({ pagamentoId: "t4", faturaId: "f1", valorEstornado: 900, valorPagoFatura: 0, restanteFatura: 900 })
-    renderPage()
-    await screen.findByText("Fatura Nubank")
-
-    const menu = await abrirMenu(3) // 4ª linha = pagamento da fatura
-    expect(within(menu).queryByRole("menuitem", { name: /editar/i })).not.toBeInTheDocument()
-    expect(within(menu).queryByRole("menuitem", { name: /excluir/i })).not.toBeInTheDocument()
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Estornar pagamento" }))
-
-    const dialogo = await screen.findByRole("alertdialog", { name: "Estornar pagamento?" })
-    expect(within(dialogo).getByText(/R\$\s?900,00 voltam pra conta/)).toBeInTheDocument()
-    const antes = listTransactionsPage.mock.calls.length
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
-
-    await waitFor(() => expect(estornarPagamento).toHaveBeenCalledWith("t4", expect.any(String)))
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Pagamento estornado", severity: "success" }))
-    await waitFor(() => expect(listTransactionsPage.mock.calls.length).toBeGreaterThan(antes))
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
-  })
-
-  it("estorno: falha de rede deixa a confirmação aberta e o retry reusa a MESMA chave", async () => {
-    estornarPagamento.mockReset()
-      .mockRejectedValueOnce(new Error("Network Error"))
-      .mockResolvedValueOnce({ pagamentoId: "t4", faturaId: "f1", valorEstornado: 900, valorPagoFatura: 0, restanteFatura: 900 })
-    renderPage()
-    await screen.findByText("Fatura Nubank")
-    fireEvent.click(within(await abrirMenu(3)).getByRole("menuitem", { name: "Estornar pagamento" }))
-    const dialogo = await screen.findByRole("alertdialog", { name: "Estornar pagamento?" })
-
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Erro ao estornar pagamento", severity: "error" })))
-    expect(screen.getByRole("alertdialog", { name: "Estornar pagamento?" })).toBeInTheDocument()
-
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
-    await waitFor(() => expect(estornarPagamento).toHaveBeenCalledTimes(2))
-    expect(estornarPagamento.mock.calls[1][1]).toBe(estornarPagamento.mock.calls[0][1])
-  })
-
-  // Editar/ver não são mais popup: vão pra tela única da transação (o formulário e a data/hora são
-  // testados em TransactionPage.test).
-  it("editar (no ⋮) leva à tela da transação em modo edição", async () => {
-    renderPage()
-    await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: /editar/i }))
-
-    expect(navigate).toHaveBeenCalledWith("/transactions/t2/editar")
-    expect(screen.queryByRole("dialog", { name: "Editar transação" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Ações" })).not.toBeInTheDocument()
+    const olhos = screen.getAllByRole("button", { name: /^Ver / })
+    expect(olhos).toHaveLength(5)
+    fireEvent.click(screen.getByRole("button", { name: "Ver Mercado" }))
+    expect(navigate).toHaveBeenCalledWith("/transactions/t2")
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 
   it("clicar na linha abre a transação (ver)", async () => {
     renderPage()
     fireEvent.click(await screen.findByText("Mercado"))
     expect(navigate).toHaveBeenCalledWith("/transactions/t2")
-  })
-
-  // ── Ações de família/rateio no ⋮ (só despesa real de conta) ──
-
-  it("despesa real de conta mostra as 3 ações de família no ⋮, antes de Editar/Excluir", async () => {
-    renderPage()
-    await screen.findByText("Mercado")
-    const menu = await abrirMenu(1) // Mercado = despesa (tipo 1, não-transferência, não-fatura)
-    const itens = within(menu).getAllByRole("menuitem").map((mi) => mi.textContent)
-    expect(itens).toEqual([
-      "Compartilhar com família",
-      "Atribuir a dependente",
-      "Definir rateio",
-      "Editar",
-      "Excluir",
-    ])
-  })
-
-  it.each([
-    ["receita", 0, ["Editar", "Excluir"]],   // Salário (tipo 2)
-    ["transferência", 2, ["Excluir"]],       // Para Poupança — editar uma perna desemparelharia (#288)
-  ])("linha de %s não oferece as 3 ações de família", async (_rotulo, i, esperado) => {
-    renderPage()
-    await screen.findByText("Salário")
-    const menu = await abrirMenu(i as number)
-    const itens = within(menu).getAllByRole("menuitem").map((mi) => mi.textContent)
-    expect(itens).toEqual(esperado)
-    expect(within(menu).queryByRole("menuitem", { name: "Compartilhar com família" })).not.toBeInTheDocument()
-    expect(within(menu).queryByRole("menuitem", { name: "Atribuir a dependente" })).not.toBeInTheDocument()
-    expect(within(menu).queryByRole("menuitem", { name: "Definir rateio" })).not.toBeInTheDocument()
-  })
-
-  it("Definir rateio (no ⋮) abre o modal e salvar chama o serviço + toast e recarrega", async () => {
-    renderPage()
-    await screen.findByText("Mercado")
-    const antes = listTransactionsPage.mock.calls.length
-
-    const menu = await abrirMenu(1)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Definir rateio" }))
-
-    const modal = await screen.findByRole("dialog", { name: /Rateio de/ })
-    await waitFor(() => expect(getRateioTransacao).toHaveBeenCalledWith("t2"))
-
-    fireEvent.click(within(modal).getByRole("button", { name: "Salvar" }))
-
-    await waitFor(() => expect(definirRateioTransacao).toHaveBeenCalledWith("t2", 1, null))
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Rateio definido", severity: "success" }))
-    await waitFor(() => expect(listTransactionsPage.mock.calls.length).toBeGreaterThan(antes))
-  })
-
-  it("Compartilhar com família (no ⋮) abre o modal e escolher a família chama o serviço + toast", async () => {
-    renderPage()
-    await screen.findByText("Mercado")
-
-    const menu = await abrirMenu(1)
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Compartilhar com família" }))
-
-    const modal = await screen.findByRole("dialog", { name: "Compartilhar com a família" })
-    fireEvent.click(await within(modal).findByRole("button", { name: "Família Silva" }))
-
-    await waitFor(() => expect(compartilharTransacao).toHaveBeenCalledWith("t2", "fam1"))
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Despesa compartilhada com a família", severity: "success" }))
-  })
-})
-
-describe("TransactionsPage — pagamento de fatura só se estorna", () => {
-  // Revisão de segurança do #288: excluir o pagamento devolvia o dinheiro com a fatura seguindo paga; editar
-  // desemparelhava. O servidor recusa e a tela não oferece. O que a linha tem é o ESTORNO (Fase 0), que desfaz
-  // os dois lados juntos: o dinheiro volta pra conta e a fatura volta a dever.
-  it("a linha do pagamento de fatura tem o ⋮ só com 'Estornar pagamento'", async () => {
-    renderPage()
-    await screen.findByText("Fatura Nubank")
-    expect(await screen.findAllByRole("button", { name: "Ações" })).toHaveLength(5)
-    const menu = await abrirMenu(3)
-    expect(within(menu).getAllByRole("menuitem").map((m) => m.textContent)).toEqual(["Estornar pagamento"])
   })
 })

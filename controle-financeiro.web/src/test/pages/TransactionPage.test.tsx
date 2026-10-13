@@ -5,6 +5,7 @@ import { PontesThemeProvider } from "../../components/pontes"
 import TransactionPage from "../../pages/Transactions/TransactionPage"
 import { createTransferencia } from "../../services/transferenciaService"
 import { createTransaction, deleteTransaction, getTransaction, updateTransaction } from "../../services/transactionService"
+import { atribuirDependente, compartilharTransacao, definirRateioTransacao } from "../../services/familiaService"
 import { dataLocalISO } from "../../utils/dateTime"
 import type { Transaction } from "../../types/Transaction"
 
@@ -24,6 +25,15 @@ vi.mock("../../services/cartaoCreditoService", () => ({ getCartoes: vi.fn().mock
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn().mockResolvedValue({}) }))
 vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn().mockResolvedValue({}) }))
 vi.mock("../../services/faturaService", () => ({ estornarPagamento: vi.fn().mockResolvedValue({}) }))
+vi.mock("../../services/familiaService", () => ({
+  getFamilias: vi.fn().mockResolvedValue([{ id: "fam1", nome: "Família Silva" }]),
+  compartilharTransacao: vi.fn().mockResolvedValue(undefined),
+  getDependentes: vi.fn().mockResolvedValue([{ id: "dep1", familiaId: "fam1", nome: "João", apelido: null }]),
+  atribuirDependente: vi.fn().mockResolvedValue(undefined),
+  getRateioTransacao: vi.fn().mockResolvedValue({ modo: 1, familiaId: "fam1", membros: [] }),
+  definirRateioTransacao: vi.fn().mockResolvedValue(undefined),
+  removerRateioTransacao: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock("../../services/transactionService", () => ({
   createTransaction: vi.fn().mockResolvedValue({}),
   updateTransaction: vi.fn().mockResolvedValue(undefined),
@@ -201,6 +211,54 @@ describe("TransactionPage — ver (/transactions/:id)", () => {
     vi.mocked(getTransaction).mockRejectedValue({ response: { status: 404 } })
     renderEm("/transactions/xyz")
     expect(await screen.findByRole("heading", { name: "Transação não encontrada" })).toBeInTheDocument()
+  })
+})
+
+describe("TransactionPage — ações de família (moravam no ⋮ da lista)", () => {
+  it("despesa real de conta tem o bloco Família: Compartilhar, Atribuir e Definir rateio", async () => {
+    renderEm("/transactions/t1")
+    expect(await screen.findByText("Família")).toBeInTheDocument()
+    for (const nome of ["Compartilhar com família", "Atribuir a dependente", "Definir rateio"])
+      expect(screen.getByRole("button", { name: nome })).toBeInTheDocument()
+  })
+
+  it.each([
+    ["receita", { tipo: 2 }],
+    ["transferência", { ehTransferencia: true }],
+    ["pagamento de fatura", { ehPagamentoFatura: true }],
+  ])("%s não tem o bloco Família (não é gasto compartilhável)", async (_rotulo, extra) => {
+    vi.mocked(getTransaction).mockResolvedValue({ ...base, ...extra })
+    renderEm("/transactions/t1")
+    await screen.findByRole("heading", { name: "Mercado" })
+    expect(screen.queryByText("Família")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Compartilhar com família" })).not.toBeInTheDocument()
+  })
+
+  it("Compartilhar com família: escolher a família chama o serviço + toast", async () => {
+    renderEm("/transactions/t1")
+    fireEvent.click(await screen.findByRole("button", { name: "Compartilhar com família" }))
+    const modal = await screen.findByRole("dialog", { name: "Compartilhar com a família" })
+    fireEvent.click(await within(modal).findByRole("button", { name: "Família Silva" }))
+    await waitFor(() => expect(compartilharTransacao).toHaveBeenCalledWith("t1", "fam1"))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Despesa compartilhada com a família", severity: "success" }))
+  })
+
+  it("Atribuir a dependente: escolher o dependente chama o serviço + toast", async () => {
+    renderEm("/transactions/t1")
+    fireEvent.click(await screen.findByRole("button", { name: "Atribuir a dependente" }))
+    const modal = await screen.findByRole("dialog", { name: "Atribuir a um dependente" })
+    fireEvent.click(await within(modal).findByRole("button", { name: "João" }))
+    await waitFor(() => expect(atribuirDependente).toHaveBeenCalledWith("t1", "dep1"))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Despesa atribuída ao dependente", severity: "success" }))
+  })
+
+  it("Definir rateio: abre o modal e salvar chama o serviço + toast", async () => {
+    renderEm("/transactions/t1")
+    fireEvent.click(await screen.findByRole("button", { name: "Definir rateio" }))
+    const modal = await screen.findByRole("dialog", { name: /Rateio de/ })
+    fireEvent.click(within(modal).getByRole("button", { name: "Salvar" }))
+    await waitFor(() => expect(definirRateioTransacao).toHaveBeenCalledWith("t1", 1, null))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Rateio definido", severity: "success" }))
   })
 })
 

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom"
-import { ChevronLeft, Pencil, Trash2, Undo2 } from "lucide-react"
+import { ChevronLeft, Pencil, Split, Trash2, Undo2, User, Users } from "lucide-react"
 import { PontesBadge, PontesButton, PontesCard, PontesDialog } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
 import { combinarDataHora } from "@/utils/dateTime"
 import TransactionForm, { type TransactionFormData } from "./components/TransactionForm/TransactionForm"
 import EstornarPagamentoDialog from "../CreditCards/EstornarPagamentoDialog"
+import { podeCompartilhar, useAcoesFamilia } from "./components/AcoesFamilia/useAcoesFamilia"
 import { useDetalheNoCaminho } from "../../layouts/Default/useDetalheNoCaminho"
 import { createTransaction, deleteTransaction, getTransaction, updateTransaction } from "../../services/transactionService"
 import { createRecorrente } from "../../services/recorrenteService"
@@ -61,6 +62,8 @@ export default function TransactionPage() {
   const [naoEncontrada, setNaoEncontrada] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [estornando, setEstornando] = useState(false)
+  // Compartilhar / atribuir / rateio — moravam no ⋮ da lista; agora só aqui.
+  const familia = useAcoesFamilia(notify)
 
   useDetalheNoCaminho(criando ? "Nova transação" : transacao?.descricao)
 
@@ -286,6 +289,24 @@ export default function TransactionPage() {
           ))}
         </dl>
       </PontesCard>
+
+      {podeCompartilhar(transacao) && (
+        <PontesCard padding={20} radius={16}>
+          <div className={styles.secaoTitulo}>Família</div>
+          <div className={styles.secaoAcoes}>
+            <PontesButton size="sm" variant="outline" iconStart={<Users size={15} strokeWidth={2.5} />} onClick={() => { void familia.compartilhar(transacao) }}>
+              Compartilhar com família
+            </PontesButton>
+            <PontesButton size="sm" variant="outline" iconStart={<User size={15} strokeWidth={2.5} />} onClick={() => { void familia.atribuir(transacao) }}>
+              Atribuir a dependente
+            </PontesButton>
+            <PontesButton size="sm" variant="outline" iconStart={<Split size={15} strokeWidth={2.5} />} onClick={() => { void familia.definirRateio(transacao) }}>
+              Definir rateio
+            </PontesButton>
+          </div>
+        </PontesCard>
+      )}
+      {familia.modais}
 
       <PontesDialog
         open={excluindo}
