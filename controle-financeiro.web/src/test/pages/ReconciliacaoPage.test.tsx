@@ -1198,6 +1198,8 @@ describe("ReconciliacaoPage", () => {
     const DIA_B = DIA_LIVRE + 1
     clicarDia(DIA_B)
     await waitFor(() => expect(getSaldoCalculado).toHaveBeenLastCalledWith("c1", fimDoDia(DIA_B)))
+    // Espera o campo do dia B voltar (some enquanto recalcula): digitar direto falhava no CI, mais lento.
+    await screen.findByPlaceholderText("0,00")
     digitarSaldoReal("10000")
     fireEvent.click(await screen.findByRole("button", { name: SALVAR }))
     await waitFor(() => expect(criarMarco).toHaveBeenCalledTimes(2))
