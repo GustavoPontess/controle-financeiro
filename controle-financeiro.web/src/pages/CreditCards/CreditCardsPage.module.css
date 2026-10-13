@@ -147,6 +147,7 @@
 .txLink:hover, .txLink:focus-visible { text-decoration: underline; }
 
 /* Pagamento na linha do tempo (intercalado com as compras) */
+.payLado { display: inline-flex; align-items: center; gap: 8px; }
 .payValor { display: inline-flex; align-items: center; gap: 4px; font-size: var(--pontes-fs-md); font-weight: 700; color: var(--pontes-success); white-space: nowrap; }
 .txRow[data-pagamento="true"] { background: color-mix(in srgb, var(--pontes-success) 7%, transparent); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .txRow[data-pagamento="true"] .txDesc { display: inline-flex; align-items: center; gap: 5px; color: var(--pontes-success); }

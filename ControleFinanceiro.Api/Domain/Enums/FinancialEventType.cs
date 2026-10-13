@@ -25,6 +25,8 @@ public enum FinancialEventType
     FaturaMarcadaAtrasada = 21,
     FaturaPagaTotal = 22,
     FaturaPagaParcial = 23,
+    /// <summary>Pagamento de fatura desfeito (estorno): o dinheiro volta pra conta e a fatura volta a dever.</summary>
+    FaturaPagamentoEstornado = 24,
 
     // Limite
     LimiteBloqueado = 30,

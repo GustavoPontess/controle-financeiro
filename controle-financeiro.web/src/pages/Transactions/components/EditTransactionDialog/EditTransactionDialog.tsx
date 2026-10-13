@@ -28,7 +28,7 @@ export interface EditableTransaction {
   hora?: string | null
 }
 
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 
 type Props = {
   transaction: EditableTransaction | null

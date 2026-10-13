@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import { TrendingUp, TrendingDown, Pencil, Trash2, ArrowLeftRight, CreditCard, Users, User, Split } from "lucide-react"
+import { TrendingUp, TrendingDown, Pencil, Trash2, ArrowLeftRight, CreditCard, Users, User, Split, Undo2 } from "lucide-react"
 import {
   PontesTabela, PontesCelulaIdentidade, PontesBadge, PontesTablePagination, PontesDialog,
   PontesModal, PontesButton, PontesField, PontesInput, PontesSelect,
@@ -27,6 +27,7 @@ import {
 import type { Transaction } from "@/types/Transaction"
 import type { Conta } from "@/types/Conta"
 import type { Familia, Dependente, ModoRateio, RateioTransacao } from "@/types/Familia"
+import EstornarPagamentoDialog from "../CreditCards/EstornarPagamentoDialog"
 import EditTransactionDialog, { type EditableTransaction } from "./components/EditTransactionDialog/EditTransactionDialog"
 import styles from "./TransactionsPage.module.css"
 
@@ -56,7 +57,7 @@ const MODOS_RATEIO = [
   { value: "2", label: "Proporcional à renda" },
   { value: "3", label: "Personalizado" },
 ]
-type Notification = { open: boolean; message: string; severity: "success" | "error" }
+type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
 type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notification>> }
 
 const paraEditavel = (t: Transaction): EditableTransaction => ({
@@ -90,6 +91,7 @@ export default function TransactionsPage() {
 
   const [editando, setEditando] = useState<Transaction | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
+  const [estornando, setEstornando] = useState<{ id: string; valor: number } | null>(null)
 
   // Ações de família/rateio (só despesa real de conta) — estado dos 3 modais.
   const [sharing, setSharing] = useState<Transaction | null>(null)
@@ -345,7 +347,8 @@ export default function TransactionsPage() {
         : []),
       ...(!t.ehPagamentoFatura
         ? [{ key: "excluir", label: "Excluir", danger: true, icon: <Trash2 size={16} strokeWidth={2.5} />, onClick: () => setExcluindo(t) }]
-        : []),
+        // Pagamento de fatura não se exclui, mas tem volta: o estorno devolve à conta e a fatura volta a dever.
+        : [{ key: "estornar", label: "Estornar pagamento", icon: <Undo2 size={16} strokeWidth={2.5} />, onClick: () => setEstornando({ id: t.id, valor: t.valor }) }]),
     ]
   }
 
@@ -437,6 +440,12 @@ export default function TransactionsPage() {
         confirmLabel="Excluir"
         onConfirm={handleExcluir}
         onCancel={() => setExcluindo(null)}
+      />
+      <EstornarPagamentoDialog
+        pagamento={estornando}
+        onClose={() => setEstornando(null)}
+        onEstornado={recarregar}
+        notify={notify}
       />
 
       {/* Compartilhar com família */}

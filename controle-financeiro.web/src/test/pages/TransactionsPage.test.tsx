@@ -10,7 +10,7 @@ const {
   notify, listTransactionsPage, getTransactionStats, deleteTransaction, getContas, getCategories,
   getSubcategories, getCartoes,
   getFamilias, compartilharTransacao, getDependentes, atribuirDependente,
-  getRateioTransacao, definirRateioTransacao, removerRateioTransacao,
+  getRateioTransacao, definirRateioTransacao, removerRateioTransacao, estornarPagamento,
 } = vi.hoisted(() => ({
   notify: vi.fn(),
   listTransactionsPage: vi.fn(),
@@ -29,6 +29,7 @@ const {
   getRateioTransacao: vi.fn(),
   definirRateioTransacao: vi.fn(),
   removerRateioTransacao: vi.fn(),
+  estornarPagamento: vi.fn(),
 }))
 
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -42,6 +43,7 @@ vi.mock("../../services/transactionService", () => ({
   updateTransaction: vi.fn(),
 }))
 vi.mock("../../services/contaService", () => ({ getContas: (...a: unknown[]) => getContas(...a) }))
+vi.mock("../../services/faturaService", () => ({ estornarPagamento: (...a: unknown[]) => estornarPagamento(...a) }))
 vi.mock("../../services/categoryService", () => ({ getCategories: (...a: unknown[]) => getCategories(...a) }))
 vi.mock("../../services/subcategoryService", () => ({ getSubcategories: (...a: unknown[]) => getSubcategories(...a) }))
 vi.mock("../../services/cartaoCreditoService", () => ({ getCartoes: (...a: unknown[]) => getCartoes(...a) }))
@@ -448,6 +450,46 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
   })
 
+  it("pagamento de fatura: no ⋮ só 'Estornar pagamento' (sem editar/excluir); confirma e recarrega", async () => {
+    estornarPagamento.mockResolvedValue({ pagamentoId: "t4", faturaId: "f1", valorEstornado: 900, valorPagoFatura: 0, restanteFatura: 900 })
+    renderPage()
+    await screen.findByText("Fatura Nubank")
+
+    const menu = await abrirMenu(3) // 4ª linha = pagamento da fatura
+    expect(within(menu).queryByRole("menuitem", { name: /editar/i })).not.toBeInTheDocument()
+    expect(within(menu).queryByRole("menuitem", { name: /excluir/i })).not.toBeInTheDocument()
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Estornar pagamento" }))
+
+    const dialogo = await screen.findByRole("alertdialog", { name: "Estornar pagamento?" })
+    expect(within(dialogo).getByText(/R\$\s?900,00 voltam pra conta/)).toBeInTheDocument()
+    const antes = listTransactionsPage.mock.calls.length
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
+
+    await waitFor(() => expect(estornarPagamento).toHaveBeenCalledWith("t4", expect.any(String)))
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Pagamento estornado", severity: "success" }))
+    await waitFor(() => expect(listTransactionsPage.mock.calls.length).toBeGreaterThan(antes))
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
+  })
+
+  it("estorno: falha de rede deixa a confirmação aberta e o retry reusa a MESMA chave", async () => {
+    estornarPagamento.mockReset()
+      .mockRejectedValueOnce(new Error("Network Error"))
+      .mockResolvedValueOnce({ pagamentoId: "t4", faturaId: "f1", valorEstornado: 900, valorPagoFatura: 0, restanteFatura: 900 })
+    renderPage()
+    await screen.findByText("Fatura Nubank")
+    fireEvent.click(within(await abrirMenu(3)).getByRole("menuitem", { name: "Estornar pagamento" }))
+    const dialogo = await screen.findByRole("alertdialog", { name: "Estornar pagamento?" })
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: "Erro ao estornar pagamento", severity: "error" })))
+    expect(screen.getByRole("alertdialog", { name: "Estornar pagamento?" })).toBeInTheDocument()
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Estornar" }))
+    await waitFor(() => expect(estornarPagamento).toHaveBeenCalledTimes(2))
+    expect(estornarPagamento.mock.calls[1][1]).toBe(estornarPagamento.mock.calls[0][1])
+  })
+
   it("editar (no ⋮) abre o dialog 'Editar transação' com a linha escolhida", async () => {
     renderPage()
     await screen.findByText("Mercado")
@@ -548,12 +590,15 @@ describe("TransactionsPage (extrato de caixa via PontesTabela)", () => {
   })
 })
 
-describe("TransactionsPage — pagamento de fatura sem ações", () => {
+describe("TransactionsPage — pagamento de fatura só se estorna", () => {
   // Revisão de segurança do #288: excluir o pagamento devolvia o dinheiro com a fatura seguindo paga; editar
-  // desemparelhava. O servidor recusa; a tela nem oferece — a linha do pagamento fica sem o ⋮.
-  it("a linha do pagamento de fatura não tem o ⋮ (as outras 4 têm)", async () => {
+  // desemparelhava. O servidor recusa e a tela não oferece. O que a linha tem é o ESTORNO (Fase 0), que desfaz
+  // os dois lados juntos: o dinheiro volta pra conta e a fatura volta a dever.
+  it("a linha do pagamento de fatura tem o ⋮ só com 'Estornar pagamento'", async () => {
     renderPage()
     await screen.findByText("Fatura Nubank")
-    expect(await screen.findAllByRole("button", { name: "Ações" })).toHaveLength(4) // 5 linhas, menos o pagamento
+    expect(await screen.findAllByRole("button", { name: "Ações" })).toHaveLength(5)
+    const menu = await abrirMenu(3)
+    expect(within(menu).getAllByRole("menuitem").map((m) => m.textContent)).toEqual(["Estornar pagamento"])
   })
 })

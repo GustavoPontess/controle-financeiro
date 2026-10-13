@@ -67,3 +67,12 @@ export interface PagarFaturaPayload {
   dataPagamento: string
   meioPagamento: number
 }
+
+/** Como a fatura ficou depois de estornar um pagamento. */
+export interface EstornoPagamentoResultado {
+  pagamentoId: string
+  faturaId: string
+  valorEstornado: number
+  valorPagoFatura: number
+  restanteFatura: number
+}

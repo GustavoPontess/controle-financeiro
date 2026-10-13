@@ -38,7 +38,7 @@ namespace ControleFinanceiro.Api.Services
         {
             if (transacao.EhPagamentoFatura)
                 throw new InvalidOperationException(
-                    "Pagamento de fatura não pode ser editado nem excluído por aqui — ele está ligado ao que a fatura já recebeu.");
+                    "Pagamento de fatura não pode ser editado nem excluído por aqui — ele está ligado ao que a fatura já recebeu. Para desfazer, use Estornar pagamento.");
             if (transacao.EhTransferencia)
                 throw new InvalidOperationException(
                     "Transferência não se edita por aqui — exclua e lance de novo.");
