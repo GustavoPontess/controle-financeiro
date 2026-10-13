@@ -35,6 +35,9 @@ type OutletContextType = { notify: React.Dispatch<React.SetStateAction<Notificat
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
 /** Tamanho do lote da lista de movimentos ("Mostrar mais" busca o próximo lote no servidor). */
 const LOTE_MOVIMENTOS = 20
+// Só EFETIVADO (StatusTransacao 1): é o que forma o "Calculado (app)" (RegrasFinanceiras: Ativo + Executado). Com a
+// previsão na lista, ela aparecia sem mexer no saldo e a lista não explicava a diferença.
+const STATUS_EFETIVADO = 1
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -202,7 +205,7 @@ export default function ReconciliacaoPage() {
     const pedido = ++movPedido.current
     setCarregandoMaisMov(false)
     if (!contaId || !diaSel) { setMovimentos([]); setMovTotal(0); return }
-    listTransactionsPage(1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true })
+    listTransactionsPage(1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true, status: STATUS_EFETIVADO })
       .then((r) => { if (pedido === movPedido.current) { setMovimentos(r.items); setMovTotal(r.total); setMovPagina(1) } })
       .catch(() => { if (pedido === movPedido.current) { setMovimentos([]); setMovTotal(0) } })
   }, [contaId, diaSel, fromMov, versao])
@@ -212,7 +215,7 @@ export default function ReconciliacaoPage() {
     const pedido = movPedido.current
     setCarregandoMaisMov(true)
     try {
-      const r = await listTransactionsPage(movPagina + 1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true })
+      const r = await listTransactionsPage(movPagina + 1, LOTE_MOVIMENTOS, { contaId, from: fromMov, to: proxDia(diaSel), apenasCaixa: true, status: STATUS_EFETIVADO })
       if (pedido !== movPedido.current) return
       // Sem duplicar se algo entrou/saiu entre um lote e outro (a página "anda").
       setMovimentos((atuais) => [...atuais, ...r.items.filter((t) => !atuais.some((a) => a.id === t.id))])
@@ -355,12 +358,7 @@ export default function ReconciliacaoPage() {
     { key: "categoria", header: "Categoria", render: (t) => (t.categoriaId ? (catNome[t.categoriaId] ?? "—") : "—") },
     { key: "pagamento", header: "Pagamento", render: (t) => t.meioPagamentoDescricao ?? "—" },
     { key: "data", header: "Data/Hora", render: (t) => fmtDataHora(t.data, t.hora) },
-    {
-      key: "status", header: "Status",
-      render: (t) => t.statusTransacao === 0
-        ? <PontesBadge tone="warning" size="sm">Previsto</PontesBadge>
-        : <PontesBadge tone="success" size="sm">Efetivado</PontesBadge>,
-    },
+    // Sem coluna Status: a lista só traz efetivado (STATUS_EFETIVADO), então ela diria sempre a mesma coisa.
     {
       key: "valor", header: "Valor", numerica: true,
       render: (t) => {

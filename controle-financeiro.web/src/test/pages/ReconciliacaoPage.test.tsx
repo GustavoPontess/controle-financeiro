@@ -1198,6 +1198,8 @@ describe("ReconciliacaoPage", () => {
     const DIA_B = DIA_LIVRE + 1
     clicarDia(DIA_B)
     await waitFor(() => expect(getSaldoCalculado).toHaveBeenLastCalledWith("c1", fimDoDia(DIA_B)))
+    // Espera o campo do dia B voltar (some enquanto recalcula): digitar direto falhava no CI, mais lento.
+    await screen.findByPlaceholderText("0,00")
     digitarSaldoReal("10000")
     fireEvent.click(await screen.findByRole("button", { name: SALVAR }))
     await waitFor(() => expect(criarMarco).toHaveBeenCalledTimes(2))
@@ -1532,7 +1534,7 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     expect(await tituloMov(`Movimentos desde ${diaMes(DIA_MARCO)} até ${diaMes(HOJE)}`)).toBeInTheDocument()
     const tabela = await screen.findByRole("table")
-    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Status", "Valor"])
+    expect(within(tabela).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Descrição / Conta", "Tipo", "Data/Hora", "Valor"])
 
     const [mercado, salario] = linhasMov()
     const [mDesc, mTipo, mData] = celulas(mercado)
@@ -1555,8 +1557,8 @@ describe("ReconciliacaoPage", () => {
     await renderPage()
     await screen.findByRole("table")
     const [mercado, salario] = linhasMov()
-    const valorMercado = celulas(mercado)[4]
-    const valorSalario = celulas(salario)[4]
+    const valorMercado = celulas(mercado)[3]
+    const valorSalario = celulas(salario)[3]
     expect(valorMercado).toHaveTextContent(/^R\$\s?50,00$/)
     expect(valorSalario).toHaveTextContent(/^R\$\s?1\.000,00$/)
     for (const c of [valorMercado, valorSalario]) {
@@ -1660,7 +1662,7 @@ describe("ReconciliacaoPage", () => {
     listMarcos.mockResolvedValue([marco(DIA_MARCO)])
     await renderPage()
     await waitFor(() => expect(listTransactionsPage).toHaveBeenLastCalledWith(1, 20, {
-      contaId: "c1", from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1), apenasCaixa: true,
+      contaId: "c1", from: isoDia(DIA_MARCO), to: isoDia(HOJE + 1), apenasCaixa: true, status: 1, // só efetivado: é o que forma o saldo do app
     }))
   })
 
