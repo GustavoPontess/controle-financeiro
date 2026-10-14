@@ -1,0 +1,75 @@
+/* Front v2 (bancada) — tokens próprios, fora do DS Pontes de propósito: é outro visual.
+   Claro e escuro via [data-tema] no root do v2. Uma família de fonte (Manrope), paleta neutra + 1 acento;
+   verde/vermelho só onde o número muda de direção; "palco" = bloco escuro de destaque (como o lab E). */
+.v2 {
+  --v2-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --v2-fs-xs: 12px; --v2-fs-sm: 13px; --v2-fs-md: 14px; --v2-fs-base: 15px; --v2-fs-lg: 17px;
+  --v2-fs-xl: 20px; --v2-fs-2xl: 24px; --v2-fs-3xl: 32px; --v2-fs-4xl: 44px; --v2-fs-hero: 56px;
+  --v2-r-sm: 10px; --v2-r-md: 14px; --v2-r-lg: 20px; --v2-r-xl: 28px;
+
+  --v2-bg: #F5F5F3;
+  --v2-superficie: #FFFFFF;
+  --v2-superficie-2: #EEEEEB;
+  --v2-texto: #15161A;
+  --v2-texto-2: #65686F;
+  --v2-texto-3: #9C9FA7;
+  --v2-linha: #E7E7E3;
+  --v2-linha-forte: #D3D3CE;
+  --v2-tinta: #15161A;
+  --v2-sobre-tinta: #FFFFFF;
+  --v2-acento: #2F5BEA;
+  --v2-acento-suave: #EAF0FF;
+  --v2-positivo: #1F8F55;
+  --v2-positivo-suave: #E6F5EC;
+  --v2-negativo: #C9403B;
+  --v2-negativo-suave: #FBEAEA;
+  --v2-alerta: #B7791F;
+  --v2-alerta-suave: #FBF1DC;
+  --v2-palco: linear-gradient(135deg, #15161A 0%, #24262E 100%);
+  --v2-palco-texto: #F4F4F2;
+  --v2-palco-texto-2: rgba(244, 244, 242, 0.64);
+  --v2-palco-linha: rgba(244, 244, 242, 0.14);
+  --v2-palco-vidro: rgba(244, 244, 242, 0.10);
+  --v2-sombra: 0 1px 2px rgba(20, 20, 20, 0.04), 0 10px 28px -14px rgba(20, 20, 20, 0.14);
+  --v2-sombra-palco: 0 20px 48px -24px rgba(20, 20, 20, 0.45);
+  color-scheme: light;
+}
+
+.v2[data-tema="escuro"] {
+  --v2-bg: #0E0F12;
+  --v2-superficie: #15171C;
+  --v2-superficie-2: #1C1F25;
+  --v2-texto: #F1F1EE;
+  --v2-texto-2: #9FA3AC;
+  --v2-texto-3: #6C707A;
+  --v2-linha: #23262D;
+  --v2-linha-forte: #2F333B;
+  --v2-tinta: #F1F1EE;
+  --v2-sobre-tinta: #0E0F12;
+  --v2-acento: #7B9BFF;
+  --v2-acento-suave: #1B2440;
+  --v2-positivo: #3DBD7C;
+  --v2-positivo-suave: #10291D;
+  --v2-negativo: #F0665F;
+  --v2-negativo-suave: #33181A;
+  --v2-alerta: #E0A94A;
+  --v2-alerta-suave: #2E2412;
+  --v2-palco: linear-gradient(135deg, #1B1D23 0%, #262932 100%);
+  --v2-palco-texto: #F4F4F2;
+  --v2-palco-texto-2: rgba(244, 244, 242, 0.62);
+  --v2-palco-linha: rgba(244, 244, 242, 0.12);
+  --v2-palco-vidro: rgba(244, 244, 242, 0.08);
+  --v2-sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+  --v2-sombra-palco: 0 20px 48px -24px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+.v2 * { box-sizing: border-box; }
+.v2 button, .v2 input { font-family: inherit; }
+.v2 a { color: inherit; }
+
+/* Tom do dinheiro (só onde a direção importa) + versões claras pra usar SOBRE o palco escuro. */
+.v2 { --v2-palco-positivo: #7ED9A5; --v2-palco-negativo: #F39C96; }
+.v2 [data-tom="positivo"] { color: var(--v2-positivo); }
+.v2 [data-tom="negativo"] { color: var(--v2-negativo); }
+.v2 [data-tom="neutro"] { color: var(--v2-texto-3); }
