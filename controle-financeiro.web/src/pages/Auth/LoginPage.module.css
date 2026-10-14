@@ -9,35 +9,35 @@
 .brandLogo { display: flex; align-items: center; }
 .brandMid { display: flex; flex-direction: column; gap: 18px; max-width: 460px; }
 .headline { margin: 0; font-size: var(--pontes-fs-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
-.headlineDim { color: rgba(255, 255, 255, 0.72); font-weight: 500; }
-.lead { margin: 0; font-size: var(--pontes-fs-lg); color: rgba(255, 255, 255, 0.8); }
-.features { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: var(--pontes-fs-base); }
+.headlineDim { color: rgba(255, 255, 255, 0.64); font-weight: 500; }
+.lead { margin: 0; font-size: var(--pontes-fs-base); color: rgba(255, 255, 255, 0.64); }
+.features { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: var(--pontes-fs-md); }
 .features li { display: flex; align-items: center; gap: 10px; }
 .featureCheck { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); flex-shrink: 0; }
-.brandFoot { font-size: var(--pontes-fs-sm); color: rgba(255, 255, 255, 0.7); }
+.brandFoot { font-size: var(--pontes-fs-xs); color: rgba(255, 255, 255, 0.64); }
 
 /* ── Painel do formulário ─────────────────────────────────────────────────── */
 .painel { display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
 .miolo { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
-.voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text-muted); text-decoration: none; cursor: pointer; }
+.voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); text-decoration: none; cursor: pointer; }
 .voltar:hover { color: var(--pontes-text); }
-.chip { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; max-width: 100%; padding: 6px 12px 6px 6px; border: 1px solid var(--pontes-border); border-radius: 999px; background: var(--pontes-surface); font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; transition: border-color 0.12s; }
+.chip { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; max-width: 100%; padding: 6px 12px 6px 6px; border: 1px solid var(--pontes-border); border-radius: 999px; background: var(--pontes-surface); font: inherit; font-size: var(--pontes-fs-sm); color: var(--pontes-text); cursor: pointer; transition: border-color 0.12s; }
 .chip:hover { border-color: var(--pontes-primary); }
 .chipNome { font-weight: 600; white-space: nowrap; }
 .chipEmail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pontes-text-muted); }
 .chipCaret { color: var(--pontes-text-muted); flex-shrink: 0; }
 .logoMobile { display: none; }
-.title { margin: 14px 0 0; font-size: var(--pontes-fs-4xl); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--pontes-text); }
-.sub { margin: -6px 0 6px; font-size: var(--pontes-fs-base); color: var(--pontes-text-muted); }
-.link { font-weight: 600; color: var(--pontes-primary); text-decoration: none; }
+.title { margin: 14px 0 0; font-size: var(--pontes-fs-5xl); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--pontes-text); }
+.sub { margin: -6px 0 6px; font-size: var(--pontes-fs-md); color: var(--pontes-text-muted); }
+.link { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-primary); text-decoration: none; }
 .link:hover { text-decoration: underline; }
-.linkBtn { padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-primary); cursor: pointer; }
+.linkBtn { padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-primary); cursor: pointer; }
 .linkBtn:hover { text-decoration: underline; }
 .form { display: flex; flex-direction: column; gap: 16px; }
 .eyeBtn { display: flex; align-items: center; padding: 0; border: 0; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
 .eyeBtn:hover { color: var(--pontes-text); }
 .opcoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.footer { margin: 10px 0 0; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.footer { margin: 10px 0 0; font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); }
 .footer a { color: var(--pontes-text); font-weight: 600; text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
 
@@ -49,8 +49,8 @@
 .escolher:hover .seta { opacity: 1; transform: none; }
 .outra { border-style: dashed; background: transparent; color: var(--pontes-text-muted); }
 .escolherTexto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.nome { font-size: var(--pontes-fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mascarado { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.nome { font-size: var(--pontes-fs-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mascarado { font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); }
 .seta { color: var(--pontes-text-muted); opacity: 0; transform: translateX(-4px); transition: opacity 0.12s, transform 0.12s; }
 .avatarNeutro { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--pontes-bg); color: var(--pontes-text-muted); flex-shrink: 0; }
 .remover { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
