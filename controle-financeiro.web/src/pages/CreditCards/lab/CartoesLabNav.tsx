@@ -1,4 +1,4 @@
-// Passador da bancada de Cartões: ◀ ▶ entre a tela atual e as variantes (atual → a → … → f → atual),
+// Passador da bancada de Cartões: ◀ ▶ entre a tela atual e as variantes (atual → a → … → e → atual),
 // na MESMA aba (Cartões ou Parcelamentos) — o módulo é um só.
 // Bancada = rotas sem item no menu (/credit-cards/lab-*); sai quando escolher a vencedora.
 import { useLocation, useNavigate } from "react-router-dom"
@@ -13,7 +13,6 @@ const PAGINAS = [
   { id: "c", rotulo: "C · App do banco", rota: "/credit-cards/lab-c" },
   { id: "d", rotulo: "D · Bento", rota: "/credit-cards/lab-d" },
   { id: "e", rotulo: "E · Imersivo", rota: "/credit-cards/lab-e" },
-  { id: "f", rotulo: "F · Editorial", rota: "/credit-cards/lab-f" },
 ] as const
 export type PaginaLab = (typeof PAGINAS)[number]["id"]
 

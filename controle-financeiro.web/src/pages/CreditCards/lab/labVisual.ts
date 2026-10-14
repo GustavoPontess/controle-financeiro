@@ -1,5 +1,4 @@
-// Bancada de layout de Cartões — contas e cores dos labs D/E/F (referências do Behance: bento, imersivo,
-// editorial). Só derivação de dado; nada de regra de dinheiro nova (valores vêm das faturas da API).
+// Bancada de layout de Cartões — contas e cores dos labs D/E (referências do Behance: bento, imersivo). Só derivação de dado; nada de regra de dinheiro nova (valores vêm das faturas da API).
 import type { Fatura } from "../../../types/Fatura"
 import { darken } from "../cartoesFormato"
 import { mesCurto } from "./faturaLinhas"
