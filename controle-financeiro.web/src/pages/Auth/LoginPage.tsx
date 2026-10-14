@@ -287,7 +287,7 @@ export default function LoginPage() {
             )
           ) : (
             <Link to="/" className={styles.voltar}>
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar à página inicial
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Página inicial
             </Link>
           )}
 

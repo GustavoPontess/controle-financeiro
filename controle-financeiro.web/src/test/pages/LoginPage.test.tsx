@@ -222,7 +222,7 @@ describe('LoginPage', () => {
 
   it('exibe botão voltar à página inicial', () => {
     renderLogin()
-    const backBtn = screen.getByRole('link', { name: /voltar à página inicial/i })
+    const backBtn = screen.getByRole('link', { name: /página inicial/i })
     expect(backBtn).toBeInTheDocument()
     expect(backBtn).toHaveAttribute('href', '/')
   })
