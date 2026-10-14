@@ -23,7 +23,7 @@ import InstallPrompt from "../../components/Pwa/InstallPrompt"
 
 import { getCategories } from "../../services/categoryService"
 
-const DRAWER_WIDTH = 208
+const DRAWER_WIDTH = 224
 const RAIL_WIDTH = 64
 // No celular a barra lateral vira gaveta por cima do conteúdo (antes ficava fixa em 208px e sobravam ~150px).
 const GAVETA_CELULAR = 264
@@ -152,10 +152,8 @@ export default function DefaultLayout() {
         <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
       )}
 
-      {/* Conteúdo flutuante — card arredondado por cima do canvas */}
+      {/* Conteúdo: topo + página, no mesmo fundo da barra lateral */}
       <div className={styles.card}>
-        {/* Faixa accent — detalhe de marca no topo do card (discreta) */}
-        <div className={styles.accentStrip} />
         <Navbar
           toggleDrawer={() => (celular ? setGavetaAbertaEm(location.pathname) : setOpen((o) => !o))}
           sidebarOpen={celular ? gavetaAberta : open}

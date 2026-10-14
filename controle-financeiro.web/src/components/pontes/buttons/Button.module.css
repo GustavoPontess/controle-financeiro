@@ -11,7 +11,7 @@
     transform .15s ease, box-shadow .2s ease, filter .15s ease;
 }
 .btn[data-fullwidth="true"] { width: 100%; }
-.btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(0,0,0,.25); }
+.btn:not(:disabled):hover { filter: brightness(.96); }
 .btn:not(:disabled):active { transform: translateY(0); filter: brightness(.92); box-shadow: 0 2px 6px -2px rgba(0,0,0,.18); }
 .btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .btn:disabled { cursor: not-allowed; opacity: .6; }
@@ -23,9 +23,9 @@
 .btn[data-size="lg"] { padding: 14px 26px; border-radius: 12px; font-size: var(--pontes-fs-base); }
 .btn[data-size="xl"] { padding: 18px 32px; border-radius: 14px; font-size: var(--pontes-fs-xl); }
 
-.btn[data-variant="primary"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); box-shadow: 0 4px 14px color-mix(in srgb, var(--pontes-primary) 27%, transparent); }
+.btn[data-variant="primary"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); }
 .btn[data-variant="primary"]:not(:disabled):hover { background: color-mix(in srgb, var(--pontes-primary) 90%, #000); }
-.btn[data-variant="accent"] { background: var(--pontes-accent); color: #0B1220; box-shadow: 0 4px 14px color-mix(in srgb, var(--pontes-accent) 27%, transparent); }
+.btn[data-variant="accent"] { background: var(--pontes-accent); color: #0B1220; }
 .btn[data-variant="accent"]:not(:disabled):hover { background: color-mix(in srgb, var(--pontes-accent) 94%, #000); }
 .btn[data-variant="outline"] { background: transparent; color: var(--pontes-primary); border: 1.5px solid var(--pontes-primary); }
 .btn[data-variant="outline"]:not(:disabled):hover { background: var(--pontes-primary-soft); }
@@ -64,7 +64,7 @@
   transition: background-color .15s ease, color .15s ease, border-color .15s ease,
     transform .15s ease, box-shadow .2s ease, filter .15s ease;
 }
-.iconBtn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(0,0,0,.25); }
+.iconBtn:not(:disabled):hover { filter: brightness(.96); }
 .iconBtn:not(:disabled):active { transform: translateY(0); filter: brightness(.92); }
 .iconBtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .iconBtn[data-size="24"] { width: 24px; height: 24px; border-radius: 6px; font-size: 11px; }

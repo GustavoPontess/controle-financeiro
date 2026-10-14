@@ -124,13 +124,11 @@ export default function Navbar({
       </div>
 
       <div className={styles.right}>
-        {/* Abaixo de 1024px (tablet/celular) a busca fica só com a lupa — via CSS (Navbar.module.css). */}
+        {/* Busca de telas: só a lupa (o atalho Ctrl K continua valendo). */}
         {openCommandPalette && (
-          <button onClick={openCommandPalette} className={styles.search} aria-label="Buscar">
-            <Search size={16} strokeWidth={2} />
-            <span className={styles.searchText}>Buscar telas…</span>
-            <kbd className={styles.kbd}>Ctrl K</kbd>
-          </button>
+          <PontesIconButton variant="ghost" size={40} onClick={openCommandPalette} aria-label="Buscar" title="Buscar telas (Ctrl K)">
+            <Search size={18} strokeWidth={2} />
+          </PontesIconButton>
         )}
 
         {showFinance && (

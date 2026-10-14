@@ -1,8 +1,9 @@
 /* Sidebar.module.css — nav lateral do shell. Cor via var(--pontes-*). */
-.aside { flex-shrink: 0; height: 100%; display: flex; flex-direction: column; font-family: var(--pontes-font); transition: width 220ms cubic-bezier(.4, 0, .2, 1); background: transparent; }
-/* Altura = header (60px) → logo alinha verticalmente com o header. */
-.logoWrap { height: 60px; position: relative; flex-shrink: 0; }
-.logoFull { position: absolute; left: 22px; top: 0; bottom: 0; display: flex; align-items: center; opacity: 1; transition: opacity 160ms ease; }
+/* Plana: mesmo fundo do conteúdo, separada só por um fio. */
+.aside { flex-shrink: 0; height: 100%; display: flex; flex-direction: column; font-family: var(--pontes-font); transition: width 220ms cubic-bezier(.4, 0, .2, 1); background: var(--pontes-bg); border-right: 1px solid var(--pontes-border); }
+/* Altura = topo (64px) → logo alinha verticalmente com o título. */
+.logoWrap { height: 64px; position: relative; flex-shrink: 0; }
+.logoFull { position: absolute; left: 22px; /* = nav 8 + item 14: a palavra começa no x do ícone */ top: 0; bottom: 0; display: flex; align-items: center; opacity: 1; transition: opacity 160ms ease; }
 .aside[data-open="false"] .logoFull { opacity: 0; pointer-events: none; }
 /* Marca "P" centrada na FAIXA do rail (64px fixo), não na aside inteira — assim não
    desliza pra direita quando a aside expande; fica no eixo dos ícones do nav. */
@@ -16,7 +17,7 @@
 .userTrigger:hover { background: var(--pontes-bg); }
 /* Colapsado: avatar NÃO se move — mesmo padding-left e tamanho; só some o texto. */
 .aside[data-open="false"] .userTrigger { gap: 0; }
-.avatar { width: 27px; height: 27px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--pontes-fs-xs); flex-shrink: 0; box-shadow: 0 0 0 2px var(--pontes-surface), 0 0 0 4px var(--pontes-primary-soft); }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--pontes-fs-xs); flex-shrink: 0; }
 .userInfo { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; opacity: 1; max-width: 200px; overflow: hidden; transition: opacity 160ms ease, max-width 220ms ease; }
 .aside[data-open="false"] .userInfo { opacity: 0; max-width: 0; }
 /* Uma linha só: "Nome · Free" (referência: chip de usuário do Claude). */

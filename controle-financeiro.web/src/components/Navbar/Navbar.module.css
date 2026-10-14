@@ -1,35 +1,19 @@
-/* Navbar.module.css — topbar do shell. Cor via var(--pontes-*). */
-.header {
-  height: 60px; flex-shrink: 0; display: flex; align-items: center;
-  background: var(--pontes-surface); border-bottom: 1px solid var(--pontes-border);
-  font-family: var(--pontes-font); position: sticky; top: 0; z-index: 1000;
-}
-/* Mesmo cap + padding do conteúdo (.page/.main) → título e ações alinham com a tela em qualquer largura. */
-.inner { width: 100%; max-width: 1800px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+/* Navbar.module.css — topo do shell. Cor via var(--pontes-*). Mesmo fundo da página, sem borda. */
+.header { height: 64px; flex-shrink: 0; display: flex; align-items: center; background: var(--pontes-bg); font-family: var(--pontes-font); position: relative; z-index: 1000; }
+/* Mesmo padding do conteúdo (.main) → título e ações alinham com a tela. */
+.inner { width: 100%; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .titleBox { min-width: 0; }
-.crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: var(--pontes-fs-sm); font-weight: 500; color: var(--pontes-text-muted); line-height: 1.1; margin-bottom: 1px; }
+.crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); line-height: 1.1; margin-bottom: 2px; }
 .crumbHome { cursor: pointer; }
 .crumbHome:hover { color: var(--pontes-primary); }
 .crumbSep { opacity: .5; }
 .crumbCur { color: var(--pontes-text); }
-.title { font-size: var(--pontes-fs-titulo-pagina); font-weight: 600; letter-spacing: -.02em; color: var(--pontes-text); margin: 0; line-height: 1.15; font-family: var(--pontes-font-marca); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.right { display: flex; align-items: center; gap: 8px; }
-.search {
-  display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 11px;
-  border: 1px solid var(--pontes-border); border-radius: 9px; cursor: pointer;
-  background: var(--pontes-bg); color: var(--pontes-text-muted); font-family: var(--pontes-font);
-  font-size: var(--pontes-fs-sm); min-width: 170px; transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-}
-.search:hover { background: var(--pontes-primary-soft); border-color: var(--pontes-primary); color: var(--pontes-primary); }
-.searchText { flex: 1; text-align: left; }
-.kbd { font-size: var(--pontes-fs-xs); font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text-muted); }
+.title { font-size: var(--pontes-fs-titulo-pagina); font-weight: 600; letter-spacing: -.015em; color: var(--pontes-text); margin: 0; line-height: 1.15; font-family: var(--pontes-font-marca); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.right { display: flex; align-items: center; gap: 6px; }
 
-/* Tablet e celular (< 1024px): busca só com a lupa e "Nova transação" só com o "+" — o texto não cabe ao
-   lado do título com a barra lateral aberta (o título virava "Tran…"). */
+/* Tablet e celular (< 1024px): "Nova transação" só com o "+" — o texto não cabe ao lado do título. */
 @media (max-width: 1023px) {
-  .search { min-width: 0; width: 40px; height: 40px; padding: 0; justify-content: center; border-color: transparent; background: transparent; }
-  .searchText, .kbd { display: none; }
   .nova { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
   .novaTexto { display: none; }
 }
