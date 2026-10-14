@@ -6,8 +6,9 @@
   text-align: left;
 }
 .control:disabled { cursor: not-allowed; opacity: .6; }
-.label { font-size: var(--pontes-fs-base); color: var(--pontes-text); }
-.labelMuted { font-size: var(--pontes-fs-base); color: var(--pontes-text-muted); }
+/* Rótulo de toggle/checkbox/radio: 13/500 (como no v2) — texto de apoio, não de leitura. */
+.label { font-size: var(--pontes-fs-sm); font-weight: 500; color: var(--pontes-text); }
+.labelMuted { font-size: var(--pontes-fs-sm); font-weight: 500; color: var(--pontes-text-muted); }
 .control[data-checked="true"] .labelMuted { color: var(--pontes-text); }
 
 /* toggle */

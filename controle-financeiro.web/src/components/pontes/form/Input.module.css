@@ -1,7 +1,7 @@
 /* Input.module.css — campos de texto. Cor via var(--pontes-*). Foco via :focus. */
 .input {
   width: 100%; border: 1px solid var(--pontes-border); border-radius: 10px;
-  padding: 12px 14px; font-size: var(--pontes-fs-controle); font-family: var(--pontes-font);
+  padding: 12px 14px; font-size: var(--pontes-fs-controle); font-weight: 500; font-family: var(--pontes-font);
   background: var(--pontes-surface); color: var(--pontes-text);
   outline: none; box-sizing: border-box;
   transition: border-color .15s ease, box-shadow .15s ease;

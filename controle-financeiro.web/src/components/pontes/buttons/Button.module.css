@@ -18,8 +18,9 @@
 
 .btn[data-size="xs"] { padding: 4px 10px; border-radius: 6px; font-size: var(--pontes-fs-xs); }
 .btn[data-size="sm"] { padding: 6px 12px; border-radius: 8px; font-size: var(--pontes-fs-sm); }
-.btn[data-size="md"] { padding: 10px 18px; border-radius: 10px; font-size: var(--pontes-fs-base); }
-.btn[data-size="lg"] { padding: 14px 26px; border-radius: 12px; font-size: var(--pontes-fs-lg); }
+/* md/lg um degrau abaixo do nome (14/15): botão em 17px gritava depois do corpo +1px (v2: 13–15). */
+.btn[data-size="md"] { padding: 10px 18px; border-radius: 10px; font-size: var(--pontes-fs-md); }
+.btn[data-size="lg"] { padding: 14px 26px; border-radius: 12px; font-size: var(--pontes-fs-base); }
 .btn[data-size="xl"] { padding: 18px 32px; border-radius: 14px; font-size: var(--pontes-fs-xl); }
 
 .btn[data-variant="primary"] { background: var(--pontes-primary); color: var(--pontes-hero-fg); box-shadow: 0 4px 14px color-mix(in srgb, var(--pontes-primary) 27%, transparent); }
@@ -134,8 +135,10 @@
   cursor: pointer; font-family: var(--pontes-font); text-underline-offset: 3px;
   transition: color .15s ease, opacity .15s ease;
 }
-.link:hover { color: color-mix(in srgb, var(--pontes-primary) 85%, #000); text-decoration-thickness: 2px; }
-
+.link:hover { color: color-mix(in srgb, var(--pontes-primary) 85%, #000); text-decoration-thickness: 2px; }
+
+
+
 /* Celular: alvo de toque de pelo menos 36px (sm/xs tinham 28 e 24; o dedo erra). Desktop segue denso. */
 @media (max-width: 767px) {
   .btn[data-size="xs"], .btn[data-size="sm"] { min-height: 36px; }

@@ -1,6 +1,7 @@
 /* Field.module.css — wrapper label + control + erro. Cor via var(--pontes-*). */
 .field { display: flex; flex-direction: column; gap: 6px; font-family: var(--pontes-font); position: relative; }
-.label { font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); }
+/* Rótulo: 13/600 em cinza (como no v2) — o campo é o que chama atenção, não o rótulo. */
+.label { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
 .field[data-error="true"] .label { color: var(--pontes-danger); }
 .req { color: var(--pontes-danger); margin-left: 4px; }
 /* Helper persistente entra no fluxo (reserva espaço, não invade o gap do próximo campo). */
