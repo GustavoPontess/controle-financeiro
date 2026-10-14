@@ -31,6 +31,8 @@ export type PontesPopoverProps = {
   p?: Palette
   font?: string
   trigger: ReactNode
+  /** Conteúdo fixo no topo do menu (ex.: nome + e-mail da conta), separado dos itens por um fio. */
+  header?: ReactNode
   items: PontesPopoverItem[]
   minWidth?: number
   align?: "left" | "right"
@@ -50,7 +52,7 @@ function focarDentro(el: HTMLElement | null) {
 }
 
 export function PontesPopover({
-  p, font, trigger, items, minWidth = 200, align = "left", direction = "down", fullWidth = false, closeOnMouseLeave = false, onOpenChange,
+  p, font, trigger, header, items, minWidth = 200, align = "left", direction = "down", fullWidth = false, closeOnMouseLeave = false, onOpenChange,
 }: PontesPopoverProps) {
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number; width?: number } | null>(null)
@@ -174,6 +176,12 @@ export function PontesPopover({
             transform, width: coords.width, minWidth: fullWidth ? undefined : minWidth,
           }}
         >
+          {header && (
+            <>
+              <div className={styles.header} role="none">{header}</div>
+              <div className={styles.divider} role="separator" />
+            </>
+          )}
           {items.map((it) => (
             <div key={it.key} role="none">
               {it.divider && <div className={styles.divider} role="separator" />}

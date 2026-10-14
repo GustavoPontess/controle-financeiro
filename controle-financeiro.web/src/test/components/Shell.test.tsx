@@ -39,11 +39,11 @@ describe("Shell interno (#118)", () => {
     }
   })
 
-  it("Sidebar mostra o card de usuário compacto (só o 1º nome + plano Free)", () => {
+  it("Sidebar mostra o card de usuário compacto (só o 1º nome + plano embaixo)", () => {
     withProviders(<Sidebar open drawerWidth={208} railWidth={64} />)
     expect(screen.getByText("Gabriel")).toBeInTheDocument()
     expect(screen.queryByText("Gabriel Dev")).not.toBeInTheDocument()
-    expect(screen.getByText("Free")).toBeInTheDocument()
+    expect(screen.getByText("Plano gratuito")).toBeInTheDocument()
   })
 
   it("Sidebar não lista mais Transferências nem Demo Transações (o extrato em Transações cobre)", () => {

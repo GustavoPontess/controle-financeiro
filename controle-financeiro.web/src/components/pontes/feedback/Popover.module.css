@@ -6,10 +6,11 @@
 /* Posição vem inline (portal em document.body, position: fixed) — ver Popover.tsx. */
 .menu {
   background: var(--pontes-surface); border: 1px solid var(--pontes-border);
-  border-radius: 12px; box-shadow: var(--pontes-shadow-lg); padding: 6px;
+  border-radius: 14px; box-shadow: var(--pontes-shadow-lg); padding: 6px;
   font-family: var(--pontes-font); z-index: 1000; box-sizing: border-box;
 }
 .divider { height: 1px; background: var(--pontes-border); margin: 4px 0; }
+.header { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 6px; min-width: 0; }
 .item {
   width: 100%; text-align: left; background: transparent; border: none;
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: var(--pontes-fs-base);

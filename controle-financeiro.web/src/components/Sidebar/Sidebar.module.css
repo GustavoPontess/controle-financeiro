@@ -18,17 +18,20 @@
 .group { margin-bottom: 4px; }
 .rodape { padding: 8px 8px 4px; flex-shrink: 0; }
 .userWrap { padding: 6px 10px 10px; flex-shrink: 0; border-top: 1px solid var(--pontes-border); }
-/* padding-left 8 + userWrap(10) = avatar(27) centrado no rail de 64. Constante → não anda. */
-.userTrigger { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 10px; cursor: pointer; justify-content: flex-start; transition: gap 200ms ease, background-color .15s ease; }
-.userTrigger:hover { background: var(--pontes-bg); }
+/* Linha do usuário (como no v2): avatar 32, nome em cima e o plano embaixo, seta à direita.
+   userWrap 10 + padding 6 = avatar em x 16..48 → centro 32, o eixo dos ícones. Constante → não anda. */
+.userTrigger { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px; border-radius: 10px; cursor: pointer; justify-content: flex-start; transition: gap 200ms ease, background-color .15s ease; }
+.userTrigger:hover { background: var(--pontes-primary-soft); }
 /* Colapsado: avatar NÃO se move — mesmo padding-left e tamanho; só some o texto. */
 .aside[data-open="false"] .userTrigger { gap: 0; }
-.avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--pontes-fs-xs); flex-shrink: 0; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--pontes-fs-xs); flex-shrink: 0; }
 .userInfo { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; opacity: 1; max-width: 200px; overflow: hidden; transition: opacity 160ms ease, max-width 220ms ease; }
 .aside[data-open="false"] .userInfo { opacity: 0; max-width: 0; }
-/* Uma linha só: "Nome · Free" (referência: chip de usuário do Claude). */
-.userText { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 5px; overflow: hidden; }
+.userText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow: hidden; line-height: 1.25; }
 .userName { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.userPlan { flex-shrink: 0; font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; }
-.userPlan::before { content: "· "; }
+.userPlan { font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.userCaret { flex-shrink: 0; color: var(--pontes-text-muted); }
+/* Cabeçalho do menu do avatar: nome completo + e-mail. */
+.menuNome { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menuEmail { font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .miniAvatar { width: 18px; height: 18px; border-radius: 50%; background: var(--pontes-primary); color: var(--pontes-hero-fg); font-size: var(--pontes-fs-2xs); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }

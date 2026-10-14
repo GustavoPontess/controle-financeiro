@@ -167,15 +167,21 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
         <div className={styles.userWrap}>
           <PontesPopover
             align="left" minWidth={230} direction="up" fullWidth={open} closeOnMouseLeave
+            header={
+              <>
+                <span className={styles.menuNome}>{currentUser.nome}</span>
+                <span className={styles.menuEmail}>{currentUser.email}</span>
+              </>
+            }
             trigger={
               <div className={styles.userTrigger}>
                 <span className={styles.avatar}>{initials}</span>
                 <span className={styles.userInfo}>
                   <span className={styles.userText}>
                     <span className={styles.userName}>{currentUser.nome.trim().split(/\s+/)[0]}</span>
-                    <span className={styles.userPlan}>Free</span>
+                    <span className={styles.userPlan}>Plano gratuito</span>
                   </span>
-                  <ChevronDown size={14} strokeWidth={2} color="var(--pontes-text-muted)" style={{ flexShrink: 0 }} />
+                  <ChevronDown size={14} strokeWidth={2} className={styles.userCaret} />
                 </span>
               </div>
             }
