@@ -9,9 +9,18 @@
 .numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
 .numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
 
-/* Filtros */
-.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 24px 8px; }
-.busca { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 200px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-3); }
+/* Barra da lista: título + (busca, Filtros) */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 24px 10px; }
+.tituloLista { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-texto-2); letter-spacing: 0.01em; }
+.controles { display: flex; align-items: center; gap: 8px; flex: 1 1 320px; justify-content: flex-end; }
+.botaoFiltros { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.botaoFiltros:hover { color: var(--v2-texto); }
+.botaoFiltros[data-ativo="true"] { color: var(--v2-texto); background: var(--v2-superficie-2); border-color: var(--v2-superficie-2); }
+.contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
+
+/* Painel de filtros avançados (abre pelo botão) */
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 24px 12px; }
+.busca { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 260px; min-width: 180px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-3); }
 .busca:focus-within { border-color: var(--v2-texto); }
 .busca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
 .busca input::placeholder { color: var(--v2-texto-3); }
@@ -59,8 +68,10 @@
   .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
   .numeroValor { font-size: var(--v2-fs-lg); }
-  .filtros { padding: 12px 16px 8px; }
-  .busca { flex-basis: 100%; }
+  .toolbar { padding: 14px 16px 8px; }
+  .controles { flex-basis: 100%; }
+  .busca { flex: 1 1 auto; min-width: 0; }
+  .filtros { padding: 2px 16px 10px; }
   .segmentos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .segmentos::-webkit-scrollbar { display: none; }
   .lista { padding: 4px 4px 8px; }

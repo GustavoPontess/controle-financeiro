@@ -3,7 +3,7 @@
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeftRight, ChevronLeft, ChevronRight, CreditCard, Search, X } from "lucide-react"
+import { ArrowLeftRight, ChevronLeft, ChevronRight, CreditCard, Search, SlidersHorizontal, X } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -57,6 +57,7 @@ export default function Transacoes() {
   const [status, setStatus] = useState("") // "" qualquer | "1" efetivado | "0" previsto
   const [de, setDe] = useState("")
   const [ate, setAte] = useState("")
+  const [painel, setPainel] = useState(false) // filtros avançados abertos?
 
   useEffect(() => { setPagina(1) }, [buscaAplicada, natureza, contaId, status, de, ate])
 
@@ -87,8 +88,10 @@ export default function Transacoes() {
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
-  const temFiltro = !!(busca || natureza || contaId || status || de || ate)
-  const limpar = () => { setBusca(""); setNatureza(""); setContaId(""); setStatus(""); setDe(""); setAte("") }
+  // Quantos filtros avançados estão ativos (a busca fica fora: ela tem o próprio campo).
+  const ativos = [natureza, contaId, status, de || ate].filter(Boolean).length
+  const temFiltro = !!busca || ativos > 0
+  const limpar = () => { setNatureza(""); setContaId(""); setStatus(""); setDe(""); setAte("") }
 
   return (
     <div className={styles.pagina}>
@@ -111,12 +114,23 @@ export default function Transacoes() {
       </Bloco>
 
       <Bloco semRespiro>
-        {/* Filtros: busca + tipo em segmentos na 1ª linha; conta, status e período na 2ª. */}
+        {/* Barra: título à esquerda; busca + "Filtros" à direita. Os filtros avançados abrem num painel. */}
+        <div className={styles.toolbar}>
+          <h2 className={styles.tituloLista}>Todas as transações</h2>
+          <div className={styles.controles}>
+            <label className={styles.busca}>
+              <Search size={16} strokeWidth={2.25} aria-hidden="true" />
+              <input type="search" placeholder="Buscar lançamento" aria-label="Buscar lançamento" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            </label>
+            <button type="button" className={styles.botaoFiltros} data-ativo={painel || ativos > 0 ? "true" : undefined}
+              aria-expanded={painel} onClick={() => setPainel((v) => !v)}>
+              <SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" /> Filtros
+              {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
+            </button>
+          </div>
+        </div>
+        {painel && (
         <div className={styles.filtros}>
-          <label className={styles.busca}>
-            <Search size={16} strokeWidth={2.25} aria-hidden="true" />
-            <input type="search" placeholder="Buscar lançamento" aria-label="Buscar lançamento" value={busca} onChange={(e) => setBusca(e.target.value)} />
-          </label>
           <div className={styles.segmentos} role="group" aria-label="Tipo de lançamento">
             {NATUREZAS.map((n) => (
               <button key={n.valor} type="button" className={styles.segmento} data-ativo={natureza === n.valor ? "true" : undefined} onClick={() => setNatureza(n.valor)}>
@@ -138,10 +152,11 @@ export default function Transacoes() {
             <span className={styles.periodoAte}>até</span>
             <input type="date" className={styles.campo} aria-label="Até" value={ate} min={de || undefined} onChange={(e) => setAte(e.target.value)} />
           </div>
-          {temFiltro && (
+          {ativos > 0 && (
             <button type="button" className={styles.limpar} onClick={limpar}><X size={14} strokeWidth={2.5} aria-hidden="true" /> Limpar</button>
           )}
         </div>
+        )}
 
         {itens === null ? (
           <div className={styles.respiro}><Esqueleto linhas={6} altura={16} /></div>
