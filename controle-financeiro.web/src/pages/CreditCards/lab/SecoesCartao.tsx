@@ -128,12 +128,12 @@ export function ParcelamentosBlocos({ itens }: { itens: Parcelamento[] | null })
 }
 
 /** Assinaturas (contas fixas) cobradas no cartão. */
-export function AssinaturasLista({ itens }: { itens: Recorrente[] }) {
+export function AssinaturasLista({ itens, tituloVazio = "Nenhuma assinatura neste cartão" }: { itens: Recorrente[]; tituloVazio?: string }) {
   const navigate = useNavigate()
   if (itens.length === 0) {
     return (
       <div className={styles.estado}>
-        <PontesEmptyState icon={<Repeat size={26} />} title="Nenhuma assinatura neste cartão"
+        <PontesEmptyState icon={<Repeat size={26} />} title={tituloVazio}
           actions={<PontesButton size="sm" variant="outline" onClick={() => navigate("/assinaturas")}>Ir pra Contas fixas</PontesButton>} />
       </div>
     )

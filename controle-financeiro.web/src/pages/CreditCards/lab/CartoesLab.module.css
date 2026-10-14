@@ -170,12 +170,18 @@
 .barra:not(:disabled):hover .barraFill { background: var(--pontes-primary); }
 .barraRotulo { font-size: var(--pontes-fs-xs); font-weight: 600; color: var(--pontes-text-muted); text-transform: lowercase; white-space: nowrap; }
 .barra[data-atual="true"] .barraRotulo, .barra[data-sel="true"] .barraRotulo { color: var(--pontes-primary); }
+.barras[data-compacto="true"] { height: 150px; gap: 6px; overflow: visible; }
+.barras[data-compacto="true"] .barra { flex: 1 1 0; min-width: 0; }
+.barras[data-compacto="true"] .barraValor { display: none; }
 .donutBloco { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .donut { --donut-cor: var(--pontes-primary); width: 120px; height: 120px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .donut[data-alerta="true"] { --donut-cor: var(--pontes-danger); }
 .donutMiolo { width: 88px; height: 88px; border-radius: 50%; background: var(--pontes-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .donutPct { font-size: var(--pontes-fs-lg); font-weight: 800; color: var(--pontes-text); }
 .donutLegenda { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+
+.verTudo { padding: 12px 18px; border: 0; border-top: 1px solid var(--pontes-border); background: transparent; cursor: pointer; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-primary); text-align: left; }
+.verTudo:hover { background: var(--pontes-bg); }
 
 /* Celular */
 @media (max-width: 900px) {

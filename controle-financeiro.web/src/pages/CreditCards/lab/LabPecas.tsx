@@ -201,8 +201,11 @@ export function FaturaTabela({ logic, f }: { logic: CartoesLogic; f: FaturaView 
 }
 
 /** Variantes B e C: a fatura agrupada por dia, como extrato de banco. */
-export function FaturaPorDia({ logic, f }: { logic: CartoesLogic; f: FaturaView }) {
-  const linhas = useLinhas(logic, f)
+/** `limite`: mostra só os N lançamentos mais recentes e um rodapé "Ver fatura completa" (`onVerTudo`). */
+export function FaturaPorDia({ logic, f, limite, onVerTudo }: { logic: CartoesLogic; f: FaturaView; limite?: number; onVerTudo?: () => void }) {
+  const todas = useLinhas(logic, f)
+  const linhas = todas && limite ? todas.slice(0, limite) : todas
+  const restantes = todas && limite ? Math.max(0, todas.length - limite) : 0
   const abrir = useAbrirLinha()
   if (linhas === null) return <div className={styles.estado}><PontesSkeletonList rows={5} /></div>
   if (linhas.length === 0) {
@@ -240,6 +243,11 @@ export function FaturaPorDia({ logic, f }: { logic: CartoesLogic; f: FaturaView 
           ))}
         </section>
       ))}
+      {onVerTudo && (
+        <button type="button" className={styles.verTudo} onClick={onVerTudo}>
+          Ver fatura completa{restantes > 0 ? ` · mais ${restantes}` : ""}
+        </button>
+      )}
     </div>
   )
 }
@@ -263,13 +271,15 @@ export function LinkParcelamentos() {
 }
 
 /** Barras por mês (fatura de cada mês). Altura = valor de runtime (inline, só a %). */
-export function BarrasMeses({ barras, onEscolher }: {
+/** `compacto`: coluna estreita — barras encolhem e o valor fica só no título (passar o mouse). */
+export function BarrasMeses({ barras, onEscolher, compacto }: {
   barras: { chave: string; rotulo: string; valor: number; atual?: boolean; sel?: boolean }[]
   onEscolher?: (chave: string) => void
+  compacto?: boolean
 }) {
   const max = Math.max(1, ...barras.map((b) => b.valor))
   return (
-    <div className={styles.barras} role="list">
+    <div className={styles.barras} role="list" data-compacto={compacto ? "true" : undefined}>
       {barras.map((b) => (
         <button key={b.chave} type="button" role="listitem" className={styles.barra}
           data-atual={b.atual ? "true" : undefined} data-sel={b.sel ? "true" : undefined}

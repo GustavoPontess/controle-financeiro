@@ -17,11 +17,7 @@
 .mesVidro { padding: 6px 12px; border-radius: 999px; font-size: var(--pontes-fs-xs); font-weight: 600; text-transform: lowercase; }
 .mesVidro[data-sel="true"] { background: var(--pontes-hero-fg); color: var(--pontes-text); border-color: transparent; }
 
-/* Pilha de cartões (carteira do celular): cada um sobe por cima do anterior; o de baixo aparece inteiro. */
-.pilha { display: flex; flex-direction: column; align-items: stretch; max-width: 420px; width: 100%; justify-self: center; padding-top: 8px; }
 .cartaoPilha { position: relative; display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 1.586; padding: 18px 22px; border: 1px solid color-mix(in srgb, var(--pontes-hero-fg) 18%, transparent); border-radius: 20px; color: var(--pontes-hero-fg); cursor: pointer; font: inherit; text-align: left; box-shadow: 0 -8px 24px color-mix(in srgb, black 35%, transparent); transition: transform 0.2s; }
-.cartaoPilha + .cartaoPilha { margin-top: -44%; }
-.cartaoPilha:hover:not(:disabled) { transform: translateY(-18px); }
 .cartaoPilha:disabled { cursor: default; }
 .pilhaTopo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .pilhaNome { font-size: var(--pontes-fs-lg); font-weight: 700; }
@@ -31,6 +27,34 @@
 .pilhaFinal { font-size: var(--pontes-fs-lg); font-weight: 600; letter-spacing: 0.14em; }
 .pilhaDisp { font-size: var(--pontes-fs-xs); opacity: 0.85; margin-left: auto; }
 
+/* Carrossel: o cartão do meio grande; os vizinhos menores espiando dos lados (cortados na borda do bloco). */
+.carrosselBloco { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; overflow: hidden; padding: 12px 0 4px; }
+.carrossel { position: relative; width: 72%; max-width: 380px; aspect-ratio: 1.586; touch-action: pan-y; }
+.slide { position: absolute; inset: 0; transition: transform 0.35s ease, opacity 0.35s ease; }
+.slide > .cartaoPilha { width: 100%; height: 100%; aspect-ratio: auto; }
+.slide[data-pos="centro"] { z-index: 3; }
+.slide[data-pos="centro"] > .cartaoPilha:hover:not(:disabled) { transform: translateY(-4px); }
+.slide[data-pos="esquerda"] { transform: translateX(-46%) scale(0.78); opacity: 0.5; z-index: 2; }
+.slide[data-pos="direita"] { transform: translateX(46%) scale(0.78); opacity: 0.5; z-index: 2; }
+.slide[data-pos="esquerda"]:hover, .slide[data-pos="direita"]:hover { opacity: 0.75; }
+.slide[data-pos="longe-esquerda"] { transform: translateX(-80%) scale(0.6); opacity: 0; pointer-events: none; z-index: 1; }
+.slide[data-pos="longe-direita"] { transform: translateX(80%) scale(0.6); opacity: 0; pointer-events: none; z-index: 1; }
+.cartaoPilha { transition: transform 0.2s; }
+.controles { display: flex; align-items: center; gap: 14px; }
+.seta { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--pontes-hero-fg) 22%, transparent); background: color-mix(in srgb, var(--pontes-hero-fg) 12%, transparent); color: var(--pontes-hero-fg); cursor: pointer; }
+.seta:hover:not(:disabled) { background: color-mix(in srgb, var(--pontes-hero-fg) 24%, transparent); }
+.seta:disabled { opacity: 0.35; cursor: default; }
+.pontos { display: flex; align-items: center; gap: 6px; }
+.ponto { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--pontes-hero-fg) 35%, transparent); cursor: pointer; transition: width 0.2s; }
+.ponto[data-sel="true"] { width: 22px; background: var(--pontes-hero-fg); }
+
+/* Resumo do cartão do meio */
+.palcoAlerta { font-size: var(--pontes-fs-xs); font-weight: 700; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--pontes-warning) 30%, transparent); }
+.acoesLinha { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.vidroForte { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--pontes-hero-fg); color: var(--pontes-text); cursor: pointer; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 700; }
+.vidroForte:hover { opacity: 0.9; }
+.palcoTotais { font-size: var(--pontes-fs-xs); opacity: 0.7; }
+
 /* Página do cartão */
 .palco[data-cartao="true"] { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
 .palcoCartao { display: flex; flex-direction: column; gap: 12px; }
@@ -39,6 +63,7 @@
 .lateral { display: flex; flex-direction: column; gap: 18px; }
 
 @media (max-width: 900px) {
+  .carrossel { width: 80%; }
   .palco, .palco[data-cartao="true"], .abaixo { grid-template-columns: minmax(0, 1fr); padding: 22px; }
   .palcoValor { font-size: var(--pontes-fs-4xl); }
 }
