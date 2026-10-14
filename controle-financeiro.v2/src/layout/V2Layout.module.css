@@ -1,5 +1,5 @@
 .raiz { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); background: var(--v2-bg); color: var(--v2-texto); font-family: var(--v2-font); font-size: var(--v2-fs-base); line-height: 1.45; -webkit-font-smoothing: antialiased; transition: grid-template-columns 0.2s ease; }
-.raiz[data-menu="trilho"] { grid-template-columns: 76px minmax(0, 1fr); }
+.raiz[data-menu="trilho"] { grid-template-columns: 70px minmax(0, 1fr); }
 
 /* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
 /* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */
@@ -13,12 +13,13 @@
 .fecharMenu, .abrirMenu { display: none; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .grupo { display: block; margin: 16px 12px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v2-texto-3); }
-.item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--v2-r-sm); font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto-2); text-decoration: none; white-space: nowrap; transition: background 0.12s, color 0.12s; }
+/* Altura fixa: sem o rótulo (trilho) o item não pode encurtar, senão a lista sobe uns 2px por item. */
+.item { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border-radius: var(--v2-r-sm); font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto-2); text-decoration: none; white-space: nowrap; transition: background 0.12s, color 0.12s; }
 .item:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
 .itemAtivo, .itemAtivo:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
 .item svg { flex-shrink: 0; }
 .rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
-.usuario { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; border-top: 1px solid var(--v2-linha); }
+.usuario { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 5px; border-top: 1px solid var(--v2-linha); }
 .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font: inherit; font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; cursor: default; }
 .usuarioTexto { display: flex; flex-direction: column; min-width: 0; }
 .usuarioNome { font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -29,10 +30,11 @@
 .menuSair { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; }
 .menuSair:hover { background: var(--v2-superficie-2); }
 
-/* Trilho (recolhido): só ícones centralizados; nome vira title; avatar abre o menu.
-   A marca compacta vira o botão de expandir (o "P" dá lugar à seta no hover) — a linha da marca
-   continua com 40px, então os itens ficam na mesma altura nos dois estados. */
-.raiz[data-menu="trilho"] .lateral { padding-left: 10px; padding-right: 10px; }
+/* Trilho (recolhido): nome vira title; avatar abre o menu. A marca compacta vira o botão de
+   expandir (o "P" dá lugar à seta no hover) — a linha da marca continua com 40px.
+   Nada muda de lugar ao alternar: mesmo padding do painel, itens à esquerda com o mesmo padding,
+   ícones/avatar/"P" no mesmo eixo (x=35) nos dois estados. Só a largura anima e os rótulos somem —
+   sem isso os ícones centralizavam no painel ainda largo e deslizavam de volta enquanto encolhia. */
 .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo, .raiz[data-menu="trilho"] .sair { display: none; }
 .raiz[data-menu="trilho"] .marca { justify-content: center; padding: 0; }
 .raiz[data-menu="trilho"] .recolher { margin-left: 0; width: 40px; height: 40px; color: var(--v2-texto); }
@@ -41,9 +43,7 @@
 .raiz[data-menu="trilho"] .recolherIcone { display: none; }
 .raiz[data-menu="trilho"] .recolher:hover .logoMini, .raiz[data-menu="trilho"] .recolher:focus-visible .logoMini { display: none; }
 .raiz[data-menu="trilho"] .recolher:hover .recolherIcone, .raiz[data-menu="trilho"] .recolher:focus-visible .recolherIcone { display: inline-flex; }
-.raiz[data-menu="trilho"] .item { justify-content: center; padding: 10px 0; }
-.raiz[data-menu="trilho"] .grupo { height: 1px; margin: 12px 14px; background: var(--v2-linha); }
-.raiz[data-menu="trilho"] .usuario { justify-content: center; padding: 0; }
+.raiz[data-menu="trilho"] .grupo { height: 1px; margin: 19px 0; background: var(--v2-linha); }
 .raiz[data-menu="trilho"] .avatar { cursor: pointer; }
 .raiz[data-menu="trilho"] .avatar:hover { outline: 2px solid var(--v2-linha-forte); outline-offset: 2px; }
 
@@ -70,9 +70,7 @@
   .raiz[data-menu="trilho"] .sair { display: inline-flex; }
   .raiz[data-menu="trilho"] .logoMini, .menuUsuario { display: none; }
   .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0 10px; }
-  .raiz[data-menu="trilho"] .item { justify-content: flex-start; padding: 9px 12px; }
   .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
-  .raiz[data-menu="trilho"] .usuario { justify-content: flex-start; padding: 0 12px; }
   .raiz[data-menu="trilho"] .avatar { cursor: default; }
   .recolher { display: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
