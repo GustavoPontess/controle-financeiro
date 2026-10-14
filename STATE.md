@@ -19,11 +19,11 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Pivô do Gustavo:** "o front parece amador e me trava". Primeiro tentamos um front novo separado (`controle-financeiro.v2/`, branch `feat/front-v2`: login completo, layout com trilho, dashboard com gráfico próprio, claro/escuro) — ficou como **bancada/referência**, roda do worktree irmão `E:\VSCode\controle-financeiro-v2` (`launch` "v2", :5174). Decisão: **evoluir o v1 no lugar, mantendo a paleta** (cor fica; só escala/ar/ruído mudam). Plano e status na 🎯 Fila do `ROADMAP.md`, item 0.
 
-**Entrou na branch:** login redesenhado (`0f00f11`), Manrope como fonte padrão do DS, corpo da escala +1px + degrau 44px (`9eb988a`), login com os tamanhos do v2 medidos no navegador (`2bbcb07`), launch do v2 pelo worktree (`13d18ad`). Suíte do front 934/934, lint e build ok. PR #299 (editar sem hora) segue aberto esperando "ci verde". `feat/cartoes-lab` (9 commits, labs A–E, sem PR) fica como referência pra Cartões.
+**Entrou na branch:** login redesenhado (`0f00f11`, `2bbcb07`, `c8b1788` grade + Fraunces na chamada), Manrope padrão + escala +1px (`9eb988a`), controles do DS nos tamanhos do v2 (`c833318`, `25b7ef5`), **casca plana** (`1acb514`), **dashboard** (`698792f`), launch do v2 pelo worktree (`13d18ad`). Suíte do front 934/934, lint e build ok. PR #299 (editar sem hora) segue aberto esperando "ci verde". `feat/cartoes-lab` (9 commits, labs A–E, sem PR) fica como referência pra Cartões.
 
 **Cuidado no dev:** o navegador embutido do app **não compartilha cookie entre :5173 e :5174**, e login num front revoga o do outro — usar **um front por vez** e marcar "Manter-me conectado" (sem isso o cookie é de sessão). Paleta/fonte moram no `localStorage` (`pontes.paletteId`, `pontes.fontId`) — "sumiu a cor" = paleta trocada no navegador, não código.
 
-**Próxima ação:** (1) com o Gustavo logado no :5173, passada visual nas telas internas com o corpo +1px (tabelas/cards/sidebar); (2) **casca** do v1 (menu lateral plano com trilho sem deslizar, topo sem busca/sino, conteúdo sem moldura); (3) dashboard; (4) tela por tela. Depois: PR da `feat/ds-premium` e volta ao M1 (write skew, sobras do extrato).
+**Próxima ação:** tela por tela, na ordem de uso — Transações (hero fino → palco pequeno ou só número; tabela no PontesTabela já), Cartões (lab E: carrossel + "Meus cartões" sem pré-seleção), Contas fixas, Relatórios, Bancos… — cada uma um commit, Gustavo olha. Depois: PR da `feat/ds-premium` e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
