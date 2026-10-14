@@ -4,7 +4,7 @@
  */
 
 import { useLocation, useNavigate } from "react-router-dom"
-import { Menu, Search, Plus, Eye, EyeOff } from "lucide-react"
+import { Menu, Plus, Eye, EyeOff } from "lucide-react"
 import { PontesButton, PontesIconButton, useHideBalance } from "@/components/pontes"
 import NotificationBell from "../Notificacoes/NotificationBell"
 import styles from "./Navbar.module.css"
@@ -19,7 +19,6 @@ type Props = {
   showFinance?: boolean
   openTransaction?: () => void
   canCreateTransaction?: boolean
-  openCommandPalette?: () => void
   /** Título da tela. Se omitido, resolve pelo mapa de rotas do usuário. Telas fora desse mapa
    *  (ex.: painel admin) passam o título aqui — assim NENHUMA rota de admin fica no bundle comum. */
   title?: string
@@ -71,7 +70,7 @@ type Crumb = { label: string; to?: string }
 
 export default function Navbar({
   toggleDrawer, sidebarOpen, celular = false, showFinance = true,
-  openTransaction, canCreateTransaction, openCommandPalette,
+  openTransaction, canCreateTransaction,
   title: titleProp, homeLabel = "Início", homePath = "/dashboard", notifications, sensitiveToggle, detalhe,
 }: Props) {
   const location = useLocation()
@@ -121,13 +120,6 @@ export default function Navbar({
       </div>
 
       <div className={styles.right}>
-        {/* Busca de telas: só a lupa (o atalho Ctrl K continua valendo). */}
-        {openCommandPalette && (
-          <PontesIconButton variant="ghost" size={40} onClick={openCommandPalette} aria-label="Buscar" title="Buscar telas (Ctrl K)">
-            <Search size={18} strokeWidth={2} />
-          </PontesIconButton>
-        )}
-
         {showFinance && (
           <PontesIconButton
             variant="ghost" size={40}

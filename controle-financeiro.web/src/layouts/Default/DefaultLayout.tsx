@@ -99,7 +99,8 @@ export default function DefaultLayout() {
 
   useEffect(() => { void checkRequirements() }, [accountKey, checkRequirements])
 
-  // Atalho global de busca
+  // Atalho global de busca (Ctrl/Cmd+K). Sem botão no topo — decisão do Gustavo (2026-10-14): nada de
+  // enfeite; quem conhece o atalho usa.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -176,7 +177,6 @@ export default function DefaultLayout() {
           celular={celular}
           openTransaction={abrirNovaTransacao}
           canCreateTransaction={canCreateTransaction}
-          openCommandPalette={() => { setCmdQuery(""); setCmdOpen(true) }}
           detalhe={detalheNoCaminho?.path === location.pathname ? detalheNoCaminho.label : undefined}
         />
 

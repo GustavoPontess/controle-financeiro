@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import Sidebar from "../../components/Sidebar/Sidebar"
@@ -55,7 +55,7 @@ describe("Shell interno (#118)", () => {
 
   it("Navbar mostra o título da rota atual", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />,
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction />,
       "/transactions"
     )
     expect(screen.getByRole("heading", { name: "Transações" })).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe("Shell interno (#118)", () => {
 
   it("Navbar no detalhe: Início / Cartões de Crédito / Parcelamentos / <item>, níveis de cima clicáveis", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}}
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction
         detalhe="Fone Teste" />,
       "/credit-cards/parcelamentos/abc"
     )
@@ -77,7 +77,7 @@ describe("Shell interno (#118)", () => {
 
   it("Navbar na lista de parcelamentos: caminho com a seção-pai Cartões de Crédito", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />,
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction />,
       "/credit-cards/parcelamentos"
     )
     expect(screen.getByText("Cartões de Crédito")).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe("Shell interno (#118)", () => {
 
   it("Navbar no detalhe de empréstimo: Início / Empréstimos / <item>", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}}
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction
         detalhe="Empréstimo do João" />,
       "/emprestimos/abc"
     )
@@ -95,25 +95,16 @@ describe("Shell interno (#118)", () => {
     expect(screen.queryByText("Cartões de Crédito")).not.toBeInTheDocument()
   })
 
-  it("Navbar abre o command palette pelo botão de busca", () => {
-    const openCmd = vi.fn()
-    withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={openCmd} />
-    )
-    fireEvent.click(screen.getByLabelText("Buscar"))
-    expect(openCmd).toHaveBeenCalledOnce()
-  })
-
   it("Navbar desabilita Nova transação sem categorias", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction={false} openCommandPalette={() => {}} />
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction={false} />
     )
     expect(screen.getByRole("button", { name: /Nova transação/i })).toBeDisabled()
   })
 
   it("Navbar mostra o sino FINANCEIRO no app do usuário (showFinance, sem slot)", () => {
     withProviders(
-      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction openCommandPalette={() => {}} />
+      <Navbar toggleDrawer={() => {}} sidebarOpen openTransaction={() => {}} canCreateTransaction />
     )
     expect(screen.getByTestId("bell")).toBeInTheDocument()
   })
