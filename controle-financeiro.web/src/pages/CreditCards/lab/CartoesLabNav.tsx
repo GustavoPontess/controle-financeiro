@@ -1,6 +1,7 @@
-// Passador da bancada de Cartões: ◀ ▶ entre a tela atual e as variantes (atual → a → b → c → atual).
+// Passador da bancada de Cartões: ◀ ▶ entre a tela atual e as variantes (atual → a → b → c → atual),
+// na MESMA aba (Cartões ou Parcelamentos) — o módulo é um só.
 // Bancada = rotas sem item no menu (/credit-cards/lab-*); sai quando escolher a vencedora.
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronRight, FlaskConical } from "lucide-react"
 import { PontesIconButton } from "@/components/pontes"
 import styles from "./CartoesLab.module.css"
@@ -15,8 +16,13 @@ export type PaginaLab = (typeof PAGINAS)[number]["id"]
 
 export default function CartoesLabNav({ atual }: { atual: PaginaLab }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const i = PAGINAS.findIndex((p) => p.id === atual)
-  const ir = (passo: number) => navigate(PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length].rota)
+  const naAbaParcelamentos = pathname.startsWith(`${PAGINAS[i].rota}/parcelamentos`)
+  const ir = (passo: number) => {
+    const destino = PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length].rota
+    navigate(naAbaParcelamentos ? `${destino}/parcelamentos` : destino)
+  }
   return (
     <nav className={styles.labNav} aria-label="Layouts da tela de cartões">
       <FlaskConical size={16} strokeWidth={2.5} aria-hidden="true" />
