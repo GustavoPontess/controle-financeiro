@@ -25,9 +25,6 @@
 .abrirMenu, .fecharMenu { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--v2-texto); cursor: pointer; }
 .tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topoAcoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.busca { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-3); cursor: pointer; font-size: var(--v2-fs-sm); min-width: 200px; }
-.busca:hover { border-color: var(--v2-linha-forte); color: var(--v2-texto-2); }
-.busca kbd { margin-left: auto; font-family: inherit; font-size: var(--v2-fs-xs); padding: 1px 6px; border-radius: 6px; background: var(--v2-superficie-2); color: var(--v2-texto-3); }
 .icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--v2-linha); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-2); cursor: pointer; }
 .icone:hover { color: var(--v2-texto); border-color: var(--v2-linha-forte); }
 .primario { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
@@ -43,8 +40,6 @@
   .lateral[data-aberto="true"] { transform: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .topo { padding: 0 16px; gap: 8px; }
-  .busca span, .busca kbd { display: none; }
-  .busca { min-width: 0; padding: 0 10px; }
   .primario span { display: none; }
   .primario { width: 36px; padding: 0; justify-content: center; }
   .tituloPagina { font-size: var(--v2-fs-lg); }

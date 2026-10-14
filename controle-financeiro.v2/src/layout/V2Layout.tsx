@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Menu, Moon, Plus, Receipt, Repeat,
-  Scale, Search, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
+  Scale, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
 } from "lucide-react"
 import Logo from "../componentes/Logo"
 import { useAuth } from "../auth/useAuth"
@@ -89,9 +89,6 @@ export default function V2Layout() {
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><Menu size={20} /></button>
           <h1 className={styles.tituloPagina}>{tituloDaRota(pathname)}</h1>
           <div className={styles.topoAcoes}>
-            <button type="button" className={styles.busca} onClick={() => navigate("/transacoes")}>
-              <Search size={16} strokeWidth={2} aria-hidden="true" /><span>Buscar</span><kbd>⌘K</kbd>
-            </button>
             <button type="button" className={styles.icone} aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}>
               {oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
             </button>
