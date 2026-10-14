@@ -14,6 +14,7 @@
   overflow: hidden;
   user-select: none;
 }
+.badge[data-round="true"] { border-radius: 999px; }
 
 /* Logo real cobre o badge inteiro. PNG do favicon (Google s2/favicons)
    já vem com o brand colorido da própria marca; deixar object-fit cover

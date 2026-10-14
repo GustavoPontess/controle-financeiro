@@ -17,8 +17,10 @@ export type PontesBankBadgeProps = {
   logoUrl?: string
   /** Cor hex da marca (fundo do círculo). Padrão: var(--pontes-primary). */
   cor?: string
-  /** Tamanho do círculo em px. Padrão: 36. */
+  /** Tamanho em px. Padrão: 36. */
   size?: number
+  /** Redondo (lista de contas/cartões) em vez do quadrado-arredondado (cartão físico). */
+  round?: boolean
 }
 
 function initials(name: string): string {
@@ -27,7 +29,7 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-export function PontesBankBadge({ name, logoUrl, cor, size = 36 }: PontesBankBadgeProps) {
+export function PontesBankBadge({ name, logoUrl, cor, size = 36, round }: PontesBankBadgeProps) {
   const [imgErr, setImgErr] = useState(false)
   const showImg = !!logoUrl && !imgErr
   const fontSize = Math.max(10, Math.floor(size * 0.35))
@@ -35,6 +37,7 @@ export function PontesBankBadge({ name, logoUrl, cor, size = 36 }: PontesBankBad
   return (
     <span
       className={styles.badge}
+      data-round={round ? "true" : undefined}
       style={
         {
           width: size,

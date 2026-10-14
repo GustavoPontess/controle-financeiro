@@ -5,8 +5,8 @@
  * 2) Pra onde está indo? — saldo nos últimos meses + maiores gastos, lado a lado
  * 3) O que aconteceu e onde está o dinheiro? — transações recentes + orçamento, contas e cartões
  *
- * O título da página fica só no Navbar. Cor/fonte vêm de CSS vars; usePontesTheme() é usado APENAS
- * pras cores do gráfico recharts (var() não resolve em atributo SVG).
+ * O título da página fica só no Navbar. Cor/fonte vêm de CSS vars (o gráfico de linha é do DS e usa
+ * currentColor, então segue a paleta).
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
@@ -15,10 +15,7 @@ import {
   ChevronLeft, ChevronRight, ArrowLeftRight, ArrowRight,
   CreditCard, Target, TrendingUp, TrendingDown,
 } from "lucide-react"
-import {
-  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
-} from "recharts"
-import { PontesButton, PontesBankBadge, PontesCategoryDonut, usePontesTheme, useHideBalance } from "@/components/pontes"
+import { PontesButton, PontesBankBadge, PontesGraficoLinha, useHideBalance } from "@/components/pontes"
 import { getDashboard } from "../../services/dashboardService"
 import { getOrcamentos } from "../../services/orcamentoService"
 import type { Orcamento } from "../../types/Orcamento"
@@ -39,8 +36,6 @@ function fmtQuando(data: string, hora?: string | null): string {
 }
 
 export default function DashboardPage() {
-  // Tema só pras cores do gráfico (recharts SVG não lê var(--pontes-*)).
-  const { palette: p, font } = usePontesTheme()
   const navigate = useNavigate()
 
   const [data, setData] = useState<DashboardData | null>(null)
@@ -50,15 +45,6 @@ export default function DashboardPage() {
   const [erro, setErro] = useState(false)
   // Olho global (ocultar saldo): o navbar controla; assinar aqui força o re-render do formatMoney.
   const [hide] = useHideBalance()
-
-  // Eixo Y: valor compacto SEM "R$" ("13,5 mil") — com o símbolo o rótulo não cabia e era cortado.
-  // O tooltip mostra o valor cheio em reais. Em branco quando o olho está fechado.
-  const fmtAxis = useCallback(
-    (v: number) => (hide ? "" : new Intl.NumberFormat("pt-BR", {
-      notation: "compact", maximumFractionDigits: 1,
-    }).format(v)),
-    [hide]
-  )
 
   // Trocar de mês rápido dispara várias buscas; só a ÚLTIMA pode escrever na tela. Sem isso, a
   // resposta atrasada de um mês antigo sobrescrevia os números do mês que está no rótulo.
@@ -160,39 +146,36 @@ export default function DashboardPage() {
                 <h2 className={styles.caixaTitulo}>Saldo nos últimos meses</h2>
               </div>
               <div className={styles.chartBox}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.evolucaoSaldo} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="dash-saldo" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={p.primary} stopOpacity={0.3} />
-                        <stop offset="100%" stopColor={p.primary} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={p.border} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} dy={4} />
-                    <YAxis width={52} tick={{ fontSize: 11, fill: p.textMuted }} axisLine={false} tickLine={false} tickFormatter={fmtAxis} />
-                    <Tooltip
-                      formatter={(v) => [hide ? MONEY_MASK : formatMoney(Number(v)), "Saldo"] as [string, string]}
-                      contentStyle={{ borderRadius: 10, border: `1px solid ${p.border}`, fontFamily: font, fontSize: "var(--pontes-fs-sm)" }}
-                    />
-                    <Area type="monotone" dataKey="saldo" stroke={p.primary} strokeWidth={2} fill="url(#dash-saldo)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <PontesGraficoLinha pontos={data.evolucaoSaldo.map((m) => ({ rotulo: m.label, valor: m.saldo }))} rotulo="Saldo nos últimos meses" />
               </div>
             </section>
 
             <section className={styles.caixa}>
               <div className={styles.caixaTopo}>
                 <h2 className={styles.caixaTitulo}>Maiores gastos</h2>
+                {data.topCategorias.length > 0 && (
+                  <span className={styles.categoriasTotal}>
+                    <span>Total</span>
+                    <strong>{formatMoney(data.topCategorias.reduce((soma, c) => soma + c.valor, 0))}</strong>
+                  </span>
+                )}
               </div>
-              <div className={styles.donutBox}>
-                <PontesCategoryDonut
-                  data={data.topCategorias.map((c) => ({ label: c.descricao, valor: c.valor, percentual: c.percentual }))}
-                  formatMoney={formatMoney}
-                  height={170}
-                  emptyLabel="Nenhuma despesa no período"
-                />
-              </div>
+              {data.topCategorias.length === 0 ? (
+                <div className={styles.vazio}>Nenhuma despesa no período</div>
+              ) : (
+                <ul className={styles.categorias}>
+                  {data.topCategorias.slice(0, 5).map((c) => (
+                    <li key={c.descricao} className={styles.categoria}>
+                      <span className={styles.categoriaNome}>{c.descricao}</span>
+                      <span className={styles.categoriaValor}>
+                        <span>{formatMoney(c.valor)}</span>
+                        <span className={styles.categoriaPct}>{c.percentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
+                      </span>
+                      <span className={styles.trilho}><span className={styles.trilhoFill} style={{ width: `${Math.min(100, Math.max(0, c.percentual))}%` }} /></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
 
@@ -400,7 +383,7 @@ function CompraCartaoRow({ compra }: { compra: CompraCartao }) {
 function ContaRow({ conta }: { conta: SaldoConta }) {
   return (
     <div className={styles.linha}>
-      <PontesBankBadge name={conta.bancoNome ?? conta.nome} logoUrl={conta.logoUrl} cor={conta.cor} size={36} />
+      <PontesBankBadge name={conta.bancoNome ?? conta.nome} logoUrl={conta.logoUrl} cor={conta.cor} size={36} round />
       <div className={styles.linhaTexto}>
         <span className={styles.linhaNome}>{conta.nome}</span>
         <span className={styles.linhaSub}>{conta.bancoNome ?? conta.tipoDescricao}</span>
@@ -410,22 +393,30 @@ function ContaRow({ conta }: { conta: SaldoConta }) {
   )
 }
 
-/** Linha de cartão: quanto do limite está usado (barra) e quando fecha a fatura. */
+/** Linha de cartão: logo do banco, nome (+ 4 dígitos), "usado de total · fecha em N dias", trilho fino
+ *  do limite e, à direita, quanto ainda tem disponível. */
 function CartaoRow({ cartao }: { cartao: CartaoResumo }) {
   const pct = Math.max(0, Math.min(100, cartao.percentualUsado))
   const tone = pct >= 90 ? "danger" : pct >= 70 ? "warning" : "ok"
   const dias = cartao.diasAteFechamento
-  const fecha = dias == null ? null : dias === 0 ? "fecha hoje" : dias === 1 ? "fecha amanhã" : `fecha em ${dias} dias`
+  const fecha = dias == null ? null : dias === 0 ? "fecha hoje" : dias === 1 ? "fecha amanhã" : dias < 0 ? `fechou há ${-dias} dias` : `fecha em ${dias} dias`
   return (
-    <div className={styles.bloco}>
-      <div className={styles.blocoTopo}>
+    <div className={styles.linha}>
+      <PontesBankBadge name={cartao.bancoNome ?? cartao.nome} logoUrl={cartao.bancoLogoUrl} cor={cartao.bancoCor} size={36} round />
+      <div className={styles.linhaTexto}>
         <span className={styles.linhaNome}>
           {cartao.nome}{cartao.ultimosDigitos ? <span className={styles.digitos}> •••• {cartao.ultimosDigitos}</span> : null}
         </span>
-        <span className={styles.blocoValor}>{formatMoney(cartao.limiteUsado)} de {formatMoney(cartao.limiteTotal)}</span>
+        <span className={styles.linhaSub}>
+          <span>{formatMoney(cartao.limiteUsado)} de {formatMoney(cartao.limiteTotal)}</span>
+          {fecha && <> · <span>{fecha}</span></>}
+        </span>
+        <span className={styles.trilhoFino}><span className={styles.trilhoFill} data-tone={tone} style={{ width: `${pct}%` }} /></span>
       </div>
-      <div className={styles.barra}><div className={styles.barraFill} data-tone={tone} style={{ width: `${pct}%` }} /></div>
-      {fecha && <div className={styles.linhaSub}>{fecha}</div>}
+      <span className={styles.linhaValorCol}>
+        <span className={styles.linhaValor}>{formatMoney(cartao.limiteDisponivel)}</span>
+        <span className={styles.linhaSub}>disponível</span>
+      </span>
     </div>
   )
 }

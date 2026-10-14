@@ -2,33 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { PontesThemeProvider, setHideBalance } from "../../components/pontes"
+import { MONEY_MASK } from "../../utils/money"
 import DashboardPage from "../../pages/Dashboard/DashboardPage"
 import type { DashboardData, TransacaoRecente, SaldoConta, CartaoResumo, CompraCartao } from "../../types/Dashboard"
 import type { Orcamento } from "../../types/Orcamento"
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
-
-// recharts não rende em jsdom (largura 0): vira stub. AreaChart e YAxis anotam as props pra conferir o
-// que a tela entrega ao gráfico: a série e o formatador do eixo (que precisa respeitar o olho de ocultar).
-const grafico = vi.hoisted(() => ({
-  serie: undefined as unknown,
-  formatarEixo: undefined as ((v: number) => string) | undefined,
-}))
-vi.mock("recharts", () => {
-  const Stub = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
-  return {
-    ResponsiveContainer: Stub, Area: Stub, PieChart: Stub, Pie: Stub, Cell: Stub,
-    XAxis: Stub, CartesianGrid: Stub, Tooltip: Stub,
-    AreaChart: ({ data, children }: { data: unknown; children?: React.ReactNode }) => {
-      grafico.serie = data
-      return <div>{children}</div>
-    },
-    YAxis: ({ tickFormatter }: { tickFormatter: (v: number) => string }) => {
-      grafico.formatarEixo = tickFormatter
-      return null
-    },
-  }
-})
 
 const navigateSpy = vi.hoisted(() => vi.fn())
 vi.mock("react-router-dom", async (orig) => ({
@@ -148,7 +127,7 @@ const stat = (rotulo: "Entrou" | "Saiu" | "Sobrou") => screen.getByText(rotulo).
 // Fica esmaecido (data-atualizando) quem tem esse atributo no próprio nó ou num ancestral.
 const esmaecido = (el: HTMLElement) => el.closest("[data-atualizando]")?.getAttribute("data-atualizando")
 const barras = (el: HTMLElement) =>
-  Array.from(el.querySelectorAll<HTMLElement>('[class*="barraFill"]')).map((b) => ({ largura: b.style.width, tom: b.dataset.tone }))
+  Array.from(el.querySelectorAll<HTMLElement>('[class*="barraFill"], [class*="trilhoFill"]')).map((b) => ({ largura: b.style.width, tom: b.dataset.tone }))
 
 // ── Testes ───────────────────────────────────────────────────────────────────
 
@@ -488,29 +467,33 @@ describe("DashboardPage", () => {
   // ── gráficos ───────────────────────────────────────────────────────────────
 
   describe("Saldo nos últimos meses", () => {
-    it("entrega ao gráfico os 6 meses que a API mandou", async () => {
+    it("desenha os 6 meses que a API mandou, um rótulo por mês, e a dica no último", async () => {
       await renderCarregado()
       expect(titulo("Saldo nos últimos meses")).toBeInTheDocument()
-      expect(grafico.serie).toEqual(evolucao)
-      expect(grafico.serie).toHaveLength(6)
+      const caixa = within(secao("Saldo nos últimos meses"))
+      for (const m of evolucao.slice(0, -1)) expect(caixa.getByText(m.label)).toBeInTheDocument()
+      expect(caixa.getAllByText("out/26")).toHaveLength(2) // eixo + dica do mês selecionado (o último)
+      expect(caixa.getByText("R$ 5.000,00")).toBeInTheDocument() // valor cheio na dica
     })
 
-    it("eixo do valor: compacto e SEM 'R$' (com o símbolo o rótulo era cortado), em branco com o olho fechado", async () => {
+    it("grade do valor: compacta e SEM 'R$' (5.000 + folga de 8% = '5,4 mil'); com o olho fechado vira '••'", async () => {
       await renderCarregado()
-      expect(grafico.formatarEixo!(5000)).toMatch(/^5\s?mil$/)
-      expect(grafico.formatarEixo!(13500)).toMatch(/^13,5\s?mil$/)
-      expect(grafico.formatarEixo!(13500)).not.toMatch(/R\$/)
+      const caixa = within(secao("Saldo nos últimos meses"))
+      expect(caixa.getByText("5,4 mil")).toBeInTheDocument()
+      expect(caixa.getByText("2,7 mil")).toBeInTheDocument()
 
       act(() => setHideBalance(true))
-      await waitFor(() => expect(grafico.formatarEixo!(5000)).toBe(""))
+      await waitFor(() => expect(caixa.getAllByText("••")).toHaveLength(3))
+      expect(caixa.queryByText("5,4 mil")).not.toBeInTheDocument()
+      expect(caixa.getByText(MONEY_MASK)).toBeInTheDocument() // dica mascarada
 
       act(() => setHideBalance(false))
-      await waitFor(() => expect(grafico.formatarEixo!(5000)).toMatch(/mil/))
+      await waitFor(() => expect(caixa.getByText("5,4 mil")).toBeInTheDocument())
     })
   })
 
   describe("Maiores gastos", () => {
-    it("lista as categorias com percentual e valor, e o total no centro", async () => {
+    it("lista as categorias com percentual e valor, e o total no topo da caixa", async () => {
       await renderCarregado()
       const caixa = within(secao("Maiores gastos"))
       expect(caixa.getByText("Moradia")).toBeInTheDocument()

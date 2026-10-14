@@ -80,8 +80,23 @@
 /* Os 2 gráficos ficam lado a lado com a MESMA altura (o grid estica): o do saldo cresce pra
    preencher o card em vez de deixar um vazio embaixo quando o "Maiores gastos" fica mais alto. */
 .grid2 > .caixa { display: flex; flex-direction: column; }
-.chartBox { flex: 1; min-height: 190px; padding: 8px 20px 12px 8px; }
-.donutBox { padding: 8px 24px 12px; }
+.chartBox { flex: 1; min-height: 190px; padding: 0 24px 12px; }
+
+/* Maiores gastos: nome, valor + %, trilho. Total no topo da caixa. */
+.categoriasTotal { display: inline-flex; align-items: baseline; gap: 6px; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.categoriasTotal strong { font-size: var(--pontes-fs-base); font-weight: 600; color: var(--pontes-text); font-variant-numeric: tabular-nums; }
+.categorias { list-style: none; margin: 0; padding: 4px 24px 12px; display: flex; flex-direction: column; gap: 14px; }
+.categoria { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: baseline; font-size: var(--pontes-fs-md); }
+.categoriaNome { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.categoriaValor { display: inline-flex; align-items: baseline; gap: 6px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.categoriaPct { font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); }
+.trilho { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--pontes-bg); overflow: hidden; }
+.trilhoFino { display: block; height: 4px; margin-top: 6px; border-radius: 999px; background: var(--pontes-bg); overflow: hidden; }
+.trilhoFill { display: block; height: 100%; border-radius: 999px; background: var(--pontes-primary); }
+.trilhoFill[data-tone="ok"] { background: var(--pontes-success); }
+.trilhoFill[data-tone="warning"] { background: var(--pontes-warning); }
+.trilhoFill[data-tone="danger"] { background: var(--pontes-danger); }
+.linhaValorCol { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .vazio { padding: 8px 24px 16px; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
 
 /* ── Linha (transação / conta): sem divisória; inicial num círculo neutro ───────────────── */
