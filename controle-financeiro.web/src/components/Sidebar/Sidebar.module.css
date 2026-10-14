@@ -16,7 +16,6 @@
 .toggleMark:hover .toggleIcone, .toggleMark:focus-visible .toggleIcone { display: inline-flex; }
 .nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 8px 0; }
 .group { margin-bottom: 4px; }
-.rodape { padding: 8px 8px 4px; flex-shrink: 0; }
 .userWrap { padding: 6px 10px 10px; flex-shrink: 0; border-top: 1px solid var(--pontes-border); }
 /* Linha do usuário (como no v2): avatar 32, nome em cima e o plano embaixo, seta à direita.
    userWrap 10 + padding 6 = avatar em x 16..48 → centro 32, o eixo dos ícones. Constante → não anda. */
@@ -30,7 +29,12 @@
 .userText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow: hidden; line-height: 1.25; }
 .userName { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .userPlan { font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.userCaret { flex-shrink: 0; color: var(--pontes-text-muted); }
+.userRow { display: flex; align-items: center; gap: 2px; }
+.userRow > :first-child { flex: 1; min-width: 0; }
+/* Sair direto, à direita da linha; no trilho some (o avatar abre o menu com "Sair"). */
+.sair { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
+.sair:hover { color: var(--pontes-text); background: var(--pontes-primary-soft); }
+.aside[data-open="false"] .sair { display: none; }
 /* Cabeçalho do menu do avatar: nome completo + e-mail. */
 .menuNome { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .menuEmail { font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

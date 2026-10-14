@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, Repeat,
   Handshake, Upload, Landmark, Tags, Users, Target, Gauge,
-  Settings, LogOut, Plus, ChevronDown, Scale, PanelLeftClose, PanelLeftOpen,
+  Settings, LogOut, Plus, Scale, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { PontesPopover, PontesLogo, PontesLogoMark, PontesSidebarItem, PontesSidebarSection, type PontesPopoverItem } from "@/components/pontes"
 import AddAccountDialog from "../AddAccountDialog/AddAccountDialog"
@@ -60,9 +60,6 @@ function getInitials(nome: string) {
   return nome.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
 }
 
-// Rodapé do menu do usuário (acima do avatar). O painel admin passa o seu `nav` e não tem isto.
-const RODAPE: SidebarNavItem[] = [{ to: "/settings", label: "Configurações", icon: <Settings size={18} strokeWidth={2} /> }]
-
 export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = "/dashboard", onToggle }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -74,8 +71,19 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
   const initials = currentUser?.nome ? getInitials(currentUser.nome) : "?"
   const otherAccounts = savedAccounts.filter((a) => a.id !== currentUser?.id)
 
-  // Menu do avatar: trocar de conta, adicionar conta, sair. Configurações é item do menu lateral.
+  // Só navega pra login DEPOIS que o servidor confirmou a revogação (logout-all). Se falhar,
+  // não afirma "saiu" — mantém a sessão e avisa (senão a conta seguiria acessível no servidor).
+  const sair = () => {
+    logout()
+      .then(() => navigate("/auth/login"))
+      .catch(() => window.dispatchEvent(new CustomEvent("apiError", {
+        detail: { message: "Não foi possível sair agora. Tente de novo." },
+      })))
+  }
+
+  // Menu do avatar: configurações, trocar de conta, adicionar conta, sair.
   const userItems: PontesPopoverItem[] = [
+    { key: "config", icon: <Settings size={16} strokeWidth={2} />, label: "Configurações", onClick: () => navigate("/settings") },
     ...otherAccounts.map((a): PontesPopoverItem => ({
       key: `acc-${a.id}`,
       icon: <span className={styles.miniAvatar}>{getInitials(a.nome)}</span>,
@@ -90,15 +98,7 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       },
     })),
     { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", onClick: () => setAddAccountOpen(true) },
-    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", onClick: () => {
-      // Só navega pra login DEPOIS que o servidor confirmou a revogação (logout-all). Se falhar,
-      // não afirma "saiu" — mantém a sessão e avisa (senão a conta seguiria acessível no servidor).
-      logout()
-        .then(() => navigate("/auth/login"))
-        .catch(() => window.dispatchEvent(new CustomEvent("apiError", {
-          detail: { message: "Não foi possível sair agora. Tente de novo." },
-        })))
-    } },
+    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", onClick: sair },
   ]
 
   return (
@@ -148,45 +148,37 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
         ))}
       </nav>
 
-      {/* Rodapé: Configurações (só no menu do usuário) + avatar */}
-      {!nav && (
-        <div className={styles.rodape}>
-          {RODAPE.map((item) => (
-            <PontesSidebarItem
-              key={item.to}
-              icon={item.icon}
-              label={item.label}
-              active={location.pathname === item.to || location.pathname.startsWith(item.to + "/")}
-              collapsed={!open}
-              onClick={() => navigate(item.to)}
-            />
-          ))}
-        </div>
-      )}
+      {/* Rodapé: avatar (menu com configurações, contas e sair) */}
       {currentUser && (
         <div className={styles.userWrap}>
-          <PontesPopover
-            align="left" minWidth={240} direction="up" closeOnMouseLeave
-            header={
-              <>
-                <span className={styles.menuNome}>{currentUser.nome}</span>
-                <span className={styles.menuEmail}>{currentUser.email}</span>
-              </>
-            }
-            trigger={
-              <div className={styles.userTrigger}>
-                <span className={styles.avatar}>{initials}</span>
-                <span className={styles.userInfo}>
-                  <span className={styles.userText}>
-                    <span className={styles.userName}>{currentUser.nome.trim().split(/\s+/)[0]}</span>
-                    <span className={styles.userPlan}>Plano gratuito</span>
+          {/* Avatar + nome abrem o menu (trocar/adicionar conta, sair); o botão de sair à direita é
+              atalho direto e fica FORA do gatilho — some no trilho (lá o menu do avatar resolve). */}
+          <div className={styles.userRow}>
+            <PontesPopover
+              align="left" minWidth={240} direction="up" closeOnMouseLeave
+              header={
+                <>
+                  <span className={styles.menuNome}>{currentUser.nome}</span>
+                  <span className={styles.menuEmail}>{currentUser.email}</span>
+                </>
+              }
+              trigger={
+                <div className={styles.userTrigger}>
+                  <span className={styles.avatar}>{initials}</span>
+                  <span className={styles.userInfo}>
+                    <span className={styles.userText}>
+                      <span className={styles.userName}>{currentUser.nome.trim().split(/\s+/)[0]}</span>
+                      <span className={styles.userPlan}>Plano gratuito</span>
+                    </span>
                   </span>
-                  <ChevronDown size={14} strokeWidth={2} className={styles.userCaret} />
-                </span>
-              </div>
-            }
-            items={userItems}
-          />
+                </div>
+              }
+              items={userItems}
+            />
+            <button type="button" className={styles.sair} aria-label="Sair" title="Sair" onClick={sair}>
+              <LogOut size={16} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       )}
 
