@@ -33,7 +33,7 @@ public class RecorrenteContaFixaMotorTests
             .Options);
 
     private static RecorrenteService CreateService(AppDbContext ctx) =>
-        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor());
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 
     private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
 

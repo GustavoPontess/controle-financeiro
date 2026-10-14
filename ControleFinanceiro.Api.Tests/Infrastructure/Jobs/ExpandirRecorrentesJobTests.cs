@@ -70,7 +70,7 @@ public class ExpandirRecorrentesJobTests
 
         await ctx.SaveChangesAsync();
 
-        var job = new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor()), NullLogger<ExpandirRecorrentesJob>.Instance);
+        var job = new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)), NullLogger<ExpandirRecorrentesJob>.Instance);
 
         // Não pode lançar mesmo com a recorrente inválida na leva — essa é a regressão.
         await job.ExecuteAsync();

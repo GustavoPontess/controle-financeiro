@@ -404,6 +404,39 @@ describe("RecorrentesPage", () => {
     expect(createRecorrente.mock.calls[0][0]).toEqual(expect.objectContaining({ valor: 1500 }))
   })
 
+  // Bug de dinheiro (2026-10-05): criar não mandava Idempotency-Key — duplo clique ou retry de rede criava
+  // a conta fixa (e as cobranças previstas) 2x.
+  it("criar manda Idempotency-Key: o retry depois de erro reusa a chave; abrir o modal de novo gera outra", async () => {
+    createRecorrente.mockRejectedValueOnce(new Error("rede")).mockResolvedValue(makeRecorrente())
+    renderPage()
+    await screen.findAllByRole("button", { name: "Ações" })
+    const preencher = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Nova conta fixa" }))
+      await screen.findByText("Criar conta fixa")
+      fireEvent.change(screen.getByPlaceholderText("Ex: Aluguel, Escola, Netflix..."), { target: { value: "Aluguel" } })
+      fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "150000" } })
+      fireEvent.click(screen.getByText("Selecione uma conta"))
+      const opcoes = await screen.findAllByText("Nubank")
+      fireEvent.click(opcoes[opcoes.length - 1])
+    }
+
+    await preencher()
+    fireEvent.click(screen.getByText("Criar conta fixa"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByText("Criar conta fixa")) // o modal ficou aberto com o erro: tenta de novo
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByText("Criar conta fixa")).not.toBeInTheDocument())
+
+    await preencher()
+    fireEvent.click(screen.getByText("Criar conta fixa"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(3))
+
+    const [chave1, chave2, chave3] = createRecorrente.mock.calls.map((c) => c[1])
+    expect(chave1).toMatch(/^[0-9a-f-]{36}$/)
+    expect(chave2).toBe(chave1)
+    expect(chave3).not.toBe(chave1)
+  })
+
   it("sem conta selecionada, bloqueia e pede a conta", async () => {
     createRecorrente.mockResolvedValue(makeRecorrente())
     renderPage()

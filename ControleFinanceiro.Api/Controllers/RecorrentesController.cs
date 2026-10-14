@@ -55,11 +55,25 @@ public class RecorrentesController : ControllerBase
         return Ok(stats);
     }
 
+    /// <summary>
+    /// Cria a conta fixa (e as previsões dos próximos 3 meses). Requer header Idempotency-Key (UUID por
+    /// abertura do formulário): repetir a mesma chave devolve a conta fixa original em vez de criar outra;
+    /// a mesma chave com outros dados → 409.
+    /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Criar([FromBody] CriarRecorrenteDto dto)
+    [ProducesResponseType(typeof(RecorrenteDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Criar(
+        [FromBody] CriarRecorrenteDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
     {
         var uid = GetUserId();
-        var result = await _service.CriarAsync(dto, uid);
+        // Obrigatória aqui (não no service): criar gera previsões que o job efetiva — sem chave, um duplo
+        // clique ou retry de rede criava a conta fixa (e as cobranças) 2x. Chamadas internas não passam.
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para criar uma conta fixa.");
+        var result = await _service.CriarAsync(dto, uid, idempotencyKey);
         return CreatedAtAction(nameof(Listar), null, result);
     }
 

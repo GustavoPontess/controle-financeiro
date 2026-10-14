@@ -33,7 +33,7 @@ public class ContaFixaJobsTests
             .Options);
 
     private static RecorrenteService Servico(AppDbContext ctx) =>
-        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor());
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 
     private static ExpandirRecorrentesJob ExpandirJob(AppDbContext ctx) =>
         new(ctx, new FaturaService(ctx), Servico(ctx), NullLogger<ExpandirRecorrentesJob>.Instance);

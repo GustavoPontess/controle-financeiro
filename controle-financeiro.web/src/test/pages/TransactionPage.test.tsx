@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { PontesThemeProvider } from "../../components/pontes"
 import TransactionPage from "../../pages/Transactions/TransactionPage"
 import { createTransferencia } from "../../services/transferenciaService"
+import { createRecorrente } from "../../services/recorrenteService"
 import { createTransaction, deleteTransaction, getTransaction, updateTransaction } from "../../services/transactionService"
 import { atribuirDependente, compartilharTransacao, definirRateioTransacao } from "../../services/familiaService"
 import { dataLocalISO } from "../../utils/dateTime"
@@ -161,6 +162,23 @@ describe("TransactionPage — criar (/transactions/nova, substitui o popup)", ()
     fireEvent.click(screen.getByText("Adicionar"))
     await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "error", message: "Erro ao salvar" })))
     expect(screen.getByRole("heading", { name: "Nova transação" })).toBeInTheDocument()
+  })
+
+  it("conta fixa (repetir automaticamente) manda Idempotency-Key, e o retry depois de erro reusa a MESMA chave", async () => {
+    vi.mocked(createRecorrente).mockRejectedValueOnce(new Error("rede"))
+    renderEm("/transactions/nova")
+    await preencherDespesa()
+    fireEvent.click(screen.getByText("Repetir automaticamente (assinatura)"))
+
+    fireEvent.click(screen.getByText("Criar recorrente"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByText("Criar recorrente"))
+    await waitFor(() => expect(createRecorrente).toHaveBeenCalledTimes(2))
+
+    const [chave1, chave2] = vi.mocked(createRecorrente).mock.calls.map((c) => c[1])
+    expect(chave1).toMatch(/^[0-9a-f-]{36}$/)
+    expect(chave2).toBe(chave1)
+    expect(await screen.findByText("Lista de transações")).toBeInTheDocument()
   })
 })
 

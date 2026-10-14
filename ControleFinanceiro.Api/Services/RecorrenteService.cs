@@ -14,14 +14,12 @@ public class RecorrenteService
     private readonly AppDbContext _context;
     private readonly FaturaService _faturaService;
     private readonly FinancialEventLogService _eventLogService;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public RecorrenteService(AppDbContext context, FaturaService faturaService, FinancialEventLogService eventLogService, IHttpContextAccessor httpContextAccessor)
+    public RecorrenteService(AppDbContext context, FaturaService faturaService, FinancialEventLogService eventLogService)
     {
         _context = context;
         _faturaService = faturaService;
         _eventLogService = eventLogService;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     private static string DescricaoFrequencia(FrequenciaRecorrencia freq) => freq switch
@@ -38,12 +36,6 @@ public class RecorrenteService
         if (contaId.HasValue) await DonoRecursos.ExigirContaAsync(_context, contaId.Value, usuarioId);
         if (cartaoId.HasValue) await DonoRecursos.ExigirCartaoAsync(_context, cartaoId.Value, usuarioId);
         if (categoriaId.HasValue) await DonoRecursos.ExigirCategoriaAsync(_context, categoriaId.Value, usuarioId);
-    }
-
-    private string? ObterIdempotencyKey()
-    {
-        var idempotencyKey = _httpContextAccessor.HttpContext?.Items["IdempotencyKey"] as string;
-        return !string.IsNullOrWhiteSpace(idempotencyKey) ? idempotencyKey : null;
     }
 
     // Conta fixa do usuário. Excluída não existe mais pra ele (404); de outro usuário segue 403 (contrato atual).
@@ -455,39 +447,94 @@ public class RecorrenteService
 
         return new PagedResult<RecorrenteDto>
         {
-            Items = lista.Select(r => new RecorrenteDto
-            {
-                Id = r.Id,
-                Descricao = r.Descricao,
-                Valor = r.Valor,
-                Tipo = (int)r.Tipo,
-                TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
-                CategoriaId = r.CategoriaId,
-                CategoriaNome = r.Categoria?.Descricao,
-                ContaId = r.ContaId,
-                ContaNome = r.Conta?.Nome,
-                CartaoCreditoId = r.CartaoCreditoId,
-                CartaoCreditoNome = r.CartaoCredito?.Nome,
-                Frequencia = (int)r.Frequencia,
-                FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
-                Dia = r.Dia,
-                DataInicio = r.DataInicio,
-                DataFim = r.DataFim,
-                Ativo = r.Ativo,
-                DataProximaGeracao = r.DataProximaGeracao,
-                ProximaCobranca = r.Ativo && r.CanceladoEm == null && proximaPorId.TryGetValue(r.Id, out var pc) ? pc : null,
-                CanceladoEm = r.CanceladoEm,
-                MotivoCancelamento = r.MotivoCancelamento,
-                Situacao = CalcularSituacao(r, emVigor)
-            }),
+            Items = lista.Select(r => ParaDto(r, emVigor, proximaPorId)),
             Total = total,
             Page = page,
             PageSize = pageSize,
         };
     }
 
-    public async Task<RecorrenteDto> CriarAsync(CriarRecorrenteDto dto, Guid usuarioId)
+    /// <summary>
+    /// UMA conta fixa do usuário, no mesmo formato da lista. O criar devolvia a recém-criada procurando
+    /// na 1ª página da lista (25, por ordem de nome): com mais contas fixas ela podia cair fora, e a API
+    /// respondia erro DEPOIS de gravar — o usuário tentava de novo e duplicava.
+    /// </summary>
+    private async Task<RecorrenteDto> ObterDtoAsync(Guid id, Guid usuarioId)
     {
+        var r = await _context.Recorrentes
+            .Include(x => x.Categoria)
+            .Include(x => x.Conta)
+            .Include(x => x.CartaoCredito)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CriadoPor == usuarioId && x.ExcluidoEm == null)
+            ?? throw new KeyNotFoundException("Recorrente não encontrado.");
+
+        var hoje = DateTime.UtcNow.Date;
+        var hojeD = DateOnly.FromDateTime(hoje);
+        var proxima = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId == id && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Previsao && t.Data >= hojeD)
+            .OrderBy(t => t.Data)
+            .Select(t => (DateOnly?)t.Data)
+            .FirstOrDefaultAsync();
+        var proximaPorId = proxima is { } d ? new Dictionary<Guid, DateOnly> { [id] = d } : new Dictionary<Guid, DateOnly>();
+
+        return ParaDto(r, EmVigor(hoje).Compile(), proximaPorId);
+    }
+
+    private static RecorrenteDto ParaDto(Recorrente r, Func<Recorrente, bool> emVigor, IReadOnlyDictionary<Guid, DateOnly> proximaPorId) => new()
+    {
+        Id = r.Id,
+        Descricao = r.Descricao,
+        Valor = r.Valor,
+        Tipo = (int)r.Tipo,
+        TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
+        CategoriaId = r.CategoriaId,
+        CategoriaNome = r.Categoria?.Descricao,
+        ContaId = r.ContaId,
+        ContaNome = r.Conta?.Nome,
+        CartaoCreditoId = r.CartaoCreditoId,
+        CartaoCreditoNome = r.CartaoCredito?.Nome,
+        Frequencia = (int)r.Frequencia,
+        FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
+        Dia = r.Dia,
+        DataInicio = r.DataInicio,
+        DataFim = r.DataFim,
+        Ativo = r.Ativo,
+        DataProximaGeracao = r.DataProximaGeracao,
+        ProximaCobranca = r.Ativo && r.CanceladoEm == null && proximaPorId.TryGetValue(r.Id, out var pc) ? pc : null,
+        CanceladoEm = r.CanceladoEm,
+        MotivoCancelamento = r.MotivoCancelamento,
+        Situacao = CalcularSituacao(r, emVigor)
+    };
+
+    /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves da criação de conta fixa).</summary>
+    public const string OperacaoCriarContaFixa = "CriarContaFixa";
+
+    /// <summary>Mensagem do 409 quando a chave já criou uma conta fixa com OUTROS dados.</summary>
+    public const string MensagemChaveComOutrosDados =
+        "Esta conta fixa já foi registrada com outros dados. Recarregue a lista antes de criar de novo.";
+
+    /// <summary>
+    /// Cria a conta fixa e materializa 3 meses de previsões. Idempotente por <paramref name="idempotencyKey"/>
+    /// (<see cref="RegistroIdempotencia"/>, no mesmo SaveChanges da conta fixa): a mesma chave devolve a
+    /// conta fixa original em vez de criar outra (e as previsões em dobro); mesma chave com outros dados
+    /// → 409. O controller exige a chave; sem ela (chamada interna) não há proteção contra repetição.
+    /// </summary>
+    public async Task<RecorrenteDto> CriarAsync(CriarRecorrenteDto dto, Guid usuarioId, string? idempotencyKey = null)
+    {
+        if (idempotencyKey?.Length > RegistroIdempotencia.ChaveMaxLength)
+            throw new ArgumentException(
+                $"O header Idempotency-Key aceita no máximo {RegistroIdempotencia.ChaveMaxLength} caracteres.");
+
+        // Replay ANTES das regras: o retry de um pedido que já gravou devolve o mesmo sucesso.
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            var anterior = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, dto);
+            if (anterior != null)
+                return anterior;
+        }
+
         // Validar ContaId XOR CartaoCreditoId
         if ((dto.ContaId == null && dto.CartaoCreditoId == null) ||
             (dto.ContaId != null && dto.CartaoCreditoId != null))
@@ -500,20 +547,10 @@ public class RecorrenteService
             DateOnly.FromDateTime(dataInicio),
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
             DateOnly.FromDateTime(DateTime.UtcNow));
-        var idempotencyKey = ObterIdempotencyKey();
 
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Validar idempotência
-            if (!string.IsNullOrEmpty(idempotencyKey))
-            {
-                var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
-                if (prevEvent != null)
-                    return (await ListarAsync(usuarioId)).Items.FirstOrDefault(r => r.Id == recorrenteId)
-                        ?? throw new InvalidOperationException("Idempotência: evento anterior encontrado mas recorrente não existe.");
-            }
-
             // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
             await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
 
@@ -540,6 +577,20 @@ public class RecorrenteService
             };
 
             _context.Recorrentes.Add(recorrente);
+
+            // Chave no MESMO SaveChanges da conta fixa (e na mesma transação das previsões): duas
+            // requisições simultâneas com a mesma chave → o índice único estoura na 2ª e ela vira
+            // replay. Tentativa que falha antes daqui não gasta a chave.
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                _context.RegistrosIdempotencia.Add(new RegistroIdempotencia
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = usuarioId,
+                    Operacao = OperacaoCriarContaFixa,
+                    Chave = idempotencyKey,
+                    ReferenciaId = recorrenteId,
+                    CriadoEm = DateTime.UtcNow,
+                });
             await _context.SaveChangesAsync();
 
             // Materializar 3 meses de previsões, no compasso do Dia (AgendaRecorrente)
@@ -547,7 +598,8 @@ public class RecorrenteService
 
             await _context.SaveChangesAsync();
 
-            // Log evento
+            // Log evento. Sem idempotencyKey no payload de propósito: a chave deste fluxo mora no
+            // RegistroIdempotencia, e o LIKE dos fluxos antigos não deve enxergá-la.
             _eventLogService.Registrar(
                 usuarioId,
                 FinancialEventType.RecorrenteCriada,
@@ -555,19 +607,79 @@ public class RecorrenteService
                 recorrenteId,
                 correlationId,
                 "Service:RecorrenteService",
-                payload: new { descricao = recorrente.Descricao, valor = recorrente.Valor, idempotencyKey });
+                payload: new { descricao = recorrente.Descricao, valor = recorrente.Valor });
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-
-            return (await ListarAsync(usuarioId)).Items.First(r => r.Id == recorrenteId);
+        }
+        catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && EhViolacaoDeUnicidade(ex))
+        {
+            // Corrida: outra requisição com a MESMA chave gravou primeiro. Nada desta foi persistido
+            // (rollback) — devolve a conta fixa vencedora como replay (ou 409 se os dados divergem).
+            await transaction.RollbackAsync();
+            _context.ChangeTracker.Clear();
+            var vencedora = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, dto);
+            if (vencedora != null)
+                return vencedora;
+            throw;
         }
         catch
         {
             await transaction.RollbackAsync();
             throw;
         }
+
+        return await ObterDtoAsync(recorrenteId, usuarioId);
     }
+
+    /// <summary>
+    /// Conta fixa já criada com esta chave (replay) ou null se a chave é nova pra este usuário.
+    /// 409 (<see cref="InvalidOperationException"/>) se a chave já criou outra coisa — conta fixa
+    /// excluída depois, ou com dados diferentes de <paramref name="dto"/>.
+    /// </summary>
+    private async Task<RecorrenteDto?> BuscarCriacaoPorChaveAsync(Guid usuarioId, string chave, CriarRecorrenteDto dto)
+    {
+        var registro = await _context.RegistrosIdempotencia
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId
+                                      && r.Operacao == OperacaoCriarContaFixa
+                                      && r.Chave == chave);
+        if (registro == null)
+            return null;
+
+        var original = await _context.Recorrentes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == registro.ReferenciaId && r.CriadoPor == usuarioId);
+
+        // Criada e depois excluída: a chave segue consumida — o retry não pode recriar a conta fixa.
+        if (original == null || original.ExcluidoEm != null)
+            throw new InvalidOperationException(
+                "Esta Idempotency-Key já foi usada. Gere uma nova chave e tente de novo.");
+
+        // Mesma chave com dados DIFERENTES não é o mesmo pedido (draft IETF httpapi-idempotency-key):
+        // devolver a original diria "criada" pra algo que não foi feito.
+        if (!MesmosDadosDaContaFixa(original, dto))
+            throw new InvalidOperationException(MensagemChaveComOutrosDados);
+
+        return await ObterDtoAsync(original.Id, usuarioId);
+    }
+
+    /// <summary>
+    /// O retry traz o mesmo pedido que criou <paramref name="original"/>? Compara com o que foi GRAVADO
+    /// (mesmas conversões do INSERT). Datas só pelo dia: a agenda da conta fixa é por dia.
+    /// </summary>
+    private static bool MesmosDadosDaContaFixa(Recorrente original, CriarRecorrenteDto dto) =>
+        original.Descricao == dto.Descricao
+        && original.Valor == dto.Valor
+        && (int)original.Tipo == dto.Tipo
+        && original.CategoriaId == dto.CategoriaId
+        && original.ContaId == dto.ContaId
+        && original.CartaoCreditoId == dto.CartaoCreditoId
+        && (int)original.Frequencia == dto.Frequencia
+        && original.Dia == dto.Dia
+        && DateOnly.FromDateTime(original.DataInicio) == DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime())
+        && (original.DataFim is { } fim ? DateOnly.FromDateTime(fim) : (DateOnly?)null)
+           == (dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null);
 
     public async Task EditarProximaOcorrenciaAsync(Guid id, EditarProximaOcorrenciaDto dto, Guid usuarioId)
     {
@@ -608,20 +720,18 @@ public class RecorrenteService
         if (string.IsNullOrWhiteSpace(motivo))
             throw new ArgumentException("Motivo do cancelamento é obrigatório.");
 
+        // Cancelar é idempotente pelo próprio estado: já cancelada (duplo clique, retry de rede) devolve
+        // o cancelamento que vale, sem mexer de novo nem registrar outro evento. Antes a idempotência era
+        // a busca da chave no JSON do FinancialEventLog — que achava a chave de QUALQUER operação e
+        // então pulava o cancelamento sem cancelar nada.
+        if (recorrente.CanceladoEm != null)
+            return new { canceladoEm = recorrente.CanceladoEm, motivo = recorrente.MotivoCancelamento };
+
         var correlationId = Guid.NewGuid();
-        var idempotencyKey = ObterIdempotencyKey();
 
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Validar idempotência
-            if (!string.IsNullOrEmpty(idempotencyKey))
-            {
-                var prevEvent = await _eventLogService.BuscarPorIdempotencyKeyAsync(usuarioId, idempotencyKey);
-                if (prevEvent != null)
-                    return new { canceladoEm = recorrente.CanceladoEm, motivo = recorrente.MotivoCancelamento };
-            }
-
             // Soft delete recorrente
             recorrente.Ativo = false;
             recorrente.CanceladoEm = DateTime.UtcNow;
@@ -642,7 +752,7 @@ public class RecorrenteService
                 id,
                 correlationId,
                 "Service:RecorrenteService",
-                payload: new { motivo, transacoesCanceladas = transacoesFuturas.Count, idempotencyKey });
+                payload: new { motivo, transacoesCanceladas = transacoesFuturas.Count });
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();

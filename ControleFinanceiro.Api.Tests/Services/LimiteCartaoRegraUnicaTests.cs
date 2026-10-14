@@ -294,7 +294,7 @@ public class LimiteCartaoRegraUnicaTests
     // ══ Recorrente no cartão ═════════════════════════════════════════════════
 
     private static RecorrenteService Recorrentes(AppDbContext ctx) =>
-        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor());
+        new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 
     /// <summary>Recorrente mensal de R$ 80 no cartão pelo caminho real (modal de nova transação, modo recorrente).</summary>
     private static Task CriarRecorrenteNoCartaoAsync(AppDbContext ctx, Cenario c, DateTime inicio) =>
@@ -432,7 +432,7 @@ public class LimiteCartaoRegraUnicaTests
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 160m);
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, outro, 0m);
 
-        await new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx), new HttpContextAccessor()), NullLogger<ExpandirRecorrentesJob>.Instance)
+        await new ExpandirRecorrentesJob(ctx, new FaturaService(ctx), new RecorrenteService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)), NullLogger<ExpandirRecorrentesJob>.Instance)
             .ExecuteAsync();
 
         var depois = await ctx.Transacoes.AsNoTracking()

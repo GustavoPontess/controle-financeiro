@@ -62,6 +62,9 @@ export default function TransactionPage() {
   const [naoEncontrada, setNaoEncontrada] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [estornando, setEstornando] = useState(false)
+  // Idempotency-Key da conta fixa: uma por abertura da tela (ela remonta a cada navegação), reusada no
+  // retry — duplo clique ou rede não criam a conta fixa 2x.
+  const [chaveRecorrente] = useState(() => crypto.randomUUID())
   // Compartilhar / atribuir / rateio — moravam no ⋮ da lista; agora só aqui.
   const familia = useAcoesFamilia(notify)
 
@@ -111,7 +114,7 @@ export default function TransactionPage() {
             dia: Number(data.data.slice(8, 10)),
             dataInicio: data.data,
             dataFim: data.dataFim || undefined,
-          })
+          }, chaveRecorrente)
           notify({ open: true, message: "Recorrente criada com sucesso", severity: "success" })
         } else {
           await createTransaction({
