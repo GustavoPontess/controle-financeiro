@@ -24,10 +24,27 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "fatura", rotulo: "Fatura" },
 ]
 
-/** "2026-10-09" + "14:30:00" → "09/10/2026 14:30"; sem hora, só o dia. */
-const fmtData = (data: string, hora?: string | null) => {
-  const [y, m, d] = data.split("-")
-  return hora ? `${d}/${m}/${y} ${hora.slice(0, 5)}` : `${d}/${m}/${y}`
+/** Cabeçalho do dia: "Hoje" / "Ontem" / "quarta-feira, 8 de outubro" (ano só quando não é o atual). */
+function rotuloDoDia(iso: string): string {
+  const hoje = new Date()
+  const dia = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
+  const diff = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime() - dia.getTime()) / 86400000)
+  if (diff === 0) return "Hoje"
+  if (diff === 1) return "Ontem"
+  const opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long", ...(dia.getFullYear() !== hoje.getFullYear() ? { year: "numeric" } : {}) }
+  const txt = new Intl.DateTimeFormat("pt-BR", opts).format(dia)
+  return txt.charAt(0).toUpperCase() + txt.slice(1)
+}
+
+/** Agrupa por dia mantendo a ordem que o servidor mandou (data desc; dentro do dia, hora desc). */
+function porDia(itens: Transaction[]): { dia: string; itens: Transaction[] }[] {
+  const grupos: { dia: string; itens: Transaction[] }[] = []
+  for (const t of itens) {
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.dia === t.data) ultimo.itens.push(t)
+    else grupos.push({ dia: t.data, itens: [t] })
+  }
+  return grupos
 }
 
 const naturezaDe = (t: Transaction): Exclude<Natureza, ""> =>
@@ -87,6 +104,7 @@ export default function Transacoes() {
   }, [pagina, buscaAplicada, natureza, contaId, status, de, ate])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
+  const grupos = useMemo(() => porDia(itens ?? []), [itens])
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
   // Quantos filtros avançados estão ativos (a busca fica fora: ela tem o próprio campo).
   const ativos = [natureza, contaId, status, de || ate].filter(Boolean).length
@@ -165,9 +183,16 @@ export default function Transacoes() {
         ) : itens.length === 0 ? (
           <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : "Nenhum lançamento ainda."}</p>
         ) : (
-          <ul className={styles.lista}>
-            {itens.map((t) => <Linha key={t.id} t={t} categoria={t.categoriaId ? categorias[t.categoriaId] : undefined} />)}
-          </ul>
+          <div className={styles.lista}>
+            {grupos.map((g) => (
+              <section key={g.dia} className={styles.grupo}>
+                <h3 className={styles.dia}>{rotuloDoDia(g.dia)}</h3>
+                <ul className={styles.linhas}>
+                  {g.itens.map((t) => <Linha key={t.id} t={t} categoria={t.categoriaId ? categorias[t.categoriaId] : undefined} />)}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
 
         {total > 0 && (
@@ -202,7 +227,7 @@ function Linha({ t, categoria }: { t: Transaction; categoria?: string }) {
           <span className={styles.nome}>{t.descricao}</span>
           <span className={styles.sub}>{detalhe || "—"}</span>
         </span>
-        <span className={styles.data}>{fmtData(t.data, t.hora)}</span>
+        {t.hora && <span className={styles.hora}>{t.hora.slice(0, 5)}</span>}
         {t.statusTransacao === 0 && <span className={styles.previsto}>Previsto</span>}
         <Dinheiro valor={t.valor} tom={tom} className={styles.valor} />
       </Link>

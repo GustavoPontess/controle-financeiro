@@ -38,7 +38,10 @@
 /* Lista */
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.lista { list-style: none; margin: 0; padding: 4px 8px 8px; display: flex; flex-direction: column; }
+.lista { padding: 0 8px 8px; display: flex; flex-direction: column; }
+.grupo { display: flex; flex-direction: column; }
+.dia { margin: 0; padding: 14px 16px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
+.linhas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
 .linha:hover { background: var(--v2-superficie-2); }
 .icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
@@ -47,7 +50,7 @@
 .texto { display: flex; flex-direction: column; min-width: 0; }
 .nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.data { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hora { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .previsto { font-size: var(--v2-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--v2-alerta-suave); color: var(--v2-alerta); white-space: nowrap; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 110px; text-align: right; }
 .valor[data-tom="positivo"] { color: var(--v2-positivo); }
@@ -74,9 +77,10 @@
   .filtros { padding: 2px 16px 10px; }
   .segmentos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .segmentos::-webkit-scrollbar { display: none; }
-  .lista { padding: 4px 4px 8px; }
+  .lista { padding: 0 4px 8px; }
+  .dia { padding: 12px 12px 4px; }
   .linha { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 10px 12px; }
-  .data { display: none; }
+  .hora { display: none; }
   .previsto { grid-column: 2; justify-self: start; }
   .valor { min-width: 0; }
 }
