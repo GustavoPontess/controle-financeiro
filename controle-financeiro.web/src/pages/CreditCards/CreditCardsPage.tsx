@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { formatMoney } from "@/utils/money"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi, Layers,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi, Layers, FlaskConical,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesEmptyState, PontesSkeletonList,
@@ -20,6 +20,7 @@ export default function CreditCardsPage() {
   // Toda a lógica (dados, faturas, pagar, estornar, CRUD do cartão) mora no useCartoesLogic — a mesma
   // das bancadas de layout /credit-cards/lab-*; aqui só o visual.
   const logic = useCartoesLogic()
+  const navigate = useNavigate()
   const {
     now, cartoes, totalLimite, totalUsado, totalDisp, faturasCartaoId, cartaoAtivo, fecharCartao, alternarCartao,
     faturas, loadingFaturas, faturaDetalhes, ciclos, atualIdx, ultimoIdx, idxSelecionado, irParaFatura,
@@ -246,9 +247,16 @@ export default function CreditCardsPage() {
       <div className={styles.header}>
         {/* O título já está na barra de cima; aqui ficam as abas Cartões | Parcelamentos. */}
         <CartoesAbas />
-        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
-          Novo Cartão
-        </PontesButton>
+        <div className={styles.headerAcoes}>
+          {/* Atalho TEMPORÁRIO pra bancada de layout (/credit-cards/lab-*) — sai quando escolher a vencedora. */}
+          <PontesButton size="sm" variant="ghost" iconStart={<FlaskConical size={16} strokeWidth={2.5} />}
+            onClick={() => navigate("/credit-cards/lab-a")}>
+            Labs
+          </PontesButton>
+          <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
+            Novo Cartão
+          </PontesButton>
+        </div>
       </div>
 
       {/* Resumo slim */}
