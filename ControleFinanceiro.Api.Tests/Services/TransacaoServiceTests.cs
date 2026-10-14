@@ -388,6 +388,29 @@ public class TransacaoServiceTests
     }
 
     [Fact]
+    public async Task ListarAsync_MesmoDia_SemHoraVemDepoisDosComHora_EDesempataPelaCriacao()
+    {
+        // Extrato importado não tem hora: no mesmo dia, quem tem hora vem antes (cronológico) e os sem
+        // hora saem pela ordem de criação (= ordem do extrato). Antes: NULL primeiro no DESC e empate aleatório.
+        var (ctx, svc) = Build();
+        var (contaId, usuarioId) = await SeedConta(ctx);
+        var dia = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-2);
+        var t0 = DateTime.UtcNow.AddHours(-1);
+        ctx.Transacoes.AddRange(
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "sem-hora-1", Valor = 1, Tipo = TipoTransacao.Despesa, Data = dia, Hora = null, CriadoEm = t0 },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "com-hora-manha", Valor = 2, Tipo = TipoTransacao.Despesa, Data = dia, Hora = new TimeOnly(9, 0), CriadoEm = t0.AddMinutes(1) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "sem-hora-2", Valor = 3, Tipo = TipoTransacao.Despesa, Data = dia, Hora = null, CriadoEm = t0.AddMinutes(2) },
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "com-hora-noite", Valor = 4, Tipo = TipoTransacao.Despesa, Data = dia, Hora = new TimeOnly(21, 0), CriadoEm = t0.AddMinutes(3) });
+        await ctx.SaveChangesAsync();
+
+        // (Não usar Descricoes(): ela ordena alfabeticamente — aqui a ORDEM é o que se testa.)
+        var desc = (await svc.ListarAsync(usuarioId)).Items.Select(t => t.Descricao).ToList();
+        Assert.Equal(["com-hora-noite", "com-hora-manha", "sem-hora-2", "sem-hora-1"], desc);
+        var asc = (await svc.ListarAsync(usuarioId, ordenacao: "data_asc")).Items.Select(t => t.Descricao).ToList();
+        Assert.Equal(["com-hora-manha", "com-hora-noite", "sem-hora-1", "sem-hora-2"], asc);
+    }
+
+    [Fact]
     public async Task AtualizarAsync_ValorNegativo_LancaException()
     {
         var (ctx, svc) = Build();
