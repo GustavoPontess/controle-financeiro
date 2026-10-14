@@ -5,10 +5,12 @@
 .root { position: relative; min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--pontes-bg); color: var(--pontes-text); font-family: var(--pontes-font); line-height: 1.45; -webkit-font-smoothing: antialiased; }
 
 /* ── Palco da marca ───────────────────────────────────────────────────────── */
-.brand { display: flex; flex-direction: column; justify-content: space-between; gap: 32px; margin: 16px 0 16px 16px; padding: 40px; border-radius: 24px; background: linear-gradient(150deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); color: var(--pontes-hero-fg); box-shadow: var(--pontes-shadow-lg); }
+.brand { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; margin: 16px 0 16px 16px; padding: 40px; border-radius: 24px; background: linear-gradient(150deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); color: var(--pontes-hero-fg); box-shadow: var(--pontes-shadow-lg); }
+.grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.brandLogo, .brandMid, .brandFoot { position: relative; z-index: 1; }
 .brandLogo { display: flex; align-items: center; }
 .brandMid { display: flex; flex-direction: column; gap: 18px; max-width: 460px; }
-.headline { margin: 0; font-size: var(--pontes-fs-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+.headline { margin: 0; font-family: var(--pontes-font-marca); font-size: var(--pontes-fs-display); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; } /* Fraunces: só onde a marca fala (chamada); o resto é a fonte do DS */
 .headlineDim { color: rgba(255, 255, 255, 0.64); font-weight: 500; }
 .lead { margin: 0; font-size: var(--pontes-fs-base); color: rgba(255, 255, 255, 0.64); }
 .features { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: var(--pontes-fs-md); }

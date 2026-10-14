@@ -230,6 +230,15 @@ export default function LoginPage() {
     <div className={styles.root}>
       {/* ── Palco da marca (gradiente da paleta) ─────────────────────────── */}
       <aside className={styles.brand}>
+        {/* grade sutil por cima do gradiente */}
+        <svg className={styles.grid} aria-hidden="true">
+          <defs>
+            <pattern id="auth-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#auth-grid)" />
+        </svg>
         <div className={styles.brandLogo}>
           <PontesLogo color="var(--pontes-hero-fg)" size={28} onClick={() => navigate('/')} />
         </div>
