@@ -1,167 +1,76 @@
-/* LoginPage.module.css — refator #122 (inline -> CSS vars).
-   Painel de marca usa branco fixo (sempre sobre gradiente primário). */
+/* LoginPage.module.css — tela de entrada: palco da marca (gradiente da paleta) + painel do formulário.
+   Sem enfeite (grade, blob, depoimento). Cor só via var(--pontes-*) — segue a paleta escolhida;
+   o branco do palco é fixo porque está sempre sobre o gradiente primário. */
 
-.root { min-height: 100vh; display: flex; flex-wrap: wrap; font-family: var(--pontes-font); }
+.root { position: relative; min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--pontes-bg); color: var(--pontes-text); font-family: var(--pontes-font); line-height: 1.45; -webkit-font-smoothing: antialiased; }
 
-/* Painel esquerdo — marca (gradiente primário) */
-.brand {
-  display: flex; width: 48%; flex-direction: column; justify-content: space-between;
-  padding: 48px; position: relative; overflow: hidden;
-  background: linear-gradient(150deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%);
-}
-@media (max-width: 899px) { .brand { display: none; } }
+/* ── Palco da marca ───────────────────────────────────────────────────────── */
+.brand { display: flex; flex-direction: column; justify-content: space-between; gap: 32px; margin: 16px 0 16px 16px; padding: 40px; border-radius: 24px; background: linear-gradient(150deg, var(--pontes-primary) 0%, var(--pontes-primary-dark) 100%); color: var(--pontes-hero-fg); box-shadow: var(--pontes-shadow-lg); }
+.brandLogo { display: flex; align-items: center; }
+.brandMid { display: flex; flex-direction: column; gap: 18px; max-width: 460px; }
+.headline { margin: 0; font-size: var(--pontes-fs-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+.headlineDim { color: rgba(255, 255, 255, 0.72); font-weight: 500; }
+.lead { margin: 0; font-size: var(--pontes-fs-lg); color: rgba(255, 255, 255, 0.8); }
+.features { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: var(--pontes-fs-base); }
+.features li { display: flex; align-items: center; gap: 10px; }
+.featureCheck { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); flex-shrink: 0; }
+.brandFoot { font-size: var(--pontes-fs-sm); color: rgba(255, 255, 255, 0.7); }
 
-.grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.blob { position: absolute; top: -15%; right: -15%; width: 60%; height: 60%; border-radius: 50%; background: rgba(255, 255, 255, 0.06); filter: blur(40px); pointer-events: none; }
+/* ── Painel do formulário ─────────────────────────────────────────────────── */
+.painel { display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+.miolo { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+.voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text-muted); text-decoration: none; cursor: pointer; }
+.voltar:hover { color: var(--pontes-text); }
+.chip { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; max-width: 100%; padding: 6px 12px 6px 6px; border: 1px solid var(--pontes-border); border-radius: 999px; background: var(--pontes-surface); font: inherit; font-size: var(--pontes-fs-md); color: var(--pontes-text); cursor: pointer; transition: border-color 0.12s; }
+.chip:hover { border-color: var(--pontes-primary); }
+.chipNome { font-weight: 600; white-space: nowrap; }
+.chipEmail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pontes-text-muted); }
+.chipCaret { color: var(--pontes-text-muted); flex-shrink: 0; }
+.logoMobile { display: none; }
+.title { margin: 14px 0 0; font-size: var(--pontes-fs-4xl); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--pontes-text); }
+.sub { margin: -6px 0 6px; font-size: var(--pontes-fs-base); color: var(--pontes-text-muted); }
+.link { font-weight: 600; color: var(--pontes-primary); text-decoration: none; }
+.link:hover { text-decoration: underline; }
+.linkBtn { padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-primary); cursor: pointer; }
+.linkBtn:hover { text-decoration: underline; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.eyeBtn { display: flex; align-items: center; padding: 0; border: 0; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
+.eyeBtn:hover { color: var(--pontes-text); }
+.opcoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.footer { margin: 10px 0 0; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.footer a { color: var(--pontes-text); font-weight: 600; text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
 
-.brandLogo { position: relative; z-index: 1; }
-.brandMid { position: relative; z-index: 1; }
-.headline { font-family: var(--pontes-font-heading); font-size: var(--pontes-fs-display); font-weight: 700; color: var(--pontes-hero-fg); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 8px; }
-.headlineDim { opacity: 0.85; }
-.lead { color: rgba(255, 255, 255, 0.8); font-size: var(--pontes-fs-lg); line-height: 1.55; margin: 0 0 32px; }
+/* ── Contas lembradas ─────────────────────────────────────────────────────── */
+.lista { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.listaItem { display: flex; align-items: center; gap: 6px; }
+.escolher { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 12px; border: 1px solid var(--pontes-border); border-radius: 14px; background: var(--pontes-surface); font: inherit; text-align: left; color: var(--pontes-text); cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s; }
+.escolher:hover { border-color: var(--pontes-primary); box-shadow: var(--pontes-shadow-sm); }
+.escolher:hover .seta { opacity: 1; transform: none; }
+.outra { border-style: dashed; background: transparent; color: var(--pontes-text-muted); }
+.escolherTexto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.nome { font-size: var(--pontes-fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mascarado { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
+.seta { color: var(--pontes-text-muted); opacity: 0; transform: translateX(-4px); transition: opacity 0.12s, transform 0.12s; }
+.avatarNeutro { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--pontes-bg); color: var(--pontes-text-muted); flex-shrink: 0; }
+.remover { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
+.remover:hover { color: var(--pontes-danger); background: var(--pontes-danger-soft); }
 
-.features { display: flex; flex-direction: column; gap: 12px; }
-.featureRow { display: flex; align-items: center; gap: 12px; }
-.featureCheck { width: 20px; height: 20px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--pontes-hero-fg); font-size: var(--pontes-fs-xs); font-weight: 700; }
-.featureText { color: rgba(255, 255, 255, 0.9); font-size: var(--pontes-fs-base); }
+/* ── DEV — card no canto (só em desenvolvimento) ──────────────────────────── */
+.dev { position: fixed; right: 16px; bottom: 16px; z-index: 30; width: 260px; display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--pontes-border); border-radius: 14px; background: var(--pontes-surface); box-shadow: var(--pontes-shadow-lg); font-family: var(--pontes-font); }
+.devTopo { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px; font-size: var(--pontes-fs-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pontes-text-muted); }
+.devTopo button { display: inline-flex; padding: 0; border: 0; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
+.devItem { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.devItem:hover { background: var(--pontes-bg); }
+.devNome { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); }
+.devEmail { font-size: var(--pontes-fs-xs); color: var(--pontes-text-muted); word-break: break-all; }
+.devReabrir { position: fixed; right: 16px; bottom: 16px; z-index: 30; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px dashed var(--pontes-border); border-radius: 999px; background: var(--pontes-surface); font-family: var(--pontes-font); font-size: var(--pontes-fs-xs); font-weight: 700; color: var(--pontes-text-muted); cursor: pointer; }
 
-.quote { position: relative; z-index: 1; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); border-radius: 16px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.15); }
-.quoteText { color: var(--pontes-hero-fg); font-size: var(--pontes-fs-base); line-height: 1.6; margin: 0 0 16px; font-style: italic; }
-.quoteWho { display: flex; align-items: center; gap: 12px; }
-.quoteAvatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); display: flex; align-items: center; justify-content: center; font-size: var(--pontes-fs-base); font-weight: 700; color: var(--pontes-hero-fg); }
-.quoteName { color: var(--pontes-hero-fg); font-size: var(--pontes-fs-md); font-weight: 600; margin: 0; }
-.quoteRole { color: rgba(255, 255, 255, 0.7); font-size: var(--pontes-fs-sm); margin: 0; }
-
-/* Painel direito — form */
-.form { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 40px; background: var(--pontes-surface); overflow-y: auto; }
-.formInner { width: 100%; max-width: 400px; }
-.logoMobile { margin-bottom: 32px; text-align: center; }
-@media (min-width: 900px) { .logoMobile { display: none; } }
-
-.backLink { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; cursor: pointer; font-family: var(--pontes-font); color: var(--pontes-text-muted); text-decoration: none; font-size: var(--pontes-fs-md); font-weight: 500; margin-bottom: 24px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); transition: color .15s ease, border-color .15s ease, background .15s ease; }
-.backLink:hover { color: var(--pontes-primary); border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
-
-.head { margin-bottom: 32px; }
-.title { font-size: var(--pontes-fs-4xl); font-weight: 700; color: var(--pontes-text); letter-spacing: -0.02em; margin: 0 0 4px; }
-.sub { font-size: var(--pontes-fs-base); color: var(--pontes-text-muted); margin: 0; }
-.link { color: var(--pontes-primary); text-decoration: none; font-weight: 600; }
-
-.formBody { display: flex; flex-direction: column; gap: 16px; }
-.eyeBtn { background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0; color: var(--pontes-text-muted); }
-.forgotRow { text-align: right; margin-top: -8px; }
-.forgotLink { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); text-decoration: none; }
-
-.footer { margin-top: 32px; text-align: center; font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
-.footerMuted { color: var(--pontes-text-muted); }
-
-/* Atalho de DEV — coluna própria à direita do form (só em desenvolvimento). Não flutua sobre o
-   form: é uma 3ª coluna do layout. Rola por dentro se tiver muita conta. Em tela estreita, desce
-   pra baixo do form (o root usa flex-wrap) em vez de cobrir. */
-.devHintPanel {
-  flex: 0 0 240px; align-self: stretch;
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 20px 14px;
-  border-left: 1px solid var(--pontes-border);
-  background: var(--pontes-bg);
-  overflow-y: auto; max-height: 100vh;
-  font-family: var(--pontes-font);
-}
-.devHintHead {
-  position: sticky; top: 0; z-index: 1;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  margin-bottom: 4px; background: var(--pontes-bg); padding-bottom: 4px;
-}
-.devHintTag {
-  font-size: var(--pontes-fs-2xs); font-weight: 700; letter-spacing: 0.04em;
-  color: var(--pontes-primary); background: var(--pontes-primary-soft);
-  padding: 4px 8px; border-radius: 6px;
-}
-.devHintToggle {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; flex-shrink: 0;
-  border: 1px solid var(--pontes-border); border-radius: 8px;
-  background: var(--pontes-surface); color: var(--pontes-text-muted); cursor: pointer;
-  transition: color .15s ease, border-color .15s ease;
-}
-.devHintToggle:hover { color: var(--pontes-primary); border-color: var(--pontes-primary); }
-/* Botão pra reabrir quando recolhido: fica na borda direita da tela. */
-.devHintReabrir {
-  position: fixed; top: 16px; right: 0; z-index: 50;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 10px; border: 1px solid var(--pontes-border); border-right: none;
-  border-radius: 8px 0 0 8px;
-  background: var(--pontes-surface); color: var(--pontes-primary);
-  font-family: var(--pontes-font); font-size: var(--pontes-fs-secundario); font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
-  box-shadow: 0 4px 16px -6px rgba(0, 0, 0, 0.18);
-}
-.devHintReabrir:hover { background: var(--pontes-primary-soft); }
-.devHintRow {
-  display: flex; flex-direction: column; gap: 1px; text-align: left;
-  padding: 6px 8px; border-radius: 8px; cursor: pointer;
-  background: transparent; border: none; width: 100%;
-  transition: background-color .12s ease;
-}
-.devHintRow:hover { background: var(--pontes-surface); }
-.devHintLabel { font-size: var(--pontes-fs-2xs); color: var(--pontes-text-muted); }
-.devHintCreds { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); word-break: break-all; }
-/* Estreito: o painel desce pra baixo do form (não cobre). Precisa do flex-wrap no root (abaixo). */
-@media (max-width: 1099px) {
-  .devHintPanel {
-    flex-basis: 100%; max-height: none;
-    border-left: none; border-top: 1px solid var(--pontes-border);
-    flex-direction: row; flex-wrap: wrap; align-items: stretch; gap: 8px;
-  }
-  .devHintHead { position: static; flex-basis: 100%; }
-  .devHintRow { flex: 1 1 200px; background: var(--pontes-surface); border: 1px solid var(--pontes-border); }
-}
-
-/* ── Chooser (roster / escolher conta) ─────────────────────────────────────── */
-.chooser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.chooserItem { display: flex; align-items: stretch; gap: 4px; }
-.chooserPick {
-  flex: 1; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pontes-border);
-  background: var(--pontes-surface); font-family: var(--pontes-font);
-  transition: border-color .15s ease, background .15s ease;
-}
-.chooserPick:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
-.chooserInfo { display: flex; flex-direction: column; min-width: 0; }
-.chooserNome { font-size: var(--pontes-fs-base); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chooserEmail { font-size: var(--pontes-fs-sm); color: var(--pontes-text-muted); }
-.chooserRemove {
-  flex-shrink: 0; width: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-  border-radius: 12px; border: 1px solid var(--pontes-border); background: var(--pontes-surface); color: var(--pontes-text-muted);
-  transition: color .15s ease, border-color .15s ease, background .15s ease;
-}
-.chooserRemove:hover { color: var(--pontes-danger); border-color: var(--pontes-danger); background: var(--pontes-danger-soft, var(--pontes-primary-soft)); }
-
-/* "Entrar em outra conta" — linha da lista (padrão Google), não botão fantasma */
-.chooserOther {
-  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-  padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--pontes-border);
-  background: transparent; font-family: var(--pontes-font);
-  transition: border-color .15s ease, background .15s ease;
-}
-.chooserOther:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
-.chooserOtherIcon {
-  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  background: var(--pontes-bg); color: var(--pontes-text-muted);
-}
-.chooserOther:hover .chooserOtherIcon { color: var(--pontes-primary); }
-.chooserOtherText { font-size: var(--pontes-fs-base); font-weight: 600; color: var(--pontes-text); }
-
-/* Chip da conta no topo do form (padrão Google: clica pra trocar de conta) */
-.acctChip {
-  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; cursor: pointer; max-width: 100%;
-  margin-bottom: 24px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--pontes-border);
-  background: var(--pontes-surface); font-family: var(--pontes-font);
-  transition: border-color .15s ease, background .15s ease;
-}
-.acctChip:hover { border-color: var(--pontes-primary); background: var(--pontes-primary-soft); }
-.acctChipEmail { font-size: var(--pontes-fs-md); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.acctChipCaret { color: var(--pontes-text-muted); flex-shrink: 0; }
-
-/* Celular: 40px de cada lado roubavam espaço do formulário (sobravam ~295px). */
-@media (max-width: 767px) {
-  .form { padding: 24px 20px; }
+/* ── Celular: o palco some, logo no topo do formulário ────────────────────── */
+@media (max-width: 899px) {
+  .root { grid-template-columns: minmax(0, 1fr); }
+  .brand { display: none; }
+  .logoMobile { display: flex; margin-top: 8px; }
+  .painel { align-items: flex-start; padding: 24px 20px 40px; }
+  .dev, .devReabrir { right: 12px; bottom: 12px; }
 }

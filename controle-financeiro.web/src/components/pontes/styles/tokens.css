@@ -1,7 +1,7 @@
 /**
  * tokens.css — variáveis CSS da biblioteca Pontes (:root).
  *
- * Os valores aqui são DEFAULTS (paleta A + fonte Inter). Em runtime, o
+ * Os valores aqui são DEFAULTS (paleta A + fonte Manrope). Em runtime, o
  * PontesThemeProvider sobrescreve as vars de paleta/fonte via setProperty
  * conforme a escolha do usuário (#90) — troca ao vivo, sem rebuild.
  *
@@ -24,8 +24,8 @@
   --pontes-border: #E5EAF2;
   --pontes-hero-fg: #FFFFFF;
 
-  /* Fonte de corpo/UI (default = Inter). Sobrescrita pelo Provider (#90). */
-  --pontes-font: 'Inter', system-ui, sans-serif;
+  /* Fonte de corpo/UI (default = Manrope, 2026-10-14: "letra do v2"). Sobrescrita pelo Provider (#90). */
+  --pontes-font: 'Manrope', system-ui, sans-serif;
   /* Fonte de título = a MESMA do corpo (decisão do Gustavo, 2026-10-04: "letra normal, não a de
      destaque pra tudo"). A Fraunces fica no título da página (Navbar, `--pontes-font-marca`) e no site público. */
   --pontes-font-heading: var(--pontes-font);

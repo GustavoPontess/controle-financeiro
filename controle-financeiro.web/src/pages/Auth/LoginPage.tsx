@@ -1,6 +1,10 @@
+// Tela de entrada. Um passo por vez: escolher conta lembrada → e-mail + senha → (2º fator) → entra.
+// Também: conta na carência de exclusão (reativar), "esqueci a senha" (inline, a API manda o link) e
+// o painel DEV de contas de teste (só em desenvolvimento). Visual: palco da marca com o gradiente da
+// paleta escolhida + painel do formulário — sem enfeite (nada de grade, blob ou depoimento inventado).
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft, Trash2, UserPlus, ChevronDown, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, ArrowRight, Check, Trash2, UserPlus, ChevronDown, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { PontesButton, PontesField, PontesInput, PontesAlert, PontesLogo, PontesCheckbox, PontesAvatar } from '@/components/pontes'
 import { useAuth } from '../../hooks/useAuth'
 import { api } from '@/api/axiosConfig'
@@ -9,6 +13,7 @@ import rosterService, { type ContaLembrada } from '@/services/rosterService'
 import styles from './LoginPage.module.css'
 
 const DEV_SENHA = 'Dev@123456'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Contas fictícias do DevDataSeeder (sempre existem em dev, sem risco — nada real).
 // Contas de teste que o DevDataSeeder cria no dev local (só o casal).
@@ -36,6 +41,14 @@ const dedupePorEmail = (contas: { email: string; label: string }[]) =>
   contas.filter((c, i, todas) => todas.findIndex((o) => o.email.toLowerCase() === c.email.toLowerCase()) === i)
 const DEV_ACCOUNTS = dedupePorEmail([...DEV_ACCOUNTS_BASE, ...contasExtras()])
 
+type Passo = 'escolher' | 'form' | 'mfa' | 'exclusao' | 'esqueci'
+
+const BENEFICIOS = [
+  'Rateio explícito — 50/50, % ou valor fixo',
+  'Aprovação de despesa em 1 toque',
+  'Conexão com Open Finance (em breve)',
+]
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login, verificarMfaLogin } = useAuth()
@@ -57,6 +70,11 @@ export default function LoginPage() {
   // Conta na carência de exclusão — login retornou que a conta está marcada; oferece reativar.
   const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
   const [reativarErro, setReativarErro] = useState<string | undefined>()
+
+  // "Esqueci a senha": pede o e-mail e a API manda o link. Resposta é a mesma pra qualquer e-mail
+  // (não revela se a conta existe).
+  const [esqueci, setEsqueci] = useState(false)
+  const [esqueciEnviado, setEsqueciEnviado] = useState(false)
 
   // "Manter-me conectado" (opt-in): sessão persistente + entra no chooser deste navegador.
   const [manterConectado, setManterConectado] = useState(false)
@@ -92,10 +110,12 @@ export default function LoginPage() {
       .catch(() => { /* mantém o fallback estático */ })
   }, [])
 
+  const limparErros = () => { setErrors({}); setError('') }
+
   const validate = (): boolean => {
     const e: { email?: string; password?: string } = {}
     if (!email.trim()) e.email = 'Informe o e-mail'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'E-mail inválido'
+    else if (!EMAIL_RE.test(email)) e.email = 'E-mail inválido'
     if (!password) e.password = 'Informe a senha'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -156,6 +176,22 @@ export default function LoginPage() {
     }
   }
 
+  const handleEsqueciSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    if (!email.trim()) { setErrors({ email: 'Informe o e-mail' }); return }
+    if (!EMAIL_RE.test(email)) { setErrors({ email: 'E-mail inválido' }); return }
+    setIsLoading(true)
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim() })
+      setEsqueciEnviado(true)
+    } catch {
+      setError('Não foi possível enviar agora. Tente de novo em instantes.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // Selecionar uma conta do chooser: revela o e-mail real (a lista só tem mascarado), guarda a conta
   // pra mostrar o chip no topo e vai pro form (a pessoa só digita a senha).
   const handleSelecionarConta = async (conta: ContaLembrada) => {
@@ -165,158 +201,204 @@ export default function LoginPage() {
     } catch {
       setContaSelecionada(null) // reveal falhou → form normal com o campo de e-mail
     }
-    setErrors({}); setError('')
+    limparErros()
     setUsarOutra(true)
   }
 
   // "Entrar em outra conta" → form limpo (campo de e-mail visível). Voltar → volta pra lista.
-  const irParaOutraConta = () => { setContaSelecionada(null); setEmail(''); setErrors({}); setError(''); setUsarOutra(true) }
-  const voltarProChooser = () => { setUsarOutra(false); setContaSelecionada(null); setPassword(''); setErrors({}); setError('') }
+  const irParaOutraConta = () => { setContaSelecionada(null); setEmail(''); limparErros(); setUsarOutra(true) }
+  const voltarProChooser = () => { setUsarOutra(false); setContaSelecionada(null); setPassword(''); limparErros() }
 
   const handleRemoverConta = async (usuarioId: string) => {
     try { await rosterService.remover(usuarioId) } catch { /* ignore */ }
     setRoster((prev) => prev.filter((c) => c.usuarioId !== usuarioId))
   }
 
-  const mostrarChooser = roster.length > 0 && !usarOutra && !mfaChallenge && !marcada
+  const passo: Passo = marcada ? 'exclusao'
+    : mfaChallenge ? 'mfa'
+    : esqueci ? 'esqueci'
+    : roster.length > 0 && !usarOutra ? 'escolher'
+    : 'form'
+
+  const titulo = passo === 'exclusao' ? 'Reativar conta'
+    : passo === 'mfa' ? 'Verificação em duas etapas'
+    : passo === 'esqueci' ? 'Recuperar senha'
+    : passo === 'escolher' ? 'Escolha sua conta'
+    : 'Bem-vindo de volta'
 
   return (
     <div className={styles.root}>
-      {/* ── PAINEL ESQUERDO — brand ───────────────────────────────────── */}
-      <div className={styles.brand}>
-        {/* grade decorativa */}
-        <svg className={styles.grid}>
-          <defs>
-            <pattern id="auth-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#auth-grid)" />
-        </svg>
-
-        {/* blob decorativo */}
-        <div className={styles.blob} />
-
-        {/* Logo */}
+      {/* ── Palco da marca (gradiente da paleta) ─────────────────────────── */}
+      <aside className={styles.brand}>
         <div className={styles.brandLogo}>
-          <PontesLogo color="#ffffff" size={32} onClick={() => navigate('/')} />
+          <PontesLogo color="var(--pontes-hero-fg)" size={28} onClick={() => navigate('/')} />
         </div>
-
-        {/* Headline + features */}
         <div className={styles.brandMid}>
           <p className={styles.headline}>
-            Finanças em família,{' '}
-            <span className={styles.headlineDim}>sem briga.</span>
+            Finanças em família, <span className={styles.headlineDim}>sem briga.</span>
           </p>
           <p className={styles.lead}>
             Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.
           </p>
-
-          <div className={styles.features}>
-            {[
-              'Rateio explícito — 50/50, % ou valor fixo',
-              'Aprovação de despesa em 1 toque',
-              'Conexão com Open Finance (em breve)',
-            ].map((item) => (
-              <div key={item} className={styles.featureRow}>
-                <div className={styles.featureCheck}>✓</div>
-                <span className={styles.featureText}>{item}</span>
-              </div>
+          <ul className={styles.features}>
+            {BENEFICIOS.map((item) => (
+              <li key={item}>
+                <span className={styles.featureCheck}><Check size={12} strokeWidth={3} aria-hidden="true" /></span>
+                {item}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
+        <span className={styles.brandFoot}>Pontes · finanças pessoais e familiares</span>
+      </aside>
 
-        {/* Testimonial */}
-        <div className={styles.quote}>
-          <p className={styles.quoteText}>
-            "Eu e minha esposa vivíamos discutindo dinheiro. Em duas semanas com o Pontes, tudo ficou explícito."
-          </p>
-          <div className={styles.quoteWho}>
-            <div className={styles.quoteAvatar}>RM</div>
-            <div>
-              <p className={styles.quoteName}>Ricardo Moraes</p>
-              <p className={styles.quoteRole}>Casal · São Paulo</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── PAINEL DIREITO — form ─────────────────────────────────────── */}
-      <div className={styles.form}>
-        <div className={styles.formInner}>
-          {/* Voltar para homepage */}
-          {/* Um único "voltar" no topo, contextual. Veio do chooser → volta pra lista (ou o chip da
-             conta selecionada). Home fica no logo. Senão → voltar pra página inicial. */}
-          {mfaChallenge ? (
-            <button type="button" className={styles.backLink}
+      {/* ── Painel do formulário ─────────────────────────────────────────── */}
+      <main className={styles.painel}>
+        <div className={styles.miolo}>
+          {/* Um único "voltar", contextual. Veio do chooser → volta pra lista (ou o chip da conta
+             selecionada). Home fica no logo. Senão → voltar pra página inicial. */}
+          {passo === 'mfa' ? (
+            <button type="button" className={styles.voltar}
               onClick={() => { setMfaChallenge(null); setMfaCodigo(''); setMfaErro(undefined); setConfiarDispositivo(false) }}>
-              <ArrowLeft size={16} /> Voltar ao login
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
             </button>
-          ) : marcada ? (
-            <button type="button" className={styles.backLink}
+          ) : passo === 'exclusao' ? (
+            <button type="button" className={styles.voltar}
               onClick={() => { setMarcada(null); setReativarErro(undefined); setPassword('') }}>
-              <ArrowLeft size={16} /> Voltar ao login
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
             </button>
-          ) : roster.length > 0 && usarOutra ? (
+          ) : passo === 'esqueci' ? (
+            <button type="button" className={styles.voltar}
+              onClick={() => { setEsqueci(false); setEsqueciEnviado(false); limparErros() }}>
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
+            </button>
+          ) : passo === 'form' && roster.length > 0 ? (
             contaSelecionada ? (
-              <button type="button" className={styles.acctChip} onClick={voltarProChooser} title="Trocar de conta">
+              <button type="button" className={styles.chip} onClick={voltarProChooser} title="Trocar de conta">
                 <PontesAvatar name={contaSelecionada.nome} size={28} />
-                <span className={styles.acctChipEmail}>{contaSelecionada.emailMascarado}</span>
-                <ChevronDown size={16} className={styles.acctChipCaret} />
+                <span className={styles.chipNome}>{contaSelecionada.nome}</span>
+                <span className={styles.chipEmail}>{contaSelecionada.emailMascarado}</span>
+                <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={styles.chipCaret} />
               </button>
             ) : (
-              <button type="button" className={styles.backLink} onClick={voltarProChooser}>
-                <ArrowLeft size={16} /> Escolher conta salva
+              <button type="button" className={styles.voltar} onClick={voltarProChooser}>
+                <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Escolher conta salva
               </button>
             )
           ) : (
-            <Link to="/" className={styles.backLink}>
-              <ArrowLeft size={16} /> Voltar à página inicial
+            <Link to="/" className={styles.voltar}>
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar à página inicial
             </Link>
           )}
 
-          {/* Logo mobile */}
+          {/* Logo no celular (o palco some) */}
           <div className={styles.logoMobile}>
-            <PontesLogo color="var(--pontes-primary)" size={28} onClick={() => navigate('/')} />
+            <PontesLogo color="var(--pontes-primary)" size={26} onClick={() => navigate('/')} />
           </div>
 
-          {/* Header form */}
-          <div className={styles.head}>
-            <h1 className={styles.title}>
-              {marcada ? 'Reativar conta' : mfaChallenge ? 'Verificação em duas etapas' : mostrarChooser ? 'Escolha sua conta' : 'Bem-vindo de volta'}
-            </h1>
-            {!mostrarChooser && (
-              <p className={styles.sub}>
-                {marcada ? (
-                  'Sua conta está marcada para exclusão. Você ainda pode reativá-la.'
-                ) : mfaChallenge ? (
-                  'Digite o código do seu app autenticador (ou um código de recuperação).'
-                ) : (
-                  <>Não tem conta?{' '}
-                  <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></>
-                )}
-              </p>
-            )}
-          </div>
+          <h1 className={styles.title}>{titulo}</h1>
+          {passo === 'form' && (
+            <p className={styles.sub}>Não tem conta? <Link to="/auth/register" className={styles.link}>Criar conta grátis</Link></p>
+          )}
+          {passo === 'mfa' && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
+          {passo === 'exclusao' && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}
+          {passo === 'esqueci' && !esqueciEnviado && (
+            <p className={styles.sub}>Informe seu e-mail. Se existir uma conta, enviamos um link para criar uma senha nova.</p>
+          )}
 
-          {marcada ? (
-            /* Conta na carência — oferece reativar */
-            <div className={styles.formBody}>
-              {reativarErro && <PontesAlert tone="error">{reativarErro}</PontesAlert>}
-              <PontesAlert tone="warning">
-                {marcada.dias != null
-                  ? `Faltam ${marcada.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
-                  : 'Reative para voltar a usar sua conta antes da remoção permanente.'}
-              </PontesAlert>
-              <PontesButton type="button" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}
-                onClick={handleReativar}>
-                Reativar conta
+          {passo === 'escolher' && (
+            /* Chooser — contas lembradas neste navegador (só nome + e-mail mascarado). */
+            <ul className={styles.lista}>
+              {roster.map((c) => (
+                <li key={c.usuarioId} className={styles.listaItem}>
+                  <button type="button" className={styles.escolher} onClick={() => handleSelecionarConta(c)}>
+                    <PontesAvatar name={c.nome} size={36} />
+                    <span className={styles.escolherTexto}>
+                      <span className={styles.nome}>{c.nome}</span>
+                      <span className={styles.mascarado}>{c.emailMascarado}</span>
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.25} aria-hidden="true" className={styles.seta} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.remover}
+                    title="Remover desta lista"
+                    aria-label={`Remover ${c.nome} desta lista`}
+                    onClick={() => handleRemoverConta(c.usuarioId)}
+                  >
+                    <Trash2 size={15} strokeWidth={2} />
+                  </button>
+                </li>
+              ))}
+              <li className={styles.listaItem}>
+                <button type="button" className={`${styles.escolher} ${styles.outra}`} onClick={irParaOutraConta}>
+                  <span className={styles.avatarNeutro}><UserPlus size={16} strokeWidth={2} aria-hidden="true" /></span>
+                  <span className={styles.nome}>Entrar em outra conta</span>
+                </button>
+              </li>
+            </ul>
+          )}
+
+          {passo === 'form' && (
+            /* Passo 1 — e-mail + senha */
+            <form onSubmit={handleSubmit} className={styles.form} noValidate>
+              {error && <PontesAlert tone="error">{error}</PontesAlert>}
+
+              {!contaSelecionada && (
+                <PontesField label="E-mail" htmlFor="login-email" error={errors.email}>
+                  <PontesInput
+                    id="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
+                    invalid={!!errors.email}
+                    autoComplete="email"
+                  />
+                </PontesField>
+              )}
+
+              <PontesField label="Senha" htmlFor="login-senha" error={errors.password}>
+                <PontesInput
+                  id="login-senha"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })) }}
+                  invalid={!!errors.password}
+                  autoComplete="current-password"
+                  autoFocus={!!contaSelecionada}
+                  iconEnd={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      data-testid="toggle-senha"
+                      tabIndex={-1}
+                      className={styles.eyeBtn}
+                      title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
+              </PontesField>
+
+              <div className={styles.opcoes}>
+                <PontesCheckbox checked={manterConectado} onChange={setManterConectado} label="Manter-me conectado" />
+                <button type="button" className={styles.linkBtn} onClick={() => { setEsqueci(true); limparErros() }}>
+                  Esqueci a senha
+                </button>
+              </div>
+
+              <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}
+                iconEnd={<ArrowRight size={16} strokeWidth={2.5} />}>
+                Entrar
               </PontesButton>
-            </div>
-          ) : mfaChallenge ? (
+            </form>
+          )}
+
+          {passo === 'mfa' && (
             /* Passo 2 — código MFA */
-            <form onSubmit={handleMfaSubmit} className={styles.formBody} noValidate>
-              <PontesField label="Código" htmlFor="mfa-codigo" required error={mfaErro}>
+            <form onSubmit={handleMfaSubmit} className={styles.form} noValidate>
+              <PontesField label="Código" htmlFor="mfa-codigo" error={mfaErro}>
                 <PontesInput
                   id="mfa-codigo"
                   type="text"
@@ -330,134 +412,69 @@ export default function LoginPage() {
                 />
               </PontesField>
 
-              <PontesCheckbox
-                checked={confiarDispositivo}
-                onChange={setConfiarDispositivo}
-                label="Confiar neste dispositivo por 30 dias"
-              />
+              <PontesCheckbox checked={confiarDispositivo} onChange={setConfiarDispositivo} label="Confiar neste dispositivo por 30 dias" />
 
               <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
                 Verificar
               </PontesButton>
             </form>
-          ) : mostrarChooser ? (
-            /* Chooser — escolher conta (roster, opt-in). Só nome + e-mail mascarado. */
-            <div className={styles.formBody}>
-              <ul className={styles.chooser}>
-                {roster.map((c) => (
-                  <li key={c.usuarioId} className={styles.chooserItem}>
-                    <button
-                      type="button"
-                      className={styles.chooserPick}
-                      onClick={() => handleSelecionarConta(c)}
-                    >
-                      <PontesAvatar name={c.nome} size={36} />
-                      <span className={styles.chooserInfo}>
-                        <span className={styles.chooserNome}>{c.nome}</span>
-                        <span className={styles.chooserEmail}>{c.emailMascarado}</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.chooserRemove}
-                      title="Remover desta lista"
-                      aria-label={`Remover ${c.nome} desta lista`}
-                      onClick={() => handleRemoverConta(c.usuarioId)}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </li>
-                ))}
-                <li className={styles.chooserItem}>
-                  <button type="button" className={styles.chooserOther} onClick={irParaOutraConta}>
-                    <span className={styles.chooserOtherIcon}><UserPlus size={18} /></span>
-                    <span className={styles.chooserOtherText}>Entrar em outra conta</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-          ) : (
-          /* Passo 1 — email + senha */
-          <form onSubmit={handleSubmit} className={styles.formBody} noValidate>
-            {error && (
-              <PontesAlert tone="error">{error}</PontesAlert>
-            )}
+          )}
 
-            {!contaSelecionada && (
-              <PontesField label="E-mail" htmlFor="login-email" required error={errors.email}>
+          {passo === 'esqueci' && (esqueciEnviado ? (
+            <PontesAlert tone="success">
+              Se existir uma conta com esse e-mail, o link para criar uma senha nova já foi enviado. Confira a caixa de entrada (e o spam).
+            </PontesAlert>
+          ) : (
+            <form onSubmit={handleEsqueciSubmit} className={styles.form} noValidate>
+              {error && <PontesAlert tone="error">{error}</PontesAlert>}
+              <PontesField label="E-mail" htmlFor="esqueci-email" error={errors.email}>
                 <PontesInput
-                  id="login-email"
+                  id="esqueci-email"
                   type="email"
+                  autoComplete="email"
+                  autoFocus
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
                   invalid={!!errors.email}
-                  autoComplete="email"
                 />
               </PontesField>
-            )}
+              <PontesButton type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
+                Enviar link
+              </PontesButton>
+            </form>
+          ))}
 
-            <PontesField label="Senha" htmlFor="login-senha" required error={errors.password}>
-              <PontesInput
-                id="login-senha"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })) }}
-                invalid={!!errors.password}
-                autoComplete="current-password"
-                iconEnd={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    data-testid="toggle-senha"
-                    tabIndex={-1}
-                    className={styles.eyeBtn}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                }
-              />
-            </PontesField>
-
-            <div className={styles.forgotRow}>
-              <Link to="/auth/forgot-password" className={styles.forgotLink}>Esqueci a senha</Link>
+          {passo === 'exclusao' && (
+            /* Conta na carência — oferece reativar */
+            <div className={styles.form}>
+              {reativarErro && <PontesAlert tone="error">{reativarErro}</PontesAlert>}
+              <PontesAlert tone="warning">
+                {marcada!.dias != null
+                  ? `Faltam ${marcada!.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
+                  : 'Reative para voltar a usar sua conta antes da remoção permanente.'}
+              </PontesAlert>
+              <PontesButton type="button" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}
+                onClick={handleReativar}>
+                Reativar conta
+              </PontesButton>
             </div>
-
-            <PontesCheckbox
-              checked={manterConectado}
-              onChange={setManterConectado}
-              label="Manter-me conectado neste dispositivo"
-            />
-
-            <PontesButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={isLoading}
-              disabled={isLoading}
-            >
-              Entrar
-            </PontesButton>
-          </form>
           )}
 
-          {/* Footer */}
           <p className={styles.footer}>
             Ao entrar você concorda com os{' '}
-            <Link to="/termos-de-uso" target="_blank" className={styles.link}>Termos de Uso</Link>
-            {' '}e{' '}
-            <Link to="/privacidade" target="_blank" className={styles.link}>Política de Privacidade</Link>.
+            <Link to="/termos-de-uso" target="_blank">Termos de Uso</Link>
+            {' '}e a{' '}
+            <Link to="/privacidade" target="_blank">Política de Privacidade</Link>.
           </p>
         </div>
-      </div>
+      </main>
 
-      {/* Atalho de DEV — login de teste (só em desenvolvimento; nunca em produção). Recolhe pro lado. */}
+      {/* Atalho de DEV — contas de teste (só em desenvolvimento; nunca em produção). Card no canto, recolhe. */}
       {import.meta.env.DEV && (devAberto ? (
-        <div className={styles.devHintPanel}>
-          <div className={styles.devHintHead}>
-            <span className={styles.devHintTag}>DEV · clique p/ preencher</span>
-            <button type="button" className={styles.devHintToggle} onClick={() => alternarDev(false)}
-              aria-label="Recolher contas de teste" title="Recolher">
+        <div className={styles.dev}>
+          <div className={styles.devTopo}>
+            <span>DEV · clique pra preencher</span>
+            <button type="button" onClick={() => alternarDev(false)} aria-label="Recolher contas de teste" title="Recolher">
               <PanelRightClose size={16} strokeWidth={2.2} />
             </button>
           </div>
@@ -465,25 +482,25 @@ export default function LoginPage() {
             <button
               key={conta.email}
               type="button"
-              className={styles.devHintRow}
+              className={styles.devItem}
               onClick={() => {
                 setEmail(conta.email)
                 // Senha própria (conta criada à mão): preenche só o e-mail, você digita a senha.
                 setPassword(conta.senhaPadrao === false ? '' : DEV_SENHA)
-                setErrors({})
-                setError('')
+                setContaSelecionada(null); setUsarOutra(true); setEsqueci(false); setEsqueciEnviado(false)
+                limparErros()
               }}
               title={conta.senhaPadrao === false
                 ? `Preencher e-mail de ${conta.label} (senha própria — digite)`
                 : `Entrar como ${conta.label}`}
             >
-              <span className={styles.devHintLabel}>{conta.label}{conta.senhaPadrao === false ? ' · senha própria' : ''}</span>
-              <span className={styles.devHintCreds}>{conta.email}</span>
+              <span className={styles.devNome}>{conta.label}{conta.senhaPadrao === false ? ' · senha própria' : ''}</span>
+              <span className={styles.devEmail}>{conta.email}</span>
             </button>
           ))}
         </div>
       ) : (
-        <button type="button" className={styles.devHintReabrir} onClick={() => alternarDev(true)}
+        <button type="button" className={styles.devReabrir} onClick={() => alternarDev(true)}
           aria-label="Mostrar contas de teste (DEV)" title="Contas de teste (DEV)">
           <PanelRightOpen size={16} strokeWidth={2.2} />
           <span>DEV</span>

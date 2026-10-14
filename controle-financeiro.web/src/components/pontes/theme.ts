@@ -117,7 +117,7 @@ export const fonts: FontOption[] = [
 ]
 
 export const defaultPalette: Palette = palettes[0]
-export const defaultFont: FontOption = fonts[0]
+export const defaultFont: FontOption = fonts.find((f) => f.id === "manrope") ?? fonts[0]
 
 /**
  * Override de tema escopado pra um componente/elemento.

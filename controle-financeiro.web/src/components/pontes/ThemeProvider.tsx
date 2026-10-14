@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react"
-import { palettes, fonts, paletteVars } from "./theme"
+import { palettes, fonts, paletteVars, defaultFont } from "./theme"
 import { applyPontesScrollbar } from "./_globalStyles"
 import { PontesThemeCtx, type PontesThemeValue } from "./themeContext"
 import "./styles/tokens.css"
@@ -25,10 +25,10 @@ function readLS(key: string, fallback: string): string {
 
 export function PontesThemeProvider({ children }: { children: ReactNode }) {
   const [paletteId, setPaletteIdState] = useState(() => readLS(LS_PALETTE, "A"))
-  const [fontId, setFontIdState] = useState(() => readLS(LS_FONT, "inter"))
+  const [fontId, setFontIdState] = useState(() => readLS(LS_FONT, defaultFont.id))
 
   const palette = palettes.find((x) => x.id === paletteId) ?? palettes[0]
-  const fontOption = fonts.find((x) => x.id === fontId) ?? fonts[0]
+  const fontOption = fonts.find((x) => x.id === fontId) ?? defaultFont
 
   const setPaletteId = (id: string) => {
     setPaletteIdState(id)
