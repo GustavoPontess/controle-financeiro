@@ -1,13 +1,14 @@
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { formatMoney } from "@/utils/money"
 import {
-  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi, Layers, FlaskConical,
+  Plus, Pencil, Trash2, CreditCard, ReceiptText, ChevronLeft, ChevronRight, Banknote, Check, Wifi, Layers,
 } from "lucide-react"
 import {
   PontesButton, PontesIconButton, PontesBadge, PontesCard, PontesEmptyState, PontesSkeletonList,
 } from "@/components/pontes"
 import CartoesAbas from "./CartoesAbas"
 import CartoesModais from "./CartoesModais"
+import CartoesLabNav from "./lab/CartoesLabNav"
 import { useCartoesLogic } from "./useCartoesLogic"
 import BandeiraMark from "./BandeiraMark"
 import { STATUS, cardGradient, diasAteProxDia, formatDate, statusKey } from "./cartoesFormato"
@@ -20,7 +21,6 @@ export default function CreditCardsPage() {
   // Toda a lógica (dados, faturas, pagar, estornar, CRUD do cartão) mora no useCartoesLogic — a mesma
   // das bancadas de layout /credit-cards/lab-*; aqui só o visual.
   const logic = useCartoesLogic()
-  const navigate = useNavigate()
   const {
     now, cartoes, totalLimite, totalUsado, totalDisp, faturasCartaoId, cartaoAtivo, fecharCartao, alternarCartao,
     faturas, loadingFaturas, faturaDetalhes, ciclos, atualIdx, ultimoIdx, idxSelecionado, irParaFatura,
@@ -243,20 +243,15 @@ export default function CreditCardsPage() {
 
   return (
     <div className={styles.root}>
+      {/* Passador TEMPORÁRIO da bancada de layout (tela atual → A → B → C) — sai quando escolher a vencedora. */}
+      <CartoesLabNav atual="atual" />
       {/* Header */}
       <div className={styles.header}>
         {/* O título já está na barra de cima; aqui ficam as abas Cartões | Parcelamentos. */}
         <CartoesAbas />
-        <div className={styles.headerAcoes}>
-          {/* Atalho TEMPORÁRIO pra bancada de layout (/credit-cards/lab-*) — sai quando escolher a vencedora. */}
-          <PontesButton size="sm" variant="ghost" iconStart={<FlaskConical size={16} strokeWidth={2.5} />}
-            onClick={() => navigate("/credit-cards/lab-a")}>
-            Labs
-          </PontesButton>
-          <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
-            Novo Cartão
-          </PontesButton>
-        </div>
+        <PontesButton size="sm" iconStart={<Plus size={16} strokeWidth={2.5} />} onClick={openCreate}>
+          Novo Cartão
+        </PontesButton>
       </div>
 
       {/* Resumo slim */}

@@ -2,7 +2,6 @@
 .root { display: flex; flex-direction: column; gap: 20px; font-family: var(--pontes-font); }
 
 .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.headerAcoes { display: flex; align-items: center; gap: 8px; }
 
 /* Resumo slim */
 .summary { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px 20px; background: var(--pontes-surface); border: 1px solid var(--pontes-border); border-radius: 14px; }

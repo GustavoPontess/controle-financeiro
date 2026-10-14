@@ -9,9 +9,8 @@
 .root [data-tom="entrada"] { color: var(--pontes-success); }
 
 /* Passador ◀ ▶ entre as variantes */
-.labNav { display: flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 6px 4px 12px; border: 1px dashed var(--pontes-border); border-radius: 999px; color: var(--pontes-text-muted); background: var(--pontes-surface); }
+.labNav { display: flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 8px 4px 12px; border: 1px dashed var(--pontes-border); border-radius: 999px; color: var(--pontes-text-muted); background: var(--pontes-surface); }
 .labNavNome { font-size: var(--pontes-fs-sm); font-weight: 700; color: var(--pontes-text); }
-.labNav .link { margin: 0 8px; }
 
 /* Identidade do cartão (logo do banco + nome + final + bandeira) */
 .ident { display: inline-flex; align-items: center; gap: 10px; min-width: 0; text-align: left; }
