@@ -8,6 +8,7 @@ import {
   Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
 } from "lucide-react"
 import Logo from "../componentes/Logo"
+import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
 import { useHideBalance } from "../estado/ocultar"
 import { useTema } from "./useTema"
@@ -48,10 +49,13 @@ export default function V2Layout() {
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
   const [recolhido, setRecolhido] = useState(() => { try { return localStorage.getItem(CHAVE_MENU) === "trilho" } catch { return false } })
-  useEffect(() => { setMenuAberto(false) }, [pathname])
+  // No trilho, o avatar abre um menu pequeno (nome, e-mail, sair) — assim o rodapé não muda de altura.
+  const [menuUsuario, setMenuUsuario] = useState(false)
+  useEffect(() => { setMenuAberto(false); setMenuUsuario(false) }, [pathname])
   useEffect(() => { try { localStorage.setItem(CHAVE_MENU, recolhido ? "trilho" : "aberto") } catch { /* ignore */ } }, [recolhido])
 
   const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+  const sairAgora = () => void sair().then(() => navigate("/entrar"))
   const Item = ({ para, rotulo, icone: Icone }: { para: string; rotulo: string; icone: typeof LayoutDashboard }) => (
     <NavLink to={para} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
@@ -65,8 +69,9 @@ export default function V2Layout() {
       <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
         <div className={styles.marca}>
           <span className={styles.logo}><Logo size={26} /></span>
+          <span className={styles.logoMini}><LogoMark size={24} /></span>
           <button type="button" className={styles.recolher} aria-label={recolhido ? "Expandir menu" : "Recolher menu"} title={recolhido ? "Expandir menu" : "Recolher menu"}
-            onClick={() => setRecolhido((r) => !r)}>
+            onClick={() => { setRecolhido((r) => !r); setMenuUsuario(false) }}>
             {recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><X size={18} /></button>
@@ -79,14 +84,25 @@ export default function V2Layout() {
         <div className={styles.rodape}>
           <Item para="/configuracoes" rotulo="Configurações" icone={Settings} />
           <div className={styles.usuario}>
-            <span className={styles.avatar} aria-hidden="true" title={recolhido ? usuario?.nome : undefined}>{iniciais}</span>
+            <button type="button" className={styles.avatar} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? usuario?.nome : undefined}
+              aria-haspopup={recolhido ? "menu" : undefined} aria-expanded={recolhido ? menuUsuario : undefined}
+              onClick={() => { if (recolhido) setMenuUsuario((v) => !v) }}>{iniciais}</button>
             <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
               <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
               <span className={styles.usuarioPlano}>Plano gratuito</span>
             </span>
-            <button type="button" className={styles.sair} aria-label="Sair" title="Sair" onClick={() => void sair().then(() => navigate("/entrar"))}>
+            <button type="button" className={styles.sair} aria-label="Sair" title="Sair" onClick={sairAgora}>
               <LogOut size={16} strokeWidth={2} />
             </button>
+            {recolhido && menuUsuario && (
+              <div className={styles.menuUsuario} role="menu">
+                <span className={styles.usuarioNome}>{usuario?.nome}</span>
+                <span className={styles.usuarioPlano}>{usuario?.email}</span>
+                <button type="button" role="menuitem" className={styles.menuSair} onClick={sairAgora}>
+                  <LogOut size={16} strokeWidth={2} aria-hidden="true" /> Sair
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>

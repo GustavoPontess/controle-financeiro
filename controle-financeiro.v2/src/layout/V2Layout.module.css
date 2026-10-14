@@ -2,9 +2,11 @@
 .raiz[data-menu="trilho"] { grid-template-columns: 76px minmax(0, 1fr); }
 
 /* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
-.lateral { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 22px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); overflow: hidden; }
-.marca { display: flex; align-items: center; gap: 8px; padding: 2px 10px 8px; color: var(--v2-texto); }
-.logo { display: inline-flex; min-width: 0; }
+/* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */
+.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 22px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
+.marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px; color: var(--v2-texto); }
+.logo, .logoMini { display: inline-flex; min-width: 0; }
+.logoMini { display: none; }
 .recolher, .fecharMenu, .abrirMenu { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
 .recolher { margin-left: auto; }
 .recolher:hover, .fecharMenu:hover, .abrirMenu:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
@@ -16,23 +18,28 @@
 .itemAtivo, .itemAtivo:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
 .item svg { flex-shrink: 0; }
 .rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
-.usuario { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--v2-linha); }
-.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; }
+.usuario { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; border-top: 1px solid var(--v2-linha); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font: inherit; font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; cursor: default; }
 .usuarioTexto { display: flex; flex-direction: column; min-width: 0; }
 .usuarioNome { font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.usuarioPlano { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.usuarioPlano { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sair { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
 .sair:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
+.menuUsuario { position: absolute; left: calc(100% + 10px); bottom: 6px; z-index: 20; min-width: 220px; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.menuSair { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; }
+.menuSair:hover { background: var(--v2-superficie-2); }
 
-/* Trilho (recolhido): só ícones, centralizados; nome vira title. */
+/* Trilho (recolhido): marca compacta em cima, só ícones centralizados; nome vira title; avatar abre o menu. */
 .raiz[data-menu="trilho"] .lateral { padding-left: 10px; padding-right: 10px; }
-.raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: none; }
-.raiz[data-menu="trilho"] .marca { justify-content: center; padding: 2px 0 8px; }
+.raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo, .raiz[data-menu="trilho"] .sair { display: none; }
+.raiz[data-menu="trilho"] .logoMini { display: inline-flex; }
+.raiz[data-menu="trilho"] .marca { flex-direction: column; justify-content: center; gap: 10px; height: auto; padding: 0; }
 .raiz[data-menu="trilho"] .recolher { margin-left: 0; }
 .raiz[data-menu="trilho"] .item { justify-content: center; padding: 10px 0; }
 .raiz[data-menu="trilho"] .grupo { height: 1px; margin: 12px 14px; background: var(--v2-linha); }
-.raiz[data-menu="trilho"] .usuario { flex-direction: column; gap: 6px; padding: 12px 0 0; }
-.raiz[data-menu="trilho"] .sair { margin-left: 0; }
+.raiz[data-menu="trilho"] .usuario { justify-content: center; padding: 0; }
+.raiz[data-menu="trilho"] .avatar { cursor: pointer; }
+.raiz[data-menu="trilho"] .avatar:hover { outline: 2px solid var(--v2-linha-forte); outline-offset: 2px; }
 
 /* Topo + conteúdo */
 .corpo { display: flex; flex-direction: column; min-width: 0; }
@@ -43,7 +50,8 @@
 .icone:hover { color: var(--v2-texto); border-color: var(--v2-linha-forte); }
 .primario { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
 .primario:hover { opacity: 0.9; }
-.conteudo { flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
+/* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
+.conteudo { flex: 1; width: 100%; max-width: 1600px; margin: 0; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
 @keyframes v2-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* Celular: menu vira gaveta (sempre completa; o trilho é só no computador) */
@@ -53,11 +61,13 @@
   .lateral { position: fixed; left: 0; top: 0; z-index: 10; width: 272px; padding: 22px 14px 18px; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--v2-sombra-palco); }
   .lateral[data-aberto="true"] { transform: none; }
   .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: inline-flex; }
-  .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 2px 10px 8px; }
+  .raiz[data-menu="trilho"] .sair { display: inline-flex; }
+  .raiz[data-menu="trilho"] .logoMini, .menuUsuario { display: none; }
+  .raiz[data-menu="trilho"] .marca { flex-direction: row; justify-content: flex-start; gap: 8px; height: 40px; padding: 0 10px; }
   .raiz[data-menu="trilho"] .item { justify-content: flex-start; padding: 9px 12px; }
   .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
-  .raiz[data-menu="trilho"] .usuario { flex-direction: row; gap: 10px; padding: 10px 12px; }
-  .raiz[data-menu="trilho"] .sair { margin-left: auto; }
+  .raiz[data-menu="trilho"] .usuario { justify-content: flex-start; padding: 0 12px; }
+  .raiz[data-menu="trilho"] .avatar { cursor: default; }
   .recolher { display: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .fecharMenu { margin-left: auto; }
