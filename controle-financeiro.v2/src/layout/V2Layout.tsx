@@ -1,10 +1,11 @@
-// Front v2 (bancada) — esqueleto: menu lateral plano, topo com busca/olho/tema/"Nova transação", conteúdo.
-// Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de localhost vale nos dois).
+// Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/tema/"Nova
+// transação", conteúdo. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
+// localhost vale nos dois).
 import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Menu, Moon, Plus, Receipt, Repeat,
-  Scale, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
+  BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen,
+  Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
 } from "lucide-react"
 import Logo from "../componentes/Logo"
 import { useAuth } from "../auth/useAuth"
@@ -29,6 +30,7 @@ const GERENCIAR = [
   { para: "/metas", rotulo: "Metas", icone: Target },
   { para: "/limites", rotulo: "Limites", icone: Gauge },
 ]
+const CHAVE_MENU = "v2:menu"
 
 /** Título do topo pela rota (prefixo mais longo). */
 export function tituloDaRota(pathname: string): string {
@@ -44,36 +46,41 @@ export default function V2Layout() {
   const [tema, alternarTema] = useTema()
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
+  // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
+  const [recolhido, setRecolhido] = useState(() => { try { return localStorage.getItem(CHAVE_MENU) === "trilho" } catch { return false } })
   useEffect(() => { setMenuAberto(false) }, [pathname])
+  useEffect(() => { try { localStorage.setItem(CHAVE_MENU, recolhido ? "trilho" : "aberto") } catch { /* ignore */ } }, [recolhido])
 
   const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
   const Item = ({ para, rotulo, icone: Icone }: { para: string; rotulo: string; icone: typeof LayoutDashboard }) => (
-    <NavLink to={para} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
+    <NavLink to={para} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
-      <span>{rotulo}</span>
+      <span className={styles.itemRotulo}>{rotulo}</span>
     </NavLink>
   )
 
   return (
-    <div className={`v2 ${styles.raiz}`} data-tema={tema}>
+    <div className={`v2 ${styles.raiz}`} data-tema={tema} data-menu={recolhido ? "trilho" : undefined}>
       {menuAberto && <button type="button" className={styles.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
       <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
         <div className={styles.marca}>
-          <Logo size={26} />
+          <span className={styles.logo}><Logo size={26} /></span>
+          <button type="button" className={styles.recolher} aria-label={recolhido ? "Expandir menu" : "Recolher menu"} title={recolhido ? "Expandir menu" : "Recolher menu"}
+            onClick={() => setRecolhido((r) => !r)}>
+            {recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
+          </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><X size={18} /></button>
         </div>
         <nav className={styles.nav} aria-label="Principal">
           {PRINCIPAL.map((i) => <Item key={i.para} {...i} />)}
-          <span className={styles.grupo}>Gerenciar</span>
+          <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
           {GERENCIAR.map((i) => <Item key={i.para} {...i} />)}
         </nav>
         <div className={styles.rodape}>
-          <NavLink to="/configuracoes" className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
-            <Settings size={18} strokeWidth={2} aria-hidden="true" /><span>Configurações</span>
-          </NavLink>
+          <Item para="/configuracoes" rotulo="Configurações" icone={Settings} />
           <div className={styles.usuario}>
-            <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
-            <span className={styles.usuarioTexto}>
+            <span className={styles.avatar} aria-hidden="true" title={recolhido ? usuario?.nome : undefined}>{iniciais}</span>
+            <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
               <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
               <span className={styles.usuarioPlano}>Plano gratuito</span>
             </span>
