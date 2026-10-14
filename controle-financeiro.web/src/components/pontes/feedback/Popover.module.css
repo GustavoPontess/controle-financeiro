@@ -6,21 +6,22 @@
 /* Posição vem inline (portal em document.body, position: fixed) — ver Popover.tsx. */
 .menu {
   background: var(--pontes-surface); border: 1px solid var(--pontes-border);
-  border-radius: 14px; box-shadow: var(--pontes-shadow-lg); padding: 6px;
+  border-radius: 14px; box-shadow: var(--pontes-shadow-lg); padding: 8px;
   font-family: var(--pontes-font); z-index: 1000; box-sizing: border-box;
 }
 .divider { height: 1px; background: var(--pontes-border); margin: 4px 0; }
-.header { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 6px; min-width: 0; }
+.header { display: flex; flex-direction: column; gap: 2px; padding: 4px 10px 10px; min-width: 0; }
 .item {
   width: 100%; text-align: left; background: transparent; border: none;
-  display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: var(--pontes-fs-base);
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: var(--pontes-fs-sm); font-weight: 600;
   color: var(--pontes-text); cursor: pointer; border-radius: 8px; font-family: var(--pontes-font);
   transition: background-color .12s ease;
 }
 /* Ícone do item alinhado e com a cor do texto (herda danger no item destrutivo). */
 .item > span:first-child { display: inline-flex; flex-shrink: 0; }
 .item:hover { background: var(--pontes-bg); }
-/* Navegação por teclado (↑/↓): mesmo realce do hover + anel, só quando o foco veio do teclado. */
+/* Navegação por teclado (↑/↓): mesmo realce do hover + anel — só quando o menu abriu pelo teclado ou
+   depois da 1ª tecla (data-teclado); aberto pelo mouse, o 1º item focado não fica "marcado". */
 .item:focus { outline: none; }
-.item:focus-visible { background: var(--pontes-bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pontes-primary) 35%, transparent); }
+.menu[data-teclado="true"] .item:focus-visible { background: var(--pontes-bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pontes-primary) 35%, transparent); }
 .item[data-danger="true"] { color: var(--pontes-danger); }

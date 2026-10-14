@@ -90,7 +90,7 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       },
     })),
     { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", onClick: () => setAddAccountOpen(true) },
-    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", danger: true, divider: true, onClick: () => {
+    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", onClick: () => {
       // Só navega pra login DEPOIS que o servidor confirmou a revogação (logout-all). Se falhar,
       // não afirma "saiu" — mantém a sessão e avisa (senão a conta seguiria acessível no servidor).
       logout()
@@ -166,7 +166,7 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       {currentUser && (
         <div className={styles.userWrap}>
           <PontesPopover
-            align="left" minWidth={230} direction="up" fullWidth={open} closeOnMouseLeave
+            align="left" minWidth={220} direction="side" fullWidth={open} closeOnMouseLeave
             header={
               <>
                 <span className={styles.menuNome}>{currentUser.nome}</span>

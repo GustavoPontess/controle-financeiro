@@ -36,8 +36,9 @@ export type PontesPopoverProps = {
   items: PontesPopoverItem[]
   minWidth?: number
   align?: "left" | "right"
-  /** Direção de abertura. "up" abre acima do trigger. */
-  direction?: "down" | "up"
+  /** Direção de abertura. "up" abre acima do trigger; "side" abre ao lado direito, com a base
+   *  alinhada à base do trigger (menu do avatar no rodapé do menu lateral). */
+  direction?: "down" | "up" | "side"
   /** Trigger ocupa 100% da largura do pai. */
   fullWidth?: boolean
   /** Fecha quando o mouse sai do menu (menu de hover, além de clique-fora/Esc). */
@@ -55,6 +56,7 @@ export function PontesPopover({
   p, font, trigger, header, items, minWidth = 200, align = "left", direction = "down", fullWidth = false, closeOnMouseLeave = false, onOpenChange,
 }: PontesPopoverProps) {
   const [open, setOpen] = useState(false)
+  const [porTeclado, setPorTeclado] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number; width?: number } | null>(null)
   const wrapRef = useRef<HTMLSpanElement>(null)
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -81,10 +83,11 @@ export function PontesPopover({
       const t = triggerRef.current
       if (!t) return
       const r = t.getBoundingClientRect()
+      const lado = direction === "side"
       setCoords({
-        top: direction === "up" ? r.top - 8 : r.bottom + 8,
-        left: fullWidth || align === "left" ? r.left : r.right,
-        width: fullWidth ? r.width : undefined,
+        top: lado ? r.bottom : direction === "up" ? r.top - 8 : r.bottom + 8,
+        left: lado ? r.right + 10 : fullWidth || align === "left" ? r.left : r.right,
+        width: fullWidth && !lado ? r.width : undefined,
       })
     }
     place()
@@ -121,7 +124,9 @@ export function PontesPopover({
     return () => document.removeEventListener("keydown", onKey, true)
   }, [open])
 
-  // Ao abrir: foco no 1º item (preventScroll: o menu é fixed, não pode rolar a página).
+  // Ao abrir: foco no 1º item (preventScroll: o menu é fixed, não pode rolar a página). O anel de foco
+  // só acende quando abriu pelo teclado ou depois da 1ª tecla (data-teclado) — abrir com o mouse não
+  // deixa o 1º item "marcado".
   useEffect(() => {
     if (!open) { focouAoAbrir.current = false; return }
     if (!coords || focouAoAbrir.current) return
@@ -130,6 +135,7 @@ export function PontesPopover({
   }, [open, coords])
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    setPorTeclado(true)
     const botoes = Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? [])
     if (botoes.length === 0) return
     const atual = botoes.indexOf(document.activeElement as HTMLElement)
@@ -156,32 +162,29 @@ export function PontesPopover({
   }
 
   const transform = [
-    !fullWidth && align === "right" ? "translateX(-100%)" : "",
-    direction === "up" ? "translateY(-100%)" : "",
+    !fullWidth && align === "right" && direction !== "side" ? "translateX(-100%)" : "",
+    direction === "up" || direction === "side" ? "translateY(-100%)" : "",
   ].join(" ").trim() || undefined
 
   return (
     <span ref={wrapRef} className={styles.wrap} data-fullwidth={fullWidth ? "true" : undefined} style={scopedThemeVars(p, font) as CSSProperties}>
-      <span ref={triggerRef} onClick={() => setOpen(!open)} className={styles.trigger}>{trigger}</span>
+      {/* e.detail === 0 → clique veio do teclado (Enter/Espaço); com o mouse é ≥ 1. */}
+      <span ref={triggerRef} onClick={(e) => { setPorTeclado(e.detail === 0); setOpen(!open) }} className={styles.trigger}>{trigger}</span>
       {open && coords && createPortal(
         <div
           ref={menuRef}
           role="menu"
+          data-teclado={porTeclado ? "true" : undefined}
           className={styles.menu}
           onKeyDown={onMenuKeyDown}
           onMouseLeave={closeOnMouseLeave ? () => setOpen(false) : undefined}
           style={{
             ...(scopedThemeVars(p, font) as CSSProperties),
             position: "fixed", top: coords.top, left: coords.left, right: "auto", bottom: "auto",
-            transform, width: coords.width, minWidth: fullWidth ? undefined : minWidth,
+            transform, width: coords.width, minWidth: fullWidth && direction !== "side" ? undefined : minWidth,
           }}
         >
-          {header && (
-            <>
-              <div className={styles.header} role="none">{header}</div>
-              <div className={styles.divider} role="separator" />
-            </>
-          )}
+          {header && <div className={styles.header} role="none">{header}</div>}
           {items.map((it) => (
             <div key={it.key} role="none">
               {it.divider && <div className={styles.divider} role="separator" />}
