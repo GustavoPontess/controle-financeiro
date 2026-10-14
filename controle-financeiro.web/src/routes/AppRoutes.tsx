@@ -124,10 +124,17 @@ export default function AppRoutes() {
           <Route path="/credit-cards/lab-a" element={<CartoesLabA />} />
           <Route path="/credit-cards/lab-b" element={<CartoesLabB />} />
           <Route path="/credit-cards/lab-c" element={<CartoesLabC />} />
-          {/* Nos labs, Parcelamentos é parte do cartão: o endereço só abre o layout já nessa parte. */}
+          {/* Nos labs, Parcelamentos é parte do cartão: sem cartão no endereço, cai na visão geral. */}
           <Route path="/credit-cards/lab-a/parcelamentos" element={<CartoesLabA />} />
           <Route path="/credit-cards/lab-b/parcelamentos" element={<CartoesLabB />} />
           <Route path="/credit-cards/lab-c/parcelamentos" element={<CartoesLabC />} />
+          {/* Página de UM cartão em cada layout (a raiz do lab é a visão geral "Meus cartões"). */}
+          <Route path="/credit-cards/lab-a/cartao/:id" element={<CartoesLabA />} />
+          <Route path="/credit-cards/lab-a/cartao/:id/parcelamentos" element={<CartoesLabA />} />
+          <Route path="/credit-cards/lab-b/cartao/:id" element={<CartoesLabB />} />
+          <Route path="/credit-cards/lab-b/cartao/:id/parcelamentos" element={<CartoesLabB />} />
+          <Route path="/credit-cards/lab-c/cartao/:id" element={<CartoesLabC />} />
+          <Route path="/credit-cards/lab-c/cartao/:id/parcelamentos" element={<CartoesLabC />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
           {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.

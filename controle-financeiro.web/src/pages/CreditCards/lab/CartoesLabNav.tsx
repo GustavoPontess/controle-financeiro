@@ -14,15 +14,23 @@ const PAGINAS = [
 ] as const
 export type PaginaLab = (typeof PAGINAS)[number]["id"]
 
-/** `secao`: a parte do módulo aberta na página (labs sem abas dizem qual é; na tela real vem do endereço). */
-export default function CartoesLabNav({ atual, secao }: { atual: PaginaLab; secao?: "cartoes" | "parcelamentos" }) {
+/**
+ * `secao`: a parte do módulo aberta (labs sem abas dizem qual é; na tela real vem do endereço).
+ * `cartaoId`: página de um cartão — o próximo layout abre o MESMO cartão (visão geral ↔ visão geral).
+ */
+export default function CartoesLabNav({ atual, secao, cartaoId }: {
+  atual: PaginaLab; secao?: "cartoes" | "parcelamentos"; cartaoId?: string
+}) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const i = PAGINAS.findIndex((p) => p.id === atual)
   const naAbaParcelamentos = secao ? secao === "parcelamentos" : pathname.startsWith(`${PAGINAS[i].rota}/parcelamentos`)
   const ir = (passo: number) => {
-    const destino = PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length].rota
-    navigate(naAbaParcelamentos ? `${destino}/parcelamentos` : destino)
+    const destino = PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length]
+    const parcelamentos = naAbaParcelamentos ? "/parcelamentos" : ""
+    // A tela atual não tem página por cartão: cai na lista dela.
+    if (cartaoId && destino.id !== "atual") navigate(`${destino.rota}/cartao/${cartaoId}${parcelamentos}`)
+    else navigate(`${destino.rota}${parcelamentos}`)
   }
   return (
     <nav className={styles.labNav} aria-label="Layouts da tela de cartões">

@@ -51,14 +51,19 @@ export type PagamentoEmEstorno = { id: string; valor: number; cartaoId: string; 
 
 /**
  * `autoSelecionar`: "unico" (tela real) abre direto o cartão quando só existe um cartão de crédito;
- * "primeiro" (bancadas) sempre abre o primeiro cartão de crédito — a fatura nunca fica escondida.
+ * "primeiro" sempre abre o primeiro cartão de crédito; "nenhum" não abre nenhum (visão geral).
+ * `cartaoId`: abre ESTE cartão (página do cartão, o id vem do endereço) — ganha do `autoSelecionar`.
  */
-export function useCartoesLogic({ autoSelecionar = "unico" }: { autoSelecionar?: "unico" | "primeiro" } = {}) {
+export function useCartoesLogic({ autoSelecionar = "unico", cartaoId }: {
+  autoSelecionar?: "unico" | "primeiro" | "nenhum"; cartaoId?: string
+} = {}) {
   const { notify } = useOutletContext<OutletContextType>()
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [contas, setContas] = useState<Conta[]>([])
   const [bancos, setBancos] = useState<Banco[]>([])
   const [recorrentes, setRecorrentes] = useState<Recorrente[]>([])
+  // A 1ª carga terminou (lista vazia de verdade ≠ ainda carregando).
+  const [carregado, setCarregado] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -100,6 +105,8 @@ export function useCartoesLogic({ autoSelecionar = "unico" }: { autoSelecionar?:
       setRecorrentes(recs)
     } catch {
       notify({ open: true, message: "Erro ao carregar cartões", severity: "error" })
+    } finally {
+      setCarregado(true)
     }
   }, [notify])
 
@@ -152,9 +159,10 @@ export function useCartoesLogic({ autoSelecionar = "unico" }: { autoSelecionar?:
   useEffect(() => {
     if (didAutoOpenRef.current || faturasCartaoId) return
     const credito = cartoes.filter((c) => c.temCredito)
-    const abrir = autoSelecionar === "primeiro"
-      ? credito[0]
-      : cartoes.length === 1 && credito.length === 1 ? credito[0] : undefined
+    const abrir = cartaoId ? credito.find((c) => c.id === cartaoId)
+      : autoSelecionar === "primeiro" ? credito[0]
+      : autoSelecionar === "unico" && cartoes.length === 1 && credito.length === 1 ? credito[0]
+      : undefined
     if (abrir) {
       didAutoOpenRef.current = true
       void abrirCartao(abrir.id)
@@ -406,7 +414,7 @@ export function useCartoesLogic({ autoSelecionar = "unico" }: { autoSelecionar?:
   }, [faturasCartaoId, idsKey])
 
   return {
-    notify, now, cartoes, contas, bancos, recorrentes,
+    notify, now, carregado, cartoes, contas, bancos, recorrentes,
     totalLimite, totalUsado, totalDisp,
     // seleção de cartão
     faturasCartaoId, cartaoAtivo, abrirCartao, fecharCartao, alternarCartao,

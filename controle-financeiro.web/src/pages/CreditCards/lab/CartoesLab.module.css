@@ -118,16 +118,17 @@
 
 /* C · App do banco */
 .carrossel { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
-.miniCartao { flex: 0 0 260px; height: 150px; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: space-between; padding: 16px 18px; border: 0; border-radius: 16px; color: var(--pontes-hero-fg); cursor: pointer; font: inherit; text-align: left; box-shadow: var(--pontes-shadow-sm); opacity: 0.75; transition: opacity 0.15s, transform 0.15s; }
-.miniCartao[data-sel="true"] { opacity: 1; transform: translateY(-2px); box-shadow: var(--pontes-shadow-md); }
+.miniCartao { flex: 0 0 220px; scroll-snap-align: start; padding: 0; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; opacity: 0.6; transition: opacity 0.15s, transform 0.15s; }
+.miniCartao[data-sel="true"] { opacity: 1; transform: translateY(-2px); }
 .miniCartao:hover { opacity: 1; }
-.miniCartao:disabled { cursor: default; }
+.faceMini, .faceGrande { display: flex; flex-direction: column; justify-content: space-between; color: var(--pontes-hero-fg); box-shadow: var(--pontes-shadow-sm); }
+.faceMini { height: 120px; padding: 14px 16px; border-radius: 14px; }
+.faceGrande { aspect-ratio: 1.586; padding: 20px 22px; border-radius: 18px; }
+.faceGrande .miniNome { font-size: var(--pontes-fs-lg); }
+.faceGrande .miniFinal { font-size: var(--pontes-fs-xl); }
 .miniTopo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .miniNome { font-size: var(--pontes-fs-linha); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .miniFinal { font-size: var(--pontes-fs-lg); font-weight: 600; letter-spacing: 0.14em; }
-.miniLimite { font-size: var(--pontes-fs-xs); opacity: 0.9; }
-.miniNovo { flex: 0 0 160px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed var(--pontes-border); border-radius: 16px; background: transparent; cursor: pointer; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
-.miniNovo:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
 .destaque { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; text-align: center; }
 .destaqueValor { font-size: var(--pontes-fs-hero-valor); font-weight: 800; color: var(--pontes-text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .atalhos { display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; }
@@ -139,6 +140,24 @@
 .secao { display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 16px; }
 .secaoTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .secaoTitulo { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: var(--pontes-fs-titulo-caixa); font-weight: 700; color: var(--pontes-text); }
+
+/* "Meus cartões" (visão geral) */
+.voltar { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); text-decoration: none; padding: 6px 8px 6px 2px; }
+.voltar:hover { color: var(--pontes-primary); }
+.gradeCartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.blocoCartao { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--pontes-border); border-radius: 18px; background: var(--pontes-surface); cursor: pointer; font: inherit; text-align: left; box-shadow: var(--pontes-shadow-xs); transition: border-color 0.15s, box-shadow 0.15s; }
+.blocoCartao:hover:not(:disabled) { border-color: var(--pontes-primary); box-shadow: var(--pontes-shadow-md); }
+.blocoCartao:disabled { cursor: default; }
+.blocoFatura { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.blocoNovo, .carteiraNovo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 180px; border: 1px dashed var(--pontes-border); border-radius: 18px; background: transparent; cursor: pointer; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
+.blocoNovo:hover, .carteiraNovo:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
+.celulaFatura { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.carteira { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.itemCarteira { display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; }
+.itemCarteira:hover:not(:disabled) .faceGrande { box-shadow: var(--pontes-shadow-lg); transform: translateY(-2px); }
+.itemCarteira:disabled { cursor: default; }
+.itemCarteira .faceGrande { transition: transform 0.15s, box-shadow 0.15s; }
+.itemCarteiraInfo { display: flex; flex-direction: column; gap: 4px; padding: 0 4px; }
 
 /* Celular */
 @media (max-width: 900px) {
