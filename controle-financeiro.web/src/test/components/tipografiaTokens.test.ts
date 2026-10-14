@@ -48,7 +48,6 @@ const PERMITIDOS = new Set([
   "DatePicker.module.css | .nav",
   "FileDrop.module.css | .icon",
   "FileDrop.module.css | .title",
-  'FormControls.module.css | .checkbox[data-checked="true"]',
   "Input.module.css | .moneyCur", // campo de dinheiro grande (clamp responsivo)
   "Input.module.css | .moneyInput",
   "Otp.module.css | .cell", // dígito do código

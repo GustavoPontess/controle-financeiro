@@ -59,7 +59,13 @@ export function PontesCheckbox({ p, font, checked, onChange, label, disabled }: 
       data-checked={checked ? "true" : "false"}
       style={scopedThemeVars(p, font) as CSSProperties}
     >
-      <span className={styles.checkbox} data-checked={checked ? "true" : "false"}>{checked ? "✓" : null}</span>
+      <span className={styles.checkbox} data-checked={checked ? "true" : "false"}>
+        {checked && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        )}
+      </span>
       {label && <span className={styles.labelMuted}>{label}</span>}
     </button>
   )
