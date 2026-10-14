@@ -1,0 +1,71 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Faixa de números (mesma anatomia dos números do palco, sobre a superfície) */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+/* Filtros */
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 24px 8px; }
+.busca { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 200px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-3); }
+.busca:focus-within { border-color: var(--v2-texto); }
+.busca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
+.busca input::placeholder { color: var(--v2-texto-3); }
+.segmentos { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--v2-superficie-2); }
+.segmento { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.segmento:hover { color: var(--v2-texto); }
+.segmento[data-ativo="true"] { background: var(--v2-superficie); color: var(--v2-texto); box-shadow: var(--v2-sombra); }
+.campo { height: 36px; padding: 0 10px; border: 1px solid var(--v2-linha-forte); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
+.campo:focus { border-color: var(--v2-texto); }
+.periodo { display: inline-flex; align-items: center; gap: 6px; }
+.periodoAte { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.limpar { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
+.limpar:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
+
+/* Lista */
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.lista { list-style: none; margin: 0; padding: 4px 8px 8px; display: flex; flex-direction: column; }
+.linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
+.linha:hover { background: var(--v2-superficie-2); }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
+.icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.icone[data-tom="neutro"] { color: var(--v2-texto-3); }
+.texto { display: flex; flex-direction: column; min-width: 0; }
+.nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.data { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.previsto { font-size: var(--v2-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--v2-alerta-suave); color: var(--v2-alerta); white-space: nowrap; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 110px; text-align: right; }
+.valor[data-tom="positivo"] { color: var(--v2-positivo); }
+.valor[data-tom="negativo"] { color: var(--v2-negativo); }
+.valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
+
+/* Paginação */
+.paginacao { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 24px 16px; border-top: 1px solid var(--v2-linha); }
+.paginacaoTexto { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.paginacaoBotoes { display: inline-flex; gap: 4px; }
+.paginacaoBotoes button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--v2-linha); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-2); cursor: pointer; }
+.paginacaoBotoes button:hover:not(:disabled) { color: var(--v2-texto); border-color: var(--v2-linha-forte); }
+.paginacaoBotoes button:disabled { opacity: 0.4; cursor: default; }
+
+@media (max-width: 900px) {
+  /* Celular: um número por linha (rótulo à esquerda, valor à direita); segmentos rolam de lado. */
+  .resumo { padding: 14px 20px; }
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .filtros { padding: 12px 16px 8px; }
+  .busca { flex-basis: 100%; }
+  .segmentos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .segmentos::-webkit-scrollbar { display: none; }
+  .lista { padding: 4px 4px 8px; }
+  .linha { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 10px 12px; }
+  .data { display: none; }
+  .previsto { grid-column: 2; justify-self: start; }
+  .valor { min-width: 0; }
+}

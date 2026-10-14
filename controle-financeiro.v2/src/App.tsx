@@ -3,11 +3,11 @@ import Protegido from "./auth/Protegido"
 import V2Layout from "./layout/V2Layout"
 import Entrar from "./telas/Entrar"
 import Dashboard from "./telas/Dashboard"
+import Transacoes from "./telas/Transacoes"
 import EmConstrucao from "./telas/EmConstrucao"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
-  ["/transacoes", "Transações", "/transactions"],
   ["/transacoes/nova", "Nova transação", "/transactions/nova"],
   ["/transacoes/:id", "Transação", "/transactions"],
   ["/cartoes", "Cartões", "/credit-cards"],
@@ -32,6 +32,7 @@ export default function App() {
       <Route element={<Protegido><V2Layout /></Protegido>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/transacoes" element={<Transacoes />} />
         {PENDENTES.map(([rota, titulo, atual]) => (
           <Route key={rota} path={rota} element={<EmConstrucao titulo={titulo} atual={atual} />} />
         ))}
