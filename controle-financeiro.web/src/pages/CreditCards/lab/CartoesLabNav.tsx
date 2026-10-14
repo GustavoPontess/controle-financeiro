@@ -8,17 +8,18 @@ import styles from "./CartoesLab.module.css"
 
 const PAGINAS = [
   { id: "atual", rotulo: "Tela atual", rota: "/credit-cards" },
-  { id: "a", rotulo: "A · Painel", rota: "/credit-cards/lab-a" },
-  { id: "b", rotulo: "B · Lista lateral", rota: "/credit-cards/lab-b" },
-  { id: "c", rotulo: "C · Extrato do banco", rota: "/credit-cards/lab-c" },
+  { id: "a", rotulo: "A · Central do cartão", rota: "/credit-cards/lab-a" },
+  { id: "b", rotulo: "B · Explorador", rota: "/credit-cards/lab-b" },
+  { id: "c", rotulo: "C · App do banco", rota: "/credit-cards/lab-c" },
 ] as const
 export type PaginaLab = (typeof PAGINAS)[number]["id"]
 
-export default function CartoesLabNav({ atual }: { atual: PaginaLab }) {
+/** `secao`: a parte do módulo aberta na página (labs sem abas dizem qual é; na tela real vem do endereço). */
+export default function CartoesLabNav({ atual, secao }: { atual: PaginaLab; secao?: "cartoes" | "parcelamentos" }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const i = PAGINAS.findIndex((p) => p.id === atual)
-  const naAbaParcelamentos = pathname.startsWith(`${PAGINAS[i].rota}/parcelamentos`)
+  const naAbaParcelamentos = secao ? secao === "parcelamentos" : pathname.startsWith(`${PAGINAS[i].rota}/parcelamentos`)
   const ir = (passo: number) => {
     const destino = PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length].rota
     navigate(naAbaParcelamentos ? `${destino}/parcelamentos` : destino)

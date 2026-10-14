@@ -8,6 +8,7 @@ import { ParcelamentoService } from "../../../services/ParcelamentoService"
 import { getCartoes } from "../../../services/cartaoCreditoService"
 import type { Parcelamento } from "../../../types/Parcelamento"
 import type { CartaoCredito } from "../../../types/CartaoCredito"
+import type { Recorrente } from "../../../types/Recorrente"
 import { rotuloMesFatura, somarMeses } from "../ciclosFatura"
 
 type Notification = { open: boolean; message: string; severity: "success" | "error" | "warning" }
@@ -67,3 +68,11 @@ export function progressoParcelamento(p: Parcelamento) {
     termina: curto(ultimoMes),
   }
 }
+
+/** Assinaturas (contas fixas) em vigor cobradas no cartão — ativas e pausadas. */
+export function assinaturasDoCartao(recorrentes: Recorrente[], cartaoId?: string) {
+  return recorrentes.filter((r) => r.cartaoCreditoId === cartaoId && (r.situacao === "ativa" || r.situacao === "pausada"))
+}
+
+/** Custo por mês de uma assinatura (semanal × 52 ÷ 12, anual ÷ 12) — a mesma conta do hero de Contas fixas. */
+export const custoMensal = (r: Recorrente) => (r.frequencia === 1 ? (r.valor * 52) / 12 : r.frequencia === 3 ? r.valor / 12 : r.valor)

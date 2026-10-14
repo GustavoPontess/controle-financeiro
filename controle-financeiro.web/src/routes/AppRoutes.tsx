@@ -22,9 +22,6 @@ import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
 import CartoesLabA from "../pages/CreditCards/lab/CartoesLabA"
 import CartoesLabB from "../pages/CreditCards/lab/CartoesLabB"
 import CartoesLabC from "../pages/CreditCards/lab/CartoesLabC"
-import ParcelamentosLabA from "../pages/CreditCards/lab/ParcelamentosLabA"
-import ParcelamentosLabB from "../pages/CreditCards/lab/ParcelamentosLabB"
-import ParcelamentosLabC from "../pages/CreditCards/lab/ParcelamentosLabC"
 import SettingsPage from "../pages/Settings/SettingsPage"
 import DashboardPage from "../pages/Dashboard/DashboardPage"
 import ReportsPage from "../pages/Reports/ReportsPage"
@@ -127,9 +124,10 @@ export default function AppRoutes() {
           <Route path="/credit-cards/lab-a" element={<CartoesLabA />} />
           <Route path="/credit-cards/lab-b" element={<CartoesLabB />} />
           <Route path="/credit-cards/lab-c" element={<CartoesLabC />} />
-          <Route path="/credit-cards/lab-a/parcelamentos" element={<ParcelamentosLabA />} />
-          <Route path="/credit-cards/lab-b/parcelamentos" element={<ParcelamentosLabB />} />
-          <Route path="/credit-cards/lab-c/parcelamentos" element={<ParcelamentosLabC />} />
+          {/* Nos labs, Parcelamentos é parte do cartão: o endereço só abre o layout já nessa parte. */}
+          <Route path="/credit-cards/lab-a/parcelamentos" element={<CartoesLabA />} />
+          <Route path="/credit-cards/lab-b/parcelamentos" element={<CartoesLabB />} />
+          <Route path="/credit-cards/lab-c/parcelamentos" element={<CartoesLabC />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
           {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.

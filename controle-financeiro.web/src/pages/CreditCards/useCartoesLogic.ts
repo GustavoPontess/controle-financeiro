@@ -406,7 +406,7 @@ export function useCartoesLogic({ autoSelecionar = "unico" }: { autoSelecionar?:
   }, [faturasCartaoId, idsKey])
 
   return {
-    notify, now, cartoes, contas, bancos,
+    notify, now, cartoes, contas, bancos, recorrentes,
     totalLimite, totalUsado, totalDisp,
     // seleção de cartão
     faturasCartaoId, cartaoAtivo, abrirCartao, fecharCartao, alternarCartao,
