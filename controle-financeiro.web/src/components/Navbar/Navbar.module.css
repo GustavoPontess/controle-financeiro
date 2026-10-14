@@ -1,7 +1,8 @@
 /* Navbar.module.css — topo do shell. Cor via var(--pontes-*). Mesmo fundo da página, sem borda. */
 .header { height: 64px; flex-shrink: 0; display: flex; align-items: center; background: var(--pontes-bg); font-family: var(--pontes-font); position: relative; z-index: 1000; }
-/* Mesmo padding do conteúdo (.main) → título e ações alinham com a tela. */
-.inner { width: 100%; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+/* Mesmo padding do conteúdo (.main) + a largura da barra de rolagem do main (--pontes-scrollbar-w, medida
+   no DefaultLayout) → o lado direito do topo alinha com o lado direito da página. */
+.inner { width: 100%; padding: 0 calc(32px + var(--pontes-scrollbar-w, 0px)) 0 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .titleBox { min-width: 0; }
 .crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); line-height: 1.1; margin-bottom: 2px; }
@@ -19,7 +20,7 @@
 }
 /* Celular (ver Navbar.tsx: sem o caminho, ☰ no lugar do recolher). */
 @media (max-width: 767px) {
-  .inner { padding: 0 8px 0 4px; gap: 4px; }
+  .inner { padding: 0 calc(8px + var(--pontes-scrollbar-w, 0px)) 0 4px; gap: 4px; }
   .left { gap: 2px; }
   .right { gap: 2px; }
   .title { font-size: var(--pontes-fs-lg); }

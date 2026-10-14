@@ -3,7 +3,8 @@
    gradiente, o "cartão flutuando" (borda, sombra, raio) e a faixa accent — ruído, não informação. */
 .shell { display: flex; height: 100vh; font-family: var(--pontes-font); box-sizing: border-box; overflow: hidden; background: var(--pontes-bg); }
 .card { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: var(--pontes-bg); }
-.main { flex: 1; overflow-y: auto; padding: 8px 32px 48px; }
+/* scrollbar-gutter: stable — a calha existe sempre; o topo compensa com --pontes-scrollbar-w (medida). */
+.main { flex: 1; overflow-y: auto; scrollbar-gutter: stable; padding: 8px 32px 48px; }
 /* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
 .page { max-width: 1600px; margin: 0; animation: pontes-page-in 240ms ease-out; }
 @keyframes pontes-page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

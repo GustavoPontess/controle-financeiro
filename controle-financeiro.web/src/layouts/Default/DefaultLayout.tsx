@@ -5,7 +5,7 @@
  * toasts (PontesToast) + dialogs. Cor + fonte do usePontesTheme.
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef, type CSSProperties } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Receipt, CreditCard, BarChart3, Repeat,
@@ -75,6 +75,22 @@ export default function DefaultLayout() {
   )
   const [cmdOpen, setCmdOpen] = useState(false)
   const [cmdQuery, setCmdQuery] = useState("")
+
+  // Só o <main> rola. A barra de rolagem come largura dele e não do topo → o topo compensa com
+  // padding-right = largura da barra (medida, vira --pontes-scrollbar-w). scrollbar-gutter: stable
+  // no CSS garante o mesmo número com conteúdo curto ou longo.
+  const mainRef = useRef<HTMLElement | null>(null)
+  const [larguraBarra, setLarguraBarra] = useState(0)
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el) return
+    const medir = () => setLarguraBarra(el.offsetWidth - el.clientWidth)
+    medir()
+    if (typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const checkRequirements = useCallback(async () => {
     const categories = await getCategories()
@@ -153,7 +169,7 @@ export default function DefaultLayout() {
       )}
 
       {/* Conteúdo: topo + página, no mesmo fundo da barra lateral */}
-      <div className={styles.card}>
+      <div className={styles.card} style={{ "--pontes-scrollbar-w": `${larguraBarra}px` } as CSSProperties}>
         <Navbar
           toggleDrawer={() => (celular ? setGavetaAbertaEm(location.pathname) : setOpen((o) => !o))}
           sidebarOpen={celular ? gavetaAberta : open}
@@ -164,7 +180,7 @@ export default function DefaultLayout() {
           detalhe={detalheNoCaminho?.path === location.pathname ? detalheNoCaminho.label : undefined}
         />
 
-        <main className={styles.main}>
+        <main ref={mainRef} className={styles.main}>
           <div key={location.pathname} className={styles.page}>
             <Outlet key={accountKey} context={{
               notify: setNotification, refreshTransactionRequirements: checkRequirements,
