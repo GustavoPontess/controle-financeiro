@@ -112,6 +112,9 @@ export default function TransactionForm({
   // transação antiga sem meioPagamento setado mas com cartaoCreditoId).
   const isCredito = !isTransferencia && (form.meioPagamento === 3 || !!form.cartaoCreditoId)
   const isRecorrente = !isTransferencia && form.modo === "recorrente"
+  // Lançamento que já veio SEM hora (importado do extrato, conta fixa, parcela) pode seguir sem: exigir
+  // a hora pra só trocar a categoria obrigava a inventar um horário. Com hora, segue obrigatória.
+  const horaOpcional = isEdit && !initial?.hora
   const cartoesDisponiveis = cartoes.filter((c) => c.temCredito)
   const today = dataLocalISO()
   // Conta/transferência não aceitam data futura; crédito e recorrente (início) sim.
@@ -180,7 +183,7 @@ export default function TransactionForm({
     if (!form.descricao.trim()) e.descricao = "Informe a descrição"
     // Hora obrigatória no lançamento único (toda transação tem data E hora). Recorrente não tem hora.
     if (!isRecorrente) {
-      if (!form.hora.trim()) e.hora = "Informe a hora"
+      if (!form.hora.trim()) { if (!horaOpcional) e.hora = "Informe a hora" }
       else {
         const m = form.hora.match(/^(\d{2}):(\d{2})$/)
         if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) e.hora = "Hora inválida (HH:MM)"
@@ -277,7 +280,7 @@ export default function TransactionForm({
                 <PontesField label="Data" required>
                   <PontesDateInput value={form.data} max={dateMax} onChange={(v) => set("data", v)} />
                 </PontesField>
-                <PontesField label="Hora" required error={errors.hora}>
+                <PontesField label="Hora" required={!horaOpcional} error={errors.hora}>
                   <PontesInput value={form.hora} onChange={(e) => set("hora", mascararHora(e.target.value))}
                     placeholder="HH:MM" inputMode="numeric" maxLength={5} invalid={!!errors.hora} />
                 </PontesField>

@@ -15,17 +15,17 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `fix/transferencia-hora`
+### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `fix/editar-sem-hora`
 
 **Marcos combinados (ver topo do `ROADMAP.md`):** M1 Fase 0 + transação em página **24/10** · M2 beta no ar **07/11** (Gustavo contrata VPS + domínio até 27/10) · M3 usável no dia a dia **28/11** · M4 1.0 com cobrança **29/01/2027**.
 
-**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura) · #295 (reconciliação lista só efetivado) · #296 (transação em página: criar/ver/editar numa tela só, ações saem do ⋮ — popups apagados) · #297 (conta fixa idempotente + criar devolve a nova sem depender da 1ª página).
+**Entrou na `main` nesta sessão:** #289 (conta OU cartão com dono + saldo real nos Relatórios) · #290 (parcelamento em andamento) · #291 (Pix no Crédito fora do resultado + `RegrasFinanceiras.EntraNoResultado`) · #292 ("Pagamento de fatura" do extrato paga a fatura do app) · #293 (estorno de pagamento de fatura) · #294 (editar data da compra no cartão move de fatura) · #295 (reconciliação lista só efetivado) · #296 (transação em página: criar/ver/editar numa tela só, ações saem do ⋮ — popups apagados) · #297 (conta fixa idempotente + criar devolve a nova sem depender da 1ª página) · #298 (transferência guarda a hora nas duas pernas + back recusa data futura).
 
-**Nesta branch (M1, sem PR ainda):** transferência guarda a hora (decisão do Gustavo: "guardar a hora") — DTO `Data` (DateOnly) + `Hora` (TimeOnly?) como o lançamento comum, as duas pernas com hora; back recusa data futura (só o front barrava). Back 1429 + front 934 verdes, lint/build OK, mutações conferidas, conferido ao vivo (transferência de teste de R$ 0,01 criada e apagada, saldos iguais).
+**Nesta branch (M1, sem PR ainda):** editar lançamento que veio SEM hora (importado, conta fixa, parcela) não obriga mais a inventar uma — decisão do Gustavo: "pode ficar vazio". Hora opcional na edição só quando veio sem; com hora segue obrigatória. Front 938 verdes, lint/build OK, mutação conferida, conferido ao vivo (lançamento de teste R$ 0,01 criado, editado sem hora, apagado).
 
 **Banco local:** recriado pelo `MeuCenarioSeeder` (gitignored) — conta real do Gustavo; pode resetar à vontade (`DROP DATABASE` + subir a API). Vite: edição por `sed` às vezes não dispara o recarregamento — `touch` no arquivo resolve.
 
-**Próxima ação:** PR da `fix/transferencia-hora` → resto do M1 até 24/10: editar lançamento sem hora (**decisão do Gustavo**: manter sem hora ou exigir), write skew compra × pagamento, sobras do extrato (Pix entre contas, empréstimo, resgate RDB).
+**Próxima ação:** PR da `fix/editar-sem-hora` → resto do M1 até 24/10: write skew compra × pagamento, sobras do extrato (Pix entre contas, empréstimo, resgate RDB).
 
 ---
 
