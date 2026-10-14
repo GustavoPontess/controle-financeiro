@@ -4,10 +4,11 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard } from "lucide-react"
 import { getDashboard } from "../services/dashboardService"
-import type { DashboardData, EvolucaoMes, TransacaoRecente } from "../types/Dashboard"
+import type { DashboardData, TransacaoRecente } from "../types/Dashboard"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, diaCurto, variacao, type TomDinheiro } from "../componentes/Dinheiro"
 import LogoMarca from "../componentes/LogoMarca"
+import GraficoLinha from "../componentes/GraficoLinha"
 import styles from "./Dashboard.module.css"
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
@@ -61,7 +62,7 @@ export default function Dashboard() {
 
       <div className={styles.grade}>
         <Bloco titulo="Saldo nos últimos meses">
-          {d ? <GraficoLinha pontos={d.evolucaoSaldo} /> : <Esqueleto linhas={4} altura={18} />}
+          {d ? <GraficoLinha pontos={d.evolucaoSaldo.map((p) => ({ rotulo: p.label, valor: p.saldo }))} /> : <Esqueleto linhas={4} altura={18} />}
         </Bloco>
         <Bloco titulo="Maiores gastos do mês">
           {!d ? <Esqueleto /> : d.topCategorias.length === 0 ? <Vazio texto="Sem gastos neste mês." /> : (
@@ -148,29 +149,6 @@ function Numero({ rotulo, valor, vari, palco }: { rotulo: string; valor?: number
 
 function Vazio({ texto }: { texto: string }) {
   return <p className={styles.vazio}>{texto}</p>
-}
-
-/** Linha do saldo mês a mês — SVG próprio, sem lib: linha + área suave + zero tracejado quando ficou negativo. */
-function GraficoLinha({ pontos }: { pontos: EvolucaoMes[] }) {
-  if (pontos.length < 2) return <Vazio texto="Ainda não há meses pra comparar." />
-  const W = 600, H = 150, T = 10, B = 8
-  const vals = pontos.map((p) => p.saldo)
-  const min = Math.min(...vals, 0), max = Math.max(...vals)
-  const amp = max - min || 1
-  const x = (i: number) => (i * W) / (pontos.length - 1)
-  const y = (v: number) => T + (H - T - B) * (1 - (v - min) / amp)
-  const linha = pontos.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.saldo).toFixed(1)}`).join(" ")
-  const area = `${linha} L${W} ${H - B} L0 ${H - B} Z`
-  return (
-    <div className={styles.graficoCaixa}>
-      <svg className={styles.grafico} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Saldo nos últimos meses">
-        {min < 0 && <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke="currentColor" strokeOpacity={0.3} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
-        <path d={area} fill="currentColor" fillOpacity={0.08} />
-        <path d={linha} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className={styles.graficoRotulos}>{pontos.map((p) => <span key={`${p.ano}-${p.mes}`}>{p.label}</span>)}</div>
-    </div>
-  )
 }
 
 function LinhaTransacao({ t }: { t: TransacaoRecente }) {
