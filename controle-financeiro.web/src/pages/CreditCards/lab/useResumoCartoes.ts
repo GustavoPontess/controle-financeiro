@@ -46,7 +46,7 @@ export function useResumoCartoes(cartoes: CartaoCredito[], parcelamentos: Parcel
       parcelamentosAtivos: ativos.length,
     }
   }
-  return { carregando: faturasPorCartao === null, resumo }
+  return { carregando: faturasPorCartao === null, resumo, faturasPorCartao: faturasPorCartao ?? {} }
 }
 
 /** "vence em 25 dias" / "vence hoje" / "venceu 08/11". */

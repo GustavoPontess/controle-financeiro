@@ -10,7 +10,7 @@ import {
 import { formatMoney } from "@/utils/money"
 import type { CartaoCredito } from "../../../types/CartaoCredito"
 import BandeiraMark from "../BandeiraMark"
-import { STATUS, formatDate, statusKey } from "../cartoesFormato"
+import { STATUS, cardGradient, formatDate, statusKey } from "../cartoesFormato"
 import { rotuloMesFatura, type FaturaView } from "../ciclosFatura"
 import type { CartoesLogic } from "../useCartoesLogic"
 import { diaCurto, diaPorExtenso, linhasDaFatura, mesCurto, type LinhaFatura } from "./faturaLinhas"
@@ -260,4 +260,60 @@ export function SemCartoes({ logic }: { logic: CartoesLogic }) {
 /** Link "ver todos os parcelamentos" pra aba de Parcelamentos. */
 export function LinkParcelamentos() {
   return <Link to="/credit-cards/parcelamentos" className={styles.link}>Ver todos</Link>
+}
+
+/** Barras por mês (fatura de cada mês). Altura = valor de runtime (inline, só a %). */
+export function BarrasMeses({ barras, onEscolher }: {
+  barras: { chave: string; rotulo: string; valor: number; atual?: boolean; sel?: boolean }[]
+  onEscolher?: (chave: string) => void
+}) {
+  const max = Math.max(1, ...barras.map((b) => b.valor))
+  return (
+    <div className={styles.barras} role="list">
+      {barras.map((b) => (
+        <button key={b.chave} type="button" role="listitem" className={styles.barra}
+          data-atual={b.atual ? "true" : undefined} data-sel={b.sel ? "true" : undefined}
+          disabled={!onEscolher} onClick={() => onEscolher?.(b.chave)}
+          title={`${b.rotulo}: ${formatMoney(b.valor)}`}>
+          <span className={styles.barraValor}>{b.valor > 0 ? formatMoney(b.valor).replace("R$", "").trim() : ""}</span>
+          <span className={styles.barraTrilho}><span className={styles.barraFill} style={{ height: `${(b.valor / max) * 100}%` }} /></span>
+          <span className={styles.barraRotulo}>{b.rotulo}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Rosca do limite: usado × disponível (fatia = % de runtime, inline). */
+export function DonutLimite({ usado, limite }: { usado: number; limite: number }) {
+  const pct = limite > 0 ? Math.min(100, (usado / limite) * 100) : 0
+  return (
+    <div className={styles.donutBloco}>
+      <span className={styles.donut} data-alerta={pct > 80 ? "true" : undefined}
+        style={{ background: `conic-gradient(var(--donut-cor) ${pct}%, var(--pontes-border) 0)` }}>
+        <span className={styles.donutMiolo}>
+          <span className={styles.donutPct}>{Math.round(pct)}%</span>
+          <span className={styles.muted}>usado</span>
+        </span>
+      </span>
+      <span className={styles.donutLegenda}>
+        <span className={styles.itemCartaoLinha}><span className={styles.muted}>usado</span><span className={styles.valorLinha}>{formatMoney(usado)}</span></span>
+        <span className={styles.itemCartaoLinha}><span className={styles.muted}>disponível</span><span data-tom="entrada" className={styles.valorLinha}>{formatMoney(Math.max(0, limite - usado))}</span></span>
+        <span className={styles.itemCartaoLinha}><span className={styles.muted}>limite</span><span className={styles.valorLinha}>{formatMoney(limite)}</span></span>
+      </span>
+    </div>
+  )
+}
+
+/** A face do cartão na cor do banco (gradiente = dado do cartão, valor de runtime). */
+export function FaceCartao({ c, grande }: { c: CartaoCredito; grande?: boolean }) {
+  return (
+    <span className={grande ? styles.faceGrande : styles.faceMini} style={{ background: cardGradient(c.bancoCor, c.bandeira) }}>
+      <span className={styles.miniTopo}>
+        <span className={styles.miniNome}>{c.nome}</span>
+        <BandeiraMark bandeira={c.bandeira} width={grande ? 44 : 34} />
+      </span>
+      <span className={styles.miniFinal}>•••• {c.ultimosDigitos ?? "••••"}</span>
+    </span>
+  )
 }

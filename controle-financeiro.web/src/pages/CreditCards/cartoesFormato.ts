@@ -37,7 +37,7 @@ const grad = (b: number) => BANDEIRA_GRAD[b] ?? BANDEIRA_GRAD[6]
 
 // Escurece um hex (mistura com preto) — pra gerar gradient bonito a partir
 // da cor da marca do banco (Nubank #820AD1 → #4a0577 + #820AD1).
-function darken(hex: string, amount = 0.45): string {
+export function darken(hex: string, amount = 0.45): string {
   const h = hex.replace("#", "")
   const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h
   const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16)

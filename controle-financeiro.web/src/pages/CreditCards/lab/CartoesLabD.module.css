@@ -1,0 +1,28 @@
+/* Lab D · Bento — grade de blocos de 12 colunas; cada bloco ocupa data-span colunas. */
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.tile, .tileNovo, .coluna { grid-column: span 4; min-width: 0; }
+.tile[data-span="8"], .coluna[data-span="8"] { grid-column: span 8; }
+.tile[data-span="12"] { grid-column: span 12; }
+.tile { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--pontes-border); border-radius: 20px; background: var(--pontes-surface); font: inherit; text-align: left; box-shadow: var(--pontes-shadow-xs); overflow: hidden; }
+.tile[data-sem-respiro="true"] { padding: 0; gap: 0; }
+.tile[data-clicavel="true"] { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.tile[data-clicavel="true"]:hover:not(:disabled) { border-color: var(--pontes-primary); box-shadow: var(--pontes-shadow-md); }
+.tile:disabled { cursor: default; }
+.tileTopo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tileTopo[data-com-respiro="true"] { padding: 14px 18px; border-bottom: 1px solid var(--pontes-border); }
+.tileTopo > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.tileLinhas { display: flex; flex-direction: column; gap: 6px; }
+.tileNovo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; border: 1px dashed var(--pontes-border); border-radius: 20px; background: transparent; cursor: pointer; font: inherit; font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text-muted); }
+.tileNovo:hover { border-color: var(--pontes-primary); color: var(--pontes-primary); }
+.coluna { display: flex; flex-direction: column; gap: 14px; }
+.miniLista { display: flex; flex-direction: column; gap: 10px; }
+.miniItem { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; }
+.acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 1100px) {
+  .tile, .tileNovo, .coluna { grid-column: span 6; }
+  .tile[data-span="8"], .tile[data-span="12"], .coluna[data-span="8"] { grid-column: span 12; }
+}
+@media (max-width: 700px) {
+  .tile, .tileNovo, .coluna, .tile[data-span="8"], .tile[data-span="12"] { grid-column: span 12; }
+}

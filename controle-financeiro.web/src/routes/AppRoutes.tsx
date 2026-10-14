@@ -22,6 +22,9 @@ import CreditCardsPage from "../pages/CreditCards/CreditCardsPage"
 import CartoesLabA from "../pages/CreditCards/lab/CartoesLabA"
 import CartoesLabB from "../pages/CreditCards/lab/CartoesLabB"
 import CartoesLabC from "../pages/CreditCards/lab/CartoesLabC"
+import CartoesLabD from "../pages/CreditCards/lab/CartoesLabD"
+import CartoesLabE from "../pages/CreditCards/lab/CartoesLabE"
+import CartoesLabF from "../pages/CreditCards/lab/CartoesLabF"
 import SettingsPage from "../pages/Settings/SettingsPage"
 import DashboardPage from "../pages/Dashboard/DashboardPage"
 import ReportsPage from "../pages/Reports/ReportsPage"
@@ -135,6 +138,19 @@ export default function AppRoutes() {
           <Route path="/credit-cards/lab-b/cartao/:id/parcelamentos" element={<CartoesLabB />} />
           <Route path="/credit-cards/lab-c/cartao/:id" element={<CartoesLabC />} />
           <Route path="/credit-cards/lab-c/cartao/:id/parcelamentos" element={<CartoesLabC />} />
+          {/* Labs do Behance: D bento, E imersivo, F editorial. */}
+          <Route path="/credit-cards/lab-d" element={<CartoesLabD />} />
+          <Route path="/credit-cards/lab-d/parcelamentos" element={<CartoesLabD />} />
+          <Route path="/credit-cards/lab-d/cartao/:id" element={<CartoesLabD />} />
+          <Route path="/credit-cards/lab-d/cartao/:id/parcelamentos" element={<CartoesLabD />} />
+          <Route path="/credit-cards/lab-e" element={<CartoesLabE />} />
+          <Route path="/credit-cards/lab-e/parcelamentos" element={<CartoesLabE />} />
+          <Route path="/credit-cards/lab-e/cartao/:id" element={<CartoesLabE />} />
+          <Route path="/credit-cards/lab-e/cartao/:id/parcelamentos" element={<CartoesLabE />} />
+          <Route path="/credit-cards/lab-f" element={<CartoesLabF />} />
+          <Route path="/credit-cards/lab-f/parcelamentos" element={<CartoesLabF />} />
+          <Route path="/credit-cards/lab-f/cartao/:id" element={<CartoesLabF />} />
+          <Route path="/credit-cards/lab-f/cartao/:id/parcelamentos" element={<CartoesLabF />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/assinaturas" element={<RecorrentesPage />} />
           {/* Parcelamento é do cartão (Pix no crédito fora do cartão vira empréstimo) — mora em Cartões.

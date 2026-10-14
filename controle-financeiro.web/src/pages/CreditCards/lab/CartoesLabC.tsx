@@ -8,15 +8,13 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { Banknote, ChevronLeft, Layers, Pencil, Plus, Repeat, Trash2 } from "lucide-react"
 import { PontesBadge, PontesCard } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
-import type { CartaoCredito } from "../../../types/CartaoCredito"
 import CartoesModais from "../CartoesModais"
 import NovoParcelamentoModal from "../../Parcelamentos/NovoParcelamentoModal"
-import BandeiraMark from "../BandeiraMark"
 import { useCartoesLogic } from "../useCartoesLogic"
-import { cardGradient, formatDate } from "../cartoesFormato"
+import { formatDate } from "../cartoesFormato"
 import { rotuloMesFatura } from "../ciclosFatura"
 import CartoesLabNav from "./CartoesLabNav"
-import { CarregandoFatura, FaturaPorDia, LinhaMeses, SemCartoes } from "./LabPecas"
+import { CarregandoFatura, FaceCartao, FaturaPorDia, LinhaMeses, SemCartoes } from "./LabPecas"
 import { AssinaturasLista, FiltroSituacao, ParcelamentosBlocos } from "./SecoesCartao"
 import { assinaturasDoCartao, custoMensal, useParcelamentosLab } from "./useParcelamentosLab"
 import { textoVencimento, useResumoCartoes } from "./useResumoCartoes"
@@ -27,19 +25,6 @@ const BASE = "/credit-cards/lab-c"
 export default function CartoesLabC() {
   const { id } = useParams()
   return id ? <CartaoNoApp key={id} id={id} /> : <Carteira />
-}
-
-/** A face do cartão na cor do banco (gradiente = dado do cartão, valor de runtime). */
-function FaceCartao({ c, grande }: { c: CartaoCredito; grande?: boolean }) {
-  return (
-    <span className={grande ? styles.faceGrande : styles.faceMini} style={{ background: cardGradient(c.bancoCor, c.bandeira) }}>
-      <span className={styles.miniTopo}>
-        <span className={styles.miniNome}>{c.nome}</span>
-        <BandeiraMark bandeira={c.bandeira} width={grande ? 44 : 34} />
-      </span>
-      <span className={styles.miniFinal}>•••• {c.ultimosDigitos ?? "••••"}</span>
-    </span>
-  )
 }
 
 function Carteira() {

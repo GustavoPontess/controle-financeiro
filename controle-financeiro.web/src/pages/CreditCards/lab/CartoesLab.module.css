@@ -159,6 +159,24 @@
 .itemCarteira .faceGrande { transition: transform 0.15s, box-shadow 0.15s; }
 .itemCarteiraInfo { display: flex; flex-direction: column; gap: 4px; padding: 0 4px; }
 
+/* Barras por mês + rosca do limite (D) */
+.barras { display: flex; align-items: flex-end; gap: 8px; height: 200px; overflow-x: auto; padding-top: 4px; }
+.barra { flex: 1 0 44px; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
+.barra:disabled { cursor: default; }
+.barraValor { font-size: var(--pontes-fs-2xs); font-weight: 600; color: var(--pontes-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; min-height: 1em; }
+.barraTrilho { flex: 1; width: 100%; max-width: 34px; display: flex; align-items: flex-end; border-radius: 8px; background: var(--pontes-bg); overflow: hidden; }
+.barraFill { width: 100%; border-radius: 8px; background: color-mix(in srgb, var(--pontes-primary) 35%, transparent); transition: height 0.2s; }
+.barra[data-atual="true"] .barraFill, .barra[data-sel="true"] .barraFill { background: var(--pontes-primary); }
+.barra:not(:disabled):hover .barraFill { background: var(--pontes-primary); }
+.barraRotulo { font-size: var(--pontes-fs-xs); font-weight: 600; color: var(--pontes-text-muted); text-transform: lowercase; white-space: nowrap; }
+.barra[data-atual="true"] .barraRotulo, .barra[data-sel="true"] .barraRotulo { color: var(--pontes-primary); }
+.donutBloco { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut { --donut-cor: var(--pontes-primary); width: 120px; height: 120px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.donut[data-alerta="true"] { --donut-cor: var(--pontes-danger); }
+.donutMiolo { width: 88px; height: 88px; border-radius: 50%; background: var(--pontes-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.donutPct { font-size: var(--pontes-fs-lg); font-weight: 800; color: var(--pontes-text); }
+.donutLegenda { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+
 /* Celular */
 @media (max-width: 900px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }

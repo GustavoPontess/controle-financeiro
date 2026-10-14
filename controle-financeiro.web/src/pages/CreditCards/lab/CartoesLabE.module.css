@@ -1,0 +1,44 @@
+/* Lab E · Imersivo — palco escuro na cor do banco (o gradiente vem inline: dado do cartão). Texto e vidro
+   sobre o palco usam --pontes-hero-fg (o texto claro sobre fundo escuro do tema). */
+.palco { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 32px; align-items: center; padding: 32px; border-radius: 28px; color: var(--pontes-hero-fg); box-shadow: var(--pontes-shadow-lg); }
+.palcoResumo { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.palcoRotulo { font-size: var(--pontes-fs-rotulo); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.palcoValor { font-size: var(--pontes-fs-5xl); font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.palcoMeta { font-size: var(--pontes-fs-sm); opacity: 0.8; margin-bottom: 8px; }
+
+/* Vidro: claro translúcido sobre o palco */
+.vidro, .acaoVidro, .mesVidro { border: 1px solid color-mix(in srgb, var(--pontes-hero-fg) 22%, transparent); background: color-mix(in srgb, var(--pontes-hero-fg) 12%, transparent); color: var(--pontes-hero-fg); backdrop-filter: blur(10px); cursor: pointer; font: inherit; }
+.vidro { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; font-size: var(--pontes-fs-sm); font-weight: 600; }
+.vidro:hover, .acaoVidro:not(:disabled):hover, .mesVidro:hover { background: color-mix(in srgb, var(--pontes-hero-fg) 22%, transparent); }
+.acoesVidro { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.acaoVidro { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 84px; padding: 12px 8px; border-radius: 18px; font-size: var(--pontes-fs-xs); font-weight: 600; }
+.acaoVidro:disabled { cursor: default; opacity: 0.4; }
+.mesesVidro { display: flex; gap: 6px; flex-wrap: wrap; }
+.mesVidro { padding: 6px 12px; border-radius: 999px; font-size: var(--pontes-fs-xs); font-weight: 600; text-transform: lowercase; }
+.mesVidro[data-sel="true"] { background: var(--pontes-hero-fg); color: var(--pontes-text); border-color: transparent; }
+
+/* Pilha de cartões (carteira do celular): cada um sobe por cima do anterior; o de baixo aparece inteiro. */
+.pilha { display: flex; flex-direction: column; align-items: stretch; max-width: 420px; width: 100%; justify-self: center; padding-top: 8px; }
+.cartaoPilha { position: relative; display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 1.586; padding: 18px 22px; border: 1px solid color-mix(in srgb, var(--pontes-hero-fg) 18%, transparent); border-radius: 20px; color: var(--pontes-hero-fg); cursor: pointer; font: inherit; text-align: left; box-shadow: 0 -8px 24px color-mix(in srgb, black 35%, transparent); transition: transform 0.2s; }
+.cartaoPilha + .cartaoPilha { margin-top: -44%; }
+.cartaoPilha:hover:not(:disabled) { transform: translateY(-18px); }
+.cartaoPilha:disabled { cursor: default; }
+.pilhaTopo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pilhaNome { font-size: var(--pontes-fs-lg); font-weight: 700; }
+.pilhaFatura { font-size: var(--pontes-fs-xl); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pilhaMeio { font-size: var(--pontes-fs-xs); opacity: 0.8; margin-top: -8px; }
+.pilhaBase { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.pilhaFinal { font-size: var(--pontes-fs-lg); font-weight: 600; letter-spacing: 0.14em; }
+.pilhaDisp { font-size: var(--pontes-fs-xs); opacity: 0.85; margin-left: auto; }
+
+/* Página do cartão */
+.palco[data-cartao="true"] { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+.palcoCartao { display: flex; flex-direction: column; gap: 12px; }
+.trocaCartao { display: flex; gap: 6px; flex-wrap: wrap; }
+.abaixo { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.lateral { display: flex; flex-direction: column; gap: 18px; }
+
+@media (max-width: 900px) {
+  .palco, .palco[data-cartao="true"], .abaixo { grid-template-columns: minmax(0, 1fr); padding: 22px; }
+  .palcoValor { font-size: var(--pontes-fs-4xl); }
+}
