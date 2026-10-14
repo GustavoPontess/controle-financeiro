@@ -69,10 +69,12 @@ export default function V2Layout() {
       <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
         <div className={styles.marca}>
           <span className={styles.logo}><Logo size={26} /></span>
-          <span className={styles.logoMini}><LogoMark size={24} /></span>
+          {/* No trilho a marca compacta É o botão: mostra o "P" e, ao passar o mouse, vira a seta de expandir.
+              Mesma linha de 40px nos dois estados — nada embaixo da marca, o menu não desce. */}
           <button type="button" className={styles.recolher} aria-label={recolhido ? "Expandir menu" : "Recolher menu"} title={recolhido ? "Expandir menu" : "Recolher menu"}
             onClick={() => { setRecolhido((r) => !r); setMenuUsuario(false) }}>
-            {recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
+            <span className={styles.logoMini}><LogoMark size={24} /></span>
+            <span className={styles.recolherIcone}>{recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}</span>
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><X size={18} /></button>
         </div>
