@@ -122,7 +122,7 @@ export default function Navbar({
       <div className={styles.right}>
         {showFinance && (
           <PontesIconButton
-            variant="ghost" size={40}
+            variant="ghost" size={40} className={styles.icone}
             onClick={toggleBalance}
             aria-label={hideBalance ? "Mostrar valores" : "Ocultar valores"}
             title={hideBalance ? "Mostrar valores" : "Ocultar valores"}

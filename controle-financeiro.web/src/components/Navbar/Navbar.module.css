@@ -11,11 +11,17 @@
 .crumbSep { opacity: .5; }
 .crumbCur { color: var(--pontes-text); }
 .title { font-size: var(--pontes-fs-titulo-pagina); font-weight: 600; letter-spacing: -.015em; color: var(--pontes-text); margin: 0; line-height: 1.15; font-family: var(--pontes-font-marca); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.right { display: flex; align-items: center; gap: 6px; }
+.right { display: flex; align-items: center; gap: 8px; }
+/* Ações do topo como no v2: ícones de 36px com borda fina e fundo da superfície (raio 10); o botão
+   principal com a mesma altura. O sino mora num <span> (NotificationBell) — por isso o 2º seletor. */
+/* `.header .right …` (3 classes) ganha das regras do DS por atributo (`.iconBtn[data-size]`, `.btn[data-size]`). */
+.header .right .icone, .header .right > span > button { width: 36px; height: 36px; border: 1px solid var(--pontes-border); border-radius: 10px; background: var(--pontes-surface); color: var(--pontes-text-muted); }
+.header .right .icone:hover, .header .right > span > button:hover { color: var(--pontes-text); border-color: var(--pontes-text-muted); background: var(--pontes-surface); filter: none; }
+.header .right .nova { height: 36px; padding: 0 14px; border-radius: 10px; font-size: var(--pontes-fs-sm); }
 
 /* Tablet e celular (< 1024px): "Nova transação" só com o "+" — o texto não cabe ao lado do título. */
 @media (max-width: 1023px) {
-  .nova { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+  .header .right .nova { width: 36px; height: 36px; padding: 0; justify-content: center; gap: 0; }
   .novaTexto { display: none; }
 }
 /* Celular (ver Navbar.tsx: sem o caminho, ☰ no lugar do recolher). */
