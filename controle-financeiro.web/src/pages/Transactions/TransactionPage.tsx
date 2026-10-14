@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useOutletContext, useParams } from "react-rou
 import { ChevronLeft, Pencil, Split, Trash2, Undo2, User, Users } from "lucide-react"
 import { PontesBadge, PontesButton, PontesCard, PontesDialog } from "@/components/pontes"
 import { formatMoney } from "@/utils/money"
-import { combinarDataHora } from "@/utils/dateTime"
 import TransactionForm, { type TransactionFormData } from "./components/TransactionForm/TransactionForm"
 import EstornarPagamentoDialog from "../CreditCards/EstornarPagamentoDialog"
 import { podeCompartilhar, useAcoesFamilia } from "./components/AcoesFamilia/useAcoesFamilia"
@@ -98,7 +97,8 @@ export default function TransactionPage() {
       if (data.natureza === "transferencia") {
         await createTransferencia({
           contaOrigemId: data.contaOrigemId, contaDestinoId: data.contaDestinoId, valor,
-          data: combinarDataHora(data.data, data.hora), descricao: data.descricao,
+          // date e time separados (sem fuso), como o lançamento comum: "YYYY-MM-DD" + "HH:MM:SS".
+          data: data.data, hora: data.hora ? `${data.hora}:00` : null, descricao: data.descricao,
         })
         notify({ open: true, message: "Transferência criada com sucesso", severity: "success" })
       } else {
