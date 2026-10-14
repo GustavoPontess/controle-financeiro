@@ -23,7 +23,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Cuidado no dev:** o navegador embutido do app **não compartilha cookie entre :5173 e :5174**, e login num front revoga o do outro — usar **um front por vez** e marcar "Manter-me conectado" (sem isso o cookie é de sessão). Paleta/fonte moram no `localStorage` (`pontes.paletteId`, `pontes.fontId`) — "sumiu a cor" = paleta trocada no navegador, não código.
 
-**Próxima ação:** tela por tela, na ordem de uso — Transações (hero fino → palco pequeno ou só número; tabela no PontesTabela já), Cartões (lab E: carrossel + "Meus cartões" sem pré-seleção), Contas fixas, Relatórios, Bancos… — cada uma um commit, Gustavo olha. Depois: PR da `feat/ds-premium` e volta ao M1 (write skew, sobras do extrato).
+**Mudança de método (2026-10-14):** telas novas nascem no **v2** (`feat/front-v2`, worktree `E:\VSCode\controle-financeiro-v2`, :5174) e só depois são portadas pro v1 **medindo** item por item (memória `feedback_v2_primeiro_depois_porta`). Transações já está no v2 (agrupada por dia, filtros no servidor). PRs abertos: **#299** (editar sem hora) e **#300** (ordem intradia: hora conhecida primeiro, empate por `CriadoEm`) — mergear quando o Gustavo disser "ci verde". Cuidado: a API no ar foi subida da branch do #300; o `.exe` em execução trava o build dos testes do back (parar com preview_stop antes de `dotnet test`).
+
+**Próxima ação:** no v2, Cartões (lab E) ou a tela da transação (`/transacoes/:id`) — Gustavo escolhe. Depois: portar Transações pro v1 medindo; PR da `feat/ds-premium`; volta ao M1 (write skew, sobras do extrato).
 
 ---
 
