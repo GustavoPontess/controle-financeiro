@@ -166,7 +166,7 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       {currentUser && (
         <div className={styles.userWrap}>
           <PontesPopover
-            align="left" minWidth={220} direction="side" fullWidth={open} closeOnMouseLeave
+            align="left" minWidth={240} direction="up" closeOnMouseLeave
             header={
               <>
                 <span className={styles.menuNome}>{currentUser.nome}</span>
