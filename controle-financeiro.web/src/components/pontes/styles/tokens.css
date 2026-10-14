@@ -61,12 +61,12 @@
   --pontes-fs-corpo: var(--pontes-fs-md);         /* texto corrido, descrição, mensagem de vazio */
   --pontes-fs-controle: var(--pontes-fs-base);    /* texto digitado/escolhido em campo, select, data */
   --pontes-fs-titulo-painel: var(--pontes-fs-md); /* título de painel pequeno */
-  --pontes-fs-titulo-caixa: var(--pontes-fs-lg);  /* título de caixa/tabela/seção ("Todas as transações") */
+  --pontes-fs-titulo-caixa: var(--pontes-fs-base);/* título de caixa/tabela/seção ("Todas as transações") — 15/600, como no v2 */
   --pontes-fs-titulo-modal: var(--pontes-fs-2xl); /* título de modal e diálogo */
   --pontes-fs-titulo-pagina: var(--pontes-fs-2xl);/* título da página no topo (Navbar) */
   --pontes-fs-stat-valor: 22px;                   /* número do PontesStatCard */
   --pontes-fs-valor-destaque: var(--pontes-fs-4xl); /* valor grande dentro de card (saldo da carteira, fatura atual) */
-  --pontes-fs-hero-valor: 38px;                   /* valor grande do hero de saldo */
+  --pontes-fs-hero-valor: 48px;                   /* valor grande do hero de saldo */
   --pontes-fs-hero-valor-duplo: var(--pontes-fs-5xl); /* hero com DOIS valores lado a lado (Empréstimos) */
   --pontes-fs-display: var(--pontes-fs-7xl);      /* chamada grande das telas de entrada (Login/Cadastro) */
   --pontes-fs-hero-numero: var(--pontes-fs-2xl);  /* números ao lado do hero (Entrou/Saiu/Sobrou) */

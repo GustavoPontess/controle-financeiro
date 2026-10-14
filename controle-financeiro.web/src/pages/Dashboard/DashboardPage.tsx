@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import {
-  ChevronLeft, ChevronRight, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, ArrowRight,
+  ChevronLeft, ChevronRight, ArrowLeftRight, ArrowRight,
   CreditCard, Target, TrendingUp, TrendingDown,
 } from "lucide-react"
 import {
@@ -113,45 +113,44 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          {/* Faixa de saldo: quanto tenho (hoje) + como foi o mês escolhido. É o único bloco grande. */}
+          {/* Palco: quanto tenho (hoje) + como foi o mês escolhido. É o único bloco grande. */}
           <div className={styles.hero}>
-            <div className={styles.heroBlob} />
             <div className={styles.heroMain}>
               <div className={styles.heroLabel}>Saldo total</div>
               <div className={styles.heroValue}>{formatMoney(data.saldoTotal)}</div>
               <HeroDelta saldoTotal={data.saldoTotal} saldoMesAnterior={data.saldoMesAnterior} hide={hide} />
             </div>
 
-            <div className={styles.heroMes} data-atualizando={loading ? "true" : undefined}>
-              <div className={styles.monthNav}>
-                <button type="button" className={styles.monthBtn} onClick={prevMonth} aria-label="Mês anterior">
-                  <ChevronLeft size={15} strokeWidth={2.5} />
-                </button>
-                <span className={styles.monthLabel}>{monthLabel}</span>
-                <button type="button" className={styles.monthBtn} onClick={nextMonth} aria-label="Próximo mês">
-                  <ChevronRight size={15} strokeWidth={2.5} />
-                </button>
-              </div>
+            <div className={styles.monthNav} data-atualizando={loading ? "true" : undefined}>
+              <button type="button" className={styles.monthBtn} onClick={prevMonth} aria-label="Mês anterior">
+                <ChevronLeft size={15} strokeWidth={2.5} />
+              </button>
+              <span className={styles.monthLabel}>{monthLabel}</span>
+              <button type="button" className={styles.monthBtn} onClick={nextMonth} aria-label="Próximo mês">
+                <ChevronRight size={15} strokeWidth={2.5} />
+              </button>
+            </div>
 
-              {/* Fluxo de CAIXA do mês (o mesmo número de /transactions): compra no crédito não entra. */}
-              <div className={styles.heroStats}>
-                <HeroStat label="Entrou" value={formatMoney(data.entradasCaixa)}
-                  current={data.entradasCaixa} prev={data.entradasCaixaMesAnterior} higherIsBetter hide={hide} />
-                <div className={styles.heroStatDivider} />
-                <HeroStat label="Saiu" value={formatMoney(data.saidasCaixa)}
-                  current={data.saidasCaixa} prev={data.saidasCaixaMesAnterior} hide={hide} />
-                <div className={styles.heroStatDivider} />
-                <HeroStat label="Sobrou" value={formatMoney(data.saldoCaixaMes)}
-                  tone={data.saldoCaixaMes >= 0 ? "up" : "down"} />
-              </div>
-
-              {(data.aReceber > 0 || data.aPagar > 0) && (
-                <div className={styles.pendencias}>
-                  {data.aReceber > 0 && <span>Ainda vai entrar <strong>{formatMoney(data.aReceber)}</strong></span>}
-                  {data.aPagar > 0 && <span>Ainda vai sair <strong>{formatMoney(data.aPagar)}</strong></span>}
-                </div>
+            {/* Fluxo de CAIXA do mês (o mesmo número de /transactions): compra no crédito não entra —
+                ela aparece à parte em "No cartão". */}
+            <div className={styles.heroNumeros} data-atualizando={loading ? "true" : undefined}>
+              <HeroStat label="Entrou" value={formatMoney(data.entradasCaixa)}
+                current={data.entradasCaixa} prev={data.entradasCaixaMesAnterior} higherIsBetter hide={hide} />
+              <HeroStat label="Saiu" value={formatMoney(data.saidasCaixa)}
+                current={data.saidasCaixa} prev={data.saidasCaixaMesAnterior} hide={hide} />
+              <HeroStat label="Sobrou" value={formatMoney(data.saldoCaixaMes)}
+                tone={data.saldoCaixaMes >= 0 ? "up" : "down"} />
+              {data.gastoCartaoMes != null && (
+                <HeroStat label="No cartão" value={formatMoney(data.gastoCartaoMes)} />
               )}
             </div>
+
+            {(data.aReceber > 0 || data.aPagar > 0) && (
+              <div className={styles.pendencias} data-atualizando={loading ? "true" : undefined}>
+                {data.aReceber > 0 && <span>Ainda vai entrar <strong>{formatMoney(data.aReceber)}</strong></span>}
+                {data.aPagar > 0 && <span>Ainda vai sair <strong>{formatMoney(data.aPagar)}</strong></span>}
+              </div>
+            )}
           </div>
 
           {/* Gráficos lado a lado */}
@@ -286,8 +285,9 @@ function HeroDelta({ saldoTotal, saldoMesAnterior, hide }: {
 }
 
 /**
- * HeroStat — um dos 3 números do mês (Entrou / Saiu / Sobrou). Entrou e Saiu mostram a variação %
- * contra o mês anterior (verde = bom pra aquela métrica: mais entrada ou menos saída).
+ * HeroStat — um dos números do mês (Entrou / Saiu / Sobrou / No cartão): rótulo, valor e, embaixo,
+ * a variação % contra o mês anterior (só Entrou e Saiu; verde = bom pra aquela métrica: mais
+ * entrada ou menos saída). Sem sinal de +/−: o ícone e a cor dizem a direção.
  */
 function HeroStat({ label, value, tone, current, prev, higherIsBetter, hide }: {
   label: string; value: string; tone?: "up" | "down"
@@ -300,31 +300,36 @@ function HeroStat({ label, value, tone, current, prev, higherIsBetter, hide }: {
     const bom = subiu === !!higherIsBetter
     const Icone = subiu ? TrendingUp : TrendingDown
     variacao = (
-      <span className={styles.heroStatVar} data-tone={bom ? "up" : "down"} title="comparado ao mês anterior">
-        <Icone size={11} strokeWidth={2.5} />
-        {hide ? "••" : `${Math.abs(pct).toFixed(0)}%`}
+      <span className={styles.numeroVar}>
+        <span className={styles.numeroVarPct} data-tone={bom ? "up" : "down"} title="comparado ao mês anterior">
+          <Icone size={11} strokeWidth={2.5} />
+          {hide ? "••" : `${Math.abs(pct).toFixed(0)}%`}
+        </span>
+        vs mês anterior
       </span>
     )
   }
   return (
-    <div className={styles.heroStat}>
-      <span className={styles.heroStatLabel}>{label}{variacao}</span>
-      <span className={styles.heroStatValue} data-tone={tone}>{value}</span>
+    <div className={styles.numero}>
+      <span className={styles.numeroRotulo}>{label}</span>
+      <span className={styles.numeroValor} data-tone={tone}>{value}</span>
+      {variacao}
     </div>
   )
 }
 
-/** Linha de transação recente — mesma anatomia da linha do PontesTabela (ícone 34, nome, sub). */
+/** Linha de transação recente: inicial do nome num círculo (verde quando entrou), nome, detalhe, valor. */
 function TxRow({ t }: { t: TransacaoRecente }) {
   // Transferência e pagamento de fatura são neutros: mexem no saldo, mas não são ganho nem gasto.
   const neutra = !!t.ehTransferencia || !!t.ehPagamentoFatura
   const entrada = t.tipo === 2
   const tom = neutra ? "neutro" : entrada ? "entrada" : "saida"
-  const Icone = t.ehTransferencia ? ArrowLeftRight : t.ehPagamentoFatura ? CreditCard : entrada ? ArrowUpRight : ArrowDownLeft
+  const Icone = t.ehTransferencia ? ArrowLeftRight : t.ehPagamentoFatura ? CreditCard : null
+  const inicial = t.descricao.trim().charAt(0).toUpperCase() || "•"
   const detalhe = [t.categoria, t.conta, fmtQuando(t.data, t.hora)].filter(Boolean).join(" · ")
   return (
     <div className={styles.linha}>
-      <span className={styles.linhaIcone} data-tom={tom}><Icone size={16} strokeWidth={2.4} /></span>
+      <span className={styles.linhaIcone} data-tom={tom}>{Icone ? <Icone size={15} strokeWidth={2.2} /> : inicial}</span>
       <div className={styles.linhaTexto}>
         <span className={styles.linhaNome}>{t.descricao}</span>
         <span className={styles.linhaSub}>{detalhe}</span>
@@ -374,7 +379,7 @@ function CompraCartaoRow({ compra }: { compra: CompraCartao }) {
   ].filter(Boolean).join(" · ")
   return (
     <div className={styles.linha}>
-      <span className={styles.linhaIcone} data-tom="neutro"><CreditCard size={16} strokeWidth={2.4} /></span>
+      <span className={styles.linhaIcone} data-tom="neutro"><CreditCard size={15} strokeWidth={2.2} /></span>
       <div className={styles.linhaTexto}>
         <span className={styles.linhaNomeLinha}>
           <span className={styles.linhaNome}>{compra.descricao}</span>
@@ -395,7 +400,7 @@ function CompraCartaoRow({ compra }: { compra: CompraCartao }) {
 function ContaRow({ conta }: { conta: SaldoConta }) {
   return (
     <div className={styles.linha}>
-      <PontesBankBadge name={conta.bancoNome ?? conta.nome} logoUrl={conta.logoUrl} cor={conta.cor} size={28} />
+      <PontesBankBadge name={conta.bancoNome ?? conta.nome} logoUrl={conta.logoUrl} cor={conta.cor} size={36} />
       <div className={styles.linhaTexto}>
         <span className={styles.linhaNome}>{conta.nome}</span>
         <span className={styles.linhaSub}>{conta.bancoNome ?? conta.tipoDescricao}</span>
