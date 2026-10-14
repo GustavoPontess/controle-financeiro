@@ -30,7 +30,9 @@
 .userName { font-size: var(--pontes-fs-sm); font-weight: 600; color: var(--pontes-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .userPlan { font-size: var(--pontes-fs-xs); font-weight: 500; color: var(--pontes-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .userRow { display: flex; align-items: center; gap: 2px; }
-.userRow > :first-child { flex: 1; min-width: 0; }
+/* O gatilho do menu (wrap + trigger do PontesPopover) ocupa a linha inteira → o hover cobre tudo. */
+.userRow > :first-child { flex: 1; min-width: 0; display: block; }
+.userRow > :first-child > span { display: block; width: 100%; }
 /* Sair direto, à direita da linha; no trilho some (o avatar abre o menu com "Sair"). */
 .sair { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
 .sair:hover { color: var(--pontes-text); background: var(--pontes-primary-soft); }

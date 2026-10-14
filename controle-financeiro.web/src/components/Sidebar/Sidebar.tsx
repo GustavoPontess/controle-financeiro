@@ -98,7 +98,8 @@ export default function Sidebar({ open, drawerWidth, railWidth, nav, homePath = 
       },
     })),
     { key: "add-account", icon: <Plus size={16} strokeWidth={2.5} />, label: "Adicionar conta", onClick: () => setAddAccountOpen(true) },
-    { key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", onClick: sair },
+    // Aberto, o ícone à direita da linha já é o "sair" — o item só entra no trilho.
+    ...(open ? [] : [{ key: "logout", icon: <LogOut size={16} strokeWidth={2} />, label: "Sair", onClick: sair } as PontesPopoverItem]),
   ]
 
   return (
