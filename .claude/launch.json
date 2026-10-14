@@ -20,6 +20,17 @@
         "cd ControleFinanceiro.Api && dotnet run --launch-profile http"
       ],
       "port": 5293
+    },
+    {
+      "name": "v2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../controle-financeiro-v2/controle-financeiro.v2/node_modules/vite/bin/vite.js",
+        "../controle-financeiro-v2/controle-financeiro.v2",
+        "--port",
+        "5174"
+      ],
+      "port": 5174
     }
   ]
 }
