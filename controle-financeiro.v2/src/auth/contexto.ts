@@ -7,14 +7,22 @@ export interface Usuario {
   isAdmin?: boolean
 }
 
-/** "ok" = entrou; "mfa" = a conta pede 2º fator (o v2 ainda não tem a tela); "exclusao" = conta em carência de exclusão. */
-export type ResultadoEntrar = "ok" | "mfa" | "exclusao"
+/** Resultado do 1º passo do login: entrou; pede o 2º fator; ou a conta está na carência de exclusão. */
+export type ResultadoEntrar =
+  | { tipo: "ok" }
+  | { tipo: "mfa"; challengeToken: string }
+  | { tipo: "exclusao"; diasRestantes: number | null }
 
 export interface AuthContexto {
   usuario: Usuario | null
   carregando: boolean
   autenticado: boolean
+  /** Lança Error com a mensagem do servidor (senha errada, bloqueio…). */
   entrar: (email: string, senha: string, manterConectado: boolean) => Promise<ResultadoEntrar>
+  /** 2º passo do login (código do autenticador ou de recuperação). */
+  verificarMfa: (challengeToken: string, codigo: string, confiarDispositivo: boolean, manterConectado: boolean) => Promise<void>
+  /** Conta na carência de exclusão: reativa (senha certa) — depois é só entrar de novo. */
+  reativar: (email: string, senha: string) => Promise<void>
   sair: () => Promise<void>
   recarregar: () => Promise<void>
 }
