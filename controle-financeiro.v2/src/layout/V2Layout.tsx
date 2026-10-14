@@ -73,7 +73,7 @@ export default function V2Layout() {
               Mesma linha de 40px nos dois estados — nada embaixo da marca, o menu não desce. */}
           <button type="button" className={styles.recolher} aria-label={recolhido ? "Expandir menu" : "Recolher menu"} title={recolhido ? "Expandir menu" : "Recolher menu"}
             onClick={() => { setRecolhido((r) => !r); setMenuUsuario(false) }}>
-            <span className={styles.logoMini}><LogoMark size={24} /></span>
+            <span className={styles.logoMini}><LogoMark size={26} /></span>
             <span className={styles.recolherIcone}>{recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}</span>
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><X size={18} /></button>
