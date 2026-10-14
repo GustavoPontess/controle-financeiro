@@ -24,6 +24,11 @@ public class TransferenciaService
         if (dto.Valor <= 0)
             throw new ArgumentException("O valor da transferência deve ser positivo.");
 
+        // As duas pernas nascem efetivadas (entram no saldo na hora): transferência futura moveria um
+        // dinheiro que ainda não saiu. O front já barrava; o back não — mesma regra do lançamento em conta.
+        if (dto.Data > DateOnly.FromDateTime(DateTime.UtcNow))
+            throw new ArgumentException("A data da transferência não pode ser futura.");
+
         var contaOrigem = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaOrigemId && c.UsuarioIdProprietario == usuarioId);
         if (contaOrigem == null)
@@ -46,8 +51,8 @@ public class TransferenciaService
             Tipo = TipoTransacao.Despesa,
             ContaId = dto.ContaOrigemId,
             CriadoPor = usuarioId,
-            Data = DateOnly.FromDateTime(dto.Data),
-            Hora = null, // perna de transferência é datada (sem hora de relógio)
+            Data = dto.Data,
+            Hora = dto.Hora,
             CategoriaId = null,
             EhTransferencia = true
         };
@@ -60,8 +65,8 @@ public class TransferenciaService
             Tipo = TipoTransacao.Receita,
             ContaId = dto.ContaDestinoId,
             CriadoPor = usuarioId,
-            Data = DateOnly.FromDateTime(dto.Data),
-            Hora = null, // perna de transferência é datada (sem hora de relógio)
+            Data = dto.Data,
+            Hora = dto.Hora,
             CategoriaId = null,
             EhTransferencia = true
         };
@@ -72,7 +77,8 @@ public class TransferenciaService
             ContaOrigemId = dto.ContaOrigemId,
             ContaDestinoId = dto.ContaDestinoId,
             Valor = dto.Valor,
-            Data = dto.Data,
+            // Dia + hora de relógio (sem hora = meia-noite), como a lista de transferências sempre leu.
+            Data = dto.Data.ToDateTime(dto.Hora ?? TimeOnly.MinValue),
             Descricao = descricao,
             CriadoPor = usuarioId,
             TransacaoOrigemId = transacaoSaida.Id,

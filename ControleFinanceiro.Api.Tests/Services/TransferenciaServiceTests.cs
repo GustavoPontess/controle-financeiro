@@ -32,7 +32,7 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateTime.UtcNow, Descricao = "Reserva"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, usuarioId);
 
         var txns = await ctx.Transacoes.ToListAsync();
@@ -51,12 +51,12 @@ public class TransferenciaServiceTests
         var reserva = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateTime.UtcNow, Descricao = "Reserva de emergência"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva de emergência"
         }, usuarioId);
         var volta = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = destino.Id, ContaDestinoId = origem.Id, Valor = 100m,
-            Data = DateTime.UtcNow.AddDays(-1), Descricao = "Resgate"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), Descricao = "Resgate"
         }, usuarioId);
 
         // Pela descrição: total já vem filtrado (paginação correta).
@@ -86,11 +86,11 @@ public class TransferenciaServiceTests
         var service = new TransferenciaService(ctx);
         await service.CriarAsync(new CriarTransferenciaDto
         {
-            ContaOrigemId = o1.Id, ContaDestinoId = o2.Id, Valor = 10m, Data = DateTime.UtcNow, Descricao = "Reserva"
+            ContaOrigemId = o1.Id, ContaDestinoId = o2.Id, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, outroId);
         await service.CriarAsync(new CriarTransferenciaDto
         {
-            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 10m, Data = DateTime.UtcNow, Descricao = "Reserva"
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, usuarioId);
 
         var result = await service.ListarAsync(usuarioId, busca: "reserva");
@@ -107,7 +107,7 @@ public class TransferenciaServiceTests
         var dto = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateTime.UtcNow, Descricao = "Reserva"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, usuarioId);
 
         await service.DeletarAsync(dto.Id, usuarioId);
@@ -134,7 +134,7 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateTime.UtcNow, Descricao = "Reserva"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, usuarioId);
         var pernaDestino = await ctx.Transacoes.SingleAsync(t => t.ContaId == destino.Id);
 
@@ -154,7 +154,7 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateTime.UtcNow, Descricao = "Reserva"
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
         }, usuarioId);
         var perna = await ctx.Transacoes.SingleAsync(t => t.ContaId == origem.Id);
 
@@ -165,5 +165,63 @@ public class TransferenciaServiceTests
 
         ctx.ChangeTracker.Clear();
         Assert.All(await ctx.Transacoes.Where(t => t.EhTransferencia).ToListAsync(), t => Assert.Equal(500m, t.Valor));
+    }
+
+    // ══ Data + hora (achado 2026-10-02: o form exigia a hora e o back jogava fora) ══════════════════════
+
+    [Fact]
+    public async Task Criar_ComHora_GravaODiaEAHoraNasDuasPernas_ENaTransferencia()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        var ontem = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+
+        var dto = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
+            Data = ontem, Hora = new TimeOnly(9, 15), Descricao = "Reserva"
+        }, usuarioId);
+
+        var pernas = await ctx.Transacoes.Where(t => t.EhTransferencia).ToListAsync();
+        Assert.Equal(2, pernas.Count);
+        Assert.All(pernas, t =>
+        {
+            Assert.Equal(ontem, t.Data);
+            Assert.Equal(new TimeOnly(9, 15), t.Hora);
+        });
+        Assert.Equal(ontem.ToDateTime(new TimeOnly(9, 15)), dto.Data);
+    }
+
+    [Fact]
+    public async Task Criar_SemHora_PernasFicamSemHora()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m, Data = hoje, Descricao = "Reserva"
+        }, usuarioId);
+
+        Assert.All(await ctx.Transacoes.Where(t => t.EhTransferencia).ToListAsync(), t =>
+        {
+            Assert.Equal(hoje, t.Data);
+            Assert.Null(t.Hora);
+        });
+    }
+
+    [Fact]
+    public async Task Criar_DataFutura_LancaArgumentException_SemCriarNada()
+    {
+        // As pernas nascem efetivadas: transferência futura moveria no saldo um dinheiro que ainda não saiu.
+        var (ctx, usuarioId, origem, destino) = Seed();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), Descricao = "Reserva"
+        }, usuarioId));
+
+        Assert.Empty(await ctx.Transacoes.ToListAsync());
+        Assert.Empty(await ctx.Transferencias.ToListAsync());
     }
 }

@@ -84,11 +84,17 @@ describe("TransactionPage — criar (/transactions/nova, substitui o popup)", ()
     fireEvent.click(screen.getByText("Para qual conta"))
     fireEvent.click(screen.getByText("Itaú"))
     fireEvent.change(screen.getByPlaceholderText("Ex: Reserva de emergência"), { target: { value: "Mover grana" } })
+    fireEvent.change(campoHora(), { target: { value: "2140" } })
 
     fireEvent.click(screen.getByText("Transferir"))
 
     await waitFor(() => expect(createTransferencia).toHaveBeenCalledTimes(1))
     expect(createTransferencia).toHaveBeenCalledWith(expect.objectContaining({ contaOrigemId: "a1", contaDestinoId: "a2", valor: 100 }))
+    // A hora que o form exige agora é gravada: dia e hora SEPARADOS, sem fuso (antes ia um ISO combinado
+    // e o backend guardava só o dia).
+    const payload = vi.mocked(createTransferencia).mock.calls[0][0]
+    expect(payload.data).toBe(dataLocalISO())
+    expect(payload.hora).toBe("21:40:00")
     expect(createTransaction).not.toHaveBeenCalled()
     expect(await screen.findByText("Tela do dashboard")).toBeInTheDocument()
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ severity: "success", message: "Transferência criada com sucesso" }))

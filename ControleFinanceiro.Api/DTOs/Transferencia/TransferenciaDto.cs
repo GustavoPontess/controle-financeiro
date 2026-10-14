@@ -7,7 +7,10 @@ public class CriarTransferenciaDto
     public Guid ContaOrigemId { get; set; }
     public Guid ContaDestinoId { get; set; }
     public decimal Valor { get; set; }
-    public DateTime Data { get; set; }
+    /// <summary>Dia da transferência ("yyyy-MM-dd") — date puro, sem fuso. Não pode ser futuro.</summary>
+    public DateOnly Data { get; set; }
+    /// <summary>Hora ("HH:mm:ss") — time puro, sem fuso; vai pras duas pernas. Null = sem hora.</summary>
+    public TimeOnly? Hora { get; set; }
 
     [MaxLength(255)]
     public string Descricao { get; set; } = string.Empty;
