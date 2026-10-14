@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-14
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -14,6 +14,18 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 Sessão 2026-10-14 — front com cara de produto · branch `feat/ds-premium` (a partir da `main`)
+
+**Pivô do Gustavo:** "o front parece amador e me trava". Primeiro tentamos um front novo separado (`controle-financeiro.v2/`, branch `feat/front-v2`: login completo, layout com trilho, dashboard com gráfico próprio, claro/escuro) — ficou como **bancada/referência**, roda do worktree irmão `E:\VSCode\controle-financeiro-v2` (`launch` "v2", :5174). Decisão: **evoluir o v1 no lugar, mantendo a paleta** (cor fica; só escala/ar/ruído mudam). Plano e status na 🎯 Fila do `ROADMAP.md`, item 0.
+
+**Entrou na branch:** login redesenhado (`0f00f11`), Manrope como fonte padrão do DS, corpo da escala +1px + degrau 44px (`9eb988a`), login com os tamanhos do v2 medidos no navegador (`2bbcb07`), launch do v2 pelo worktree (`13d18ad`). Suíte do front 934/934, lint e build ok. PR #299 (editar sem hora) segue aberto esperando "ci verde". `feat/cartoes-lab` (9 commits, labs A–E, sem PR) fica como referência pra Cartões.
+
+**Cuidado no dev:** o navegador embutido do app **não compartilha cookie entre :5173 e :5174**, e login num front revoga o do outro — usar **um front por vez** e marcar "Manter-me conectado" (sem isso o cookie é de sessão). Paleta/fonte moram no `localStorage` (`pontes.paletteId`, `pontes.fontId`) — "sumiu a cor" = paleta trocada no navegador, não código.
+
+**Próxima ação:** (1) com o Gustavo logado no :5173, passada visual nas telas internas com o corpo +1px (tabelas/cards/sidebar); (2) **casca** do v1 (menu lateral plano com trilho sem deslizar, topo sem busca/sino, conteúdo sem moldura); (3) dashboard; (4) tela por tela. Depois: PR da `feat/ds-premium` e volta ao M1 (write skew, sobras do extrato).
+
+---
 
 ### 📌 Sessão 2026-10-12/13 — dogfood com o extrato real + Fase 0 + METAS E PRAZOS · branch `fix/transferencia-hora`
 

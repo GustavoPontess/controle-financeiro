@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-10-05
+last_reviewed: 2026-10-14
 status: ATIVO
 ---
 
@@ -52,6 +52,14 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão. Item concluído sai daqui e vai pro [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUIDO.md).
 
 > ✅ **Entrou na `main` em 2026-10-05 (squash `8fee630`, PR #286):** bugs de dinheiro de 28/09, motor das contas fixas + revisão de segurança (P1-1/2/3 e P2-1..5), padrão de telas fase 2 (Transações/Empréstimos no `PontesTabela`), escala de tipografia, reconciliação redesenhada, **🔴 P0 responsivo de todas as telas** e o CI rodando em todo PR. Detalhe arquivado no histórico.
+
+0. 🟠 **Front com cara de produto (em andamento, branch `feat/ds-premium`)** — decisão do Gustavo 2026-10-14: "o front parece amador e me trava". A bancada `controle-financeiro.v2/` (branch `feat/front-v2`, roda do worktree irmão `../controle-financeiro-v2` no :5174) é **referência visual, não produto**: o que ela acertou (escala, ar, menos ruído, nada de enfeite) é portado pro v1 **mantendo a paleta** (cor fica; o preto-no-branco do v2 NÃO é o alvo). Cada fase é um PR que sobe sozinho:
+   - ✅ **Login** (`0f00f11`, `2bbcb07`): palco com o gradiente da paleta, sem grade/blob/depoimento inventado; um passo por vez; painel DEV vira card no canto; "Esqueci a senha" inline (o link antigo ia pra rota inexistente); tamanhos medidos iguais ao v2.
+   - ✅ **Fonte padrão Manrope** + **corpo da escala +1px** (xs 12 / sm 13 / md 14 / base 15 / lg 17) + degrau 44px (`9eb988a`). ⚠️ **Passada visual pendente** nas telas internas com o corpo maior (tabelas, cards, sidebar) — precisa de sessão logada.
+   - ⬜ **Casca**: menu lateral plano com trilho que recolhe **sem nada deslizar** (portar do v2: mesmo padding nos dois estados, item 38px fixo, "P" no x do P de "Pontes"), topo sem busca "Ctrl K"/sino (não funcionam), conteúdo sem moldura, raio/sombra mais suaves.
+   - ⬜ **Dashboard**: hero do saldo com ar (número grande, linha de métricas com variação embaixo), avatar neutro nas listas, cards sem borda.
+   - ⬜ **Tela por tela**: Transações, Cartões (lab E — carrossel + "Meus cartões" sem pré-seleção; labs A–E na `feat/cartoes-lab`, 9 commits sem PR), Contas fixas, Relatórios… Mesmo trabalho que seria no v2, sem reimplementar lógica/validação/testes.
+   - 🐞 **Achados de 2026-10-14 (dev, navegador embutido do app):** (a) `CsrfValidationMiddleware` roda **antes** do `UseCors` → 403 de CSRF sai sem cabeçalho CORS e o navegador mostra "CORS" em vez do 403 (já na Fase 5 como "CSRF antes do CORS (S)" — subir pra S imediato quando mexer no back); (b) com os **dois fronts abertos** a sessão cai: o navegador embutido **não compartilha cookie entre :5173 e :5174** (dois logins com 12s de diferença no log) e login em um **revoga o do outro** (`RevogarSessoesAnterioresAsync`); houve `logout-all` sem clique conhecido (18:32:39Z). Mitigação: usar um front por vez e marcar "Manter-me conectado". Não é bug de produção (um front só).
 
 1. 🟠 **Fase 0 — bugs de dinheiro que sobraram** (próximo; os já feitos estão no histórico, seção "Fase 0"):
    - 🟡 **P2 — Extrato importado: movimentos que não são ganho/gasto entram como receita/despesa** (achado 2026-10-12, dogfood com o extrato real da Nubank; Pix no Crédito e "Pagamento de fatura" já resolvidos — ver histórico) — o importador ainda só olha o sinal pra: **Pix entre contas do próprio titular** ("Transferência recebida pelo Pix - GUSTAVO NUNES PONTES", 3×, R$ 5.454,24) vira receita; **empréstimo** ("Depósito de empréstimo" R$ 2.610 receita / "Resgate de empréstimo" R$ 2.937,50 despesa) e **resgate de investimento** ("Resgate RDB"). Encosta em "Auto-categorização/Rules IF-THEN" (Fase 1) e no módulo de Empréstimos.
