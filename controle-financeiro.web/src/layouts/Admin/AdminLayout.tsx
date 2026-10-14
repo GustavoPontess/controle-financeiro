@@ -85,7 +85,7 @@ export default function AdminLayout() {
           <Sidebar open drawerWidth={GAVETA_CELULAR} railWidth={RAIL_WIDTH} nav={ADMIN_NAV} homePath={ADMIN_HOME} />
         </PontesDrawer>
       ) : (
-        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} nav={ADMIN_NAV} homePath={ADMIN_HOME} />
+        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} nav={ADMIN_NAV} homePath={ADMIN_HOME} onToggle={() => setOpen((o) => !o)} />
       )}
 
       <div className={styles.card}>

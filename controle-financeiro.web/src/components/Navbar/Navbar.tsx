@@ -4,12 +4,13 @@
  */
 
 import { useLocation, useNavigate } from "react-router-dom"
-import { Menu, PanelLeftClose, PanelLeftOpen, Search, Plus, Eye, EyeOff } from "lucide-react"
+import { Menu, Search, Plus, Eye, EyeOff } from "lucide-react"
 import { PontesButton, PontesIconButton, useHideBalance } from "@/components/pontes"
 import NotificationBell from "../Notificacoes/NotificationBell"
 import styles from "./Navbar.module.css"
 
 type Props = {
+  /** Celular: abre a gaveta do menu (☰). No computador o recolher/expandir mora no próprio menu, ao lado da logo. */
   toggleDrawer: () => void
   sidebarOpen: boolean
   /** Celular: a barra lateral é uma gaveta — o botão vira ☰ e só ABRE (fecha tocando fora/Esc/num item). */
@@ -93,14 +94,10 @@ export default function Navbar({
     <header className={styles.header}>
       <div className={styles.inner}>
       <div className={styles.left}>
-        {celular ? (
+        {celular && (
           <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label="Abrir menu"
             aria-expanded={sidebarOpen}>
             <Menu size={20} strokeWidth={2} />
-          </PontesIconButton>
-        ) : (
-          <PontesIconButton variant="ghost" size={40} onClick={toggleDrawer} aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
-            {sidebarOpen ? <PanelLeftClose size={18} strokeWidth={2} /> : <PanelLeftOpen size={18} strokeWidth={2} />}
           </PontesIconButton>
         )}
         <div className={styles.titleBox}>

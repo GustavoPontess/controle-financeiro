@@ -1,17 +1,23 @@
 /* Sidebar.module.css — nav lateral do shell. Cor via var(--pontes-*). */
 /* Plana: mesmo fundo do conteúdo, separada só por um fio. */
 .aside { flex-shrink: 0; height: 100%; display: flex; flex-direction: column; font-family: var(--pontes-font); transition: width 220ms cubic-bezier(.4, 0, .2, 1); background: var(--pontes-bg); border-right: 1px solid var(--pontes-border); }
-/* Altura = topo (64px) → logo alinha verticalmente com o título. */
-.logoWrap { height: 64px; position: relative; flex-shrink: 0; }
-.logoFull { position: absolute; left: 22px; /* = nav 8 + item 14: a palavra começa no x do ícone */ top: 0; bottom: 0; display: flex; align-items: center; opacity: 1; transition: opacity 160ms ease; }
-.aside[data-open="false"] .logoFull { opacity: 0; pointer-events: none; }
-/* Marca "P" centrada na FAIXA do rail (64px fixo), não na aside inteira — assim não
-   desliza pra direita quando a aside expande; fica no eixo dos ícones do nav. */
-.logoMark { position: absolute; left: 0; width: 64px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
-.aside[data-open="false"] .logoMark { opacity: 1; pointer-events: auto; }
+/* Linha da marca: 64px (= topo) nos dois estados. Aberta: palavra começa no x do ícone (nav 8 + item 14
+   = 22) e o botão de recolher fica à direita. Trilho: o "P" é o botão de expandir, ancorado à ESQUERDA
+   (x 12..52 → centro 32, o eixo dos ícones) — centralizar faria o P deslizar durante a animação da largura. */
+.logoWrap { height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 22px; }
+.aside[data-open="false"] .logoWrap { padding: 0 0 0 12px; }
+.logoFull { display: flex; align-items: center; min-width: 0; }
+.toggle { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--pontes-text-muted); cursor: pointer; }
+.toggle:hover { color: var(--pontes-text); background: var(--pontes-primary-soft); }
+.toggleMark { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; padding: 0; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+.logoMark { display: inline-flex; align-items: center; justify-content: center; }
+.toggleIcone { display: none; color: var(--pontes-text-muted); }
+.toggleMark:hover .logoMark, .toggleMark:focus-visible .logoMark { display: none; }
+.toggleMark:hover .toggleIcone, .toggleMark:focus-visible .toggleIcone { display: inline-flex; }
 .nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 8px 0; }
 .group { margin-bottom: 4px; }
-.userWrap { padding: 4px 10px 10px; flex-shrink: 0; }
+.rodape { padding: 8px 8px 4px; flex-shrink: 0; }
+.userWrap { padding: 6px 10px 10px; flex-shrink: 0; border-top: 1px solid var(--pontes-border); }
 /* padding-left 8 + userWrap(10) = avatar(27) centrado no rail de 64. Constante → não anda. */
 .userTrigger { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 10px; cursor: pointer; justify-content: flex-start; transition: gap 200ms ease, background-color .15s ease; }
 .userTrigger:hover { background: var(--pontes-bg); }

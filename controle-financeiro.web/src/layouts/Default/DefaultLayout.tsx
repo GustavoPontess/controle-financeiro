@@ -149,7 +149,7 @@ export default function DefaultLayout() {
           <Sidebar open drawerWidth={GAVETA_CELULAR} railWidth={RAIL_WIDTH} />
         </PontesDrawer>
       ) : (
-        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} />
+        <Sidebar open={open} drawerWidth={DRAWER_WIDTH} railWidth={RAIL_WIDTH} onToggle={() => setOpen((o) => !o)} />
       )}
 
       {/* Conteúdo: topo + página, no mesmo fundo da barra lateral */}
