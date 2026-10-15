@@ -38,6 +38,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
+- "Voltar" é a seta no **topo**, antes do título da seção (o layout põe sozinho em toda rota abaixo da raiz da seção) — a página não repete o nome da seção nem desenha link de voltar.
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
 - Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`) — nunca dois formulários parecidos que divergem.
