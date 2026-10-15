@@ -61,13 +61,6 @@
 .valor[data-tom="negativo"] { color: var(--v2-negativo); }
 .valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
 
-/* Paginação */
-.paginacao { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 24px 16px; border-top: 1px solid var(--v2-linha); }
-.paginacaoTexto { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
-.paginacaoBotoes { display: inline-flex; gap: 4px; }
-.paginacaoBotoes button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-2); cursor: pointer; }
-.paginacaoBotoes button:hover:not(:disabled) { color: var(--v2-texto); border-color: var(--v2-linha-forte); }
-.paginacaoBotoes button:disabled { opacity: 0.4; cursor: default; }
 
 @media (max-width: 900px) {
   /* Celular: um número por linha (rótulo à esquerda, valor à direita). */

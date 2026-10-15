@@ -3,7 +3,7 @@
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeftRight, ChevronLeft, ChevronRight, CreditCard, Search, SlidersHorizontal } from "lucide-react"
+import { ArrowLeftRight, CreditCard, Search, SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -11,9 +11,14 @@ import type { Transaction } from "../types/Transaction"
 import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
+import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import styles from "./Transacoes.module.css"
 
-const POR_PAGINA = 25
+// Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
+const CHAVE_POR_PAGINA = "v2:porPagina:transacoes"
+const porPaginaSalvo = (): number => {
+  try { const n = Number(localStorage.getItem(CHAVE_POR_PAGINA)); return (TAMANHOS as readonly number[]).includes(n) ? n : 25 } catch { return 25 }
+}
 
 type Natureza = "" | "entrada" | "saida" | "transferencia" | "fatura"
 const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
@@ -66,6 +71,11 @@ export default function Transacoes() {
   const [itens, setItens] = useState<Transaction[] | null>(null)
   const [total, setTotal] = useState(0)
   const [pagina, setPagina] = useState(1)
+  const [porPagina, setPorPagina] = useState(porPaginaSalvo)
+  const mudarPorPagina = (n: number) => {
+    setPorPagina(n); setPagina(1)
+    try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)) } catch { /* sem armazenamento: só não lembra */ }
+  }
   const [erro, setErro] = useState(false)
   const [stats, setStats] = useState<{ entradas: number; saidas: number } | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
@@ -105,7 +115,7 @@ export default function Transacoes() {
   useEffect(() => {
     let vivo = true
     setErro(false)
-    listTransactionsPage(pagina, POR_PAGINA, {
+    listTransactionsPage(pagina, porPagina, {
       q: buscaAplicada || undefined,
       natureza: filtros.natureza || undefined,
       contaId: filtros.contaId || undefined,
@@ -119,11 +129,10 @@ export default function Transacoes() {
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
       .catch(() => { if (vivo) { setErro(true); setItens([]) } })
     return () => { vivo = false }
-  }, [pagina, buscaAplicada, filtros])
+  }, [pagina, porPagina, buscaAplicada, filtros])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
   const grupos = useMemo(() => porDia(itens ?? []), [itens])
-  const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
   const ativos = ativosEm(filtros)
   const temFiltro = !!busca || ativos > 0
 
@@ -232,15 +241,8 @@ export default function Transacoes() {
         )}
 
         {total > 0 && (
-          <div className={styles.paginacao}>
-            <span className={styles.paginacaoTexto}>
-              {(pagina - 1) * POR_PAGINA + 1}–{Math.min(pagina * POR_PAGINA, total)} de {total}
-            </span>
-            <div className={styles.paginacaoBotoes}>
-              <button type="button" aria-label="Página anterior" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}><ChevronLeft size={16} strokeWidth={2.25} /></button>
-              <button type="button" aria-label="Próxima página" disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => p + 1)}><ChevronRight size={16} strokeWidth={2.25} /></button>
-            </div>
-          </div>
+          <Paginacao total={total} pagina={pagina} porPagina={porPagina} onPagina={setPagina} onPorPagina={mudarPorPagina}
+            rotulo="transações" rotuloSingular="transação" />
         )}
       </Bloco>
     </div>
