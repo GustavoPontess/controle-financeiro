@@ -23,6 +23,7 @@ import type { CartaoCredito } from "../types/CartaoCredito"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Confirmar from "../componentes/Confirmar"
 import Botao from "../componentes/Botao"
+import { RodapeFormulario } from "../componentes/Formulario"
 import Etiqueta from "../componentes/Etiqueta"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { formatMoney } from "../utils/money"
@@ -156,17 +157,6 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
             {parcela && <Etiqueta>{parcela}</Etiqueta>}
           </div>
         </div>
-        <div className={styles.acoes}>
-          {editavel && (
-            <Botao className={styles.acao} onClick={aoEditar} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
-          )}
-          {t.ehPagamentoFatura ? (
-            <Botao className={styles.acao} onClick={abrirEstorno} icone={<Undo2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Estornar pagamento</Botao>
-          ) : (
-            <Botao className={styles.acao} perigo onClick={() => { setErro(null); setExcluindo(true) }}
-              icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
-          )}
-        </div>
       </header>
 
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
@@ -179,6 +169,19 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
           ))}
         </dl>
       </Bloco>
+
+      {/* Ações no pé, à direita — o mesmo lugar dos botões de Nova e Editar (destrutiva à esquerda, principal à direita). */}
+      <RodapeFormulario>
+        {t.ehPagamentoFatura ? (
+          <Botao onClick={abrirEstorno} icone={<Undo2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Estornar pagamento</Botao>
+        ) : (
+          <Botao perigo onClick={() => { setErro(null); setExcluindo(true) }}
+            icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
+        )}
+        {editavel && (
+          <Botao variante="primario" onClick={aoEditar} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
+        )}
+      </RodapeFormulario>
 
       <Confirmar
         aberto={excluindo}
