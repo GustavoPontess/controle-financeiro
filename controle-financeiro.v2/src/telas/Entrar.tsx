@@ -60,9 +60,19 @@ export default function Entrar() {
   const previa = import.meta.env.DEV && new URLSearchParams(window.location.search).has("previa")
   useEffect(() => { if (!carregando && autenticado && !previa) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
   useEffect(() => { rosterService.listar().then(setRoster).catch(() => setRoster([])) }, [])
+  // Painel DEV: se a API ainda está subindo (reinício em dev), o proxy responde erro — tenta de novo a cada
+  // 3s por até 1 min, em vez de ficar sem painel até recarregar a página.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    api.get<DevConta[]>("/auth/dev/contas", { skipErrorToast: true }).then((r) => setDevContas(r.data)).catch(() => { /* sem painel */ })
+    let vivo = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const tentar = (restantes: number) => {
+      api.get<DevConta[]>("/auth/dev/contas", { skipErrorToast: true })
+        .then((r) => { if (vivo) setDevContas(r.data) })
+        .catch(() => { if (vivo && restantes > 0) timer = setTimeout(() => tentar(restantes - 1), 3000) })
+    }
+    tentar(20)
+    return () => { vivo = false; if (timer) clearTimeout(timer) }
   }, [])
 
   const passo: Passo = marcada ? "exclusao" : mfaChallenge ? "mfa" : esqueci ? "esqueci" : roster.length > 0 && !usarOutra ? "escolher" : "form"
