@@ -19,6 +19,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
+- **E-mail:** SMTP via MailKit (`Infrastructure/Email/SmtpEmailSender`, templates em `ModelosEmail`), ligado por `SMTP_HOST` no `.env`; sem ele, stub que loga (dev/CI). Dev: **Mailpit** no `docker-compose.yml` (`docker compose up -d mailpit`, caixa em http://localhost:8025). Links dos e-mails usam `APP_URL` (raiz do front v2). Log nunca leva destinatário, token nem código
 - **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
 - **Backlog ativo:** ver `ROADMAP.md` — features dos achados de concorrentes (Lotes 1-5) + fosso família. Estado granular em `STATE.md`
 
@@ -27,6 +28,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 ### Backend (ControleFinanceiro.Api/)
 ```powershell
 docker compose up -d postgres # Sobe o Postgres de dev (rodar uma vez)
+docker compose up -d mailpit  # Caixa de e-mail local (recuperar senha etc.) — http://localhost:8025
 dotnet restore
 dotnet build
 dotnet run                    # API at http://localhost:5293, Swagger at /swagger

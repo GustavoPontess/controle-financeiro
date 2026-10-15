@@ -104,8 +104,20 @@ builder.Services.AddScoped<RegistroAcessoService>();
 builder.Services.AddScoped<NotificacaoAdminService>();
 builder.Services.AddScoped<EmailOtpService>();
 builder.Services.AddScoped<MinhaContaService>();
-builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
-builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
+// E-mail: com SMTP_HOST no .env manda de verdade (Mailpit em dev, provedor em produção); sem ele, stub de log.
+var smtp = ControleFinanceiro.Api.Infrastructure.Email.SmtpOpcoes.Ler();
+builder.Services.AddSingleton(smtp);
+if (smtp.Ativo)
+{
+    builder.Services.AddScoped<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>();
+    builder.Services.AddScoped<IContaEmailSender>(sp => sp.GetRequiredService<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>());
+    builder.Services.AddScoped<IPasswordResetEmailSender>(sp => sp.GetRequiredService<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>());
+}
+else
+{
+    builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
+    builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
+}
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
 builder.Services.AddScoped<CsrfTokenService>();

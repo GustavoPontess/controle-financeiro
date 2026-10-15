@@ -16,6 +16,14 @@ services:
       timeout: 5s
       retries: 10
 
+  # Caixa de e-mail de mentira pra dev: a API manda por SMTP em localhost:1025 e você lê em http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: controlefinanceiro-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   api:
     build:
       context: ./ControleFinanceiro.Api

@@ -3,7 +3,7 @@
 // dispositivo), conta em carência de exclusão (reativar), criar conta, termos, e o painel DEV de contas
 // de teste (só em desenvolvimento). Quem já entrou no app atual nem vê esta tela (cookie compartilhado).
 import { useEffect, useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
 import Logo from "../componentes/Logo"
 import Botao from "../componentes/Botao"
@@ -26,6 +26,7 @@ const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 export default function Entrar() {
   const { entrar, verificarMfa, reativar, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
+  const { state } = useLocation()
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -48,7 +49,8 @@ export default function Entrar() {
   const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
   const [reativarErro, setReativarErro] = useState<string | null>(null)
   // "Esqueci a senha": pede o e-mail e a API manda o link (resposta igual pra qualquer e-mail).
-  const [esqueci, setEsqueci] = useState(false)
+  // Chegar com `state.esqueci` (da tela de redefinir senha, link vencido) abre direto no pedido do link.
+  const [esqueci, setEsqueci] = useState(() => !!(state as { esqueci?: boolean } | null)?.esqueci)
   const [esqueciEnviado, setEsqueciEnviado] = useState(false)
 
   // Painel DEV: contas reais do banco local (endpoint só de dev); clique preenche.
@@ -290,8 +292,8 @@ export default function Entrar() {
           )}
 
           <p className={styles.rodape}>
-            Ao entrar você concorda com os <a href={`${APP_ATUAL}/termos-de-uso`} target="_blank" rel="noreferrer">Termos de Uso</a> e a{" "}
-            <a href={`${APP_ATUAL}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.
+            Ao entrar você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link> e a{" "}
+            <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
           </p>
         </div>
       </main>

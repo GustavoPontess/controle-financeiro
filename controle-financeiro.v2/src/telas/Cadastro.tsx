@@ -153,7 +153,7 @@ export default function Cadastro() {
                   <label className={styles.lembrar}>
                     <input type="checkbox" checked={aceita} aria-invalid={erros.privacidade ? true : undefined}
                       onChange={(e) => { setAceita(e.target.checked); limpa("privacidade") }} />
-                    <span>Li e aceito a <a href={`${APP_ATUAL}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
+                    <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
                   </label>
                   {erros.privacidade && <p className={styles.erroCampo} role="alert">{erros.privacidade}</p>}
                 </div>
@@ -161,7 +161,7 @@ export default function Cadastro() {
               </form>
 
               <p className={styles.rodape}>
-                Ao criar sua conta você também concorda com os <a href={`${APP_ATUAL}/termos-de-uso`} target="_blank" rel="noreferrer">Termos de Uso</a>.
+                Ao criar sua conta você também concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.
               </p>
             </>
           )}
