@@ -3,7 +3,7 @@
 // dispositivo), conta em carência de exclusão (reativar), criar conta, termos, e o painel DEV de contas
 // de teste (só em desenvolvimento). Quem já entrou no app atual nem vê esta tela (cookie compartilhado).
 import { useEffect, useState, type FormEvent } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
 import Logo from "../componentes/Logo"
 import Botao from "../componentes/Botao"
@@ -13,7 +13,7 @@ import rosterService, { type ContaLembrada } from "../services/rosterService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { APP_ATUAL } from "../config"
-import styles from "./Entrar.module.css"
+import styles from "./Auth.module.css"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -194,7 +194,7 @@ export default function Entrar() {
 
           <div className={styles.marcaMovel}><Logo size={26} /></div>
           <h1 className={styles.titulo}>{titulo}</h1>
-          {passo === "form" && <p className={styles.sub}>Não tem conta? <a href={`${APP_ATUAL}/auth/register`}>Criar conta grátis</a></p>}
+          {passo === "form" && <p className={styles.sub}>Não tem conta? <Link to="/cadastro">Criar conta grátis</Link></p>}
           {passo === "mfa" && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
           {passo === "exclusao" && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}
           {passo === "esqueci" && !esqueciEnviado && <p className={styles.sub}>Informe seu e-mail. Se existir uma conta, enviamos um link para criar uma senha nova.</p>}

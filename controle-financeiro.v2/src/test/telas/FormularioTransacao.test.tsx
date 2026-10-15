@@ -25,8 +25,8 @@ describe("FormularioTransacao", () => {
     expect(screen.getByText("Informe um valor")).toBeInTheDocument()
     expect(screen.getByText("Informe a descrição")).toBeInTheDocument()
     // O erro mora no <small> do campo (o mesmo texto aparece como placeholder da seleção).
-    expect(screen.getByText("Escolha a conta", { selector: "small" })).toBeInTheDocument()
-    expect(screen.getByText("Escolha a categoria", { selector: "small" })).toBeInTheDocument()
+    expect(screen.getByText("Escolha a conta", { selector: "small > span" })).toBeInTheDocument()
+    expect(screen.getByText("Escolha a categoria", { selector: "small > span" })).toBeInTheDocument()
     expect(createTransaction).not.toHaveBeenCalled()
   })
 

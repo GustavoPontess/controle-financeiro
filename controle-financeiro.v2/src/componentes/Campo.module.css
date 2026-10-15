@@ -1,5 +1,8 @@
-/* Campo do v2: rótulo em cima, controle, erro embaixo. */
+/* Campo do v2: rótulo em cima, controle, erro embaixo. O erro NÃO ocupa altura: desenha no respiro que já
+   existe entre um campo e o outro (gap de 18px dos formulários) — aparecer/sumir não mexe na tela. Por isso
+   é uma linha só (corta com reticências; o texto inteiro fica no title). */
 .campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); }
-.erro { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-negativo); }
+.erro { display: block; height: 0; margin-top: -4px; overflow: visible; font-size: var(--v2-fs-xs); font-weight: 500; line-height: 14px; color: var(--v2-negativo); white-space: nowrap; }
+.erro > span { display: block; overflow: hidden; text-overflow: ellipsis; }
 .fixo { display: block; height: 44px; padding: 0 12px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-base); font-weight: 500; line-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

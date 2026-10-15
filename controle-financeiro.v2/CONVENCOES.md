@@ -41,7 +41,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 ## Formulário
 
 - Todo campo dentro de `Campo` (nunca `<label>` solto com `<input>` estilizado na tela).
-- Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
+- Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário. O erro do campo **não ocupa altura** (desenha no respiro de 18px entre campos — aparecer/sumir não mexe na tela), então é **uma linha curta** (corta com reticências; texto inteiro no title).
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Busca com espera de digitação: `utils/useAtrasado.ts` (Transações, lançamentos da fatura) — nunca bater no servidor a cada tecla.
@@ -52,6 +52,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
 - Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Menu lateral: só as seções; **Configurações e Sair ficam no menu da conta** (o bloco avatar + nome no pé é um botão, em todo estado do menu — aberto, trilho e gaveta). Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
+- Telas de autenticação (Entrar, Cadastro) dividem `telas/Auth.module.css` (palco + painel). Regra de senha em `src/dominio/senha.ts` (espelha o servidor: 15–128, sem composição; senhas comuns só no servidor). Cadastro: aceite da Política de Privacidade **nunca** pré-marcado (LGPD); no beta não loga — mostra a mensagem da API (conta aguardando aprovação).
 - Estado compartilhado entre telas (olho, contador do sino, tema) mora em `src/estado/` (ou `layout/useTema.ts`) com `useSyncExternalStore` — nunca prop drilling nem contexto só pra isso.
 - "Voltar" é a seta no **topo**, antes do título da seção (o layout põe sozinho em toda rota abaixo da raiz da seção) — a página não repete o nome da seção nem desenha link de voltar.
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
