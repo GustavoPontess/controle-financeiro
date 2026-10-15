@@ -3,7 +3,8 @@
 
 /* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
 /* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */
-.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 22px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
+/* padding-top 12: a marca (40px) fica centrada em y=32, o mesmo centro do título e dos botões do topo (64/2). */
+.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 12px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
 /* padding-left 12: a palavra começa no mesmo x do ícone dos itens (14 + 12). */
 .marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 12px; color: var(--v2-texto); }
 .logo, .logoMini, .recolherIcone { display: inline-flex; min-width: 0; }
