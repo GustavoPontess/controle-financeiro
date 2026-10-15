@@ -11,7 +11,7 @@
 // registro numa transação só do banco (tudo ou nada). Idempotency-Key em criar e editar: reenviar não repete.
 // Lançamento sem hora pode continuar sem hora (PR #299).
 import { useMemo, useState } from "react"
-import { createTransaction, updateTransaction } from "../services/transactionService"
+import { createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
 import { createRecorrente } from "../services/recorrenteService"
 import { mensagemDeErro } from "../api/cliente"
@@ -53,7 +53,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   categorias: Category[]
   subcategorias: Subcategory[]
   aoSair: () => void
-  aoSalvo: () => void
+  /** Na edição recebe o resultado: se virou outro registro, a tela do id antigo não existe mais. */
+  aoSalvo: (resultado?: EdicaoLancamentoResultado) => void
 }) {
   const t = transacao ?? null
   const editando = !!t
@@ -168,9 +169,10 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     const v = parseMoney(valor)
     const desc = descricao.trim()
     const horaEnvio = comHora && hora ? `${hora}:00` : null
+    let resultado: EdicaoLancamentoResultado | undefined
     try {
       if (t) {
-        await updateTransaction(t.id, {
+        resultado = await updateTransaction(t.id, {
           descricao: desc, valor: v, tipo,
           categoriaId: transferencia ? null : categoriaId || null,
           subcategoriaId: transferencia || ehFixa ? null : subcategoriaId || null,
@@ -220,7 +222,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       setSalvando(false)
       return
     }
-    aoSalvo()
+    aoSalvo(resultado)
   }
 
   // ── Prévia: como vai aparecer na lista + o que acontece ao salvar ───────────────────────────────

@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react"
-import { deleteTransaction, getTransaction } from "../services/transactionService"
+import { deleteTransaction, getTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { estornarPagamento } from "../services/faturaService"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
@@ -86,7 +86,10 @@ export default function Transacao() {
   const editavel = !t.ehPagamentoFatura && !t.ehTransferencia
   if (editando && editavel)
     return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes} voltar={voltar}
-      aoSalvar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
+      // Virou transferência/conta fixa/parcelado: o id antigo não existe mais — volta pra lista.
+      aoSalvar={(r) => r && r.tipo !== "transacao"
+        ? navigate(voltarPara, { replace: true })
+        : navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
       aoCancelar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })} />
 
   return <Ver t={t} categorias={categorias} subcategorias={subcategorias} voltar={voltar} editavel={editavel}
@@ -206,7 +209,7 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
 
 function Editar({ t, categorias, subcategorias, contas, cartoes, voltar, aoSalvar, aoCancelar }: {
   t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; contas: Conta[]; cartoes: CartaoCredito[]
-  voltar: React.ReactNode; aoSalvar: () => void; aoCancelar: () => void
+  voltar: React.ReactNode; aoSalvar: (r?: EdicaoLancamentoResultado) => void; aoCancelar: () => void
 }) {
   return (
     <div className={styles.pagina}>
