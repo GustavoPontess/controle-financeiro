@@ -46,7 +46,7 @@ export default function EncerrarConta() {
   return (
     <PaginaFormulario titulo="Encerrar conta" carregando={carregando} erroCarga={erroCarga}>
       {conta && <FormularioEncerrar conta={conta} outras={outras} aoSair={() => navigate(voltarPara, { replace: true })}
-        aoSalvo={() => navigate("/bancos", { replace: true })} />}
+        aoSalvo={() => navigate("/bancos", { replace: true, state: { abrir: conta.id } })} />}
     </PaginaFormulario>
   )
 }

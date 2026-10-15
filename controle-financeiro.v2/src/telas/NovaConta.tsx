@@ -1,4 +1,4 @@
-// Nova conta do v2 — carrega os bancos e entrega pro FormularioConta (o mesmo da edição). Salvou → página da conta.
+// Nova conta do v2 — carrega os bancos e entrega pro FormularioConta (o mesmo da edição). Salvou → lista de contas, com a conta nova aberta.
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { getBancos } from "../services/bancoService"
@@ -23,7 +23,7 @@ export default function NovaConta() {
   return (
     <PaginaFormulario titulo="Nova conta" carregando={carregando} erroCarga={erroCarga ? "Não foi possível carregar os bancos. Recarregue a página." : null}>
       <FormularioConta bancos={bancos} aoSair={() => navigate(voltarPara, { replace: true })}
-        aoSalvo={(id) => navigate(`/bancos/${id}`, { replace: true })} />
+        aoSalvo={(id) => navigate("/bancos", { replace: true, state: { abrir: id } })} />
     </PaginaFormulario>
   )
 }

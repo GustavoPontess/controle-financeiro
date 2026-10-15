@@ -45,7 +45,8 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Busca com espera de digitação: `utils/useAtrasado.ts` (Transações, lançamentos da fatura) — nunca bater no servidor a cada tecla.
-- Conta bancária: tipos, validação (agência/número) e a linha de detalhe em `src/dominio/conta.ts`. A linha de um lançamento na ListaPorDia vem de `src/dominio/linhaLancamento.tsx` (Transações e extrato da conta usam a mesma). Conta **encerrada** sai das seleções (`getContas()` já filtra; a tela de contas pede `incluirEncerradas`).
+- Conta bancária: tipos, validação (agência/número) e a linha de detalhe em `src/dominio/conta.ts`. Conta **encerrada** sai das seleções (`getContas()` já filtra; a tela de contas pede `incluirEncerradas`).
+- **Bancos é só das contas** (decisão 2026-10-15, modelo Pierre): a linha abre, ali embaixo, a ficha (banco, tipo, agência, número) e as ações — sem página de detalhe nem extrato ali. Extrato é Transações: o link "Ver lançamentos" manda `state.filtros` e a tela já abre filtrada. Outra tela devolve a pessoa pra lista com a conta aberta por `state.abrir` (Nova/Editar/Encerrar fazem isso).
 - Conta fixa: repetição e situação em `src/dominio/contaFixa.ts`; criar/editar é o `FormularioTransacao` (prop `recorrente` edita a regra; `inicial={{ fixa: true }}` abre já como conta fixa).
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
