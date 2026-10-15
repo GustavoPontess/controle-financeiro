@@ -179,16 +179,7 @@ public class DashboardService
                     ? contas.FirstOrDefault(c => c.Id == t.ContaId)?.Nome
                     : cartoes.FirstOrDefault(c => c.Id == t.CartaoCreditoId)?.Nome,
                 MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : null,
-                MeioPagamentoDescricao = t.MeioPagamento switch
-                {
-                    Domain.Enums.MeioPagamento.Dinheiro => "Dinheiro",
-                    Domain.Enums.MeioPagamento.Debito   => "Débito",
-                    Domain.Enums.MeioPagamento.Credito  => "Crédito",
-                    Domain.Enums.MeioPagamento.Pix      => "Pix",
-                    Domain.Enums.MeioPagamento.Ted      => "TED/DOC",
-                    Domain.Enums.MeioPagamento.Boleto   => "Boleto",
-                    _ => null
-                },
+                MeioPagamentoDescricao = Domain.Enums.MeioPagamentoExtensions.Descricao(t.MeioPagamento),
                 Data = t.Data,
                 Hora = t.Hora,
                 EhTransferencia = t.EhTransferencia,

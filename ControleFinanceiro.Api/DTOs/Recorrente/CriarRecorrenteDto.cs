@@ -20,6 +20,9 @@ public class CriarRecorrenteDto
 
     public Guid? CartaoCreditoId { get; set; }
 
+    /// <summary>Como paga/recebe (enum MeioPagamento). Opcional; no cartão vira Crédito; numa conta, Crédito é recusado.</summary>
+    public int? MeioPagamento { get; set; }
+
     [Required]
     public int Frequencia { get; set; }
 

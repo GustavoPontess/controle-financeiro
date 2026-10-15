@@ -1466,6 +1466,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("Frequencia")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("MeioPagamento")
+                        .HasColumnType("integer");
+
                     b.Property<string>("MotivoCancelamento")
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");

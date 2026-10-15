@@ -115,6 +115,7 @@ public class RecorrenteService
                     CartaoCreditoId = r.CartaoCreditoId,
                     FaturaId = faturaId,
                     UsadoComoCredito = r.CartaoCreditoId.HasValue,
+                    MeioPagamento = r.MeioPagamento ?? (r.CartaoCreditoId.HasValue ? MeioPagamento.Credito : null),
                     StatusTransacao = status,
                     Ativo = true,
                     CriadoPor = r.CriadoPor,
@@ -495,6 +496,8 @@ public class RecorrenteService
         ContaNome = r.Conta?.Nome,
         CartaoCreditoId = r.CartaoCreditoId,
         CartaoCreditoNome = r.CartaoCredito?.Nome,
+        MeioPagamento = r.MeioPagamento.HasValue ? (int)r.MeioPagamento.Value : null,
+        MeioPagamentoDescricao = r.MeioPagamento.Descricao(),
         Frequencia = (int)r.Frequencia,
         FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
         Dia = r.Dia,
@@ -540,6 +543,7 @@ public class RecorrenteService
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
 
+        var meio = MeioDaContaFixa(dto);
         Guid recorrenteId = Guid.NewGuid();
         var correlationId = Guid.NewGuid();
         var dataInicio = dto.DataInicio.ToUniversalTime();
@@ -567,6 +571,7 @@ public class RecorrenteService
                 CategoriaId = dto.CategoriaId,
                 ContaId = dto.ContaId,
                 CartaoCreditoId = dto.CartaoCreditoId,
+                MeioPagamento = meio,
                 Frequencia = (FrequenciaRecorrencia)dto.Frequencia,
                 Dia = dto.Dia,
                 DataInicio = dataInicio,
@@ -670,6 +675,19 @@ public class RecorrenteService
     }
 
     /// <summary>
+    /// Como a conta fixa é paga: no cartão é sempre Crédito; numa conta, qualquer meio menos Crédito (crédito
+    /// numa conta não existe — é cartão). Valor fora do enum → 400.
+    /// </summary>
+    private static MeioPagamento? MeioDaContaFixa(CriarRecorrenteDto dto)
+    {
+        var meio = MeioPagamentoExtensions.DoCliente(dto.MeioPagamento);
+        if (dto.CartaoCreditoId.HasValue) return MeioPagamento.Credito;
+        if (meio == MeioPagamento.Credito)
+            throw new ArgumentException("Crédito é no cartão: escolha o cartão em vez da conta.");
+        return meio;
+    }
+
+    /// <summary>
     /// O retry traz o mesmo pedido que criou <paramref name="original"/>? Compara com o que foi GRAVADO
     /// (mesmas conversões do INSERT). Datas só pelo dia: a agenda da conta fixa é por dia.
     /// </summary>
@@ -680,6 +698,7 @@ public class RecorrenteService
         && original.CategoriaId == dto.CategoriaId
         && original.ContaId == dto.ContaId
         && original.CartaoCreditoId == dto.CartaoCreditoId
+        && original.MeioPagamento == MeioDaContaFixa(dto)
         && (int)original.Frequencia == dto.Frequencia
         && original.Dia == dto.Dia
         && DateOnly.FromDateTime(original.DataInicio) == DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime())
@@ -793,6 +812,7 @@ public class RecorrenteService
         r.CategoriaId = dto.CategoriaId;
         r.ContaId = dto.ContaId;
         r.CartaoCreditoId = dto.CartaoCreditoId;
+        r.MeioPagamento = MeioDaContaFixa(dto);
         r.Frequencia = (FrequenciaRecorrencia)dto.Frequencia;
         r.Dia = dto.Dia;
         r.DataFim = dto.DataFim?.ToUniversalTime();

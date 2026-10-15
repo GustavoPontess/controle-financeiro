@@ -401,6 +401,77 @@ public class RecorrenteServiceTests
         Assert.Equal(1, await ctx.FinancialEventLogs.CountAsync(e => e.Tipo == FinancialEventType.RecorrenteCancelada));
     }
 
+    // ── Como paga (MeioPagamento) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task CriarAsync_ComBoleto_GuardaNaContaFixa_ECadaCobrancaHerda()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+        var dto = NovaContaFixa(conta, "Plano de saúde");
+        dto.MeioPagamento = (int)MeioPagamento.Boleto;
+
+        var r = await svc.CriarAsync(dto, u);
+
+        Assert.Equal((int)MeioPagamento.Boleto, r.MeioPagamento);
+        Assert.Equal("Boleto", r.MeioPagamentoDescricao);
+        var cobrancas = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id).ToListAsync();
+        Assert.NotEmpty(cobrancas);
+        Assert.All(cobrancas, t => Assert.Equal(MeioPagamento.Boleto, t.MeioPagamento));
+    }
+
+    [Fact]
+    public async Task CriarAsync_NoCartao_ViraCredito_MesmoSemMandar()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var cartao = SeedCartao(ctx, u);
+        var dto = NovaContaFixa(Guid.Empty);
+        dto.ContaId = null; dto.CartaoCreditoId = cartao; dto.MeioPagamento = (int)MeioPagamento.Pix;
+
+        var r = await svc.CriarAsync(dto, u);
+
+        Assert.Equal((int)MeioPagamento.Credito, r.MeioPagamento);
+    }
+
+    [Theory]
+    [InlineData((int)MeioPagamento.Credito)]
+    [InlineData(99)]
+    public async Task CriarAsync_NumaConta_CreditoOuMeioInexistente_Recusa(int meio)
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.MeioPagamento = meio;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, u));
+        Assert.False(await ctx.Recorrentes.AnyAsync());
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_TrocarOMeio_ProximasCobrancasSaemComONovo()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+        var dto = NovaContaFixa(conta);
+        dto.MeioPagamento = (int)MeioPagamento.Boleto;
+        var r = await svc.CriarAsync(dto, u);
+
+        dto.MeioPagamento = (int)MeioPagamento.DebitoAutomatico;
+        await svc.AtualizarAsync(r.Id, dto, u);
+
+        var futuras = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id && t.Ativo).ToListAsync();
+        Assert.NotEmpty(futuras);
+        Assert.All(futuras, t => Assert.Equal(MeioPagamento.DebitoAutomatico, t.MeioPagamento));
+        Assert.Equal("Débito automático", (await svc.ObterAsync(r.Id, u)).MeioPagamentoDescricao);
+    }
+
     // ── CriarAsync — idempotência ─────────────────────────────────────────────
 
     private static CriarRecorrenteDto NovaContaFixa(Guid contaId, string descricao = "Internet", decimal valor = 120m) => new()

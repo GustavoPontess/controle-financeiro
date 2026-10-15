@@ -1,8 +1,8 @@
 // Tela da transação do v2 — ver, editar e excluir. Mesmas regras do app atual:
 // - pagamento de fatura e perna de transferência não se editam (o outro lado ficaria desemparelhado):
 //   o pagamento se ESTORNA, a transferência se exclui inteira (as duas pernas juntas);
-// - a edição é o mesmo FormularioTransacao da criação; mudança que o back não faz no lugar (conta, cartão,
-//   status, virar transferência/conta fixa/parcelado) recria o lançamento — cria o novo, apaga o antigo;
+// - a edição é o mesmo FormularioTransacao da criação; virar transferência/parcelado o servidor troca numa
+//   transação só do banco; "Transformar em conta fixa" abre o formulário da conta fixa (/transacoes/:id/conta-fixa);
 // - data futura só em compra no cartão ou lançamento previsto (o back recusa o resto);
 // - lançamento sem hora pode continuar sem hora (decisão do Gustavo, PR #299); com hora, ela é obrigatória.
 import { useEffect, useRef, useState } from "react"
@@ -28,6 +28,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { formatMoney } from "../utils/money"
 import FormularioTransacao from "./FormularioTransacao"
+import type { RascunhoContaFixa } from "./FormularioContaFixa"
 import styles from "./Transacao.module.css"
 
 const naturezaDe = (t: Transaction) =>
@@ -85,11 +86,12 @@ export default function Transacao() {
   const editavel = !t.ehPagamentoFatura && !t.ehTransferencia
   if (editando && editavel)
     return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes}
-      // Virou transferência/conta fixa/parcelado: o id antigo não existe mais — volta pra lista.
+      // Virou transferência/parcelado: o id antigo não existe mais, volta pra lista.
       aoSalvar={(r) => r && r.tipo !== "transacao"
         ? navigate(voltarPara, { replace: true })
         : navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
-      aoCancelar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })} />
+      aoCancelar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
+      aoVirarContaFixa={(rascunho) => navigate(`/transacoes/${t.id}/conta-fixa`, { replace: true, state: { voltarPara: `/transacoes/${t.id}/editar`, rascunho } })} />
 
   return <Ver t={t} categorias={categorias} subcategorias={subcategorias} editavel={editavel}
     aoEditar={() => navigate(`/transacoes/${t.id}/editar`, { replace: true, state: location.state })}
@@ -206,15 +208,16 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair }: {
 
 // ──────────────────────────────────────────────────────────────────────────── editar
 
-function Editar({ t, categorias, subcategorias, contas, cartoes, aoSalvar, aoCancelar }: {
+function Editar({ t, categorias, subcategorias, contas, cartoes, aoSalvar, aoCancelar, aoVirarContaFixa }: {
   t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; contas: Conta[]; cartoes: CartaoCredito[]
   aoSalvar: (r?: EdicaoLancamentoResultado) => void; aoCancelar: () => void
+  aoVirarContaFixa: (rascunho: RascunhoContaFixa) => void
 }) {
   return (
     <div className={styles.pagina}>
       <h1 className={styles.titulo}>Editar transação</h1>
       <FormularioTransacao transacao={t} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
-        aoSair={aoCancelar} aoSalvo={aoSalvar} />
+        aoSair={aoCancelar} aoSalvo={aoSalvar} aoVirarContaFixa={aoVirarContaFixa} />
     </div>
   )
 }

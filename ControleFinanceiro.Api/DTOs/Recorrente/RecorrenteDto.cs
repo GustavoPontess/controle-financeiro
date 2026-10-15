@@ -13,6 +13,8 @@ public class RecorrenteDto
     public string? ContaNome { get; set; }
     public Guid? CartaoCreditoId { get; set; }
     public string? CartaoCreditoNome { get; set; }
+    public int? MeioPagamento { get; set; }
+    public string? MeioPagamentoDescricao { get; set; }
     public int Frequencia { get; set; }
     public string FrequenciaDescricao { get; set; } = string.Empty;
     public int Dia { get; set; }

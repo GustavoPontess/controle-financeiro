@@ -19,13 +19,14 @@ public class MigrationAddMfaConviteUsuarioTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDaCarteiraTipoDinheiro()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_AddMfaConviteUsuario", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_CarteiraTipoDinheiro", ids[^2]);
+        var i = ids.FindIndex(x => x.EndsWith("_AddMfaConviteUsuario"));
+        Assert.True(i > 0);
+        Assert.EndsWith("_CarteiraTipoDinheiro", ids[i - 1]);
     }
 
     [Fact]

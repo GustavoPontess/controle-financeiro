@@ -565,6 +565,22 @@ public class FaturaServiceTests
     }
 
     [Fact]
+    public async Task PagarFaturaAsync_MeioForaDoEnum_LancaArgumentException_ENaoPaga()
+    {
+        // Antes gravava qualquer número como meio ("99" virava um pagamento sem rótulo).
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
+
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow, MeioPagamento = 99 };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
+        Assert.Equal(MeioPagamentoExtensions.MensagemInvalido, ex.Message);
+        Assert.Equal(0m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(0m, await DebitadoDaContaAsync(ctx, conta.Id));
+    }
+
+    [Fact]
     public async Task PagarFaturaAsync_FaturaJaPaga_LancaInvalidOperationException()
     {
         var ctx = CreateContext();

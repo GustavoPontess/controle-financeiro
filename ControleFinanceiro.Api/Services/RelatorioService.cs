@@ -179,16 +179,7 @@ public class RelatorioService
 
     private static bool IsFormulaPrefix(char value) => value is '=' or '+' or '-' or '@';
 
-    private static string MeioPagamentoLabel(MeioPagamento? meio) => meio switch
-    {
-        MeioPagamento.Dinheiro => "Dinheiro",
-        MeioPagamento.Debito   => "Débito",
-        MeioPagamento.Credito  => "Crédito",
-        MeioPagamento.Pix      => "Pix",
-        MeioPagamento.Ted      => "TED/DOC",
-        MeioPagamento.Boleto   => "Boleto",
-        _                      => "Não informado"
-    };
+    private static string MeioPagamentoLabel(MeioPagamento? meio) => meio.Descricao() ?? "Não informado";
 
     // ── Relatório anual (existente) ──────────────────────────────────────────
 

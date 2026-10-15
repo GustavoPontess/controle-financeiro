@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn() }))
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn() }))
-vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn(), updateRecorrente: vi.fn() }))
 import { createTransaction } from "../../services/transactionService"
 import { createTransferencia } from "../../services/transferenciaService"
 import FormularioTransacao from "../../telas/FormularioTransacao"
@@ -35,6 +34,33 @@ describe("FormularioTransacao", () => {
     await userEvent.click(screen.getByRole("button", { name: "Adicionar" }))
     await userEvent.type(screen.getByPlaceholderText("Mercado"), "Feira")
     expect(screen.queryByText("Informe a descrição")).not.toBeInTheDocument()
+  })
+
+  it("conta fixa não é mais interruptor: o botão leva o que já foi preenchido", async () => {
+    const aoVirarContaFixa = vi.fn()
+    render(<FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]}
+      aoSair={vi.fn()} aoSalvo={vi.fn()} aoVirarContaFixa={aoVirarContaFixa} />)
+    expect(screen.queryByRole("switch", { name: "Conta fixa" })).not.toBeInTheDocument()
+    await userEvent.type(screen.getByPlaceholderText("Mercado"), "Academia")
+    await userEvent.click(screen.getByRole("button", { name: "Transformar em conta fixa" }))
+    expect(aoVirarContaFixa).toHaveBeenCalledWith(expect.objectContaining({ tipo: 1, descricao: "Academia", meio: 4 }))
+    expect(createTransaction).not.toHaveBeenCalled()
+  })
+
+  it("parcela e ocorrência de conta fixa não oferecem virar conta fixa", () => {
+    render(<FormularioTransacao transacao={{ id: "t1", descricao: "Luz", valor: 90, tipo: 1, categoriaId: "cat1", contaId: "k2",
+      recorrenteOrigemId: "r1", statusTransacao: 0, data: "2026-10-10" } as never}
+      contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} aoVirarContaFixa={vi.fn()} />)
+    expect(screen.queryByRole("button", { name: "Transformar em conta fixa" })).not.toBeInTheDocument()
+  })
+
+  it("receita não oferece débito automático nem crédito", async () => {
+    renderizar()
+    await userEvent.click(screen.getByRole("radio", { name: "Receita" }))
+    await userEvent.click(screen.getByRole("combobox", { name: "Recebido por" }))
+    const opcoes = screen.getAllByRole("option").map((o) => o.textContent)
+    expect(opcoes).not.toContain("Débito automático")
+    expect(opcoes).not.toContain("Crédito")
   })
 
   it("transferência pede origem e destino", async () => {

@@ -34,6 +34,9 @@ public class Recorrente
     public Guid? CartaoCreditoId { get; set; }
     public CartaoCredito? CartaoCredito { get; set; }
 
+    /// <summary>Como se paga/recebe (débito automático, boleto, Pix…). Cada cobrança gerada herda. No cartão é Crédito.</summary>
+    public MeioPagamento? MeioPagamento { get; set; }
+
     [Required]
     public FrequenciaRecorrencia Frequencia { get; set; }
 

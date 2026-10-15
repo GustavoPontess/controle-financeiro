@@ -1,5 +1,6 @@
 // Nova transação do v2 — a casca da tela: carrega contas, cartões e categorias e entrega pro
-// FormularioTransacao (o mesmo da edição).
+// FormularioTransacao (o mesmo da edição). "Transformar em conta fixa" leva o que foi preenchido pra
+// /contas-fixas/nova (formulário próprio).
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { getContas } from "../services/contaService"
@@ -13,13 +14,10 @@ import type { Subcategory } from "../types/Subcategory"
 import { PaginaFormulario } from "../componentes/Formulario"
 import FormularioTransacao from "./FormularioTransacao"
 
-export default function NovaTransacao({ contaFixa }: {
-  /** Rota /contas-fixas/nova: o mesmo formulário, já com "Conta fixa" ligado. */
-  contaFixa?: boolean
-} = {}) {
+export default function NovaTransacao() {
   const navigate = useNavigate()
   const location = useLocation()
-  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? (contaFixa ? "/contas-fixas" : "/transacoes")
+  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/transacoes"
 
   const [contas, setContas] = useState<Conta[]>([])
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
@@ -38,10 +36,11 @@ export default function NovaTransacao({ contaFixa }: {
   }, [])
 
   return (
-    <PaginaFormulario titulo={contaFixa ? "Nova conta fixa" : "Nova transação"} carregando={carregando}
+    <PaginaFormulario titulo="Nova transação" carregando={carregando}
       erroCarga={erroCarga ? "Não foi possível carregar suas contas e categorias. Recarregue a página." : null}>
-      <FormularioTransacao contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias} inicial={{ fixa: !!contaFixa }}
-        aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
+      <FormularioTransacao contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })}
+        aoVirarContaFixa={(rascunho) => navigate("/contas-fixas/nova", { replace: true, state: { voltarPara, rascunho } })} />
     </PaginaFormulario>
   )
 }

@@ -89,7 +89,7 @@ public class LancamentoService
                     SubcategoriaId = dto.SubcategoriaId,
                     ContaId = dto.ContaId,
                     CartaoCreditoId = dto.CartaoCreditoId,
-                    MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
+                    MeioPagamento = MeioPagamentoExtensions.DoCliente(dto.MeioPagamento),
                     Data = dto.Data,
                     Hora = dto.Hora,
                 };
@@ -129,6 +129,7 @@ public class LancamentoService
                             CategoriaId = dto.CategoriaId,
                             ContaId = dto.CartaoCreditoId.HasValue ? null : dto.ContaId ?? transacao.ContaId,
                             CartaoCreditoId = dto.CartaoCreditoId,
+                            MeioPagamento = dto.CartaoCreditoId.HasValue ? null : dto.MeioPagamento ?? (int?)transacao.MeioPagamento,
                             Frequencia = dto.ContaFixa!.Frequencia,
                             Dia = dto.Data.Day,
                             DataInicio = dto.Data.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),

@@ -280,6 +280,7 @@ public class FaturaService
         // transferência e do lançamento efetivado em conta). O front já barra; o back também.
         if (DateOnly.FromDateTime(dto.DataPagamento) > DateOnly.FromDateTime(DateTime.UtcNow))
             throw new ArgumentException("A data do pagamento não pode ser futura.");
+        MeioPagamentoExtensions.DoCliente(dto.MeioPagamento); // fora do enum → 400 antes de gravar
 
         // Cria transação de débito na conta (aqui o saldo da conta é afetado — invariante 5)
         var pagamento = new Transacao
@@ -294,7 +295,7 @@ public class FaturaService
             // relatórios de P&L (a despesa real foi a compra, não o pagamento).
             EhPagamentoFatura = true,
             FaturaPagaId = fatura.Id,
-            MeioPagamento = (MeioPagamento)dto.MeioPagamento,
+            MeioPagamento = MeioPagamentoExtensions.DoCliente(dto.MeioPagamento),
             Data = DateOnly.FromDateTime(dto.DataPagamento),
             Hora = null, // pagamento de fatura é datado (sem hora específica)
             CriadoPor = usuarioId,
@@ -768,16 +769,7 @@ public class FaturaService
             Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
             CriadoEm = t.CriadoEm,
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : 0,
-            MeioPagamentoDescricao = t.MeioPagamento switch
-            {
-                Domain.Enums.MeioPagamento.Dinheiro => "Dinheiro",
-                Domain.Enums.MeioPagamento.Debito   => "Débito",
-                Domain.Enums.MeioPagamento.Credito  => "Crédito",
-                Domain.Enums.MeioPagamento.Pix      => "Pix",
-                Domain.Enums.MeioPagamento.Ted      => "TED/DOC",
-                Domain.Enums.MeioPagamento.Boleto   => "Boleto",
-                _ => "—",
-            },
+            MeioPagamentoDescricao = Domain.Enums.MeioPagamentoExtensions.Descricao(t.MeioPagamento) ?? "—",
         }).ToList();
 
         return dto;

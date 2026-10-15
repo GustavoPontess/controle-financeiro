@@ -51,6 +51,7 @@ export default function ContaFixa() {
     ["Termina em", r.dataFim ? dataBR(r.dataFim) : "Sem fim"],
     ["Categoria", r.categoriaNome ?? "—"],
     [r.cartaoCreditoId ? "Cartão" : "Conta", r.cartaoCreditoNome ?? r.contaNome ?? "—"],
+    [receita ? "Como recebe" : "Como paga", r.meioPagamentoDescricao ?? "—"],
     ["Próxima cobrança", r.proximaCobranca ? dataBR(r.proximaCobranca) : "—"],
   ]
 
