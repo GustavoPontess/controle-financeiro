@@ -28,7 +28,7 @@ export default function Campo({ rotulo, erro, grupo, estatico, children, classNa
         ? <span id={rotuloId} className={styles.rotulo}>{rotulo}</span>
         : <label htmlFor={id} className={styles.rotulo}>{rotulo}</label>}
       <CampoContexto.Provider value={semLabel ? null : { id, erroId, invalido: !!erro }}>{children}</CampoContexto.Provider>
-      {erro && <small id={erroId} className={styles.erro}>{erro}</small>}
+      {erro && <small id={erroId} className={styles.erro}><span title={erro}>{erro}</span></small>}
     </div>
   )
 }

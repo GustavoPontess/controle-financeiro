@@ -32,7 +32,7 @@
 .sub { margin: -6px 0 6px; font-size: var(--v2-fs-md); color: var(--v2-texto-2); }
 .sub a, .link { padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); text-decoration: none; cursor: pointer; }
 .sub a:hover, .link:hover { text-decoration: underline; }
-.form { display: flex; flex-direction: column; gap: 16px; }
+.form { display: flex; flex-direction: column; gap: 18px; }
 .linhaOpcoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: var(--v2-fs-sm); }
 .lembrar { display: flex; align-items: center; gap: 8px; font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); cursor: pointer; }
 .lembrar input { width: 16px; height: 16px; margin: 0; accent-color: var(--v2-tinta); }
@@ -49,7 +49,7 @@
 .consentimento .lembrar { align-items: flex-start; }
 .consentimento .lembrar input { margin-top: 2px; flex-shrink: 0; }
 .consentimento a { color: var(--v2-texto); font-weight: 600; text-decoration: underline; }
-.erroCampo { margin: 0; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-negativo); }
+.erroCampo { height: 0; margin: -2px 0 0; overflow: visible; font-size: var(--v2-fs-xs); font-weight: 500; line-height: 14px; color: var(--v2-negativo); white-space: nowrap; }
 .selo { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 999px; background: var(--v2-positivo-suave); color: var(--v2-positivo); }
 .rodape { margin: 10px 0 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
 .rodape a { color: var(--v2-texto-2); font-weight: 600; text-decoration: none; }

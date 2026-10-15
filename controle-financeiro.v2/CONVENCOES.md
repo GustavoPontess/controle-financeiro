@@ -41,7 +41,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 ## Formulário
 
 - Todo campo dentro de `Campo` (nunca `<label>` solto com `<input>` estilizado na tela).
-- Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
+- Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário. O erro do campo **não ocupa altura** (desenha no respiro de 18px entre campos — aparecer/sumir não mexe na tela), então é **uma linha curta** (corta com reticências; texto inteiro no title).
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Busca com espera de digitação: `utils/useAtrasado.ts` (Transações, lançamentos da fatura) — nunca bater no servidor a cada tecla.

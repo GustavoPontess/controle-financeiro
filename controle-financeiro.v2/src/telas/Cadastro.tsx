@@ -60,7 +60,7 @@ export default function Cadastro() {
     else if (!senhaValida(senha)) e.senha = "A senha precisa ter pelo menos 15 caracteres."
     if (!confirmar) e.confirmar = "Repita a senha."
     else if (senha !== confirmar) e.confirmar = "As senhas não conferem."
-    if (!aceita) e.privacidade = "Pra criar a conta, você precisa aceitar a Política de Privacidade."
+    if (!aceita) e.privacidade = "Aceite a Política de Privacidade pra continuar."
     return e
   }
 
@@ -138,7 +138,7 @@ export default function Cadastro() {
                   <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={senha}
                     onChange={(e) => { setSenha(e.target.value); limpa("senha") }} sufixo={olho(mostrarSenha, () => setMostrarSenha((v) => !v))} />
                 </Campo>
-                {senha && (
+                {senha && !erros.senha && (
                   <ul className={styles.requisitos} aria-label="Requisitos da senha">
                     {requisitosSenha(senha).map((r) => (
                       <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>

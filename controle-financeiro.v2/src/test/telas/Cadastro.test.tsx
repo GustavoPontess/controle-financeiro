@@ -37,7 +37,7 @@ describe("Cadastro", () => {
     for (const m of ["Informe seu nome.", "Informe o e-mail.", "Informe a data de nascimento.", "Crie uma senha.", "Repita a senha."]) {
       expect(screen.getByText(m)).toBeInTheDocument()
     }
-    expect(screen.getByText(/aceitar a Política de Privacidade/)).toBeInTheDocument()
+    expect(screen.getByText(/Aceite a Política de Privacidade/)).toBeInTheDocument()
     expect(cadastrar).not.toHaveBeenCalled()
   })
 
@@ -61,7 +61,7 @@ describe("Cadastro", () => {
     expect(campo(/Li e aceito/)).not.toBeChecked()
     await preencher()
     await userEvent.click(botao())
-    expect(screen.getByText(/aceitar a Política de Privacidade/)).toBeInTheDocument()
+    expect(screen.getByText(/Aceite a Política de Privacidade/)).toBeInTheDocument()
     expect(cadastrar).not.toHaveBeenCalled()
   })
 
