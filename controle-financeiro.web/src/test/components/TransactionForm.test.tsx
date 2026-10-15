@@ -266,6 +266,23 @@ describe("TransactionForm — Hora obrigatória (lançamento único e transferê
     expect(screen.getByText("Hora").closest("label")).toHaveTextContent("Hora*")
   })
 
+  it("edição de lançamento que veio SEM hora: Hora opcional (sem asterisco) e salvar vazio passa", async () => {
+    const onSubmit = setupEditValido("")
+    expect(screen.getByText("Hora").closest("label")).not.toHaveTextContent("Hora*")
+    fireEvent.click(screen.getByText("Salvar"))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].hora).toBe("")
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument()
+  })
+
+  it("edição de lançamento SEM hora: hora preenchida errada ainda é recusada", () => {
+    const onSubmit = setupEditValido("")
+    fireEvent.change(campoHora(), { target: { value: "2599" } })
+    fireEvent.click(screen.getByText("Salvar"))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText("Hora inválida (HH:MM)")).toBeInTheDocument()
+  })
+
   it("submit com a hora vazia BLOQUEIA e mostra 'Informe a hora' no próprio campo (erro por campo, sem chamar onSubmit)", () => {
     const onSubmit = setupEditValido("07:30")
     limparHora()
