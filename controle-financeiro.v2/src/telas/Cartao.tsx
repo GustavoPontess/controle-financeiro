@@ -84,7 +84,7 @@ export default function Cartao() {
     <div className={styles.pagina}>
       <header className={styles.cabecalho}>
         <div className={styles.identidade}>
-          <FaceCartao bandeira={cartao.bandeira} cor={cartao.bancoCor} tamanho="lg" />
+          <FaceCartao bandeira={cartao.bandeira} cor={cartao.bancoCor} ultimosDigitos={cartao.ultimosDigitos} tamanho="lg" />
           <div className={styles.identidadeTexto}>
             <h1 className={styles.titulo}>{cartao.nome}</h1>
             <span className={styles.muted}>{[cartao.bancoNome, cartao.temCredito && cartao.diaFechamento ? `fecha dia ${cartao.diaFechamento}` : null, cartao.temCredito && cartao.diaVencimento ? `vence dia ${cartao.diaVencimento}` : null].filter(Boolean).join(" · ")}</span>

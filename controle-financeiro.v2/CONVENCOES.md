@@ -29,7 +29,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Prévia do lançamento | `PreviaLancamento` | "Como vai aparecer": linha igual à da lista + frase do efeito; some no celular |
 | Lista de lançamentos por dia | `ListaPorDia` | Transações, fatura do cartão… — cabeçalho do dia, linha com inicial/ícone, nome, detalhe, hora, etiqueta, valor. Mantém a ordem recebida |
 | Barra de proporção | `BarraProgresso` | limite usado, fatura paga, parcelas pagas (4px, tom alerta/negativo/positivo) |
-| Carinha do cartão | `FaceCartao` | retângulo na cor do banco com a marca da bandeira (md na lista, lg no cabeçalho) |
+| Carinha do cartão | `FaceCartao` | cartão em miniatura (proporção 1,6:1) na cor do banco: chip, bandeira no canto, últimos dígitos no `lg` (md 72×45 na lista, lg 112×70 no cabeçalho) |
 | Paginação de lista | `Paginacao` | linhas por página + páginas numeradas; servidor pagina |
 | Confirmar ação | `Confirmar` | excluir/estornar; `perigo` pra destrutiva |
 | Caixa de conteúdo | `Bloco` | título + ação à direita |
