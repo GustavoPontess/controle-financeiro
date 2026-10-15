@@ -11,6 +11,8 @@ import CartaoParcelamentos from "./telas/CartaoParcelamentos"
 import NovoCartao from "./telas/NovoCartao"
 import EditarCartao from "./telas/EditarCartao"
 import PagarFatura from "./telas/PagarFatura"
+import Parcelamento from "./telas/Parcelamento"
+import AnteciparParcela from "./telas/AnteciparParcela"
 import NovaTransacao from "./telas/NovaTransacao"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
@@ -46,6 +48,8 @@ export default function App() {
         <Route path="/cartoes/:id" element={<Cartao />} />
         <Route path="/cartoes/:id/editar" element={<EditarCartao />} />
         <Route path="/cartoes/:id/parcelamentos" element={<CartaoParcelamentos />} />
+        <Route path="/cartoes/:id/parcelamentos/:pid" element={<Parcelamento />} />
+        <Route path="/cartoes/:id/parcelamentos/:pid/parcelas/:parcelaId/antecipar" element={<AnteciparParcela />} />
         <Route path="/cartoes/:id/faturas/:faturaId/pagar" element={<PagarFatura />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/configuracoes" element={<Configuracoes />} />

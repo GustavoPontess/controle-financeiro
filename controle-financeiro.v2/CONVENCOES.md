@@ -32,6 +32,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Carinha do cartão | `FaceCartao` | cartão em miniatura (proporção 1,6:1) na cor do banco: chip, bandeira no canto, últimos dígitos no `lg` (md 72×45 na lista, lg 112×70 no cabeçalho) |
 | Busca de lista | `Busca` | lupa + input de pesquisa, 36px, à esquerda da barra da lista (Transações, Cartões); quem filtra é a tela |
 | Casca de tela de formulário | `PaginaFormulario` | título + aviso de carga/esqueleto + o formulário (Nova transação, Novo/Editar cartão) |
+| Ações de uma linha | `Menu` | ⋮ com itens (ícone, perigo); fecha fora/Esc/ao escolher. Pra ação que não merece botão na linha |
 | Paginação de lista | `Paginacao` | linhas por página + páginas numeradas; servidor pagina |
 | Confirmar ação | `Confirmar` | excluir/estornar; `perigo` pra destrutiva |
 | Caixa de conteúdo | `Bloco` | título + ação à direita |

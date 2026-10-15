@@ -2,7 +2,7 @@
 // a página do cartão mostra só o número e "Ver todos" traz pra cá. Cabeçalho com a carinha + nome e os
 // dois números (em andamento, faltam); lista paginada no servidor.
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { getCartoes } from "../services/cartaoCreditoService"
 import { ParcelamentoService } from "../services/ParcelamentoService"
 import type { CartaoCredito } from "../types/CartaoCredito"
@@ -90,7 +90,8 @@ function Lista({ cartaoId }: { cartaoId: string }) {
               const pagas = p.parcelasPagas
               const prox = p.proximaParcela
               return (
-                <li key={p.id} className={styles.linha}>
+                <li key={p.id}>
+                  <Link to={`/cartoes/${cartaoId}/parcelamentos/${p.id}`} state={{ voltarPara: `/cartoes/${cartaoId}/parcelamentos` }} className={styles.linha}>
                   <span className={styles.icone}>{p.descricao.trim().charAt(0).toUpperCase() || "•"}</span>
                   <span className={styles.texto}>
                     <span className={styles.nome}>{p.descricao}</span>
@@ -103,6 +104,7 @@ function Lista({ cartaoId }: { cartaoId: string }) {
                     <Dinheiro valor={p.valorRestante} className={styles.valor} />
                     <span className={styles.muted}>faltam</span>
                   </span>
+                  </Link>
                 </li>
               )
             })}

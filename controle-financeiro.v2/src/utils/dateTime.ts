@@ -66,3 +66,9 @@ export function mascararHora(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 4)
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
 }
+
+/** "2026-10-15T00:00:00" ou "2026-10-15" → "15/10/2026" (sem fuso: o dia é o que está escrito). */
+export function dataBR(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split("-")
+  return `${d}/${m}/${a}`
+}

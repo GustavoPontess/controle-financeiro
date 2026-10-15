@@ -4,3 +4,4 @@
 .titulo { margin: 0; font-size: var(--v2-fs-lg); font-weight: 600; letter-spacing: -0.01em; }
 .texto { font-size: var(--v2-fs-md); line-height: 1.5; color: var(--v2-texto-2); }
 .acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.conteudo { margin-top: 4px; }
