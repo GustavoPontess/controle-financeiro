@@ -1,9 +1,9 @@
 // Transações do v2 — extrato de caixa da conta: só o que mexe no saldo (receita/despesa de conta,
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeftRight, ChevronLeft, ChevronRight, CreditCard, Search, SlidersHorizontal, X } from "lucide-react"
+import { ArrowLeftRight, ChevronLeft, ChevronRight, CreditCard, Search, SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -17,12 +17,17 @@ const POR_PAGINA = 25
 
 type Natureza = "" | "entrada" | "saida" | "transferencia" | "fatura"
 const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
-  { valor: "", rotulo: "Todas" },
+  { valor: "", rotulo: "Todos" },
   { valor: "entrada", rotulo: "Entradas" },
   { valor: "saida", rotulo: "Saídas" },
   { valor: "transferencia", rotulo: "Transferências" },
-  { valor: "fatura", rotulo: "Fatura" },
+  { valor: "fatura", rotulo: "Pagamento de fatura" },
 ]
+
+/** Filtros avançados — vivem num rascunho enquanto o painel está aberto e só valem no "Aplicar". */
+type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string }
+const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "" }
+const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
 
 /** Cabeçalho do dia: "Hoje" / "Ontem" / "quarta-feira, 8 de outubro" (ano só quando não é o atual). */
 function rotuloDoDia(iso: string): string {
@@ -66,17 +71,28 @@ export default function Transacoes() {
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Record<string, string>>({})
 
-  // Filtros — todos vão pro servidor.
   const [busca, setBusca] = useState("")
   const buscaAplicada = useAtrasado(busca.trim())
-  const [natureza, setNatureza] = useState<Natureza>("")
-  const [contaId, setContaId] = useState("")
-  const [status, setStatus] = useState("") // "" qualquer | "1" efetivado | "0" previsto
-  const [de, setDe] = useState("")
-  const [ate, setAte] = useState("")
-  const [painel, setPainel] = useState(false) // filtros avançados abertos?
+  const [filtros, setFiltros] = useState<Filtros>(SEM_FILTRO)      // o que está valendo
+  const [rascunho, setRascunho] = useState<Filtros>(SEM_FILTRO)    // o que está no painel
+  const [painel, setPainel] = useState(false)
+  const painelRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => { setPagina(1) }, [buscaAplicada, natureza, contaId, status, de, ate])
+  useEffect(() => { setPagina(1) }, [buscaAplicada, filtros])
+
+  // Painel: abre com o rascunho = o que está valendo; fecha com Esc ou clique fora (sem aplicar).
+  const abrirPainel = () => { setRascunho(filtros); setPainel(true) }
+  useEffect(() => {
+    if (!painel) return
+    const fora = (e: MouseEvent) => { if (!painelRef.current?.contains(e.target as Node)) setPainel(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setPainel(false) }
+    document.addEventListener("mousedown", fora)
+    document.addEventListener("keydown", esc)
+    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc) }
+  }, [painel])
+  const aplicar = () => { setFiltros(rascunho); setPainel(false) }
+  const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false) }
+  const edita = <K extends keyof Filtros>(k: K) => (e: { target: { value: string } }) => setRascunho((r) => ({ ...r, [k]: e.target.value }))
 
   useEffect(() => {
     let vivo = true
@@ -91,25 +107,25 @@ export default function Transacoes() {
     setErro(false)
     listTransactionsPage(pagina, POR_PAGINA, {
       q: buscaAplicada || undefined,
-      natureza: natureza || undefined,
-      contaId: contaId || undefined,
-      status: status !== "" ? Number(status) : undefined,
-      from: de || undefined,
-      to: ate || undefined,
+      natureza: filtros.natureza || undefined,
+      contaId: filtros.contaId || undefined,
+      status: filtros.status !== "" ? Number(filtros.status) : undefined,
+      valorMin: filtros.valorMin !== "" ? Number(filtros.valorMin) : undefined,
+      valorMax: filtros.valorMax !== "" ? Number(filtros.valorMax) : undefined,
+      from: filtros.de || undefined,
+      to: filtros.ate || undefined,
       apenasCaixa: true,
     })
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
       .catch(() => { if (vivo) { setErro(true); setItens([]) } })
     return () => { vivo = false }
-  }, [pagina, buscaAplicada, natureza, contaId, status, de, ate])
+  }, [pagina, buscaAplicada, filtros])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
   const grupos = useMemo(() => porDia(itens ?? []), [itens])
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
-  // Quantos filtros avançados estão ativos (a busca fica fora: ela tem o próprio campo).
-  const ativos = [natureza, contaId, status, de || ate].filter(Boolean).length
+  const ativos = ativosEm(filtros)
   const temFiltro = !!busca || ativos > 0
-  const limpar = () => { setNatureza(""); setContaId(""); setStatus(""); setDe(""); setAte("") }
 
   return (
     <div className={styles.pagina}>
@@ -132,7 +148,8 @@ export default function Transacoes() {
       </Bloco>
 
       <Bloco semRespiro>
-        {/* Barra: título à esquerda; busca + "Filtros" à direita. Os filtros avançados abrem num painel. */}
+        {/* Barra: título à esquerda; busca + "Filtros" à direita. Os filtros avançados abrem num painel
+            ancorado no botão e só valem no "Aplicar". */}
         <div className={styles.toolbar}>
           <h2 className={styles.tituloLista}>Todas as transações</h2>
           <div className={styles.controles}>
@@ -140,41 +157,60 @@ export default function Transacoes() {
               <Search size={16} strokeWidth={2.25} aria-hidden="true" />
               <input type="search" placeholder="Buscar lançamento" aria-label="Buscar lançamento" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </label>
-            <button type="button" className={styles.botaoFiltros} data-ativo={painel || ativos > 0 ? "true" : undefined}
-              aria-expanded={painel} onClick={() => setPainel((v) => !v)}>
-              <SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" /> Filtros
-              {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
-            </button>
-          </div>
-        </div>
-        {painel && (
-        <div className={styles.filtros}>
-          <div className={styles.segmentos} role="group" aria-label="Tipo de lançamento">
-            {NATUREZAS.map((n) => (
-              <button key={n.valor} type="button" className={styles.segmento} data-ativo={natureza === n.valor ? "true" : undefined} onClick={() => setNatureza(n.valor)}>
-                {n.rotulo}
+            <div className={styles.filtrosWrap} ref={painelRef}>
+              <button type="button" className={styles.botaoFiltros} data-ativo={painel || ativos > 0 ? "true" : undefined}
+                aria-expanded={painel} aria-haspopup="dialog" onClick={() => (painel ? setPainel(false) : abrirPainel())}>
+                <SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" /> Filtros
+                {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
               </button>
-            ))}
+              {painel && (
+                <div className={styles.painel} role="dialog" aria-label="Filtros">
+                  <label className={styles.campo}>
+                    <span>Tipo de lançamento</span>
+                    <select value={rascunho.natureza} onChange={edita("natureza")}>
+                      {NATUREZAS.map((n) => <option key={n.valor} value={n.valor}>{n.rotulo}</option>)}
+                    </select>
+                  </label>
+                  <label className={styles.campo}>
+                    <span>Conta</span>
+                    <select value={rascunho.contaId} onChange={edita("contaId")}>
+                      <option value="">Todas as contas</option>
+                      {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </label>
+                  <label className={styles.campo}>
+                    <span>Status</span>
+                    <select value={rascunho.status} onChange={edita("status")}>
+                      <option value="">Qualquer status</option>
+                      <option value="1">Efetivado</option>
+                      <option value="0">Previsto</option>
+                    </select>
+                  </label>
+                  <div className={styles.campo}>
+                    <span>Valor</span>
+                    <div className={styles.faixa}>
+                      <span className={styles.prefixado}><em>R$</em><input type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={edita("valorMin")} /></span>
+                      <span className={styles.ate}>até</span>
+                      <span className={styles.prefixado}><em>R$</em><input type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={edita("valorMax")} /></span>
+                    </div>
+                  </div>
+                  <div className={styles.campo}>
+                    <span>Período</span>
+                    <div className={styles.faixa}>
+                      <input type="date" aria-label="De" value={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
+                      <span className={styles.ate}>até</span>
+                      <input type="date" aria-label="Até" value={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
+                    </div>
+                  </div>
+                  <div className={styles.painelRodape}>
+                    <button type="button" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</button>
+                    <button type="button" className={styles.aplicar} onClick={aplicar}>Aplicar</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <select className={styles.campo} aria-label="Conta" value={contaId} onChange={(e) => setContaId(e.target.value)}>
-            <option value="">Todas as contas</option>
-            {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
-          <select className={styles.campo} aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Qualquer status</option>
-            <option value="1">Efetivado</option>
-            <option value="0">Previsto</option>
-          </select>
-          <div className={styles.periodo}>
-            <input type="date" className={styles.campo} aria-label="De" value={de} max={ate || undefined} onChange={(e) => setDe(e.target.value)} />
-            <span className={styles.periodoAte}>até</span>
-            <input type="date" className={styles.campo} aria-label="Até" value={ate} min={de || undefined} onChange={(e) => setAte(e.target.value)} />
-          </div>
-          {ativos > 0 && (
-            <button type="button" className={styles.limpar} onClick={limpar}><X size={14} strokeWidth={2.5} aria-hidden="true" /> Limpar</button>
-          )}
         </div>
-        )}
 
         {itens === null ? (
           <div className={styles.respiro}><Esqueleto linhas={6} altura={16} /></div>
