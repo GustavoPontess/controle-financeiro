@@ -12,7 +12,6 @@ import { estornarPagamento } from "../services/faturaService"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
 import { mensagemDeErro } from "../api/cliente"
-import { useDetalheNoCaminho } from "../layout/caminho"
 import type { Transaction } from "../types/Transaction"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
@@ -50,7 +49,6 @@ export default function Transacao() {
   const [naoEncontrada, setNaoEncontrada] = useState(false)
   const [categorias, setCategorias] = useState<Category[]>([])
   const [subcategorias, setSubcategorias] = useState<Subcategory[]>([])
-  useDetalheNoCaminho(t?.descricao)
 
   // Relê ao trocar de modo: depois de salvar, o "ver" mostra o que ficou gravado.
   useEffect(() => {

@@ -3,8 +3,7 @@
 
 /* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
 /* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */
-/* padding-top 0: a linha da marca (40px, centro em 20) fica na mesma altura da linha "Início / …" do topo. */
-.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 0 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
+.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 22px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
 /* padding-left 12: a palavra começa no mesmo x do ícone dos itens (14 + 12). */
 .marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 12px; color: var(--v2-texto); }
 .logo, .logoMini, .recolherIcone { display: inline-flex; min-width: 0; }
@@ -53,20 +52,9 @@
 
 /* Topo + conteúdo */
 .corpo { display: flex; flex-direction: column; min-width: 0; }
-/* Duas linhas fixas: "Início / …" (20px, centro em y=20 = centro da marca do menu) e o título embaixo.
-   10 + 20 + 2 + 24 + 8 = 64. O título fica sempre na linha de baixo, mesmo sem caminho (Visão geral). */
-.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: stretch; gap: 14px; height: 64px; padding: 10px 32px 8px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
-/* Título + caminho em cima ("Início / Transações / Mercado"): o caminho é pequeno e quieto. */
-.tituloBloco { display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; min-width: 0; }
-.caminho { display: flex; align-items: center; height: 20px; min-width: 0; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; }
-.nivel { display: inline-flex; align-items: center; min-width: 0; }
-.nivel:last-child { overflow: hidden; }
-.separador { padding: 0 6px; opacity: 0.6; }
-.nivelLink { color: inherit; text-decoration: none; }
-.nivelLink:hover { color: var(--v2-texto); }
-.nivelAtual { color: var(--v2-texto-2); overflow: hidden; text-overflow: ellipsis; }
-.tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topoAcoes { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 8px; }
+.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 32px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
+.tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topoAcoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 /* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
 .conteudo { flex: 1; width: 100%; max-width: 1600px; margin: 0; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
 @keyframes v2-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -86,10 +74,7 @@
   .recolher { display: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .fecharMenu { margin-left: auto; }
-  .topo { padding: 10px 16px 8px; gap: 8px; }
-  .tituloBloco { justify-content: center; }
-  .abrirMenu { align-self: center; }
+  .topo { padding: 0 16px; gap: 8px; }
   .tituloPagina { font-size: var(--v2-fs-lg); }
-  .caminho { display: none; }
   .conteudo { padding: 4px 16px 40px; }
 }
