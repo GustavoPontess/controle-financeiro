@@ -14,13 +14,13 @@ export default function FaceCartao({ bandeira, cor, tamanho = "md" }: {
   bandeira: number
   /** Cor do banco (dado do cartão, valor de runtime). Sem cor: tinta. */
   cor?: string | null
-  /** md = 44×28 (linha da lista) · lg = 64×40 (cabeçalho do cartão) */
+  /** md = 64×40 (linha da lista) · lg = 96×60 (cabeçalho do cartão) */
   tamanho?: "md" | "lg"
 }) {
   const logo = LOGO[bandeira]
   return (
     <span className={styles.face} data-tamanho={tamanho} style={cor ? { background: cor } : undefined} aria-hidden="true">
-      {logo ? <img src={logo} alt="" className={styles.logo} /> : <CreditCard size={tamanho === "lg" ? 20 : 14} strokeWidth={2} />}
+      {logo ? <img src={logo} alt="" className={styles.logo} /> : <CreditCard size={tamanho === "lg" ? 28 : 20} strokeWidth={2} />}
     </span>
   )
 }
