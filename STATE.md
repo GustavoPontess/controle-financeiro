@@ -55,7 +55,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Cadastro no v2 (2026-10-15):** #307 mergeado. Branch `feat/v2-cadastro` (PR aberto): tela `/cadastro` com as regras do servidor (senha NIST 15+, aceite LGPD nunca pré-marcado), confirmação "aguardando aprovação" sem logar, 5 testes (38 no v2). `Entrar.module.css` virou `Auth.module.css`.
 
-**Próxima ação:** mergear o PR do cadastro quando verde; bloco A — Onboarding de conta nova no v2; depois conferir Esqueci a senha/MFA no Entrar. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**Login inteiro (2026-10-15):** #308 mergeado. Branch `feat/email-smtp-login` (PR aberto): **achado** — envio de e-mail era stub de log (reset/OTP/aviso de exclusão não chegavam); agora `SmtpEmailSender` (MailKit) + Mailpit no compose (`docker compose up -d mailpit`, http://localhost:8025; `.env` local já aponta); `/redefinir-senha` no v2; Termos/Privacidade no v2. Ponta a ponta local provado. Onboarding adiado pro fim (G). 44 testes v2.
+
+**Próxima ação:** mergear o PR do login quando verde; **bloco B — dia a dia:** Categorias → Importar extrato → Reconciliação no v2. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
