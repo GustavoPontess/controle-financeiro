@@ -10,6 +10,7 @@ import Cartao from "./telas/Cartao"
 import CartaoParcelamentos from "./telas/CartaoParcelamentos"
 import NovoCartao from "./telas/NovoCartao"
 import EditarCartao from "./telas/EditarCartao"
+import PagarFatura from "./telas/PagarFatura"
 import NovaTransacao from "./telas/NovaTransacao"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
@@ -17,7 +18,6 @@ import EmConstrucao from "./telas/EmConstrucao"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
-  ["/cartoes/:id/faturas/:faturaId/pagar", "Pagar fatura", "/credit-cards"],
   ["/contas-fixas", "Contas fixas", "/assinaturas"],
   ["/relatorios", "Relatórios", "/reports"],
   ["/reconciliacao", "Reconciliação", "/reconciliacao"],
@@ -46,6 +46,7 @@ export default function App() {
         <Route path="/cartoes/:id" element={<Cartao />} />
         <Route path="/cartoes/:id/editar" element={<EditarCartao />} />
         <Route path="/cartoes/:id/parcelamentos" element={<CartaoParcelamentos />} />
+        <Route path="/cartoes/:id/faturas/:faturaId/pagar" element={<PagarFatura />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         {PENDENTES.map(([rota, titulo, atual]) => (
