@@ -65,6 +65,7 @@ export default function TrocarSenha({ aoTrocar }: {
       {ok && !aberto && <p className={styles.ok} role="status"><Check size={15} strokeWidth={2.5} aria-hidden="true" /> {ok}</p>}
       {!aberto ? (
         <div className={styles.linha}>
+          <p className={styles.texto}>Pelo menos 15 caracteres. Número e símbolo são opcionais — o que protege é o tamanho.</p>
           <Botao onClick={() => { setOk(null); setAberto(true) }}>Trocar senha</Botao>
         </div>
       ) : (

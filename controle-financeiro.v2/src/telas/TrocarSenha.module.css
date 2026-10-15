@@ -1,4 +1,4 @@
-.linha { display: flex; align-items: center; gap: 16px; }
+.linha { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
 .ok { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
