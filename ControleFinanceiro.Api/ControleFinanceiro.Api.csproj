@@ -38,4 +38,8 @@
     <PackageReference Include="Sentry.Serilog" Version="6.11.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Logo dos e-mails: vai embutido no assembly e anexado inline (cid:), sem depender de servidor de imagem. -->
+    <EmbeddedResource Include="Infrastructure\Email\logo-pontes.png" />
+  </ItemGroup>
 </Project>

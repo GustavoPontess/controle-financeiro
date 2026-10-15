@@ -23,13 +23,23 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
     }
 
     public Task EnviarAsync(string email, string token, DateTime expiresAt, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.ResetSenha(_opcoes.AppUrl, token, expiresAt), ct);
+        EnviarAsync(email, ModelosEmail.ResetSenha(_opcoes.AppUrl, email, token, expiresAt), ct);
 
     public Task EnviarCodigoAsync(string email, string codigo, TipoOtpEmail finalidade, DateTime expiraEm, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.CodigoOtp(codigo, finalidade, expiraEm), ct);
+        EnviarAsync(email, ModelosEmail.CodigoOtp(email, codigo, finalidade, expiraEm), ct);
 
     public Task EnviarAvisoExclusaoAsync(string email, DateTime marcadoEm, int diasCarencia, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.AvisoExclusao(_opcoes.AppUrl, marcadoEm, diasCarencia), ct);
+        EnviarAsync(email, ModelosEmail.AvisoExclusao(_opcoes.AppUrl, email, marcadoEm, diasCarencia), ct);
+
+    /// <summary>O logo dos e-mails (PNG embutido no assembly), anexado inline com o Content-ID do layout.</summary>
+    private static readonly Lazy<byte[]> Logo = new(() =>
+    {
+        using var s = typeof(SmtpEmailSender).Assembly.GetManifestResourceStream("ControleFinanceiro.Api.Infrastructure.Email.logo-pontes.png")
+            ?? throw new InvalidOperationException("Logo do e-mail não está embutido no assembly.");
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    });
 
     private async Task EnviarAsync(string para, MensagemEmail m, CancellationToken ct)
     {
@@ -37,7 +47,10 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
         msg.From.Add(MailboxAddress.Parse(_opcoes.Remetente));
         msg.To.Add(MailboxAddress.Parse(para));
         msg.Subject = m.Assunto;
-        msg.Body = new BodyBuilder { TextBody = m.Texto, HtmlBody = m.Html }.ToMessageBody();
+        var corpo = new BodyBuilder { TextBody = m.Texto, HtmlBody = m.Html };
+        var logo = corpo.LinkedResources.Add("logo-pontes.png", Logo.Value, new ContentType("image", "png"));
+        logo.ContentId = ModelosEmail.CidLogo;
+        msg.Body = corpo.ToMessageBody();
 
         var seguranca = _opcoes.Seguranca switch
         {

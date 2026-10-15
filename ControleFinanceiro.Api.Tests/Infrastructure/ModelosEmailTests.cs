@@ -15,20 +15,35 @@ public class ModelosEmailTests
     [Fact]
     public void ResetSenha_LinkDaTelaDoFront_ComTokenEscapado()
     {
-        var m = ModelosEmail.ResetSenha("http://localhost:5174/", "ab+c/d=", Expira);
+        var m = ModelosEmail.ResetSenha("http://localhost:5174/", "ana@teste.com", "ab+c/d=", Expira);
 
         const string link = "http://localhost:5174/redefinir-senha?token=ab%2Bc%2Fd%3D";
         Assert.Contains(link, m.Texto);
         Assert.Contains(link, m.Html);
-        Assert.Contains("1 hora", m.Texto);
+        Assert.Contains("só funciona uma vez", m.Texto);
         Assert.DoesNotContain("ab+c/d=", m.Html); // nunca o token cru no HTML
-        Assert.StartsWith("Pontes", m.Assunto);
+        Assert.Contains("Pontes", m.Assunto);
+        // Diz PRA QUAL conta é (quem tem mais de um e-mail reconhece; golpe genérico não sabe).
+        Assert.Contains("ana@teste.com", m.Texto);
+        Assert.Contains("ana@teste.com", m.Html);
+    }
+
+    [Fact]
+    public void Layout_TemLogoEmbutido_Previa_ERodapeAntiGolpe()
+    {
+        var m = ModelosEmail.ResetSenha("http://localhost:5174", "ana@teste.com", "tok", Expira);
+
+        Assert.Contains($"src=\"cid:{ModelosEmail.CidLogo}\"", m.Html);
+        Assert.Contains("alt=\"Pontes\"", m.Html);
+        Assert.Contains("Use o link em até 1 hora", m.Html); // prévia da caixa de entrada
+        Assert.Contains("nunca pede sua senha", m.Html);
+        Assert.Contains("nunca pede sua senha", m.Texto);
     }
 
     [Fact]
     public void CodigoOtp_MostraOCodigo_EDizPraQue()
     {
-        var m = ModelosEmail.CodigoOtp("482913", TipoOtpEmail.ExcluirConta, Expira);
+        var m = ModelosEmail.CodigoOtp("ana@teste.com", "482913", TipoOtpEmail.ExcluirConta, Expira);
 
         Assert.Contains("482913", m.Assunto);
         Assert.Contains("482913", m.Texto);
@@ -39,7 +54,7 @@ public class ModelosEmailTests
     [Fact]
     public void AvisoExclusao_LevaProLogin_EDizOPrazo()
     {
-        var m = ModelosEmail.AvisoExclusao("https://app.pontes.test", Expira, 30);
+        var m = ModelosEmail.AvisoExclusao("https://app.pontes.test", "ana@teste.com", Expira, 30);
 
         Assert.Contains("https://app.pontes.test/entrar", m.Texto);
         Assert.Contains("30 dias", m.Texto);
@@ -49,10 +64,11 @@ public class ModelosEmailTests
     [Fact]
     public void Html_EscapaOQueVemDeFora()
     {
-        var m = ModelosEmail.CodigoOtp("<b>x</b>", TipoOtpEmail.ExcluirConta, Expira);
+        var m = ModelosEmail.CodigoOtp("x@<i>y</i>.com", "<b>x</b>", TipoOtpEmail.ExcluirConta, Expira);
 
         Assert.DoesNotContain("<b>x</b>", m.Html);
         Assert.Contains("&lt;b&gt;x&lt;/b&gt;", m.Html);
+        Assert.DoesNotContain("<i>y</i>", m.Html);
     }
 
     [Fact]
