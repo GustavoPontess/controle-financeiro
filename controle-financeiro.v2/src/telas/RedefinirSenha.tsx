@@ -92,7 +92,7 @@ export default function RedefinirSenha() {
                   <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} autoFocus value={senha}
                     onChange={(e) => { setSenha(e.target.value); limpa("senha") }} sufixo={olho(mostrarSenha, () => setMostrarSenha((v) => !v))} />
                 </Campo>
-                {senha && !erros.senha && (
+                {!erros.senha && (
                   <ul className={styles.requisitos} aria-label="Requisitos da senha">
                     {requisitosSenha(senha).map((r) => (
                       <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>
