@@ -53,7 +53,8 @@ public class AuthService
         MfaService mfaService,
         NotificacaoAdminService notificacaoAdmin,
         IHttpContextAccessor? httpContextAccessor = null,
-        ILogger<AuthService>? logger = null)
+        ILogger<AuthService>? logger = null,
+        IVerificadorSenhaVazada? verificadorSenha = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -63,6 +64,18 @@ public class AuthService
         _httpContextAccessor = httpContextAccessor;
         // Opcional (igual ao accessor) pra não quebrar quem constrói na mão (testes); o DI injeta o real.
         _logger = logger ?? NullLogger<AuthService>.Instance;
+        // Opcional pelo mesmo motivo; sem ele (testes que constroem na mão) só a lista local vale.
+        _verificadorSenha = verificadorSenha ?? SemVerificacaoDeVazamento.Instancia;
+    }
+
+    private readonly IVerificadorSenhaVazada _verificadorSenha;
+
+    /// <summary>Senha nova (cadastro, troca, redefinição): regras + lista local, depois a checagem de vazamento.</summary>
+    private async Task ValidarSenhaNovaAsync(string senha, string? email)
+    {
+        PasswordPolicyService.ValidarOuLancar(senha, email);
+        if (await _verificadorSenha.EstaVazadaAsync(senha))
+            throw new ArgumentException(PasswordPolicyService.MensagemVazada);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -277,7 +290,7 @@ public class AuthService
         if (dto.Password != dto.ConfirmPassword)
             throw new ArgumentException("Senhas não conferem");
 
-        PasswordPolicyService.ValidarOuLancar(dto.Password);
+        await ValidarSenhaNovaAsync(dto.Password, dto.Email);
 
         // Anti-enumeração de usuário (OWASP, achado do pentest 2026-09-12): NÃO revelar se o e-mail
         // já existe. Antes lançava "Email já cadastrado" (409) → dava pra enumerar quem tem conta.
@@ -787,7 +800,7 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(dto.NovaSenha))
             throw new ArgumentException("Nova senha é obrigatória.");
 
-        PasswordPolicyService.ValidarOuLancar(dto.NovaSenha);
+        await ValidarSenhaNovaAsync(dto.NovaSenha, null);
 
         if (dto.NovaSenha != dto.ConfirmarNovaSenha)
             throw new ArgumentException("Senhas não conferem.");
@@ -886,7 +899,7 @@ public class AuthService
         if (!PasswordHasher.VerifyPassword(senhaAtual, usuario.PasswordHash))
             throw new UnauthorizedAccessException("Senha atual inválida");
 
-        PasswordPolicyService.ValidarOuLancar(novaSenha);
+        await ValidarSenhaNovaAsync(novaSenha, usuario.Email);
 
         usuario.PasswordHash = PasswordHasher.HashPassword(novaSenha);
         usuario.AtualizadoEm = DateTime.UtcNow;

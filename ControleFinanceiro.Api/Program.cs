@@ -346,6 +346,24 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
 
 builder.Services.AddHttpClient();
+// Senha vazada (Pwned Passwords, k-anonymity): só os 5 primeiros hex do SHA-1 saem; timeout curto e fail-open.
+// Fora em Testing (sem internet nos testes de integração) e com SENHA_VAZADA_CHECAGEM=off.
+var checarSenhaVazada = !builder.Environment.IsEnvironment("Testing")
+    && !string.Equals(Environment.GetEnvironmentVariable("SENHA_VAZADA_CHECAGEM"), "off", StringComparison.OrdinalIgnoreCase);
+if (checarSenhaVazada)
+{
+    builder.Services.AddHttpClient<IVerificadorSenhaVazada, PwnedPasswordsVerificador>(c =>
+    {
+        c.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+        c.Timeout = TimeSpan.FromSeconds(3);
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("Pontes/1.0");
+        c.DefaultRequestHeaders.Add("Add-Padding", "true");
+    });
+}
+else
+{
+    builder.Services.AddSingleton<IVerificadorSenhaVazada>(SemVerificacaoDeVazamento.Instancia);
+}
 builder.Services.AddEndpointsApiExplorer();
 
 // ── API Versioning ────────────────────────────────────────────────────────────

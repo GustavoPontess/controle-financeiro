@@ -43,4 +43,46 @@ public class PasswordPolicyServiceTests
     {
         Assert.Throws<ArgumentException>(() => PasswordPolicyService.ValidarOuLancar("Abc1!"));
     }
+
+    // --- Blocklist (NIST: a senha INTEIRA, não substring) e acentos ---
+
+    [Theory]
+    [InlineData("123456789012345")]      // sequência com volta (…890123…)
+    [InlineData("987654321098765")]      // descendo
+    [InlineData("abcdefghijklmnop")]     // letras em sequência
+    [InlineData("aaaaaaaaaaaaaaa")]      // um caractere repetido
+    [InlineData("senhasenhasenha")]      // pedaço repetido
+    [InlineData("MinhaSenhaForte")]      // comum (sem diferenciar maiúscula)
+    [InlineData("qwertyuiopasdfgh")]
+    public void SenhaComumOuPrevisivel_Recusa_ComOMotivo(string senha)
+    {
+        var ex = Assert.Throws<ArgumentException>(() => PasswordPolicyService.ValidarOuLancar(senha));
+        Assert.Equal(PasswordPolicyService.MensagemComum, ex.Message);
+    }
+
+    [Fact]
+    public void SenhaQueSoContemPedacoComum_Passa_PorqueComparaASenhaInteira()
+    {
+        Assert.Empty(PasswordPolicyService.Validar("meu cachorro 123456789 late"));
+        Assert.Empty(PasswordPolicyService.Validar("senhasenhasenhaX"));
+    }
+
+    [Fact]
+    public void OProprioEmail_Recusa()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => PasswordPolicyService.ValidarOuLancar("ana.souza.silva@teste.com", "Ana.Souza.Silva@teste.com"));
+        Assert.Equal(PasswordPolicyService.MensagemEmail, ex.Message);
+        Assert.Throws<ArgumentException>(() => PasswordPolicyService.ValidarOuLancar("anasouzasilva123", "anasouzasilva123@teste.com"));
+        Assert.Empty(PasswordPolicyService.Validar("uma frase bem comprida", "ana@teste.com"));
+    }
+
+    [Fact]
+    public void Tamanho_ContaCaractereDeVerdade_EmojiEAcentoDecomposto()
+    {
+        // 14 caracteres visíveis com emoji (2 unidades UTF-16 cada) — antes passava como 15+.
+        Assert.Contains(PasswordPolicyService.Validar("🔒🔒🔒🔒🔒🔒🔒🔒🔒🔒🔒🔒🔒🔒"), e => e.Contains("Mínimo 15"));
+        // "é" decomposto (e + acento) conta 1 depois do NFC.
+        var decomposta = "cafécafécaféxyz".Normalize(System.Text.NormalizationForm.FormD);
+        Assert.Equal(15, PasswordPolicyService.Tamanho(decomposta));
+    }
 }

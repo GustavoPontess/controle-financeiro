@@ -10,7 +10,7 @@ import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import { redefinirSenha } from "../services/senhaService"
 import { mensagemDeErro } from "../api/cliente"
-import { requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
+import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
 
 type Erros = Partial<Record<"senha" | "confirmar", string>>
@@ -41,7 +41,7 @@ export default function RedefinirSenha() {
     if (Object.keys(e).length > 0) return
     setEnviando(true)
     try { await redefinirSenha(token, senha, confirmar); setPronto(true) }
-    catch (err) { setErro(mensagemDeErro(err)) }
+    catch (err) { const msg = mensagemDeErro(err); if (ehErroDaSenha(msg)) setErros({ senha: msg }); else setErro(msg) }
     finally { setEnviando(false) }
   }
 

@@ -8,11 +8,26 @@ import sessaoService from "../../services/sessaoService"
 import dispositivoService from "../../services/dispositivoService"
 import SegurancaDispositivos from "../../telas/SegurancaDispositivos"
 import { quandoLocal, resumirAparelho } from "../../dominio/dispositivo"
+import { ehErroDaSenha, requisitosSenha, tamanhoSenha } from "../../dominio/senha"
 
 const CHROME_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
 const SAFARI_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
 const ses = vi.mocked(sessaoService)
 const dis = vi.mocked(dispositivoService)
+
+describe("dominio/senha", () => {
+  it("conta como o servidor: emoji conta 1, acento decomposto conta 1", () => {
+    expect(tamanhoSenha("🔒".repeat(14))).toBe(14)
+    expect(requisitosSenha("🔒".repeat(14))[0].ok).toBe(false)
+    expect(tamanhoSenha("café".normalize("NFD"))).toBe(4)
+  })
+  it("reconhece recusa do servidor que é sobre a senha", () => {
+    expect(ehErroDaSenha("Essa senha já vazou em outro site. Escolha outra.")).toBe(true)
+    expect(ehErroDaSenha("Senha muito comum. Escolha outra.")).toBe(true)
+    expect(ehErroDaSenha("Não use o seu e-mail como senha.")).toBe(true)
+    expect(ehErroDaSenha("Muitas tentativas.")).toBe(false)
+  })
+})
 
 describe("dominio/dispositivo", () => {
   it("resume o User-Agent em navegador + sistema e diz se é celular", () => {

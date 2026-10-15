@@ -8,7 +8,7 @@ import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
-import { requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
+import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./TrocarSenha.module.css"
 
 type Erros = Partial<Record<"atual" | "nova" | "confirmar", string>>
@@ -51,6 +51,7 @@ export default function TrocarSenha({ aoTrocar }: {
     } catch (err) {
       const msg = mensagemDeErro(err)
       if (/senha atual/i.test(msg)) setErros({ atual: "Senha atual errada." })
+      else if (ehErroDaSenha(msg)) setErros({ nova: msg })
       else setErro(msg)
     } finally {
       setEnviando(false)

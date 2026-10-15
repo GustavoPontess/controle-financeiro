@@ -13,7 +13,7 @@ import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { APP_ATUAL } from "../config"
-import { requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
+import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
 
 const MAX_NOME = 200
@@ -75,7 +75,9 @@ export default function Cadastro() {
       const r = await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar })
       setEnviado(r.mensagem)
     } catch (err) {
-      setErro(mensagemDeErro(err))
+      const msg = mensagemDeErro(err)
+      if (ehErroDaSenha(msg)) setErros({ senha: msg })
+      else setErro(msg)
     } finally {
       setEnviando(false)
     }

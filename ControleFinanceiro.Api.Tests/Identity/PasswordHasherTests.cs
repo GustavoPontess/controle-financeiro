@@ -146,4 +146,18 @@ public class PasswordHasherTests
         Assert.False(PasswordHasher.VerifyPassword("x", "ARGON2ID$so$tres$campos"));
         Assert.False(PasswordHasher.VerifyPassword("x", "@@@nao-base64@@@"));
     }
+
+    [Fact]
+    public void Acento_DigitadoComposto_OuDecomposto_ConfereIgual()
+    {
+        const string composta = "minha senha com ação";
+        var decomposta = composta.Normalize(NormalizationForm.FormD);
+        Assert.NotEqual(composta, decomposta); // bytes diferentes, mesma senha pra quem digita
+
+        var hash = PasswordHasher.HashPassword(decomposta);
+
+        Assert.True(PasswordHasher.VerifyPassword(composta, hash));
+        Assert.True(PasswordHasher.VerifyPassword(decomposta, hash));
+        Assert.False(PasswordHasher.VerifyPassword("minha senha com acao", hash));
+    }
 }
