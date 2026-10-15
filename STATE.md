@@ -47,7 +47,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Dados de demonstração (2026-10-15):** `DemoSeeder` (PR #303) enche a conta de exemplo Gabriel Dev + Marina (família) via services — contas fixas em todos os estados, 2º cartão + só débito, parcelamentos, notificações. Liga com `SEED_DEMO=true` no `.env` local (já ligado). Ver: sair → painel DEV do login → Gabriel Dev. **Toda tela nova do v2 ganha um bloco nele.** Sino do v2 agora abre painel com as últimas + "Ver todas".
 
-**Próxima ação:** mergear #303 quando o CI ficar verde; depois testes no v2 + PR `feat/front-v2` → `main` (combinado) e bloco A (Bancos/contas). PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**Testes no v2 + v2 na main (2026-10-15):** vitest no v2 (16 testes); #303 (DemoSeeder) mergeado; **#304** (pasta do v2 + job de CI) e **#305** (excluir conta não apaga histórico: recusa + FK Restrict) abertos, CI rodando. Worktrees temporários: `../controle-financeiro-int` (branch do #304) e `../controle-financeiro-fix` (branch do #305) — apagar depois do merge. Depois do #304: o v2 passa a ser desenvolvido a partir da `main` (checkout principal), o worktree `../controle-financeiro-v2` (`feat/front-v2`, com o lab de cartões do v1) aposenta.
+
+**Próxima ação:** mergear #304 e #305 quando verdes; bloco A — Bancos/contas no v2 (com arquivar conta no back). PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
