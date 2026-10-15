@@ -43,7 +43,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Contas fixas no v2 (2026-10-15):** lista, página, novo/editar (mesmo formulário da transação), só a próxima, pausar/retomar/cancelar/excluir — testado de ponta a ponta. API: `GET /recorrentes/{id}` na branch do #301.
 
-**Próxima ação:** próxima frente do v2 (bancos/contas, relatórios, ações de família na transação…) — decidir com o Gustavo. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**DECISÃO 2026-10-15: o beta sai no v2; o v2 vira o front principal e o v1 vai pra documentação.** Plano em blocos (A entrar e começar · B dia a dia · C família/empréstimos · D completar + exclusão de conta LGPD · E termos/privacidade · F admin · G virar principal) no ROADMAP, item 0 da Fila. Toda tela nova do v2 sai com teste. Checagem de prazo na sexta 24/10.
+
+**Próxima ação:** bloco A do plano — começar por Bancos/contas no v2. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
