@@ -167,6 +167,7 @@ public class CartaoCreditoServiceTests
             Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
             DataInicio = DateTime.UtcNow.AddDays(-30), DataFechamento = DateTime.UtcNow,
             DataVencimento = DateTime.UtcNow.AddDays(7), CriadoPor = usuarioId,
+            ValorPago = 100, EstadoPagamento = EstadoPagamentoFatura.Pago,
         };
         var compra = new Transacao
         {
@@ -205,6 +206,73 @@ public class CartaoCreditoServiceTests
         // Listagem não mostra o cartão soft-deleted.
         var lista = await svc.ListarAsync(usuarioId);
         Assert.Empty(lista);
+    }
+
+    [Fact]
+    public async Task DeletarAsync_FaturaComRestante_RecusaEMantemCartao()
+    {
+        var ctx = CreateContext();
+        var svc = new CartaoCreditoService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Nubank", TemCredito = true, LimiteTotal = 5000, CriadoPor = usuarioId, Ativo = true };
+        // Fatura aberta com uma compra viva e nada pago: o cartão deve.
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
+            DataInicio = DateTime.UtcNow.AddDays(-10), DataFechamento = DateTime.UtcNow.AddDays(20),
+            DataVencimento = DateTime.UtcNow.AddDays(27), CriadoPor = usuarioId,
+        };
+        var compra = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Compra X", Valor = 100, Tipo = TipoTransacao.Despesa,
+            CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.Add(fatura);
+        ctx.Transacoes.Add(compra);
+        await ctx.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(cartao.Id, usuarioId));
+        Assert.Contains("fatura em aberto", ex.Message);
+
+        // Nada mudou: cartão e compra continuam vivos.
+        Assert.True((await ctx.CartoesCredito.FindAsync(cartao.Id))!.Ativo);
+        Assert.True((await ctx.Transacoes.FindAsync(compra.Id))!.Ativo);
+    }
+
+    [Fact]
+    public async Task DeletarAsync_ParcelaPendenteEmFaturaFutura_Recusa()
+    {
+        var ctx = CreateContext();
+        var svc = new CartaoCreditoService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Nubank", TemCredito = true, LimiteTotal = 5000, CriadoPor = usuarioId, Ativo = true };
+        // Sem compra à vista nenhuma; só uma parcela pendente numa fatura futura — também é dívida.
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
+            DataInicio = DateTime.UtcNow.AddDays(20), DataFechamento = DateTime.UtcNow.AddDays(50),
+            DataVencimento = DateTime.UtcNow.AddDays(57), CriadoPor = usuarioId,
+        };
+        var parcelamento = new Parcelamento
+        {
+            Id = Guid.NewGuid(), Descricao = "TV", CartaoCreditoId = cartao.Id, QuantidadeParcelas = 2,
+            ValorTotal = 200, DataCompra = DateTime.UtcNow, CriadoPor = usuarioId, Ativo = true,
+        };
+        var parcela = new ParcelaTransacao
+        {
+            Id = Guid.NewGuid(), ParcelamentoId = parcelamento.Id, FaturaId = fatura.Id, Numero = 2, QuantidadeTotal = 2,
+            DataVencimento = fatura.DataVencimento, Valor = 100, Status = StatusParcela.Pendente,
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.Add(fatura);
+        ctx.Parcelamentos.Add(parcelamento);
+        ctx.ParcelasTransacao.Add(parcela);
+        await ctx.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(cartao.Id, usuarioId));
+        Assert.True((await ctx.CartoesCredito.FindAsync(cartao.Id))!.Ativo);
     }
 
     [Fact]

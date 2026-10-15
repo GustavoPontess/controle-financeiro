@@ -137,6 +137,18 @@ public class CartaoCreditoService(AppDbContext context)
         var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId && c.Ativo);
         if (cartao is null) return false;
 
+        // Cartão devendo não sai: fatura com restante (aberta com lançamento, fechada sem quitar ou parcela
+        // futura — toda parcela mora numa fatura) é dinheiro que ainda vai sair da conta. Excluir só escondia
+        // o cartão e desativava as compras: a dívida sumia da tela e do controle (incidente 2026-10-15).
+        // Mesmo restante da tela e do pagamento (RegrasFinanceiras), nunca o rótulo EstadoPagamento.
+        var faturas = await _context.Faturas
+            .Where(f => f.CartaoCreditoId == id)
+            .Include(f => f.Transacoes)
+            .Include(f => f.ParcelasTransacao)
+            .ToListAsync();
+        if (faturas.Any(f => RegrasFinanceiras.ValorRestanteFatura(f) > 0))
+            throw new InvalidOperationException("Este cartão tem fatura em aberto. Pague a fatura ou cancele os lançamentos antes de excluir.");
+
         // Soft-delete preserva histórico (auditoria, relatórios pretéritos).
         // - Cartão: Ativo=false → some da listagem mas registros vinculados continuam acessíveis.
         // - Compras feitas no cartão: Ativo=false → somem do extrato/relatório atual.
