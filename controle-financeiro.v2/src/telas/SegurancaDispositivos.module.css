@@ -1,0 +1,18 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.vazio { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-3); }
+
+/* Linhas: ícone · aparelho + detalhe · ação. Separadas por fio, sem cartão dentro de cartão. */
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--v2-linha); }
+.linha:first-child { border-top: 0; padding-top: 0; }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); }
+.texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nome { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: var(--v2-fs-md); font-weight: 500; }
+.sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rodape { display: flex; justify-content: flex-end; padding-top: 4px; }
+
+@media (max-width: 900px) {
+  .linha { grid-template-columns: 36px minmax(0, 1fr); }
+  .linha > button { grid-column: 2; justify-self: start; }
+  .rodape > * { flex: 1; }
+}

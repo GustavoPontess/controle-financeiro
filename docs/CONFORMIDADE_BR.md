@@ -50,6 +50,7 @@ status: ATIVO
 - **Adicionar logs / coletar dado novo** → LGPD (minimização) + OWASP Logging.
 - **Planejar lançamento (`1.0.0`)** → checklist do gate no `ROADMAP.md` (todas as fontes acima).
 - **Pensar em mover dinheiro / Pix / integrar banco** → BACEN + Open Finance/FAPI (gatilho que muda TUDO — vira entidade regulada).
+- **Pensar em receber/processar pagamento com cartão** (ex.: cobrar o plano Família/Contador) → **PCI-DSS** (norma das bandeiras). Regra prática: **nunca** deixar o número do cartão passar pelo nosso servidor — usar gateway com página/campo hospedado e tokenização (Stripe, Pagar.me, Mercado Pago…), o que reduz o escopo ao questionário mais simples (SAQ A). Revisar a política de senha das contas **da equipe** que acessam o ambiente de pagamento (o PCI ainda pede letras + números lá; a dos clientes segue o NIST). *Anotado 2026-10-15 a partir de conhecimento geral — conferir a versão vigente do PCI-DSS na fonte (pcisecuritystandards.org) quando o gatilho disparar.*
 
 ## Status da nossa pesquisa
 - ✅ Técnico (senha/reset/token/CSRF/API) verificado por fonte primária → `docs/SEGURANCA_BEST_PRACTICES.md`.

@@ -183,7 +183,7 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair }: {
         aberto={excluindo}
         titulo="Excluir transação?"
         texto={t.ehTransferencia
-          ? <>{t.descricao} · {formatMoney(t.valor)} — <strong>as duas pernas da transferência</strong> saem juntas.</>
+          ? <>{t.descricao} · {formatMoney(t.valor)}. <strong>As duas pernas da transferência</strong> saem juntas.</>
           : <>{t.descricao} · {formatMoney(t.valor)}</>}
         rotuloConfirmar="Excluir"
         perigo

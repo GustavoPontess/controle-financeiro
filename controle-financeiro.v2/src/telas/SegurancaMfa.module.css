@@ -1,0 +1,28 @@
+.titulo { display: inline-flex; align-items: center; gap: 8px; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.ok { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
+.texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
+.texto strong { color: var(--v2-texto); }
+.linha { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+.configurar { display: flex; flex-direction: column; gap: 16px; }
+.passos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
+/* QR sempre em fundo branco (o leitor do celular precisa do contraste), também no tema escuro. */
+.qrLinha { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.qr { display: block; padding: 8px; border-radius: var(--v2-r-sm); background: #FFFFFF; }
+.chaveBloco { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); }
+.chave { max-width: 100%; padding: 8px 10px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--v2-fs-sm); letter-spacing: 0.06em; overflow-wrap: anywhere; }
+
+.form { display: flex; flex-direction: column; gap: 18px; max-width: 360px; }
+.acoes { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.form .acoes { justify-content: flex-start; }
+
+.codigos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.codigos code { display: block; padding: 8px 10px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--v2-fs-sm); letter-spacing: 0.08em; text-align: center; }
+
+@media (max-width: 900px) {
+  .linha { flex-direction: column; align-items: stretch; }
+  .form { max-width: none; }
+  .acoes > * { flex: 1; }
+}

@@ -25,7 +25,7 @@ export default function EditarConta() {
       .then(([c, b]) => {
         if (!vivo) return
         if (c.isCarteira) { setErroCarga("A carteira não se edita."); return }
-        if (c.encerradaEm) { setErroCarga("Conta encerrada não se edita — reabra antes."); return }
+        if (c.encerradaEm) { setErroCarga("Conta encerrada não se edita. Reabra antes."); return }
         setConta(c); setBancos(b)
       })
       .catch(() => { if (vivo) setErroCarga("Não foi possível carregar a conta. Recarregue a página.") })

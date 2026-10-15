@@ -104,8 +104,20 @@ builder.Services.AddScoped<RegistroAcessoService>();
 builder.Services.AddScoped<NotificacaoAdminService>();
 builder.Services.AddScoped<EmailOtpService>();
 builder.Services.AddScoped<MinhaContaService>();
-builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
-builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
+// E-mail: com SMTP_HOST no .env manda de verdade (Mailpit em dev, provedor em produção); sem ele, stub de log.
+var smtp = ControleFinanceiro.Api.Infrastructure.Email.SmtpOpcoes.Ler();
+builder.Services.AddSingleton(smtp);
+if (smtp.Ativo)
+{
+    builder.Services.AddScoped<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>();
+    builder.Services.AddScoped<IContaEmailSender>(sp => sp.GetRequiredService<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>());
+    builder.Services.AddScoped<IPasswordResetEmailSender>(sp => sp.GetRequiredService<ControleFinanceiro.Api.Infrastructure.Email.SmtpEmailSender>());
+}
+else
+{
+    builder.Services.AddScoped<IContaEmailSender, LoggingContaEmailSender>();
+    builder.Services.AddScoped<IPasswordResetEmailSender, LoggingPasswordResetEmailSender>();
+}
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
 builder.Services.AddScoped<CsrfTokenService>();
@@ -334,6 +346,24 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
 
 builder.Services.AddHttpClient();
+// Senha vazada (Pwned Passwords, k-anonymity): só os 5 primeiros hex do SHA-1 saem; timeout curto e fail-open.
+// Fora em Testing (sem internet nos testes de integração) e com SENHA_VAZADA_CHECAGEM=off.
+var checarSenhaVazada = !builder.Environment.IsEnvironment("Testing")
+    && !string.Equals(Environment.GetEnvironmentVariable("SENHA_VAZADA_CHECAGEM"), "off", StringComparison.OrdinalIgnoreCase);
+if (checarSenhaVazada)
+{
+    builder.Services.AddHttpClient<IVerificadorSenhaVazada, PwnedPasswordsVerificador>(c =>
+    {
+        c.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+        c.Timeout = TimeSpan.FromSeconds(3);
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("Pontes/1.0");
+        c.DefaultRequestHeaders.Add("Add-Padding", "true");
+    });
+}
+else
+{
+    builder.Services.AddSingleton<IVerificadorSenhaVazada>(SemVerificacaoDeVazamento.Instancia);
+}
 builder.Services.AddEndpointsApiExplorer();
 
 // ── API Versioning ────────────────────────────────────────────────────────────

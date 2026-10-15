@@ -47,8 +47,11 @@ public static class PasswordHasher
         return string.IsNullOrEmpty(raw) ? null : Encoding.UTF8.GetBytes(raw);
     }
 
+    /// <summary>Gera o hash da senha já na forma canônica (NFC — NIST SHOULD): "ç" digitado como 1 ou 2
+    /// caracteres (teclados/sistemas diferentes) vira a mesma senha.</summary>
     public static string HashPassword(string password)
     {
+        password = password.Normalize(System.Text.NormalizationForm.FormC);
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
         var pepper = Pepper();
         var hash = Argon2Hash(password, salt, knownSecret: pepper);
@@ -62,14 +65,20 @@ public static class PasswordHasher
             Convert.ToBase64String(hash));
     }
 
+    /// <summary>Confere na forma canônica (NFC). Hash gravado antes da normalização com a forma decomposta
+    /// ainda confere: se a NFC não bate e o texto digitado era diferente dela, tenta o texto como veio.</summary>
     public static bool VerifyPassword(string password, string stored)
     {
         if (string.IsNullOrEmpty(stored))
             return false;
 
-        return stored.StartsWith(Argon2Prefix + "$", StringComparison.Ordinal)
-            ? VerifyArgon2(password, stored)
-            : VerifyLegacyPbkdf2(password, stored);
+        var nfc = password.Normalize(System.Text.NormalizationForm.FormC);
+        if (Verificar(nfc, stored)) return true;
+        return !string.Equals(nfc, password, StringComparison.Ordinal) && Verificar(password, stored);
+
+        static bool Verificar(string senha, string hash) => hash.StartsWith(Argon2Prefix + "$", StringComparison.Ordinal)
+            ? VerifyArgon2(senha, hash)
+            : VerifyLegacyPbkdf2(senha, hash);
     }
 
     /// <summary>

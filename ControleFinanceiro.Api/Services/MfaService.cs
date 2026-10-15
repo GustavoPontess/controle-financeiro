@@ -122,7 +122,25 @@ public class MfaService
             Ativo = usuario.MfaAtivo,
             AtivadoEm = usuario.MfaAtivadoEm,
             BackupCodesRestantes = restantes,
+            MostrarConvite = !usuario.MfaAtivo && !usuario.MfaConviteDispensado
+                && (usuario.MfaConviteAdiadoAte is null || usuario.MfaConviteAdiadoAte <= DateTime.UtcNow),
         };
+    }
+
+    /// <summary>Quanto tempo o "agora não" do convite de MFA segura antes de perguntar de novo.</summary>
+    public const int DiasAdiarConvite = 30;
+
+    /// <summary>
+    /// A pessoa respondeu ao convite de ativar o MFA depois do login: "não perguntar mais" dispensa de vez;
+    /// "agora não" adia <see cref="DiasAdiarConvite"/> dias. Fica no servidor (vale em todo dispositivo).
+    /// </summary>
+    public async Task ResponderConviteAsync(Guid usuarioId, bool nuncaMais)
+    {
+        var usuario = await _context.Usuarios.FindAsync(usuarioId)
+            ?? throw new KeyNotFoundException("Usuário não encontrado");
+        if (nuncaMais) usuario.MfaConviteDispensado = true;
+        else usuario.MfaConviteAdiadoAte = DateTime.UtcNow.AddDays(DiasAdiarConvite);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>Valida o código contra o TOTP ativo OU um backup code não usado (e marca o

@@ -1962,6 +1962,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("MfaAtivo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("MfaConviteAdiadoAte")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("MfaConviteDispensado")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("MfaSecretoCriptografado")
                         .HasColumnType("text");
 

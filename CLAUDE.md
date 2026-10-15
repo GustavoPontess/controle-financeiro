@@ -19,6 +19,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
 - **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
+- **E-mail:** SMTP via MailKit (`Infrastructure/Email/SmtpEmailSender`, templates em `ModelosEmail`), ligado por `SMTP_HOST` no `.env`; sem ele, stub que loga (dev/CI). Dev: **Mailpit** no `docker-compose.yml` (`docker compose up -d mailpit`, caixa em http://localhost:8025). Links dos e-mails usam `APP_URL` (raiz do front v2). Log nunca leva destinatário, token nem código
 - **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
 - **Backlog ativo:** ver `ROADMAP.md` — features dos achados de concorrentes (Lotes 1-5) + fosso família. Estado granular em `STATE.md`
 
@@ -27,6 +28,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 ### Backend (ControleFinanceiro.Api/)
 ```powershell
 docker compose up -d postgres # Sobe o Postgres de dev (rodar uma vez)
+docker compose up -d mailpit  # Caixa de e-mail local (recuperar senha etc.) — http://localhost:8025
 dotnet restore
 dotnet build
 dotnet run                    # API at http://localhost:5293, Swagger at /swagger
@@ -123,6 +125,7 @@ npm run lint
 - **Idempotência** obrigatória em endpoints transacionais via header `Idempotency-Key`. **Padrão novo (#268, pagar fatura; também estorno, marco de reconciliação e criar conta fixa):** tabela `RegistroIdempotencia` com índice **único** (usuário + operação + chave), gravada no **mesmo** `SaveChanges` da operação; replay com os mesmos dados devolve o resultado original, com outros dados → 409. Fluxos novos seguem esse padrão — o `BuscarPorIdempotencyKeyAsync` (busca `Contains` no JSON do `FinancialEventLog`, usado por Parcelamento, ParcelaTransacao, Acerto e Empréstimo) é legado e deixa passar duas requisições simultâneas.
 - **Concorrência otimista:** `Fatura.Versao` e `Recorrente.Versao` são o `xmin` do Postgres (`.IsRowVersion()`); `DbUpdateConcurrencyException` → 409. Conta fixa: no máximo uma ocorrência viva por período (`Transacao.Competencia` + índice único parcial) — nunca deduplicar ocorrência por data. Job que salva lote de faturas refaz uma a uma no conflito (ver `FaturaAtrasoJob`) — um pagamento no meio não pode travar o lote de todos os usuários.
 - **`FinancialEventLog`** registra mudanças de saldo/limite — usar em qualquer operação que afete saldo
+- **Senha (NIST SP 800-63B rev4):** 15–128 caracteres (code points, NFC), **sem** regra de composição (proibido exigir maiúscula/número/símbolo), recusa comum/sequência/repetição/e-mail (`PasswordPolicyService`) e **vazada** (`IVerificadorSenhaVazada` → Pwned Passwords, k-anonymity, fail-open). Toda senha nova passa por `AuthService.ValidarSenhaNovaAsync` — nunca chamar só o `PasswordPolicyService`. Hash/verify normalizam NFC.
 - **Tipos de conta (`TipoConta`):** a pessoa cria Corrente, Poupança, Dinheiro e Investimento (6); Cartão (3) e Empréstimo (5) são legado com entidade própria — `ContaService` recusa. `IsCarteira` é SÓ a conta padrão do cadastro (nasce `Dinheiro`, migration `CarteiraTipoDinheiro` consertou as antigas gravadas como poupança): nunca derivar do tipo nem mudar na edição — "Dinheiro" extra (cofrinho) é conta comum.
 - **Dono do recurso nas escritas:** toda escrita que recebe id de recurso vindo do cliente (conta, cartão, categoria, subcategoria) valida o dono via `Services/DonoRecursos.cs` antes de gravar — de outro usuário ou inexistente → 404. Filtrar a leitura por `UsuarioId` não basta.
 - **API nega por padrão:** `FallbackPolicy` exige usuário autenticado; endpoint público declara `[AllowAnonymous]` explicitamente, nunca "sem atributo".

@@ -1,0 +1,13 @@
+/* Mesma anatomia do item do menu principal (V2Layout): altura fixa, ativa com superfície + sombra. */
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: var(--v2-r-sm); font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto-2); text-decoration: none; white-space: nowrap; transition: background 0.12s, color 0.12s; }
+.item:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
+.item[aria-current="page"], .item[aria-current="page"]:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
+.item svg { flex-shrink: 0; }
+
+@media (max-width: 900px) {
+  .nav { flex-direction: row; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .item { height: 36px; flex-shrink: 0; border: 1px solid var(--v2-linha); }
+  .item[aria-current="page"] { border-color: transparent; }
+}

@@ -70,6 +70,45 @@ public class MfaServiceTests : IDisposable
 
     // ── Ativação ────────────────────────────────────────────────────────────────
 
+    // --- Convite "Proteja sua conta" (opt-in: só convida, nunca obriga) ---
+
+    [Fact]
+    public async Task Convite_MfaDesligado_Mostra_AgoraNaoAdia30Dias_NuncaMaisDispensa()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "convite@test.com", "SenhaForte123!@#");
+        var mfa = new MfaService(ctx);
+
+        Assert.True((await mfa.ObterStatusAsync(u.Id)).MostrarConvite);
+
+        await mfa.ResponderConviteAsync(u.Id, nuncaMais: false);
+        Assert.False((await mfa.ObterStatusAsync(u.Id)).MostrarConvite);
+        var adiado = (await ctx.Usuarios.FindAsync(u.Id))!.MfaConviteAdiadoAte;
+        Assert.InRange(adiado!.Value, DateTime.UtcNow.AddDays(29), DateTime.UtcNow.AddDays(31));
+
+        // Passou o prazo: volta a convidar.
+        u.MfaConviteAdiadoAte = DateTime.UtcNow.AddMinutes(-1);
+        await ctx.SaveChangesAsync();
+        Assert.True((await mfa.ObterStatusAsync(u.Id)).MostrarConvite);
+
+        // "Não perguntar mais": nunca mais, mesmo sem prazo.
+        await mfa.ResponderConviteAsync(u.Id, nuncaMais: true);
+        u.MfaConviteAdiadoAte = null;
+        await ctx.SaveChangesAsync();
+        Assert.False((await mfa.ObterStatusAsync(u.Id)).MostrarConvite);
+    }
+
+    [Fact]
+    public async Task Convite_ComMfaAtivo_NuncaMostra()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "convite-ativo@test.com", "SenhaForte123!@#");
+        var mfa = new MfaService(ctx);
+        await AtivarMfaAsync(mfa, u.Id);
+
+        Assert.False((await mfa.ObterStatusAsync(u.Id)).MostrarConvite);
+    }
+
     [Fact]
     public async Task IniciarAtivacao_geraSecretEQrCode_masNaoAtivaAinda()
     {

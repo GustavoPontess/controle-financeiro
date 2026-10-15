@@ -2,14 +2,15 @@
 // escolher), e-mail + senha (mostrar/ocultar), manter conectado, verificação em duas etapas (MFA, confiar no
 // dispositivo), conta em carência de exclusão (reativar), criar conta, termos, e o painel DEV de contas
 // de teste (só em desenvolvimento). Quem já entrou no app atual nem vê esta tela (cookie compartilhado).
-import { useEffect, useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
 import Logo from "../componentes/Logo"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
+import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { APP_ATUAL } from "../config"
@@ -26,6 +27,7 @@ const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 export default function Entrar() {
   const { entrar, verificarMfa, reativar, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
+  const { state } = useLocation()
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -48,7 +50,8 @@ export default function Entrar() {
   const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
   const [reativarErro, setReativarErro] = useState<string | null>(null)
   // "Esqueci a senha": pede o e-mail e a API manda o link (resposta igual pra qualquer e-mail).
-  const [esqueci, setEsqueci] = useState(false)
+  // Chegar com `state.esqueci` (da tela de redefinir senha, link vencido) abre direto no pedido do link.
+  const [esqueci, setEsqueci] = useState(() => !!(state as { esqueci?: boolean } | null)?.esqueci)
   const [esqueciEnviado, setEsqueciEnviado] = useState(false)
 
   // Painel DEV: contas reais do banco local (endpoint só de dev); clique preenche.
@@ -58,7 +61,9 @@ export default function Entrar() {
 
   // `?previa` (só em dev): mostra a tela mesmo logado, pra olhar o visual sem precisar sair da conta.
   const previa = import.meta.env.DEV && new URLSearchParams(window.location.search).has("previa")
-  useEffect(() => { if (!carregando && autenticado && !previa) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
+  // Entrando agora: quem decide pra onde vai é o pós-login (convite de MFA ou Visão geral), não o "já logado".
+  const entrando = useRef(false)
+  useEffect(() => { if (!carregando && autenticado && !previa && !entrando.current) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
   useEffect(() => { rosterService.listar().then(setRoster).catch(() => setRoster([])) }, [])
   // Painel DEV: se a API ainda está subindo (reinício em dev), o proxy responde erro — tenta de novo a cada
   // 3s por até 1 min, em vez de ficar sem painel até recarregar a página.
@@ -91,10 +96,17 @@ export default function Entrar() {
     setRoster((r) => r.filter((c) => c.usuarioId !== usuarioId))
   }
 
-  const tratarResultado = (r: Awaited<ReturnType<typeof entrar>>) => {
-    if (r.tipo === "mfa") setMfaChallenge(r.challengeToken)
-    else if (r.tipo === "exclusao") setMarcada({ dias: r.diasRestantes })
-    else navigate("/dashboard", { replace: true })
+  // Entrou: com MFA desligado e convite valendo, passa por "Proteja sua conta" antes da Visão geral.
+  const depoisDeEntrar = async () => {
+    let convite = false
+    try { convite = (await mfaService.status()).mostrarConvite } catch { /* sem convite */ }
+    navigate(convite ? "/proteja-sua-conta" : "/dashboard", { replace: true })
+  }
+
+  const tratarResultado = async (r: Awaited<ReturnType<typeof entrar>>) => {
+    if (r.tipo === "mfa") { entrando.current = false; setMfaChallenge(r.challengeToken) }
+    else if (r.tipo === "exclusao") { entrando.current = false; setMarcada({ dias: r.diasRestantes }) }
+    else await depoisDeEntrar()
   }
 
   const enviar = async (e: FormEvent) => {
@@ -107,8 +119,9 @@ export default function Entrar() {
     setErros(novos)
     if (Object.keys(novos).length) return
     setEnviando(true)
-    try { tratarResultado(await entrar(email.trim(), senha, manter)) }
-    catch (err) { setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
+    entrando.current = true
+    try { await tratarResultado(await entrar(email.trim(), senha, manter)) }
+    catch (err) { entrando.current = false; setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
     finally { setEnviando(false) }
   }
 
@@ -138,8 +151,9 @@ export default function Entrar() {
     try {
       await reativar(email.trim(), senha)
       setMarcada(null)
-      tratarResultado(await entrar(email.trim(), senha, manter))
-    } catch (err) { setReativarErro(err instanceof Error ? err.message : "Não foi possível reativar a conta.") }
+      entrando.current = true
+      await tratarResultado(await entrar(email.trim(), senha, manter))
+    } catch (err) { entrando.current = false; setReativarErro(err instanceof Error ? err.message : "Não foi possível reativar a conta.") }
     finally { setEnviando(false) }
   }
 
@@ -153,7 +167,7 @@ export default function Entrar() {
           <p className={styles.frase}>Finanças em família, <span className={styles.fraseSuave}>sem briga.</span></p>
           <p className={styles.lead}>Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.</p>
           <ul className={styles.beneficios}>
-            {["Rateio explícito — 50/50, % ou valor fixo", "Aprovação de despesa em 1 toque", "Conexão com Open Finance (em breve)"].map((t) => (
+            {["Rateio explícito: 50/50, % ou valor fixo", "Aprovação de despesa em 1 toque", "Conexão com Open Finance (em breve)"].map((t) => (
               <li key={t}><span className={styles.check}><Check size={12} strokeWidth={3} aria-hidden="true" /></span>{t}</li>
             ))}
           </ul>
@@ -252,7 +266,7 @@ export default function Entrar() {
           {passo === "mfa" && (
             <form className={styles.form} onSubmit={enviarMfa} noValidate>
               <Campo rotulo="Código" erro={mfaErro}>
-                <Entrada type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="000000" value={mfaCodigo}
+                <Entrada type="text" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} maxLength={10} autoFocus placeholder="000000" value={mfaCodigo}
                   onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
               </Campo>
               <label className={styles.lembrar}>
@@ -290,8 +304,8 @@ export default function Entrar() {
           )}
 
           <p className={styles.rodape}>
-            Ao entrar você concorda com os <a href={`${APP_ATUAL}/termos-de-uso`} target="_blank" rel="noreferrer">Termos de Uso</a> e a{" "}
-            <a href={`${APP_ATUAL}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.
+            Ao entrar você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link> e a{" "}
+            <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
           </p>
         </div>
       </main>
@@ -305,7 +319,7 @@ export default function Entrar() {
           </div>
           {devContas.map((c) => (
             <button key={c.email} type="button" className={styles.devItem}
-              title={c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria — digite)`}
+              title={c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria, digite)`}
               onClick={() => { setEmail(c.email); setSenha(c.senhaPadrao ? DEV_SENHA : ""); setContaSelecionada(null); setUsarOutra(true); limparErros() }}>
               <span className={styles.devNome}>{c.nome}{c.senhaPadrao ? "" : " · senha própria"}</span>
               <span className={styles.devEmail}>{c.email}</span>

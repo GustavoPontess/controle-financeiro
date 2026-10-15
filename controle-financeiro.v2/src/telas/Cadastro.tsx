@@ -13,7 +13,7 @@ import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { APP_ATUAL } from "../config"
-import { requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
+import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
 
 const MAX_NOME = 200
@@ -75,7 +75,9 @@ export default function Cadastro() {
       const r = await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar })
       setEnviado(r.mensagem)
     } catch (err) {
-      setErro(mensagemDeErro(err))
+      const msg = mensagemDeErro(err)
+      if (ehErroDaSenha(msg)) setErros({ senha: msg })
+      else setErro(msg)
     } finally {
       setEnviando(false)
     }
@@ -138,7 +140,7 @@ export default function Cadastro() {
                   <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={senha}
                     onChange={(e) => { setSenha(e.target.value); limpa("senha") }} sufixo={olho(mostrarSenha, () => setMostrarSenha((v) => !v))} />
                 </Campo>
-                {senha && !erros.senha && (
+                {!erros.senha && (
                   <ul className={styles.requisitos} aria-label="Requisitos da senha">
                     {requisitosSenha(senha).map((r) => (
                       <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>
@@ -153,7 +155,7 @@ export default function Cadastro() {
                   <label className={styles.lembrar}>
                     <input type="checkbox" checked={aceita} aria-invalid={erros.privacidade ? true : undefined}
                       onChange={(e) => { setAceita(e.target.checked); limpa("privacidade") }} />
-                    <span>Li e aceito a <a href={`${APP_ATUAL}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
+                    <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
                   </label>
                   {erros.privacidade && <p className={styles.erroCampo} role="alert">{erros.privacidade}</p>}
                 </div>
@@ -161,7 +163,7 @@ export default function Cadastro() {
               </form>
 
               <p className={styles.rodape}>
-                Ao criar sua conta você também concorda com os <a href={`${APP_ATUAL}/termos-de-uso`} target="_blank" rel="noreferrer">Termos de Uso</a>.
+                Ao criar sua conta você também concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.
               </p>
             </>
           )}

@@ -77,13 +77,24 @@ describe("Cadastro", () => {
     expect(await screen.findByText("tela de entrar")).toBeInTheDocument()
   })
 
-  it("erro do servidor aparece no topo e o formulário continua", async () => {
-    vi.mocked(cadastrar).mockRejectedValueOnce({ response: { status: 400, data: { message: "Senha não atende aos requisitos: Senha muito comum, escolha outra" } } })
+  it("senha recusada pelo servidor (vazada/comum) aparece no campo da senha, não no topo", async () => {
+    vi.mocked(cadastrar).mockRejectedValueOnce({ response: { status: 400, data: { message: "Essa senha já vazou em outro site. Escolha outra." } } })
     renderizar()
     await preencher()
     await userEvent.click(campo(/Li e aceito/))
     await userEvent.click(botao())
-    expect(await screen.findByRole("alert")).toHaveTextContent(/muito comum/)
+    expect(await screen.findByText("Essa senha já vazou em outro site. Escolha outra.", { selector: "small > span" })).toBeInTheDocument()
+    expect(campo("Senha")).toHaveAttribute("aria-invalid", "true")
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it("outro erro do servidor aparece no topo e o formulário continua", async () => {
+    vi.mocked(cadastrar).mockRejectedValueOnce({ response: { status: 429, data: { message: "Muitas tentativas. Tente de novo mais tarde." } } })
+    renderizar()
+    await preencher()
+    await userEvent.click(campo(/Li e aceito/))
+    await userEvent.click(botao())
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Muitas tentativas/)
     expect(botao()).toBeInTheDocument()
   })
 })

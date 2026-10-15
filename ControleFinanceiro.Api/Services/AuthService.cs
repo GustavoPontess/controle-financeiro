@@ -53,7 +53,8 @@ public class AuthService
         MfaService mfaService,
         NotificacaoAdminService notificacaoAdmin,
         IHttpContextAccessor? httpContextAccessor = null,
-        ILogger<AuthService>? logger = null)
+        ILogger<AuthService>? logger = null,
+        IVerificadorSenhaVazada? verificadorSenha = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -63,6 +64,18 @@ public class AuthService
         _httpContextAccessor = httpContextAccessor;
         // Opcional (igual ao accessor) pra não quebrar quem constrói na mão (testes); o DI injeta o real.
         _logger = logger ?? NullLogger<AuthService>.Instance;
+        // Opcional pelo mesmo motivo; sem ele (testes que constroem na mão) só a lista local vale.
+        _verificadorSenha = verificadorSenha ?? SemVerificacaoDeVazamento.Instancia;
+    }
+
+    private readonly IVerificadorSenhaVazada _verificadorSenha;
+
+    /// <summary>Senha nova (cadastro, troca, redefinição): regras + lista local, depois a checagem de vazamento.</summary>
+    private async Task ValidarSenhaNovaAsync(string senha, string? email)
+    {
+        PasswordPolicyService.ValidarOuLancar(senha, email);
+        if (await _verificadorSenha.EstaVazadaAsync(senha))
+            throw new ArgumentException(PasswordPolicyService.MensagemVazada);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -174,6 +187,49 @@ public class AuthService
             d.Revogado = true;
     }
 
+    /// <summary>Dispositivos confiáveis VIVOS do usuário (não revogados, não expirados), uso mais recente
+    /// primeiro, marcando o deste navegador (pelo token do cookie <c>td</c>). Nunca devolve o token.</summary>
+    public async Task<List<DispositivoConfiavelDto>> ListarDispositivosConfiaveisAsync(Guid usuarioId, string? tokenAtual)
+    {
+        var hashAtual = string.IsNullOrWhiteSpace(tokenAtual) ? null : OpaqueTokenHasher.Hash(tokenAtual);
+        var agora = DateTime.UtcNow;
+        return await _context.TrustedDevices
+            .Where(d => d.UsuarioId == usuarioId && !d.Revogado && d.ExpiraEm > agora)
+            .OrderByDescending(d => d.UltimoUsoEm ?? d.CriadoEm)
+            .Select(d => new DispositivoConfiavelDto
+            {
+                Id = d.Id,
+                CriadoEm = d.CriadoEm,
+                UltimoUsoEm = d.UltimoUsoEm,
+                ExpiraEm = d.ExpiraEm,
+                Dispositivo = d.DispositivoInfo,
+                Ip = d.IpCriacao,
+                Atual = hashAtual != null && d.TokenHash == hashAtual,
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>"Esquecer" UM dispositivo confiável: o próximo login nele volta a pedir o código. Anti-IDOR
+    /// (filtra por UsuarioId) — de outro usuário ou já revogado → 404. Devolve se era o deste navegador.</summary>
+    public async Task<bool> RevogarDispositivoConfiavelAsync(Guid usuarioId, Guid dispositivoId, string? tokenAtual)
+    {
+        var d = await _context.TrustedDevices
+            .FirstOrDefaultAsync(x => x.Id == dispositivoId && x.UsuarioId == usuarioId && !x.Revogado)
+            ?? throw new KeyNotFoundException("Dispositivo não encontrado.");
+        d.Revogado = true;
+        await _context.SaveChangesAsync();
+        return !string.IsNullOrWhiteSpace(tokenAtual) && d.TokenHash == OpaqueTokenHasher.Hash(tokenAtual);
+    }
+
+    /// <summary>"Esquecer todos": revoga todos os dispositivos confiáveis do usuário. Devolve quantos.</summary>
+    public async Task<int> RevogarTodosDispositivosConfiaveisAsync(Guid usuarioId)
+    {
+        var vivos = await _context.TrustedDevices.CountAsync(d => d.UsuarioId == usuarioId && !d.Revogado);
+        await RevogarDevicesConfiaveisAsync(usuarioId);
+        if (vivos > 0) await _context.SaveChangesAsync();
+        return vivos;
+    }
+
     // Reuse-detection (RFC 9700 §4.14): um refresh JÁ ROTACIONADO reapresentado indica replay/roubo.
     // Revoga a FAMÍLIA inteira (mata a sessão do atacante E a legítima) e alerta o admin. Fail-closed:
     // o caller lança Unauthorized depois de chamar isto.
@@ -234,7 +290,7 @@ public class AuthService
         if (dto.Password != dto.ConfirmPassword)
             throw new ArgumentException("Senhas não conferem");
 
-        PasswordPolicyService.ValidarOuLancar(dto.Password);
+        await ValidarSenhaNovaAsync(dto.Password, dto.Email);
 
         // Anti-enumeração de usuário (OWASP, achado do pentest 2026-09-12): NÃO revelar se o e-mail
         // já existe. Antes lançava "Email já cadastrado" (409) → dava pra enumerar quem tem conta.
@@ -744,7 +800,7 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(dto.NovaSenha))
             throw new ArgumentException("Nova senha é obrigatória.");
 
-        PasswordPolicyService.ValidarOuLancar(dto.NovaSenha);
+        await ValidarSenhaNovaAsync(dto.NovaSenha, null);
 
         if (dto.NovaSenha != dto.ConfirmarNovaSenha)
             throw new ArgumentException("Senhas não conferem.");
@@ -830,7 +886,11 @@ public class AuthService
         };
     }
 
-    public async Task ChangePasswordAsync(Guid usuarioId, string senhaAtual, string novaSenha)
+    /// <summary>Troca a senha (exige a atual). Sempre esquece os dispositivos confiáveis; com
+    /// <paramref name="encerrarOutrasSessoes"/>, desconecta também os outros aparelhos — só a sessão que fez o
+    /// pedido (<paramref name="refreshTokenAtual"/>) continua.</summary>
+    public async Task ChangePasswordAsync(Guid usuarioId, string senhaAtual, string novaSenha,
+        bool encerrarOutrasSessoes = false, string? refreshTokenAtual = null)
     {
         var usuario = await _context.Usuarios.FindAsync(usuarioId);
         if (usuario == null)
@@ -839,13 +899,22 @@ public class AuthService
         if (!PasswordHasher.VerifyPassword(senhaAtual, usuario.PasswordHash))
             throw new UnauthorizedAccessException("Senha atual inválida");
 
-        PasswordPolicyService.ValidarOuLancar(novaSenha);
+        await ValidarSenhaNovaAsync(novaSenha, usuario.Email);
 
         usuario.PasswordHash = PasswordHasher.HashPassword(novaSenha);
         usuario.AtualizadoEm = DateTime.UtcNow;
 
         // Trocar a senha (evento sensível) esquece os dispositivos confiáveis → re-MFA em todos.
         await RevogarDevicesConfiaveisAsync(usuarioId);
+
+        if (encerrarOutrasSessoes)
+        {
+            var hashAtual = string.IsNullOrWhiteSpace(refreshTokenAtual) ? null : OpaqueTokenHasher.Hash(refreshTokenAtual);
+            var outras = await _context.RefreshTokens
+                .Where(r => r.UsuarioId == usuarioId && !r.Revogado && (hashAtual == null || r.Token != hashAtual))
+                .ToListAsync();
+            foreach (var r in outras) r.Revogado = true;
+        }
 
         _context.Usuarios.Update(usuario);
         await _context.SaveChangesAsync();

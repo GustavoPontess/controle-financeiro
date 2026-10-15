@@ -61,6 +61,63 @@ public class TrustedDeviceTests
 
     private static LoginDto Login(string email) => new() { Email = email, Password = Senha };
 
+    // ── Tela "Dispositivos confiáveis": listar / esquecer 1 / esquecer todos ─────────
+
+    [Fact]
+    public async Task Listar_SoOsVivosDoUsuario_MarcandoODesteNavegador()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "lista@test.com");
+        var outro = SeedUsuarioMfa(ctx, "outro@test.com");
+        var auth = CreateService(ctx);
+        var deste = await auth.CriarTrustedDeviceAsync(u.Id);
+        await auth.CriarTrustedDeviceAsync(u.Id);
+        var revogado = await auth.CriarTrustedDeviceAsync(u.Id);
+        await auth.CriarTrustedDeviceAsync(outro.Id);
+        var hRevogado = OpaqueTokenHasher.Hash(revogado);
+        (await ctx.TrustedDevices.SingleAsync(d => d.TokenHash == hRevogado)).Revogado = true;
+        ctx.TrustedDevices.Add(new TrustedDevice { Id = Guid.NewGuid(), UsuarioId = u.Id, TokenHash = "x", ExpiraEm = DateTime.UtcNow.AddMinutes(-1) });
+        await ctx.SaveChangesAsync();
+
+        var lista = await auth.ListarDispositivosConfiaveisAsync(u.Id, deste);
+
+        Assert.Equal(2, lista.Count); // fora: o revogado, o expirado e o do outro usuário
+        Assert.Single(lista, d => d.Atual);
+    }
+
+    [Fact]
+    public async Task Esquecer1_DeOutroUsuario_404_EOProprio_ParaDePular()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "esq@test.com");
+        var intruso = SeedUsuarioMfa(ctx, "intruso@test.com");
+        var auth = CreateService(ctx);
+        var token = await auth.CriarTrustedDeviceAsync(u.Id);
+        var id = (await auth.ListarDispositivosConfiaveisAsync(u.Id, null)).Single().Id;
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => auth.RevogarDispositivoConfiavelAsync(intruso.Id, id, null));
+
+        Assert.True(await auth.RevogarDispositivoConfiavelAsync(u.Id, id, token)); // era o deste navegador
+        Assert.Empty(await auth.ListarDispositivosConfiaveisAsync(u.Id, token));
+        Assert.True((await auth.LoginAsync(Login("esq@test.com"), trustedDeviceToken: token)).MfaRequerido);
+    }
+
+    [Fact]
+    public async Task EsquecerTodos_RevogaTudoDoUsuario_ENaoMexeNoDosOutros()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "todos@test.com");
+        var outro = SeedUsuarioMfa(ctx, "vizinho@test.com");
+        var auth = CreateService(ctx);
+        await auth.CriarTrustedDeviceAsync(u.Id);
+        await auth.CriarTrustedDeviceAsync(u.Id);
+        var doOutro = await auth.CriarTrustedDeviceAsync(outro.Id);
+
+        Assert.Equal(2, await auth.RevogarTodosDispositivosConfiaveisAsync(u.Id));
+        Assert.Empty(await auth.ListarDispositivosConfiaveisAsync(u.Id, null));
+        Assert.Single(await auth.ListarDispositivosConfiaveisAsync(outro.Id, doOutro));
+    }
+
     // ── Skip do 2º fator ────────────────────────────────────────────────────────
 
     [Fact]
@@ -166,6 +223,41 @@ public class TrustedDeviceTests
     }
 
     // ── Revogação em evento sensível ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task TrocaDeSenha_EncerrandoOutras_DerrubaOsOutrosAparelhos_EMantemEste()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "sessoes@test.com");
+        u.MfaAtivo = false; // login direto, sem 2º fator
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx);
+        var este = (await auth.LoginAsync(Login("sessoes@test.com"), null)).Auth!.RefreshToken;
+        await auth.LoginAsync(Login("sessoes@test.com"), null);
+        await auth.LoginAsync(Login("sessoes@test.com"), null);
+
+        await auth.ChangePasswordAsync(u.Id, Senha, "OutraSenhaForte2026!!", encerrarOutrasSessoes: true, refreshTokenAtual: este);
+
+        var vivas = await auth.ListarSessoesAsync(u.Id, este);
+        var atual = Assert.Single(vivas);
+        Assert.True(atual.Atual);
+    }
+
+    [Fact]
+    public async Task TrocaDeSenha_SemEncerrar_MantemAsOutrasSessoes()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "manter@test.com");
+        u.MfaAtivo = false;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx);
+        var este = (await auth.LoginAsync(Login("manter@test.com"), null)).Auth!.RefreshToken;
+        await auth.LoginAsync(Login("manter@test.com"), null);
+
+        await auth.ChangePasswordAsync(u.Id, Senha, "OutraSenhaForte2026!!", encerrarOutrasSessoes: false, refreshTokenAtual: este);
+
+        Assert.Equal(2, (await auth.ListarSessoesAsync(u.Id, este)).Count);
+    }
 
     [Fact]
     public async Task TrocaDeSenha_revogaDevicesConfiaveis_eProximoLoginExigeMfa()
