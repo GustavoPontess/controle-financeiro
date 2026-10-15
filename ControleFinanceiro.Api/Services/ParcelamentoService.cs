@@ -509,9 +509,11 @@ public class ParcelamentoService
     /// KPIs agregados — ativos e soma do valor restante (parcelas Pendentes). Total inclui cancelados.
     /// Calculado no banco, exato pra qualquer volume.
     /// </summary>
-    public async Task<ParcelamentoStatsDto> ObterStatsAsync(Guid usuarioId)
+    // cartaoCreditoId: só os de um cartão (página do cartão no v2).
+    public async Task<ParcelamentoStatsDto> ObterStatsAsync(Guid usuarioId, Guid? cartaoCreditoId = null)
     {
-        var query = _context.Parcelamentos.Where(p => p.CriadoPor == usuarioId);
+        var query = _context.Parcelamentos.Where(p => p.CriadoPor == usuarioId
+                                                    && (!cartaoCreditoId.HasValue || p.CartaoCreditoId == cartaoCreditoId.Value));
         var ativos = query.Where(p => p.Ativo);
 
         var qtdAtivos = await ativos.CountAsync();
@@ -523,6 +525,7 @@ public class ParcelamentoService
             .Where(par => par.Parcelamento != null
                           && par.Parcelamento.CriadoPor == usuarioId
                           && par.Parcelamento.Ativo
+                          && (!cartaoCreditoId.HasValue || par.Parcelamento.CartaoCreditoId == cartaoCreditoId.Value)
                           && par.Status == StatusParcela.Pendente)
             .SumAsync(par => (decimal?)(par.ValorComJuros ?? par.Valor)) ?? 0m;
 
@@ -534,14 +537,16 @@ public class ParcelamentoService
         };
     }
 
-    public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 25)
+    // cartaoCreditoId: só os de um cartão (filtro no banco — a página do cartão pagina só os dele).
+    public async Task<PagedResult<ParcelamentoDto>> ListarAsync(Guid usuarioId, bool? ativo = null, int page = 1, int pageSize = 25, Guid? cartaoCreditoId = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var query = _context.Parcelamentos
             .Where(p => p.CriadoPor == usuarioId
-                        && (!ativo.HasValue || p.Ativo == ativo.Value))
+                        && (!ativo.HasValue || p.Ativo == ativo.Value)
+                        && (!cartaoCreditoId.HasValue || p.CartaoCreditoId == cartaoCreditoId.Value))
             .Include(p => p.CartaoCredito)
             // Fatura de cada parcela no mesmo SELECT (join, sem N+1): o card mostra a próxima parcela
             // pelo mês de fechamento da fatura dela — o rótulo da tela Cartões.

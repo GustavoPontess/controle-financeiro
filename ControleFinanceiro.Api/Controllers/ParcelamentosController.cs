@@ -37,25 +37,26 @@ public class ParcelamentosController : ControllerBase
     /// <param name="ativo">Filtro opcional (null = ambos).</param>
     /// <param name="page">Página atual (base 1, padrão 1).</param>
     /// <param name="pageSize">Itens por página (1–100, padrão 20).</param>
+    /// <param name="cartaoCreditoId">Só os parcelamentos de um cartão.</param>
     /// <returns>Resultado paginado de parcelamentos com próxima parcela.</returns>
     /// <response code="200">Lista retornada.</response>
     /// <response code="401">Não autenticado.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<ParcelamentoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    public async Task<IActionResult> Listar([FromQuery] bool? ativo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] Guid? cartaoCreditoId = null)
     {
         var usuarioId = GetUserId();
-        var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize);
+        var parcelamentos = await _service.ListarAsync(usuarioId, ativo, page, pageSize, cartaoCreditoId);
         return Ok(parcelamentos);
     }
 
     /// <summary>KPIs agregados — ativos, soma do restante, total.</summary>
     [HttpGet("stats")]
     [ProducesResponseType(typeof(ParcelamentoStatsDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ObterStats()
+    public async Task<IActionResult> ObterStats([FromQuery] Guid? cartaoCreditoId = null)
     {
-        var stats = await _service.ObterStatsAsync(GetUserId());
+        var stats = await _service.ObterStatsAsync(GetUserId(), cartaoCreditoId);
         return Ok(stats);
     }
 
