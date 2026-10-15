@@ -1,0 +1,17 @@
+.raiz { position: relative; width: 100%; min-width: 0; }
+
+/* Gatilho e painel flutuante vêm do gatilho.module.css (mesma moldura do SeletorData e da Entrada). */
+.seta[data-aberto="true"] { transform: rotate(180deg); }
+
+/* Lista aberta */
+.painel { left: 0; right: 0; min-width: 180px; display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+.busca { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px; background: var(--v2-superficie-2); color: var(--v2-texto-3); }
+/* .painel .busca input: vence o estilo de input de qualquer tela em volta. */
+.painel .busca input { flex: 1; min-width: 0; width: auto; height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
+.lista { list-style: none; margin: 0; padding: 0; max-height: 264px; overflow-y: auto; outline: none; display: flex; flex-direction: column; gap: 1px; }
+.opcao { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto); cursor: pointer; }
+.opcao[data-ativo="true"] { background: var(--v2-superficie-2); }
+.opcao[aria-selected="true"] { font-weight: 600; }
+.opcaoTexto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marca { flex-shrink: 0; color: var(--v2-texto); }
+.nada { padding: 10px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }

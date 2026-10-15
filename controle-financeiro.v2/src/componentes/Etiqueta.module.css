@@ -1,0 +1,4 @@
+.etiqueta { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-xs); font-weight: 600; white-space: nowrap; }
+.etiqueta[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.etiqueta[data-tom="negativo"] { background: var(--v2-negativo-suave); color: var(--v2-negativo); }
+.etiqueta[data-tom="alerta"] { background: var(--v2-alerta-suave); color: var(--v2-alerta); }

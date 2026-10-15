@@ -1,0 +1,17 @@
+/* Abre embaixo do sino, alinhado à direita dele (o .sino do layout é position: relative). */
+.painel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: 380px; display: flex; flex-direction: column; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); overflow: hidden; }
+.topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 8px; }
+.titulo { font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-texto); }
+.acao { padding: 0; border: 0; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-xs); font-weight: 600; cursor: pointer; }
+.acao:hover:not(:disabled) { color: var(--v2-texto); }
+.acao:disabled { opacity: 0.5; cursor: default; }
+.corpo { max-height: min(420px, 60vh); overflow-y: auto; }
+.respiro { padding: 8px 16px 16px; }
+.vazio { margin: 0; padding: 12px 16px 18px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.todas { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 16px; border: 0; border-top: 1px solid var(--v2-linha); background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
+.todas:hover { background: var(--v2-hover-linha); }
+
+/* Celular: ocupa a largura da tela (com respiro), logo abaixo do topo. */
+@media (max-width: 900px) {
+  .painel { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; }
+}

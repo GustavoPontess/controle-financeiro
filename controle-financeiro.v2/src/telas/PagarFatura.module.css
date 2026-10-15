@@ -1,0 +1,27 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Atalho "Pagar tudo" logo abaixo do valor */
+.atalhos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+
+/* Data: Hoje / Ontem + calendário (mesma anatomia da Nova transação) */
+.dataRapida { display: flex; gap: 6px; }
+.dataRapida > button { flex-shrink: 0; }
+.dataRapida > :last-child { flex: 1; min-width: 0; }
+
+/* Prévia: restante hoje → este pagamento → depois */
+.previa { gap: 10px; }
+.previaTitulo { font-size: var(--v2-fs-md); font-weight: 600; }
+.contas { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 0; }
+.contas > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.contas dt { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.contas dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+.linhaFinal { padding-top: 8px; border-top: 1px solid var(--v2-linha); }
+.linhaFinal dd { font-size: var(--v2-fs-xl); letter-spacing: -0.02em; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+.efeito { margin: 0; padding-top: 12px; border-top: 1px solid var(--v2-linha); font-size: var(--v2-fs-sm); line-height: 1.5; color: var(--v2-texto-2); }
+
+/* No celular a prévia não cabe: o botão já diz quanto vai pagar. */
+@media (max-width: 900px) {
+  .previa { display: none; }
+}

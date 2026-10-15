@@ -1,0 +1,18 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+
+/* Data (Hoje / Ontem / calendário) + Hora: lado a lado enquanto a data tem ~340px; abaixo disso a hora desce
+   pra linha de baixo. Antes era grade 2fr/1fr e o calendário invadia a hora quando o formulário estreitava. */
+.dataHora { display: flex; flex-wrap: wrap; gap: 16px; }
+.dataHora > :first-child { flex: 2 1 340px; }
+.dataHora > :nth-child(2) { flex: 1 1 120px; }
+.dataRapida { display: flex; gap: 6px; }
+.dataRapida > button { flex-shrink: 0; }
+.dataRapida > :last-child { flex: 1; min-width: 0; }
+
+/* Opções: interruptores + os campos que cada um abre */
+.opcoes { gap: 12px; }
+.subOpcoes { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px 46px; }
+
+@media (max-width: 900px) {
+  .subOpcoes { padding-left: 0; }
+}

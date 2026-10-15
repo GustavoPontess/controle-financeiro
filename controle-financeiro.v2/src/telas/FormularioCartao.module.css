@@ -1,0 +1,18 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+
+/* Funções: os três interruptores lado a lado (empilham no celular) */
+.funcoes { display: flex; flex-wrap: wrap; gap: 8px 28px; padding: 4px 0; }
+
+/* Prévia: a carinha grande + nome e detalhe, como na lista de Cartões */
+.previa { gap: 12px; }
+.previaLinha { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.previaTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.previaNome { font-size: var(--v2-fs-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.previaNome[data-vazio="true"] { color: var(--v2-texto-3); font-weight: 500; }
+.previaDetalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* No celular a prévia não cabe: o formulário já é a tela toda. */
+@media (max-width: 900px) {
+  .previa { display: none; }
+}

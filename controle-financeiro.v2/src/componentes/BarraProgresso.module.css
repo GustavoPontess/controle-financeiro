@@ -1,0 +1,5 @@
+.trilho { display: block; width: 100%; height: 4px; border-radius: 999px; background: var(--v2-linha-forte); overflow: hidden; }
+.fill { display: block; height: 100%; border-radius: 999px; background: var(--v2-tinta); transition: width 0.25s ease; }
+.fill[data-tom="alerta"] { background: var(--v2-alerta); }
+.fill[data-tom="negativo"] { background: var(--v2-negativo); }
+.fill[data-tom="positivo"] { background: var(--v2-positivo); }

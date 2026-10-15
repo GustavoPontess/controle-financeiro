@@ -66,6 +66,33 @@ jobs:
       - name: Build
         run: npm run build
 
+  frontend-v2:
+    name: Frontend v2 (Node / Vite)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: controle-financeiro.v2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: controle-financeiro.v2/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
   e2e:
     name: E2E Playwright
     runs-on: ubuntu-latest

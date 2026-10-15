@@ -1,0 +1,26 @@
+.pagina { display: flex; flex-direction: column; gap: 16px; }
+.muted { margin: 0; font-size: var(--v2-fs-md); color: var(--v2-texto-3); }
+
+/* Cabeçalho: título + chips à esquerda, ações à direita */
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.cabecalho .titulo { flex: 1 1 320px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.erroDialogo { display: block; margin-top: 10px; padding: 8px 12px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); }
+
+/* Ver: valor grande + dados */
+.valor { display: block; font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.valor[data-tom="positivo"] { color: var(--v2-positivo); }
+.valor[data-tom="negativo"] { color: var(--v2-negativo); }
+.valor[data-tom="neutro"] { color: var(--v2-texto); }
+.dados { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 8px 0 0; padding-top: 18px; border-top: 1px solid var(--v2-linha); }
+.dado { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dado dt { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.dado dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; }
+
+
+@media (max-width: 900px) {
+  .dados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .valor { font-size: var(--v2-fs-3xl); }
+}
