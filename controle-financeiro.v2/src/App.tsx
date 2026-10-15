@@ -7,6 +7,7 @@ import Transacoes from "./telas/Transacoes"
 import Transacao from "./telas/Transacao"
 import Cartoes from "./telas/Cartoes"
 import Cartao from "./telas/Cartao"
+import CartaoParcelamentos from "./telas/CartaoParcelamentos"
 import NovaTransacao from "./telas/NovaTransacao"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/transacoes/:id/editar" element={<Transacao />} />
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/cartoes/:id" element={<Cartao />} />
+        <Route path="/cartoes/:id/parcelamentos" element={<CartaoParcelamentos />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         {PENDENTES.map(([rota, titulo, atual]) => (

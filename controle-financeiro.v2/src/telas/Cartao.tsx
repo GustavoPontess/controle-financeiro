@@ -1,7 +1,7 @@
 // Página de um cartão do v2: faixa de meses em cima (uma fatura por mês, inclusive meses sem lançamento),
 // a fatura escolhida embaixo (quanto deve, fecha/vence, pago, lançamentos por dia) e, na coluna da direita,
-// limite, o número de parcelamentos e as ações (pagar, editar, excluir). "Parcelamentos" é uma aba com a
-// lista completa e paginada — no canto fica só o número (podem ser muitos).
+// limite, o número de parcelamentos e as ações (pagar, editar, excluir). Parcelamentos têm página própria
+// (/cartoes/:id/parcelamentos, podem ser muitos) — aqui fica só o número e o "Ver todos".
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Banknote, Pencil, Trash2 } from "lucide-react"
@@ -11,7 +11,6 @@ import { ParcelamentoService } from "../services/ParcelamentoService"
 import { mensagemDeErro } from "../api/cliente"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Fatura, FaturaDetalhe } from "../types/Fatura"
-import type { Parcelamento } from "../types/Parcelamento"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import BarraProgresso from "../componentes/BarraProgresso"
@@ -21,13 +20,8 @@ import Etiqueta from "../componentes/Etiqueta"
 import FaceCartao from "../componentes/FaceCartao"
 import { RodapeFormulario } from "../componentes/Formulario"
 import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
-import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
-import Segmentos from "../componentes/Segmentos"
 import { NOME_BANDEIRA, diaMes, estadoDaFatura, indiceMes, indiceMesDeHoje, mesCurto, montarCiclos, rotuloMesFatura, type Ciclo } from "../dominio/fatura"
 import styles from "./Cartao.module.css"
-
-type Aba = "fatura" | "parcelamentos"
-const ABAS: { valor: Aba; rotulo: string }[] = [{ valor: "fatura", rotulo: "Fatura" }, { valor: "parcelamentos", rotulo: "Parcelamentos" }]
 
 export default function Cartao() {
   const { id = "" } = useParams<{ id: string }>()
@@ -35,7 +29,6 @@ export default function Cartao() {
   const [cartao, setCartao] = useState<CartaoCredito | null | undefined>(undefined)
   const [faturas, setFaturas] = useState<Fatura[] | null>(null)
   const [stats, setStats] = useState<{ ativos: number; totalRestante: number } | null>(null)
-  const [aba, setAba] = useState<Aba>("fatura")
   const [excluindo, setExcluindo] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -100,16 +93,12 @@ export default function Cartao() {
 
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-      {cartao.temCredito && <Segmentos ariaLabel="Seção" valor={aba} onChange={setAba} opcoes={ABAS} />}
-
       <div className={styles.grade}>
         <div className={styles.principal}>
           {!cartao.temCredito ? (
             <Bloco><p className={styles.muted}>Este cartão só tem função débito: os lançamentos dele aparecem na conta vinculada.</p></Bloco>
-          ) : aba === "fatura" ? (
-            <Faturas cartao={cartao} ciclos={ciclos} mesHoje={mesHoje} hoje={hoje} />
           ) : (
-            <Parcelamentos cartaoId={cartao.id} />
+            <Faturas cartao={cartao} ciclos={ciclos} mesHoje={mesHoje} hoje={hoje} />
           )}
         </div>
 
@@ -127,7 +116,8 @@ export default function Cartao() {
             </Bloco>
           )}
           {cartao.temCredito && (
-            <Bloco titulo="Parcelamentos" acao={aba === "fatura" && stats && stats.ativos > 0 ? "Ver todos" : undefined} aoClicar={() => setAba("parcelamentos")}>
+            <Bloco titulo="Parcelamentos" acao={stats && stats.ativos > 0 ? "Ver todos" : undefined}
+              aoClicar={() => navigate(`/cartoes/${cartao.id}/parcelamentos`, { state: { voltarPara: `/cartoes/${cartao.id}` } })}>
               {!stats ? <Esqueleto linhas={2} altura={14} /> : stats.ativos === 0 ? <p className={styles.muted}>Nenhum em andamento.</p> : (
                 <div className={styles.limite}>
                   <span className={styles.limiteGrande}>{stats.ativos} em andamento</span>
@@ -263,66 +253,5 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
         </Bloco>
       )}
     </>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────── parcelamentos
-
-const CHAVE_POR_PAGINA = "v2:porPagina:parcelamentos"
-const porPaginaSalvo = (): number => {
-  try { const n = Number(localStorage.getItem(CHAVE_POR_PAGINA)); return (TAMANHOS as readonly number[]).includes(n) ? n : 10 } catch { return 10 }
-}
-
-function Parcelamentos({ cartaoId }: { cartaoId: string }) {
-  const [itens, setItens] = useState<Parcelamento[] | null>(null)
-  const [total, setTotal] = useState(0)
-  const [pagina, setPagina] = useState(1)
-  const [porPagina, setPorPagina] = useState(porPaginaSalvo)
-  const [erro, setErro] = useState(false)
-
-  useEffect(() => {
-    let vivo = true
-    setErro(false)
-    ParcelamentoService.listarPaginado(pagina, porPagina, true, cartaoId)
-      .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
-      .catch(() => { if (vivo) { setItens([]); setErro(true) } })
-    return () => { vivo = false }
-  }, [cartaoId, pagina, porPagina])
-
-  return (
-    <Bloco semRespiro>
-      {itens === null ? <div className={styles.respiro}><Esqueleto linhas={3} altura={16} /></div>
-        : erro ? <p className={styles.vazio}>Não deu pra carregar os parcelamentos.</p>
-        : itens.length === 0 ? <p className={styles.vazio}>Nenhum parcelamento em andamento neste cartão.</p>
-        : (
-          <ul className={styles.parcelamentos}>
-            {itens.map((p) => {
-              const pagas = p.parcelasPagas
-              const prox = p.proximaParcela
-              return (
-                <li key={p.id} className={styles.parcelamento}>
-                  <span className={styles.parcelamentoIcone}>{p.descricao.trim().charAt(0).toUpperCase() || "•"}</span>
-                  <span className={styles.parcelamentoTexto}>
-                    <span className={styles.parcelamentoNome}>{p.descricao}</span>
-                    <span className={styles.muted}>
-                      {pagas} de {p.quantidadeParcelas} pagas{prox ? <> · próxima {diaMes(prox.faturaDataVencimento)} · <Dinheiro valor={prox.valorComJuros ?? prox.valor} /></> : null}
-                    </span>
-                    <BarraProgresso fracao={pagas / p.quantidadeParcelas} tom="positivo" rotulo={`${pagas} de ${p.quantidadeParcelas} parcelas pagas`} />
-                  </span>
-                  <span className={styles.parcelamentoDireita}>
-                    <Dinheiro valor={p.valorRestante} className={styles.parcelamentoValor} />
-                    <span className={styles.muted}>faltam</span>
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      {total > 0 && (
-        <Paginacao total={total} pagina={pagina} porPagina={porPagina} onPagina={setPagina}
-          onPorPagina={(n) => { setPorPagina(n); setPagina(1); try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)) } catch { /* só não lembra */ } }}
-          rotulo="parcelamentos" rotuloSingular="parcelamento" />
-      )}
-    </Bloco>
   )
 }
