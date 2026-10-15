@@ -18,6 +18,10 @@ import type { Subcategory } from "../types/Subcategory"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Confirmar from "../componentes/Confirmar"
 import Selecao from "../componentes/Selecao"
+import Botao from "../componentes/Botao"
+import Campo, { ValorFixo } from "../componentes/Campo"
+import Entrada from "../componentes/Entrada"
+import { useCampo } from "../componentes/campoContexto"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { maskMoney, moneyParaCampo, parseMoney, formatMoney } from "../utils/money"
 import { dataLocalISO, mascararHora } from "../utils/dateTime"
@@ -151,14 +155,13 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
         </div>
         <div className={styles.acoes}>
           {editavel && (
-            <button type="button" className={styles.botao} onClick={aoEditar}><Pencil size={15} strokeWidth={2.25} aria-hidden="true" /> Editar</button>
+            <Botao className={styles.acao} onClick={aoEditar} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
           )}
           {t.ehPagamentoFatura ? (
-            <button type="button" className={styles.botao} onClick={abrirEstorno}><Undo2 size={15} strokeWidth={2.25} aria-hidden="true" /> Estornar pagamento</button>
+            <Botao className={styles.acao} onClick={abrirEstorno} icone={<Undo2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Estornar pagamento</Botao>
           ) : (
-            <button type="button" className={styles.botao} data-perigo="true" onClick={() => { setErro(null); setExcluindo(true) }}>
-              <Trash2 size={15} strokeWidth={2.25} aria-hidden="true" /> Excluir
-            </button>
+            <Botao className={styles.acao} perigo onClick={() => { setErro(null); setExcluindo(true) }}
+              icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
           )}
         </div>
       </header>
@@ -287,79 +290,71 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
             </div>
           )}
 
-          <label className={styles.campo}>
-            <span>Valor</span>
-            <span className={styles.valorCampo} data-invalido={erros.valor ? "true" : undefined}>
-              <em>R$</em>
-              <input inputMode="numeric" autoComplete="off" value={valor} aria-invalid={!!erros.valor}
-                onChange={(e) => { setValor(maskMoney(e.target.value.replace(/\D/g, "").slice(0, MAX_DIGITOS_VALOR), valor)); limpa("valor") }} />
-            </span>
-            {erros.valor && <small className={styles.erro}>{erros.valor}</small>}
-          </label>
+          <Campo rotulo="Valor" erro={erros.valor}>
+            <ValorGrande valor={valor}
+              onChange={(v) => { setValor(maskMoney(v.replace(/\D/g, "").slice(0, MAX_DIGITOS_VALOR), valor)); limpa("valor") }} />
+          </Campo>
 
           <div className={styles.grade2}>
-            <label className={styles.campo}>
-              <span>Data</span>
-              <input type="date" value={data} max={dataMax} aria-invalid={!!erros.data} data-invalido={erros.data ? "true" : undefined}
-                onChange={(e) => { setData(e.target.value); limpa("data") }} />
-              {erros.data && <small className={styles.erro}>{erros.data}</small>}
-            </label>
-            <label className={styles.campo}>
-              <span>Hora{horaOpcional ? " (opcional)" : ""}</span>
-              <input inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora} aria-invalid={!!erros.hora} data-invalido={erros.hora ? "true" : undefined}
+            <Campo rotulo="Data" erro={erros.data}>
+              <Entrada type="date" value={data} max={dataMax} onChange={(e) => { setData(e.target.value); limpa("data") }} />
+            </Campo>
+            <Campo rotulo={`Hora${horaOpcional ? " (opcional)" : ""}`} erro={erros.hora}>
+              <Entrada inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora}
                 onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
-              {erros.hora && <small className={styles.erro}>{erros.hora}</small>}
-            </label>
+            </Campo>
           </div>
 
           <div className={styles.grade2}>
-            <div className={styles.campo}>
-              <span>{noCartao ? "Cartão" : "Conta"}</span>
-              <span className={styles.fixo} title="Conta e cartão não mudam na edição">{t.cartaoCreditoNome ?? t.contaNome ?? "—"}</span>
-            </div>
+            <Campo rotulo={noCartao ? "Cartão" : "Conta"} estatico>
+              <ValorFixo title="Conta e cartão não mudam na edição">{t.cartaoCreditoNome ?? t.contaNome ?? "—"}</ValorFixo>
+            </Campo>
             {noCartao ? (
-              <div className={styles.campo}>
-                <span>Meio de pagamento</span>
-                <span className={styles.fixo}>Crédito</span>
-              </div>
+              <Campo rotulo="Meio de pagamento" estatico><ValorFixo>Crédito</ValorFixo></Campo>
             ) : (
-              <div className={styles.campo}>
-                <span>Meio de pagamento</span>
-                <Selecao ariaLabel="Meio de pagamento" valor={String(meio)} onChange={(v) => setMeio(Number(v))}
+              <Campo rotulo="Meio de pagamento">
+                <Selecao valor={String(meio)} onChange={(v) => setMeio(Number(v))}
                   opcoes={MEIOS_CONTA.map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
-              </div>
+              </Campo>
             )}
           </div>
 
           <div className={styles.grade2}>
-            <div className={styles.campo}>
-              <span>Categoria</span>
-              <Selecao ariaLabel="Categoria" valor={categoriaId} invalido={!!erros.categoria}
+            <Campo rotulo="Categoria" erro={erros.categoria}>
+              <Selecao valor={categoriaId}
                 onChange={(v) => { setCategoriaId(v); setSubcategoriaId(""); limpa("categoria") }}
                 opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
-              {erros.categoria && <small className={styles.erro}>{erros.categoria}</small>}
-            </div>
-            <div className={styles.campo}>
-              <span>Subcategoria (opcional)</span>
-              <Selecao ariaLabel="Subcategoria" valor={subcategoriaId} desabilitado={subs.length === 0}
+            </Campo>
+            <Campo rotulo="Subcategoria (opcional)">
+              <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
                 placeholder={subs.length === 0 ? "Nenhuma" : "Sem subcategoria"} onChange={setSubcategoriaId}
                 opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
-            </div>
+            </Campo>
           </div>
 
-          <label className={styles.campo}>
-            <span>Descrição</span>
-            <input value={descricao} maxLength={MAX_DESCRICAO} aria-invalid={!!erros.descricao} data-invalido={erros.descricao ? "true" : undefined}
-              onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
-            {erros.descricao && <small className={styles.erro}>{erros.descricao}</small>}
-          </label>
+          <Campo rotulo="Descrição" erro={erros.descricao}>
+            <Entrada value={descricao} maxLength={MAX_DESCRICAO} onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
+          </Campo>
 
           <div className={styles.rodapeForm}>
-            <button type="button" className={styles.botao} onClick={aoCancelar} disabled={salvando}>Cancelar</button>
-            <button type="submit" className={styles.botaoPrimario} disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <Botao onClick={aoCancelar} disabled={salvando}>Cancelar</Botao>
+            <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</Botao>
           </div>
         </form>
       </Bloco>
     </div>
+  )
+}
+
+/** Valor em destaque (R$ grande, só a linha de baixo). Dentro do Campo: herda id e erro. */
+function ValorGrande({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  const campo = useCampo()
+  const inv = campo?.invalido ?? false
+  return (
+    <span className={styles.valorCampo} data-invalido={inv ? "true" : undefined}>
+      <em>R$</em>
+      <input id={campo?.id} inputMode="numeric" autoComplete="off" value={valor} aria-invalid={inv || undefined}
+        aria-describedby={inv && campo ? campo.erroId : undefined} onChange={(e) => onChange(e.target.value)} />
+    </span>
   )
 }

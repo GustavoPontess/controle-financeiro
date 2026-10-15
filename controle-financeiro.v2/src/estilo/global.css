@@ -8,6 +8,11 @@ button, input, select, textarea { font-family: inherit; }
 a { color: inherit; }
 ::selection { background: var(--v2-acento-suave); color: var(--v2-texto); }
 
+/* Foco de teclado visível em tudo (botão, link, item de menu). :where() = especificidade zero:
+   componente que desenha o próprio foco (caixa de texto, seleção) continua mandando. */
+:where(:focus-visible) { outline: 2px solid var(--v2-texto); outline-offset: 2px; }
+:where(:focus:not(:focus-visible)) { outline: none; }
+
 /* Barra de rolagem — fina, sem setas, pegador arredondado com respiro, cor por tema.
    Chrome/Edge/Safari: ::-webkit-scrollbar. As propriedades padrão (scrollbar-width/color) entram SÓ onde
    o ::-webkit-scrollbar não existe (Firefox): no Chrome elas sobrepõem o ::-webkit e voltam a barra nativa

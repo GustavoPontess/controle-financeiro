@@ -7,6 +7,7 @@ import {
   BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
   Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, Eye, EyeOff,
 } from "lucide-react"
+import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
@@ -115,15 +116,12 @@ export default function V2Layout() {
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
           <h1 className={styles.tituloPagina}>{tituloDaRota(pathname)}</h1>
           <div className={styles.topoAcoes}>
-            <button type="button" className={styles.icone} aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}>
-              {oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
-            </button>
-            <button type="button" className={styles.icone} aria-label={tema === "claro" ? "Tema escuro" : "Tema claro"} onClick={alternarTema}>
-              {tema === "claro" ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />}
-            </button>
-            <button type="button" className={styles.primario} onClick={() => navigate("/transacoes/nova")}>
-              <Plus size={16} strokeWidth={2.5} aria-hidden="true" /><span>Nova transação</span>
-            </button>
+            <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
+              icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
+            <Botao soIcone aria-label={tema === "claro" ? "Tema escuro" : "Tema claro"} onClick={alternarTema}
+              icone={tema === "claro" ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />} />
+            <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova")}
+              icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>
         </header>
         <main className={styles.conteudo} key={pathname}>

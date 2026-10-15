@@ -3,6 +3,7 @@
 // (↑ ↓ Home End Enter Esc Tab) e busca quando a lista é longa. Abre pra cima se não couber embaixo.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Check, ChevronDown, Search } from "lucide-react"
+import { useCampo } from "./campoContexto"
 import styles from "./Selecao.module.css"
 
 export type OpcaoSelecao = { valor: string; rotulo: string }
@@ -21,6 +22,10 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   ariaLabel?: string
   id?: string
 }) {
+  // Dentro de um Campo: o rótulo aponta pra cá e o erro vem de lá (props explícitas ganham).
+  const campo = useCampo()
+  const idGatilho = id ?? campo?.id
+  const inv = invalido ?? campo?.invalido ?? false
   const [aberto, setAberto] = useState(false)
   const [ativo, setAtivo] = useState(0)
   const [busca, setBusca] = useState("")
@@ -87,9 +92,10 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
 
   return (
     <div className={styles.raiz} ref={raiz} data-tamanho={tamanho}>
-      <button ref={gatilho} id={id} type="button" className={styles.gatilho} role="combobox"
-        aria-haspopup="listbox" aria-expanded={aberto} aria-controls={idLista} aria-label={ariaLabel} aria-invalid={invalido || undefined}
-        data-invalido={invalido ? "true" : undefined} data-vazio={escolhida ? undefined : "true"} disabled={desabilitado}
+      <button ref={gatilho} id={idGatilho} type="button" className={styles.gatilho} role="combobox"
+        aria-haspopup="listbox" aria-expanded={aberto} aria-controls={idLista} aria-label={ariaLabel} aria-invalid={inv || undefined}
+        aria-describedby={inv && campo ? campo.erroId : undefined}
+        data-invalido={inv ? "true" : undefined} data-vazio={escolhida ? undefined : "true"} disabled={desabilitado}
         onClick={() => (aberto ? fechar() : abrir())} onKeyDown={teclaNoGatilho}>
         <span className={styles.texto}>{escolhida?.rotulo ?? placeholder}</span>
         <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={styles.seta} data-aberto={aberto ? "true" : undefined} />

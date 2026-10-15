@@ -17,26 +17,15 @@
 .busca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
 .busca input::placeholder { color: var(--v2-texto-3); }
 .filtrosWrap { position: relative; }
-.botaoFiltros { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
-.botaoFiltros:hover { color: var(--v2-texto); }
-.botaoFiltros[data-ativo="true"] { color: var(--v2-texto); background: var(--v2-superficie-2); border-color: var(--v2-superficie-2); }
 .contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
 
 /* Painel de filtros: ancorado no botão, campos empilhados, rodapé Limpar/Aplicar. */
 .painel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 320px; display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
-.campo { display: flex; flex-direction: column; gap: 6px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); }
-.campo select, .campo input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-base); font-weight: 500; outline: none; }
-.campo select:focus, .campo input:focus { border-color: var(--v2-texto); }
 .faixa { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
 .ate { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
-.prefixado { position: relative; display: block; }
-.prefixado em { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-3); pointer-events: none; }
-.prefixado input { padding-left: 36px; }
+/* "Limpar tudo" é botão de texto: puxa o respiro pra letra alinhar com os campos. */
+.limparTudo { margin-left: -6px; }
 .painelRodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
-.limparTudo { padding: 0; border: 0; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
-.limparTudo:hover { color: var(--v2-texto); }
-.aplicar { height: 36px; padding: 0 16px; border: 0; border-radius: var(--v2-r-sm); background: var(--v2-tinta); color: var(--v2-sobre-tinta); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
-.aplicar:hover { opacity: 0.9; }
 
 /* Lista agrupada por dia */
 .respiro { padding: 8px 24px 20px; }

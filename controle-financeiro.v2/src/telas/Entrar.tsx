@@ -6,6 +6,9 @@ import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
 import Logo from "../componentes/Logo"
+import Botao from "../componentes/Botao"
+import Campo from "../componentes/Campo"
+import Entrada from "../componentes/Entrada"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
@@ -213,48 +216,39 @@ export default function Entrar() {
             <form className={styles.form} onSubmit={enviar} noValidate>
               {erro && <p className={styles.alerta} role="alert">{erro}</p>}
               {!contaSelecionada && (
-                <label className={styles.campo}>
-                  <span>E-mail</span>
-                  <input type="email" autoComplete="email" value={email} data-invalido={erros.email ? "true" : undefined}
+                <Campo rotulo="E-mail" erro={erros.email}>
+                  <Entrada type="email" autoComplete="email" value={email}
                     onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
-                  {erros.email && <em>{erros.email}</em>}
-                </label>
+                </Campo>
               )}
-              <label className={styles.campo}>
-                <span>Senha</span>
-                <span className={styles.campoSenha}>
-                  <input type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} data-invalido={erros.senha ? "true" : undefined}
-                    autoFocus={!!contaSelecionada} onChange={(e) => { setSenha(e.target.value); setErros((p) => ({ ...p, senha: undefined })) }} />
-                  <button type="button" className={styles.olho} tabIndex={-1} aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"} onClick={() => setMostrarSenha((v) => !v)}>
-                    {mostrarSenha ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-                  </button>
-                </span>
-                {erros.senha && <em>{erros.senha}</em>}
-              </label>
+              <Campo rotulo="Senha" erro={erros.senha}>
+                <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha}
+                  autoFocus={!!contaSelecionada} onChange={(e) => { setSenha(e.target.value); setErros((p) => ({ ...p, senha: undefined })) }}
+                  sufixo={<Botao variante="texto" soIcone tabIndex={-1} aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                    onClick={() => setMostrarSenha((v) => !v)} icone={mostrarSenha ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />} />} />
+              </Campo>
               <div className={styles.linhaOpcoes}>
                 <label className={styles.lembrar}>
                   <input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} /> Manter-me conectado
                 </label>
                 <button type="button" className={styles.link} onClick={() => { setEsqueci(true); limparErros() }}>Esqueci a senha</button>
               </div>
-              <button type="submit" className={styles.botao} disabled={enviando}>
+              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>
                 {enviando ? "Entrando…" : <>Entrar <ArrowRight size={16} strokeWidth={2.5} aria-hidden="true" /></>}
-              </button>
+              </Botao>
             </form>
           )}
 
           {passo === "mfa" && (
             <form className={styles.form} onSubmit={enviarMfa} noValidate>
-              <label className={styles.campo}>
-                <span>Código</span>
-                <input type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="000000" value={mfaCodigo}
-                  data-invalido={mfaErro ? "true" : undefined} onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
-                {mfaErro && <em>{mfaErro}</em>}
-              </label>
+              <Campo rotulo="Código" erro={mfaErro}>
+                <Entrada type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="000000" value={mfaCodigo}
+                  onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
+              </Campo>
               <label className={styles.lembrar}>
                 <input type="checkbox" checked={confiar} onChange={(e) => setConfiar(e.target.checked)} /> Confiar neste dispositivo por 30 dias
               </label>
-              <button type="submit" className={styles.botao} disabled={enviando}>{enviando ? "Verificando…" : "Verificar"}</button>
+              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Verificando…" : "Verificar"}</Botao>
             </form>
           )}
 
@@ -263,13 +257,11 @@ export default function Entrar() {
           ) : (
             <form className={styles.form} onSubmit={enviarEsqueci} noValidate>
               {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-              <label className={styles.campo}>
-                <span>E-mail</span>
-                <input type="email" autoComplete="email" autoFocus value={email} data-invalido={erros.email ? "true" : undefined}
+              <Campo rotulo="E-mail" erro={erros.email}>
+                <Entrada type="email" autoComplete="email" autoFocus value={email}
                   onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
-                {erros.email && <em>{erros.email}</em>}
-              </label>
-              <button type="submit" className={styles.botao} disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</button>
+              </Campo>
+              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</Botao>
             </form>
           ))}
 
@@ -281,9 +273,9 @@ export default function Entrar() {
                   ? `Faltam ${marcada.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
                   : "Reative para voltar a usar sua conta antes da remoção permanente."}
               </p>
-              <button type="button" className={styles.botao} disabled={enviando} onClick={() => void reativarConta()}>
+              <Botao variante="primario" tamanho="lg" cheio disabled={enviando} onClick={() => void reativarConta()}>
                 {enviando ? "Reativando…" : "Reativar conta"}
-              </button>
+              </Botao>
             </div>
           )}
 

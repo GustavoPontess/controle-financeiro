@@ -13,6 +13,9 @@ import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
+import Botao from "../componentes/Botao"
+import Campo from "../componentes/Campo"
+import Entrada from "../componentes/Entrada"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -167,50 +170,46 @@ export default function Transacoes() {
               <input type="search" placeholder="Buscar lançamento" aria-label="Buscar lançamento" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </label>
             <div className={styles.filtrosWrap} ref={painelRef}>
-              <button type="button" className={styles.botaoFiltros} data-ativo={painel || ativos > 0 ? "true" : undefined}
-                aria-expanded={painel} aria-haspopup="dialog" onClick={() => (painel ? setPainel(false) : abrirPainel())}>
-                <SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" /> Filtros
+              <Botao ativo={painel || ativos > 0} aria-expanded={painel} aria-haspopup="dialog"
+                onClick={() => (painel ? setPainel(false) : abrirPainel())}
+                icone={<SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" />}>
+                Filtros
                 {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
-              </button>
+              </Botao>
               {painel && (
                 <div className={styles.painel} role="dialog" aria-label="Filtros">
-                  <div className={styles.campo}>
-                    <span>Tipo de lançamento</span>
-                    <Selecao tamanho="sm" ariaLabel="Tipo de lançamento" valor={rascunho.natureza}
+                  <Campo rotulo="Tipo de lançamento">
+                    <Selecao tamanho="sm" valor={rascunho.natureza}
                       onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
                       opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
-                  </div>
-                  <div className={styles.campo}>
-                    <span>Conta</span>
-                    <Selecao tamanho="sm" ariaLabel="Conta" valor={rascunho.contaId}
+                  </Campo>
+                  <Campo rotulo="Conta">
+                    <Selecao tamanho="sm" valor={rascunho.contaId}
                       onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
                       opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
-                  </div>
-                  <div className={styles.campo}>
-                    <span>Status</span>
-                    <Selecao tamanho="sm" ariaLabel="Status" valor={rascunho.status}
+                  </Campo>
+                  <Campo rotulo="Status">
+                    <Selecao tamanho="sm" valor={rascunho.status}
                       onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
                       opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
-                  </div>
-                  <div className={styles.campo}>
-                    <span>Valor</span>
+                  </Campo>
+                  <Campo rotulo="Valor" grupo>
                     <div className={styles.faixa}>
-                      <span className={styles.prefixado}><em>R$</em><input type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={edita("valorMin")} /></span>
+                      <Entrada tamanho="sm" prefixo="R$" type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={edita("valorMin")} />
                       <span className={styles.ate}>até</span>
-                      <span className={styles.prefixado}><em>R$</em><input type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={edita("valorMax")} /></span>
+                      <Entrada tamanho="sm" prefixo="R$" type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={edita("valorMax")} />
                     </div>
-                  </div>
-                  <div className={styles.campo}>
-                    <span>Período</span>
+                  </Campo>
+                  <Campo rotulo="Período" grupo>
                     <div className={styles.faixa}>
-                      <input type="date" aria-label="De" value={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
+                      <Entrada tamanho="sm" type="date" aria-label="De" value={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
                       <span className={styles.ate}>até</span>
-                      <input type="date" aria-label="Até" value={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
+                      <Entrada tamanho="sm" type="date" aria-label="Até" value={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
                     </div>
-                  </div>
+                  </Campo>
                   <div className={styles.painelRodape}>
-                    <button type="button" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</button>
-                    <button type="button" className={styles.aplicar} onClick={aplicar}>Aplicar</button>
+                    <Botao variante="texto" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</Botao>
+                    <Botao variante="primario" onClick={aplicar}>Aplicar</Botao>
                   </div>
                 </div>
               )}

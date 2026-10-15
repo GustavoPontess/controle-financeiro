@@ -1,6 +1,7 @@
 // Confirmação do v2 (excluir, estornar…): véu + cartão central. Esc ou clique no véu cancela; o foco
 // abre no "Cancelar" (o caminho seguro) e volta pra quem abriu ao fechar.
 import { useEffect, useRef, type ReactNode } from "react"
+import Botao from "./Botao"
 import styles from "./Confirmar.module.css"
 
 export default function Confirmar({ aberto, titulo, texto, rotuloConfirmar, perigo, ocupado, onConfirmar, onCancelar }: {
@@ -32,10 +33,10 @@ export default function Confirmar({ aberto, titulo, texto, rotuloConfirmar, peri
         <h2 id="confirmar-titulo" className={styles.titulo}>{titulo}</h2>
         {texto && <div className={styles.texto}>{texto}</div>}
         <div className={styles.acoes}>
-          <button ref={cancelarRef} type="button" className={styles.cancelar} disabled={ocupado} onClick={onCancelar}>Cancelar</button>
-          <button type="button" className={styles.confirmar} data-perigo={perigo ? "true" : undefined} disabled={ocupado} onClick={onConfirmar}>
+          <Botao ref={cancelarRef} disabled={ocupado} onClick={onCancelar}>Cancelar</Botao>
+          <Botao variante="primario" perigo={perigo} disabled={ocupado} onClick={onConfirmar}>
             {ocupado ? "Aguarde…" : rotuloConfirmar}
-          </button>
+          </Botao>
         </div>
       </div>
     </div>

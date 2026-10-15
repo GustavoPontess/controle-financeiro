@@ -1,11 +1,11 @@
 .raiz { position: relative; width: 100%; min-width: 0; }
 
 /* Gatilho: mesma cara dos campos de texto; seta com respiro de 14px da borda. */
-.gatilho { display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 14px 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-base); font-weight: 500; text-align: left; cursor: pointer; outline: none; }
+.gatilho { transition: border-color 0.12s, box-shadow 0.12s; display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 14px 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-base); font-weight: 500; text-align: left; cursor: pointer; outline: none; }
 .raiz[data-tamanho="sm"] .gatilho { height: 40px; }
 .raiz[data-tamanho="xs"] .gatilho { height: 32px; padding: 0 10px 0 10px; font-size: var(--v2-fs-sm); font-weight: 600; }
-.gatilho:hover:not(:disabled) { border-color: var(--v2-texto-3); }
-.gatilho:focus-visible, .gatilho[aria-expanded="true"] { border-color: var(--v2-texto); }
+.gatilho:hover:not(:disabled, [data-invalido="true"]) { border-color: var(--v2-texto-3); }
+.gatilho:focus-visible, .gatilho[aria-expanded="true"] { border-color: var(--v2-texto); box-shadow: var(--v2-anel-foco); }
 .gatilho[data-invalido="true"] { border-color: var(--v2-negativo); }
 .gatilho:disabled { opacity: 0.6; cursor: default; }
 .texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -55,10 +55,6 @@
 .topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 32px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
 .tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topoAcoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--v2-linha); border-radius: 10px; background: var(--v2-superficie); color: var(--v2-texto-2); cursor: pointer; }
-.icone:hover { color: var(--v2-texto); border-color: var(--v2-linha-forte); }
-.primario { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
-.primario:hover { opacity: 0.9; }
 /* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
 .conteudo { flex: 1; width: 100%; max-width: 1600px; margin: 0; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
 @keyframes v2-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -79,8 +75,6 @@
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .fecharMenu { margin-left: auto; }
   .topo { padding: 0 16px; gap: 8px; }
-  .primario span { display: none; }
-  .primario { width: 36px; padding: 0; justify-content: center; }
   .tituloPagina { font-size: var(--v2-fs-lg); }
   .conteudo { padding: 4px 16px 40px; }
 }

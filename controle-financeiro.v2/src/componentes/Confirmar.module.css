@@ -4,10 +4,3 @@
 .titulo { margin: 0; font-size: var(--v2-fs-lg); font-weight: 600; letter-spacing: -0.01em; }
 .texto { font-size: var(--v2-fs-md); line-height: 1.5; color: var(--v2-texto-2); }
 .acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-.cancelar, .confirmar { height: 36px; padding: 0 16px; border-radius: var(--v2-r-sm); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
-.cancelar { border: 1px solid var(--v2-linha-forte); background: var(--v2-superficie); color: var(--v2-texto); }
-.cancelar:hover:not(:disabled) { background: var(--v2-superficie-2); }
-.confirmar { border: 0; background: var(--v2-tinta); color: var(--v2-sobre-tinta); }
-.confirmar[data-perigo="true"] { background: var(--v2-negativo); color: #fff; }
-.confirmar:hover:not(:disabled) { opacity: 0.9; }
-.cancelar:disabled, .confirmar:disabled { opacity: 0.6; cursor: default; }

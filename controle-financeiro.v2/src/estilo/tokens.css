@@ -74,6 +74,13 @@
 
 /* Tom do dinheiro (só onde a direção importa) + versões claras pra usar SOBRE o palco escuro. */
 :root { --v2-palco-positivo: #7ED9A5; --v2-palco-negativo: #F39C96; }
+
+/* Comuns aos dois temas (resolvem com a cor do tema da vez). */
+:root {
+  --v2-sobre-negativo: #FFFFFF;
+  /* Anel de foco dos controles de formulário (caixa de texto, seleção). */
+  --v2-anel-foco: 0 0 0 3px color-mix(in srgb, var(--v2-texto) 10%, transparent);
+}
 .v2 [data-tom="positivo"] { color: var(--v2-positivo); }
 .v2 [data-tom="negativo"] { color: var(--v2-negativo); }
 .v2 [data-tom="neutro"] { color: var(--v2-texto-3); }
