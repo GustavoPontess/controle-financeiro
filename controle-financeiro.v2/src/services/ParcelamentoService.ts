@@ -22,16 +22,19 @@ export const ParcelamentoService = {
     page: number,
     pageSize: number,
     ativo?: boolean,
+    /** Só os de um cartão (filtro no servidor — a página do cartão pagina só os dele). */
+    cartaoCreditoId?: string,
   ): Promise<PagedResult<Parcelamento>> {
     const params: Record<string, unknown> = { page, pageSize }
     if (ativo !== undefined) params.ativo = ativo
+    if (cartaoCreditoId) params.cartaoCreditoId = cartaoCreditoId
     const res = await api.get('/parcelamentos', { params })
     return res.data
   },
 
   /** KPIs agregados — ativos, soma do restante, total. */
-  async obterStats(): Promise<{ ativos: number; totalRestante: number; qtdTotal: number }> {
-    const res = await api.get('/parcelamentos/stats')
+  async obterStats(cartaoCreditoId?: string): Promise<{ ativos: number; totalRestante: number; qtdTotal: number }> {
+    const res = await api.get('/parcelamentos/stats', { params: cartaoCreditoId ? { cartaoCreditoId } : undefined })
     return res.data
   },
 

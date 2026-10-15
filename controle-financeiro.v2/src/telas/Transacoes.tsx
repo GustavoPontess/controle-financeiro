@@ -2,7 +2,6 @@
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Link } from "react-router-dom"
 import { ArrowLeftRight, CreditCard, Search, SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
@@ -11,6 +10,7 @@ import type { Transaction } from "../types/Transaction"
 import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
+import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
 import Botao from "../componentes/Botao"
@@ -41,29 +41,6 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
 type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string }
 const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "" }
 const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
-
-/** Cabeçalho do dia: "Hoje" / "Ontem" / "quarta-feira, 8 de outubro" (ano só quando não é o atual). */
-function rotuloDoDia(iso: string): string {
-  const hoje = new Date()
-  const dia = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
-  const diff = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime() - dia.getTime()) / 86400000)
-  if (diff === 0) return "Hoje"
-  if (diff === 1) return "Ontem"
-  const opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long", ...(dia.getFullYear() !== hoje.getFullYear() ? { year: "numeric" } : {}) }
-  const txt = new Intl.DateTimeFormat("pt-BR", opts).format(dia)
-  return txt.charAt(0).toUpperCase() + txt.slice(1)
-}
-
-/** Agrupa por dia mantendo a ordem que o servidor mandou (data desc; dentro do dia, hora desc). */
-function porDia(itens: Transaction[]): { dia: string; itens: Transaction[] }[] {
-  const grupos: { dia: string; itens: Transaction[] }[] = []
-  for (const t of itens) {
-    const ultimo = grupos[grupos.length - 1]
-    if (ultimo && ultimo.dia === t.data) ultimo.itens.push(t)
-    else grupos.push({ dia: t.data, itens: [t] })
-  }
-  return grupos
-}
 
 const naturezaDe = (t: Transaction): Exclude<Natureza, ""> =>
   t.ehTransferencia ? "transferencia" : t.ehPagamentoFatura ? "fatura" : t.tipo === 2 ? "entrada" : "saida"
@@ -144,7 +121,6 @@ export default function Transacoes() {
   }, [pagina, porPagina, buscaAplicada, filtros])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
-  const grupos = useMemo(() => porDia(itens ?? []), [itens])
   const ativos = ativosEm(filtros)
   const temFiltro = !!busca || ativos > 0
 
@@ -232,16 +208,7 @@ export default function Transacoes() {
         ) : itens.length === 0 ? (
           <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : "Nenhum lançamento ainda."}</p>
         ) : (
-          <div className={styles.lista}>
-            {grupos.map((g) => (
-              <section key={g.dia} className={styles.grupo}>
-                <h3 className={styles.dia}>{rotuloDoDia(g.dia)}</h3>
-                <ul className={styles.linhas}>
-                  {g.itens.map((t) => <Linha key={t.id} t={t} categoria={t.categoriaId ? categorias[t.categoriaId] : undefined} />)}
-                </ul>
-              </section>
-            ))}
-          </div>
+          <ListaPorDia itens={itens.map((t) => paraItem(t, categorias[t.categoriaId ?? ""]))} />
         )}
 
         {total > 0 && (
@@ -254,25 +221,23 @@ export default function Transacoes() {
 }
 
 /** Uma linha do extrato. Transferência e pagamento de fatura são neutros (mexem no caixa, não são ganho nem gasto). */
-function Linha({ t, categoria }: { t: Transaction; categoria?: string }) {
+function paraItem(t: Transaction, categoria?: string): ItemDoDia {
   const n = naturezaDe(t)
   const tom: TomDinheiro | undefined = n === "entrada" ? "positivo" : n === "saida" || n === "fatura" ? "negativo" : "neutro"
   const icone = n === "transferencia" ? <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
     : n === "fatura" ? <CreditCard size={16} strokeWidth={2} aria-hidden="true" />
     : t.descricao.trim().charAt(0).toUpperCase() || "•"
-  const detalhe = [t.contaNome, categoria, t.meioPagamentoDescricao].filter(Boolean).join(" · ")
-  return (
-    <li>
-      <Link to={`/transacoes/${t.id}`} className={styles.linha}>
-        <span className={styles.icone} data-tom={n === "entrada" ? "positivo" : n === "saida" ? undefined : "neutro"}>{icone}</span>
-        <span className={styles.texto}>
-          <span className={styles.nome}>{t.descricao}</span>
-          <span className={styles.sub}>{detalhe || "—"}</span>
-        </span>
-        {t.hora && <span className={styles.hora}>{t.hora.slice(0, 5)}</span>}
-        {t.statusTransacao === 0 && <Etiqueta tom="alerta" className={styles.previsto}>Previsto</Etiqueta>}
-        <Dinheiro valor={t.valor} tom={tom} className={styles.valor} />
-      </Link>
-    </li>
-  )
+  return {
+    id: t.id,
+    dia: t.data,
+    para: `/transacoes/${t.id}`,
+    icone,
+    tomIcone: n === "entrada" ? "positivo" : n === "saida" ? undefined : "neutro",
+    nome: t.descricao,
+    sub: [t.contaNome, categoria, t.meioPagamentoDescricao].filter(Boolean).join(" · ") || "—",
+    hora: t.hora ? t.hora.slice(0, 5) : null,
+    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : undefined,
+    valor: t.valor,
+    tom,
+  }
 }

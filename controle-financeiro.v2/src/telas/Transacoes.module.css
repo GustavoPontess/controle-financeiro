@@ -27,29 +27,10 @@
 .limparTudo { margin-left: -6px; }
 .painelRodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
 
-/* Lista agrupada por dia */
-.previsto { grid-column: 4; }
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.lista { padding: 0 8px 8px; display: flex; flex-direction: column; }
-.grupo { display: flex; flex-direction: column; }
-.dia { margin: 0; padding: 14px 16px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
-.linhas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 /* Cada peça tem coluna fixa: sem hora ou sem "Previsto" a coluna fica vazia, mas o valor segue na última —
    antes o valor subia pra coluna livre e ficava 12px pra dentro nas linhas sem hora. */
-.linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
-.linha:hover { background: var(--v2-superficie-2); }
-.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
-.icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
-.icone[data-tom="neutro"] { color: var(--v2-texto-3); }
-.texto { display: flex; flex-direction: column; min-width: 0; }
-.nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hora { grid-column: 3; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.valor { grid-column: 5; grid-row: 1; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 110px; text-align: right; }
-.valor[data-tom="positivo"] { color: var(--v2-positivo); }
-.valor[data-tom="negativo"] { color: var(--v2-negativo); }
-.valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
 
 
 @media (max-width: 900px) {
@@ -63,10 +44,4 @@
   .busca { flex: 1 1 auto; min-width: 0; }
   .filtrosWrap { position: static; }
   .painel { left: 16px; right: 16px; width: auto; }
-  .lista { padding: 0 4px 8px; }
-  .dia { padding: 12px 12px 4px; }
-  .linha { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 10px 12px; }
-  .hora { display: none; }
-  .previsto { grid-column: 2; justify-self: start; }
-  .valor { grid-column: 3; min-width: 0; }
 }

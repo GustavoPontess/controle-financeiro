@@ -4,12 +4,14 @@ import { Link } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import styles from "./Bloco.module.css"
 
-export default function Bloco({ titulo, acao, para, children, plano, semRespiro, className }: {
+export default function Bloco({ titulo, acao, para, aoClicar, children, plano, semRespiro, className }: {
   titulo?: ReactNode
-  /** Rótulo do link à direita ("Ver todas"). */
+  /** Rótulo da ação à direita ("Ver todas"). */
   acao?: string
   /** Destino do link. */
   para?: string
+  /** Em vez de link: o que a ação faz (ex.: trocar de aba). */
+  aoClicar?: () => void
   children: ReactNode
   plano?: boolean
   semRespiro?: boolean
@@ -21,6 +23,7 @@ export default function Bloco({ titulo, acao, para, children, plano, semRespiro,
         <header className={styles.topo}>
           {titulo && <h2 className={styles.titulo}>{titulo}</h2>}
           {acao && para && <Link to={para} className={styles.acao}>{acao} <ArrowRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link>}
+          {acao && !para && aoClicar && <button type="button" className={styles.acao} onClick={aoClicar}>{acao} <ArrowRight size={14} strokeWidth={2.25} aria-hidden="true" /></button>}
         </header>
       )}
       {children}
