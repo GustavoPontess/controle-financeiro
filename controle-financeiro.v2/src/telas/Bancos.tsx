@@ -1,23 +1,27 @@
 // Bancos (contas) do v2: três números (saldo total, disponível em conta corrente + carteira, guardado na
 // poupança) e a lista de contas — abertas ou encerradas. A tela é SÓ das contas: clicar numa linha abre, ali
-// embaixo, a ficha dela (banco, tipo, agência, número) e as ações (Excluir, Encerrar, Editar / Reabrir);
-// o extrato mora em Transações ("Ver lançamentos" já abre filtrado). As contas vêm todas de uma vez (são
+// embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
+// Encerrar, Editar / Reabrir); extrato é assunto de Transações. As contas vêm todas de uma vez (são
 // poucas), então Abertas | Encerradas filtra a lista já carregada. Outra tela pode mandar `state.abrir`
 // (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ArrowRight, Ban, ChevronDown, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
+import { Ban, ChevronDown, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
 import { deleteConta, getContas, reabrirConta } from "../services/contaService"
+import { getCartoes } from "../services/cartaoCreditoService"
+import type { CartaoCredito } from "../types/CartaoCredito"
 import { mensagemDeErro } from "../api/cliente"
 import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
+import FaceCartao from "../componentes/FaceCartao"
 import { RodapeFormulario } from "../componentes/Formulario"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
 import { TIPO_CONTA, descreverConta } from "../dominio/conta"
+import { NOME_BANDEIRA } from "../dominio/fatura"
 import { dataBR } from "../utils/dateTime"
 import styles from "./Bancos.module.css"
 
@@ -29,10 +33,20 @@ const SITUACOES: { valor: Situacao; rotulo: string }[] = [
 
 // Carteira primeiro, depois por nome — a carteira é a conta do dia a dia.
 const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
+/** "Mastercard · •••• 0315 · fecha dia 3 · vence dia 10" (mesma linha de detalhe da lista de Cartões). */
+const descreverCartao = (k: CartaoCredito) => [
+  NOME_BANDEIRA[k.bandeira] ?? "Cartão",
+  k.ultimosDigitos ? `•••• ${k.ultimosDigitos}` : null,
+  !k.temCredito ? "só débito" : null,
+  k.temCredito && k.diaFechamento ? `fecha dia ${k.diaFechamento}` : null,
+  k.temCredito && k.diaVencimento ? `vence dia ${k.diaVencimento}` : null,
+].filter(Boolean).join(" · ")
 
 export default function Bancos() {
   const { state } = useLocation()
   const [contas, setContas] = useState<Conta[] | null>(null)
+  // Cartões ligados a cada conta (a ficha mostra). Sem eles a ficha só perde essa parte.
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [erro, setErro] = useState(false)
   const [situacao, setSituacao] = useState<Situacao>("abertas")
   const [abertaId, setAbertaId] = useState<string | null>(() => (state as { abrir?: string } | null)?.abrir ?? null)
@@ -40,6 +54,7 @@ export default function Bancos() {
   useEffect(() => {
     let vivo = true
     getContas({ incluirEncerradas: true }).then((c) => { if (vivo) setContas(c) }).catch(() => { if (vivo) setErro(true) })
+    getCartoes().then((k) => { if (vivo) setCartoes(k) }).catch(() => { /* ficha sem cartões */ })
     return () => { vivo = false }
   }, [])
   const recarregar = () => getContas({ incluirEncerradas: true }).then(setContas)
@@ -95,7 +110,8 @@ export default function Bancos() {
         ) : (
           <ul className={styles.lista} aria-label="Contas">
             {visiveis.map((c) => (
-              <Linha key={c.id} c={c} aberta={c.id === abertaId} aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
+              <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
+                aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
             ))}
           </ul>
         )}
@@ -114,9 +130,10 @@ function Numero({ rotulo, valor }: { rotulo: string; valor?: number }) {
   )
 }
 
-/** Uma conta: a linha (marca, nome + detalhe, saldo, seta) e, aberta, a ficha com as ações. */
-function Linha({ c, aberta, aoAbrir, aoMudar }: {
+/** Uma conta: a linha (marca, nome + detalhe, saldo, seta) e, aberta, a ficha (dados, cartões) com as ações. */
+function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
   c: Conta
+  cartoes: CartaoCredito[]
   aberta: boolean
   aoAbrir: () => void
   /** A conta foi reaberta ou excluída: a lista recarrega. */
@@ -164,17 +181,32 @@ function Linha({ c, aberta, aoAbrir, aoMudar }: {
               <>
                 <div><dt>Banco</dt><dd>{c.bancoNome || "Sem banco"}</dd></div>
                 <div><dt>Tipo</dt><dd>{c.tipo === TIPO_CONTA.poupanca ? "Poupança" : "Conta corrente"}</dd></div>
-                {c.agencia && <div><dt>Agência</dt><dd>{c.agencia}</dd></div>}
-                {c.numeroConta && <div><dt>Número</dt><dd>{c.numeroConta}</dd></div>}
+                <div><dt>Agência</dt><dd>{c.agencia || "—"}</dd></div>
+                <div><dt>Número</dt><dd>{c.numeroConta || "—"}</dd></div>
               </>
             )}
             {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}
           </dl>
-          <div className={styles.acoes}>
-            <Link to="/transacoes" state={{ filtros: { contaId: c.id } }} className={styles.ver}>
-              Ver lançamentos <ArrowRight size={14} strokeWidth={2.25} aria-hidden="true" />
-            </Link>
-            {!c.isCarteira && (
+          {cartoes.length > 0 && (
+            <div className={styles.cartoes}>
+              <span className={styles.cartoesTitulo}>Cartões</span>
+              <ul className={styles.cartoesLista}>
+                {cartoes.map((k) => (
+                  <li key={k.id}>
+                    <Link to={`/cartoes/${k.id}`} state={{ voltarPara: "/bancos" }} className={styles.cartao}>
+                      <FaceCartao bandeira={k.bandeira} cor={k.bancoCor} />
+                      <span className={styles.texto}>
+                        <span className={styles.nome}>{k.nome}</span>
+                        <span className={styles.sub}>{descreverCartao(k)}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!c.isCarteira && (
+            <div className={styles.acoes}>
               <RodapeFormulario>
                 <Botao perigo disabled={ocupado} onClick={() => { setErro(null); setExcluindo(true) }} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
                 {encerrada ? (
@@ -188,8 +220,8 @@ function Linha({ c, aberta, aoAbrir, aoMudar }: {
                   </>
                 )}
               </RodapeFormulario>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

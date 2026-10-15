@@ -7,6 +7,9 @@ import type { Conta } from "../../types/Conta"
 const conta = (id: string, nome: string, saldoAtual: number, extra: Partial<Conta> = {}): Conta =>
   ({ id, nome, saldoAtual, tipo: 1, tipoDescricao: "", isCarteira: false, ...extra })
 let contas: Conta[] = []
+vi.mock("../../services/cartaoCreditoService", () => ({
+  getCartoes: vi.fn(async () => [{ id: "c1", nome: "Nubank gold", bandeira: 2, ultimosDigitos: "0315", temCredito: true, temDebito: true, ehPrePago: false, diaFechamento: 3, diaVencimento: 10, contaId: "k1", ativo: true, bandeiraDescricao: "" }]),
+}))
 vi.mock("../../services/contaService", () => ({
   getContas: vi.fn(async () => contas),
   deleteConta: vi.fn(async () => {}),
@@ -21,7 +24,7 @@ const renderizar = (abrir?: string) => render(
       <Route path="/bancos" element={<Bancos />} />
       <Route path="/bancos/:id/editar" element={<p>editar conta</p>} />
       <Route path="/bancos/:id/encerrar" element={<p>encerrar conta</p>} />
-      <Route path="/transacoes" element={<p>transações</p>} />
+      <Route path="/cartoes/:id" element={<p>página do cartão</p>} />
     </Routes>
   </MemoryRouter>,
 )
@@ -31,7 +34,7 @@ const linha = (nome: RegExp) => within(lista()).getByRole("button", { name: nome
 describe("Bancos — lista com a ficha da conta", () => {
   beforeEach(() => {
     contas = [
-      conta("k1", "Nubank", 1139.96, { bancoNome: "NU PAGAMENTOS", agencia: "0001", numeroConta: "12345-6" }),
+      conta("k1", "Nubank", 1139.96, { bancoNome: "NU PAGAMENTOS", numeroConta: "12345-6" }),
       conta("k0", "Carteira", 50, { isCarteira: true }),
       conta("k3", "Santander", 0, { encerradaEm: "2026-09-10" }),
     ]
@@ -46,13 +49,18 @@ describe("Bancos — lista com a ficha da conta", () => {
     expect(nomes[1]).toContain("Nubank")
     expect(nomes.some((t) => t?.includes("Santander"))).toBe(false)
     expect(screen.getAllByText(/1\.189,96/).length).toBeGreaterThan(0)
-    expect(screen.queryByText("Ver lançamentos")).not.toBeInTheDocument()
+    expect(screen.queryByText("Cartões")).not.toBeInTheDocument()
 
     await userEvent.click(linha(/Nubank/))
     expect(linha(/Nubank/)).toHaveAttribute("aria-expanded", "true")
     expect(screen.getByText("NU PAGAMENTOS")).toBeInTheDocument()
     expect(screen.getByText("12345-6")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: /Ver lançamentos/ })).toHaveAttribute("href", "/transacoes")
+    // Agência não informada aparece em branco, não some (dá pra ver o que falta preencher).
+    expect(screen.getByText("Agência").nextElementSibling).toHaveTextContent("—")
+    // O cartão ligado à conta aparece na ficha e leva pra página dele.
+    expect(screen.getByText("Cartões")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Nubank gold/ })).toHaveAttribute("href", "/cartoes/c1")
+    expect(screen.getByText("Mastercard · •••• 0315 · fecha dia 3 · vence dia 10")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Encerrar" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument()
 
@@ -60,6 +68,7 @@ describe("Bancos — lista com a ficha da conta", () => {
     await userEvent.click(linha(/Carteira/))
     expect(linha(/Nubank/)).toHaveAttribute("aria-expanded", "false")
     expect(screen.getByText("Dinheiro em mãos", { selector: "dd" })).toBeInTheDocument()
+    expect(screen.queryByText("Cartões")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument()
     await userEvent.click(linha(/Carteira/))
     expect(linha(/Carteira/)).toHaveAttribute("aria-expanded", "false")

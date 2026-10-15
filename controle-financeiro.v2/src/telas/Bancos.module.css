@@ -30,7 +30,7 @@
 .nome { min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Aberta, a ficha já diz tudo isso — a linha fica só com o nome. */
-.item[data-aberta="true"] .sub { display: none; }
+.item[data-aberta="true"] > .linha .sub { display: none; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .valor[data-tom="negativo"] { color: var(--v2-negativo); }
 .valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
@@ -43,9 +43,13 @@
 .dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--v2-linha); }
 .dados dt { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); white-space: nowrap; }
 .dados dd { margin: 0; min-width: 0; font-size: var(--v2-fs-sm); font-weight: 500; text-align: right; overflow-wrap: anywhere; }
-.acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
-.ver { display: inline-flex; align-items: center; gap: 4px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); text-decoration: none; }
-.ver:hover { color: var(--v2-texto); }
+/* Cartões ligados à conta: cada um é uma linha-link pra página do cartão (carinha + nome + detalhe). */
+.cartoes { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--v2-linha); }
+.cartoesTitulo { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.cartoesLista { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; }
+.cartao { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
+.cartao:hover { background: var(--v2-superficie); }
+.acoes { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
 
 @media (max-width: 900px) {
   .resumo { padding: 14px 20px; }
@@ -56,6 +60,5 @@
   .lista { padding: 4px 4px 8px; }
   .linha { padding: 12px 12px; }
   .ficha { padding: 0 12px 12px; }
-  .acoes { flex-direction: column; align-items: stretch; }
   .acoes > * { width: 100%; }
 }
