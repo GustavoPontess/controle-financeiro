@@ -25,7 +25,8 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Escolha única curta (2–4 opções) | `Segmentos` | radiogroup com setas; `cheio` pra ocupar a largura |
 | Liga/desliga | `Interruptor` | role=switch ("Já paguei", "Conta fixa") |
 | Status | `Etiqueta` | tom positivo / negativo / alerta |
-| Layout de formulário | `Formulario`, `LinhaCampos`, `RodapeFormulario` | linha = colunas iguais (1 no celular); rodapé à direita |
+| Layout de formulário | `Formulario`, `LinhaCampos`, `RodapeFormulario` | `layout="pilha"` empilha; `layout="lateral"` = `<Campos>` à esquerda + `<Lado>` (prévia, opções, rodapé) à direita, 1 coluna no celular. `LinhaCampos colunas="2fr 1fr"` pra proporção sob medida |
+| Prévia do lançamento | `PreviaLancamento` | "Como vai aparecer": linha igual à da lista + frase do efeito; some no celular |
 | Paginação de lista | `Paginacao` | linhas por página + páginas numeradas; servidor pagina |
 | Confirmar ação | `Confirmar` | excluir/estornar; `perigo` pra destrutiva |
 | Caixa de conteúdo | `Bloco` | título + ação à direita |
@@ -37,4 +38,6 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
+- Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
+- Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita (Nova transação e Editar são a referência).
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
