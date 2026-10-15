@@ -46,6 +46,20 @@ public class RecorrentesController : ControllerBase
         return Ok(resultado);
     }
 
+    /// <summary>
+    /// Uma conta fixa, com situação (ativa/pausada/cancelada/encerrada) e próxima cobrança — o que a
+    /// página dela mostra. Excluída ou inexistente → 404.
+    /// </summary>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(RecorrenteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Obter(Guid id)
+    {
+        var uid = GetUserId();
+        await _service.GerarPendentesAsync(uid);
+        return Ok(await _service.ObterAsync(id, uid));
+    }
+
     /// <summary>KPIs agregados — ativas, custo mensal, próximas 30 dias, total.</summary>
     [HttpGet("stats")]
     [ProducesResponseType(typeof(RecorrenteStatsDto), StatusCodes.Status200OK)]

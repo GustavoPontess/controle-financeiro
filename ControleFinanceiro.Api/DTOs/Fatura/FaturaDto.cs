@@ -86,6 +86,29 @@ public class FaturaTransacaoDto
     public string? CategoriaDescricao { get; set; }
 }
 
+/// <summary>
+/// Um lançamento da fatura na lista paginada: compra à vista, parcela de parcelamento ou pagamento.
+/// Mesmos itens (e mesmas regras de total) do <see cref="FaturaDetalheDto"/>, numa lista só.
+/// </summary>
+public class LancamentoFaturaDto
+{
+    public Guid Id { get; set; }
+    /// <summary>"compra" | "parcela" | "pagamento".</summary>
+    public string Tipo { get; set; } = string.Empty;
+    public string Descricao { get; set; } = string.Empty;
+    public decimal Valor { get; set; }
+    public DateTime Data { get; set; }
+    public DateTime CriadoEm { get; set; }
+    public Guid? CategoriaId { get; set; }
+    public string? CategoriaDescricao { get; set; }
+    /// <summary>Parcela: o "2" e o "3" de 2/3.</summary>
+    public int? Numero { get; set; }
+    public int? QuantidadeTotal { get; set; }
+    public Guid? ParcelamentoId { get; set; }
+    /// <summary>Pagamento: o meio (Pix, débito…).</summary>
+    public string? MeioPagamentoDescricao { get; set; }
+}
+
 public class PagarFaturaDto
 {
     public Guid ContaId { get; set; }

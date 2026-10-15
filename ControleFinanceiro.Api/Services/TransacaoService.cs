@@ -34,7 +34,7 @@ namespace ControleFinanceiro.Api.Services
         // Pagamento de fatura e perna de transferência não se editam por aqui: mudar só esta linha desemparelha o
         // outro lado (ValorPago da fatura / a outra perna). Antes passava: excluir o pagamento devolvia o dinheiro
         // à conta com a fatura seguindo paga (dinheiro do nada). Revisão de segurança do #288 (P1).
-        private static void ExigirEditavel(Transacao transacao)
+        internal static void ExigirEditavel(Transacao transacao)
         {
             if (transacao.EhPagamentoFatura)
                 throw new InvalidOperationException(
@@ -48,8 +48,21 @@ namespace ControleFinanceiro.Api.Services
         /// Cria uma transação simples (à vista) e, se for de crédito, associa automaticamente
         /// à fatura correta. Para parcelamento, use CriarParcelamentoAsync.
         /// </summary>
-        public async Task<Transacao> CriarTransacaoAsync(Transacao transacao, Guid usuarioId)
+        public const string OperacaoCriarTransacao = "CriarTransacao";
+        public const string OperacaoCriarParcelamento = "CriarParcelamento";
+
+        // idempotencyKey (opcional): com chave, repetir o pedido (duplo clique, retry de rede) devolve a transação
+        // original em vez de lançar outra; a mesma chave com outros dados → 409.
+        public async Task<Transacao> CriarTransacaoAsync(Transacao transacao, Guid usuarioId, string? idempotencyKey = null)
         {
+            Idempotencia.ExigirTamanho(idempotencyKey);
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                var anterior = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, transacao);
+                if (anterior != null)
+                    return anterior;
+            }
+
             // Lançamento é de uma conta OU de um cartão (mesma regra da Recorrente). Com os dois, o cartão
             // passava sem conferir o dono e o lançamento caía na lista do cartão de outro usuário.
             if (transacao.ContaId.HasValue && transacao.CartaoCreditoId.HasValue)
@@ -112,16 +125,57 @@ namespace ControleFinanceiro.Api.Services
 
             transacao.CriadoPor = usuarioId;
             _context.Transacoes.Add(transacao);
-            await _context.SaveChangesAsync();
+            // Chave no MESMO SaveChanges da transação: a 2ª requisição concorrente estoura o índice e vira replay.
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoCriarTransacao, idempotencyKey, transacao.Id));
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(ex))
+            {
+                _context.ChangeTracker.Clear();
+                var vencedora = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey!, transacao);
+                if (vencedora != null)
+                    return vencedora;
+                throw;
+            }
 
             return transacao;
         }
 
         /// <summary>
+        /// Transação já criada com esta chave (replay) ou null se a chave é nova. 409 se a chave já criou algo que
+        /// não existe mais (excluída depois) ou um pedido com outros dados.
+        /// </summary>
+        private async Task<Transacao?> BuscarCriacaoPorChaveAsync(Guid usuarioId, string chave, Transacao pedido)
+        {
+            var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoCriarTransacao, chave);
+            if (registro == null)
+                return null;
+            var original = await _context.Transacoes
+                .Include(t => t.Conta)
+                .Include(t => t.CartaoCredito)
+                .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId)
+                ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+            if (original.Descricao != pedido.Descricao || original.Valor != pedido.Valor || original.Data != pedido.Data
+                || original.Tipo != pedido.Tipo || original.ContaId != pedido.ContaId || original.CartaoCreditoId != pedido.CartaoCreditoId)
+                throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+            return original;
+        }
+
+        /// <summary>
         /// Cria um parcelamento: N transações distribuídas em N faturas consecutivas.
         /// </summary>
-        public async Task<List<Transacao>> CriarParcelamentoAsync(CriarTransacaoDto dto, Guid usuarioId)
+        public async Task<List<Transacao>> CriarParcelamentoAsync(CriarTransacaoDto dto, Guid usuarioId, string? idempotencyKey = null)
         {
+            Idempotencia.ExigirTamanho(idempotencyKey);
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                var anterior = await BuscarParcelamentoPorChaveAsync(usuarioId, idempotencyKey, dto);
+                if (anterior != null)
+                    return anterior;
+            }
             if (!dto.CartaoCreditoId.HasValue)
                 throw new ArgumentException("Parcelamento requer cartão de crédito.");
 
@@ -134,15 +188,80 @@ namespace ControleFinanceiro.Api.Services
             if (dto.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dto.SubcategoriaId.Value, usuarioId);
 
-            return await _faturaService.CriarParcelamentoAsync(
-                cartao.Id,
-                dto.CategoriaId == Guid.Empty ? null : (Guid?)dto.CategoriaId,
-                dto.Descricao,
-                dto.Valor,
-                dto.Parcelas!.Value,
-                dto.Data,
-                usuarioId,
-                dto.SubcategoriaId);
+            // Com chave, as parcelas e o registro da chave vão no mesmo commit (ou nada).
+            var proprioTx = !string.IsNullOrWhiteSpace(idempotencyKey) && _context.Database.CurrentTransaction is null;
+            await using var tx = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
+            try
+            {
+                var parcelas = await _faturaService.CriarParcelamentoAsync(
+                    cartao.Id,
+                    dto.CategoriaId == Guid.Empty ? null : (Guid?)dto.CategoriaId,
+                    dto.Descricao,
+                    dto.Valor,
+                    dto.Parcelas!.Value,
+                    dto.Data,
+                    usuarioId,
+                    dto.SubcategoriaId);
+                if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                {
+                    _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoCriarParcelamento, idempotencyKey, parcelas[0].Id));
+                    await _context.SaveChangesAsync();
+                }
+                if (tx != null)
+                    await tx.CommitAsync();
+                return parcelas;
+            }
+            catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(ex))
+            {
+                if (tx != null)
+                    await tx.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                var vencedor = await BuscarParcelamentoPorChaveAsync(usuarioId, idempotencyKey!, dto);
+                if (vencedor != null)
+                    return vencedor;
+                throw;
+            }
+            catch
+            {
+                if (tx != null)
+                    await tx.RollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Parcelado já criado com esta chave (replay) ou null. O crédito parcelado deste fluxo é o antigo: N
+        /// transações soltas, sem entidade de grupo — a chave referencia a 1ª parcela e o grupo é remontado pelo
+        /// nome fixo "X (i/N)", cartão e datas mensais (exato, não aproximado). Parcela que sumiu → 409.
+        /// </summary>
+        private async Task<List<Transacao>?> BuscarParcelamentoPorChaveAsync(Guid usuarioId, string chave, CriarTransacaoDto dto)
+        {
+            var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoCriarParcelamento, chave);
+            if (registro == null)
+                return null;
+            var primeira = await _context.Transacoes.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId)
+                ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+            var n = dto.Parcelas ?? 0;
+            if (primeira.CartaoCreditoId != dto.CartaoCreditoId || primeira.Data != dto.Data
+                || primeira.Descricao != $"{dto.Descricao} (1/{n})")
+                throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+            var parcelas = new List<Transacao>();
+            for (var i = 1; i <= n; i++)
+            {
+                var descricao = $"{dto.Descricao} ({i}/{n})";
+                var data = dto.Data.AddMonths(i - 1);
+                var parcela = await _context.Transacoes
+                    .Include(t => t.Conta)
+                    .Include(t => t.CartaoCredito)
+                    .FirstOrDefaultAsync(t => t.CriadoPor == usuarioId && t.CartaoCreditoId == dto.CartaoCreditoId
+                                              && t.Descricao == descricao && t.Data == data)
+                    ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+                parcelas.Add(parcela);
+            }
+            if (parcelas.Sum(p => p.Valor) != dto.Valor)
+                throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+            return parcelas;
         }
 
         public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(
@@ -311,7 +430,13 @@ namespace ControleFinanceiro.Api.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<bool> AtualizarAsync(Guid id, Transacao dados, Guid usuarioId)
+        /// <summary>
+        /// Edita o lançamento no lugar. Além dos campos de sempre, troca conta/cartão (<paramref name="dados"/> com
+        /// ContaId OU CartaoCreditoId; os dois nulos = mantém a origem) e o status (<paramref name="efetivado"/>;
+        /// null = mantém). Cartão = compra no crédito: entra na fatura do período da data e sai da antiga (que é
+        /// reconciliada como num cancelamento); conta = sai da fatura. Parcela de parcelamento não muda de origem.
+        /// </summary>
+        public async Task<bool> AtualizarAsync(Guid id, Transacao dados, Guid usuarioId, bool? efetivado = null)
         {
             var transacao = await _context.Transacoes
                 .Where(t => t.Id == id && (
@@ -327,13 +452,33 @@ namespace ControleFinanceiro.Api.Services
             if (dados.Valor <= 0)
                 throw new ArgumentException("O valor da transação deve ser positivo.");
 
-            // Mesma regra do CriarTransacaoAsync: data futura só é proibida pra lançamento
-            // JÁ efetivado em CONTA. Previsão (salário do próximo mês) e compra de CRÉDITO
-            // pós-datada podem ser futuras — de propósito. O update não altera CartaoCreditoId
-            // nem StatusTransacao, então usa o estado atual do registro + a data nova.
-            // (Editar qualquer campo desses lançamentos legítimos não pode voltar a dar 400.)
-            if (!transacao.CartaoCreditoId.HasValue
-                && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
+            // Origem nova (conta OU cartão). Sem nenhuma das duas, fica a atual — o app atual manda só os campos de sempre.
+            if (dados.ContaId.HasValue && dados.CartaoCreditoId.HasValue)
+                throw new ArgumentException("Informe uma conta ou um cartão de crédito, não os dois.");
+            var trocaOrigem = (dados.ContaId.HasValue || dados.CartaoCreditoId.HasValue)
+                && (dados.ContaId != transacao.ContaId || dados.CartaoCreditoId != transacao.CartaoCreditoId);
+            var contaNova = trocaOrigem ? dados.ContaId : transacao.ContaId;
+            var cartaoNovo = trocaOrigem ? dados.CartaoCreditoId : transacao.CartaoCreditoId;
+            if (trocaOrigem)
+            {
+                if (transacao.ParcelamentoId != null || transacao.ParcelaTransacaoId != null)
+                    throw new ArgumentException("Parcela de parcelamento não muda de conta nem de cartão. Cancele o parcelamento e lance de novo.");
+                if (transacao.EhSaldoInicial || transacao.EhAjusteReconciliacao)
+                    throw new ArgumentException("Saldo inicial e ajuste de reconciliação não mudam de conta.");
+                if (contaNova.HasValue)
+                    await DonoRecursos.ExigirContaAsync(_context, contaNova.Value, usuarioId);
+                else
+                    await DonoRecursos.ExigirCartaoAsync(_context, cartaoNovo!.Value, usuarioId);
+            }
+            var creditoNovo = cartaoNovo.HasValue;
+            // No cartão não existe previsão: a compra vai pra fatura.
+            var statusNovo = creditoNovo ? StatusTransacao.Executado
+                : efetivado is { } ef ? (ef ? StatusTransacao.Executado : StatusTransacao.Previsao)
+                : transacao.StatusTransacao;
+
+            // Mesma regra do CriarTransacaoAsync: data futura só é proibida pra lançamento efetivado em CONTA.
+            // Previsão (salário do próximo mês) e compra de crédito pós-datada podem ser futuras — de propósito.
+            if (!creditoNovo && statusNovo == StatusTransacao.Executado
                 && dados.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
@@ -343,55 +488,67 @@ namespace ControleFinanceiro.Api.Services
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
 
-            // Compra no cartão com a data nova FORA do período da fatura dela vai pra fatura desse período — a
-            // mesma regra de quando é lançada (ObterOuCriarFaturaAsync). Antes a data mudava e o FaturaId não:
-            // a compra seguia cobrada na fatura velha. Dentro do período, fica onde está (dado antigo com
-            // período fora do padrão do cartão não é mexido à toa). Resolvido ANTES de alterar os campos:
-            // ObterOuCriarFaturaAsync salva (cria a fatura), e não pode levar a edição pela metade junto.
+            // Fatura de destino: no mesmo cartão a compra fica na fatura atual enquanto a data nova cai no período
+            // dela (dado antigo com período fora do padrão não é mexido à toa); fora do período, ou em outro cartão,
+            // vai pra fatura do período da data (ObterOuCriarFaturaAsync salva — resolvido ANTES de alterar os campos).
             var dataAntes = transacao.Data;
-            Guid? faturaAnteriorId = null;
+            Guid? faturaAnteriorId = transacao.UsadoComoCredito ? transacao.FaturaId : null;
             Guid? faturaNovaId = null;
-            if (transacao.UsadoComoCredito && transacao.CartaoCreditoId is { } cartaoId
-                && transacao.FaturaId is { } faturaAtualId && dados.Data != transacao.Data)
+            if (creditoNovo)
             {
-                var atual = await _context.Faturas.AsNoTracking().FirstOrDefaultAsync(f => f.Id == faturaAtualId);
-                var dia = dados.Data.ToDateTime(TimeOnly.MinValue);
-                if (atual is null || dia < atual.DataInicio || dia >= atual.DataFechamento)
+                var mesmoCartao = transacao.UsadoComoCredito && cartaoNovo == transacao.CartaoCreditoId;
+                if (mesmoCartao && transacao.FaturaId is { } faturaAtualId)
                 {
-                    var nova = await _faturaService.ObterOuCriarFaturaAsync(cartaoId, dados.Data, usuarioId);
-                    if (nova.Id != faturaAtualId)
-                        (faturaAnteriorId, faturaNovaId) = (faturaAtualId, nova.Id);
+                    faturaNovaId = faturaAtualId;
+                    if (dados.Data != transacao.Data)
+                    {
+                        var atual = await _context.Faturas.AsNoTracking().FirstOrDefaultAsync(f => f.Id == faturaAtualId);
+                        var dia = dados.Data.ToDateTime(TimeOnly.MinValue);
+                        if (atual is null || dia < atual.DataInicio || dia >= atual.DataFechamento)
+                            faturaNovaId = (await _faturaService.ObterOuCriarFaturaAsync(cartaoNovo!.Value, dados.Data, usuarioId)).Id;
+                    }
                 }
+                else
+                    faturaNovaId = (await _faturaService.ObterOuCriarFaturaAsync(cartaoNovo!.Value, dados.Data, usuarioId)).Id;
             }
+            var trocaFatura = faturaAnteriorId != faturaNovaId;
 
             var valorAntes = transacao.Valor;
+            var statusAntes = transacao.StatusTransacao;
+            var contaAntes = transacao.ContaId;
+            var cartaoAntes = transacao.CartaoCreditoId;
             transacao.Descricao = dados.Descricao;
             transacao.Valor = dados.Valor;
             transacao.Tipo = dados.Tipo;
             transacao.CategoriaId = dados.CategoriaId;
             transacao.SubcategoriaId = dados.SubcategoriaId;
-            transacao.MeioPagamento = dados.MeioPagamento;
             transacao.Data = dados.Data;
             transacao.Hora = dados.Hora;
+            transacao.ContaId = contaNova;
+            transacao.CartaoCreditoId = cartaoNovo;
+            transacao.UsadoComoCredito = creditoNovo;
+            transacao.MeioPagamento = creditoNovo ? Domain.Enums.MeioPagamento.Credito : dados.MeioPagamento;
+            transacao.StatusTransacao = statusNovo;
+            transacao.FaturaId = faturaNovaId;
             // Ocorrência de conta fixa editada à mão (valor, dia…): alterar a conta fixa e o realinhamento
             // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
             if (transacao.RecorrenteOrigemId != null)
                 transacao.EditadaPeloUsuario = true;
 
             var correlationId = Guid.NewGuid();
-            // Troca de fatura: grava a compra na nova ANTES de reconciliar a antiga, numa transação (atômico).
-            // Com a troca só em memória, o Include da antiga ainda traz a compra (a linha no banco segue com o
-            // FaturaId velho e o EF devolve a instância rastreada) e o total dela não baixava.
-            await using var tx = faturaNovaId is null ? null : await _context.Database.BeginTransactionAsync();
-            if (faturaNovaId is { } faturaNova)
+            // Troca de fatura: grava a compra no destino ANTES de reconciliar a antiga, numa transação (atômico).
+            // Com a troca só em memória, o Include da antiga ainda traz a compra e o total dela não baixava.
+            // Dentro de uma transação de quem chamou (edição completa), participa dela.
+            var proprioTx = trocaFatura && _context.Database.CurrentTransaction is null;
+            await using var tx = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
+            if (trocaFatura)
             {
-                // A fatura de onde a compra saiu perdeu o valor sem pagamento: reconcilia como num
-                // cancelamento (pode ficar coberta pelo já pago e virar Pago). A que recebeu passa a dever
-                // mais pelo restante — mesma regra de compra nova numa fatura já paga.
-                transacao.FaturaId = faturaNova;
                 await _context.SaveChangesAsync();
-                await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
-                    _context, _eventLog, new[] { faturaAnteriorId!.Value }, usuarioId, correlationId, DateTime.UtcNow);
+                // A fatura de onde a compra saiu perdeu o valor sem pagamento: reconcilia como num cancelamento
+                // (pode ficar coberta pelo já pago e virar Pago). A que recebeu passa a dever mais pelo restante.
+                if (faturaAnteriorId is { } faturaAnterior)
+                    await RegrasFinanceiras.ReconciliarFaturasAposCancelamentoAsync(
+                        _context, _eventLog, new[] { faturaAnterior }, usuarioId, correlationId, DateTime.UtcNow);
             }
             else if (dados.Valor < valorAntes)
                 await ReconciliarFaturaAsync(transacao, usuarioId, correlationId);
@@ -410,6 +567,12 @@ namespace ControleFinanceiro.Api.Services
                     faturaAnteriorId,
                     dataAntes = dataAntes.ToString("yyyy-MM-dd"),
                     dataDepois = transacao.Data.ToString("yyyy-MM-dd"),
+                    contaAntes,
+                    contaDepois = transacao.ContaId,
+                    cartaoAntes,
+                    cartaoDepois = transacao.CartaoCreditoId,
+                    statusAntes = statusAntes.ToString(),
+                    statusDepois = transacao.StatusTransacao.ToString(),
                 });
 
             await _context.SaveChangesAsync();

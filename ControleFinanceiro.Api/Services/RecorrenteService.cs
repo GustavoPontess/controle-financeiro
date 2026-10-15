@@ -459,7 +459,7 @@ public class RecorrenteService
     /// na 1ª página da lista (25, por ordem de nome): com mais contas fixas ela podia cair fora, e a API
     /// respondia erro DEPOIS de gravar — o usuário tentava de novo e duplicava.
     /// </summary>
-    private async Task<RecorrenteDto> ObterDtoAsync(Guid id, Guid usuarioId)
+    public async Task<RecorrenteDto> ObterAsync(Guid id, Guid usuarioId)
     {
         var r = await _context.Recorrentes
             .Include(x => x.Categoria)
@@ -548,7 +548,9 @@ public class RecorrenteService
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
             DateOnly.FromDateTime(DateTime.UtcNow));
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        // Dentro de uma transação de quem chamou (edição que vira conta fixa), participa dela.
+        var proprioTx = _context.Database.CurrentTransaction is null;
+        await using var transaction = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
         try
         {
             // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
@@ -610,13 +612,15 @@ public class RecorrenteService
                 payload: new { descricao = recorrente.Descricao, valor = recorrente.Valor });
 
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
+            if (transaction != null)
+                await transaction.CommitAsync();
         }
         catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && EhViolacaoDeUnicidade(ex))
         {
             // Corrida: outra requisição com a MESMA chave gravou primeiro. Nada desta foi persistido
             // (rollback) — devolve a conta fixa vencedora como replay (ou 409 se os dados divergem).
-            await transaction.RollbackAsync();
+            if (transaction != null)
+                await transaction.RollbackAsync();
             _context.ChangeTracker.Clear();
             var vencedora = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, dto);
             if (vencedora != null)
@@ -625,11 +629,12 @@ public class RecorrenteService
         }
         catch
         {
-            await transaction.RollbackAsync();
+            if (transaction != null)
+                await transaction.RollbackAsync();
             throw;
         }
 
-        return await ObterDtoAsync(recorrenteId, usuarioId);
+        return await ObterAsync(recorrenteId, usuarioId);
     }
 
     /// <summary>
@@ -661,7 +666,7 @@ public class RecorrenteService
         if (!MesmosDadosDaContaFixa(original, dto))
             throw new InvalidOperationException(MensagemChaveComOutrosDados);
 
-        return await ObterDtoAsync(original.Id, usuarioId);
+        return await ObterAsync(original.Id, usuarioId);
     }
 
     /// <summary>

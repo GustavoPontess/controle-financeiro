@@ -20,17 +20,20 @@ namespace ControleFinanceiro.Api.Controllers
         private readonly DespesaCompartilhadaService _despesaCompartilhada;
         private readonly DependenteService _dependenteService;
         private readonly RateioService _rateioService;
+        private readonly LancamentoService _lancamentos;
 
         public TransacoesController(
             TransacaoService service,
             DespesaCompartilhadaService despesaCompartilhada,
             DependenteService dependenteService,
-            RateioService rateioService)
+            RateioService rateioService,
+            LancamentoService lancamentos)
         {
             _service = service;
             _despesaCompartilhada = despesaCompartilhada;
             _dependenteService = dependenteService;
             _rateioService = rateioService;
+            _lancamentos = lancamentos;
         }
 
         private Guid GetUserId()
@@ -45,14 +48,16 @@ namespace ControleFinanceiro.Api.Controllers
         [ProducesResponseType(typeof(TransacaoDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(IEnumerable<TransacaoDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Criar([FromBody] CriarTransacaoDto dto)
+        public async Task<IActionResult> Criar(
+            [FromBody] CriarTransacaoDto dto,
+            [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
         {
             var usuarioId = GetUserId();
 
             // Parcelamento → cria N transações e retorna lista
             if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
             {
-                var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId);
+                var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId, idempotencyKey);
                 var retornoParcelas = parcelas.Select(ToDto).ToList();
                 return StatusCode(StatusCodes.Status201Created, retornoParcelas);
             }
@@ -76,7 +81,7 @@ namespace ControleFinanceiro.Api.Controllers
                 Hora = dto.Hora
             };
 
-            var criada = await _service.CriarTransacaoAsync(transacao, usuarioId);
+            var criada = await _service.CriarTransacaoAsync(transacao, usuarioId, idempotencyKey);
             return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
         }
 
@@ -168,25 +173,24 @@ namespace ControleFinanceiro.Api.Controllers
             return Ok(ToDto(transacao));
         }
 
+        /// <summary>
+        /// Edita o lançamento por completo — o mesmo formulário de criar. Conta, cartão e status mudam no lugar;
+        /// virar transferência, conta fixa ou parcelado troca o registro numa transação só (o antigo é cancelado).
+        /// Idempotency-Key opcional: repetir devolve o mesmo resultado; com outros dados → 409.
+        /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(EdicaoLancamentoResultadoDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarTransacaoDto dto)
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> Atualizar(
+            Guid id,
+            [FromBody] EditarLancamentoDto dto,
+            [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
         {
             var usuarioId = GetUserId();
-            var dados = new Transacao
-            {
-                Descricao = dto.Descricao,
-                Valor = dto.Valor,
-                Tipo = (TipoTransacao)dto.Tipo,
-                CategoriaId = dto.CategoriaId,
-                SubcategoriaId = dto.SubcategoriaId,
-                MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
-                Data = dto.Data,
-                Hora = dto.Hora
-            };
-            var ok = await _service.AtualizarAsync(id, dados, usuarioId);
-            return ok ? NoContent() : NotFound();
+            var resultado = await _lancamentos.EditarAsync(id, dto, usuarioId, idempotencyKey);
+            return Ok(resultado);
         }
 
         [HttpDelete("{id}")]

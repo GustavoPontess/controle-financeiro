@@ -45,6 +45,77 @@ public class FaturaServiceTests
     /// <summary>Idempotency-Key nova (o front gera um UUID por abertura do modal de pagar).</summary>
     private static string Chave() => Guid.NewGuid().ToString();
 
+    [Fact]
+    public async Task ListarLancamentosAsync_UneCompraParcelaPagamento_FiltraEPagina()
+    {
+        var ctx = CreateContext();
+        var svc = new FaturaService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var cartao = CriarCartao(usuarioId, 1, 8);
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id, CriadoPor = usuarioId,
+            DataInicio = new DateTime(2026, 10, 1), DataFechamento = new DateTime(2026, 11, 1), DataVencimento = new DateTime(2026, 11, 8),
+        };
+        var marco = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+        var chopperia = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Chopperia", Valor = 14, Tipo = TipoTransacao.Despesa, CartaoCreditoId = cartao.Id,
+            FaturaId = fatura.Id, UsadoComoCredito = true, Data = new DateOnly(2026, 10, 9), CriadoPor = usuarioId, Ativo = true, CriadoEm = marco,
+        };
+        var mercado = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 50, Tipo = TipoTransacao.Despesa, CartaoCreditoId = cartao.Id,
+            FaturaId = fatura.Id, UsadoComoCredito = true, Data = new DateOnly(2026, 10, 20), CriadoPor = usuarioId, Ativo = true, CriadoEm = marco.AddDays(1),
+        };
+        var parcelamento = new Parcelamento
+        {
+            Id = Guid.NewGuid(), Descricao = "Hurley", CartaoCreditoId = cartao.Id, QuantidadeParcelas = 10, ValorTotal = 895,
+            DataCompra = new DateTime(2026, 6, 15), CriadoPor = usuarioId, Ativo = true,
+        };
+        var parcela = new ParcelaTransacao
+        {
+            Id = Guid.NewGuid(), ParcelamentoId = parcelamento.Id, FaturaId = fatura.Id, Numero = 5, QuantidadeTotal = 10,
+            DataVencimento = fatura.DataVencimento, Valor = 89.5m, Status = StatusParcela.Pendente, CriadoEm = marco.AddDays(-100),
+        };
+        var pagamento = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Pagamento fatura", Valor = 100, Tipo = TipoTransacao.Despesa, FaturaPagaId = fatura.Id,
+            MeioPagamento = MeioPagamento.Pix, Data = new DateOnly(2026, 10, 25), CriadoPor = usuarioId, Ativo = true, CriadoEm = marco.AddDays(2),
+        };
+        ctx.CartoesCredito.Add(cartao);
+        ctx.Faturas.Add(fatura);
+        ctx.Parcelamentos.Add(parcelamento);
+        ctx.ParcelasTransacao.Add(parcela);
+        ctx.Transacoes.AddRange(chopperia, mercado, pagamento);
+        await ctx.SaveChangesAsync();
+
+        // Tudo, do mais recente pro mais antigo: pagamento (25/10), Mercado (20/10), Chopperia (09/10),
+        // parcela (data da compra, 15/06).
+        var tudo = await svc.ListarLancamentosAsync(fatura.Id, usuarioId);
+        Assert.Equal(4, tudo.Total);
+        Assert.Equal(new[] { "pagamento", "compra", "compra", "parcela" }, tudo.Items.Select(l => l.Tipo).ToArray());
+        Assert.Equal("Pix", tudo.Items.First().MeioPagamentoDescricao);
+
+        var soParcelas = await svc.ListarLancamentosAsync(fatura.Id, usuarioId, tipo: "parcela");
+        var p = Assert.Single(soParcelas.Items);
+        Assert.Equal(5, p.Numero);
+        Assert.Equal(10, p.QuantidadeTotal);
+        Assert.Equal(89.5m, p.Valor);
+        Assert.Equal("Hurley", p.Descricao);
+
+        var busca = await svc.ListarLancamentosAsync(fatura.Id, usuarioId, q: "chopp");
+        Assert.Equal("Chopperia", Assert.Single(busca.Items).Descricao);
+
+        // Página 2 de 3 em 3: sobra só a parcela; o total continua o de todos.
+        var pagina2 = await svc.ListarLancamentosAsync(fatura.Id, usuarioId, page: 2, pageSize: 3);
+        Assert.Equal(4, pagina2.Total);
+        Assert.Equal("parcela", Assert.Single(pagina2.Items).Tipo);
+
+        // Fatura de outra pessoa: 404, a mesma resposta do detalhe.
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.ListarLancamentosAsync(fatura.Id, Guid.NewGuid()));
+    }
+
     /// <summary>
     /// Contexto sobre um banco InMemory NOMEADO e compartilhável (mesmo root) — pra simular duas
     /// requisições em conexões diferentes batendo no mesmo banco (testes de corrida).
@@ -476,6 +547,21 @@ public class FaturaServiceTests
         Assert.Equal(inexistente.Message, deOutro.Message);
         Assert.Equal(0m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
         Assert.Equal(0m, await DebitadoDaContaAsync(ctx, contaAtacante.Id));
+    }
+
+    [Fact]
+    public async Task PagarFaturaAsync_DataFutura_LancaArgumentException_ENaoPaga()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
+
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow.AddDays(2) };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
+        Assert.Contains("futura", ex.Message);
+        Assert.Equal(0m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(0m, await DebitadoDaContaAsync(ctx, conta.Id));
     }
 
     [Fact]
