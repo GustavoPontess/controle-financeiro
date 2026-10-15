@@ -1,8 +1,8 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/tema/"Nova
 // transação", conteúdo. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
-import { useEffect, useState } from "react"
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { useCallback, useEffect, useState } from "react"
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
   Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, Eye, EyeOff,
@@ -13,6 +13,7 @@ import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
 import { useHideBalance } from "../estado/ocultar"
 import { useTema } from "./useTema"
+import type { ContextoLayout } from "./caminho"
 import styles from "./V2Layout.module.css"
 
 const PRINCIPAL = [
@@ -34,11 +35,22 @@ const GERENCIAR = [
 ]
 const CHAVE_MENU = "v2:menu"
 
-/** Título do topo pela rota (prefixo mais longo). */
-export function tituloDaRota(pathname: string): string {
+const INICIO = "/dashboard"
+
+/** Seção da rota (prefixo mais longo): dá o título do topo e o nível do meio do caminho. */
+function secaoDaRota(pathname: string): { para: string; rotulo: string } | undefined {
   const todos = [...PRINCIPAL, ...GERENCIAR, { para: "/configuracoes", rotulo: "Configurações" }]
-  const hit = todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
-  return hit?.rotulo ?? "Pontes"
+  return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
+}
+
+type Nivel = { rotulo: string; para?: string }
+/** Início / seção / detalhe — todo nível é link, menos o último (onde a pessoa está). */
+function caminhoDaRota(pathname: string, detalhe: string | null): Nivel[] {
+  const secao = secaoDaRota(pathname)
+  const niveis: Nivel[] = [{ rotulo: "Início", para: INICIO }]
+  if (secao) niveis.push(detalhe || pathname !== secao.para ? { rotulo: secao.rotulo, para: secao.para } : { rotulo: secao.rotulo })
+  if (detalhe) niveis.push({ rotulo: detalhe })
+  return niveis
 }
 
 export default function V2Layout() {
@@ -52,6 +64,11 @@ export default function V2Layout() {
   const [recolhido, setRecolhido] = useState(() => { try { return localStorage.getItem(CHAVE_MENU) === "trilho" } catch { return false } })
   // No trilho, o avatar abre um menu pequeno (nome, e-mail, sair) — assim o rodapé não muda de altura.
   const [menuUsuario, setMenuUsuario] = useState(false)
+  // Nome do item no fim do caminho (tela de detalhe), preso à rota em que foi definido.
+  const [detalhe, setDetalhe] = useState<{ path: string; rotulo: string } | null>(null)
+  const definirDetalheNoCaminho = useCallback((rotulo: string | null) => setDetalhe(rotulo ? { path: pathname, rotulo } : null), [pathname])
+  const contexto: ContextoLayout = { definirDetalheNoCaminho }
+  const caminho = caminhoDaRota(pathname, detalhe?.path === pathname ? detalhe.rotulo : null)
   useEffect(() => { setMenuAberto(false); setMenuUsuario(false) }, [pathname])
   useEffect(() => { try { localStorage.setItem(CHAVE_MENU, recolhido ? "trilho" : "aberto") } catch { /* ignore */ } }, [recolhido])
 
@@ -114,7 +131,21 @@ export default function V2Layout() {
         <header className={styles.topo}>
           {/* Mesmo ícone do recolher/expandir do computador — no celular abre/fecha a gaveta. */}
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
-          <h1 className={styles.tituloPagina}>{tituloDaRota(pathname)}</h1>
+          <div className={styles.tituloBloco}>
+            {pathname !== INICIO && (
+              <nav className={styles.caminho} aria-label="Você está em">
+                {caminho.map((n, i) => (
+                  <span key={`${i}-${n.rotulo}`} className={styles.nivel}>
+                    {i > 0 && <span className={styles.separador} aria-hidden="true">/</span>}
+                    {n.para && i < caminho.length - 1
+                      ? <Link to={n.para} className={styles.nivelLink}>{n.rotulo}</Link>
+                      : <span className={styles.nivelAtual} aria-current="page">{n.rotulo}</span>}
+                  </span>
+                ))}
+              </nav>
+            )}
+            <h1 className={styles.tituloPagina}>{secaoDaRota(pathname)?.rotulo ?? "Pontes"}</h1>
+          </div>
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
@@ -125,7 +156,7 @@ export default function V2Layout() {
           </div>
         </header>
         <main className={styles.conteudo} key={pathname}>
-          <Outlet />
+          <Outlet context={contexto} />
         </main>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { getCartoes } from "../services/cartaoCreditoService"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
 import { mensagemDeErro } from "../api/cliente"
+import { useDetalheNoCaminho } from "../layout/caminho"
 import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
@@ -46,6 +47,7 @@ export default function NovaTransacao() {
   const navigate = useNavigate()
   const location = useLocation()
   const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/transacoes"
+  useDetalheNoCaminho("Nova transação")
 
   const [contas, setContas] = useState<Conta[]>([])
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
