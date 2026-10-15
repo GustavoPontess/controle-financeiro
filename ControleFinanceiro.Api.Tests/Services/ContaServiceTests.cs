@@ -585,6 +585,102 @@ public class ContaServiceTests
         Assert.Contains("saldo_inicial", evento.PayloadJson);
     }
 
+    private static Conta NovaConta(Guid usuarioId) => new()
+    {
+        Id = Guid.NewGuid(), Nome = "Inter", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId,
+    };
+
+    [Fact]
+    public async Task DeletarAsync_ContaComLancamento_RecusaEMantemTudo()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(usuarioId);
+        var compra = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 50, Tipo = TipoTransacao.Despesa, ContaId = conta.Id,
+            Data = Hoje, CriadoPor = usuarioId, Ativo = true,
+        };
+        ctx.Contas.Add(conta);
+        ctx.Transacoes.Add(compra);
+        await ctx.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(conta.Id, usuarioId));
+        Assert.Contains("lançamentos", ex.Message);
+        Assert.NotNull(await ctx.Contas.FindAsync(conta.Id));
+        Assert.NotNull(await ctx.Transacoes.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == compra.Id));
+    }
+
+    [Fact]
+    public async Task DeletarAsync_LancamentoCanceladoTambemSegura()
+    {
+        // Cancelado (soft delete) ainda é histórico: o cascade apagava até ele.
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(usuarioId);
+        ctx.Contas.Add(conta);
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Estornado", Valor = 10, Tipo = TipoTransacao.Despesa, ContaId = conta.Id,
+            Data = Hoje, CriadoPor = usuarioId, Ativo = false,
+        });
+        await ctx.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(conta.Id, usuarioId));
+        Assert.NotNull(await ctx.Contas.FindAsync(conta.Id));
+    }
+
+    [Fact]
+    public async Task DeletarAsync_ContaFixaUsandoAConta_Recusa()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(usuarioId);
+        ctx.Contas.Add(conta);
+        ctx.Recorrentes.Add(new Recorrente
+        {
+            Id = Guid.NewGuid(), Descricao = "Aluguel", Valor = 1800, Tipo = TipoTransacao.Despesa, ContaId = conta.Id,
+            Frequencia = FrequenciaRecorrencia.Mensal, Dia = 10, DataInicio = DateTime.UtcNow.AddYears(1), Ativo = true, CriadoPor = usuarioId,
+        });
+        await ctx.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(conta.Id, usuarioId));
+        Assert.Contains("conta fixa", ex.Message);
+    }
+
+    [Fact]
+    public async Task DeletarAsync_SoComSaldoInicial_ExcluiAContaEAAbertura_ECartaoPerdeOVinculo()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = NovaConta(usuarioId);
+        var abertura = new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Saldo Inicial", Valor = 300, Tipo = TipoTransacao.Receita, ContaId = conta.Id,
+            Data = Hoje, CriadoPor = usuarioId, Ativo = true, EhSaldoInicial = true,
+        };
+        var cartao = new CartaoCredito
+        {
+            Id = Guid.NewGuid(), Nome = "Inter", TemCredito = true, LimiteTotal = 1000, ContaId = conta.Id, CriadoPor = usuarioId, Ativo = true,
+        };
+        ctx.Contas.Add(conta);
+        ctx.Transacoes.Add(abertura);
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+
+        await svc.DeletarAsync(conta.Id, usuarioId);
+
+        Assert.Null(await ctx.Contas.FindAsync(conta.Id));
+        Assert.Null(await ctx.Transacoes.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == abertura.Id));
+        var cartaoDb = await ctx.CartoesCredito.FindAsync(cartao.Id);
+        Assert.NotNull(cartaoDb);
+        Assert.Null(cartaoDb!.ContaId);
+    }
+
     [Fact]
     public async Task DeletarAsync_CarteiraNaoPodeSerDeletada_LancaException()
     {

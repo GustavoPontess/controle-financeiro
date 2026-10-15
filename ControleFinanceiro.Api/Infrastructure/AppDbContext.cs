@@ -100,12 +100,14 @@ public class AppDbContext : DbContext
         // automaticamente. Para ver canceladas (auditoria), usar .IgnoreQueryFilters().
         modelBuilder.Entity<Transacao>().HasQueryFilter(t => t.Ativo);
 
+        // Restrict (era Cascade): apagar uma conta apagava o histórico financeiro dela no banco. A regra
+        // de quando uma conta pode sair mora no ContaService.DeletarAsync; aqui é a 2ª camada.
         modelBuilder.Entity<Conta>()
             .HasMany(c => c.Transacoes)
             .WithOne(t => t.Conta)
             .HasForeignKey(t => t.ContaId)
             .IsRequired(false)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Banco>()
             .HasMany(b => b.Contas)
