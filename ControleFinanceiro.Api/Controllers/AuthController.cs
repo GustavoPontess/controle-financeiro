@@ -557,7 +557,8 @@ public class AuthController : ControllerBase
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var usuarioId))
             throw new UnauthorizedAccessException("Usuário não identificado");
 
-        await _authService.ChangePasswordAsync(usuarioId, dto.SenhaAtual, dto.NovaSenha);
+        var (refreshAtual, _) = ReadActiveRefresh();
+        await _authService.ChangePasswordAsync(usuarioId, dto.SenhaAtual, dto.NovaSenha, dto.EncerrarOutrasSessoes, refreshAtual);
         return NoContent();
     }
 
@@ -688,6 +689,39 @@ public class AuthController : ControllerBase
         return Ok(new { encerradas = qtd });
     }
 
+    // ── Dispositivos confiáveis (MFA "confiar neste dispositivo") ─────────────────
+    // O cookie `td` tem Path do auth, então chega aqui: marca/limpa o deste navegador.
+
+    /// <summary>Lista os dispositivos confiáveis vivos do usuário, marcando o deste navegador.</summary>
+    [Authorize]
+    [HttpGet("trusted-devices")]
+    public async Task<ActionResult<List<DTOs.Auth.DispositivoConfiavelDto>>> TrustedDevices()
+    {
+        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var td);
+        return Ok(await _authService.ListarDispositivosConfiaveisAsync(ExigirUsuarioId(), td));
+    }
+
+    /// <summary>Esquece UM dispositivo confiável (o próximo login nele pede o código). Anti-IDOR no service.</summary>
+    [Authorize]
+    [HttpPost("trusted-devices/{id:guid}/revogar")]
+    public async Task<IActionResult> RevogarTrustedDevice(Guid id)
+    {
+        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var td);
+        if (await _authService.RevogarDispositivoConfiavelAsync(ExigirUsuarioId(), id, td))
+            Response.Cookies.Delete(TrustedDeviceCookie, new CookieOptions { Path = AuthPath });
+        return NoContent();
+    }
+
+    /// <summary>Esquece TODOS os dispositivos confiáveis do usuário (inclusive este navegador).</summary>
+    [Authorize]
+    [HttpPost("trusted-devices/revogar-todos")]
+    public async Task<IActionResult> RevogarTodosTrustedDevices()
+    {
+        var qtd = await _authService.RevogarTodosDispositivosConfiaveisAsync(ExigirUsuarioId());
+        Response.Cookies.Delete(TrustedDeviceCookie, new CookieOptions { Path = AuthPath });
+        return Ok(new { esquecidos = qtd });
+    }
+
     /// <summary>
     /// Solicita reset de senha. Resposta genérica e idêntica para qualquer e-mail; se o e-mail
     /// existir, um link com o token é enviado por e-mail (o token nunca volta na resposta).
@@ -726,6 +760,10 @@ public class ChangePasswordDto
 {
     public string SenhaAtual { get; set; } = string.Empty;
     public string NovaSenha { get; set; } = string.Empty;
+
+    /// <summary>Encerrar as sessões dos outros aparelhos (OWASP ASVS: oferecer depois de trocar a senha).
+    /// Padrão true — quem troca a senha por suspeita não pode deixar o intruso logado. Este navegador fica.</summary>
+    public bool EncerrarOutrasSessoes { get; set; } = true;
 }
 
 public class SwitchAccountDto
