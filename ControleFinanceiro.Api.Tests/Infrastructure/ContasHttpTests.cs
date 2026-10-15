@@ -267,11 +267,11 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Theory]
-    [InlineData(0)]
     [InlineData(-50)]
-    public async Task AtualizarSaldoInicial_ValorZeroOuNegativo_Retorna400_ENaoAltera(int valor)
+    [InlineData(-1)]
+    public async Task AtualizarSaldoInicial_ValorNegativo_Retorna400_ENaoAltera(int valor)
     {
-        var email = $"contas-si-valor-{(valor < 0 ? "negativo" : "zero")}@test.com";
+        var email = $"contas-si-valor-negativo-{-valor}@test.com";
         var usuarioId = SeedUsuario(email);
         var dataOriginal = Hoje.AddDays(-5);
         var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, dataOriginal);
@@ -288,18 +288,20 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task AtualizarSaldoInicial_SemValorNoCorpo_Retorna400_ENaoAltera()
+    public async Task AtualizarSaldoInicial_ValorZero_Retorna204_ECancelaOSaldoInicialSemApagar()
     {
-        // Valor ausente vira 0 (decimal default) → mesma recusa de "maior que zero".
-        const string email = "contas-si-sem-valor@test.com";
+        // Zero = "a conta começou do zero": o lançamento de saldo inicial vira cancelado (soft delete), com evento.
+        // Valor ausente no corpo também é 0 (decimal default) — mesmo caminho.
+        const string email = "contas-si-zero@test.com";
         var usuarioId = SeedUsuario(email);
         var contaId = SeedContaComSaldoInicial(usuarioId, 1000m, Hoje.AddDays(-5));
         var (client, csrf) = await LoginClientAsync(email);
 
-        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { data = Iso(Hoje.AddDays(-2)) }, csrf));
+        var resp = await client.SendAsync(SaldoInicialRequest(contaId, new { valor = 0 }, csrf));
 
-        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
-        Assert.Equal(1000m, Assert.Single(SaldosIniciaisDoUsuario(usuarioId)).Valor);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
+        Assert.Empty(SaldosIniciaisDoUsuario(usuarioId)); // só os vivos
+        Assert.Single(EventosDoUsuario(usuarioId));
     }
 
     [Fact]

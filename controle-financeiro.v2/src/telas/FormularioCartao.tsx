@@ -138,7 +138,7 @@ export default function FormularioCartao({ cartao, bancos, contas, aoSair, aoSal
         {credito && (
           <LinhaCampos colunas="2fr 1fr 1fr">
             <Campo rotulo="Limite" erro={erros.limite}>
-              <EntradaValor valor={limite} tom="neutro" onChange={(x) => { setLimite(x); limpa("limite") }} />
+              <EntradaValor compacto valor={limite} onChange={(x) => { setLimite(x); limpa("limite") }} />
             </Campo>
             <Campo rotulo="Fecha" erro={erros.fecha}>
               <Selecao valor={fecha} placeholder="Dia" onChange={(x) => { setFecha(x); limpa("fecha") }} opcoes={DIAS} />

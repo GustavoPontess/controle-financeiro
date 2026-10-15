@@ -22,8 +22,15 @@ namespace ControleFinanceiro.Api.Services
             _eventLog = eventLog;
         }
 
+        /// <summary>O que a pessoa cria em Bancos. Cartão (3) e Empréstimo (5) são legado com entidade própria.</summary>
+        private static readonly HashSet<TipoConta> TiposPermitidos =
+            [TipoConta.ContaCorrente, TipoConta.ContaPoupanca, TipoConta.Dinheiro, TipoConta.Investimento];
+
         private static void ValidarFormato(Conta conta)
         {
+            if (!TiposPermitidos.Contains(conta.Tipo))
+                throw new ArgumentException("Tipo de conta inválido. Use conta corrente, poupança, dinheiro ou investimentos.");
+
             if (!string.IsNullOrWhiteSpace(conta.Agencia) && !AgenciaRegex.IsMatch(conta.Agencia))
                 throw new ArgumentException("Agência deve conter só números (até 10 dígitos).");
 
@@ -110,24 +117,57 @@ namespace ControleFinanceiro.Api.Services
         /// (valor + data) ou cria uma se não existir. Dinheiro → valida dono (UsuarioId), valor &gt; 0 e
         /// data não futura, e registra no <see cref="FinancialEventLog"/> (muda o saldo). Começo do dia.
         /// </summary>
+        /// <summary>Saldo inicial vivo (valor e dia) por conta; conta sem ponto de partida não entra no dicionário.</summary>
+        public async Task<Dictionary<Guid, (decimal Valor, DateOnly Data)>> ObterSaldosIniciaisAsync(IEnumerable<Guid> contaIds, Guid usuarioId)
+        {
+            var ids = contaIds.Distinct().ToList();
+            if (ids.Count == 0) return new();
+            return await _context.Transacoes
+                .Where(t => t.ContaId != null && ids.Contains(t.ContaId.Value) && t.EhSaldoInicial && t.Ativo && t.CriadoPor == usuarioId)
+                .Select(t => new { ContaId = t.ContaId!.Value, t.Valor, t.Data })
+                .ToDictionaryAsync(t => t.ContaId, t => (t.Valor, t.Data));
+        }
+
+        /// <summary>
+        /// Edita o ponto de partida da conta. Valor zero = a conta começou do zero: o lançamento de saldo inicial
+        /// que existir é cancelado (soft delete, com evento) — nunca apagado.
+        /// </summary>
         public async Task AtualizarSaldoInicialAsync(Guid contaId, Guid usuarioId, decimal valor, DateOnly? data)
         {
             var conta = await _context.Contas
                 .FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
                 ?? throw new KeyNotFoundException("Conta não encontrada.");
 
-            if (valor <= 0)
-                throw new ArgumentException("Saldo inicial deve ser maior que zero.");
+            if (valor < 0)
+                throw new ArgumentException("Saldo inicial não pode ser negativo.");
 
             var existente = await _context.Transacoes
                 .FirstOrDefaultAsync(t => t.ContaId == contaId && t.EhSaldoInicial && t.Ativo);
+
+            var correlationId = Guid.NewGuid();
+            if (valor == 0)
+            {
+                if (existente == null) return; // já começa do zero
+                existente.Ativo = false;
+                _eventLog.Registrar(
+                    usuarioId: usuarioId,
+                    tipo: FinancialEventType.TransacaoCancelada,
+                    entidade: "Transacao",
+                    entidadeId: existente.Id,
+                    correlationId: correlationId,
+                    origemAcao: "API",
+                    valorAntes: existente.Valor,
+                    valorDepois: 0m,
+                    payload: new { motivo = "saldo_inicial_zerado", contaId });
+                await _context.SaveChangesAsync();
+                return;
+            }
 
             // Data: a informada, ou mantém a atual, ou hoje se for novo. Nunca futura.
             var dataAbertura = data ?? existente?.Data ?? DateOnly.FromDateTime(DateTime.UtcNow);
             if (dataAbertura > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data do saldo inicial não pode ser futura.");
 
-            var correlationId = Guid.NewGuid();
             if (existente != null)
             {
                 var valorAntes = existente.Valor;
@@ -198,7 +238,7 @@ namespace ControleFinanceiro.Api.Services
             existente.Tipo = conta.Tipo;
             existente.TipoCartao = conta.TipoCartao;
             existente.BancoId = conta.BancoId;
-            existente.IsCarteira = conta.IsCarteira;
+            // IsCarteira é só a conta padrão do cadastro — nunca muda por edição (nem virando "Dinheiro").
 
             await _context.SaveChangesAsync();
         }

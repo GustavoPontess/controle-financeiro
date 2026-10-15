@@ -1,18 +1,29 @@
 // Bancos (contas) do v2: três números (saldo total, disponível em conta corrente + carteira, guardado na
-// poupança) e a lista de contas — abertas ou encerradas. Linha → página da conta. As contas vêm todas de
-// uma vez (são poucas), então Abertas | Encerradas filtra a lista já carregada.
+// poupança) e a lista de contas — abertas ou encerradas. A tela é SÓ das contas: clicar numa linha abre, ali
+// embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
+// Encerrar, Editar / Reabrir); extrato é assunto de Transações. As abertas vêm em grupos com o total de
+// cada um — em conta, poupança, investimentos e dinheiro (a carteira e os cofrinhos) por último. As
+// contas vêm todas de uma vez (são poucas),
+// então Abertas | Encerradas filtra a lista já carregada. Outra tela pode mandar `state.abrir`
+// (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { Plus, Wallet } from "lucide-react"
-import { getContas } from "../services/contaService"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Ban, ChevronDown, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
+import { deleteConta, getContas, reabrirConta } from "../services/contaService"
+import { getCartoes } from "../services/cartaoCreditoService"
+import type { CartaoCredito } from "../types/CartaoCredito"
+import { mensagemDeErro } from "../api/cliente"
 import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
+import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
-import Etiqueta from "../componentes/Etiqueta"
+import FaceCartao from "../componentes/FaceCartao"
+import { RodapeFormulario } from "../componentes/Formulario"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
-import { TIPO_CONTA, descreverConta } from "../dominio/conta"
+import { descreverConta, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
+import { NOME_BANDEIRA } from "../dominio/fatura"
 import { dataBR } from "../utils/dateTime"
 import styles from "./Bancos.module.css"
 
@@ -22,33 +33,69 @@ const SITUACOES: { valor: Situacao; rotulo: string }[] = [
   { valor: "encerradas", rotulo: "Encerradas" },
 ]
 
+// Por nome; no grupo "Dinheiro" a carteira padrão vem primeiro.
+const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
+const soma = (xs: Conta[]) => xs.reduce((s, c) => s + c.saldoAtual, 0)
+/** "Mastercard · •••• 0315 · fecha dia 3 · vence dia 10" (mesma linha de detalhe da lista de Cartões). */
+const descreverCartao = (k: CartaoCredito) => [
+  NOME_BANDEIRA[k.bandeira] ?? "Cartão",
+  k.ultimosDigitos ? `•••• ${k.ultimosDigitos}` : null,
+  !k.temCredito ? "só débito" : null,
+  k.temCredito && k.diaFechamento ? `fecha dia ${k.diaFechamento}` : null,
+  k.temCredito && k.diaVencimento ? `vence dia ${k.diaVencimento}` : null,
+].filter(Boolean).join(" · ")
+
 export default function Bancos() {
+  const { state } = useLocation()
   const navigate = useNavigate()
   const [contas, setContas] = useState<Conta[] | null>(null)
+  // Cartões ligados a cada conta (a ficha mostra). Sem eles a ficha só perde essa parte.
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
   const [erro, setErro] = useState(false)
   const [situacao, setSituacao] = useState<Situacao>("abertas")
+  const [abertaId, setAbertaId] = useState<string | null>(() => (state as { abrir?: string } | null)?.abrir ?? null)
 
   useEffect(() => {
     let vivo = true
     getContas({ incluirEncerradas: true }).then((c) => { if (vivo) setContas(c) }).catch(() => { if (vivo) setErro(true) })
+    getCartoes().then((k) => { if (vivo) setCartoes(k) }).catch(() => { /* ficha sem cartões */ })
     return () => { vivo = false }
   }, [])
+  const recarregar = () => getContas({ incluirEncerradas: true }).then(setContas)
 
-  const abertas = useMemo(() => (contas ?? []).filter((c) => !c.encerradaEm), [contas])
-  const encerradas = useMemo(() => (contas ?? []).filter((c) => !!c.encerradaEm), [contas])
-  // Carteira primeiro, depois por nome — a carteira é a conta do dia a dia.
-  const visiveis = (situacao === "abertas" ? abertas : encerradas)
-    .slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
+  const abertas = useMemo(() => ordenar((contas ?? []).filter((c) => !c.encerradaEm)), [contas])
+  const encerradas = useMemo(() => ordenar((contas ?? []).filter((c) => !!c.encerradaEm)), [contas])
+  // Abertas em grupos (só os que têm conta): em conta, poupança, investimentos, dinheiro por último.
+  // Encerradas: um grupo só.
+  const grupos = useMemo(() => {
+    if (situacao === "encerradas") return [{ chave: "encerradas", rotulo: "Encerradas", contas: encerradas, total: undefined as number | undefined }]
+    return [
+      { chave: "conta", rotulo: "Em conta", contas: abertas.filter((c) => !ehDinheiro(c) && !ehGuardado(c)) },
+      { chave: "poupanca", rotulo: "Poupança", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.poupanca) },
+      { chave: "investimentos", rotulo: "Investimentos", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.investimento) },
+      { chave: "dinheiro", rotulo: "Dinheiro", contas: abertas.filter(ehDinheiro) },
+    ].filter((g) => g.contas.length > 0).map((g) => ({ ...g, total: soma(g.contas) as number | undefined }))
+  }, [situacao, abertas, encerradas])
+  const vazio = grupos.every((g) => g.contas.length === 0)
 
   const totais = useMemo(() => {
     if (!contas) return null
-    const soma = (f: (c: Conta) => boolean) => abertas.filter(f).reduce((s, c) => s + c.saldoAtual, 0)
     return {
-      total: soma(() => true),
-      disponivel: soma((c) => c.tipo !== TIPO_CONTA.poupanca),
-      guardado: soma((c) => c.tipo === TIPO_CONTA.poupanca),
+      total: soma(abertas),
+      disponivel: soma(abertas.filter((c) => !ehGuardado(c))),
+      guardado: soma(abertas.filter(ehGuardado)),
     }
   }, [contas, abertas])
+
+  // Chegou com uma conta encerrada pra abrir (acabou de encerrar): a lista mostra a aba dela.
+  const abertaEncerrada = !!contas?.find((c) => c.id === abertaId)?.encerradaEm
+  useEffect(() => { if (abertaEncerrada) setSituacao("encerradas") }, [abertaEncerrada])
+
+  const mudou = async (o: "reaberta" | "excluida") => {
+    await recarregar()
+    if (o === "reaberta") setSituacao("abertas")
+    else setAbertaId(null)
+  }
 
   return (
     <div className={styles.pagina}>
@@ -56,7 +103,7 @@ export default function Bancos() {
         <div className={styles.numeros}>
           <Numero rotulo="Saldo total" valor={totais?.total} />
           <Numero rotulo="Disponível" valor={totais?.disponivel} />
-          <Numero rotulo="Guardado na poupança" valor={totais?.guardado} />
+          <Numero rotulo="Guardado" valor={totais?.guardado} />
         </div>
       </Bloco>
 
@@ -71,11 +118,21 @@ export default function Bancos() {
           <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div>
         ) : erro ? (
           <p className={styles.vazio}>Não deu pra carregar as contas.</p>
-        ) : visiveis.length === 0 ? (
+        ) : vazio ? (
           <p className={styles.vazio}>{situacao === "abertas" ? "Nenhuma conta ainda." : "Nenhuma conta encerrada."}</p>
         ) : (
-          <ul className={styles.lista}>
-            {visiveis.map((c) => <Linha key={c.id} c={c} />)}
+          <ul className={styles.lista} aria-label="Contas">
+            {grupos.map((g) => (
+              <li key={g.chave} className={styles.grupo}>
+                <h3 className={styles.grupoTopo}><span>{g.rotulo}</span>{g.total !== undefined && <Dinheiro valor={g.total} className={styles.grupoTotal} />}</h3>
+                <ul className={styles.grupoLista} aria-label={g.rotulo}>
+                  {g.contas.map((c) => (
+                    <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
+                      aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
+                  ))}
+                </ul>
+              </li>
+            ))}
           </ul>
         )}
       </Bloco>
@@ -93,24 +150,109 @@ function Numero({ rotulo, valor }: { rotulo: string; valor?: number }) {
   )
 }
 
-/** Uma linha: marca do banco (carteira: ícone), nome + etiqueta, detalhe; à direita o saldo. */
-function Linha({ c }: { c: Conta }) {
+/** Uma conta: a linha (marca, nome + detalhe, saldo, seta) e, aberta, a ficha (dados, cartões) com as ações. */
+function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
+  c: Conta
+  cartoes: CartaoCredito[]
+  aberta: boolean
+  aoAbrir: () => void
+  /** A conta foi reaberta ou excluída: a lista recarrega. */
+  aoMudar: (o: "reaberta" | "excluida") => Promise<void>
+}) {
+  const navigate = useNavigate()
+  const [erro, setErro] = useState<string | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const encerrada = !!c.encerradaEm
+  const ficha = `conta-${c.id}`
+
+  const excluir = async () => {
+    setOcupado(true); setErro(null)
+    try { await deleteConta(c.id) } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false); setExcluindo(false); return }
+    await aoMudar("excluida")
+  }
+  const reabrir = async () => {
+    setOcupado(true); setErro(null)
+    try { await reabrirConta(c.id); await aoMudar("reaberta") } catch (e) { setErro(mensagemDeErro(e)) }
+    setOcupado(false)
+  }
+
   return (
-    <li>
-      <Link to={`/bancos/${c.id}`} className={styles.linha} data-encerrada={c.encerradaEm ? "true" : undefined}>
+    <li className={styles.item} data-aberta={aberta || undefined} data-encerrada={encerrada || undefined}>
+      <button type="button" className={styles.linha} aria-expanded={aberta} aria-controls={ficha} onClick={aoAbrir}>
         {c.isCarteira
           ? <span className={styles.carteira} aria-hidden="true"><Wallet size={18} strokeWidth={2} /></span>
           : <LogoMarca nome={c.bancoNome || c.nome} logoUrl={c.bancoLogoUrl} cor={c.bancoCor} tamanho={36} />}
         <span className={styles.texto}>
-          <span className={styles.nomeLinha}>
-            <span className={styles.nome}>{c.nome}</span>
-            {c.isCarteira && <Etiqueta>Carteira</Etiqueta>}
-            {c.encerradaEm && <Etiqueta>Encerrada em {dataBR(c.encerradaEm)}</Etiqueta>}
-          </span>
-          <span className={styles.sub}>{descreverConta(c)}</span>
+          <span className={styles.nome}>{c.nome}</span>
+          <span className={styles.sub}>{encerrada ? `Encerrada em ${dataBR(c.encerradaEm!)}` : descreverConta(c)}</span>
         </span>
-        <Dinheiro valor={c.saldoAtual} className={styles.valor} tom={c.encerradaEm ? "neutro" : c.saldoAtual < 0 ? "negativo" : undefined} />
-      </Link>
+        <Dinheiro valor={c.saldoAtual} className={styles.valor} tom={encerrada ? "neutro" : c.saldoAtual < 0 ? "negativo" : undefined} />
+        <ChevronDown size={18} strokeWidth={2} aria-hidden="true" className={styles.seta} />
+      </button>
+
+      {aberta && (
+        <div id={ficha} className={styles.ficha}>
+          {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+          <dl className={styles.dados}>
+            <div><dt>Tipo</dt><dd>{rotuloTipo(c)}</dd></div>
+            {!c.isCarteira && temDadosBancarios(c.tipo) && (
+              <>
+                <div><dt>Banco</dt><dd>{c.bancoNome || "Sem banco"}</dd></div>
+                <div><dt>Agência</dt><dd>{c.agencia || "—"}</dd></div>
+                <div><dt>Número</dt><dd>{c.numeroConta || "—"}</dd></div>
+              </>
+            )}
+            {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}
+          </dl>
+          {cartoes.length > 0 && (
+            <div className={styles.cartoes}>
+              <span className={styles.cartoesTitulo}>Cartões</span>
+              <ul className={styles.cartoesLista}>
+                {cartoes.map((k) => (
+                  <li key={k.id}>
+                    <Link to={`/cartoes/${k.id}`} state={{ voltarPara: "/bancos" }} className={styles.cartao}>
+                      <FaceCartao bandeira={k.bandeira} cor={k.bancoCor} />
+                      <span className={styles.texto}>
+                        <span className={styles.nome}>{k.nome}</span>
+                        <span className={styles.sub}>{descreverCartao(k)}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!c.isCarteira && (
+            <div className={styles.acoes}>
+              <RodapeFormulario>
+                <Botao perigo disabled={ocupado} onClick={() => { setErro(null); setExcluindo(true) }} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
+                {encerrada ? (
+                  <Botao variante="primario" disabled={ocupado} onClick={() => { void reabrir() }} icone={<RotateCcw size={15} strokeWidth={2.25} aria-hidden="true" />}>Reabrir</Botao>
+                ) : (
+                  <>
+                    <Botao perigo onClick={() => navigate(`/bancos/${c.id}/encerrar`, { state: { voltarPara: "/bancos" } })}
+                      icone={<Ban size={15} strokeWidth={2.25} aria-hidden="true" />}>Encerrar</Botao>
+                    <Botao variante="primario" onClick={() => navigate(`/bancos/${c.id}/editar`, { state: { voltarPara: "/bancos" } })}
+                      icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
+                  </>
+                )}
+              </RodapeFormulario>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Confirmar
+        aberto={excluindo}
+        titulo="Excluir conta?"
+        texto={<>Só dá pra excluir conta sem lançamentos (criada por engano). Conta com histórico se <strong>encerra</strong>: sai das listas e o histórico fica.</>}
+        rotuloConfirmar="Excluir"
+        perigo
+        ocupado={ocupado}
+        onConfirmar={() => { void excluir() }}
+        onCancelar={() => setExcluindo(false)}
+      />
     </li>
   )
 }

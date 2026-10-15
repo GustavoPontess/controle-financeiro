@@ -18,7 +18,6 @@ import ContaFixa from "./telas/ContaFixa"
 import EditarContaFixa from "./telas/EditarContaFixa"
 import ProximaCobranca from "./telas/ProximaCobranca"
 import Bancos from "./telas/Bancos"
-import ContaDetalhe from "./telas/ContaDetalhe"
 import NovaConta from "./telas/NovaConta"
 import EditarConta from "./telas/EditarConta"
 import EncerrarConta from "./telas/EncerrarConta"
@@ -58,7 +57,6 @@ export default function App() {
         <Route path="/contas-fixas/:id/proxima" element={<ProximaCobranca />} />
         <Route path="/bancos" element={<Bancos />} />
         <Route path="/bancos/nova" element={<NovaConta />} />
-        <Route path="/bancos/:id" element={<ContaDetalhe />} />
         <Route path="/bancos/:id/editar" element={<EditarConta />} />
         <Route path="/bancos/:id/encerrar" element={<EncerrarConta />} />
         <Route path="/cartoes/novo" element={<NovoCartao />} />

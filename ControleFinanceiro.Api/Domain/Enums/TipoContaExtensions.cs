@@ -11,6 +11,7 @@ public static class TipoContaExtensions
         TipoConta.CartaoCredito => "Cartão de Crédito",
         TipoConta.Dinheiro => "Dinheiro",
         TipoConta.Emprestimo => "Empréstimo",
+        TipoConta.Investimento => "Investimentos",
         _ => tipo.ToString()
     };
 }

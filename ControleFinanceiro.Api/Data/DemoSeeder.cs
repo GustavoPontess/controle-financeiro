@@ -159,6 +159,12 @@ public static class DemoSeeder
         // Encerrada com saldo: o que sobrou (R$ 600) vai pro Inter numa transferência de verdade.
         await sp.GetRequiredService<EncerramentoContaService>().EncerrarAsync(santander.Id,
             new EncerrarContaDto { ContaDestinoId = inter.Id, Data = DateOnly.FromDateTime(hoje.AddDays(-5)) }, dev, Guid.NewGuid().ToString());
+        // Investimentos (corretora) e um segundo "dinheiro" (cofrinho) — grupos próprios na tela de Bancos.
+        await contas.CriarAsync(new Domain.Entities.Conta
+        {
+            Nome = "XP", Tipo = TipoConta.Investimento, BancoId = Banco("102"),
+        }, dev, 5000m, Utc(hoje.AddDays(-120)));
+        await contas.CriarAsync(new Domain.Entities.Conta { Nome = "Cofrinho", Tipo = TipoConta.Dinheiro }, dev, 200m, Utc(hoje.AddDays(-10)));
     }
 
     // ── Notificações: pro sino ter o que mostrar (uma já lida).

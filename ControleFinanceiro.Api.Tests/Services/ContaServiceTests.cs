@@ -25,6 +25,49 @@ public class ContaServiceTests
     // Transacao.Data agora é DateOnly (o DIA, sem fuso) + Hora TimeOnly? (null = sem hora).
     private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
 
+    [Theory]
+    [InlineData(TipoConta.CartaoCredito)]
+    [InlineData(TipoConta.Emprestimo)]
+    [InlineData((TipoConta)99)]
+    public async Task CriarAsync_TipoLegadoOuInexistente_Recusa(TipoConta tipo)
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(new Conta { Nome = "X", Tipo = tipo }, Guid.NewGuid()));
+        Assert.Contains("Tipo de conta", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(TipoConta.Dinheiro)]
+    [InlineData(TipoConta.Investimento)]
+    public async Task CriarAsync_DinheiroOuInvestimento_CriaSemVirarCarteira(TipoConta tipo)
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+
+        var conta = await svc.CriarAsync(new Conta { Nome = "Cofrinho", Tipo = tipo }, Guid.NewGuid());
+
+        // Um "dinheiro" a mais não é A carteira (a do cadastro): segue editável, encerrável, excluível.
+        Assert.False(conta.IsCarteira);
+        Assert.Equal(tipo, conta.Tipo);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_NaoMudaIsCarteira_NemVirandoDinheiro()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = await svc.CriarAsync(new Conta { Nome = "Conta", Tipo = TipoConta.ContaCorrente }, usuarioId);
+
+        await svc.AtualizarAsync(conta.Id, new Conta { Nome = "Caixa de casa", Tipo = TipoConta.Dinheiro, IsCarteira = true }, usuarioId);
+
+        var salva = await ctx.Contas.FindAsync(conta.Id);
+        Assert.Equal(TipoConta.Dinheiro, salva!.Tipo);
+        Assert.False(salva.IsCarteira);
+    }
+
     [Fact]
     public async Task CriarAsync_NomeVazio_LancaException()
     {
@@ -300,6 +343,42 @@ public class ContaServiceTests
     }
 
     [Fact]
+    public async Task AtualizarSaldoInicialAsync_Zero_CancelaOSaldoInicial_SemApagar()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var (conta, original) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 1000m, Hoje.AddDays(-5));
+
+        await svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, 0m, null);
+
+        // Soft delete: o lançamento fica, inativo; o saldo da conta volta a zero.
+        // Transacao tem query filter global (Ativo) → IgnoreQueryFilters pra enxergar o cancelado.
+        var t = await ctx.Transacoes.IgnoreQueryFilters().SingleAsync(x => x.Id == original.Id);
+        Assert.False(t.Ativo);
+        Assert.Equal(0m, (await svc.ObterSaldosAsync(new[] { conta.Id }, usuarioId))[conta.Id].Saldo);
+        Assert.Empty(await svc.ObterSaldosIniciaisAsync(new[] { conta.Id }, usuarioId));
+        Assert.Contains(ctx.FinancialEventLogs, e => e.EntidadeId == original.Id && e.Tipo == FinancialEventType.TransacaoCancelada);
+    }
+
+    [Fact]
+    public async Task ObterSaldosIniciaisAsync_TrazValorEDiaSoDoVivo()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var (comSaldo, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 250m, Hoje.AddDays(-3));
+        var (cancelado, _) = await SeedContaComSaldoInicialAsync(ctx, usuarioId, 99m, Hoje.AddDays(-3), ativo: false);
+        var semSaldo = await svc.CriarAsync(new Conta { Nome = "Zerada", Tipo = TipoConta.ContaCorrente }, usuarioId);
+
+        var r = await svc.ObterSaldosIniciaisAsync(new[] { comSaldo.Id, cancelado.Id, semSaldo.Id }, usuarioId);
+
+        Assert.Equal((250m, Hoje.AddDays(-3)), r[comSaldo.Id]);
+        Assert.False(r.ContainsKey(cancelado.Id));
+        Assert.False(r.ContainsKey(semSaldo.Id));
+    }
+
+    [Fact]
     public async Task AtualizarSaldoInicialAsync_ExistenteComData_AtualizaValorEDataELimpaAHora()
     {
         var ctx = CreateContext();
@@ -440,10 +519,9 @@ public class ContaServiceTests
     }
 
     [Theory]
-    [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-0.01)]
-    public async Task AtualizarSaldoInicialAsync_ValorZeroOuNegativo_LancaArgumentExceptionSemAlterarNada(double valor)
+    public async Task AtualizarSaldoInicialAsync_ValorNegativo_LancaArgumentExceptionSemAlterarNada(double valor)
     {
         var ctx = CreateContext();
         var svc = CriarService(ctx);
@@ -454,7 +532,7 @@ public class ContaServiceTests
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
             svc.AtualizarSaldoInicialAsync(conta.Id, usuarioId, (decimal)valor, Hoje.AddDays(-2)));
 
-        Assert.Contains("maior que zero", ex.Message);
+        Assert.Contains("negativo", ex.Message);
         var doBanco = await ctx.Transacoes.SingleAsync(t => t.Id == original.Id);
         Assert.Equal(1000m, doBanco.Valor);
         Assert.Equal(dataOriginal, doBanco.Data);

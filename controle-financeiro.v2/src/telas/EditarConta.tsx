@@ -13,7 +13,7 @@ export default function EditarConta() {
   const { id = "" } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? `/bancos/${id}`
+  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/bancos"
   const [conta, setConta] = useState<Conta | null>(null)
   const [bancos, setBancos] = useState<Banco[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -35,7 +35,7 @@ export default function EditarConta() {
 
   return (
     <PaginaFormulario titulo="Editar conta" carregando={carregando} erroCarga={erroCarga}>
-      {conta && <FormularioConta conta={conta} bancos={bancos} aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />}
+      {conta && <FormularioConta conta={conta} bancos={bancos} aoSair={() => navigate(voltarPara, { replace: true, state: { abrir: id } })} aoSalvo={() => navigate(voltarPara, { replace: true, state: { abrir: id } })} />}
     </PaginaFormulario>
   )
 }
