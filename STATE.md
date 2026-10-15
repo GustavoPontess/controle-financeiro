@@ -45,7 +45,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **DECISÃO 2026-10-15: o beta sai no v2; o v2 vira o front principal e o v1 vai pra documentação.** Plano em blocos (A entrar e começar · B dia a dia · C família/empréstimos · D completar + exclusão de conta LGPD · E termos/privacidade · F admin · G virar principal) no ROADMAP, item 0 da Fila. Toda tela nova do v2 sai com teste. Checagem de prazo na sexta 24/10.
 
-**Próxima ação:** bloco A do plano — começar por Bancos/contas no v2. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**Dados de demonstração (2026-10-15):** `DemoSeeder` (PR #303) enche a conta de exemplo Gabriel Dev + Marina (família) via services — contas fixas em todos os estados, 2º cartão + só débito, parcelamentos, notificações. Liga com `SEED_DEMO=true` no `.env` local (já ligado). Ver: sair → painel DEV do login → Gabriel Dev. **Toda tela nova do v2 ganha um bloco nele.** Sino do v2 agora abre painel com as últimas + "Ver todas".
+
+**Próxima ação:** mergear #303 quando o CI ficar verde; depois testes no v2 + PR `feat/front-v2` → `main` (combinado) e bloco A (Bancos/contas). PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
