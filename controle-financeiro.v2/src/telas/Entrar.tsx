@@ -254,7 +254,7 @@ export default function Entrar() {
           {passo === "mfa" && (
             <form className={styles.form} onSubmit={enviarMfa} noValidate>
               <Campo rotulo="Código" erro={mfaErro}>
-                <Entrada type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="000000" value={mfaCodigo}
+                <Entrada type="text" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} maxLength={10} autoFocus placeholder="000000" value={mfaCodigo}
                   onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
               </Campo>
               <label className={styles.lembrar}>
