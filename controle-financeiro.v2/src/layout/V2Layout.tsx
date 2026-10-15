@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen,
-  Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, X, Eye, EyeOff,
+  BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
+  Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, Eye, EyeOff,
 } from "lucide-react"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
@@ -76,7 +76,7 @@ export default function V2Layout() {
             <span className={styles.logoMini}><LogoMark size={26} /></span>
             <span className={styles.recolherIcone}>{recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}</span>
           </button>
-          <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><X size={18} /></button>
+          <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><PanelLeftClose size={18} strokeWidth={2} /></button>
         </div>
         <nav className={styles.nav} aria-label="Principal">
           {PRINCIPAL.map((i) => <Item key={i.para} {...i} />)}
@@ -111,7 +111,8 @@ export default function V2Layout() {
 
       <div className={styles.corpo}>
         <header className={styles.topo}>
-          <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><Menu size={20} /></button>
+          {/* Mesmo ícone do recolher/expandir do computador — no celular abre/fecha a gaveta. */}
+          <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
           <h1 className={styles.tituloPagina}>{tituloDaRota(pathname)}</h1>
           <div className={styles.topoAcoes}>
             <button type="button" className={styles.icone} aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}>
