@@ -21,6 +21,24 @@ public static class DonoRecursos
             throw new KeyNotFoundException("Conta não encontrada ou você não tem permissão.");
     }
 
+    /// <summary>
+    /// Conta do usuário E aberta — pra quem vai pôr dinheiro novo nela (lançamento, transferência, pagamento,
+    /// conta fixa). Encerrada → 409 com o nome da conta. Ler/editar o histórico dela não passa por aqui.
+    /// </summary>
+    public static async Task ExigirContaAbertaAsync(AppDbContext context, Guid contaId, Guid usuarioId)
+    {
+        var conta = await context.Contas.AsNoTracking()
+            .Where(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
+            .Select(c => new { c.Nome, c.EncerradaEm })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Conta não encontrada ou você não tem permissão.");
+        if (conta.EncerradaEm != null)
+            throw new InvalidOperationException(MensagemContaEncerrada(conta.Nome));
+    }
+
+    public static string MensagemContaEncerrada(string nome) =>
+        $"A conta {nome} está encerrada. Reabra a conta pra lançar nela.";
+
     /// <summary>Cartão do usuário (dono = <c>CriadoPor</c>).</summary>
     public static async Task ExigirCartaoAsync(AppDbContext context, Guid cartaoId, Guid usuarioId)
     {

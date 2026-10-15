@@ -24,6 +24,12 @@ public class Conta
 
     public bool IsCarteira { get; set; }
 
+    /// <summary>
+    /// Quando a conta foi encerrada (fechada no banco). Encerrada sai das listas e não recebe lançamento novo;
+    /// o histórico fica. Null = aberta. Ver <c>EncerramentoContaService</c>.
+    /// </summary>
+    public DateTime? EncerradaEm { get; set; }
+
     public Guid? BancoId { get; set; }
     public Banco? Banco { get; set; }
 

@@ -262,6 +262,8 @@ public class FaturaService
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == dto.ContaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
+        if (conta.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(conta.Nome));
 
         // Crédito à vista (legacy) + parcelas do sistema novo — regra única (parcela cancelada fora)
         var valorTotal = RegrasFinanceiras.ValorTotalFatura(fatura);

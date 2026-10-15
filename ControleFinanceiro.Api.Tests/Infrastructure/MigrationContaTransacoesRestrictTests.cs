@@ -20,13 +20,15 @@ public class MigrationContaTransacoesRestrictTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_LogoDepoisDeEhPixNoCredito()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_ContaTransacoesRestrict", ids[^1]); // nada gerado por cima sem querer
-        Assert.Equal("20261012195743_AddEhPixNoCredito", ids[^2]);
+        // A mais recente agora é a AddEncerradaEmConta (teste próprio); esta segue na ordem em que nasceu.
+        var i = ids.FindIndex(id => id.EndsWith("_ContaTransacoesRestrict"));
+        Assert.True(i > 0);
+        Assert.Equal("20261012195743_AddEhPixNoCredito", ids[i - 1]);
     }
 
     [Fact]

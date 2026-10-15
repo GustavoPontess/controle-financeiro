@@ -421,7 +421,8 @@ public class RegrasFinanceirasTests
         var regra = (await RegrasFinanceiras.SaldoDaContaAsync(ctx, c.ContaId, c.UsuarioId)).Saldo;
 
         // 2. Tela de contas (listagem e detalhe)
-        var controller = new ContasController(new ContaService(ctx, new FinancialEventLogService(ctx)))
+        var controller = new ContasController(new ContaService(ctx, new FinancialEventLogService(ctx)),
+            new EncerramentoContaService(ctx, new TransferenciaService(ctx), new FinancialEventLogService(ctx)))
         {
             ControllerContext = new ControllerContext
             {

@@ -33,10 +33,11 @@ namespace ControleFinanceiro.Api.Services
 
         // Sem Include(Transacoes): o saldo não é mais somado em memória sobre o histórico inteiro
         // da conta — vem agregado no banco por ObterSaldosAsync (RegrasFinanceiras).
-        public async Task<List<Conta>> ListarAsync(Guid usuarioId)
+        /// <summary>Contas do usuário. Encerradas ficam fora (listas e seleções), salvo <paramref name="incluirEncerradas"/>.</summary>
+        public async Task<List<Conta>> ListarAsync(Guid usuarioId, bool incluirEncerradas = false)
         {
             return await _context.Contas
-                .Where(c => c.UsuarioIdProprietario == usuarioId)
+                .Where(c => c.UsuarioIdProprietario == usuarioId && (incluirEncerradas || c.EncerradaEm == null))
                 .Include(c => c.Banco)
                 .AsNoTracking()
                 .ToListAsync();
