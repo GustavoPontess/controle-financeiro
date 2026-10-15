@@ -49,6 +49,12 @@ export function isoParaHoraHHMM(iso: string): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`
 }
 
+// Dia seguinte de "YYYY-MM-DD" (pra filtro "até" inclusivo: o back trata `to` como exclusivo, Data < to).
+export function diaSeguinte(iso: string): string {
+  const [a, m, d] = iso.split("-").map(Number)
+  return dataLocalISO(new Date(a, m - 1, d + 1, 12))
+}
+
 // Máscara de digitação "HH:MM" (só dígitos → HH:MM), pro campo de hora.
 export function mascararHora(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 4)

@@ -1,0 +1,7 @@
+.segmentos { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.segmentos[data-cheio="true"] { display: flex; align-self: stretch; }
+.segmentos[data-cheio="true"] .segmento { flex: 1; }
+.segmento { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.12s, color 0.12s; }
+.segmento:hover { color: var(--v2-texto); }
+.segmento[data-ativo="true"] { background: var(--v2-superficie); color: var(--v2-texto); box-shadow: var(--v2-sombra); }
+.segmento svg { flex-shrink: 0; }

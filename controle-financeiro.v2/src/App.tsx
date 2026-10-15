@@ -5,11 +5,11 @@ import Entrar from "./telas/Entrar"
 import Dashboard from "./telas/Dashboard"
 import Transacoes from "./telas/Transacoes"
 import Transacao from "./telas/Transacao"
+import NovaTransacao from "./telas/NovaTransacao"
 import EmConstrucao from "./telas/EmConstrucao"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
-  ["/transacoes/nova", "Nova transação", "/transactions/nova"],
   ["/cartoes", "Cartões", "/credit-cards"],
   ["/cartoes/:id", "Cartão", "/credit-cards"],
   ["/contas-fixas", "Contas fixas", "/assinaturas"],
@@ -33,6 +33,7 @@ export default function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/transacoes" element={<Transacoes />} />
+        <Route path="/transacoes/nova" element={<NovaTransacao />} />
         <Route path="/transacoes/:id" element={<Transacao />} />
         <Route path="/transacoes/:id/editar" element={<Transacao />} />
         {PENDENTES.map(([rota, titulo, atual]) => (

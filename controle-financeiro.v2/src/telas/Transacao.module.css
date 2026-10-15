@@ -8,10 +8,6 @@
 .tituloBloco { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 320px; }
 .titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-xs); font-weight: 600; }
-.chip[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
-.chip[data-tom="negativo"] { background: var(--v2-negativo-suave); color: var(--v2-negativo); }
-.chip[data-tom="alerta"] { background: var(--v2-alerta-suave); color: var(--v2-alerta); }
 .acoes { display: flex; gap: 8px; flex-shrink: 0; }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .erroDialogo { display: block; margin-top: 10px; padding: 8px 12px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); }
@@ -26,24 +22,10 @@
 .dado dt { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
 .dado dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; }
 
-/* Editar */
-.form { display: flex; flex-direction: column; gap: 16px; }
-.segmentos { display: inline-flex; align-self: flex-start; gap: 2px; padding: 2px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
-.segmento { height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
-.segmento:hover { color: var(--v2-texto); }
-.segmento[data-ativo="true"] { background: var(--v2-superficie); color: var(--v2-texto); box-shadow: var(--v2-sombra); }
-.grade2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.valorCampo { display: flex; align-items: baseline; gap: 8px; padding: 6px 2px 8px; border-bottom: 2px solid var(--v2-linha-forte); }
-.valorCampo:focus-within { border-color: var(--v2-texto); }
-.valorCampo[data-invalido="true"] { border-color: var(--v2-negativo); }
-.valorCampo em { font-style: normal; font-size: var(--v2-fs-xl); font-weight: 600; color: var(--v2-texto-3); }
-.valorCampo input { flex: 1; min-width: 0; width: 100%; height: auto; padding: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; outline: none; font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.rodapeForm { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 
 @media (max-width: 900px) {
   .acoes { width: 100%; }
   .acao { flex: 1; }
-  .dados, .grade2 { grid-template-columns: minmax(0, 1fr); }
+  .dados { grid-template-columns: minmax(0, 1fr); }
   .valor { font-size: var(--v2-fs-3xl); }
-  .valorCampo input { font-size: var(--v2-fs-3xl); }
 }

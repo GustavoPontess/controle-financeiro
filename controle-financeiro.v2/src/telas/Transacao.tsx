@@ -4,7 +4,7 @@
 // - a edição não troca conta nem cartão (o back ignora) — eles aparecem fixos, sem select enganoso;
 // - data futura só em compra no cartão ou lançamento previsto (o back recusa o resto);
 // - lançamento sem hora pode continuar sem hora (decisão do Gustavo, PR #299); com hora, ela é obrigatória.
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react"
 import { deleteTransaction, getTransaction, updateTransaction } from "../services/transactionService"
@@ -21,22 +21,18 @@ import Selecao from "../componentes/Selecao"
 import Botao from "../componentes/Botao"
 import Campo, { ValorFixo } from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
-import { useCampo } from "../componentes/campoContexto"
+import EntradaValor from "../componentes/EntradaValor"
+import Etiqueta from "../componentes/Etiqueta"
+import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
+import Segmentos from "../componentes/Segmentos"
+import SeletorData from "../componentes/SeletorData"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
-import { maskMoney, moneyParaCampo, parseMoney, formatMoney } from "../utils/money"
+import { moneyParaCampo, parseMoney, formatMoney } from "../utils/money"
 import { dataLocalISO, mascararHora } from "../utils/dateTime"
+import { MAX_DESCRICAO, MEIOS_CONTA, TIPO, horaValida } from "../dominio/transacao"
 import styles from "./Transacao.module.css"
 
-// Meios de pagamento de conta (crédito não entra: compra no cartão não troca de meio na edição).
-const MEIOS_CONTA = [
-  { valor: 4, rotulo: "Pix" },
-  { valor: 2, rotulo: "Débito" },
-  { valor: 1, rotulo: "Dinheiro" },
-  { valor: 5, rotulo: "TED / DOC" },
-  { valor: 6, rotulo: "Boleto" },
-]
-const MAX_DESCRICAO = 255 // [MaxLength(255)] no back
-const MAX_DIGITOS_VALOR = 12 // até R$ 9.999.999.999,99
+const TIPOS = [{ valor: "1", rotulo: "Despesa" }, { valor: "2", rotulo: "Receita" }]
 
 const naturezaDe = (t: Transaction) =>
   t.ehTransferencia ? "Transferência" : t.ehPagamentoFatura ? "Pagamento de fatura" : t.tipo === 2 ? "Receita" : "Despesa"
@@ -145,12 +141,10 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
         <div className={styles.tituloBloco}>
           <h1 className={styles.titulo}>{t.descricao}</h1>
           <div className={styles.chips}>
-            <span className={styles.chip} data-tom={neutro ? undefined : t.tipo === 2 ? "positivo" : "negativo"}>{naturezaDe(t)}</span>
-            {t.statusTransacao === 0
-              ? <span className={styles.chip} data-tom="alerta">Previsto</span>
-              : <span className={styles.chip}>Efetivado</span>}
-            {t.recorrenteOrigemId && <span className={styles.chip}>Conta fixa</span>}
-            {parcela && <span className={styles.chip}>{parcela}</span>}
+            <Etiqueta tom={neutro ? undefined : t.tipo === 2 ? "positivo" : "negativo"}>{naturezaDe(t)}</Etiqueta>
+            {t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : <Etiqueta>Efetivado</Etiqueta>}
+            {t.recorrenteOrigemId && <Etiqueta>Conta fixa</Etiqueta>}
+            {parcela && <Etiqueta>{parcela}</Etiqueta>}
           </div>
         </div>
         <div className={styles.acoes}>
@@ -210,7 +204,7 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
 }) {
   const noCartao = !!t.cartaoCreditoId
   const horaOpcional = !t.hora // lançamento sem hora (ex.: extrato importado) pode continuar sem hora
-  const [tipo, setTipo] = useState(t.tipo === 2 ? 2 : 1)
+  const [tipo, setTipo] = useState<number>(t.tipo === TIPO.receita ? TIPO.receita : TIPO.despesa)
   const [valor, setValor] = useState(moneyParaCampo(t.valor))
   const [data, setData] = useState(t.data)
   const [hora, setHora] = useState(t.hora ? t.hora.slice(0, 5) : "")
@@ -243,16 +237,13 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
     if (!data) e.data = "Informe a data"
     else if (dataMax && data > dataMax) e.data = "A data não pode ser futura"
     if (!categoriaId) e.categoria = "Escolha a categoria"
-    if (hora) {
-      const m = hora.match(/^(\d{2}):(\d{2})$/)
-      if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) e.hora = "Hora inválida (HH:MM)"
-    } else if (!horaOpcional) e.hora = "Informe a hora"
+    if (hora) { if (!horaValida(hora)) e.hora = "Hora inválida (HH:MM)" }
+    else if (!horaOpcional) e.hora = "Informe a hora"
     setErros(e)
     return Object.keys(e).length === 0
   }
 
-  const enviar = async (ev: FormEvent) => {
-    ev.preventDefault()
+  const enviar = async () => {
     setErro(null)
     if (!validar()) return
     setSalvando(true)
@@ -282,30 +273,26 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
       <Bloco>
-        <form className={styles.form} onSubmit={(e) => { void enviar(e) }} noValidate>
+        <Formulario onSubmit={() => { void enviar() }}>
           {!noCartao && (
-            <div className={styles.segmentos} role="group" aria-label="Tipo">
-              <button type="button" className={styles.segmento} data-ativo={tipo === 1 ? "true" : undefined} onClick={() => trocarTipo(1)}>Despesa</button>
-              <button type="button" className={styles.segmento} data-ativo={tipo === 2 ? "true" : undefined} onClick={() => trocarTipo(2)}>Receita</button>
-            </div>
+            <Segmentos ariaLabel="Tipo" valor={String(tipo)} onChange={(v) => trocarTipo(Number(v))} opcoes={TIPOS} />
           )}
 
           <Campo rotulo="Valor" erro={erros.valor}>
-            <ValorGrande valor={valor}
-              onChange={(v) => { setValor(maskMoney(v.replace(/\D/g, "").slice(0, MAX_DIGITOS_VALOR), valor)); limpa("valor") }} />
+            <EntradaValor valor={valor} onChange={(v) => { setValor(v); limpa("valor") }} />
           </Campo>
 
-          <div className={styles.grade2}>
+          <LinhaCampos>
             <Campo rotulo="Data" erro={erros.data}>
-              <Entrada type="date" value={data} max={dataMax} onChange={(e) => { setData(e.target.value); limpa("data") }} />
+              <SeletorData valor={data} max={dataMax} onChange={(v) => { setData(v); limpa("data") }} />
             </Campo>
             <Campo rotulo={`Hora${horaOpcional ? " (opcional)" : ""}`} erro={erros.hora}>
               <Entrada inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora}
                 onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
             </Campo>
-          </div>
+          </LinhaCampos>
 
-          <div className={styles.grade2}>
+          <LinhaCampos>
             <Campo rotulo={noCartao ? "Cartão" : "Conta"} estatico>
               <ValorFixo title="Conta e cartão não mudam na edição">{t.cartaoCreditoNome ?? t.contaNome ?? "—"}</ValorFixo>
             </Campo>
@@ -317,9 +304,9 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
                   opcoes={MEIOS_CONTA.map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
               </Campo>
             )}
-          </div>
+          </LinhaCampos>
 
-          <div className={styles.grade2}>
+          <LinhaCampos>
             <Campo rotulo="Categoria" erro={erros.categoria}>
               <Selecao valor={categoriaId}
                 onChange={(v) => { setCategoriaId(v); setSubcategoriaId(""); limpa("categoria") }}
@@ -330,31 +317,18 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
                 placeholder={subs.length === 0 ? "Nenhuma" : "Sem subcategoria"} onChange={setSubcategoriaId}
                 opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
             </Campo>
-          </div>
+          </LinhaCampos>
 
           <Campo rotulo="Descrição" erro={erros.descricao}>
             <Entrada value={descricao} maxLength={MAX_DESCRICAO} onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
           </Campo>
 
-          <div className={styles.rodapeForm}>
+          <RodapeFormulario>
             <Botao onClick={aoCancelar} disabled={salvando}>Cancelar</Botao>
             <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</Botao>
-          </div>
-        </form>
+          </RodapeFormulario>
+        </Formulario>
       </Bloco>
     </div>
-  )
-}
-
-/** Valor em destaque (R$ grande, só a linha de baixo). Dentro do Campo: herda id e erro. */
-function ValorGrande({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
-  const campo = useCampo()
-  const inv = campo?.invalido ?? false
-  return (
-    <span className={styles.valorCampo} data-invalido={inv ? "true" : undefined}>
-      <em>R$</em>
-      <input id={campo?.id} inputMode="numeric" autoComplete="off" value={valor} aria-invalid={inv || undefined}
-        aria-describedby={inv && campo ? campo.erroId : undefined} onChange={(e) => onChange(e.target.value)} />
-    </span>
   )
 }

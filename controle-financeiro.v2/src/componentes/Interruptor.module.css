@@ -1,0 +1,7 @@
+.interruptor { display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-md); font-weight: 500; text-align: left; cursor: pointer; }
+.interruptor:disabled { opacity: 0.6; cursor: default; }
+.trilho { position: relative; flex-shrink: 0; width: 36px; height: 20px; border-radius: 999px; background: var(--v2-linha-forte); transition: background 0.15s; }
+.trilho[data-ligado="true"] { background: var(--v2-tinta); }
+.bolinha { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--v2-superficie); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform 0.15s; }
+.trilho[data-ligado="true"] .bolinha { transform: translateX(16px); }
+.rotulo { min-width: 0; }

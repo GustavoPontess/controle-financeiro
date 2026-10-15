@@ -16,6 +16,10 @@ import Selecao from "../componentes/Selecao"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
+import Etiqueta from "../componentes/Etiqueta"
+import SeletorData from "../componentes/SeletorData"
+import { maskMoney, parseMoney } from "../utils/money"
+import { diaSeguinte } from "../utils/dateTime"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -106,7 +110,10 @@ export default function Transacoes() {
   }, [painel])
   const aplicar = () => { setFiltros(rascunho); setPainel(false) }
   const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false) }
-  const edita = <K extends keyof Filtros>(k: K) => (e: { target: { value: string } }) => setRascunho((r) => ({ ...r, [k]: e.target.value }))
+  const edita = <K extends keyof Filtros>(k: K) => (valor: string) => setRascunho((r) => ({ ...r, [k]: valor }))
+  // Valor do filtro com a mesma máscara de dinheiro dos formulários: só dígitos, nunca negativo.
+  const editaValor = (k: "valorMin" | "valorMax") => (e: { target: { value: string } }) =>
+    setRascunho((r) => ({ ...r, [k]: maskMoney(e.target.value.replace(/\D/g, "").slice(0, 12), r[k]) }))
 
   useEffect(() => {
     let vivo = true
@@ -124,10 +131,11 @@ export default function Transacoes() {
       natureza: filtros.natureza || undefined,
       contaId: filtros.contaId || undefined,
       status: filtros.status !== "" ? Number(filtros.status) : undefined,
-      valorMin: filtros.valorMin !== "" ? Number(filtros.valorMin) : undefined,
-      valorMax: filtros.valorMax !== "" ? Number(filtros.valorMax) : undefined,
+      valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
+      valorMax: filtros.valorMax !== "" ? parseMoney(filtros.valorMax) : undefined,
       from: filtros.de || undefined,
-      to: filtros.ate || undefined,
+      // "Até" inclui o dia escolhido; o back filtra Data < to.
+      to: filtros.ate ? diaSeguinte(filtros.ate) : undefined,
       apenasCaixa: true,
     })
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
@@ -195,16 +203,16 @@ export default function Transacoes() {
                   </Campo>
                   <Campo rotulo="Valor" grupo>
                     <div className={styles.faixa}>
-                      <Entrada tamanho="sm" prefixo="R$" type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={edita("valorMin")} />
+                      <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={editaValor("valorMin")} />
                       <span className={styles.ate}>até</span>
-                      <Entrada tamanho="sm" prefixo="R$" type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={edita("valorMax")} />
+                      <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={editaValor("valorMax")} />
                     </div>
                   </Campo>
                   <Campo rotulo="Período" grupo>
                     <div className={styles.faixa}>
-                      <Entrada tamanho="sm" type="date" aria-label="De" value={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
+                      <SeletorData tamanho="sm" limpavel placeholder="Início" ariaLabel="De" valor={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
                       <span className={styles.ate}>até</span>
-                      <Entrada tamanho="sm" type="date" aria-label="Até" value={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
+                      <SeletorData tamanho="sm" limpavel placeholder="Fim" ariaLabel="Até" valor={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
                     </div>
                   </Campo>
                   <div className={styles.painelRodape}>
@@ -262,7 +270,7 @@ function Linha({ t, categoria }: { t: Transaction; categoria?: string }) {
           <span className={styles.sub}>{detalhe || "—"}</span>
         </span>
         {t.hora && <span className={styles.hora}>{t.hora.slice(0, 5)}</span>}
-        {t.statusTransacao === 0 && <span className={styles.previsto}>Previsto</span>}
+        {t.statusTransacao === 0 && <Etiqueta tom="alerta" className={styles.previsto}>Previsto</Etiqueta>}
         <Dinheiro valor={t.valor} tom={tom} className={styles.valor} />
       </Link>
     </li>

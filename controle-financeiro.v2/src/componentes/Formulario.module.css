@@ -1,0 +1,8 @@
+.form { display: flex; flex-direction: column; gap: 16px; }
+.linha { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; }
+.rodape { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+
+@media (max-width: 900px) {
+  .linha { grid-auto-flow: row; }
+  .rodape > * { flex: 1; }
+}

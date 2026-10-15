@@ -120,7 +120,7 @@ export default function V2Layout() {
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
             <Botao soIcone aria-label={tema === "claro" ? "Tema escuro" : "Tema claro"} onClick={alternarTema}
               icone={tema === "claro" ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />} />
-            <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova")}
+            <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })}
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>
         </header>

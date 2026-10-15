@@ -4,6 +4,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Check, ChevronDown, Search } from "lucide-react"
 import { useCampo } from "./campoContexto"
+import g from "./gatilho.module.css"
 import styles from "./Selecao.module.css"
 
 export type OpcaoSelecao = { valor: string; rotulo: string }
@@ -91,18 +92,18 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   }
 
   return (
-    <div className={styles.raiz} ref={raiz} data-tamanho={tamanho}>
-      <button ref={gatilho} id={idGatilho} type="button" className={styles.gatilho} role="combobox"
+    <div className={styles.raiz} ref={raiz}>
+      <button ref={gatilho} id={idGatilho} type="button" className={g.gatilho} data-tamanho={tamanho} role="combobox"
         aria-haspopup="listbox" aria-expanded={aberto} aria-controls={idLista} aria-label={ariaLabel} aria-invalid={inv || undefined}
         aria-describedby={inv && campo ? campo.erroId : undefined}
         data-invalido={inv ? "true" : undefined} data-vazio={escolhida ? undefined : "true"} disabled={desabilitado}
         onClick={() => (aberto ? fechar() : abrir())} onKeyDown={teclaNoGatilho}>
-        <span className={styles.texto}>{escolhida?.rotulo ?? placeholder}</span>
-        <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={styles.seta} data-aberto={aberto ? "true" : undefined} />
+        <span className={g.texto}>{escolhida?.rotulo ?? placeholder}</span>
+        <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={`${g.icone} ${styles.seta}`} data-aberto={aberto ? "true" : undefined} />
       </button>
 
       {aberto && (
-        <div className={styles.painel} data-cima={paraCima ? "true" : undefined}>
+        <div className={`${g.painel} ${styles.painel}`} data-cima={paraCima ? "true" : undefined}>
           {comBusca && (
             <label className={styles.busca}>
               <Search size={14} strokeWidth={2.25} aria-hidden="true" />

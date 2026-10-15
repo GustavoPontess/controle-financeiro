@@ -43,7 +43,6 @@
 .nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hora { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.previsto { font-size: var(--v2-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--v2-alerta-suave); color: var(--v2-alerta); white-space: nowrap; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 110px; text-align: right; }
 .valor[data-tom="positivo"] { color: var(--v2-positivo); }
 .valor[data-tom="negativo"] { color: var(--v2-negativo); }

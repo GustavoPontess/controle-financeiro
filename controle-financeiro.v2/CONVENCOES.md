@@ -19,6 +19,13 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Campo de formulário | `Campo` | rótulo + controle + erro. `erro` deixa o controle vermelho e liga a mensagem (aria). `grupo` pra 2 controles ("de … até"), `estatico` + `ValorFixo` pra valor que não muda |
 | Caixa de texto | `Entrada` | md 44 / sm 40 · `prefixo` ("R$") · `sufixo` (ex.: olho da senha). Dentro do `Campo` herda id e erro sozinha |
 | Escolha numa lista | `Selecao` | no lugar de `<select>`. md 44 / sm 40 / xs 32. Dentro do `Campo` herda id e erro |
+| Data | `SeletorData` | no lugar de `<input type="date">` (calendário próprio, tema, teclado). `min`/`max`, `limpavel` pra data opcional. Valor sempre `YYYY-MM-DD` |
+| Valor em dinheiro (campo principal) | `EntradaValor` | R$ grande, dígitos viram centavos, nunca negativo, até 12 dígitos |
+| Valor em dinheiro (filtro/campo pequeno) | `Entrada` + `prefixo="R$"` + `maskMoney` | nunca `type="number"` (aceita sinal de menos) |
+| Escolha única curta (2–4 opções) | `Segmentos` | radiogroup com setas; `cheio` pra ocupar a largura |
+| Liga/desliga | `Interruptor` | role=switch ("Já paguei", "Conta fixa") |
+| Status | `Etiqueta` | tom positivo / negativo / alerta |
+| Layout de formulário | `Formulario`, `LinhaCampos`, `RodapeFormulario` | linha = colunas iguais (1 no celular); rodapé à direita |
 | Paginação de lista | `Paginacao` | linhas por página + páginas numeradas; servidor pagina |
 | Confirmar ação | `Confirmar` | excluir/estornar; `perigo` pra destrutiva |
 | Caixa de conteúdo | `Bloco` | título + ação à direita |
@@ -29,3 +36,5 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Todo campo dentro de `Campo` (nunca `<label>` solto com `<input>` estilizado na tela).
 - Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
 - Limite de caracteres igual ao do back (ex.: descrição 255).
+- Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
+- Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
