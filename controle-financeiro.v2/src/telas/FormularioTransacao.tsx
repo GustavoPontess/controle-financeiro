@@ -270,7 +270,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
         </Campo>
 
-        <LinhaCampos colunas={comHora ? "minmax(0, 2fr) minmax(0, 1fr)" : undefined}>
+        {/* Data e hora: lado a lado quando cabe; se o formulário estreita, a hora desce (nunca se sobrepõem). */}
+        <div className={styles.dataHora}>
           <Campo rotulo={ehFixa ? "Começa em" : parcelado ? "Data da compra" : "Data"} erro={erros.data}>
             <div className={styles.dataRapida}>
               <Botao tamanho="lg" ativo={data === hoje} onClick={() => escolherData(hoje)}>Hoje</Botao>
@@ -284,7 +285,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
                 onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
             </Campo>
           )}
-        </LinhaCampos>
+        </div>
 
         {transferencia ? (
           <LinhaCampos>
