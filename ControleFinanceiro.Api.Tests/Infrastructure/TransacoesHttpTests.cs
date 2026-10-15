@@ -223,7 +223,9 @@ public class TransacoesHttpTests : IClassFixture<CustomWebApplicationFactory>
         corpo["categoriaId"] = categoriaId;
         var resp1 = await client.SendAsync(Req(HttpMethod.Put, $"/api/v1/transacoes/{id}", csrf, corpo));
 
-        Assert.Equal(HttpStatusCode.NoContent, resp1.StatusCode);
+        // A edição completa devolve 200 com o resultado (o próprio lançamento, ou o registro que o substituiu).
+        Assert.Equal(HttpStatusCode.OK, resp1.StatusCode);
+        Assert.Contains("\"tipo\":\"transacao\"", await resp1.Content.ReadAsStringAsync());
         var apos1 = NoBanco(id)!;
         Assert.Equal(novoDia, apos1.Data);
         Assert.Equal(new TimeOnly(17, 5, 0), apos1.Hora);
@@ -233,7 +235,7 @@ public class TransacoesHttpTests : IClassFixture<CustomWebApplicationFactory>
         corpoSemHora["categoriaId"] = categoriaId;
         var resp2 = await client.SendAsync(Req(HttpMethod.Put, $"/api/v1/transacoes/{id}", csrf, corpoSemHora));
 
-        Assert.Equal(HttpStatusCode.NoContent, resp2.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, resp2.StatusCode);
         var apos2 = NoBanco(id)!;
         Assert.Equal(novoDia, apos2.Data);
         Assert.Null(apos2.Hora);

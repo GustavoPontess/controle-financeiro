@@ -57,10 +57,12 @@ public class TransferenciasController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Criar([FromBody] CriarTransferenciaDto dto)
+    public async Task<IActionResult> Criar(
+        [FromBody] CriarTransferenciaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
     {
         var usuarioId = GetUserId();
-        var resultado = await _service.CriarAsync(dto, usuarioId);
+        var resultado = await _service.CriarAsync(dto, usuarioId, idempotencyKey);
         return CreatedAtAction(nameof(Listar), resultado);
     }
 

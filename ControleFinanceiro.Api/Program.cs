@@ -88,6 +88,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 builder.Services.AddScoped<TransacaoService>();
+builder.Services.AddScoped<LancamentoService>();
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<SubcategoriaService>();
 builder.Services.AddScoped<ContaService>();

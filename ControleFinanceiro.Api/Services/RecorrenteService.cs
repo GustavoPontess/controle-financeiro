@@ -548,7 +548,9 @@ public class RecorrenteService
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
             DateOnly.FromDateTime(DateTime.UtcNow));
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        // Dentro de uma transação de quem chamou (edição que vira conta fixa), participa dela.
+        var proprioTx = _context.Database.CurrentTransaction is null;
+        await using var transaction = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
         try
         {
             // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
@@ -610,13 +612,15 @@ public class RecorrenteService
                 payload: new { descricao = recorrente.Descricao, valor = recorrente.Valor });
 
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
+            if (transaction != null)
+                await transaction.CommitAsync();
         }
         catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && EhViolacaoDeUnicidade(ex))
         {
             // Corrida: outra requisição com a MESMA chave gravou primeiro. Nada desta foi persistido
             // (rollback) — devolve a conta fixa vencedora como replay (ou 409 se os dados divergem).
-            await transaction.RollbackAsync();
+            if (transaction != null)
+                await transaction.RollbackAsync();
             _context.ChangeTracker.Clear();
             var vencedora = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, dto);
             if (vencedora != null)
@@ -625,7 +629,8 @@ public class RecorrenteService
         }
         catch
         {
-            await transaction.RollbackAsync();
+            if (transaction != null)
+                await transaction.RollbackAsync();
             throw;
         }
 

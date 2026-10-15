@@ -16,8 +16,20 @@ public class TransferenciaService
         _context = context;
     }
 
-    public async Task<TransferenciaDto> CriarAsync(CriarTransferenciaDto dto, Guid usuarioId)
+    public const string OperacaoCriarTransferencia = "CriarTransferencia";
+
+    // idempotencyKey (opcional): com chave, repetir o pedido devolve a transferência original em vez de mover o
+    // dinheiro de novo; a mesma chave com outros dados → 409.
+    public async Task<TransferenciaDto> CriarAsync(CriarTransferenciaDto dto, Guid usuarioId, string? idempotencyKey = null)
     {
+        Idempotencia.ExigirTamanho(idempotencyKey);
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            var anterior = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey, dto);
+            if (anterior != null)
+                return anterior;
+        }
+
         if (dto.ContaOrigemId == dto.ContaDestinoId)
             throw new ArgumentException("Conta de origem e destino não podem ser iguais.");
 
@@ -88,9 +100,40 @@ public class TransferenciaService
         _context.Transacoes.Add(transacaoSaida);
         _context.Transacoes.Add(transacaoEntrada);
         _context.Transferencias.Add(transferencia);
-        await _context.SaveChangesAsync();
+        // Chave no MESMO SaveChanges das pernas: a 2ª requisição concorrente estoura o índice e vira replay.
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoCriarTransferencia, idempotencyKey, transferencia.Id));
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(ex))
+        {
+            _context.ChangeTracker.Clear();
+            var vencedora = await BuscarCriacaoPorChaveAsync(usuarioId, idempotencyKey!, dto);
+            if (vencedora != null)
+                return vencedora;
+            throw;
+        }
 
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
+    }
+
+    /// <summary>Transferência já criada com esta chave (replay) ou null. 409 se excluída depois ou com outros dados.</summary>
+    private async Task<TransferenciaDto?> BuscarCriacaoPorChaveAsync(Guid usuarioId, string chave, CriarTransferenciaDto dto)
+    {
+        var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoCriarTransferencia, chave);
+        if (registro == null)
+            return null;
+        var original = await _context.Transferencias.AsNoTracking()
+            .Include(t => t.ContaOrigem)
+            .Include(t => t.ContaDestino)
+            .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId)
+            ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+        if (original.Valor != dto.Valor || DateOnly.FromDateTime(original.Data) != dto.Data
+            || original.ContaOrigemId != dto.ContaOrigemId || original.ContaDestinoId != dto.ContaDestinoId)
+            throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+        return MapToDto(original, original.ContaOrigem?.Nome ?? "", original.ContaDestino?.Nome ?? "");
     }
 
     /// <summary>
