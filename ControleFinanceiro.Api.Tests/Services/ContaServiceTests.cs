@@ -25,6 +25,49 @@ public class ContaServiceTests
     // Transacao.Data agora é DateOnly (o DIA, sem fuso) + Hora TimeOnly? (null = sem hora).
     private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
 
+    [Theory]
+    [InlineData(TipoConta.CartaoCredito)]
+    [InlineData(TipoConta.Emprestimo)]
+    [InlineData((TipoConta)99)]
+    public async Task CriarAsync_TipoLegadoOuInexistente_Recusa(TipoConta tipo)
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(new Conta { Nome = "X", Tipo = tipo }, Guid.NewGuid()));
+        Assert.Contains("Tipo de conta", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(TipoConta.Dinheiro)]
+    [InlineData(TipoConta.Investimento)]
+    public async Task CriarAsync_DinheiroOuInvestimento_CriaSemVirarCarteira(TipoConta tipo)
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+
+        var conta = await svc.CriarAsync(new Conta { Nome = "Cofrinho", Tipo = tipo }, Guid.NewGuid());
+
+        // Um "dinheiro" a mais não é A carteira (a do cadastro): segue editável, encerrável, excluível.
+        Assert.False(conta.IsCarteira);
+        Assert.Equal(tipo, conta.Tipo);
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_NaoMudaIsCarteira_NemVirandoDinheiro()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var conta = await svc.CriarAsync(new Conta { Nome = "Conta", Tipo = TipoConta.ContaCorrente }, usuarioId);
+
+        await svc.AtualizarAsync(conta.Id, new Conta { Nome = "Caixa de casa", Tipo = TipoConta.Dinheiro, IsCarteira = true }, usuarioId);
+
+        var salva = await ctx.Contas.FindAsync(conta.Id);
+        Assert.Equal(TipoConta.Dinheiro, salva!.Tipo);
+        Assert.False(salva.IsCarteira);
+    }
+
     [Fact]
     public async Task CriarAsync_NomeVazio_LancaException()
     {

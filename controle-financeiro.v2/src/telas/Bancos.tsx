@@ -2,7 +2,8 @@
 // poupança) e a lista de contas — abertas ou encerradas. A tela é SÓ das contas: clicar numa linha abre, ali
 // embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
 // Encerrar, Editar / Reabrir); extrato é assunto de Transações. As abertas vêm em grupos com o total de
-// cada um — em conta, poupança e a carteira por último. As contas vêm todas de uma vez (são poucas),
+// cada um — em conta, poupança, investimentos e dinheiro (a carteira e os cofrinhos) por último. As
+// contas vêm todas de uma vez (são poucas),
 // então Abertas | Encerradas filtra a lista já carregada. Outra tela pode mandar `state.abrir`
 // (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
@@ -21,7 +22,7 @@ import FaceCartao from "../componentes/FaceCartao"
 import { RodapeFormulario } from "../componentes/Formulario"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
-import { TIPO_CONTA, descreverConta } from "../dominio/conta"
+import { descreverConta, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
 import { NOME_BANDEIRA } from "../dominio/fatura"
 import { dataBR } from "../utils/dateTime"
 import styles from "./Bancos.module.css"
@@ -32,9 +33,8 @@ const SITUACOES: { valor: Situacao; rotulo: string }[] = [
   { valor: "encerradas", rotulo: "Encerradas" },
 ]
 
-const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-// A carteira é dinheiro em mãos mesmo que esteja gravada com tipo poupança (dado antigo).
-const ehPoupanca = (c: Conta) => c.tipo === TIPO_CONTA.poupanca && !c.isCarteira
+// Por nome; no grupo "Dinheiro" a carteira padrão vem primeiro.
+const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
 const soma = (xs: Conta[]) => xs.reduce((s, c) => s + c.saldoAtual, 0)
 /** "Mastercard · •••• 0315 · fecha dia 3 · vence dia 10" (mesma linha de detalhe da lista de Cartões). */
 const descreverCartao = (k: CartaoCredito) => [
@@ -65,13 +65,15 @@ export default function Bancos() {
 
   const abertas = useMemo(() => ordenar((contas ?? []).filter((c) => !c.encerradaEm)), [contas])
   const encerradas = useMemo(() => ordenar((contas ?? []).filter((c) => !!c.encerradaEm)), [contas])
-  // Abertas em grupos (só os que têm conta): em conta, poupança, carteira por último. Encerradas: um grupo só.
+  // Abertas em grupos (só os que têm conta): em conta, poupança, investimentos, dinheiro por último.
+  // Encerradas: um grupo só.
   const grupos = useMemo(() => {
     if (situacao === "encerradas") return [{ chave: "encerradas", rotulo: "Encerradas", contas: encerradas, total: undefined as number | undefined }]
     return [
-      { chave: "conta", rotulo: "Em conta", contas: abertas.filter((c) => !c.isCarteira && !ehPoupanca(c)) },
-      { chave: "poupanca", rotulo: "Poupança", contas: abertas.filter(ehPoupanca) },
-      { chave: "carteira", rotulo: "Carteira", contas: abertas.filter((c) => c.isCarteira) },
+      { chave: "conta", rotulo: "Em conta", contas: abertas.filter((c) => !ehDinheiro(c) && !ehGuardado(c)) },
+      { chave: "poupanca", rotulo: "Poupança", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.poupanca) },
+      { chave: "investimentos", rotulo: "Investimentos", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.investimento) },
+      { chave: "dinheiro", rotulo: "Dinheiro", contas: abertas.filter(ehDinheiro) },
     ].filter((g) => g.contas.length > 0).map((g) => ({ ...g, total: soma(g.contas) as number | undefined }))
   }, [situacao, abertas, encerradas])
   const vazio = grupos.every((g) => g.contas.length === 0)
@@ -80,8 +82,8 @@ export default function Bancos() {
     if (!contas) return null
     return {
       total: soma(abertas),
-      disponivel: soma(abertas.filter((c) => !ehPoupanca(c))),
-      guardado: soma(abertas.filter(ehPoupanca)),
+      disponivel: soma(abertas.filter((c) => !ehGuardado(c))),
+      guardado: soma(abertas.filter(ehGuardado)),
     }
   }, [contas, abertas])
 
@@ -101,7 +103,7 @@ export default function Bancos() {
         <div className={styles.numeros}>
           <Numero rotulo="Saldo total" valor={totais?.total} />
           <Numero rotulo="Disponível" valor={totais?.disponivel} />
-          <Numero rotulo="Guardado na poupança" valor={totais?.guardado} />
+          <Numero rotulo="Guardado" valor={totais?.guardado} />
         </div>
       </Bloco>
 
@@ -193,12 +195,10 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
         <div id={ficha} className={styles.ficha}>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
           <dl className={styles.dados}>
-            {c.isCarteira ? (
-              <div><dt>Tipo</dt><dd>Dinheiro em mãos</dd></div>
-            ) : (
+            <div><dt>Tipo</dt><dd>{rotuloTipo(c)}</dd></div>
+            {!c.isCarteira && temDadosBancarios(c.tipo) && (
               <>
                 <div><dt>Banco</dt><dd>{c.bancoNome || "Sem banco"}</dd></div>
-                <div><dt>Tipo</dt><dd>{c.tipo === TIPO_CONTA.poupanca ? "Poupança" : "Conta corrente"}</dd></div>
                 <div><dt>Agência</dt><dd>{c.agencia || "—"}</dd></div>
                 <div><dt>Número</dt><dd>{c.numeroConta || "—"}</dd></div>
               </>

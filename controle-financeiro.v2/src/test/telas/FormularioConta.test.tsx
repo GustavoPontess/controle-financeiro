@@ -38,6 +38,27 @@ describe("FormularioConta", () => {
     expect(createConta).not.toHaveBeenCalled()
   })
 
+  it("Dinheiro: some banco, agência e número, e vai com tipo 4", async () => {
+    vi.mocked(createConta).mockResolvedValue({ id: "nova" })
+    renderizar()
+    await userEvent.type(screen.getByPlaceholderText("0001"), "0001")
+    await userEvent.click(screen.getByRole("radio", { name: "Dinheiro" }))
+    expect(screen.queryByPlaceholderText("0001")).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Banco" })).not.toBeInTheDocument()
+    await userEvent.type(screen.getByPlaceholderText("Cofrinho"), "Cofrinho")
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar conta" }))
+    expect(createConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "Cofrinho", tipo: 4, agencia: undefined, bancoId: undefined }))
+  })
+
+  it("Investimentos: vai com tipo 6", async () => {
+    vi.mocked(createConta).mockResolvedValue({ id: "nova" })
+    renderizar()
+    await userEvent.click(screen.getByRole("radio", { name: "Investimentos" }))
+    await userEvent.type(screen.getByPlaceholderText("XP"), "XP")
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar conta" }))
+    expect(createConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "XP", tipo: 6 }))
+  })
+
   it("cria com o saldo de hoje como saldo inicial", async () => {
     vi.mocked(createConta).mockResolvedValue({ id: "nova" })
     const aoSalvo = vi.fn()

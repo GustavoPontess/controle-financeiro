@@ -270,7 +270,7 @@ public class AuthService
         {
             Id = Guid.NewGuid(),
             Nome = "Carteira",
-            Tipo = TipoConta.ContaPoupanca,
+            Tipo = TipoConta.Dinheiro,
             IsCarteira = true,
             UsuarioIdProprietario = usuario.Id
         });

@@ -35,23 +35,29 @@ describe("Bancos — lista com a ficha da conta", () => {
   beforeEach(() => {
     contas = [
       conta("k1", "Nubank", 1139.96, { bancoNome: "NU PAGAMENTOS", numeroConta: "12345-6" }),
-      conta("k0", "Carteira", 50, { isCarteira: true }),
+      conta("k0", "Carteira", 50, { isCarteira: true, tipo: 2 }), // dado antigo: carteira gravada como poupança
+      conta("k4", "XP", 5000, { tipo: 6 }),
+      conta("k5", "Cofrinho", 200, { tipo: 4 }),
       conta("k3", "Santander", 0, { encerradaEm: "2026-09-10" }),
     ]
     vi.mocked(deleteConta).mockClear(); vi.mocked(reabrirConta).mockClear()
   })
 
-  it("lista as abertas em grupos (em conta, carteira por último, com o total) e abre a ficha da conta clicada, uma por vez", async () => {
+  it("lista as abertas em grupos (em conta, investimentos, dinheiro por último, com o total) e abre a ficha da conta clicada, uma por vez", async () => {
     renderizar()
     await screen.findByRole("list", { name: "Contas" })
     const nomes = within(lista()).getAllByRole("button").map((b) => b.textContent)
-    expect(nomes[0]).toContain("Nubank")
-    expect(nomes[1]).toContain("Carteira")
+    expect(nomes).toHaveLength(4)
+    for (const [i, n] of ["Nubank", "XP", "Carteira", "Cofrinho"].entries()) expect(nomes[i]).toContain(n)
     expect(nomes.some((t) => t?.includes("Santander"))).toBe(false)
     expect(within(screen.getByRole("list", { name: "Em conta" })).getAllByRole("button")).toHaveLength(1)
-    expect(screen.getByRole("list", { name: "Carteira" })).toBeInTheDocument()
+    expect(within(screen.getByRole("list", { name: "Investimentos" })).getAllByRole("button")).toHaveLength(1)
+    // A carteira (mesmo gravada como poupança) e o cofrinho são "Dinheiro"; a carteira primeiro.
+    expect(within(screen.getByRole("list", { name: "Dinheiro" })).getAllByRole("button")).toHaveLength(2)
     expect(screen.queryByRole("list", { name: "Poupança" })).not.toBeInTheDocument()
-    expect(screen.getAllByText(/1\.189,96/).length).toBeGreaterThan(0)
+    // Saldo total 6.389,96 · Disponível (Nubank + dinheiro) 1.389,96 · Guardado (XP) 5.000,00
+    expect(screen.getAllByText(/6\.389,96/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/1\.389,96/).length).toBeGreaterThan(0)
     expect(screen.queryByText("Cartões")).not.toBeInTheDocument()
 
     await userEvent.click(linha(/Nubank/))
@@ -71,6 +77,7 @@ describe("Bancos — lista com a ficha da conta", () => {
     await userEvent.click(linha(/Carteira/))
     expect(linha(/Nubank/)).toHaveAttribute("aria-expanded", "false")
     expect(screen.getByText("Dinheiro em mãos", { selector: "dd" })).toBeInTheDocument()
+    expect(screen.queryByText("Banco")).not.toBeInTheDocument()
     expect(screen.queryByText("Cartões")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument()
     await userEvent.click(linha(/Carteira/))
@@ -99,7 +106,7 @@ describe("Bancos — lista com a ficha da conta", () => {
     contas = contas.filter((c) => c.id !== "k1")
     await userEvent.click(within(dialogo).getByRole("button", { name: "Excluir" }))
     expect(deleteConta).toHaveBeenCalledWith("k1")
-    expect(await within(lista()).findAllByRole("button")).toHaveLength(1)
+    expect(await within(lista()).findAllByRole("button")).toHaveLength(3)
     expect(within(lista()).queryByRole("button", { name: /Nubank/ })).not.toBeInTheDocument()
   })
 

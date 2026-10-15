@@ -22,8 +22,15 @@ namespace ControleFinanceiro.Api.Services
             _eventLog = eventLog;
         }
 
+        /// <summary>O que a pessoa cria em Bancos. Cartão (3) e Empréstimo (5) são legado com entidade própria.</summary>
+        private static readonly HashSet<TipoConta> TiposPermitidos =
+            [TipoConta.ContaCorrente, TipoConta.ContaPoupanca, TipoConta.Dinheiro, TipoConta.Investimento];
+
         private static void ValidarFormato(Conta conta)
         {
+            if (!TiposPermitidos.Contains(conta.Tipo))
+                throw new ArgumentException("Tipo de conta inválido. Use conta corrente, poupança, dinheiro ou investimentos.");
+
             if (!string.IsNullOrWhiteSpace(conta.Agencia) && !AgenciaRegex.IsMatch(conta.Agencia))
                 throw new ArgumentException("Agência deve conter só números (até 10 dígitos).");
 
@@ -198,7 +205,7 @@ namespace ControleFinanceiro.Api.Services
             existente.Tipo = conta.Tipo;
             existente.TipoCartao = conta.TipoCartao;
             existente.BancoId = conta.BancoId;
-            existente.IsCarteira = conta.IsCarteira;
+            // IsCarteira é só a conta padrão do cadastro — nunca muda por edição (nem virando "Dinheiro").
 
             await _context.SaveChangesAsync();
         }

@@ -112,7 +112,6 @@ namespace ControleFinanceiro.Api.Controllers
                 Tipo = (TipoConta)dto.Tipo,
                 TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
                 BancoId = dto.BancoId,
-                IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
             };
 
             var criada = await _service.CriarAsync(conta, usuarioId, dto.SaldoInicial, dto.DataSaldoInicial);
@@ -137,7 +136,6 @@ namespace ControleFinanceiro.Api.Controllers
                 Tipo = (TipoConta)dto.Tipo,
                 TipoCartao = dto.TipoCartao.HasValue ? (TipoCartao)dto.TipoCartao.Value : null,
                 BancoId = dto.BancoId,
-                IsCarteira = (TipoConta)dto.Tipo == TipoConta.Dinheiro
             };
 
             await _service.AtualizarAsync(id, conta, usuarioId);
