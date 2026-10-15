@@ -1,10 +1,10 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
 // transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, BarChart3, Bell, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen,
+  ArrowLeft, BarChart3, Bell, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen,
   Plus, Receipt, Repeat, Scale, Settings, Tags, Target, Upload, Users, Eye, EyeOff,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
@@ -55,9 +55,18 @@ export default function V2Layout() {
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
   const [recolhido, setRecolhido] = useState(() => { try { return localStorage.getItem(CHAVE_MENU) === "trilho" } catch { return false } })
-  // No trilho, o avatar abre um menu pequeno (nome, e-mail, sair) — assim o rodapé não muda de altura.
+  // O bloco da pessoa (avatar + nome) abre o menu da conta: e-mail, Configurações, Sair. Vale com o menu
+  // aberto, no trilho e na gaveta do celular. Fecha ao clicar fora, no Esc e ao trocar de tela.
   const [menuUsuario, setMenuUsuario] = useState(false)
+  const usuarioRef = useRef<HTMLDivElement>(null)
   useEffect(() => { setMenuAberto(false); setMenuUsuario(false) }, [pathname])
+  useEffect(() => {
+    if (!menuUsuario) return
+    const fora = (e: MouseEvent) => { if (!usuarioRef.current?.contains(e.target as Node)) setMenuUsuario(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuUsuario(false) }
+    document.addEventListener("mousedown", fora); document.addEventListener("keydown", esc)
+    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc) }
+  }, [menuUsuario])
   useEffect(() => { try { localStorage.setItem(CHAVE_MENU, recolhido ? "trilho" : "aberto") } catch { /* ignore */ } }, [recolhido])
 
   const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -90,23 +99,24 @@ export default function V2Layout() {
           {GERENCIAR.map((i) => <Item key={i.para} {...i} />)}
         </nav>
         <div className={styles.rodape}>
-          <Item para="/configuracoes" rotulo="Configurações" icone={Settings} />
-          <div className={styles.usuario}>
-            <button type="button" className={styles.avatar} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? usuario?.nome : undefined}
-              aria-haspopup={recolhido ? "menu" : undefined} aria-expanded={recolhido ? menuUsuario : undefined}
-              onClick={() => { if (recolhido) setMenuUsuario((v) => !v) }}>{iniciais}</button>
-            <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
-              <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
-              <span className={styles.usuarioPlano}>Plano gratuito</span>
-            </span>
-            <button type="button" className={styles.sair} aria-label="Sair" title="Sair" onClick={sairAgora}>
-              <LogOut size={16} strokeWidth={2} />
+          <div className={styles.usuario} ref={usuarioRef}>
+            <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? usuario?.nome : undefined}
+              aria-haspopup="menu" aria-expanded={menuUsuario} onClick={() => setMenuUsuario((v) => !v)}>
+              <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
+              <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
+                <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
+                <span className={styles.usuarioPlano}>Plano gratuito</span>
+              </span>
+              <ChevronsUpDown size={15} strokeWidth={2} className={`${styles.usuarioSeta} ${styles.itemRotulo}`} aria-hidden="true" />
             </button>
-            {recolhido && menuUsuario && (
+            {menuUsuario && (
               <div className={styles.menuUsuario} role="menu">
                 <span className={styles.usuarioNome}>{usuario?.nome}</span>
                 <span className={styles.usuarioPlano}>{usuario?.email}</span>
-                <button type="button" role="menuitem" className={styles.menuSair} onClick={sairAgora}>
+                <NavLink to="/configuracoes" role="menuitem" className={styles.menuItem}>
+                  <Settings size={16} strokeWidth={2} aria-hidden="true" /> Configurações
+                </NavLink>
+                <button type="button" role="menuitem" className={styles.menuItem} onClick={sairAgora}>
                   <LogOut size={16} strokeWidth={2} aria-hidden="true" /> Sair
                 </button>
               </div>

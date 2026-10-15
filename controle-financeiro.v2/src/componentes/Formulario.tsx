@@ -1,7 +1,7 @@
 // Esqueleto de formulário do v2: campos empilhados com o mesmo respiro, linha de 2–3 campos lado a lado
 // (vira 1 por linha no celular) e o rodapé de ações à direita. As telas não desenham layout de form.
 import type { FormEvent, ReactNode } from "react"
-import Bloco from "./Bloco"
+import Bloco, { Esqueleto } from "./Bloco"
 import styles from "./Formulario.module.css"
 
 /** <form> sem a validação do navegador (a validação é por campo, nossa).
@@ -26,6 +26,20 @@ export function LinhaCampos({ children, colunas }: { children: ReactNode; coluna
 /** Ações do formulário (Cancelar / Salvar), à direita. Dentro do <Lado>, gruda no pé da coluna. */
 export function RodapeFormulario({ children }: { children: ReactNode }) {
   return <div className={styles.rodape}>{children}</div>
+}
+
+/** A casca de uma tela de formulário: título da página, aviso de carga ou esqueleto, e o formulário. */
+export function PaginaFormulario({ titulo, carregando, erroCarga, children }: {
+  titulo: string; carregando?: boolean; erroCarga?: string | null; children: ReactNode
+}) {
+  return (
+    <div className={styles.pagina}>
+      <h1 className={styles.tituloPagina}>{titulo}</h1>
+      {erroCarga ? <p className={styles.alertaPagina} role="alert">{erroCarga}</p>
+        : carregando ? <Bloco className={styles.esqueletoPagina}><Esqueleto linhas={6} altura={18} /></Bloco>
+        : children}
+    </div>
+  )
 }
 
 /** O cartão dos campos (layout lateral). */

@@ -10,9 +10,8 @@ import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
-import Bloco, { Esqueleto } from "../componentes/Bloco"
+import { PaginaFormulario } from "../componentes/Formulario"
 import FormularioTransacao from "./FormularioTransacao"
-import styles from "./NovaTransacao.module.css"
 
 export default function NovaTransacao() {
   const navigate = useNavigate()
@@ -36,16 +35,10 @@ export default function NovaTransacao() {
   }, [])
 
   return (
-    <div className={styles.pagina}>
-      <h1 className={styles.titulo}>Nova transação</h1>
-      {erroCarga ? (
-        <p className={styles.alerta} role="alert">Não foi possível carregar suas contas e categorias. Recarregue a página.</p>
-      ) : carregando ? (
-        <Bloco className={styles.esqueleto}><Esqueleto linhas={6} altura={18} /></Bloco>
-      ) : (
-        <FormularioTransacao contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
-          aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
-      )}
-    </div>
+    <PaginaFormulario titulo="Nova transação" carregando={carregando}
+      erroCarga={erroCarga ? "Não foi possível carregar suas contas e categorias. Recarregue a página." : null}>
+      <FormularioTransacao contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
+    </PaginaFormulario>
   )
 }

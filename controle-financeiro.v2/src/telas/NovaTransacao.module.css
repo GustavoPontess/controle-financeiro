@@ -1,4 +1,0 @@
-.pagina { display: flex; flex-direction: column; gap: 16px; }
-.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
-.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
-.esqueleto { max-width: 680px; }

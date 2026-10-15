@@ -21,23 +21,29 @@
 .itemAtivo, .itemAtivo:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
 .item svg { flex-shrink: 0; }
 .rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
-.usuario { position: relative; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 5px; border-top: 1px solid var(--v2-linha); }
-.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font: inherit; font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; cursor: default; }
-.usuarioTexto { display: flex; flex-direction: column; min-width: 0; }
+.usuario { position: relative; padding-top: 8px; border-top: 1px solid var(--v2-linha); }
+/* O bloco inteiro (avatar + nome) é o botão do menu da conta. */
+.usuarioBotao { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 8px 0 5px; border: 0; border-radius: 10px; background: transparent; color: var(--v2-texto); font: inherit; text-align: left; cursor: pointer; }
+.usuarioBotao:hover, .usuarioBotao[aria-expanded="true"] { background: var(--v2-superficie-2); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; }
+.usuarioTexto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.usuarioSeta { flex-shrink: 0; color: var(--v2-texto-3); }
 .usuarioNome { font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .usuarioPlano { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sair { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
-.sair:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
-.menuUsuario { position: absolute; left: calc(100% + 10px); bottom: 6px; z-index: 20; min-width: 220px; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
-.menuSair { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; }
-.menuSair:hover { background: var(--v2-superficie-2); }
+/* Menu da conta: abre pra cima, na largura do menu lateral (no trilho, pro lado). */
+.menuUsuario { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.menuUsuario > .usuarioNome, .menuUsuario > .usuarioPlano { padding: 0 2px; }
+.menuItem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; }
+.menuItem:first-of-type { margin-top: 8px; }
+.menuItem:hover { background: var(--v2-superficie-2); }
 
 /* Trilho (recolhido): nome vira title; avatar abre o menu. A marca compacta vira o botão de
    expandir (o "P" dá lugar à seta no hover) — a linha da marca continua com 40px.
    Nada muda de lugar ao alternar: mesmo padding do painel, itens à esquerda com o mesmo padding,
    ícones/avatar/"P" no mesmo eixo (x=35) nos dois estados. Só a largura anima e os rótulos somem —
    sem isso os ícones centralizavam no painel ainda largo e deslizavam de volta enquanto encolhia. */
-.raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo, .raiz[data-menu="trilho"] .sair { display: none; }
+.raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: none; }
+.raiz[data-menu="trilho"] .menuUsuario { left: calc(100% + 10px); right: auto; bottom: 6px; min-width: 220px; }
 /* "P" ancorado à esquerda, no mesmo x e tamanho do P de "Pontes": recolher parece o "ontes" sumindo.
    (Centralizar faria o P centralizar no painel ainda largo e deslizar junto com a animação.) */
 .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0; }
@@ -48,8 +54,6 @@
 .raiz[data-menu="trilho"] .recolher:hover .logoMini, .raiz[data-menu="trilho"] .recolher:focus-visible .logoMini { display: none; }
 .raiz[data-menu="trilho"] .recolher:hover .recolherIcone, .raiz[data-menu="trilho"] .recolher:focus-visible .recolherIcone { display: inline-flex; }
 .raiz[data-menu="trilho"] .grupo { height: 1px; margin: 19px 0; background: var(--v2-linha); }
-.raiz[data-menu="trilho"] .avatar { cursor: pointer; }
-.raiz[data-menu="trilho"] .avatar:hover { outline: 2px solid var(--v2-linha-forte); outline-offset: 2px; }
 
 /* Topo + conteúdo */
 .corpo { display: flex; flex-direction: column; min-width: 0; }
@@ -72,11 +76,10 @@
   .lateral { position: fixed; left: 0; top: 0; z-index: 10; width: 272px; padding: 22px 14px 18px; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--v2-sombra-palco); }
   .lateral[data-aberto="true"] { transform: none; }
   .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: inline-flex; }
-  .raiz[data-menu="trilho"] .sair { display: inline-flex; }
-  .raiz[data-menu="trilho"] .logoMini, .menuUsuario { display: none; }
+  .raiz[data-menu="trilho"] .logoMini { display: none; }
+  .raiz[data-menu="trilho"] .menuUsuario { left: 0; right: 0; bottom: calc(100% + 6px); min-width: 0; }
   .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0 10px; }
   .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
-  .raiz[data-menu="trilho"] .avatar { cursor: default; }
   .recolher { display: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .fecharMenu { margin-left: auto; }

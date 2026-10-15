@@ -8,6 +8,8 @@ import Transacao from "./telas/Transacao"
 import Cartoes from "./telas/Cartoes"
 import Cartao from "./telas/Cartao"
 import CartaoParcelamentos from "./telas/CartaoParcelamentos"
+import NovoCartao from "./telas/NovoCartao"
+import EditarCartao from "./telas/EditarCartao"
 import NovaTransacao from "./telas/NovaTransacao"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
@@ -15,8 +17,6 @@ import EmConstrucao from "./telas/EmConstrucao"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
-  ["/cartoes/novo", "Novo cartão", "/credit-cards"],
-  ["/cartoes/:id/editar", "Editar cartão", "/credit-cards"],
   ["/cartoes/:id/faturas/:faturaId/pagar", "Pagar fatura", "/credit-cards"],
   ["/contas-fixas", "Contas fixas", "/assinaturas"],
   ["/relatorios", "Relatórios", "/reports"],
@@ -42,7 +42,9 @@ export default function App() {
         <Route path="/transacoes/:id" element={<Transacao />} />
         <Route path="/transacoes/:id/editar" element={<Transacao />} />
         <Route path="/cartoes" element={<Cartoes />} />
+        <Route path="/cartoes/novo" element={<NovoCartao />} />
         <Route path="/cartoes/:id" element={<Cartao />} />
+        <Route path="/cartoes/:id/editar" element={<EditarCartao />} />
         <Route path="/cartoes/:id/parcelamentos" element={<CartaoParcelamentos />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/configuracoes" element={<Configuracoes />} />

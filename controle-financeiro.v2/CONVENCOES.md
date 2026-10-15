@@ -31,6 +31,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Barra de proporção | `BarraProgresso` | limite usado, fatura paga, parcelas pagas (4px, tom alerta/negativo/positivo) |
 | Carinha do cartão | `FaceCartao` | cartão em miniatura (proporção 1,6:1) na cor do banco: chip, bandeira no canto, últimos dígitos no `lg` (md 72×45 na lista, lg 112×70 no cabeçalho) |
 | Busca de lista | `Busca` | lupa + input de pesquisa, 36px, à esquerda da barra da lista (Transações, Cartões); quem filtra é a tela |
+| Casca de tela de formulário | `PaginaFormulario` | título + aviso de carga/esqueleto + o formulário (Nova transação, Novo/Editar cartão) |
 | Paginação de lista | `Paginacao` | linhas por página + páginas numeradas; servidor pagina |
 | Confirmar ação | `Confirmar` | excluir/estornar; `perigo` pra destrutiva |
 | Caixa de conteúdo | `Bloco` | título + ação à direita |
@@ -44,7 +45,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
-- Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
+- Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Menu lateral: só as seções; **Configurações e Sair ficam no menu da conta** (o bloco avatar + nome no pé é um botão, em todo estado do menu — aberto, trilho e gaveta). Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
 - Estado compartilhado entre telas (olho, contador do sino, tema) mora em `src/estado/` (ou `layout/useTema.ts`) com `useSyncExternalStore` — nunca prop drilling nem contexto só pra isso.
 - "Voltar" é a seta no **topo**, antes do título da seção (o layout põe sozinho em toda rota abaixo da raiz da seção) — a página não repete o nome da seção nem desenha link de voltar.
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
