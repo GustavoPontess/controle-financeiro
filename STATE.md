@@ -25,6 +25,8 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Rumo do front (decisão do Gustavo, 2026-10-14):** o **v2 é o front definitivo** (`feat/front-v2`, worktree `E:\VSCode\controle-financeiro-v2`, :5174). Telas novas só lá, no visual neutro; **nada de portar visual pro v1** (só correção); paletas do v1 entram no v2 **depois** de todas as telas (memória `feedback_v2_primeiro_depois_porta`). Pendente: beta de 07/11 no v1 ou no v2. Transações já está no v2 (agrupada por dia, filtros no servidor). PRs abertos: **#299** (editar sem hora) e **#300** (ordem intradia: hora conhecida primeiro, empate por `CriadoEm`) — mergear quando o Gustavo disser "ci verde". Cuidado: a API no ar foi subida da branch do #300; o `.exe` em execução trava o build dos testes do back (parar com preview_stop antes de `dotnet test`).
 
+**Base global do v2** (`d574c41`): tokens no `:root`, tema no `<html>`, barra de rolagem global por tema, reduced-motion, `.gitignore` do v2. Proposta na mesa (espera OK): `Botao` e `Campo` como componentes do v2 (hoje repetidos com medidas diferentes em 3 a 5 lugares).
+
 **Próxima ação:** no v2 — tela da transação pronta (ver/editar/excluir/estornar). Falta nela: ações de família; depois **Nova transação** (`/transacoes/nova`), Cartões (lab E) e o resto das telas. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
