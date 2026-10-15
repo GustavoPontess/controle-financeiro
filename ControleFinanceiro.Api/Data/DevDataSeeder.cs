@@ -19,7 +19,7 @@ namespace ControleFinanceiro.Api.Data;
 /// </summary>
 public static class DevDataSeeder
 {
-    private const string DevEmail = "dev@controle.test";
+    internal const string DevEmail = "dev@controle.test";
     private const string Senha = "Dev@123456";
 
     private static readonly (string desc, decimal min, decimal max, string cat)[] Despesas =
