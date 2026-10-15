@@ -1,7 +1,8 @@
 // Tela da transação do v2 — ver, editar e excluir. Mesmas regras do app atual:
 // - pagamento de fatura e perna de transferência não se editam (o outro lado ficaria desemparelhado):
 //   o pagamento se ESTORNA, a transferência se exclui inteira (as duas pernas juntas);
-// - a edição não troca conta nem cartão (o back ignora) — eles aparecem fixos, sem select enganoso;
+// - a edição é o mesmo FormularioTransacao da criação; mudança que o back não faz no lugar (conta, cartão,
+//   status, virar transferência/conta fixa/parcelado) recria o lançamento — cria o novo, apaga o antigo;
 // - data futura só em compra no cartão ou lançamento previsto (o back recusa o resto);
 // - lançamento sem hora pode continuar sem hora (decisão do Gustavo, PR #299); com hora, ela é obrigatória.
 import { useEffect, useRef, useState } from "react"
@@ -11,10 +12,14 @@ import { deleteTransaction, getTransaction } from "../services/transactionServic
 import { estornarPagamento } from "../services/faturaService"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
+import { getContas } from "../services/contaService"
+import { getCartoes } from "../services/cartaoCreditoService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
+import type { Conta } from "../types/Conta"
+import type { CartaoCredito } from "../types/CartaoCredito"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Confirmar from "../componentes/Confirmar"
 import Botao from "../componentes/Botao"
@@ -39,6 +44,17 @@ export default function Transacao() {
   const [naoEncontrada, setNaoEncontrada] = useState(false)
   const [categorias, setCategorias] = useState<Category[]>([])
   const [subcategorias, setSubcategorias] = useState<Subcategory[]>([])
+  const [contas, setContas] = useState<Conta[]>([])
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
+
+  // Só a edição precisa das contas e cartões (pra trocar de conta/cartão ou virar transferência).
+  useEffect(() => {
+    if (!editando) return
+    let vivo = true
+    getContas().then((c) => { if (vivo) setContas(c) }).catch(() => { /* fica só com a conta atual */ })
+    getCartoes().then((c) => { if (vivo) setCartoes(c) }).catch(() => { /* idem */ })
+    return () => { vivo = false }
+  }, [editando])
 
   // Relê ao trocar de modo: depois de salvar, o "ver" mostra o que ficou gravado.
   useEffect(() => {
@@ -69,7 +85,7 @@ export default function Transacao() {
 
   const editavel = !t.ehPagamentoFatura && !t.ehTransferencia
   if (editando && editavel)
-    return <Editar t={t} categorias={categorias} subcategorias={subcategorias} voltar={voltar}
+    return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes} voltar={voltar}
       aoSalvar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
       aoCancelar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })} />
 
@@ -188,15 +204,16 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
 
 // ──────────────────────────────────────────────────────────────────────────── editar
 
-function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: {
-  t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; voltar: React.ReactNode
-  aoSalvar: () => void; aoCancelar: () => void
+function Editar({ t, categorias, subcategorias, contas, cartoes, voltar, aoSalvar, aoCancelar }: {
+  t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; contas: Conta[]; cartoes: CartaoCredito[]
+  voltar: React.ReactNode; aoSalvar: () => void; aoCancelar: () => void
 }) {
   return (
     <div className={styles.pagina}>
       {voltar}
       <h1 className={styles.titulo}>Editar transação</h1>
-      <FormularioTransacao transacao={t} categorias={categorias} subcategorias={subcategorias} aoSair={aoCancelar} aoSalvo={aoSalvar} />
+      <FormularioTransacao transacao={t} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        aoSair={aoCancelar} aoSalvo={aoSalvar} />
     </div>
   )
 }

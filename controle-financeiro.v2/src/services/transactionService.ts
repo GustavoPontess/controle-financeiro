@@ -97,13 +97,40 @@ export const getTransactions = async (): Promise<Transaction[]> => {
   return res.data.items
 }
 
-export const createTransaction = async (transaction: Omit<Transaction, "id">) => {
-  const res = await api.post("/transacoes", transaction)
+const comChave = (idempotencyKey?: string) => (idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined)
+
+/** Idempotency-Key (uma por abertura da tela): repetir o pedido (duplo clique, retry) não lança duas vezes. */
+export const createTransaction = async (transaction: Omit<Transaction, "id">, idempotencyKey?: string) => {
+  const res = await api.post("/transacoes", transaction, comChave(idempotencyKey))
   return res.data
 }
 
-export const updateTransaction = async (id: string, transaction: Omit<Transaction, "id">): Promise<void> => {
-  await api.put(`/transacoes/${id}`, transaction)
+/**
+ * Edição completa — o mesmo formulário de criar. Conta, cartão e status mudam no lugar; `transferencia`,
+ * `contaFixa` ou `parcelas > 1` trocam o registro numa transação só do servidor (o antigo é cancelado).
+ * Campos nulos de conta/cartão e `efetivado` mantêm o que está.
+ */
+export type EditarLancamento = {
+  descricao: string
+  valor: number
+  tipo: number
+  categoriaId?: string | null
+  subcategoriaId?: string | null
+  contaId?: string | null
+  cartaoCreditoId?: string | null
+  meioPagamento?: number | null
+  parcelas?: number | null
+  efetivado?: boolean | null
+  data: string
+  hora?: string | null
+  transferencia?: { contaOrigemId: string; contaDestinoId: string } | null
+  contaFixa?: { frequencia: number; dataFim?: string | null } | null
+}
+export type EdicaoLancamentoResultado = { tipo: "transacao" | "transferencia" | "contaFixa" | "parcelamento"; id: string }
+
+export const updateTransaction = async (id: string, dados: EditarLancamento, idempotencyKey?: string): Promise<EdicaoLancamentoResultado> => {
+  const res = await api.put(`/transacoes/${id}`, dados, comChave(idempotencyKey))
+  return res.data
 }
 
 export const deleteTransaction = async (id: string): Promise<void> => {

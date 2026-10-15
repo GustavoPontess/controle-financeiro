@@ -6,9 +6,10 @@
 // - data futura só no cartão, em conta fixa (início) ou como previsão (desligar "Já paguei");
 // - transferência: entre duas contas diferentes, nunca no futuro;
 // - conta fixa leva Idempotency-Key (nasce ao abrir a tela e vale pra toda tentativa: reenviar não cria duas).
-// Editar: conta/cartão e tipo de compra no cartão não mudam (o back ignora) — aparecem fixos; sem
-// transferência (a perna se exclui inteira), sem conta fixa/parcelado/"já paguei" (não se trocam na edição);
-// lançamento sem hora pode continuar sem hora (PR #299).
+// Editar é o MESMO formulário (Gustavo: "posso ter colocado tudo e errado o tipo"): um PUT só, com tudo.
+// O servidor muda conta/cartão/status no lugar e, quando vira transferência / conta fixa / parcelado, troca o
+// registro numa transação só do banco (tudo ou nada). Idempotency-Key em criar e editar: reenviar não repete.
+// Lançamento sem hora pode continuar sem hora (PR #299).
 import { useMemo, useState } from "react"
 import { createTransaction, updateTransaction } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
@@ -21,7 +22,7 @@ import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
-import Campo, { ValorFixo } from "../componentes/Campo"
+import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
@@ -73,21 +74,26 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const [hora, setHora] = useState(() => (t ? (t.hora ? t.hora.slice(0, 5) : "") : horaLocalHHMM()))
   const [categoriaId, setCategoriaId] = useState(t?.categoriaId ?? "")
   const [subcategoriaId, setSubcategoriaId] = useState(t?.subcategoriaId ?? "")
-  const [origemId, setOrigemId] = useState("")
-  const [destinoId, setDestinoId] = useState("")
+  // Virou transferência: a conta do lançamento é a origem (despesa) ou o destino (receita).
+  const [origemId, setOrigemId] = useState(t && t.tipo !== TIPO.receita ? t.contaId ?? "" : "")
+  const [destinoId, setDestinoId] = useState(t && t.tipo === TIPO.receita ? t.contaId ?? "" : "")
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
-  // Idempotency-Key da conta fixa: uma por abertura da tela, reusada em toda tentativa.
-  const [chaveFixa] = useState(() => crypto.randomUUID())
+  // Idempotency-Key: uma por abertura da tela, reusada em toda tentativa (criar e editar).
+  const [chaveEnvio] = useState(() => crypto.randomUUID())
 
   const transferencia = natureza === "transferencia"
   const receita = natureza === "receita"
   const tipo = receita ? TIPO.receita : TIPO.despesa
   const credito = !transferencia && meio === MEIO.credito
-  // Conta fixa e parcelado só ao criar (o interruptor lembra a escolha se a pessoa voltar da transferência).
-  const ehFixa = !transferencia && !editando && fixa
-  const parcelado = credito && !editando && !ehFixa && parcelas > 1
+  // Conta fixa só vale fora da transferência (o interruptor lembra a escolha se a pessoa voltar).
+  const ehFixa = !transferencia && fixa
+  const parcelado = credito && !ehFixa && parcelas > 1
+  // Parcela de parcelamento e ocorrência de conta fixa não viram outra coisa.
+  const podeConverter = !t || (!t.parcelamentoId && !t.recorrenteOrigemId)
+  // Na edição, isto vira outro registro no servidor (o lançamento antigo é cancelado).
+  const viraOutroRegistro = !!t && (transferencia || ehFixa || parcelado)
   const comHora = !ehFixa && !parcelado
   const hoje = dataLocalISO()
   const ontem = somaDias(hoje, -1)
@@ -98,8 +104,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const opcoesConta = contas.map((c) => ({ valor: c.id, rotulo: c.nome }))
-  const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome
-  const nomeCartao = (id: string) => cartoesCredito.find((c) => c.id === id)?.nome
+  const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome ?? (t && id === t.contaId ? t.contaNome : undefined)
+  const nomeCartao = (id: string) => cartoesCredito.find((c) => c.id === id)?.nome ?? (t && id === t.cartaoCreditoId ? t.cartaoCreditoNome : undefined)
 
   const limpa = (...campos: string[]) => setErros((e) => {
     if (!campos.some((c) => e[c])) return e
@@ -139,13 +145,13 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       if (!destinoId) e.destino = "Escolha a conta de destino"
       else if (destinoId === origemId) e.destino = "Origem e destino precisam ser contas diferentes"
     } else {
-      if (!editando && credito && !cartaoId) e.cartao = "Escolha o cartão"
-      if (!editando && !credito && !contaId) e.conta = "Escolha a conta"
+      if (credito && !cartaoId) e.cartao = "Escolha o cartão"
+      if (!credito && !contaId) e.conta = "Escolha a conta"
       if (!categoriaId) e.categoria = "Escolha a categoria"
     }
     if (!data) e.data = "Informe a data"
     else if (dataMax && data > dataMax)
-      e.data = transferencia ? "Transferência não pode ser no futuro" : editando ? "A data não pode ser futura" : `Data futura só como previsão: desligue "${receita ? "Já recebi" : "Já paguei"}"`
+      e.data = transferencia ? "Transferência não pode ser no futuro" : `Data futura só como previsão: desligue "${receita ? "Já recebi" : "Já paguei"}"`
     if (comHora) {
       if (!hora) { if (!horaOpcional) e.hora = "Informe a hora" }
       else if (!horaValida(hora)) e.hora = "Hora inválida (HH:MM)"
@@ -165,18 +171,22 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     try {
       if (t) {
         await updateTransaction(t.id, {
-          descricao: desc, valor: v,
-          tipo: credito ? t.tipo : tipo,
-          categoriaId: categoriaId || null,
-          subcategoriaId: subcategoriaId || null,
-          contaId: t.contaId,
-          cartaoCreditoId: t.cartaoCreditoId,
-          meioPagamento: credito ? t.meioPagamento : meio,
+          descricao: desc, valor: v, tipo,
+          categoriaId: transferencia ? null : categoriaId || null,
+          subcategoriaId: transferencia || ehFixa ? null : subcategoriaId || null,
+          contaId: transferencia || credito ? null : contaId,
+          cartaoCreditoId: transferencia || !credito ? null : cartaoId,
+          meioPagamento: transferencia ? null : meio,
+          parcelas: parcelado ? parcelas : null,
+          // No cartão não existe "previsão": a compra vai pra fatura.
+          efetivado: credito ? true : efetivado,
           data,
           hora: horaEnvio,
-        })
+          transferencia: transferencia ? { contaOrigemId: origemId, contaDestinoId: destinoId } : null,
+          contaFixa: ehFixa ? { frequencia, dataFim: dataFim || null } : null,
+        }, chaveEnvio)
       } else if (transferencia) {
-        await createTransferencia({ contaOrigemId: origemId, contaDestinoId: destinoId, valor: v, data, hora: horaEnvio, descricao: desc })
+        await createTransferencia({ contaOrigemId: origemId, contaDestinoId: destinoId, valor: v, data, hora: horaEnvio, descricao: desc }, chaveEnvio)
       } else if (ehFixa) {
         await createRecorrente({
           descricao: desc, valor: v, tipo,
@@ -188,7 +198,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
           dia: Number(data.slice(8, 10)),
           dataInicio: data,
           dataFim: dataFim || undefined,
-        }, chaveFixa)
+        }, chaveEnvio)
       } else {
         await createTransaction({
           descricao: desc, valor: v, tipo,
@@ -203,7 +213,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
           efetivado: credito ? true : efetivado,
           data,
           hora: horaEnvio,
-        })
+        }, chaveEnvio)
       }
     } catch (e) {
       setErro(mensagemDeErro(e))
@@ -216,7 +226,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   // ── Prévia: como vai aparecer na lista + o que acontece ao salvar ───────────────────────────────
   const v = parseMoney(valor)
   const tom = transferencia ? "neutro" : receita ? "positivo" : "negativo"
-  const origemNome = t ? (t.cartaoCreditoNome ?? t.contaNome) : credito ? nomeCartao(cartaoId) : nomeConta(contaId)
+  const origemNome = credito ? nomeCartao(cartaoId) : nomeConta(contaId)
   const catNome = categorias.find((c) => c.id === categoriaId)?.descricao
   const meioRotulo = MEIOS_PAGAMENTO.find((m) => m.valor === meio)?.rotulo
   const detalhe = transferencia
@@ -237,23 +247,18 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       return `Repete ${freq} a partir de ${formatarData(data)}${dataFim ? ` até ${formatarData(dataFim)}` : ""}.${onde}`
     }
     if (!origemNome) return null
-    if (credito) return parcelado ? `${parcelas}x de ${formatMoney(centavos(v / parcelas))} nas próximas faturas do ${origemNome}.` : `${editando ? "Na" : "Vai pra"} fatura do ${origemNome}.`
+    if (credito) return parcelado ? `${parcelas}x de ${formatMoney(centavos(v / parcelas))} nas próximas faturas do ${origemNome}.` : `${editando && !viraOutroRegistro && cartaoId === t?.cartaoCreditoId ? "Na" : "Vai pra"} fatura do ${origemNome}.`
     return efetivado ? `${receita ? "Entra no" : "Sai do"} ${origemNome} ${quando}.` : `Fica como previsão no ${origemNome} para ${formatarData(data)}.`
   })()
   const previsto = !credito && !ehFixa && !transferencia && !efetivado
   const rotuloSalvar = salvando ? "Salvando…" : editando ? "Salvar" : transferencia ? "Transferir" : ehFixa ? "Criar conta fixa" : "Adicionar"
-  // Tipo de compra no cartão não muda na edição: os segmentos saem.
-  const mostraTipos = !(editando && credito)
 
   return (
     <Formulario layout="lateral" onSubmit={() => { void enviar() }}>
       <Campos>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-        {mostraTipos && (
-          <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza}
-            opcoes={editando ? NATUREZAS.filter((n) => n.valor !== "transferencia") : NATUREZAS} />
-        )}
+        <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />
 
         <Campo rotulo="Valor" erro={erros.valor}>
           <EntradaValor valor={valor} tom={tom} autoFocus={!editando} onChange={(x) => { setValor(x); limpa("valor") }} />
@@ -293,19 +298,11 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
         ) : (
           <>
             <LinhaCampos>
-              {editando && credito ? (
-                <Campo rotulo="Pago com" estatico><ValorFixo>Crédito</ValorFixo></Campo>
-              ) : (
-                <Campo rotulo={receita ? "Recebido por" : "Pago com"}>
-                  <Selecao valor={String(meio)} onChange={(x) => trocarMeio(Number(x))}
-                    opcoes={(receita || editando ? MEIOS_CONTA : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
-                </Campo>
-              )}
-              {editando ? (
-                <Campo rotulo={credito ? "Cartão" : "Conta"} estatico>
-                  <ValorFixo title="Conta e cartão não mudam na edição">{origemNome ?? "—"}</ValorFixo>
-                </Campo>
-              ) : credito ? (
+              <Campo rotulo={receita ? "Recebido por" : "Pago com"}>
+                <Selecao valor={String(meio)} onChange={(x) => trocarMeio(Number(x))}
+                  opcoes={(receita ? MEIOS_CONTA : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
+              </Campo>
+              {credito ? (
                 <Campo rotulo="Cartão" erro={erros.cartao}>
                   <Selecao valor={cartaoId} desabilitado={cartoesCredito.length === 0}
                     placeholder={cartoesCredito.length === 0 ? "Nenhum cartão de crédito" : "Escolha o cartão"}
@@ -348,12 +345,12 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             </>
           ) : undefined} />
 
-        {!transferencia && !editando && (
+        {!transferencia && (
           <Bloco titulo="Opções" className={styles.opcoes}>
             {!credito && !ehFixa && (
               <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
             )}
-            <Interruptor ligado={fixa} onChange={trocarFixa}>Conta fixa</Interruptor>
+            {podeConverter && <Interruptor ligado={fixa} onChange={trocarFixa}>Conta fixa</Interruptor>}
             {ehFixa && (
               <div className={styles.subOpcoes}>
                 <Campo rotulo="Repete">
@@ -365,7 +362,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
                 </Campo>
               </div>
             )}
-            {credito && !ehFixa && (
+            {credito && !ehFixa && podeConverter && (
               <Interruptor ligado={parcelas > 1} onChange={(on) => setParcelas(on ? 2 : 1)}>Parcelado</Interruptor>
             )}
             {parcelado && (
