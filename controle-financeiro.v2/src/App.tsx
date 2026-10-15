@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import Protegido from "./auth/Protegido"
 import V2Layout from "./layout/V2Layout"
 import Entrar from "./telas/Entrar"
+import Cadastro from "./telas/Cadastro"
 import Dashboard from "./telas/Dashboard"
 import Transacoes from "./telas/Transacoes"
 import Transacao from "./telas/Transacao"
@@ -42,6 +43,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/entrar" element={<Entrar />} />
+      <Route path="/cadastro" element={<Cadastro />} />
       <Route element={<Protegido><V2Layout /></Protegido>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />

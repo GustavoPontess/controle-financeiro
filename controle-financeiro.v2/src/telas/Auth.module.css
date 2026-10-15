@@ -10,6 +10,13 @@
 .beneficios { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: var(--v2-fs-md); }
 .beneficios li { display: flex; align-items: center; gap: 10px; }
 .check { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 999px; background: var(--v2-palco-vidro); flex-shrink: 0; }
+/* Cadastro: os planos no palco (copy do site) */
+.planos { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.plano { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--v2-palco-linha); }
+.planoTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.planoNome { font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-palco-texto); }
+.planoDesc { font-size: var(--v2-fs-xs); color: var(--v2-palco-texto-2); }
+.planoPreco { font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-palco-texto); white-space: nowrap; }
 .palcoRodape { font-size: var(--v2-fs-xs); color: var(--v2-palco-texto-2); }
 
 /* Painel do formulário */
@@ -32,6 +39,18 @@
 .alerta { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--v2-negativo-suave); font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-negativo); }
 .ok { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--v2-positivo-suave); font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-positivo); }
 .aviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--v2-alerta-suave); font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-alerta); }
+/* Cadastro: requisitos da senha, aceite da privacidade, selo de "enviado" */
+.requisitos { list-style: none; margin: -8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.requisitos li { display: flex; align-items: center; gap: 6px; }
+.requisitos li svg { opacity: 0.35; }
+.requisitos li[data-ok="true"] { color: var(--v2-positivo); }
+.requisitos li[data-ok="true"] svg { opacity: 1; }
+.consentimento { display: flex; flex-direction: column; gap: 6px; }
+.consentimento .lembrar { align-items: flex-start; }
+.consentimento .lembrar input { margin-top: 2px; flex-shrink: 0; }
+.consentimento a { color: var(--v2-texto); font-weight: 600; text-decoration: underline; }
+.erroCampo { margin: 0; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-negativo); }
+.selo { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 999px; background: var(--v2-positivo-suave); color: var(--v2-positivo); }
 .rodape { margin: 10px 0 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
 .rodape a { color: var(--v2-texto-2); font-weight: 600; text-decoration: none; }
 .rodape a:hover { text-decoration: underline; }
