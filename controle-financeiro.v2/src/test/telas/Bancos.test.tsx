@@ -41,13 +41,16 @@ describe("Bancos — lista com a ficha da conta", () => {
     vi.mocked(deleteConta).mockClear(); vi.mocked(reabrirConta).mockClear()
   })
 
-  it("lista as abertas (carteira primeiro) e abre a ficha da conta clicada, uma por vez", async () => {
+  it("lista as abertas em grupos (em conta, carteira por último, com o total) e abre a ficha da conta clicada, uma por vez", async () => {
     renderizar()
     await screen.findByRole("list", { name: "Contas" })
     const nomes = within(lista()).getAllByRole("button").map((b) => b.textContent)
-    expect(nomes[0]).toContain("Carteira")
-    expect(nomes[1]).toContain("Nubank")
+    expect(nomes[0]).toContain("Nubank")
+    expect(nomes[1]).toContain("Carteira")
     expect(nomes.some((t) => t?.includes("Santander"))).toBe(false)
+    expect(within(screen.getByRole("list", { name: "Em conta" })).getAllByRole("button")).toHaveLength(1)
+    expect(screen.getByRole("list", { name: "Carteira" })).toBeInTheDocument()
+    expect(screen.queryByRole("list", { name: "Poupança" })).not.toBeInTheDocument()
     expect(screen.getAllByText(/1\.189,96/).length).toBeGreaterThan(0)
     expect(screen.queryByText("Cartões")).not.toBeInTheDocument()
 

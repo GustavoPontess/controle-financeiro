@@ -1,8 +1,9 @@
 // Bancos (contas) do v2: três números (saldo total, disponível em conta corrente + carteira, guardado na
 // poupança) e a lista de contas — abertas ou encerradas. A tela é SÓ das contas: clicar numa linha abre, ali
 // embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
-// Encerrar, Editar / Reabrir); extrato é assunto de Transações. As contas vêm todas de uma vez (são
-// poucas), então Abertas | Encerradas filtra a lista já carregada. Outra tela pode mandar `state.abrir`
+// Encerrar, Editar / Reabrir); extrato é assunto de Transações. As abertas vêm em grupos com o total de
+// cada um — em conta, poupança e a carteira por último. As contas vêm todas de uma vez (são poucas),
+// então Abertas | Encerradas filtra a lista já carregada. Outra tela pode mandar `state.abrir`
 // (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
@@ -31,8 +32,10 @@ const SITUACOES: { valor: Situacao; rotulo: string }[] = [
   { valor: "encerradas", rotulo: "Encerradas" },
 ]
 
-// Carteira primeiro, depois por nome — a carteira é a conta do dia a dia.
-const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
+const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+// A carteira é dinheiro em mãos mesmo que esteja gravada com tipo poupança (dado antigo).
+const ehPoupanca = (c: Conta) => c.tipo === TIPO_CONTA.poupanca && !c.isCarteira
+const soma = (xs: Conta[]) => xs.reduce((s, c) => s + c.saldoAtual, 0)
 /** "Mastercard · •••• 0315 · fecha dia 3 · vence dia 10" (mesma linha de detalhe da lista de Cartões). */
 const descreverCartao = (k: CartaoCredito) => [
   NOME_BANDEIRA[k.bandeira] ?? "Cartão",
@@ -44,6 +47,7 @@ const descreverCartao = (k: CartaoCredito) => [
 
 export default function Bancos() {
   const { state } = useLocation()
+  const navigate = useNavigate()
   const [contas, setContas] = useState<Conta[] | null>(null)
   // Cartões ligados a cada conta (a ficha mostra). Sem eles a ficha só perde essa parte.
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
@@ -61,15 +65,23 @@ export default function Bancos() {
 
   const abertas = useMemo(() => ordenar((contas ?? []).filter((c) => !c.encerradaEm)), [contas])
   const encerradas = useMemo(() => ordenar((contas ?? []).filter((c) => !!c.encerradaEm)), [contas])
-  const visiveis = situacao === "abertas" ? abertas : encerradas
+  // Abertas em grupos (só os que têm conta): em conta, poupança, carteira por último. Encerradas: um grupo só.
+  const grupos = useMemo(() => {
+    if (situacao === "encerradas") return [{ chave: "encerradas", rotulo: "Encerradas", contas: encerradas, total: undefined as number | undefined }]
+    return [
+      { chave: "conta", rotulo: "Em conta", contas: abertas.filter((c) => !c.isCarteira && !ehPoupanca(c)) },
+      { chave: "poupanca", rotulo: "Poupança", contas: abertas.filter(ehPoupanca) },
+      { chave: "carteira", rotulo: "Carteira", contas: abertas.filter((c) => c.isCarteira) },
+    ].filter((g) => g.contas.length > 0).map((g) => ({ ...g, total: soma(g.contas) as number | undefined }))
+  }, [situacao, abertas, encerradas])
+  const vazio = grupos.every((g) => g.contas.length === 0)
 
   const totais = useMemo(() => {
     if (!contas) return null
-    const soma = (f: (c: Conta) => boolean) => abertas.filter(f).reduce((s, c) => s + c.saldoAtual, 0)
     return {
-      total: soma(() => true),
-      disponivel: soma((c) => c.tipo !== TIPO_CONTA.poupanca),
-      guardado: soma((c) => c.tipo === TIPO_CONTA.poupanca),
+      total: soma(abertas),
+      disponivel: soma(abertas.filter((c) => !ehPoupanca(c))),
+      guardado: soma(abertas.filter(ehPoupanca)),
     }
   }, [contas, abertas])
 
@@ -97,21 +109,27 @@ export default function Bancos() {
         <div className={styles.toolbar}>
           <Segmentos ariaLabel="Situação" valor={situacao} onChange={setSituacao}
             opcoes={SITUACOES.map((s) => ({ ...s, rotulo: s.valor === "encerradas" && encerradas.length > 0 ? `${s.rotulo} (${encerradas.length})` : s.rotulo }))} />
-          <Link to="/bancos/nova" state={{ voltarPara: "/bancos" }} className={styles.nova}>
-            <Plus size={15} strokeWidth={2.5} aria-hidden="true" /><span>Nova conta</span>
-          </Link>
+          <Botao compactoNoCelular onClick={() => navigate("/bancos/nova", { state: { voltarPara: "/bancos" } })}
+            icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Nova conta</Botao>
         </div>
         {contas === null && !erro ? (
           <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div>
         ) : erro ? (
           <p className={styles.vazio}>Não deu pra carregar as contas.</p>
-        ) : visiveis.length === 0 ? (
+        ) : vazio ? (
           <p className={styles.vazio}>{situacao === "abertas" ? "Nenhuma conta ainda." : "Nenhuma conta encerrada."}</p>
         ) : (
           <ul className={styles.lista} aria-label="Contas">
-            {visiveis.map((c) => (
-              <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
-                aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
+            {grupos.map((g) => (
+              <li key={g.chave} className={styles.grupo}>
+                <h3 className={styles.grupoTopo}><span>{g.rotulo}</span>{g.total !== undefined && <Dinheiro valor={g.total} className={styles.grupoTotal} />}</h3>
+                <ul className={styles.grupoLista} aria-label={g.rotulo}>
+                  {g.contas.map((c) => (
+                    <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
+                      aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
+                  ))}
+                </ul>
+              </li>
             ))}
           </ul>
         )}
