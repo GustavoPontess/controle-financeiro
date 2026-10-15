@@ -324,19 +324,36 @@ describe("TransactionPage — editar (/transactions/:id/editar, mesma tela)", ()
     expect(vi.mocked(updateTransaction).mock.calls[0][1]).toMatchObject({ data: "2026-05-21", hora: "09:05:00" })
   })
 
-  it("lançamento SEM hora: o campo abre vazio, o submit é bloqueado com 'Informe a hora' e, preenchida, salva", async () => {
+  // Decisão do Gustavo (2026-10-14): lançamento que veio SEM hora (importado do extrato, conta fixa, parcela)
+  // pode seguir sem — antes, só pra trocar a categoria, a tela obrigava a inventar um horário.
+  it("lançamento SEM hora: o campo abre vazio e salvar sem hora mantém sem hora (null)", async () => {
     vi.mocked(getTransaction).mockResolvedValue({ ...base, hora: null })
     renderEm("/transactions/t1/editar")
     await screen.findByText("Alimentação")
     expect(campoHora().value).toBe("")
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
-    expect(await screen.findByText("Informe a hora")).toBeInTheDocument()
-    expect(updateTransaction).not.toHaveBeenCalled()
+    await waitFor(() => expect(updateTransaction).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(updateTransaction).mock.calls[0][1]).toMatchObject({ data: "2026-05-21", hora: null })
+    expect(screen.queryByText("Informe a hora")).not.toBeInTheDocument()
+  })
 
+  it("lançamento SEM hora: se souber, preenche a hora e ela é salva", async () => {
+    vi.mocked(getTransaction).mockResolvedValue({ ...base, hora: null })
+    renderEm("/transactions/t1/editar")
+    await screen.findByText("Alimentação")
     fireEvent.change(campoHora(), { target: { value: "1830" } })
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
     await waitFor(() => expect(updateTransaction).toHaveBeenCalledTimes(1))
     expect(vi.mocked(updateTransaction).mock.calls[0][1]).toMatchObject({ data: "2026-05-21", hora: "18:30:00" })
+  })
+
+  it("lançamento COM hora: apagar a hora bloqueia com 'Informe a hora' (não vira 'sem hora' por engano)", async () => {
+    renderEm("/transactions/t1/editar")
+    await screen.findByText("Alimentação")
+    fireEvent.change(campoHora(), { target: { value: "" } })
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(await screen.findByText("Informe a hora")).toBeInTheDocument()
+    expect(updateTransaction).not.toHaveBeenCalled()
   })
 
   it("erro do servidor: toast de erro e continua editando", async () => {
