@@ -12,10 +12,6 @@
 /* Barra da lista: busca à esquerda, Filtros à direita (pedido do Gustavo, 2026-10-14) */
 .toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 24px 10px; }
 .controles { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1 1 320px; }
-.busca { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 260px; min-width: 180px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-3); }
-.busca:focus-within { border-color: var(--v2-texto); }
-.busca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
-.busca input::placeholder { color: var(--v2-texto-3); }
 .filtrosWrap { position: relative; }
 .contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
 
@@ -41,7 +37,6 @@
   .numeroValor { font-size: var(--v2-fs-lg); }
   .toolbar { padding: 14px 16px 8px; }
   .controles { flex-basis: 100%; }
-  .busca { flex: 1 1 auto; min-width: 0; }
   .filtrosWrap { position: static; }
   .painel { left: 16px; right: 16px; width: auto; }
 }

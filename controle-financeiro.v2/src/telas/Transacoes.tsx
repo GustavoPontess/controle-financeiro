@@ -2,7 +2,7 @@
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeftRight, CreditCard, Search, SlidersHorizontal } from "lucide-react"
+import { ArrowLeftRight, CreditCard, SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -14,6 +14,7 @@ import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
 import Botao from "../componentes/Botao"
+import Busca from "../componentes/Busca"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import Etiqueta from "../componentes/Etiqueta"
@@ -149,10 +150,7 @@ export default function Transacoes() {
             no "Aplicar". Sem título — o topo da página já diz que é Transações. */}
         <div className={styles.toolbar}>
           <div className={styles.controles}>
-            <label className={styles.busca}>
-              <Search size={16} strokeWidth={2.25} aria-hidden="true" />
-              <input type="search" placeholder="Buscar lançamento" aria-label="Buscar lançamento" value={busca} onChange={(e) => setBusca(e.target.value)} />
-            </label>
+            <Busca valor={busca} onChange={setBusca} placeholder="Buscar lançamento" />
             <div className={styles.filtrosWrap} ref={painelRef}>
               <Botao ativo={painel || ativos > 0} aria-expanded={painel} aria-haspopup="dialog"
                 onClick={() => (painel ? setPainel(false) : abrirPainel())}

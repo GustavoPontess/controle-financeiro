@@ -11,6 +11,7 @@ import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Fatura } from "../types/Fatura"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
+import Busca from "../componentes/Busca"
 import BarraProgresso from "../componentes/BarraProgresso"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
@@ -40,6 +41,7 @@ export default function Cartoes() {
   const [cartoes, setCartoes] = useState<CartaoCredito[] | null>(null)
   const [faturas, setFaturas] = useState<Record<string, Fatura[]> | null>(null)
   const [erro, setErro] = useState(false)
+  const [busca, setBusca] = useState("")
 
   useEffect(() => {
     let vivo = true
@@ -77,6 +79,14 @@ export default function Cartoes() {
     return { aPagar, proxima, limite }
   }, [cartoes, faturas, resumos])
 
+  // Busca na lista inteira (ela já vem completa): nome, banco, bandeira ou últimos dígitos.
+  const visiveis = useMemo(() => {
+    const q = busca.trim().toLowerCase()
+    if (!q || !cartoes) return cartoes
+    return cartoes.filter((c) => [c.nome, c.bancoNome, NOME_BANDEIRA[c.bandeira], c.ultimosDigitos]
+      .some((t) => t?.toLowerCase().includes(q)))
+  }, [cartoes, busca])
+
   return (
     <div className={styles.pagina}>
       <Bloco className={styles.resumo}>
@@ -97,6 +107,7 @@ export default function Cartoes() {
 
       <Bloco semRespiro>
         <div className={styles.toolbar}>
+          <Busca valor={busca} onChange={setBusca} placeholder="Buscar cartão" />
           <Botao onClick={() => navigate("/cartoes/novo", { state: { voltarPara: "/cartoes" } })} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Novo cartão</Botao>
         </div>
         {cartoes === null ? (
@@ -105,9 +116,11 @@ export default function Cartoes() {
           <p className={styles.vazio}>Não deu pra carregar os cartões.</p>
         ) : cartoes.length === 0 ? (
           <p className={styles.vazio}>Nenhum cartão ainda.</p>
+        ) : !visiveis?.length ? (
+          <p className={styles.vazio}>Nenhum cartão com "{busca.trim()}".</p>
         ) : (
           <ul className={styles.lista}>
-            {cartoes.map((c) => <Linha key={c.id} c={c} resumo={resumos[c.id]} carregando={faturas === null} hoje={hoje} />)}
+            {visiveis.map((c) => <Linha key={c.id} c={c} resumo={resumos[c.id]} carregando={faturas === null} hoje={hoje} />)}
           </ul>
         )}
       </Bloco>
@@ -150,13 +163,13 @@ function Linha({ c, resumo, carregando, hoje }: { c: CartaoCredito; resumo?: Res
               : <Etiqueta>Sem lançamentos</Etiqueta>}
           </span>
           <span className={styles.sub}>{detalhe}</span>
-          {c.temCredito && limite > 0 && (
-            <span className={styles.limite}>
-              <BarraProgresso fracao={usado / limite} tom={usado / limite >= 0.9 ? "alerta" : undefined} rotulo={`${Math.round((usado / limite) * 100)}% do limite usado`} />
-              <span className={styles.limiteTexto}>disponível <Dinheiro valor={c.limiteDisponivel ?? 0} /> de <Dinheiro valor={limite} /></span>
-            </span>
-          )}
         </span>
+        {c.temCredito && limite > 0 && (
+          <span className={styles.limite}>
+            <BarraProgresso fracao={usado / limite} tom={usado / limite >= 0.9 ? "alerta" : undefined} rotulo={`${Math.round((usado / limite) * 100)}% do limite usado`} />
+            <span className={styles.limiteTexto}>disponível <Dinheiro valor={c.limiteDisponivel ?? 0} /> de <Dinheiro valor={limite} /></span>
+          </span>
+        )}
         {c.temCredito && (
           <span className={styles.direita}>
             {carregando ? <span className={styles.numeroEsqueleto} /> : (

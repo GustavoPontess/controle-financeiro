@@ -1,0 +1,8 @@
+.busca { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 260px; min-width: 180px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-3); }
+.busca:focus-within { border-color: var(--v2-texto); }
+.busca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
+.busca input::placeholder { color: var(--v2-texto-3); }
+
+@media (max-width: 900px) {
+  .busca { flex: 1 1 auto; min-width: 0; }
+}

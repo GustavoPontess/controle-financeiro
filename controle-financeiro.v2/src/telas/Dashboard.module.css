@@ -42,7 +42,7 @@
 /* Listas (recentes, contas, cartões) */
 .lista { list-style: none; margin: 0; padding: 0 8px 10px; display: flex; flex-direction: column; }
 .linha { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
-a.linha:hover { background: var(--v2-superficie-2); }
+a.linha:hover { background: var(--v2-hover-linha); }
 .icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; flex-shrink: 0; }
 .icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
 .icone[data-tom="neutro"] { color: var(--v2-texto-3); }
