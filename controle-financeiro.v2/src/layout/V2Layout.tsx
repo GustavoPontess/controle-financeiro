@@ -13,6 +13,7 @@ import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
+import PainelNotificacoes from "./PainelNotificacoes"
 import styles from "./V2Layout.module.css"
 
 const PRINCIPAL = [
@@ -59,7 +60,17 @@ export default function V2Layout() {
   // aberto, no trilho e na gaveta do celular. Fecha ao clicar fora, no Esc e ao trocar de tela.
   const [menuUsuario, setMenuUsuario] = useState(false)
   const usuarioRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { setMenuAberto(false); setMenuUsuario(false) }, [pathname])
+  // Sino: painel com as últimas notificações embaixo do botão; fecha ao clicar fora, no Esc e ao trocar de tela.
+  const [painelNotif, setPainelNotif] = useState(false)
+  const sinoRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => { setMenuAberto(false); setMenuUsuario(false); setPainelNotif(false) }, [pathname])
+  useEffect(() => {
+    if (!painelNotif) return
+    const fora = (e: MouseEvent) => { if (!sinoRef.current?.contains(e.target as Node)) setPainelNotif(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setPainelNotif(false) }
+    document.addEventListener("mousedown", fora); document.addEventListener("keydown", esc)
+    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc) }
+  }, [painelNotif])
   useEffect(() => {
     if (!menuUsuario) return
     const fora = (e: MouseEvent) => { if (!usuarioRef.current?.contains(e.target as Node)) setMenuUsuario(false) }
@@ -137,11 +148,12 @@ export default function V2Layout() {
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
-            <span className={styles.sino}>
-              <Botao soIcone ativo={pathname === "/notificacoes"} aria-label={naoLidas > 0 ? `Notificações, ${naoLidas} não lidas` : "Notificações"}
-                onClick={() => { if (pathname !== "/notificacoes") navigate("/notificacoes", { state: { voltarPara: pathname } }) }}
+            <span className={styles.sino} ref={sinoRef}>
+              <Botao soIcone ativo={painelNotif || pathname === "/notificacoes"} aria-label={naoLidas > 0 ? `Notificações, ${naoLidas} não lidas` : "Notificações"}
+                aria-haspopup="dialog" aria-expanded={painelNotif} onClick={() => setPainelNotif((v) => !v)}
                 icone={<Bell size={18} strokeWidth={2} />} />
               {naoLidas > 0 && <span className={styles.sinoContador} aria-hidden="true">{naoLidas > 99 ? "99+" : naoLidas}</span>}
+              {painelNotif && <PainelNotificacoes voltarPara={pathname} aoFechar={() => setPainelNotif(false)} />}
             </span>
             <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })}
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>

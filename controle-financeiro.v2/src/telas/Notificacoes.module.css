@@ -2,22 +2,6 @@
 .toolbar { display: flex; justify-content: flex-end; padding: 16px 24px 4px; }
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.lista { list-style: none; margin: 0; padding: 4px 8px 8px; display: flex; flex-direction: column; }
-
-/* Linha: ponto (aceso = não lida) · título + mensagem · quando. É um botão: marca como lida e abre o assunto. */
-.linha { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: start; gap: 14px; width: 100%; padding: 12px 16px; border: 0; border-radius: var(--v2-r-sm); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.linha:hover { background: var(--v2-hover-linha); }
-.ponto { width: 8px; height: 8px; margin-top: 6px; border-radius: 999px; background: var(--v2-acento); }
-.linha[data-lida="true"] .ponto { background: transparent; }
-.texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.titulo { font-size: var(--v2-fs-md); font-weight: 600; }
-.linha[data-lida="true"] .titulo { font-weight: 500; color: var(--v2-texto-2); }
-.mensagem { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
-.linha[data-lida="true"] .mensagem { color: var(--v2-texto-3); }
-.quando { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; margin-top: 2px; }
-
 @media (max-width: 900px) {
   .toolbar { padding: 14px 16px 4px; }
-  .lista { padding: 4px 4px 8px; }
-  .linha { padding: 12px 12px; gap: 12px; }
 }

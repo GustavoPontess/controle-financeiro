@@ -76,7 +76,7 @@ export default function ContasFixas() {
           <Busca valor={busca} onChange={setBusca} placeholder="Buscar conta fixa" />
           <div className={styles.direitaBarra}>
             <Segmentos ariaLabel="Situação" valor={status} onChange={setStatus} opcoes={STATUS} />
-            <Botao onClick={() => navigate("/contas-fixas/nova", { state: { voltarPara: "/contas-fixas" } })}
+            <Botao compactoNoCelular onClick={() => navigate("/contas-fixas/nova", { state: { voltarPara: "/contas-fixas" } })}
               icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Nova conta fixa</Botao>
           </div>
         </div>
