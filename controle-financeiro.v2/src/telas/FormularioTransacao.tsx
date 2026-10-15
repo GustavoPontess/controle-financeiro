@@ -1,6 +1,6 @@
 // Formulário da transação — UM só pra criar e editar (senão os dois divergem). Duas colunas: campos à
 // esquerda; à direita a prévia de como vai aparecer, as opções e os botões. Regras do app atual:
-// - crédito só em despesa: escolhe o cartão; "Parcelado" abre o número de vezes;
+// - crédito só em despesa: escolhe o cartão e, ao lado, em quantas vezes (à vista, 2x, 3x…);
 // - parcelado não guarda hora (cada parcela cai numa fatura) e não anda junto com conta fixa;
 // - conta fixa repete sozinha a partir da data de início; não tem hora nem subcategoria (o back não guarda);
 // - data futura só no cartão, em conta fixa (início) ou como previsão (desligar "Já paguei");
@@ -318,6 +318,12 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
                     onChange={(x) => { setContaId(x); limpa("conta") }} opcoes={opcoesConta} />
                 </Campo>
               )}
+              {credito && !ehFixa && podeConverter && (
+                <Campo rotulo="Parcelas">
+                  <Selecao valor={String(parcelas)} onChange={(x) => setParcelas(Number(x))}
+                    opcoes={PARCELAS.map((n) => ({ valor: String(n), rotulo: n === 1 ? "À vista" : v > 0 ? `${n}x de ${formatMoney(centavos(v / n))}` : `${n}x` }))} />
+                </Campo>
+              )}
             </LinhaCampos>
             <LinhaCampos>
               <Campo rotulo="Categoria" erro={erros.categoria}>
@@ -361,17 +367,6 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
                 </Campo>
                 <Campo rotulo="Até" erro={erros.dataFim}>
                   <SeletorData tamanho="sm" valor={dataFim} min={data} limpavel placeholder="Sem fim" onChange={(x) => { setDataFim(x); limpa("dataFim") }} />
-                </Campo>
-              </div>
-            )}
-            {credito && !ehFixa && podeConverter && (
-              <Interruptor ligado={parcelas > 1} onChange={(on) => setParcelas(on ? 2 : 1)}>Parcelado</Interruptor>
-            )}
-            {parcelado && (
-              <div className={styles.subOpcoes}>
-                <Campo rotulo="Vezes">
-                  <Selecao tamanho="sm" valor={String(parcelas)} onChange={(x) => setParcelas(Number(x))}
-                    opcoes={PARCELAS.filter((n) => n > 1).map((n) => ({ valor: String(n), rotulo: `${n}x de ${formatMoney(centavos(v / n))}` }))} />
                 </Campo>
               </div>
             )}
