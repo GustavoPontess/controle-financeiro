@@ -60,4 +60,14 @@ public class MfaStatusDto
     public bool Ativo { get; set; }
     public DateTime? AtivadoEm { get; set; }
     public int BackupCodesRestantes { get; set; }
+
+    /// <summary>O front mostra o convite "Proteja sua conta" depois do login: MFA desligado, não dispensado e
+    /// fora do prazo de um "agora não". Nunca obriga — o MFA é opt-in.</summary>
+    public bool MostrarConvite { get; set; }
+}
+
+/// <summary>Resposta ao convite de ativar o MFA: <c>NuncaMais</c> = não perguntar mais; senão adia 30 dias.</summary>
+public class MfaConviteDto
+{
+    public bool NuncaMais { get; set; }
 }

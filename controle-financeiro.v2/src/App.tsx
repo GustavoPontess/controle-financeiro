@@ -5,6 +5,7 @@ import Entrar from "./telas/Entrar"
 import Cadastro from "./telas/Cadastro"
 import RedefinirSenha from "./telas/RedefinirSenha"
 import { Privacidade, TermosDeUso } from "./telas/Legal"
+import ProtejaConta from "./telas/ProtejaConta"
 import Dashboard from "./telas/Dashboard"
 import Transacoes from "./telas/Transacoes"
 import Transacao from "./telas/Transacao"
@@ -49,6 +50,7 @@ export default function App() {
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos-de-uso" element={<TermosDeUso />} />
       <Route path="/privacidade" element={<Privacidade />} />
+      <Route path="/proteja-sua-conta" element={<Protegido><ProtejaConta /></Protegido>} />
       <Route element={<Protegido><V2Layout /></Protegido>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />

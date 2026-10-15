@@ -14,7 +14,7 @@ const CODIGOS = ["AB23CD45", "EF67GH89"]
 
 describe("SegurancaMfa", () => {
   beforeEach(() => {
-    svc.status.mockReset().mockResolvedValue({ ativo: false, ativadoEm: null, backupCodesRestantes: 0 })
+    svc.status.mockReset().mockResolvedValue({ ativo: false, ativadoEm: null, backupCodesRestantes: 0, mostrarConvite: false })
     svc.iniciarAtivacao.mockReset().mockResolvedValue({ secretBase32: "JBSWY3DPEHPK3PXP", qrCodeUri: "otpauth://totp/x" })
     svc.confirmarAtivacao.mockReset().mockResolvedValue(CODIGOS)
     svc.desativar.mockReset().mockResolvedValue({} as never)
@@ -38,7 +38,7 @@ describe("SegurancaMfa", () => {
     expect(svc.confirmarAtivacao).toHaveBeenCalledWith("123456")
     for (const c of CODIGOS) expect(await screen.findByText(c)).toBeInTheDocument()
 
-    svc.status.mockResolvedValue({ ativo: true, ativadoEm: "2026-10-15", backupCodesRestantes: 2 })
+    svc.status.mockResolvedValue({ ativo: true, ativadoEm: "2026-10-15", backupCodesRestantes: 2, mostrarConvite: false })
     await userEvent.click(screen.getByRole("button", { name: "Guardei, concluir" }))
     expect(await screen.findByText("Ativa")).toBeInTheDocument()
     expect(screen.queryByText(CODIGOS[0])).not.toBeInTheDocument() // não aparecem de novo
@@ -54,7 +54,7 @@ describe("SegurancaMfa", () => {
   })
 
   it("desativar pede senha e código; manda os dois", async () => {
-    svc.status.mockResolvedValue({ ativo: true, ativadoEm: "2026-10-15", backupCodesRestantes: 10 })
+    svc.status.mockResolvedValue({ ativo: true, ativadoEm: "2026-10-15", backupCodesRestantes: 10, mostrarConvite: false })
     render(<SegurancaMfa />)
     expect(await screen.findByText(/Restam/)).toHaveTextContent("Restam 10 códigos de recuperação")
     await userEvent.click(screen.getByRole("button", { name: "Desativar" }))
@@ -65,7 +65,7 @@ describe("SegurancaMfa", () => {
 
     await userEvent.type(screen.getByLabelText("Senha atual"), "minha senha")
     await userEvent.type(screen.getByLabelText("Código"), "AB23CD45")
-    svc.status.mockResolvedValue({ ativo: false, ativadoEm: null, backupCodesRestantes: 0 })
+    svc.status.mockResolvedValue({ ativo: false, ativadoEm: null, backupCodesRestantes: 0, mostrarConvite: false })
     await userEvent.click(screen.getByRole("button", { name: "Desativar" }))
     expect(svc.desativar).toHaveBeenCalledWith("minha senha", "AB23CD45")
     expect(await screen.findByText("Desligada")).toBeInTheDocument()

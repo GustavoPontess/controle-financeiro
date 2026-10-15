@@ -492,6 +492,15 @@ public class AuthController : ControllerBase
         return Ok(new MfaAtivacaoConfirmadaResponseDto { BackupCodes = backupCodes });
     }
 
+    /// <summary>Resposta ao convite "Proteja sua conta" depois do login: nuncaMais = não perguntar mais; senão adia 30 dias.</summary>
+    [Authorize]
+    [HttpPost("mfa/convite")]
+    public async Task<IActionResult> MfaConvite([FromBody] MfaConviteDto dto)
+    {
+        await _mfaService.ResponderConviteAsync(ExigirUsuarioId(), dto.NuncaMais);
+        return NoContent();
+    }
+
     [Authorize]
     [HttpPost("mfa/desativar")]
     [EnableRateLimiting("auth-mfa")]

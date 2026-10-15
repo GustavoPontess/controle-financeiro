@@ -87,6 +87,12 @@ public class Usuario
 
     public DateTime? MfaAtivadoEm { get; set; }
 
+    /// <summary>Convite pra ativar o MFA depois do login: "agora não" adia até esta data (30 dias). Null = nunca adiado.</summary>
+    public DateTime? MfaConviteAdiadoAte { get; set; }
+
+    /// <summary>A pessoa marcou "não perguntar mais": o convite nunca mais aparece (o MFA continua nas Configurações).</summary>
+    public bool MfaConviteDispensado { get; set; }
+
     public Guid? RelacionamentoId { get; set; }
     public Relacionamento? Relacionamento { get; set; }
 

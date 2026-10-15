@@ -1,7 +1,8 @@
 // Verificação em duas etapas (MFA) nas Configurações do v2 — opcional, nunca obrigatória. Desligada → Ativar:
 // QR + chave manual, código do app pra confirmar → códigos de recuperação (mostrados UMA vez: baixar/copiar)
 // → Ativa (quantos códigos de recuperação sobram) → Desativar pede senha atual + código (step-up, como no
-// servidor). Tudo na própria seção, sem popup.
+// servidor). Tudo na própria seção, sem popup. A tela do convite pós-login usa esta mesma seção com `iniciar`
+// (abre direto no QR), `aoConcluir` e `aoCancelar`.
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { Check, Copy, Download, ShieldCheck } from "lucide-react"
@@ -30,7 +31,14 @@ const arquivoRecuperacao = (codigos: string[]) => [
   "",
 ].join("\r\n")
 
-export default function SegurancaMfa() {
+export default function SegurancaMfa({ iniciar, aoConcluir, aoCancelar }: {
+  /** Já abre no passo do QR (sem o "Ativar"). */
+  iniciar?: boolean
+  /** Depois de guardar os códigos de recuperação (em vez de voltar pro status). */
+  aoConcluir?: () => void
+  /** "Cancelar" no passo do QR (em vez de voltar pro "Desligada"). */
+  aoCancelar?: () => void
+} = {}) {
   const [fase, setFase] = useState<Fase>("carregando")
   const [status, setStatus] = useState<MfaStatus | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -49,7 +57,7 @@ export default function SegurancaMfa() {
     try { const s = await mfaService.status(); setStatus(s); setFase(s.ativo ? "ativa" : "desligada") }
     catch { setErro("Não deu pra carregar a verificação em duas etapas."); setFase("desligada") }
   }
-  useEffect(() => { void carregar() }, [])
+  useEffect(() => { if (iniciar) void ativar(); else void carregar() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const copiar = async (texto: string, qual: "chave" | "codigos") => {
     try { await navigator.clipboard.writeText(texto); setCopiado(qual); setTimeout(() => setCopiado(null), 2000) } catch { /* sem área de transferência */ }
@@ -142,7 +150,7 @@ export default function SegurancaMfa() {
                 onChange={(e) => { setCodigo(e.target.value.replace(/[^\d\s]/g, "")); limpa("codigo") }} />
             </Campo>
             <div className={styles.acoes}>
-              <Botao onClick={() => { setFase("desligada"); setErros({}); setErro(null) }} disabled={ocupado}>Cancelar</Botao>
+              <Botao onClick={() => { if (aoCancelar) { aoCancelar(); return } setFase("desligada"); setErros({}); setErro(null) }} disabled={ocupado}>Cancelar</Botao>
               <Botao variante="primario" type="submit" disabled={ocupado}>{ocupado ? "Confirmando…" : "Confirmar"}</Botao>
             </div>
           </form>
@@ -162,7 +170,7 @@ export default function SegurancaMfa() {
               icone={copiado === "codigos" ? <Check size={15} strokeWidth={2.5} aria-hidden="true" /> : <Copy size={15} strokeWidth={2.25} aria-hidden="true" />}>
               {copiado === "codigos" ? "Copiados" : "Copiar"}
             </Botao>
-            <Botao variante="primario" onClick={() => { setRecuperacao([]); void carregar() }}>Guardei, concluir</Botao>
+            <Botao variante="primario" onClick={() => { setRecuperacao([]); if (aoConcluir) aoConcluir(); else void carregar() }}>Guardei, concluir</Botao>
           </div>
         </div>
       )}

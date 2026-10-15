@@ -2,7 +2,7 @@
 // escolher), e-mail + senha (mostrar/ocultar), manter conectado, verificação em duas etapas (MFA, confiar no
 // dispositivo), conta em carência de exclusão (reativar), criar conta, termos, e o painel DEV de contas
 // de teste (só em desenvolvimento). Quem já entrou no app atual nem vê esta tela (cookie compartilhado).
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
 import Logo from "../componentes/Logo"
@@ -10,6 +10,7 @@ import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
+import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { APP_ATUAL } from "../config"
@@ -60,7 +61,9 @@ export default function Entrar() {
 
   // `?previa` (só em dev): mostra a tela mesmo logado, pra olhar o visual sem precisar sair da conta.
   const previa = import.meta.env.DEV && new URLSearchParams(window.location.search).has("previa")
-  useEffect(() => { if (!carregando && autenticado && !previa) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
+  // Entrando agora: quem decide pra onde vai é o pós-login (convite de MFA ou Visão geral), não o "já logado".
+  const entrando = useRef(false)
+  useEffect(() => { if (!carregando && autenticado && !previa && !entrando.current) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
   useEffect(() => { rosterService.listar().then(setRoster).catch(() => setRoster([])) }, [])
   // Painel DEV: se a API ainda está subindo (reinício em dev), o proxy responde erro — tenta de novo a cada
   // 3s por até 1 min, em vez de ficar sem painel até recarregar a página.
@@ -93,10 +96,17 @@ export default function Entrar() {
     setRoster((r) => r.filter((c) => c.usuarioId !== usuarioId))
   }
 
-  const tratarResultado = (r: Awaited<ReturnType<typeof entrar>>) => {
-    if (r.tipo === "mfa") setMfaChallenge(r.challengeToken)
-    else if (r.tipo === "exclusao") setMarcada({ dias: r.diasRestantes })
-    else navigate("/dashboard", { replace: true })
+  // Entrou: com MFA desligado e convite valendo, passa por "Proteja sua conta" antes da Visão geral.
+  const depoisDeEntrar = async () => {
+    let convite = false
+    try { convite = (await mfaService.status()).mostrarConvite } catch { /* sem convite */ }
+    navigate(convite ? "/proteja-sua-conta" : "/dashboard", { replace: true })
+  }
+
+  const tratarResultado = async (r: Awaited<ReturnType<typeof entrar>>) => {
+    if (r.tipo === "mfa") { entrando.current = false; setMfaChallenge(r.challengeToken) }
+    else if (r.tipo === "exclusao") { entrando.current = false; setMarcada({ dias: r.diasRestantes }) }
+    else await depoisDeEntrar()
   }
 
   const enviar = async (e: FormEvent) => {
@@ -109,8 +119,9 @@ export default function Entrar() {
     setErros(novos)
     if (Object.keys(novos).length) return
     setEnviando(true)
-    try { tratarResultado(await entrar(email.trim(), senha, manter)) }
-    catch (err) { setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
+    entrando.current = true
+    try { await tratarResultado(await entrar(email.trim(), senha, manter)) }
+    catch (err) { entrando.current = false; setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
     finally { setEnviando(false) }
   }
 
@@ -140,8 +151,9 @@ export default function Entrar() {
     try {
       await reativar(email.trim(), senha)
       setMarcada(null)
-      tratarResultado(await entrar(email.trim(), senha, manter))
-    } catch (err) { setReativarErro(err instanceof Error ? err.message : "Não foi possível reativar a conta.") }
+      entrando.current = true
+      await tratarResultado(await entrar(email.trim(), senha, manter))
+    } catch (err) { entrando.current = false; setReativarErro(err instanceof Error ? err.message : "Não foi possível reativar a conta.") }
     finally { setEnviando(false) }
   }
 
