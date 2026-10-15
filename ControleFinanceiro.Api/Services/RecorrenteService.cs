@@ -459,7 +459,7 @@ public class RecorrenteService
     /// na 1ª página da lista (25, por ordem de nome): com mais contas fixas ela podia cair fora, e a API
     /// respondia erro DEPOIS de gravar — o usuário tentava de novo e duplicava.
     /// </summary>
-    private async Task<RecorrenteDto> ObterDtoAsync(Guid id, Guid usuarioId)
+    public async Task<RecorrenteDto> ObterAsync(Guid id, Guid usuarioId)
     {
         var r = await _context.Recorrentes
             .Include(x => x.Categoria)
@@ -634,7 +634,7 @@ public class RecorrenteService
             throw;
         }
 
-        return await ObterDtoAsync(recorrenteId, usuarioId);
+        return await ObterAsync(recorrenteId, usuarioId);
     }
 
     /// <summary>
@@ -666,7 +666,7 @@ public class RecorrenteService
         if (!MesmosDadosDaContaFixa(original, dto))
             throw new InvalidOperationException(MensagemChaveComOutrosDados);
 
-        return await ObterDtoAsync(original.Id, usuarioId);
+        return await ObterAsync(original.Id, usuarioId);
     }
 
     /// <summary>
