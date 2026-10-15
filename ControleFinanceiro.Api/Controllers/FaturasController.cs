@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Fatura;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -55,6 +56,23 @@ public class FaturasController : ControllerBase
         var usuarioId = GetUserId();
         var detalhe = await _service.DetalheAsync(faturaId, usuarioId);
         return Ok(detalhe);
+    }
+
+    /// <summary>
+    /// Lançamentos da fatura numa lista só (compras à vista, parcelas e pagamentos), do mais recente
+    /// pro mais antigo. Busca por texto (<paramref name="q"/>: descrição, categoria, meio do pagamento),
+    /// filtro por <paramref name="tipo"/> ("compra" | "parcela" | "pagamento") e paginação
+    /// (pageSize 1–100, padrão 25). Fatura inexistente ou de outra pessoa → 404.
+    /// </summary>
+    [HttpGet("{faturaId}/lancamentos")]
+    [ProducesResponseType(typeof(PagedResult<LancamentoFaturaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Lancamentos(Guid cartaoCreditoId, Guid faturaId,
+        [FromQuery] string? q = null, [FromQuery] string? tipo = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    {
+        var usuarioId = GetUserId();
+        var pagina = await _service.ListarLancamentosAsync(faturaId, usuarioId, q, tipo, page, pageSize);
+        return Ok(pagina);
     }
 
     /// <summary>

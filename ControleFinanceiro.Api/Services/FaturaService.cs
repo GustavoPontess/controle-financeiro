@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Fatura;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -774,6 +775,63 @@ public class FaturaService
         }).ToList();
 
         return dto;
+    }
+
+    public const string TipoCompra = "compra";
+    public const string TipoParcela = "parcela";
+    public const string TipoPagamento = "pagamento";
+
+    /// <summary>
+    /// Lançamentos da fatura numa lista só (compras à vista, parcelas e pagamentos), do mais recente pro
+    /// mais antigo, com busca por texto (descrição, categoria, meio do pagamento), filtro por tipo e
+    /// paginação — o que a tela mostra. A fatura é um mês: os itens dela cabem na memória, então filtra
+    /// e pagina em cima do mesmo detalhe (mesmas regras de total), não numa consulta à parte.
+    /// </summary>
+    public async Task<PagedResult<LancamentoFaturaDto>> ListarLancamentosAsync(
+        Guid faturaId, Guid usuarioId, string? q = null, string? tipo = null, int page = 1, int pageSize = 25)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        var d = await DetalheAsync(faturaId, usuarioId);
+
+        IEnumerable<LancamentoFaturaDto> todos = d.Transacoes.Select(t => new LancamentoFaturaDto
+            {
+                Id = t.Id, Tipo = TipoCompra, Descricao = t.Descricao, Valor = t.Valor, Data = t.Data, CriadoEm = t.CriadoEm,
+                CategoriaId = t.CategoriaId, CategoriaDescricao = t.CategoriaDescricao,
+            })
+            .Concat(d.Parcelas.Select(p => new LancamentoFaturaDto
+            {
+                Id = p.Id, Tipo = TipoParcela, Descricao = p.Descricao, Valor = p.Valor, Data = p.Data, CriadoEm = p.CriadoEm,
+                CategoriaId = p.CategoriaId, CategoriaDescricao = p.CategoriaDescricao,
+                Numero = p.Numero, QuantidadeTotal = p.QuantidadeTotal, ParcelamentoId = p.ParcelamentoId,
+            }))
+            .Concat(d.Pagamentos.Select(p => new LancamentoFaturaDto
+            {
+                Id = p.Id, Tipo = TipoPagamento, Descricao = "Pagamento", Valor = p.Valor, Data = p.Data, CriadoEm = p.CriadoEm,
+                MeioPagamentoDescricao = p.MeioPagamentoDescricao,
+            }));
+
+        if (!string.IsNullOrWhiteSpace(tipo))
+        {
+            var t = tipo.Trim();
+            todos = todos.Where(l => string.Equals(l.Tipo, t, StringComparison.OrdinalIgnoreCase));
+        }
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var termo = q.Trim();
+            todos = todos.Where(l => l.Descricao.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                || (l.CategoriaDescricao?.Contains(termo, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (l.MeioPagamentoDescricao?.Contains(termo, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        var lista = todos.OrderByDescending(l => l.Data.Date).ThenByDescending(l => l.CriadoEm).ToList();
+        return new PagedResult<LancamentoFaturaDto>
+        {
+            Items = lista.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+            Total = lista.Count,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     // ── Helpers privados ──────────────────────────────────────────────────────
