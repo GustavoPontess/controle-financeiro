@@ -11,6 +11,10 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         public int? TipoCartao { get; set; }
         public string? TipoCartaoDescricao { get; set; }
         public decimal SaldoAtual { get; set; }
+        /// <summary>Ponto de partida (lançamento EhSaldoInicial vivo). 0 = a conta começou do zero.</summary>
+        public decimal SaldoInicial { get; set; }
+        /// <summary>Dia do saldo inicial; null quando não há.</summary>
+        public DateOnly? DataSaldoInicial { get; set; }
         public bool IsCarteira { get; set; }
         public Guid? BancoId { get; set; }
         public string BancoNome { get; set; } = string.Empty;

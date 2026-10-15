@@ -2,15 +2,43 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-vi.mock("../../services/contaService", () => ({ createConta: vi.fn(), updateConta: vi.fn() }))
-import { createConta } from "../../services/contaService"
+vi.mock("../../services/contaService", () => ({ createConta: vi.fn(), updateConta: vi.fn(async () => {}), atualizarSaldoInicial: vi.fn(async () => {}) }))
+import { atualizarSaldoInicial, createConta, updateConta } from "../../services/contaService"
 import FormularioConta from "../../telas/FormularioConta"
 
 const bancos = [{ id: "b1", nome: "Nubank", nomeFantasia: "", razaoSocial: "", tipo: 2, tipoDescricao: "", ativo: true }]
 const renderizar = (aoSalvo = vi.fn()) => render(<FormularioConta bancos={bancos} aoSair={vi.fn()} aoSalvo={aoSalvo} />)
 
+const existente = { id: "k1", nome: "Inter", tipo: 1, tipoDescricao: "", isCarteira: false, saldoAtual: 900, saldoInicial: 1250, dataSaldoInicial: "2026-09-01" }
+
 describe("FormularioConta", () => {
-  beforeEach(() => vi.mocked(createConta).mockReset())
+  beforeEach(() => { vi.mocked(createConta).mockReset(); vi.mocked(updateConta).mockClear(); vi.mocked(atualizarSaldoInicial).mockClear() })
+
+  it("editar: saldo inicial vem preenchido e só vai pro servidor se mudou", async () => {
+    const aoSalvo = vi.fn()
+    render(<FormularioConta conta={existente} bancos={bancos} aoSair={vi.fn()} aoSalvo={aoSalvo} />)
+    expect(screen.getByPlaceholderText("0,00")).toHaveValue("1.250,00")
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(updateConta).toHaveBeenCalledWith("k1", expect.objectContaining({ nome: "Inter" }))
+    expect(atualizarSaldoInicial).not.toHaveBeenCalled()
+    expect(aoSalvo).toHaveBeenCalledWith("k1")
+  })
+
+  it("editar: mudou o saldo inicial → PUT saldo-inicial com valor e dia", async () => {
+    render(<FormularioConta conta={existente} bancos={bancos} aoSair={vi.fn()} aoSalvo={vi.fn()} />)
+    const saldo = screen.getByPlaceholderText("0,00")
+    await userEvent.clear(saldo)
+    await userEvent.type(saldo, "200000")
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(atualizarSaldoInicial).toHaveBeenCalledWith("k1", { valor: 2000, data: "2026-09-01" })
+  })
+
+  it("editar: zerar o saldo inicial manda 0 (a conta passa a começar do zero)", async () => {
+    render(<FormularioConta conta={existente} bancos={bancos} aoSair={vi.fn()} aoSalvo={vi.fn()} />)
+    await userEvent.clear(screen.getByPlaceholderText("0,00"))
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(atualizarSaldoInicial).toHaveBeenCalledWith("k1", expect.objectContaining({ valor: 0 }))
+  })
 
   it("submit vazio bloqueia e pede o nome", async () => {
     renderizar()

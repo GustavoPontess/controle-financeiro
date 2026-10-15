@@ -8,6 +8,10 @@ export interface Conta {
   tipoCartao?: number
   tipoCartaoDescricao?: string
   saldoAtual: number
+  /** Ponto de partida (lançamento de saldo inicial vivo). 0 = começou do zero. */
+  saldoInicial?: number
+  /** "YYYY-MM-DD" do saldo inicial; null quando não há. */
+  dataSaldoInicial?: string | null
   isCarteira: boolean
   bancoId?: string
   bancoNome?: string
