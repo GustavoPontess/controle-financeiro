@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 vi.mock("../../services/contaService", () => ({ getContas: vi.fn(async () => [{ id: "k2", nome: "Nubank", tipo: 1, tipoDescricao: "", saldoAtual: 0, isCarteira: false }]) }))
 vi.mock("../../services/cartaoCreditoService", () => ({ getCartoes: vi.fn(async () => []) }))
 vi.mock("../../services/categoryService", () => ({ getCategories: vi.fn(async () => [{ id: "cat1", descricao: "Saúde", finalidade: 1, isPadrao: true }]) }))
+vi.mock("../../services/subcategoryService", () => ({ getSubcategories: vi.fn(async () => []) }))
 vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn(), updateRecorrente: vi.fn() }))
 import NovaContaFixa from "../../telas/NovaContaFixa"
 

@@ -1,6 +1,6 @@
 // Formulário da conta fixa — UM só pra criar e editar a regra (senão os dois divergem).
 // Separado do FormularioTransacao (Gustavo, 2026-10-15): conta fixa não tem hora, parcela, subcategoria nem
-// "Já paguei"; tem repetição, começo/fim e COMO paga (débito automático, boleto…), que é o que diz se a pessoa
+// "Já paguei"; tem subcategoria (opcional), repetição, começo/fim e COMO paga (débito automático, boleto…), que é o que diz se a pessoa
 // precisa lembrar de pagar. Regras:
 // - no cartão o meio é sempre Crédito (o servidor grava sozinho); numa conta, qualquer meio menos Crédito;
 // - criar leva Idempotency-Key (nasce ao abrir a tela e vale pra toda tentativa: reenviar não cria duas);
@@ -13,6 +13,7 @@ import type { Recorrente } from "../types/Recorrente"
 import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
+import type { Subcategory } from "../types/Subcategory"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
@@ -35,12 +36,13 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "receita", rotulo: "Receita" },
 ]
 
-export default function FormularioContaFixa({ recorrente, contas = [], cartoes = [], categorias, aoSair, aoSalvo }: {
+export default function FormularioContaFixa({ recorrente, contas = [], cartoes = [], categorias, subcategorias = [], aoSair, aoSalvo }: {
   /** Com conta fixa = editar a regra dela; sem = nova. */
   recorrente?: Recorrente
   contas?: Conta[]
   cartoes?: CartaoCredito[]
   categorias: Category[]
+  subcategorias?: Subcategory[]
   aoSair: () => void
   /** Recebe o id da conta fixa salva. */
   aoSalvo: (id: string) => void
@@ -64,6 +66,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const [contaId, setContaId] = useState(r?.contaId ?? "")
   const [cartaoId, setCartaoId] = useState(r?.cartaoCreditoId ?? "")
   const [categoriaId, setCategoriaId] = useState(r?.categoriaId ?? "")
+  const [subcategoriaId, setSubcategoriaId] = useState(r?.subcategoriaId ?? "")
   const [frequencia, setFrequencia] = useState<number>(r?.frequencia ?? FREQUENCIA.mensal)
   const [data, setData] = useState(() => r?.dataInicio.slice(0, 10) ?? dataLocalISO())
   const [dataFim, setDataFim] = useState(r?.dataFim?.slice(0, 10) ?? "")
@@ -81,6 +84,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const limites = editando ? null : limitesDoInicio(hoje)
 
   const cats = useMemo(() => categorias.filter((c) => c.finalidade === 3 || c.finalidade === tipo), [categorias, tipo])
+  const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const meios = receita ? MEIOS_RECEBIMENTO_FIXO : MEIOS_CONTA_FIXA
   const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome ?? (r && id === r.contaId ? r.contaNome : undefined)
@@ -101,7 +105,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
     const lista = n === "receita" ? MEIOS_RECEBIMENTO_FIXO : MEIOS_CONTA_FIXA
     if (meio !== "" && !lista.some((m) => m.valor === meio)) setMeio("")
     const atual = categorias.find((c) => c.id === categoriaId)
-    if (atual && atual.finalidade !== 3 && atual.finalidade !== novoTipo) setCategoriaId("")
+    if (atual && atual.finalidade !== 3 && atual.finalidade !== novoTipo) { setCategoriaId(""); setSubcategoriaId("") }
   }
   const trocarMeio = (m: number) => { setMeio(m); limpa("meio", "conta", "cartao") }
   const escolherData = (x: string) => { setData(x); limpa("data", "dataFim") }
@@ -133,6 +137,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
       if (r) {
         await updateRecorrente(r.id, {
           descricao: desc, valor: v, tipo, categoriaId,
+          subcategoriaId: subcategoriaId || undefined,
           contaId: credito ? undefined : contaId,
           cartaoCreditoId: credito ? cartaoId : undefined,
           meioPagamento: credito ? undefined : m,
@@ -145,6 +150,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
       } else {
         const criada = await createRecorrente({
           descricao: desc, valor: v, tipo, categoriaId,
+          subcategoriaId: subcategoriaId || undefined,
           contaId: credito ? undefined : contaId,
           cartaoCreditoId: credito ? cartaoId : undefined,
           meioPagamento: credito ? undefined : m,
@@ -168,8 +174,9 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const tom = receita ? "positivo" : "negativo"
   const origemNome = credito ? nomeCartao(cartaoId) : nomeConta(contaId)
   const catNome = categorias.find((c) => c.id === categoriaId)?.descricao
+  const subNome = subs.find((s) => s.id === subcategoriaId)?.nome ?? (r && subcategoriaId === r.subcategoriaId ? r.subcategoriaNome : undefined)
   const meioRotulo = meios.find((x) => x.valor === meio)?.rotulo
-  const detalhe = [origemNome, catNome, credito ? undefined : meioRotulo].filter(Boolean).join(" · ")
+  const detalhe = [origemNome, subNome ? `${catNome} › ${subNome}` : catNome, credito ? undefined : meioRotulo].filter(Boolean).join(" · ")
   const efeito = data
     ? `${descreverRegra(frequencia, data, dataFim || undefined)}.${origemNome
       ? credito ? ` Cada cobrança vai pra fatura do ${origemNome}.` : ` ${receita ? "Entra no" : "Sai do"} ${origemNome}.`
@@ -226,11 +233,16 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
           )}
         </LinhaCampos>
 
-        <LinhaCampos colunas="minmax(0, 1fr) minmax(0, 1fr)">
+        <LinhaCampos>
           <Campo rotulo="Categoria" erro={erros.categoria}>
             <Selecao valor={categoriaId} placeholder="Escolha a categoria"
-              onChange={(x) => { setCategoriaId(x); limpa("categoria") }}
+              onChange={(x) => { setCategoriaId(x); setSubcategoriaId(""); limpa("categoria") }}
               opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
+          </Campo>
+          <Campo rotulo="Subcategoria">
+            <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
+              placeholder={subs.length === 0 ? "Nenhuma" : "Opcional"} onChange={setSubcategoriaId}
+              opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
           </Campo>
         </LinhaCampos>
       </Campos>

@@ -20,6 +20,10 @@ public class Recorrente
     public Guid? CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
+    /// <summary>Subcategoria (opcional, sempre da <see cref="CategoriaId"/>). Cada cobrança gerada herda.</summary>
+    public Guid? SubcategoriaId { get; set; }
+    public Subcategoria? Subcategoria { get; set; }
+
     /// <summary>
     /// Conta de destino. Tornado nullable: agora ContaId XOR CartaoCreditoId.
     /// Validação fica em RecorrenteService (não no domínio).

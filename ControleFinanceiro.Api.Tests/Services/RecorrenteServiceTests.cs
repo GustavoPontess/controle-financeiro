@@ -472,6 +472,141 @@ public class RecorrenteServiceTests
         Assert.Equal("Débito automático", (await svc.ObterAsync(r.Id, u)).MeioPagamentoDescricao);
     }
 
+    // ── Subcategoria ──────────────────────────────────────────────────────────
+
+    private static Guid SeedSubcategoria(AppDbContext ctx, Guid categoriaId, Guid? userId, string nome = "Aluguel")
+    {
+        var sub = new Subcategoria { Id = Guid.NewGuid(), Nome = nome, CategoriaId = categoriaId, UsuarioId = userId };
+        ctx.Subcategorias.Add(sub);
+        ctx.SaveChanges();
+        return sub.Id;
+    }
+
+    [Fact]
+    public async Task CriarAsync_ComSubcategoria_GuardaNaContaFixa_ECadaCobrancaHerda()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx, null);
+        var sub = SeedSubcategoria(ctx, cat, null);
+        var dto = NovaContaFixa(SeedConta(ctx, u), "Aluguel");
+        dto.CategoriaId = cat; dto.SubcategoriaId = sub;
+
+        var r = await svc.CriarAsync(dto, u);
+
+        Assert.Equal(sub, r.SubcategoriaId);
+        Assert.Equal("Aluguel", (await svc.ObterAsync(r.Id, u)).SubcategoriaNome);
+        var cobrancas = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id).ToListAsync();
+        Assert.NotEmpty(cobrancas);
+        Assert.All(cobrancas, t => Assert.Equal(sub, t.SubcategoriaId));
+    }
+
+    [Fact]
+    public async Task CriarAsync_SubcategoriaDeOutraCategoria_Recusa_ENaoCria()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var moradia = SeedCategoria(ctx, null);
+        var mercado = SeedCategoria(ctx, null);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.CategoriaId = moradia; dto.SubcategoriaId = SeedSubcategoria(ctx, mercado, null, "Hortifruti");
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, u));
+        Assert.Equal(RecorrenteService.MensagemSubcategoriaDeOutraCategoria, ex.Message);
+        Assert.False(await ctx.Recorrentes.AnyAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_SubcategoriaSemCategoria_Recusa()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.SubcategoriaId = SeedSubcategoria(ctx, SeedCategoria(ctx, null), null);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, u));
+        Assert.False(await ctx.Recorrentes.AnyAsync());
+    }
+
+    [Fact]
+    public async Task CriarAsync_SubcategoriaPessoalDeOutroUsuario_404_ENaoCria()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var outro = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx, null);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.CategoriaId = cat; dto.SubcategoriaId = SeedSubcategoria(ctx, cat, outro);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarAsync(dto, u));
+        Assert.False(await ctx.Recorrentes.AnyAsync());
+    }
+
+    [Fact]
+    public async Task AtualizarAsync_TrocarOuTirarASubcategoria_ProximasCobrancasSeguem()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx, null);
+        var aluguel = SeedSubcategoria(ctx, cat, null, "Aluguel");
+        var condominio = SeedSubcategoria(ctx, cat, u, "Condomínio");
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.CategoriaId = cat; dto.SubcategoriaId = aluguel;
+        var r = await svc.CriarAsync(dto, u);
+
+        dto.SubcategoriaId = condominio;
+        await svc.AtualizarAsync(r.Id, dto, u);
+        var vivas = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id && t.Ativo).ToListAsync();
+        Assert.NotEmpty(vivas);
+        Assert.All(vivas, t => Assert.Equal(condominio, t.SubcategoriaId));
+
+        dto.SubcategoriaId = null;
+        await svc.AtualizarAsync(r.Id, dto, u);
+        vivas = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id && t.Ativo).ToListAsync();
+        Assert.All(vivas, t => Assert.Null(t.SubcategoriaId));
+        Assert.Null((await svc.ObterAsync(r.Id, u)).SubcategoriaId);
+    }
+
+    [Fact]
+    public async Task CriarAsync_MesmaChave_OutraSubcategoria_409()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx, null);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.CategoriaId = cat; dto.SubcategoriaId = SeedSubcategoria(ctx, cat, null);
+        await svc.CriarAsync(dto, u, "chave-sub");
+
+        dto.SubcategoriaId = SeedSubcategoria(ctx, cat, null, "Outra");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CriarAsync(dto, u, "chave-sub"));
+        Assert.Equal(1, await ctx.Recorrentes.CountAsync());
+    }
+
+    [Fact]
+    public async Task EditarProximaOcorrenciaAsync_TrocarCategoria_TiraASubcategoriaHerdada()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        var u = SeedUsuario(ctx);
+        var moradia = SeedCategoria(ctx, null);
+        var dto = NovaContaFixa(SeedConta(ctx, u));
+        dto.CategoriaId = moradia; dto.SubcategoriaId = SeedSubcategoria(ctx, moradia, null);
+        var r = await svc.CriarAsync(dto, u);
+
+        var outra = SeedCategoria(ctx, null);
+        await svc.EditarProximaOcorrenciaAsync(r.Id, new EditarProximaOcorrenciaDto { CategoriaId = outra }, u);
+
+        var proxima = await ctx.Transacoes.Where(t => t.RecorrenteOrigemId == r.Id && t.EditadaPeloUsuario).SingleAsync();
+        Assert.Equal(outra, proxima.CategoriaId);
+        Assert.Null(proxima.SubcategoriaId);
+    }
+
     // ── CriarAsync — idempotência ─────────────────────────────────────────────
 
     private static CriarRecorrenteDto NovaContaFixa(Guid contaId, string descricao = "Internet", decimal valor = 120m) => new()

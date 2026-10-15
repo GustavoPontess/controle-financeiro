@@ -19,13 +19,14 @@ public class MigrationAddMeioPagamentoRecorrenteTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDaAddMfaConviteUsuario()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_AddMeioPagamentoRecorrente", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddMfaConviteUsuario", ids[^2]);
+        var i = ids.FindIndex(x => x.EndsWith("_AddMeioPagamentoRecorrente"));
+        Assert.True(i > 0);
+        Assert.EndsWith("_AddMfaConviteUsuario", ids[i - 1]);
     }
 
     [Fact]

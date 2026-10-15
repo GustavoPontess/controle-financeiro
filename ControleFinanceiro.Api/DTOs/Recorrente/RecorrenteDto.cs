@@ -9,6 +9,8 @@ public class RecorrenteDto
     public string TipoDescricao { get; set; } = string.Empty;
     public Guid? CategoriaId { get; set; }
     public string? CategoriaNome { get; set; }
+    public Guid? SubcategoriaId { get; set; }
+    public string? SubcategoriaNome { get; set; }
     public Guid? ContaId { get; set; }
     public string? ContaNome { get; set; }
     public Guid? CartaoCreditoId { get; set; }

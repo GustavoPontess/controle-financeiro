@@ -127,6 +127,7 @@ public class LancamentoService
                             Valor = dto.Valor,
                             Tipo = dto.Tipo,
                             CategoriaId = dto.CategoriaId,
+                            SubcategoriaId = dto.SubcategoriaId,
                             ContaId = dto.CartaoCreditoId.HasValue ? null : dto.ContaId ?? transacao.ContaId,
                             CartaoCreditoId = dto.CartaoCreditoId,
                             MeioPagamento = dto.CartaoCreditoId.HasValue ? null : dto.MeioPagamento ?? (int?)transacao.MeioPagamento,

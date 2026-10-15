@@ -6,6 +6,8 @@ export interface Recorrente {
   tipoDescricao: string
   categoriaId?: string
   categoriaNome?: string
+  subcategoriaId?: string | null
+  subcategoriaNome?: string | null
   contaId?: string
   contaNome?: string
   cartaoCreditoId?: string
@@ -52,6 +54,8 @@ export interface CriarRecorrente {
   valor: number
   tipo: number
   categoriaId?: string
+  /** Opcional; tem que ser da categoria (o servidor recusa outra). */
+  subcategoriaId?: string
   contaId?: string
   cartaoCreditoId?: string
   /** Numa conta: qualquer meio menos Crédito. No cartão o servidor grava Crédito sozinho. */

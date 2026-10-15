@@ -17,6 +17,11 @@ const categorias = [
   { id: "cat1", descricao: "Moradia", finalidade: 1, isPadrao: true },
   { id: "cat2", descricao: "Salário", finalidade: 2, isPadrao: true },
 ]
+const subcategorias = [
+  { id: "s1", nome: "Aluguel", categoriaId: "cat1", isPadrao: true },
+  { id: "s2", nome: "Condomínio", categoriaId: "cat1", isPadrao: true },
+  { id: "s3", nome: "Bônus", categoriaId: "cat2", isPadrao: true },
+]
 const regra = (r: Record<string, unknown>) => ({
   id: "r1", descricao: "Aluguel", valor: 2000, tipo: 1, tipoDescricao: "", categoriaId: "cat1", contaId: "k2",
   meioPagamento: 6, frequencia: 2, frequenciaDescricao: "", dia: 10, dataInicio: "2026-05-10T00:00:00",
@@ -24,7 +29,8 @@ const regra = (r: Record<string, unknown>) => ({
 }) as never
 const renderizar = (props: Partial<Parameters<typeof FormularioContaFixa>[0]> = {}) => {
   const aoSalvo = vi.fn()
-  render(<FormularioContaFixa contas={contas as never} cartoes={cartoes as never} categorias={categorias as never} aoSair={vi.fn()} aoSalvo={aoSalvo} {...props} />)
+  render(<FormularioContaFixa contas={contas as never} cartoes={cartoes as never} categorias={categorias as never}
+    subcategorias={subcategorias as never} aoSair={vi.fn()} aoSalvo={aoSalvo} {...props} />)
   return { aoSalvo }
 }
 const escolher = async (campo: string, opcao: string) => {
@@ -56,12 +62,37 @@ describe("FormularioContaFixa", () => {
     expect(createRecorrente).not.toHaveBeenCalled()
   })
 
-  it("não tem hora, parcela, subcategoria nem 'Já paguei'", () => {
+  it("não tem hora, parcela nem 'Já paguei'", () => {
     renderizar()
     expect(screen.queryByPlaceholderText("HH:MM")).not.toBeInTheDocument()
     expect(screen.queryByText("Parcelas")).not.toBeInTheDocument()
-    expect(screen.queryByText("Subcategoria")).not.toBeInTheDocument()
     expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+  })
+
+  it("subcategoria: só as da categoria escolhida, opcional, e troca de categoria limpa", async () => {
+    renderizar()
+    expect(screen.getByRole("combobox", { name: "Subcategoria" })).toBeDisabled()
+    await escolher("Categoria", "Moradia")
+    await userEvent.click(screen.getByRole("combobox", { name: "Subcategoria" }))
+    const opcoes = within(screen.getByRole("listbox")).getAllByRole("option").map((o) => o.textContent)
+    expect(opcoes).toEqual(["Sem subcategoria", "Aluguel", "Condomínio"])
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "Aluguel" }))
+    expect(screen.getByText(/Moradia › Aluguel/)).toBeInTheDocument()
+
+    await preencher("200000", "Aluguel")
+    await escolher("Como paga", "Boleto")
+    await escolher("Sai da conta", "Nubank")
+    await userEvent.click(screen.getByRole("button", { name: "Criar conta fixa" }))
+    expect(createRecorrente).toHaveBeenCalledWith(expect.objectContaining({ categoriaId: "cat1", subcategoriaId: "s1" }), expect.any(String))
+
+    await userEvent.click(screen.getByRole("radio", { name: "Receita" }))
+    expect(screen.getByRole("combobox", { name: "Subcategoria" })).toHaveTextContent("Nenhuma")
+  })
+
+  it("sem subcategoria não manda o campo", async () => {
+    renderizar({ recorrente: regra({}) })
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(updateRecorrente).toHaveBeenCalledWith("r1", expect.objectContaining({ subcategoriaId: undefined }))
   })
 
   it("débito automático numa conta: manda o meio e a regra", async () => {
@@ -107,12 +138,13 @@ describe("FormularioContaFixa", () => {
     expect(updateRecorrente).not.toHaveBeenCalled()
   })
 
-  it("editar a regra: vem preenchida (Boleto) e salva no PUT da conta fixa", async () => {
+  it("editar a regra: vem preenchida (Boleto, Aluguel) e salva no PUT da conta fixa", async () => {
     // Começo há mais de 12 meses: na edição continua valendo.
-    const { aoSalvo } = renderizar({ recorrente: regra({ dataInicio: "2025-01-10T00:00:00" }) })
+    const { aoSalvo } = renderizar({ recorrente: regra({ dataInicio: "2025-01-10T00:00:00", subcategoriaId: "s1", subcategoriaNome: "Aluguel" }) })
     expect(screen.getByRole("combobox", { name: "Como paga" })).toHaveTextContent("Boleto")
+    expect(screen.getByRole("combobox", { name: "Subcategoria" })).toHaveTextContent("Aluguel")
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
-    expect(updateRecorrente).toHaveBeenCalledWith("r1", expect.objectContaining({ meioPagamento: 6, dataInicio: "2025-01-10", contaId: "k2" }))
+    expect(updateRecorrente).toHaveBeenCalledWith("r1", expect.objectContaining({ meioPagamento: 6, dataInicio: "2025-01-10", contaId: "k2", subcategoriaId: "s1" }))
     expect(aoSalvo).toHaveBeenCalledWith("r1")
   })
 

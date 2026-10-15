@@ -55,11 +55,17 @@ public static class DemoSeeder
             return;
         var svc = sp.GetRequiredService<RecorrenteService>();
         async Task<Guid> Criar(string desc, decimal valor, TipoTransacao tipo, string cat, FrequenciaRecorrencia freq,
-            DateTime inicio, Guid? conta = null, Guid? cartao = null, DateTime? fim = null, MeioPagamento? meio = null)
+            DateTime inicio, Guid? conta = null, Guid? cartao = null, DateTime? fim = null, MeioPagamento? meio = null,
+            string? sub = null)
         {
+            // Subcategoria padrão pelo nome, dentro da categoria (SubcategoriaSeeder).
+            var catId = Cat(cat);
+            var subId = sub is null ? null : await context.Subcategorias
+                .Where(s => s.UsuarioId == null && s.CategoriaId == catId && s.Nome == sub)
+                .Select(s => (Guid?)s.Id).FirstOrDefaultAsync();
             var r = await svc.CriarAsync(new CriarRecorrenteDto
             {
-                Descricao = desc, Valor = valor, Tipo = (int)tipo, CategoriaId = Cat(cat),
+                Descricao = desc, Valor = valor, Tipo = (int)tipo, CategoriaId = Cat(cat), SubcategoriaId = subId,
                 ContaId = conta, CartaoCreditoId = cartao, MeioPagamento = meio is { } m ? (int)m : null,
                 Frequencia = (int)freq, Dia = inicio.Day,
                 DataInicio = Utc(inicio), DataFim = fim is { } f ? Utc(f) : null,
@@ -68,8 +74,8 @@ public static class DemoSeeder
         }
 
         var dia = (int d) => new DateTime(hoje.Year, hoje.Month, 1).AddMonths(hoje.Day >= d ? 1 : 0).AddDays(d - 1);
-        await Criar("Internet fibra", 99.90m, TipoTransacao.Despesa, "Moradia", FrequenciaRecorrencia.Mensal, dia(12), conta: corrente, meio: MeioPagamento.DebitoAutomatico);
-        await Criar("Plano de saúde", 389.00m, TipoTransacao.Despesa, "Saúde", FrequenciaRecorrencia.Mensal, dia(20), conta: corrente, meio: MeioPagamento.Boleto);
+        await Criar("Internet fibra", 99.90m, TipoTransacao.Despesa, "Moradia", FrequenciaRecorrencia.Mensal, dia(12), conta: corrente, meio: MeioPagamento.DebitoAutomatico, sub: "Internet");
+        await Criar("Plano de saúde", 389.00m, TipoTransacao.Despesa, "Saúde", FrequenciaRecorrencia.Mensal, dia(20), conta: corrente, meio: MeioPagamento.Boleto, sub: "Plano de saúde");
         await Criar("Feira", 80.00m, TipoTransacao.Despesa, "Alimentação", FrequenciaRecorrencia.Semanal, hoje.AddDays(2), conta: carteira, meio: MeioPagamento.Dinheiro);
         await Criar("Anuidade Amazon Prime", 166.80m, TipoTransacao.Despesa, "Serviços digitais", FrequenciaRecorrencia.Anual, hoje.AddDays(49), cartao: nubank);
         await Criar("Aluguel da garagem", 250.00m, TipoTransacao.Receita, "Renda", FrequenciaRecorrencia.Mensal, dia(1), conta: poupanca);

@@ -16,6 +16,9 @@ public class CriarRecorrenteDto
 
     public Guid? CategoriaId { get; set; }
 
+    /// <summary>Opcional; tem que ser da <see cref="CategoriaId"/> (e visível pro usuário).</summary>
+    public Guid? SubcategoriaId { get; set; }
+
     public Guid? ContaId { get; set; }
 
     public Guid? CartaoCreditoId { get; set; }
