@@ -8,6 +8,8 @@ import Transacao from "./telas/Transacao"
 import Cartoes from "./telas/Cartoes"
 import Cartao from "./telas/Cartao"
 import NovaTransacao from "./telas/NovaTransacao"
+import Notificacoes from "./telas/Notificacoes"
+import Configuracoes from "./telas/Configuracoes"
 import EmConstrucao from "./telas/EmConstrucao"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
@@ -25,7 +27,6 @@ const PENDENTES: [string, string, string][] = [
   ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
   ["/limites", "Limites", "/limites"],
-  ["/configuracoes", "Configurações", "/settings"],
 ]
 
 export default function App() {
@@ -41,6 +42,8 @@ export default function App() {
         <Route path="/transacoes/:id/editar" element={<Transacao />} />
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/cartoes/:id" element={<Cartao />} />
+        <Route path="/notificacoes" element={<Notificacoes />} />
+        <Route path="/configuracoes" element={<Configuracoes />} />
         {PENDENTES.map(([rota, titulo, atual]) => (
           <Route key={rota} path={rota} element={<EmConstrucao titulo={titulo} atual={atual} />} />
         ))}

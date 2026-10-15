@@ -1,18 +1,18 @@
-// Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/tema/"Nova
-// transação", conteúdo. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
+// Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
+// transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
 import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
-  Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, Eye, EyeOff,
+  ArrowLeft, BarChart3, Bell, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen,
+  Plus, Receipt, Repeat, Scale, Settings, Tags, Target, Upload, Users, Eye, EyeOff,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
 import { useHideBalance } from "../estado/ocultar"
-import { useTema } from "./useTema"
+import { useNaoLidas } from "../estado/notificacoes"
 import styles from "./V2Layout.module.css"
 
 const PRINCIPAL = [
@@ -34,9 +34,10 @@ const GERENCIAR = [
 ]
 const CHAVE_MENU = "v2:menu"
 
-/** Seção da rota (prefixo mais longo): dá o título do topo e a raiz pra "voltar". */
-function secaoDaRota(pathname: string): { para: string; rotulo: string } | undefined {
-  const todos = [...PRINCIPAL, ...GERENCIAR, { para: "/configuracoes", rotulo: "Configurações" }]
+/** Seção da rota (prefixo mais longo): dá o título do topo e a raiz pra "voltar". `semMenu` = tela que não
+ *  tem item no menu (Notificações, pelo sino): o topo mostra a seta de voltar pra onde a pessoa estava. */
+function secaoDaRota(pathname: string): { para: string; rotulo: string; semMenu?: boolean } | undefined {
+  const todos = [...PRINCIPAL, ...GERENCIAR, { para: "/configuracoes", rotulo: "Configurações" }, { para: "/notificacoes", rotulo: "Notificações", semMenu: true }]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
 }
 
@@ -44,12 +45,12 @@ export default function V2Layout() {
   const { usuario, sair } = useAuth()
   const navigate = useNavigate()
   const { pathname, state } = useLocation()
-  const [tema, alternarTema] = useTema()
   // Tela interna da seção (/transacoes/nova, /transacoes/:id…): o topo ganha a seta de voltar antes do título
   // — sem repetir o nome da seção numa linha a mais dentro da página. Volta pra onde a pessoa veio, senão pra raiz.
   const secao = secaoDaRota(pathname)
-  const emTelaInterna = !!secao && pathname !== secao.para
-  const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? secao?.para ?? "/dashboard"
+  const emTelaInterna = !!secao && (pathname !== secao.para || !!secao.semMenu)
+  const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? (secao && !secao.semMenu ? secao.para : "/dashboard")
+  const naoLidas = useNaoLidas(pathname)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
@@ -126,8 +127,12 @@ export default function V2Layout() {
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
-            <Botao soIcone aria-label={tema === "claro" ? "Tema escuro" : "Tema claro"} onClick={alternarTema}
-              icone={tema === "claro" ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />} />
+            <span className={styles.sino}>
+              <Botao soIcone ativo={pathname === "/notificacoes"} aria-label={naoLidas > 0 ? `Notificações, ${naoLidas} não lidas` : "Notificações"}
+                onClick={() => { if (pathname !== "/notificacoes") navigate("/notificacoes", { state: { voltarPara: pathname } }) }}
+                icone={<Bell size={18} strokeWidth={2} />} />
+              {naoLidas > 0 && <span className={styles.sinoContador} aria-hidden="true">{naoLidas > 99 ? "99+" : naoLidas}</span>}
+            </span>
             <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })}
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>

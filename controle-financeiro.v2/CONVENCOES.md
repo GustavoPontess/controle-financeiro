@@ -4,7 +4,7 @@ Regras curtas pra toda tela nova seguir o mesmo padrão. Se uma regra daqui atra
 
 ## Estilo global
 
-- **Tokens** (`src/estilo/tokens.css`): cor, fonte, tamanho de letra (`--v2-fs-*`), raio (`--v2-r-*`), sombra. Moram no `:root`; o tema é `data-tema="claro|escuro"` no `<html>` (aplicado no `index.html` antes do 1º desenho e mantido pelo `useTema`).
+- **Tokens** (`src/estilo/tokens.css`): cor, fonte, tamanho de letra (`--v2-fs-*`), raio (`--v2-r-*`), sombra. Moram no `:root`; o tema é `data-tema="claro|escuro"` no `<html>` (aplicado no `index.html` antes do 1º desenho; a escolha fica em **Configurações → Aparência** via `useTema`, estado compartilhado em `layout/useTema.ts`).
 - **Base global** (`src/estilo/global.css`): box-sizing, fundo/cor/fonte da página, seleção de texto, foco de teclado, **barra de rolagem** e `prefers-reduced-motion`. Visual que vale pro app inteiro mora aqui — nunca remendado dentro de um componente.
 - Os dois CSS globais são importados **antes** de qualquer componente no `main.tsx` (o CSS de componente vem depois e ganha no empate).
 - Tela usa CSS Module ao lado do `.tsx`, sempre com `var(--v2-*)`. Nada de cor ou tamanho de letra cru.
@@ -44,6 +44,8 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
+- Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
+- Estado compartilhado entre telas (olho, contador do sino, tema) mora em `src/estado/` (ou `layout/useTema.ts`) com `useSyncExternalStore` — nunca prop drilling nem contexto só pra isso.
 - "Voltar" é a seta no **topo**, antes do título da seção (o layout põe sozinho em toda rota abaixo da raiz da seção) — a página não repete o nome da seção nem desenha link de voltar.
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).

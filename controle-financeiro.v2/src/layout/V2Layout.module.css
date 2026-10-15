@@ -58,6 +58,9 @@
 .voltar { margin: 0 -6px 0 -8px; color: var(--v2-texto-2); }
 .tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topoAcoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* Sino: contador de não lidas no canto do botão (vermelho + branco é fixo, não segue o tema). */
+.sino { position: relative; display: inline-flex; }
+.sinoContador { position: absolute; top: -5px; right: -5px; display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; border: 2px solid var(--v2-bg); border-radius: 999px; background: var(--v2-negativo); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; pointer-events: none; }
 /* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
 .conteudo { flex: 1; width: 100%; max-width: 1600px; margin: 0; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
 @keyframes v2-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
