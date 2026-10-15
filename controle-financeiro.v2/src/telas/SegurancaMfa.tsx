@@ -21,7 +21,7 @@ const CODIGO = /^\d{6}$/
 
 /** Arquivo .txt dos códigos de recuperação (\r\n abre bem no Bloco de Notas). */
 const arquivoRecuperacao = (codigos: string[]) => [
-  "Pontes — códigos de recuperação da verificação em duas etapas",
+  "Pontes: códigos de recuperação da verificação em duas etapas",
   `Gerados em: ${new Date().toLocaleString("pt-BR")}`,
   "",
   "Cada código funciona uma vez, pra quando você estiver sem o app autenticador.",
@@ -130,7 +130,7 @@ export default function SegurancaMfa({ iniciar, aoConcluir, aoCancelar }: {
         <div className={styles.configurar}>
           <ol className={styles.passos}>
             <li>Abra o app autenticador (Google Authenticator, Microsoft Authenticator, 1Password…).</li>
-            <li>Escaneie o QR code — ou digite a chave.</li>
+            <li>Escaneie o QR code ou digite a chave.</li>
             <li>Digite o código de 6 números que o app mostrar.</li>
           </ol>
           <div className={styles.qrLinha}>

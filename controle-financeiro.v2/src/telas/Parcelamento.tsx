@@ -51,7 +51,7 @@ export default function Parcelamento() {
   const confirmarCancelar = async () => {
     if (!cancelando) return
     const m = motivo.trim()
-    if (!m) { setMotivoErro("Diga o motivo — fica no histórico."); return }
+    if (!m) { setMotivoErro("Diga o motivo. Ele fica no histórico."); return }
     setOcupado(true)
     try {
       if (cancelando.parcela) await ParcelamentoService.cancelarParcela(cancelando.parcela.id, { motivo: m, idempotencyKey: chave.current })

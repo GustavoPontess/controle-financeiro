@@ -102,7 +102,7 @@ export default function SegurancaDispositivos() {
       <Confirmar
         aberto={emMassa === "dispositivos"}
         titulo="Esquecer todos os dispositivos?"
-        texto="O próximo login em qualquer aparelho — inclusive este — vai pedir o código do app."
+        texto="O próximo login em qualquer aparelho, inclusive este, vai pedir o código do app."
         rotuloConfirmar="Esquecer todos"
         perigo
         ocupado={ocupado === "dispositivos"}

@@ -13,7 +13,7 @@ import styles from "./Auth.module.css"
 
 const BENEFICIOS = [
   { icone: KeyRound, texto: "Mesmo que descubram sua senha, ninguém entra sem o código." },
-  { icone: Smartphone, texto: "O código vem do app autenticador do seu celular — leva 1 minuto pra configurar." },
+  { icone: Smartphone, texto: "O código vem do app autenticador do seu celular. Leva 1 minuto pra configurar." },
   { icone: ShieldCheck, texto: "Neste dispositivo dá pra pular o código por 30 dias." },
 ]
 

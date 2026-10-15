@@ -63,7 +63,7 @@ export default function ContaFixa() {
   const confirmar = async () => {
     if (!confirmando) return
     const m = motivo.trim()
-    if (confirmando === "cancelar" && !m) { setMotivoErro("Diga o motivo — fica no histórico."); return }
+    if (confirmando === "cancelar" && !m) { setMotivoErro("Diga o motivo. Ele fica no histórico."); return }
     setOcupado(true)
     try {
       if (confirmando === "excluir") { await deleteRecorrente(r.id); navigate(voltarPara, { replace: true }); return }

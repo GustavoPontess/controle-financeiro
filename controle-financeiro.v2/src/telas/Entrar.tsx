@@ -167,7 +167,7 @@ export default function Entrar() {
           <p className={styles.frase}>Finanças em família, <span className={styles.fraseSuave}>sem briga.</span></p>
           <p className={styles.lead}>Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.</p>
           <ul className={styles.beneficios}>
-            {["Rateio explícito — 50/50, % ou valor fixo", "Aprovação de despesa em 1 toque", "Conexão com Open Finance (em breve)"].map((t) => (
+            {["Rateio explícito: 50/50, % ou valor fixo", "Aprovação de despesa em 1 toque", "Conexão com Open Finance (em breve)"].map((t) => (
               <li key={t}><span className={styles.check}><Check size={12} strokeWidth={3} aria-hidden="true" /></span>{t}</li>
             ))}
           </ul>
@@ -319,7 +319,7 @@ export default function Entrar() {
           </div>
           {devContas.map((c) => (
             <button key={c.email} type="button" className={styles.devItem}
-              title={c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria — digite)`}
+              title={c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria, digite)`}
               onClick={() => { setEmail(c.email); setSenha(c.senhaPadrao ? DEV_SENHA : ""); setContaSelecionada(null); setUsarOutra(true); limparErros() }}>
               <span className={styles.devNome}>{c.nome}{c.senhaPadrao ? "" : " · senha própria"}</span>
               <span className={styles.devEmail}>{c.email}</span>

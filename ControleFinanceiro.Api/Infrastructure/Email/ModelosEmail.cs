@@ -50,7 +50,7 @@ public static class ModelosEmail
             _ => "confirmar uma ação na sua conta",
         };
         var texto = $"Use este código pra {acao} ({email}).";
-        var validade = $"O código vale até {Hora(expiraEmUtc)}. Não passe pra ninguém — nem pra quem diz ser do Pontes.";
+        var validade = $"O código vale até {Hora(expiraEmUtc)}. Não passe pra ninguém, nem pra quem diz ser do Pontes.";
         const string naoFoi = "Não foi você? Troque sua senha agora: alguém pode estar com acesso à sua conta.";
         var miolo =
             "<tr><td style=\"padding:24px 0 8px\">" +
@@ -60,7 +60,7 @@ public static class ModelosEmail
             $"Seu código do Pontes: {codigo}",
             $"{texto}\n\n{codigo}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
             Html(
-                previa: $"Código {codigo} — vale por pouco tempo.",
+                previa: $"Código {codigo}. Vale por pouco tempo.",
                 titulo: "Seu código de confirmação",
                 texto: texto,
                 miolo: miolo,
@@ -97,7 +97,7 @@ public static class ModelosEmail
         .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
     private static string RodapeTexto(string email) =>
-        $"\n\n—\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}.";
+        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}.";
 
     private static string Hora(DateTime utc)
     {

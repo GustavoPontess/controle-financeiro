@@ -56,7 +56,7 @@ export default function RedefinirSenha() {
         <div className={styles.marca}><Logo size={28} /></div>
         <div className={styles.palcoMeio}>
           <p className={styles.frase}>Uma senha nova, <span className={styles.fraseSuave}>e pronto.</span></p>
-          <p className={styles.lead}>Pode ser uma frase — fácil de lembrar e difícil de adivinhar. Só precisa ter 15 caracteres ou mais.</p>
+          <p className={styles.lead}>Pode ser uma frase, fácil de lembrar e difícil de adivinhar. Só precisa ter 15 caracteres ou mais.</p>
         </div>
         <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
       </aside>
