@@ -14,6 +14,8 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         public bool IsCarteira { get; set; }
         public Guid? BancoId { get; set; }
         public string BancoNome { get; set; } = string.Empty;
+        public string? BancoLogoUrl { get; set; }
+        public string? BancoCor { get; set; }
         /// <summary>Encerrada (fechada no banco): fora das listas, sem lançamento novo. Null = aberta.</summary>
         public DateTime? EncerradaEm { get; set; }
     }

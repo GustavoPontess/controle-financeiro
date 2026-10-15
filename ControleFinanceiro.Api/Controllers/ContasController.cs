@@ -55,6 +55,8 @@ namespace ControleFinanceiro.Api.Controllers
             IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
             BancoNome = c.Banco?.Nome ?? string.Empty,
+            BancoLogoUrl = c.Banco?.LogoUrl,
+            BancoCor = c.Banco?.Cor,
             EncerradaEm = c.EncerradaEm,
         };
 

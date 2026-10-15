@@ -222,7 +222,7 @@ namespace ControleFinanceiro.Api.Services
                 .AnyAsync(t => t.ContaId == id && !t.EhSaldoInicial);
             if (temLancamento)
                 throw new InvalidOperationException(
-                    "Esta conta tem lançamentos e não pode ser excluída: o histórico dela entra no saldo e nos relatórios.");
+                    "Esta conta tem lançamentos e não pode ser excluída: o histórico dela entra no saldo e nos relatórios. Encerre a conta em vez de excluir.");
             if (await _context.Recorrentes.AnyAsync(r => r.ContaId == id))
                 throw new InvalidOperationException(
                     "Uma conta fixa usa esta conta. Troque a conta dela (ou exclua a conta fixa) antes de excluir a conta.");
