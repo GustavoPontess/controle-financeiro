@@ -6,8 +6,8 @@
 // - data futura só em compra no cartão ou lançamento previsto (o back recusa o resto);
 // - lançamento sem hora pode continuar sem hora (decisão do Gustavo, PR #299); com hora, ela é obrigatória.
 import { useEffect, useRef, useState } from "react"
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { Pencil, Trash2, Undo2 } from "lucide-react"
 import { deleteTransaction, getTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { estornarPagamento } from "../services/faturaService"
 import { getCategories } from "../services/categoryService"
@@ -72,36 +72,34 @@ export default function Transacao() {
     return () => { vivo = false }
   }, [])
 
-  const voltar = <Link to={voltarPara} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Transações</Link>
 
   if (naoEncontrada)
     return (
       <div className={styles.pagina}>
-        {voltar}
         <h1 className={styles.titulo}>Transação não encontrada</h1>
         <p className={styles.muted}>Ela pode ter sido excluída.</p>
       </div>
     )
-  if (!t) return <div className={styles.pagina}>{voltar}<Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
+  if (!t) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
 
   const editavel = !t.ehPagamentoFatura && !t.ehTransferencia
   if (editando && editavel)
-    return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes} voltar={voltar}
+    return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes}
       // Virou transferência/conta fixa/parcelado: o id antigo não existe mais — volta pra lista.
       aoSalvar={(r) => r && r.tipo !== "transacao"
         ? navigate(voltarPara, { replace: true })
         : navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })}
       aoCancelar={() => navigate(`/transacoes/${t.id}`, { replace: true, state: location.state })} />
 
-  return <Ver t={t} categorias={categorias} subcategorias={subcategorias} voltar={voltar} editavel={editavel}
+  return <Ver t={t} categorias={categorias} subcategorias={subcategorias} editavel={editavel}
     aoEditar={() => navigate(`/transacoes/${t.id}/editar`, { replace: true, state: location.state })}
     aoSair={() => navigate(voltarPara, { replace: true })} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────── ver
 
-function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair }: {
-  t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; voltar: React.ReactNode
+function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair }: {
+  t: Transaction; categorias: Category[]; subcategorias: Subcategory[]
   editavel: boolean; aoEditar: () => void; aoSair: () => void
 }) {
   const [excluindo, setExcluindo] = useState(false)
@@ -146,7 +144,6 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
 
   return (
     <div className={styles.pagina}>
-      {voltar}
       {/* Título à esquerda, etiquetas à direita na mesma linha (as ações ficam no pé). */}
       <header className={styles.cabecalho}>
         <h1 className={styles.titulo}>{t.descricao}</h1>
@@ -209,13 +206,12 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
 
 // ──────────────────────────────────────────────────────────────────────────── editar
 
-function Editar({ t, categorias, subcategorias, contas, cartoes, voltar, aoSalvar, aoCancelar }: {
+function Editar({ t, categorias, subcategorias, contas, cartoes, aoSalvar, aoCancelar }: {
   t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; contas: Conta[]; cartoes: CartaoCredito[]
-  voltar: React.ReactNode; aoSalvar: (r?: EdicaoLancamentoResultado) => void; aoCancelar: () => void
+  aoSalvar: (r?: EdicaoLancamentoResultado) => void; aoCancelar: () => void
 }) {
   return (
     <div className={styles.pagina}>
-      {voltar}
       <h1 className={styles.titulo}>Editar transação</h1>
       <FormularioTransacao transacao={t} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
         aoSair={aoCancelar} aoSalvo={aoSalvar} />

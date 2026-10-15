@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
+  ArrowLeft, BarChart3, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Moon, PanelLeftClose, PanelLeftOpen,
   Plus, Receipt, Repeat, Scale, Settings, Sun, Tags, Target, Upload, Users, Eye, EyeOff,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
@@ -34,18 +34,22 @@ const GERENCIAR = [
 ]
 const CHAVE_MENU = "v2:menu"
 
-/** Título do topo pela rota (prefixo mais longo). */
-export function tituloDaRota(pathname: string): string {
+/** Seção da rota (prefixo mais longo): dá o título do topo e a raiz pra "voltar". */
+function secaoDaRota(pathname: string): { para: string; rotulo: string } | undefined {
   const todos = [...PRINCIPAL, ...GERENCIAR, { para: "/configuracoes", rotulo: "Configurações" }]
-  const hit = todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
-  return hit?.rotulo ?? "Pontes"
+  return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
 }
 
 export default function V2Layout() {
   const { usuario, sair } = useAuth()
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
   const [tema, alternarTema] = useTema()
+  // Tela interna da seção (/transacoes/nova, /transacoes/:id…): o topo ganha a seta de voltar antes do título
+  // — sem repetir o nome da seção numa linha a mais dentro da página. Volta pra onde a pessoa veio, senão pra raiz.
+  const secao = secaoDaRota(pathname)
+  const emTelaInterna = !!secao && pathname !== secao.para
+  const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? secao?.para ?? "/dashboard"
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
@@ -114,7 +118,11 @@ export default function V2Layout() {
         <header className={styles.topo}>
           {/* Mesmo ícone do recolher/expandir do computador — no celular abre/fecha a gaveta. */}
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
-          <h1 className={styles.tituloPagina}>{tituloDaRota(pathname)}</h1>
+          {emTelaInterna && (
+            <Botao variante="texto" soIcone aria-label="Voltar" className={styles.voltar} onClick={() => navigate(voltarPara)}
+              icone={<ArrowLeft size={18} strokeWidth={2.25} />} />
+          )}
+          <h1 className={styles.tituloPagina}>{secao?.rotulo ?? "Pontes"}</h1>
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />

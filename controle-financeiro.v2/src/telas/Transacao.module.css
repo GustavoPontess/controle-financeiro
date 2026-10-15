@@ -1,6 +1,4 @@
 .pagina { display: flex; flex-direction: column; gap: 16px; }
-.voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-3); text-decoration: none; }
-.voltar:hover { color: var(--v2-texto); }
 .muted { margin: 0; font-size: var(--v2-fs-md); color: var(--v2-texto-3); }
 
 /* Cabeçalho: título + chips à esquerda, ações à direita */

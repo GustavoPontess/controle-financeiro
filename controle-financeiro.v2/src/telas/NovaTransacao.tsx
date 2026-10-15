@@ -1,8 +1,7 @@
 // Nova transação do v2 — a casca da tela: carrega contas, cartões e categorias e entrega pro
 // FormularioTransacao (o mesmo da edição).
 import { useEffect, useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { getContas } from "../services/contaService"
 import { getCartoes } from "../services/cartaoCreditoService"
 import { getCategories } from "../services/categoryService"
@@ -38,7 +37,6 @@ export default function NovaTransacao() {
 
   return (
     <div className={styles.pagina}>
-      <Link to={voltarPara} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Transações</Link>
       <h1 className={styles.titulo}>Nova transação</h1>
       {erroCarga ? (
         <p className={styles.alerta} role="alert">Não foi possível carregar suas contas e categorias. Recarregue a página.</p>
