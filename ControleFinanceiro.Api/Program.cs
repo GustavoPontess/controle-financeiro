@@ -459,6 +459,13 @@ using (var scope = app.Services.CreateScope())
     if (app.Environment.IsDevelopment() && seedDadosDev)
         await DevDataSeeder.SeedAsync(context);
 
+    // Registros de demonstração do front v2 (conta de exemplo com contas fixas em todas as situações,
+    // segundo cartão, parcelamentos, notificações…) pra ver as telas com dado. Só Development e só com
+    // SEED_DEMO=true no .env local — o CI/E2E não liga, o atlas do Playwright segue igual.
+    var seedDemo = string.Equals(Environment.GetEnvironmentVariable("SEED_DEMO"), "true", StringComparison.OrdinalIgnoreCase);
+    if (app.Environment.IsDevelopment() && seedDemo)
+        await DemoSeeder.SeedAsync(scope.ServiceProvider);
+
     // Seeder pessoal de dogfooding — Data/MeuCenarioSeeder.cs é gitignored (cada
     // dev cria o seu, com dados reais que nunca vão pro Git). Carregado via
     // reflection pra Program.cs compilar igual em qualquer checkout, com ou

@@ -55,7 +55,7 @@ npm run lint
 - **Infrastructure/AppDbContext.cs** — EF Core DbContext com DbSets e configuração de delete behavior
 - **Infrastructure/Identity/** — JWT generation + hash de senha Argon2id (+ pepper; PBKDF2 legado migra no login) + refresh/reset tokens
 - **Infrastructure/Middleware/GlobalExceptionHandlerMiddleware.cs** — captura exceções e mapeia para `ErrorResponseDto { code, message }`
-- **Data/** — seeders: `BancoSeeder` (BCB live API), `CategoriaSeeder`
+- **Data/** — seeders: `BancoSeeder` (BCB live API), `CategoriaSeeder`; `DevDataSeeder` (conta de exemplo `dev@`/`conjuge@` do atlas/E2E; `SEED_DADOS_DEV=false` desliga) e `DemoSeeder` (registros de demonstração do front v2 nessa conta, via services — só com `SEED_DEMO=true` no `.env` local; **toda tela nova do v2 ganha um bloco aqui** com registros em todos os estados, pro Gustavo ver a usabilidade)
 - **Infrastructure/Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`, `PasswordResetEmail`, `PurgaExclusaoExpirada`, `PurgaRegistroAcessoExpirado`)
 
 ### Frontend Structure
