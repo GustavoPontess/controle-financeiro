@@ -12,6 +12,7 @@ import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
+import Selecao from "../componentes/Selecao"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -173,27 +174,24 @@ export default function Transacoes() {
               </button>
               {painel && (
                 <div className={styles.painel} role="dialog" aria-label="Filtros">
-                  <label className={styles.campo}>
+                  <div className={styles.campo}>
                     <span>Tipo de lançamento</span>
-                    <select value={rascunho.natureza} onChange={edita("natureza")}>
-                      {NATUREZAS.map((n) => <option key={n.valor} value={n.valor}>{n.rotulo}</option>)}
-                    </select>
-                  </label>
-                  <label className={styles.campo}>
+                    <Selecao tamanho="sm" ariaLabel="Tipo de lançamento" valor={rascunho.natureza}
+                      onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
+                      opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
+                  </div>
+                  <div className={styles.campo}>
                     <span>Conta</span>
-                    <select value={rascunho.contaId} onChange={edita("contaId")}>
-                      <option value="">Todas as contas</option>
-                      {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
-                  </label>
-                  <label className={styles.campo}>
+                    <Selecao tamanho="sm" ariaLabel="Conta" valor={rascunho.contaId}
+                      onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
+                      opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
+                  </div>
+                  <div className={styles.campo}>
                     <span>Status</span>
-                    <select value={rascunho.status} onChange={edita("status")}>
-                      <option value="">Qualquer status</option>
-                      <option value="1">Efetivado</option>
-                      <option value="0">Previsto</option>
-                    </select>
-                  </label>
+                    <Selecao tamanho="sm" ariaLabel="Status" valor={rascunho.status}
+                      onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
+                      opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
+                  </div>
                   <div className={styles.campo}>
                     <span>Valor</span>
                     <div className={styles.faixa}>

@@ -17,6 +17,7 @@ import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Confirmar from "../componentes/Confirmar"
+import Selecao from "../componentes/Selecao"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { maskMoney, moneyParaCampo, parseMoney, formatMoney } from "../utils/money"
 import { dataLocalISO, mascararHora } from "../utils/dateTime"
@@ -322,32 +323,28 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
                 <span className={styles.fixo}>Crédito</span>
               </div>
             ) : (
-              <label className={styles.campo}>
+              <div className={styles.campo}>
                 <span>Meio de pagamento</span>
-                <select value={meio} onChange={(e) => setMeio(Number(e.target.value))}>
-                  {MEIOS_CONTA.map((m) => <option key={m.valor} value={m.valor}>{m.rotulo}</option>)}
-                </select>
-              </label>
+                <Selecao ariaLabel="Meio de pagamento" valor={String(meio)} onChange={(v) => setMeio(Number(v))}
+                  opcoes={MEIOS_CONTA.map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
+              </div>
             )}
           </div>
 
           <div className={styles.grade2}>
-            <label className={styles.campo}>
+            <div className={styles.campo}>
               <span>Categoria</span>
-              <select value={categoriaId} aria-invalid={!!erros.categoria} data-invalido={erros.categoria ? "true" : undefined}
-                onChange={(e) => { setCategoriaId(e.target.value); setSubcategoriaId(""); limpa("categoria") }}>
-                <option value="">Escolha…</option>
-                {cats.map((c) => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-              </select>
+              <Selecao ariaLabel="Categoria" valor={categoriaId} invalido={!!erros.categoria}
+                onChange={(v) => { setCategoriaId(v); setSubcategoriaId(""); limpa("categoria") }}
+                opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
               {erros.categoria && <small className={styles.erro}>{erros.categoria}</small>}
-            </label>
-            <label className={styles.campo}>
+            </div>
+            <div className={styles.campo}>
               <span>Subcategoria (opcional)</span>
-              <select value={subcategoriaId} disabled={subs.length === 0} onChange={(e) => setSubcategoriaId(e.target.value)}>
-                <option value="">{subs.length === 0 ? "Nenhuma" : "Sem subcategoria"}</option>
-                {subs.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-              </select>
-            </label>
+              <Selecao ariaLabel="Subcategoria" valor={subcategoriaId} desabilitado={subs.length === 0}
+                placeholder={subs.length === 0 ? "Nenhuma" : "Sem subcategoria"} onChange={setSubcategoriaId}
+                opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
+            </div>
           </div>
 
           <label className={styles.campo}>
