@@ -39,5 +39,5 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
-- Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita (Nova transação e Editar são a referência).
+- Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`) — nunca dois formulários parecidos que divergem.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.

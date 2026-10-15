@@ -4,15 +4,3 @@
 .titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .esqueleto { max-width: 680px; }
-
-/* Data: Hoje / Ontem / calendário na mesma linha */
-.dataRapida { display: flex; gap: 6px; }
-.dataRapida > :last-child { flex: 1; min-width: 150px; }
-
-/* Opções: interruptores + os campos que cada um abre */
-.opcoes { gap: 12px; }
-.subOpcoes { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px 46px; }
-
-@media (max-width: 900px) {
-  .subOpcoes { padding-left: 0; }
-}
