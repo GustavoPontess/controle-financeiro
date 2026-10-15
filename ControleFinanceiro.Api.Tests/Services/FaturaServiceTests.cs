@@ -550,6 +550,21 @@ public class FaturaServiceTests
     }
 
     [Fact]
+    public async Task PagarFaturaAsync_DataFutura_LancaArgumentException_ENaoPaga()
+    {
+        var ctx = CreateContext();
+        var usuarioId = Guid.NewGuid();
+        var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
+
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow.AddDays(2) };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
+        Assert.Contains("futura", ex.Message);
+        Assert.Equal(0m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
+        Assert.Equal(0m, await DebitadoDaContaAsync(ctx, conta.Id));
+    }
+
+    [Fact]
     public async Task PagarFaturaAsync_FaturaJaPaga_LancaInvalidOperationException()
     {
         var ctx = CreateContext();
