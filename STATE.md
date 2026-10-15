@@ -49,7 +49,9 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Testes no v2 + v2 na main (2026-10-15):** vitest no v2 (16 testes); #303 (DemoSeeder) mergeado; **#304** (pasta do v2 + job de CI) e **#305** (excluir conta não apaga histórico: recusa + FK Restrict) abertos, CI rodando. Worktrees temporários: `../controle-financeiro-int` (branch do #304) e `../controle-financeiro-fix` (branch do #305) — apagar depois do merge. Depois do #304: o v2 passa a ser desenvolvido a partir da `main` (checkout principal), o worktree `../controle-financeiro-v2` (`feat/front-v2`, com o lab de cartões do v1) aposenta.
 
-**Próxima ação:** mergear #304 e #305 quando verdes; bloco A — Bancos/contas no v2 (com arquivar conta no back). PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**Bancos/contas + encerrar conta (2026-10-15):** #304 (v2 na main) e #305 (excluir conta não apaga histórico) mergeados; o v2 agora vive na `main` do checkout principal (`controle-financeiro.v2/`), o worktree antigo do v2 foi aposentado (`feat/front-v2` fica no remoto com o lab de cartões do v1). **PR #306** (`feat/v2-bancos-contas`): encerrar/reabrir conta no back (transferência ou ajuste do saldo, Idempotency-Key, encerrada sem dinheiro novo, migration `AddEncerradaEmConta`) + telas de Bancos no v2 + bloco no DemoSeeder. 1474 testes back, 24 no v2.
+
+**Próxima ação:** mergear #306 quando verde; continuar o bloco A — Cadastro e Onboarding no v2. PRs #299, #300, #301 e #302 mergeados na `main` (2026-10-15) — nenhum PR aberto. Checkout principal (`E:\VSCode\controle-financeiro`) voltou pra `main`; a API do v2 roda dela. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
