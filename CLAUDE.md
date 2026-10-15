@@ -116,7 +116,7 @@ npm run lint
 
 ## Important Notes
 
-- Delete behavior: `Conta → Transacoes` (cascade), `CartaoCredito → Faturas` (restrict)
+- Delete behavior: `Conta → Transacoes` (**restrict** desde 2026-10-15 — era cascade e apagava o histórico), `CartaoCredito → Faturas` (restrict). Conta só sai sem lançamento (além do saldo inicial) e sem conta fixa usando; cartão só sai sem fatura com restante — regras no `ContaService`/`CartaoCreditoService`
 - User ID é extraído via `User.FindFirstValue(ClaimTypes.NameIdentifier)` e passado pelos serviços para isolamento de dados (multi-tenancy manual em cada query)
 - **API Docs:** Swagger em `http://localhost:5293/swagger` — gerado a partir dos comentários XML dos controllers
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo`. Nunca `_context.Remove()` nessas entidades.

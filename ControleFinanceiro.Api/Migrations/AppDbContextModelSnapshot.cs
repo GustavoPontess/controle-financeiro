@@ -2534,7 +2534,7 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
                         .WithMany("Transacoes")
                         .HasForeignKey("ContaId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Dependente", "Dependente")
                         .WithMany()

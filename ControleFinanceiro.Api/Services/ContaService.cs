@@ -213,6 +213,25 @@ namespace ControleFinanceiro.Api.Services
             if (conta.IsCarteira)
                 throw new InvalidOperationException("A carteira não pode ser deletada.");
 
+            // Conta com histórico não sai: o Conta → Transacoes era cascade, e excluir apagava todos os
+            // lançamentos dela (inclusive os já cancelados), sem trilha — some do saldo, dos relatórios e
+            // da auditoria (P1, achado 2026-09-27). Só a abertura (saldo inicial) não conta como histórico:
+            // nasce com a conta e sai junto. Conta fixa que usa a conta (em qualquer situação) também segura.
+            var temLancamento = await _context.Transacoes.IgnoreQueryFilters()
+                .AnyAsync(t => t.ContaId == id && !t.EhSaldoInicial);
+            if (temLancamento)
+                throw new InvalidOperationException(
+                    "Esta conta tem lançamentos e não pode ser excluída: o histórico dela entra no saldo e nos relatórios.");
+            if (await _context.Recorrentes.AnyAsync(r => r.ContaId == id))
+                throw new InvalidOperationException(
+                    "Uma conta fixa usa esta conta. Troque a conta dela (ou exclua a conta fixa) antes de excluir a conta.");
+
+            var aberturas = await _context.Transacoes.IgnoreQueryFilters().Where(t => t.ContaId == id).ToListAsync();
+            _context.Transacoes.RemoveRange(aberturas);
+            // Cartão que pagava a fatura por esta conta continua — só perde a conta vinculada.
+            var cartoes = await _context.CartoesCredito.Where(c => c.ContaId == id).ToListAsync();
+            foreach (var c in cartoes) c.ContaId = null;
+
             _context.Contas.Remove(conta);
             await _context.SaveChangesAsync();
         }

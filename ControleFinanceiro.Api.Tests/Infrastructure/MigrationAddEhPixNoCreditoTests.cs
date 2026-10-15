@@ -19,13 +19,15 @@ public class MigrationAddEhPixNoCreditoTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_LogoDepoisDeParcelasPagasAntes()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.Equal("20261012195743_AddEhPixNoCredito", ids[^1]); // nada gerado por cima sem querer
-        Assert.Equal("20261012171022_AddParcelasPagasAntes", ids[^2]);
+        // A mais recente agora é a ContaTransacoesRestrict (teste próprio); esta segue na ordem em que nasceu.
+        var i = ids.IndexOf("20261012195743_AddEhPixNoCredito");
+        Assert.True(i > 0);
+        Assert.Equal("20261012171022_AddParcelasPagasAntes", ids[i - 1]);
     }
 
     [Fact]
