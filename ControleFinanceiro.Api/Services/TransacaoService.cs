@@ -217,14 +217,19 @@ namespace ControleFinanceiro.Api.Services
                 query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
             }
 
-            // Ordenação (default: data desc). Dia + hora pra ordem cronológica intradia;
-            // Hora null (sem hora) ordena junto. Empate por Data/Hora desc pra estabilidade.
+            // Ordenação (default: data desc). Dentro do dia: quem tem hora vem antes de quem não tem —
+            // sem hora conta como 00:00 no DESC e como 23:59 no ASC (COALESCE), senão o Postgres põe
+            // NULL primeiro no DESC e o lançamento sem hora pulava pro topo do dia. O empate (mesma
+            // hora, ou os dois sem hora — caso do extrato importado) sai pela ordem de criação, que
+            // preserva a ordem do extrato. Sem isso a ordem dentro do dia era aleatória.
+            var semHoraNoFimDesc = TimeOnly.MinValue;
+            var semHoraNoFimAsc = TimeOnly.MaxValue;
             var ordered = ordenacao switch
             {
-                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora),
-                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
-                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora),
-                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora),
+                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora ?? semHoraNoFimAsc).ThenBy(t => t.CriadoEm),
+                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
+                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
+                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
             };
             var total = await ordered.CountAsync();
             var items = await ordered
