@@ -21,6 +21,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import SeletorData from "../componentes/SeletorData"
 import { maskMoney, parseMoney } from "../utils/money"
 import { diaSeguinte } from "../utils/dateTime"
+import { useAtrasado } from "../utils/useAtrasado"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -45,13 +46,6 @@ const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin ||
 
 const naturezaDe = (t: Transaction): Exclude<Natureza, ""> =>
   t.ehTransferencia ? "transferencia" : t.ehPagamentoFatura ? "fatura" : t.tipo === 2 ? "entrada" : "saida"
-
-/** Espera a pessoa parar de digitar antes de bater no servidor. */
-function useAtrasado<T>(valor: T, ms = 300): T {
-  const [v, setV] = useState(valor)
-  useEffect(() => { const t = setTimeout(() => setV(valor), ms); return () => clearTimeout(t) }, [valor, ms])
-  return v
-}
 
 export default function Transacoes() {
   const [itens, setItens] = useState<Transaction[] | null>(null)

@@ -3,6 +3,9 @@
 .muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .respiro { padding: 8px 24px 20px; }
+/* Barra da lista da fatura: busca à esquerda, tipo à direita (mesma anatomia de Transações/Cartões) */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
+.filtroTipo { flex: 0 0 160px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 
 /* Cabeçalho: carinha + nome à esquerda, etiquetas à direita */
@@ -43,5 +46,6 @@
 }
 @media (max-width: 900px) {
   .grade { grid-template-columns: minmax(0, 1fr); }
+  .toolbar { padding: 14px 16px 4px; }
   .faturaValor { font-size: var(--v2-fs-3xl); }
 }

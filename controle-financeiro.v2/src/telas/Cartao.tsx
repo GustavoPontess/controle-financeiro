@@ -6,13 +6,14 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Banknote, Pencil, Trash2 } from "lucide-react"
 import { deleteCartao, getCartoes } from "../services/cartaoCreditoService"
-import { getFaturaDetalhe, getFaturasByCartao } from "../services/faturaService"
+import { getFaturaDetalhe, getFaturasByCartao, getLancamentosFatura } from "../services/faturaService"
 import { ParcelamentoService } from "../services/ParcelamentoService"
 import { mensagemDeErro } from "../api/cliente"
 import type { CartaoCredito } from "../types/CartaoCredito"
-import type { Fatura, FaturaDetalhe } from "../types/Fatura"
+import type { Fatura, FaturaDetalhe, LancamentoFatura, TipoLancamentoFatura } from "../types/Fatura"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
+import Busca from "../componentes/Busca"
 import BarraProgresso from "../componentes/BarraProgresso"
 import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
@@ -20,6 +21,9 @@ import Etiqueta from "../componentes/Etiqueta"
 import FaceCartao from "../componentes/FaceCartao"
 import { RodapeFormulario } from "../componentes/Formulario"
 import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
+import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
+import Selecao from "../componentes/Selecao"
+import { useAtrasado } from "../utils/useAtrasado"
 import { NOME_BANDEIRA, diaMes, estadoDaFatura, indiceMes, indiceMesDeHoje, mesCurto, montarCiclos, rotuloMesFatura, type Ciclo } from "../dominio/fatura"
 import styles from "./Cartao.module.css"
 
@@ -153,7 +157,6 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
   const navigate = useNavigate()
   const [escolhido, setEscolhido] = useState<string | null>(null)
   const [detalhe, setDetalhe] = useState<FaturaDetalhe | null>(null)
-  const [carregando, setCarregando] = useState(false)
   const faixa = useRef<HTMLDivElement | null>(null)
 
   // Abre no mês de hoje; a faixa rola até ele.
@@ -167,35 +170,9 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
   useEffect(() => {
     if (!ativo || ativo.vazia) { setDetalhe(null); return }
     let vivo = true
-    setCarregando(true)
-    getFaturaDetalhe(cartao.id, ativo.id).then((d) => { if (vivo) setDetalhe(d) }).catch(() => { if (vivo) setDetalhe(null) }).finally(() => { if (vivo) setCarregando(false) })
+    getFaturaDetalhe(cartao.id, ativo.id).then((d) => { if (vivo) setDetalhe(d) }).catch(() => { if (vivo) setDetalhe(null) })
     return () => { vivo = false }
   }, [cartao.id, ativo])
-
-  const itens = useMemo<ItemDoDia[]>(() => {
-    if (!detalhe) return []
-    // `ordem` (criadoEm) desempata dentro do dia; sai antes de ir pra lista.
-    type Item = ItemDoDia & { ordem: string }
-    const compras: Item[] = detalhe.transacoes.map((t) => ({
-      id: t.id, dia: t.data.slice(0, 10), para: `/transacoes/${t.id}`,
-      icone: t.descricao.trim().charAt(0).toUpperCase() || "•", nome: t.descricao, sub: t.categoriaDescricao,
-      etiqueta: t.parcelas && t.parcelas > 1 ? <Etiqueta>{t.numeroParcela}/{t.parcelas}</Etiqueta> : undefined,
-      valor: t.valor, tom: "negativo", ordem: t.criadoEm,
-    }))
-    const parcelas: Item[] = detalhe.parcelas.map((p) => ({
-      id: p.id, dia: p.data.slice(0, 10),
-      icone: p.descricao.trim().charAt(0).toUpperCase() || "•", nome: p.descricao, sub: p.categoriaDescricao,
-      etiqueta: <Etiqueta>{p.numero}/{p.quantidadeTotal}</Etiqueta>, valor: p.valor, tom: "negativo", ordem: p.criadoEm,
-    }))
-    const pagamentos: Item[] = detalhe.pagamentos.map((p) => ({
-      id: p.id, dia: p.data.slice(0, 10), para: `/transacoes/${p.id}`,
-      icone: <Banknote size={16} strokeWidth={2} aria-hidden="true" />, tomIcone: "positivo", nome: "Pagamento", sub: p.meioPagamentoDescricao,
-      valor: p.valor, tom: "positivo", ordem: p.criadoEm,
-    }))
-    return [...compras, ...parcelas, ...pagamentos]
-      .sort((a, b) => b.dia.localeCompare(a.dia) || b.ordem.localeCompare(a.ordem))
-      .map(({ ordem: _ordem, ...item }) => item)
-  }, [detalhe])
 
   if (!ciclos || !ativo) return <Bloco><Esqueleto linhas={4} altura={16} /></Bloco>
   const estado = estadoDaFatura(ativo, hoje)
@@ -245,13 +222,76 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
         )}
       </Bloco>
 
-      {!ativo.vazia && (
-        <Bloco semRespiro>
-          {carregando ? <div className={styles.respiro}><Esqueleto linhas={4} altura={16} /></div>
-            : itens.length === 0 ? <p className={styles.vazio}>Nenhum lançamento nesta fatura.</p>
-            : <ListaPorDia itens={itens} />}
-        </Bloco>
-      )}
+      {!ativo.vazia && <LancamentosFatura cartaoId={cartao.id} faturaId={ativo.id} />}
     </>
+  )
+}
+
+// ─────────────────────────────────────────────────────── lançamentos da fatura
+
+const CHAVE_POR_PAGINA = "v2:porPagina:fatura"
+const porPaginaSalvo = (): number => {
+  try { const n = Number(localStorage.getItem(CHAVE_POR_PAGINA)); return (TAMANHOS as readonly number[]).includes(n) ? n : 25 } catch { return 25 }
+}
+const TIPOS: { valor: "" | TipoLancamentoFatura; rotulo: string }[] = [
+  { valor: "", rotulo: "Tudo" },
+  { valor: "compra", rotulo: "Compras" },
+  { valor: "parcela", rotulo: "Parcelas" },
+  { valor: "pagamento", rotulo: "Pagamentos" },
+]
+
+/** Lançamentos da fatura: busca, tipo e página no servidor (uma fatura pode ter muitos). */
+function LancamentosFatura({ cartaoId, faturaId }: { cartaoId: string; faturaId: string }) {
+  const [busca, setBusca] = useState("")
+  const q = useAtrasado(busca.trim())
+  const [tipo, setTipo] = useState<"" | TipoLancamentoFatura>("")
+  const [pagina, setPagina] = useState(1)
+  const [porPagina, setPorPagina] = useState(porPaginaSalvo)
+  const [itens, setItens] = useState<LancamentoFatura[] | null>(null)
+  const [total, setTotal] = useState(0)
+  const [erro, setErro] = useState(false)
+
+  useEffect(() => { setPagina(1) }, [faturaId, q, tipo])
+  useEffect(() => {
+    let vivo = true
+    setErro(false)
+    getLancamentosFatura(cartaoId, faturaId, { q, tipo, page: pagina, pageSize: porPagina })
+      .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
+      .catch(() => { if (vivo) { setItens([]); setErro(true) } })
+    return () => { vivo = false }
+  }, [cartaoId, faturaId, q, tipo, pagina, porPagina])
+
+  // A ordem (dia, criação) já vem do servidor; a lista só agrupa por dia na ordem recebida.
+  const linhas = useMemo<ItemDoDia[]>(() => (itens ?? []).map((l) => l.tipo === "pagamento" ? {
+    id: l.id, dia: l.data.slice(0, 10), para: `/transacoes/${l.id}`,
+    icone: <Banknote size={16} strokeWidth={2} aria-hidden="true" />, tomIcone: "positivo", nome: "Pagamento", sub: l.meioPagamentoDescricao,
+    valor: l.valor, tom: "positivo",
+  } : {
+    id: l.id, dia: l.data.slice(0, 10), para: l.tipo === "compra" ? `/transacoes/${l.id}` : undefined,
+    icone: l.descricao.trim().charAt(0).toUpperCase() || "•", nome: l.descricao, sub: l.categoriaDescricao,
+    etiqueta: l.tipo === "parcela" ? <Etiqueta>{l.numero}/{l.quantidadeTotal}</Etiqueta> : undefined,
+    valor: l.valor, tom: "negativo",
+  }), [itens])
+
+  const filtrando = !!q || !!tipo
+  return (
+    <Bloco semRespiro>
+      <div className={styles.toolbar}>
+        <Busca valor={busca} onChange={setBusca} placeholder="Buscar na fatura" />
+        <div className={styles.filtroTipo}>
+          <Selecao tamanho="sm" ariaLabel="Tipo de lançamento" valor={tipo} placeholder="Tudo"
+            onChange={(v) => setTipo(v as "" | TipoLancamentoFatura)} opcoes={TIPOS} />
+        </div>
+      </div>
+      {itens === null ? <div className={styles.respiro}><Esqueleto linhas={4} altura={16} /></div>
+        : erro ? <p className={styles.vazio}>Não deu pra carregar os lançamentos.</p>
+        : itens.length === 0 ? <p className={styles.vazio}>{filtrando ? "Nenhum lançamento com esse filtro." : "Nenhum lançamento nesta fatura."}</p>
+        : <ListaPorDia itens={linhas} />}
+      {total > 0 && (
+        <Paginacao total={total} pagina={pagina} porPagina={porPagina} onPagina={setPagina}
+          onPorPagina={(n) => { setPorPagina(n); setPagina(1); try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)) } catch { /* só não lembra */ } }}
+          rotulo="lançamentos" rotuloSingular="lançamento" />
+      )}
+    </Bloco>
   )
 }

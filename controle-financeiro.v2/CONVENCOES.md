@@ -43,6 +43,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário.
 - Limite de caracteres igual ao do back (ex.: descrição 255).
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
+- Busca com espera de digitação: `utils/useAtrasado.ts` (Transações, lançamentos da fatura) — nunca bater no servidor a cada tecla.
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
 - Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Menu lateral: só as seções; **Configurações e Sair ficam no menu da conta** (o bloco avatar + nome no pé é um botão, em todo estado do menu — aberto, trilho e gaveta). Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
