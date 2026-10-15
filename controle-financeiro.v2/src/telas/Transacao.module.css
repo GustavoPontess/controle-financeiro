@@ -4,10 +4,10 @@
 .muted { margin: 0; font-size: var(--v2-fs-md); color: var(--v2-texto-3); }
 
 /* Cabeçalho: título + chips à esquerda, ações à direita */
-.cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.tituloBloco { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 320px; }
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 .titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cabecalho .titulo { flex: 1 1 320px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .erroDialogo { display: block; margin-top: 10px; padding: 8px 12px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); }
 

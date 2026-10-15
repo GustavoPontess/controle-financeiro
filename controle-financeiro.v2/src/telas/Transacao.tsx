@@ -147,15 +147,14 @@ function Ver({ t, categorias, subcategorias, voltar, editavel, aoEditar, aoSair 
   return (
     <div className={styles.pagina}>
       {voltar}
+      {/* Título à esquerda, etiquetas à direita na mesma linha (as ações ficam no pé). */}
       <header className={styles.cabecalho}>
-        <div className={styles.tituloBloco}>
-          <h1 className={styles.titulo}>{t.descricao}</h1>
-          <div className={styles.chips}>
+        <h1 className={styles.titulo}>{t.descricao}</h1>
+        <div className={styles.chips}>
             <Etiqueta tom={neutro ? undefined : t.tipo === 2 ? "positivo" : "negativo"}>{naturezaDe(t)}</Etiqueta>
             {t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : <Etiqueta>Efetivado</Etiqueta>}
             {t.recorrenteOrigemId && <Etiqueta>Conta fixa</Etiqueta>}
             {parcela && <Etiqueta>{parcela}</Etiqueta>}
-          </div>
         </div>
       </header>
 
