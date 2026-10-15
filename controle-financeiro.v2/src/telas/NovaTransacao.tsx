@@ -1,5 +1,7 @@
-// Nova transação do v2 — despesa, receita ou transferência numa tela só. Mesmas regras do app atual:
-// - crédito só em despesa: escolhe o cartão e as parcelas; fora do crédito, escolhe a conta;
+// Nova transação do v2 — despesa, receita ou transferência numa tela só, em duas colunas: os campos à
+// esquerda; à direita a prévia de como o lançamento vai aparecer (pega sinal/conta/parcela errados antes
+// de salvar), as opções (já paguei, conta fixa, parcelado) e os botões. Mesmas regras do app atual:
+// - crédito só em despesa: escolhe o cartão; "Parcelado" abre o número de vezes;
 // - parcelado não guarda hora (cada parcela cai numa fatura) e não anda junto com conta fixa;
 // - conta fixa repete sozinha a partir da data de início; não tem hora nem subcategoria (o back não guarda);
 // - data futura só no cartão, em conta fixa (início) ou como previsão (desligar "Já paguei");
@@ -25,14 +27,16 @@ import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import EntradaValor from "../componentes/EntradaValor"
-import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
+import Etiqueta from "../componentes/Etiqueta"
+import Formulario, { Campos, Lado, LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
+import PreviaLancamento from "../componentes/PreviaLancamento"
 import Interruptor from "../componentes/Interruptor"
 import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
-import SeletorData from "../componentes/SeletorData"
+import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { FREQUENCIAS, MAX_DESCRICAO, MEIO, MEIOS_CONTA, MEIOS_PAGAMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
-import { parseMoney } from "../utils/money"
-import { dataLocalISO, horaLocalHHMM, mascararHora } from "../utils/dateTime"
+import { formatMoney, parseMoney } from "../utils/money"
+import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
 import styles from "./NovaTransacao.module.css"
 
 type Natureza = "despesa" | "receita" | "transferencia"
@@ -63,21 +67,17 @@ export default function NovaTransacao() {
     return () => { vivo = false }
   }, [])
 
-  const voltar = <Link to={voltarPara} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Transações</Link>
-
   return (
     <div className={styles.pagina}>
-      {voltar}
+      <Link to={voltarPara} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Transações</Link>
       <h1 className={styles.titulo}>Nova transação</h1>
       {erroCarga ? (
         <p className={styles.alerta} role="alert">Não foi possível carregar suas contas e categorias. Recarregue a página.</p>
       ) : carregando ? (
-        <Bloco><Esqueleto linhas={6} altura={18} /></Bloco>
+        <Bloco className={styles.esqueleto}><Esqueleto linhas={6} altura={18} /></Bloco>
       ) : (
-        <Bloco>
-          <Form contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
-            aoSair={() => navigate(voltarPara, { replace: true })} />
-        </Bloco>
+        <Form contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+          aoSair={() => navigate(voltarPara, { replace: true })} />
       )}
     </div>
   )
@@ -88,6 +88,7 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
 }) {
   const [natureza, setNatureza] = useState<Natureza>("despesa")
   const [valor, setValor] = useState("")
+  const [descricao, setDescricao] = useState("")
   const [meio, setMeio] = useState<number>(MEIO.pix)
   const [contaId, setContaId] = useState("")
   const [cartaoId, setCartaoId] = useState("")
@@ -102,7 +103,6 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
   const [subcategoriaId, setSubcategoriaId] = useState("")
   const [origemId, setOrigemId] = useState("")
   const [destinoId, setDestinoId] = useState("")
-  const [descricao, setDescricao] = useState("")
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -118,6 +118,7 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
   const parcelado = credito && !ehFixa && parcelas > 1
   const comHora = !ehFixa && !parcelado
   const hoje = dataLocalISO()
+  const ontem = somaDias(hoje, -1)
   // Futuro só no cartão, como início de conta fixa ou como previsão.
   const dataMax = transferencia || (!credito && !ehFixa && efetivado) ? hoje : undefined
 
@@ -125,6 +126,8 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const opcoesConta = contas.map((c) => ({ valor: c.id, rotulo: c.nome }))
+  const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome
+  const nomeCartao = (id: string) => cartoesCredito.find((c) => c.id === id)?.nome
 
   const limpa = (...campos: string[]) => setErros((e) => {
     if (!campos.some((c) => e[c])) return e
@@ -143,22 +146,22 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
     const atual = categorias.find((c) => c.id === categoriaId)
     if (atual && atual.finalidade !== 3 && atual.finalidade !== novoTipo) { setCategoriaId(""); setSubcategoriaId("") }
   }
-
   const trocarMeio = (m: number) => {
     setMeio(m)
     if (m !== MEIO.credito) setParcelas(1)
     limpa("conta", "cartao", "data")
   }
-
   const trocarFixa = (on: boolean) => {
     setFixa(on)
     if (on) { setParcelas(1); setSubcategoriaId("") }
     limpa("data", "hora")
   }
+  const escolherData = (v: string) => { setData(v); limpa("data", "dataFim") }
 
   const validar = () => {
     const e: Record<string, string> = {}
     if (parseMoney(valor) <= 0) e.valor = "Informe um valor"
+    if (!descricao.trim()) e.descricao = "Informe a descrição"
     if (transferencia) {
       if (!origemId) e.origem = "Escolha a conta de origem"
       if (!destinoId) e.destino = "Escolha a conta de destino"
@@ -176,7 +179,6 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
       else if (!horaValida(hora)) e.hora = "Hora inválida (HH:MM)"
     }
     if (ehFixa && dataFim && dataFim < data) e.dataFim = "Precisa ser depois do início"
-    if (!descricao.trim()) e.descricao = "Informe a descrição"
     setErros(e)
     return Object.keys(e).length === 0
   }
@@ -226,78 +228,60 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
     aoSair()
   }
 
+  // ── Prévia: como vai aparecer na lista + o que acontece ao salvar ───────────────────────────────
+  const v = parseMoney(valor)
+  const tom = transferencia ? "neutro" : receita ? "positivo" : "negativo"
+  const origemNome = credito ? nomeCartao(cartaoId) : nomeConta(contaId)
+  const catNome = categorias.find((c) => c.id === categoriaId)?.descricao
+  const meioRotulo = MEIOS_PAGAMENTO.find((m) => m.valor === meio)?.rotulo
+  const detalhe = transferencia
+    ? [nomeConta(origemId), nomeConta(destinoId)].filter(Boolean).join(" → ")
+    : [origemNome, catNome, meioRotulo].filter(Boolean).join(" · ")
+  const quando = (() => {
+    const dia = data === hoje ? "hoje" : data === ontem ? "ontem" : `em ${formatarData(data)}`
+    return comHora && horaValida(hora) ? `${dia} às ${hora}` : dia
+  })()
+  const efeito = (() => {
+    if (transferencia) {
+      const de = nomeConta(origemId), para = nomeConta(destinoId)
+      return de && para ? `Sai de ${de} e entra em ${para} ${quando}.` : null
+    }
+    if (ehFixa) {
+      const freq = FREQUENCIAS.find((f) => f.valor === frequencia)?.rotulo.toLowerCase()
+      const onde = credito ? (origemNome ? ` Cada uma vai pra fatura do ${origemNome}.` : "") : origemNome ? ` ${receita ? "Entra no" : "Sai do"} ${origemNome}.` : ""
+      return `Repete ${freq} a partir de ${formatarData(data)}${dataFim ? ` até ${formatarData(dataFim)}` : ""}.${onde}`
+    }
+    if (credito) {
+      if (!origemNome) return null
+      return parcelado ? `${parcelas}x de ${formatMoney(Math.round((v / parcelas) * 100) / 100)} nas próximas faturas do ${origemNome}.` : `Vai pra fatura do ${origemNome}.`
+    }
+    if (!origemNome) return null
+    return efetivado ? `${receita ? "Entra no" : "Sai do"} ${origemNome} ${quando}.` : `Fica como previsão no ${origemNome} para ${formatarData(data)}.`
+  })()
   const rotuloSalvar = salvando ? "Salvando…" : transferencia ? "Transferir" : ehFixa ? "Criar conta fixa" : "Adicionar"
 
   return (
-    <Formulario onSubmit={() => { void enviar() }}>
-      {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+    <Formulario layout="lateral" onSubmit={() => { void enviar() }}>
+      <Campos>
+        {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-      <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />
+        <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />
 
-      <Campo rotulo="Valor" erro={erros.valor}>
-        <EntradaValor valor={valor} autoFocus onChange={(v) => { setValor(v); limpa("valor") }} />
-      </Campo>
+        <Campo rotulo="Valor" erro={erros.valor}>
+          <EntradaValor valor={valor} tom={tom} autoFocus onChange={(x) => { setValor(x); limpa("valor") }} />
+        </Campo>
+        <Campo rotulo="Descrição" erro={erros.descricao}>
+          <Entrada value={descricao} maxLength={MAX_DESCRICAO} placeholder={transferencia ? "Reserva de emergência" : "Mercado"}
+            onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
+        </Campo>
 
-      {transferencia ? (
-        <LinhaCampos>
-          <Campo rotulo="De" erro={erros.origem}>
-            <Selecao valor={origemId} placeholder="Conta de origem" onChange={(v) => { setOrigemId(v); limpa("origem", "destino") }}
-              opcoes={opcoesConta.filter((o) => o.valor !== destinoId)} />
-          </Campo>
-          <Campo rotulo="Para" erro={erros.destino}>
-            <Selecao valor={destinoId} placeholder="Conta de destino" onChange={(v) => { setDestinoId(v); limpa("destino") }}
-              opcoes={opcoesConta.filter((o) => o.valor !== origemId)} />
-          </Campo>
-        </LinhaCampos>
-      ) : (
-        <LinhaCampos>
-          <Campo rotulo="Meio de pagamento">
-            <Selecao valor={String(meio)} onChange={(v) => trocarMeio(Number(v))}
-              opcoes={(receita ? MEIOS_CONTA : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
-          </Campo>
-          {credito ? (
-            <Campo rotulo="Cartão" erro={erros.cartao}>
-              <Selecao valor={cartaoId} desabilitado={cartoesCredito.length === 0}
-                placeholder={cartoesCredito.length === 0 ? "Nenhum cartão de crédito" : "Escolha o cartão"}
-                onChange={(v) => { setCartaoId(v); limpa("cartao") }}
-                opcoes={cartoesCredito.map((c) => ({ valor: c.id, rotulo: c.ultimosDigitos ? `${c.nome} •••• ${c.ultimosDigitos}` : c.nome }))} />
-            </Campo>
-          ) : (
-            <Campo rotulo="Conta" erro={erros.conta}>
-              <Selecao valor={contaId} desabilitado={contas.length === 0}
-                placeholder={contas.length === 0 ? "Nenhuma conta" : "Escolha a conta"}
-                onChange={(v) => { setContaId(v); limpa("conta") }} opcoes={opcoesConta} />
-            </Campo>
-          )}
-        </LinhaCampos>
-      )}
-
-      {!transferencia && (
-        <div className={styles.opcoes}>
-          <Interruptor ligado={fixa} onChange={trocarFixa}>Conta fixa</Interruptor>
-          {!credito && !fixa && (
-            <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
-          )}
-        </div>
-      )}
-
-      {ehFixa ? (
-        <LinhaCampos>
-          <Campo rotulo="Começa em" erro={erros.data}>
-            <SeletorData valor={data} onChange={(v) => { setData(v); limpa("data", "dataFim") }} />
-          </Campo>
-          <Campo rotulo="Repete">
-            <Selecao valor={String(frequencia)} onChange={(v) => setFrequencia(Number(v))}
-              opcoes={FREQUENCIAS.map((f) => ({ valor: String(f.valor), rotulo: f.rotulo }))} />
-          </Campo>
-          <Campo rotulo="Até (opcional)" erro={erros.dataFim}>
-            <SeletorData valor={dataFim} min={data} limpavel placeholder="Sem fim" onChange={(v) => { setDataFim(v); limpa("dataFim") }} />
-          </Campo>
-        </LinhaCampos>
-      ) : (
-        <LinhaCampos>
-          <Campo rotulo={parcelado ? "Data da compra" : "Data"} erro={erros.data}>
-            <SeletorData valor={data} max={dataMax} onChange={(v) => { setData(v); limpa("data") }} />
+        <LinhaCampos colunas={comHora ? "minmax(0, 2fr) minmax(0, 1fr)" : undefined}>
+          <Campo rotulo={ehFixa ? "Começa em" : parcelado ? "Data da compra" : "Data"} erro={erros.data}>
+            <div className={styles.dataRapida}>
+              <Botao tamanho="lg" ativo={data === hoje} onClick={() => escolherData(hoje)}>Hoje</Botao>
+              <Botao tamanho="lg" ativo={data === ontem} onClick={() => escolherData(ontem)}>Ontem</Botao>
+              <SeletorData valor={data} max={dataMax} onChange={escolherData} />
+            </div>
           </Campo>
           {comHora && (
             <Campo rotulo="Hora" erro={erros.hora}>
@@ -305,41 +289,105 @@ function Form({ contas, cartoes, categorias, subcategorias, aoSair }: {
                 onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
             </Campo>
           )}
-          {credito && (
-            <Campo rotulo="Parcelas">
-              <Selecao valor={String(parcelas)} onChange={(v) => setParcelas(Number(v))}
-                opcoes={PARCELAS.map((n) => ({ valor: String(n), rotulo: n === 1 ? "À vista" : `${n}x` }))} />
-            </Campo>
-          )}
         </LinhaCampos>
-      )}
 
-      {!transferencia && (
-        <LinhaCampos>
-          <Campo rotulo="Categoria" erro={erros.categoria}>
-            <Selecao valor={categoriaId} placeholder="Escolha a categoria"
-              onChange={(v) => { setCategoriaId(v); setSubcategoriaId(""); limpa("categoria") }}
-              opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
-          </Campo>
-          {!ehFixa && (
-            <Campo rotulo="Subcategoria (opcional)">
-              <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
-                placeholder={subs.length === 0 ? "Nenhuma" : "Sem subcategoria"} onChange={setSubcategoriaId}
-                opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
+        {transferencia ? (
+          <LinhaCampos>
+            <Campo rotulo="De" erro={erros.origem}>
+              <Selecao valor={origemId} placeholder="Conta de origem" onChange={(x) => { setOrigemId(x); limpa("origem", "destino") }}
+                opcoes={opcoesConta.filter((o) => o.valor !== destinoId)} />
             </Campo>
-          )}
-        </LinhaCampos>
-      )}
+            <Campo rotulo="Para" erro={erros.destino}>
+              <Selecao valor={destinoId} placeholder="Conta de destino" onChange={(x) => { setDestinoId(x); limpa("destino") }}
+                opcoes={opcoesConta.filter((o) => o.valor !== origemId)} />
+            </Campo>
+          </LinhaCampos>
+        ) : (
+          <>
+            <LinhaCampos>
+              <Campo rotulo={receita ? "Recebido por" : "Pago com"}>
+                <Selecao valor={String(meio)} onChange={(x) => trocarMeio(Number(x))}
+                  opcoes={(receita ? MEIOS_CONTA : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
+              </Campo>
+              {credito ? (
+                <Campo rotulo="Cartão" erro={erros.cartao}>
+                  <Selecao valor={cartaoId} desabilitado={cartoesCredito.length === 0}
+                    placeholder={cartoesCredito.length === 0 ? "Nenhum cartão de crédito" : "Escolha o cartão"}
+                    onChange={(x) => { setCartaoId(x); limpa("cartao") }}
+                    opcoes={cartoesCredito.map((c) => ({ valor: c.id, rotulo: c.ultimosDigitos ? `${c.nome} •••• ${c.ultimosDigitos}` : c.nome }))} />
+                </Campo>
+              ) : (
+                <Campo rotulo="Conta" erro={erros.conta}>
+                  <Selecao valor={contaId} desabilitado={contas.length === 0}
+                    placeholder={contas.length === 0 ? "Nenhuma conta" : "Escolha a conta"}
+                    onChange={(x) => { setContaId(x); limpa("conta") }} opcoes={opcoesConta} />
+                </Campo>
+              )}
+            </LinhaCampos>
+            <LinhaCampos>
+              <Campo rotulo="Categoria" erro={erros.categoria}>
+                <Selecao valor={categoriaId} placeholder="Escolha a categoria"
+                  onChange={(x) => { setCategoriaId(x); setSubcategoriaId(""); limpa("categoria") }}
+                  opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
+              </Campo>
+              {!ehFixa && (
+                <Campo rotulo="Subcategoria">
+                  <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
+                    placeholder={subs.length === 0 ? "Nenhuma" : "Opcional"} onChange={setSubcategoriaId}
+                    opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
+                </Campo>
+              )}
+            </LinhaCampos>
+          </>
+        )}
+      </Campos>
 
-      <Campo rotulo="Descrição" erro={erros.descricao}>
-        <Entrada value={descricao} maxLength={MAX_DESCRICAO} placeholder={transferencia ? "Ex.: Reserva de emergência" : "Ex.: Mercado"}
-          onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
-      </Campo>
+      <Lado>
+        <PreviaLancamento descricao={descricao} valor={v} tom={tom} detalhe={detalhe} efeito={efeito}
+          etiquetas={(!credito && !ehFixa && !transferencia && !efetivado) || ehFixa || parcelado ? (
+            <>
+              {!credito && !ehFixa && !transferencia && !efetivado && <Etiqueta tom="alerta">Previsto</Etiqueta>}
+              {ehFixa && <Etiqueta>Conta fixa</Etiqueta>}
+              {parcelado && <Etiqueta>{parcelas}x</Etiqueta>}
+            </>
+          ) : undefined} />
 
-      <RodapeFormulario>
-        <Botao onClick={aoSair} disabled={salvando}>Cancelar</Botao>
-        <Botao variante="primario" type="submit" disabled={salvando}>{rotuloSalvar}</Botao>
-      </RodapeFormulario>
+        {!transferencia && (
+          <Bloco titulo="Opções" className={styles.opcoes}>
+            {!credito && !ehFixa && (
+              <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
+            )}
+            <Interruptor ligado={fixa} onChange={trocarFixa}>Conta fixa</Interruptor>
+            {ehFixa && (
+              <div className={styles.subOpcoes}>
+                <Campo rotulo="Repete">
+                  <Selecao tamanho="sm" valor={String(frequencia)} onChange={(x) => setFrequencia(Number(x))}
+                    opcoes={FREQUENCIAS.map((f) => ({ valor: String(f.valor), rotulo: f.rotulo }))} />
+                </Campo>
+                <Campo rotulo="Até" erro={erros.dataFim}>
+                  <SeletorData tamanho="sm" valor={dataFim} min={data} limpavel placeholder="Sem fim" onChange={(x) => { setDataFim(x); limpa("dataFim") }} />
+                </Campo>
+              </div>
+            )}
+            {credito && !ehFixa && (
+              <Interruptor ligado={parcelas > 1} onChange={(on) => setParcelas(on ? 2 : 1)}>Parcelado</Interruptor>
+            )}
+            {parcelado && (
+              <div className={styles.subOpcoes}>
+                <Campo rotulo="Vezes">
+                  <Selecao tamanho="sm" valor={String(parcelas)} onChange={(x) => setParcelas(Number(x))}
+                    opcoes={PARCELAS.filter((n) => n > 1).map((n) => ({ valor: String(n), rotulo: `${n}x de ${formatMoney(Math.round((v / n) * 100) / 100)}` }))} />
+                </Campo>
+              </div>
+            )}
+          </Bloco>
+        )}
+
+        <RodapeFormulario>
+          <Botao onClick={aoSair} disabled={salvando}>Cancelar</Botao>
+          <Botao variante="primario" type="submit" disabled={salvando}>{rotuloSalvar}</Botao>
+        </RodapeFormulario>
+      </Lado>
     </Formulario>
   )
 }

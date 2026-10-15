@@ -2,7 +2,18 @@
 .linha { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; }
 .rodape { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 
+/* Layout lateral: campos | prévia + opções + botões. Os botões grudam no pé da coluna, alinhados com o
+   fim do cartão dos campos. Ocupa a largura toda da página (encosta na mesma linha dos botões do topo). */
+.lateral { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: stretch; }
+.lateral .campos { gap: 16px; }
+.lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.lado > .rodape { margin-top: auto; padding-top: 0; }
+
+@media (max-width: 1100px) {
+  .lateral { grid-template-columns: minmax(0, 1fr) 280px; }
+}
 @media (max-width: 900px) {
-  .linha { grid-auto-flow: row; }
+  .linha { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr) !important; }
   .rodape > * { flex: 1; }
+  .lateral { grid-template-columns: minmax(0, 1fr); }
 }

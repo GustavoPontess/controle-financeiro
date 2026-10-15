@@ -4,6 +4,9 @@
 .moldura em { font-style: normal; font-size: var(--v2-fs-xl); font-weight: 600; color: var(--v2-texto-3); }
 .moldura input { flex: 1; min-width: 0; width: 100%; height: auto; padding: 0; border: 0; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; outline: none; }
 .moldura input::placeholder { color: var(--v2-texto-3); }
+.moldura[data-tom="positivo"] input { color: var(--v2-positivo); }
+.moldura[data-tom="negativo"] input { color: var(--v2-negativo); }
+.moldura[data-tom="neutro"] input { color: var(--v2-texto-2); }
 
 @media (max-width: 900px) {
   .moldura input { font-size: var(--v2-fs-3xl); }

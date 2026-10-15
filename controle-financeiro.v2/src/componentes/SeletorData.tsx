@@ -7,7 +7,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, t
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 import { useCampo } from "./campoContexto"
 import Botao from "./Botao"
-import { dataLocalISO } from "../utils/dateTime"
+import { dataLocalISO, somaDias } from "../utils/dateTime"
 import g from "./gatilho.module.css"
 import styles from "./SeletorData.module.css"
 
@@ -19,7 +19,6 @@ const fmtDiaLongo = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "nu
 
 /** "YYYY-MM-DD" → Date local ao meio-dia (meio-dia: mudança de horário nunca empurra pro dia vizinho). */
 const deISO = (iso: string) => { const [a, m, d] = iso.split("-").map(Number); return new Date(a, m - 1, d, 12) }
-const somaDias = (iso: string, n: number) => { const d = deISO(iso); d.setDate(d.getDate() + n); return dataLocalISO(d) }
 const somaMeses = (iso: string, n: number) => {
   const d = deISO(iso)
   const dia = d.getDate()

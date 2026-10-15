@@ -23,12 +23,13 @@ import Campo, { ValorFixo } from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
-import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
+import Formulario, { Campos, Lado, LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
+import PreviaLancamento from "../componentes/PreviaLancamento"
 import Segmentos from "../componentes/Segmentos"
-import SeletorData from "../componentes/SeletorData"
+import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { moneyParaCampo, parseMoney, formatMoney } from "../utils/money"
-import { dataLocalISO, mascararHora } from "../utils/dateTime"
+import { dataLocalISO, mascararHora, somaDias } from "../utils/dateTime"
 import { MAX_DESCRICAO, MEIOS_CONTA, TIPO, horaValida } from "../dominio/transacao"
 import styles from "./Transacao.module.css"
 
@@ -266,25 +267,47 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
     aoSalvar()
   }
 
+  // Prévia: como vai ficar na lista depois de salvar.
+  const v = parseMoney(valor)
+  const receita = (noCartao ? t.tipo : tipo) === TIPO.receita
+  const tom = receita ? "positivo" : "negativo"
+  const origemNome = t.cartaoCreditoNome ?? t.contaNome
+  const catNome = categorias.find((c) => c.id === categoriaId)?.descricao
+  const meioRotulo = noCartao ? "Crédito" : MEIOS_CONTA.find((m) => m.valor === meio)?.rotulo
+  const detalhe = [origemNome, catNome, meioRotulo].filter(Boolean).join(" · ")
+  const hoje = dataLocalISO()
+  const quando = (() => {
+    if (!data) return ""
+    const dia = data === hoje ? "hoje" : data === somaDias(hoje, -1) ? "ontem" : `em ${formatarData(data)}`
+    return hora && horaValida(hora) ? `${dia} às ${hora}` : dia
+  })()
+  const efeito = !origemNome ? null
+    : noCartao ? `Na fatura do ${origemNome}.`
+    : t.statusTransacao === 0 ? `Previsto no ${origemNome}${data ? ` para ${formatarData(data)}` : ""}.`
+    : `${receita ? "Entra no" : "Sai do"} ${origemNome} ${quando}.`
+
   return (
     <div className={styles.pagina}>
       {voltar}
       <h1 className={styles.titulo}>Editar transação</h1>
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-      <Bloco>
-        <Formulario onSubmit={() => { void enviar() }}>
+      <Formulario layout="lateral" onSubmit={() => { void enviar() }}>
+        <Campos>
           {!noCartao && (
-            <Segmentos ariaLabel="Tipo" valor={String(tipo)} onChange={(v) => trocarTipo(Number(v))} opcoes={TIPOS} />
+            <Segmentos ariaLabel="Tipo" valor={String(tipo)} onChange={(x) => trocarTipo(Number(x))} opcoes={TIPOS} />
           )}
 
           <Campo rotulo="Valor" erro={erros.valor}>
-            <EntradaValor valor={valor} onChange={(v) => { setValor(v); limpa("valor") }} />
+            <EntradaValor valor={valor} tom={tom} onChange={(x) => { setValor(x); limpa("valor") }} />
+          </Campo>
+          <Campo rotulo="Descrição" erro={erros.descricao}>
+            <Entrada value={descricao} maxLength={MAX_DESCRICAO} onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
           </Campo>
 
           <LinhaCampos>
             <Campo rotulo="Data" erro={erros.data}>
-              <SeletorData valor={data} max={dataMax} onChange={(v) => { setData(v); limpa("data") }} />
+              <SeletorData valor={data} max={dataMax} onChange={(x) => { setData(x); limpa("data") }} />
             </Campo>
             <Campo rotulo={`Hora${horaOpcional ? " (opcional)" : ""}`} erro={erros.hora}>
               <Entrada inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora}
@@ -297,10 +320,10 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
               <ValorFixo title="Conta e cartão não mudam na edição">{t.cartaoCreditoNome ?? t.contaNome ?? "—"}</ValorFixo>
             </Campo>
             {noCartao ? (
-              <Campo rotulo="Meio de pagamento" estatico><ValorFixo>Crédito</ValorFixo></Campo>
+              <Campo rotulo="Pago com" estatico><ValorFixo>Crédito</ValorFixo></Campo>
             ) : (
-              <Campo rotulo="Meio de pagamento">
-                <Selecao valor={String(meio)} onChange={(v) => setMeio(Number(v))}
+              <Campo rotulo={receita ? "Recebido por" : "Pago com"}>
+                <Selecao valor={String(meio)} onChange={(x) => setMeio(Number(x))}
                   opcoes={MEIOS_CONTA.map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
               </Campo>
             )}
@@ -309,26 +332,26 @@ function Editar({ t, categorias, subcategorias, voltar, aoSalvar, aoCancelar }: 
           <LinhaCampos>
             <Campo rotulo="Categoria" erro={erros.categoria}>
               <Selecao valor={categoriaId}
-                onChange={(v) => { setCategoriaId(v); setSubcategoriaId(""); limpa("categoria") }}
+                onChange={(x) => { setCategoriaId(x); setSubcategoriaId(""); limpa("categoria") }}
                 opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
             </Campo>
-            <Campo rotulo="Subcategoria (opcional)">
+            <Campo rotulo="Subcategoria">
               <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
-                placeholder={subs.length === 0 ? "Nenhuma" : "Sem subcategoria"} onChange={setSubcategoriaId}
+                placeholder={subs.length === 0 ? "Nenhuma" : "Opcional"} onChange={setSubcategoriaId}
                 opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
             </Campo>
           </LinhaCampos>
+        </Campos>
 
-          <Campo rotulo="Descrição" erro={erros.descricao}>
-            <Entrada value={descricao} maxLength={MAX_DESCRICAO} onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
-          </Campo>
-
+        <Lado>
+          <PreviaLancamento descricao={descricao} valor={v} tom={tom} detalhe={detalhe} efeito={efeito}
+            etiquetas={t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : undefined} />
           <RodapeFormulario>
             <Botao onClick={aoCancelar} disabled={salvando}>Cancelar</Botao>
             <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</Botao>
           </RodapeFormulario>
-        </Formulario>
-      </Bloco>
+        </Lado>
+      </Formulario>
     </div>
   )
 }

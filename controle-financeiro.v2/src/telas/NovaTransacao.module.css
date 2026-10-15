@@ -1,6 +1,18 @@
-.pagina { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.pagina { display: flex; flex-direction: column; gap: 16px; }
 .voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-3); text-decoration: none; }
 .voltar:hover { color: var(--v2-texto); }
 .titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
-.opcoes { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.esqueleto { max-width: 680px; }
+
+/* Data: Hoje / Ontem / calendário na mesma linha */
+.dataRapida { display: flex; gap: 6px; }
+.dataRapida > :last-child { flex: 1; min-width: 150px; }
+
+/* Opções: interruptores + os campos que cada um abre */
+.opcoes { gap: 12px; }
+.subOpcoes { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px 46px; }
+
+@media (max-width: 900px) {
+  .subOpcoes { padding-left: 0; }
+}

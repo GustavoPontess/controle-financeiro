@@ -1,4 +1,4 @@
-.pagina { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.pagina { display: flex; flex-direction: column; gap: 16px; }
 .voltar { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-3); text-decoration: none; }
 .voltar:hover { color: var(--v2-texto); }
 .muted { margin: 0; font-size: var(--v2-fs-md); color: var(--v2-texto-3); }
@@ -17,7 +17,7 @@
 .valor[data-tom="positivo"] { color: var(--v2-positivo); }
 .valor[data-tom="negativo"] { color: var(--v2-negativo); }
 .valor[data-tom="neutro"] { color: var(--v2-texto); }
-.dados { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 8px 0 0; padding-top: 18px; border-top: 1px solid var(--v2-linha); }
+.dados { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 8px 0 0; padding-top: 18px; border-top: 1px solid var(--v2-linha); }
 .dado { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .dado dt { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
 .dado dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; }
@@ -26,6 +26,6 @@
 @media (max-width: 900px) {
   .acoes { width: 100%; }
   .acao { flex: 1; }
-  .dados { grid-template-columns: minmax(0, 1fr); }
+  .dados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .valor { font-size: var(--v2-fs-3xl); }
 }

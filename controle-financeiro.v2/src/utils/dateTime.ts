@@ -49,6 +49,12 @@ export function isoParaHoraHHMM(iso: string): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`
 }
 
+// "YYYY-MM-DD" + n dias (meio-dia local: mudança de horário nunca empurra pro dia vizinho).
+export function somaDias(iso: string, n: number): string {
+  const [a, m, d] = iso.split("-").map(Number)
+  return dataLocalISO(new Date(a, m - 1, d + n, 12))
+}
+
 // Dia seguinte de "YYYY-MM-DD" (pra filtro "até" inclusivo: o back trata `to` como exclusivo, Data < to).
 export function diaSeguinte(iso: string): string {
   const [a, m, d] = iso.split("-").map(Number)
