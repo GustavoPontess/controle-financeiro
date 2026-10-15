@@ -20,7 +20,7 @@
 .busca { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px; background: var(--v2-superficie-2); color: var(--v2-texto-3); }
 /* .painel .busca input: vence o `.campo input` das telas (a seleção mora dentro de .campo). */
 .painel .busca input { flex: 1; min-width: 0; width: auto; height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; outline: none; }
-.lista { list-style: none; margin: 0; padding: 0; max-height: 264px; overflow-y: auto; outline: none; display: flex; flex-direction: column; gap: 1px; scrollbar-width: thin; scrollbar-color: var(--v2-linha-forte) transparent; }
+.lista { list-style: none; margin: 0; padding: 0; max-height: 264px; overflow-y: auto; outline: none; display: flex; flex-direction: column; gap: 1px; }
 .opcao { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto); cursor: pointer; }
 .opcao[data-ativo="true"] { background: var(--v2-superficie-2); }
 .opcao[aria-selected="true"] { font-weight: 600; }

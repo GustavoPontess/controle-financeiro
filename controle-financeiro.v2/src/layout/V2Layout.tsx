@@ -64,7 +64,7 @@ export default function V2Layout() {
   )
 
   return (
-    <div className={`v2 ${styles.raiz}`} data-tema={tema} data-menu={recolhido ? "trilho" : undefined}>
+    <div className={`v2 ${styles.raiz}`} data-menu={recolhido ? "trilho" : undefined}>
       {menuAberto && <button type="button" className={styles.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
       <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
         <div className={styles.marca}>

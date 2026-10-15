@@ -9,7 +9,6 @@ import Logo from "../componentes/Logo"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { useTema } from "../layout/useTema"
 import { APP_ATUAL } from "../config"
 import styles from "./Entrar.module.css"
 
@@ -24,7 +23,6 @@ const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 export default function Entrar() {
   const { entrar, verificarMfa, reativar, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
-  const [tema] = useTema()
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -135,7 +133,7 @@ export default function Entrar() {
   const titulo = passo === "exclusao" ? "Reativar conta" : passo === "mfa" ? "Verificação em duas etapas" : passo === "esqueci" ? "Recuperar senha" : passo === "escolher" ? "Escolha sua conta" : "Bem-vindo de volta"
 
   return (
-    <div className={`v2 ${styles.raiz}`} data-tema={tema}>
+    <div className={`v2 ${styles.raiz}`}>
       <aside className={styles.palco}>
         <div className={styles.marca}><Logo size={28} /></div>
         <div className={styles.palcoMeio}>

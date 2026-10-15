@@ -14,6 +14,11 @@ function inicial(): Tema {
 
 export function useTema(): [Tema, () => void] {
   const [tema, setTema] = useState<Tema>(inicial)
-  useEffect(() => { try { localStorage.setItem(CHAVE, tema) } catch { /* ignore */ } }, [tema])
+  // O tema vale pro documento inteiro (tokens no :root): <html data-tema>. O index.html já aplica antes
+  // do 1º desenho; aqui mantém em dia ao alternar.
+  useEffect(() => {
+    document.documentElement.dataset.tema = tema
+    try { localStorage.setItem(CHAVE, tema) } catch { /* ignore */ }
+  }, [tema])
   return [tema, () => setTema((t) => (t === "claro" ? "escuro" : "claro"))]
 }
