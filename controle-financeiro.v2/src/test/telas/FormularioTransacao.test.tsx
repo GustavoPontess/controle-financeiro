@@ -36,22 +36,10 @@ describe("FormularioTransacao", () => {
     expect(screen.queryByText("Informe a descrição")).not.toBeInTheDocument()
   })
 
-  it("conta fixa não é mais interruptor: o botão leva o que já foi preenchido", async () => {
-    const aoVirarContaFixa = vi.fn()
-    render(<FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]}
-      aoSair={vi.fn()} aoSalvo={vi.fn()} aoVirarContaFixa={aoVirarContaFixa} />)
+  it("conta fixa não entra aqui: sem interruptor nem atalho (tem formulário próprio)", () => {
+    renderizar()
     expect(screen.queryByRole("switch", { name: "Conta fixa" })).not.toBeInTheDocument()
-    await userEvent.type(screen.getByPlaceholderText("Mercado"), "Academia")
-    await userEvent.click(screen.getByRole("button", { name: "Transformar em conta fixa" }))
-    expect(aoVirarContaFixa).toHaveBeenCalledWith(expect.objectContaining({ tipo: 1, descricao: "Academia", meio: 4 }))
-    expect(createTransaction).not.toHaveBeenCalled()
-  })
-
-  it("parcela e ocorrência de conta fixa não oferecem virar conta fixa", () => {
-    render(<FormularioTransacao transacao={{ id: "t1", descricao: "Luz", valor: 90, tipo: 1, categoriaId: "cat1", contaId: "k2",
-      recorrenteOrigemId: "r1", statusTransacao: 0, data: "2026-10-10" } as never}
-      contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} aoVirarContaFixa={vi.fn()} />)
-    expect(screen.queryByRole("button", { name: "Transformar em conta fixa" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /conta fixa/i })).not.toBeInTheDocument()
   })
 
   it("receita não oferece débito automático nem crédito", async () => {

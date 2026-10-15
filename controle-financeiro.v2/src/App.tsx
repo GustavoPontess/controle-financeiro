@@ -59,7 +59,6 @@ export default function App() {
         <Route path="/transacoes/nova" element={<NovaTransacao />} />
         <Route path="/transacoes/:id" element={<Transacao />} />
         <Route path="/transacoes/:id/editar" element={<Transacao />} />
-        <Route path="/transacoes/:id/conta-fixa" element={<NovaContaFixa deTransacao />} />
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/contas-fixas" element={<ContasFixas />} />
         <Route path="/contas-fixas/nova" element={<NovaContaFixa />} />

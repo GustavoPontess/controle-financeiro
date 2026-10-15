@@ -3,12 +3,10 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn(async () => ({ id: "r-nova" })), updateRecorrente: vi.fn(async () => {}) }))
-vi.mock("../../services/transactionService", () => ({ updateTransaction: vi.fn(async () => ({ tipo: "contaFixa", id: "r-da-transacao" })) }))
 import { createRecorrente, updateRecorrente } from "../../services/recorrenteService"
-import { updateTransaction } from "../../services/transactionService"
 import FormularioContaFixa from "../../telas/FormularioContaFixa"
 import { descreverRegra, limitesDoInicio } from "../../dominio/contaFixa"
-import { dataLocalISO, somaDias } from "../../utils/dateTime"
+import { dataLocalISO } from "../../utils/dateTime"
 
 const contas = [
   { id: "k1", nome: "Carteira", tipo: 4, tipoDescricao: "", saldoAtual: 0, isCarteira: true },
@@ -19,6 +17,11 @@ const categorias = [
   { id: "cat1", descricao: "Moradia", finalidade: 1, isPadrao: true },
   { id: "cat2", descricao: "Salário", finalidade: 2, isPadrao: true },
 ]
+const regra = (r: Record<string, unknown>) => ({
+  id: "r1", descricao: "Aluguel", valor: 2000, tipo: 1, tipoDescricao: "", categoriaId: "cat1", contaId: "k2",
+  meioPagamento: 6, frequencia: 2, frequenciaDescricao: "", dia: 10, dataInicio: "2026-05-10T00:00:00",
+  ativo: true, situacao: "ativa", ...r,
+}) as never
 const renderizar = (props: Partial<Parameters<typeof FormularioContaFixa>[0]> = {}) => {
   const aoSalvo = vi.fn()
   render(<FormularioContaFixa contas={contas as never} cartoes={cartoes as never} categorias={categorias as never} aoSair={vi.fn()} aoSalvo={aoSalvo} {...props} />)
@@ -28,8 +31,12 @@ const escolher = async (campo: string, opcao: string) => {
   await userEvent.click(screen.getByRole("combobox", { name: campo }))
   await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: opcao }))
 }
-// Datas relativas a hoje: criar só aceita começo entre 12 meses atrás e 5 anos à frente.
-const EM_30_DIAS = somaDias(dataLocalISO(), 30)
+const preencher = async (valor: string, descricao: string) => {
+  await userEvent.type(screen.getByLabelText("Valor"), valor)
+  await userEvent.type(screen.getByPlaceholderText("Aluguel"), descricao)
+}
+// A primeira cobrança começa hoje (dentro do limite de criar: 12 meses atrás a 5 anos à frente).
+const HOJE = dataLocalISO()
 const br = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 const erroDoCampo = (texto: string) => screen.getByText(texto, { selector: "small > span" })
 
@@ -37,7 +44,6 @@ describe("FormularioContaFixa", () => {
   beforeEach(() => {
     vi.mocked(createRecorrente).mockClear()
     vi.mocked(updateRecorrente).mockClear()
-    vi.mocked(updateTransaction).mockClear()
   })
 
   it("submit vazio bloqueia e mostra o erro em cada campo, inclusive como paga", async () => {
@@ -59,23 +65,24 @@ describe("FormularioContaFixa", () => {
   })
 
   it("débito automático numa conta: manda o meio e a regra", async () => {
-    const { aoSalvo } = renderizar({ inicial: { data: EM_30_DIAS } })
-    await userEvent.type(screen.getByLabelText("Valor"), "15000")
-    await userEvent.type(screen.getByPlaceholderText("Aluguel"), "Internet")
+    const { aoSalvo } = renderizar()
+    await preencher("15000", "Internet")
     await escolher("Como paga", "Débito automático")
     await escolher("Sai da conta", "Nubank")
     await escolher("Categoria", "Moradia")
-    expect(screen.getByText(`Todo dia ${Number(EM_30_DIAS.slice(8, 10))}, a partir de ${br(EM_30_DIAS)}. Sai do Nubank.`)).toBeInTheDocument()
+    expect(screen.getByText(`Todo dia ${Number(HOJE.slice(8, 10))}, a partir de ${br(HOJE)}. Sai do Nubank.`)).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "Criar conta fixa" }))
     expect(createRecorrente).toHaveBeenCalledWith(expect.objectContaining({
       descricao: "Internet", valor: 150, tipo: 1, categoriaId: "cat1", contaId: "k2", cartaoCreditoId: undefined,
-      meioPagamento: 7, frequencia: 2, dia: Number(EM_30_DIAS.slice(8, 10)), dataInicio: EM_30_DIAS, dataFim: undefined,
+      meioPagamento: 7, frequencia: 2, dia: Number(HOJE.slice(8, 10)), dataInicio: HOJE, dataFim: undefined,
     }), expect.any(String))
     expect(aoSalvo).toHaveBeenCalledWith("r-nova")
   })
 
   it("cartão de crédito troca a conta pelo cartão e não manda meio (o servidor grava Crédito)", async () => {
-    renderizar({ inicial: { data: EM_30_DIAS, valor: "55,90", descricao: "Streaming", categoriaId: "cat1" } })
+    renderizar()
+    await preencher("5590", "Streaming")
+    await escolher("Categoria", "Moradia")
     await escolher("Como paga", "Cartão de crédito")
     expect(screen.queryByRole("combobox", { name: "Sai da conta" })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "Criar conta fixa" }))
@@ -94,63 +101,40 @@ describe("FormularioContaFixa", () => {
   })
 
   it("'Até' antes do começo bloqueia", async () => {
-    renderizar({ recorrente: {
-      id: "r1", descricao: "Aluguel", valor: 2000, tipo: 1, tipoDescricao: "", categoriaId: "cat1", contaId: "k2",
-      meioPagamento: 6, frequencia: 2, frequenciaDescricao: "", dia: 10, dataInicio: "2026-05-10T00:00:00", dataFim: "2026-03-01T00:00:00",
-      ativo: true, situacao: "ativa",
-    } as never })
+    renderizar({ recorrente: regra({ dataFim: "2026-03-01T00:00:00" }) })
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
     expect(screen.getByText("Precisa ser depois do começo")).toBeInTheDocument()
     expect(updateRecorrente).not.toHaveBeenCalled()
   })
 
   it("editar a regra: vem preenchida (Boleto) e salva no PUT da conta fixa", async () => {
-    const { aoSalvo } = renderizar({ recorrente: {
-      id: "r1", descricao: "Aluguel", valor: 2000, tipo: 1, tipoDescricao: "", categoriaId: "cat1", contaId: "k2",
-      meioPagamento: 6, frequencia: 2, frequenciaDescricao: "", dia: 10, dataInicio: "2025-01-10T00:00:00",
-      ativo: true, situacao: "ativa",
-    } as never })
-    expect(screen.getByRole("combobox", { name: "Como paga" })).toHaveTextContent("Boleto")
     // Começo há mais de 12 meses: na edição continua valendo.
+    const { aoSalvo } = renderizar({ recorrente: regra({ dataInicio: "2025-01-10T00:00:00" }) })
+    expect(screen.getByRole("combobox", { name: "Como paga" })).toHaveTextContent("Boleto")
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
     expect(updateRecorrente).toHaveBeenCalledWith("r1", expect.objectContaining({ meioPagamento: 6, dataInicio: "2025-01-10", contaId: "k2" }))
     expect(aoSalvo).toHaveBeenCalledWith("r1")
   })
 
   it("conta fixa antiga sem meio: pede pra escolher", async () => {
-    renderizar({ recorrente: {
-      id: "r2", descricao: "Água", valor: 90, tipo: 1, tipoDescricao: "", categoriaId: "cat1", contaId: "k2",
-      meioPagamento: null, frequencia: 2, frequenciaDescricao: "", dia: 5, dataInicio: "2026-09-05T00:00:00",
-      ativo: true, situacao: "ativa",
-    } as never })
+    renderizar({ recorrente: regra({ meioPagamento: null }) })
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
     expect(erroDoCampo("Escolha como paga")).toBeInTheDocument()
     expect(updateRecorrente).not.toHaveBeenCalled()
   })
 
-  it("transformar um lançamento: usa a conversão do servidor (PUT da transação com contaFixa)", async () => {
-    const { aoSalvo } = renderizar({ transacao: {
-      id: "t1", descricao: "Academia", valor: 120, tipo: 1, categoriaId: "cat1", contaId: "k2", meioPagamento: 4,
-      statusTransacao: 1, data: "2026-10-03", hora: "07:30:00",
-    } as never })
-    expect(screen.getByRole("combobox", { name: "Como paga" })).toHaveTextContent("Pix")
-    await userEvent.click(screen.getByRole("button", { name: "Transformar em conta fixa" }))
-    expect(updateTransaction).toHaveBeenCalledWith("t1", expect.objectContaining({
-      descricao: "Academia", valor: 120, contaId: "k2", cartaoCreditoId: null, meioPagamento: 4, data: "2026-10-03",
-      hora: null, parcelas: null, transferencia: null, contaFixa: { frequencia: 2, dataFim: null },
-    }), expect.any(String))
-    expect(createRecorrente).not.toHaveBeenCalled()
-    expect(aoSalvo).toHaveBeenCalledWith("r-da-transacao")
-  })
-
-  it("meio que veio de fora e não serve pro tipo começa vazio (receita em débito)", () => {
-    renderizar({ inicial: { tipo: 2, meio: 2 } })
+  it("meio gravado que não serve pro tipo começa vazio (receita em débito)", () => {
+    renderizar({ recorrente: regra({ tipo: 2, categoriaId: "cat2", meioPagamento: 2 }) })
     expect(screen.getByRole("combobox", { name: "Como recebe" })).toHaveTextContent("Escolha")
   })
 
   it("erro do servidor aparece no topo e libera o botão", async () => {
     vi.mocked(createRecorrente).mockRejectedValueOnce({ response: { status: 400, data: { message: "Data de início fora do período permitido." } } })
-    renderizar({ inicial: { data: EM_30_DIAS, valor: "10,00", descricao: "Teste", meio: 6, contaId: "k2", categoriaId: "cat1" } })
+    renderizar()
+    await preencher("1000", "Teste")
+    await escolher("Como paga", "Boleto")
+    await escolher("Sai da conta", "Nubank")
+    await escolher("Categoria", "Moradia")
     await userEvent.click(screen.getByRole("button", { name: "Criar conta fixa" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("Data de início fora do período permitido.")
     expect(screen.getByRole("button", { name: "Criar conta fixa" })).toBeEnabled()

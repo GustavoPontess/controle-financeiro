@@ -4,14 +4,12 @@
 // - parcelado não guarda hora (cada parcela cai numa fatura);
 // - data futura só no cartão ou como previsão (desligar "Já paguei");
 // - transferência: entre duas contas diferentes, nunca no futuro;
-// - conta fixa tem formulário próprio (FormularioContaFixa): aqui só o botão "Transformar em conta fixa", que
-//   leva o que já foi preenchido pra lá (na edição, o servidor troca o lançamento pela conta fixa).
+// - conta fixa tem formulário próprio (FormularioContaFixa), criada em Contas fixas; aqui não entra.
 // Editar é o MESMO formulário (Gustavo: "posso ter colocado tudo e errado o tipo"): um PUT só, com tudo.
 // O servidor muda conta/cartão/status no lugar e, quando vira transferência / parcelado, troca o
 // registro numa transação só do banco (tudo ou nada). Idempotency-Key em criar e editar: reenviar não repete.
 // Lançamento sem hora pode continuar sem hora (PR #299).
 import { useMemo, useState } from "react"
-import { Repeat } from "lucide-react"
 import { createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
 import { mensagemDeErro } from "../api/cliente"
@@ -33,7 +31,6 @@ import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
-import type { RascunhoContaFixa } from "./FormularioContaFixa"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
 import styles from "./FormularioTransacao.module.css"
@@ -46,7 +43,7 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
 ]
 const centavos = (n: number) => Math.round(n * 100) / 100
 
-export default function FormularioTransacao({ transacao, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo, aoVirarContaFixa }: {
+export default function FormularioTransacao({ transacao, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo }: {
   /** Com transação = editar; sem = nova. */
   transacao?: Transaction
   contas?: Conta[]
@@ -56,8 +53,6 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   aoSair: () => void
   /** Na edição recebe o resultado: se virou outro registro, a tela do id antigo não existe mais. */
   aoSalvo: (resultado?: EdicaoLancamentoResultado) => void
-  /** "Transformar em conta fixa": recebe o que já foi preenchido e abre o formulário da conta fixa. */
-  aoVirarContaFixa?: (rascunho: RascunhoContaFixa) => void
 }) {
   const t = transacao ?? null
   const editando = !!t
@@ -229,10 +224,6 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   })()
   const previsto = !credito && !transferencia && !efetivado
   const rotuloSalvar = salvando ? "Salvando…" : editando ? "Salvar" : transferencia ? "Transferir" : "Adicionar"
-  // Leva pro formulário da conta fixa o que já foi preenchido (crédito vira "Cartão de crédito" lá).
-  const virarContaFixa = podeConverter && aoVirarContaFixa
-    ? () => aoVirarContaFixa({ tipo, valor, descricao, meio, contaId, cartaoId, categoriaId, data })
-    : null
 
   return (
     <Formulario layout="lateral" onSubmit={() => { void enviar() }}>
@@ -330,15 +321,9 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             </>
           ) : undefined} />
 
-        {!transferencia && (!credito || virarContaFixa) && (
+        {!transferencia && !credito && (
           <Bloco titulo="Opções" className={styles.opcoes}>
-            {!credito && (
-              <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
-            )}
-            {virarContaFixa && (
-              <Botao className={styles.virarFixa} onClick={virarContaFixa} disabled={salvando}
-                icone={<Repeat size={15} strokeWidth={2.25} aria-hidden="true" />}>Transformar em conta fixa</Botao>
-            )}
+            <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
           </Bloco>
         )}
 

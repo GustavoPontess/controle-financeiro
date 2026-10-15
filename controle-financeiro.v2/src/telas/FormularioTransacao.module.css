@@ -9,6 +9,5 @@
 .dataRapida > button { flex-shrink: 0; }
 .dataRapida > :last-child { flex: 1; min-width: 0; }
 
-/* Opções: "Já paguei" + o atalho pra conta fixa (formulário próprio) */
+/* Opções: "Já paguei" */
 .opcoes { gap: 12px; }
-.virarFixa { align-self: flex-start; }

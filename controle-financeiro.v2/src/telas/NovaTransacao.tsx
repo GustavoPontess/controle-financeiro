@@ -1,6 +1,5 @@
 // Nova transação do v2 — a casca da tela: carrega contas, cartões e categorias e entrega pro
-// FormularioTransacao (o mesmo da edição). "Transformar em conta fixa" leva o que foi preenchido pra
-// /contas-fixas/nova (formulário próprio).
+// FormularioTransacao (o mesmo da edição).
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { getContas } from "../services/contaService"
@@ -39,8 +38,7 @@ export default function NovaTransacao() {
     <PaginaFormulario titulo="Nova transação" carregando={carregando}
       erroCarga={erroCarga ? "Não foi possível carregar suas contas e categorias. Recarregue a página." : null}>
       <FormularioTransacao contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
-        aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })}
-        aoVirarContaFixa={(rascunho) => navigate("/contas-fixas/nova", { replace: true, state: { voltarPara, rascunho } })} />
+        aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
     </PaginaFormulario>
   )
 }
