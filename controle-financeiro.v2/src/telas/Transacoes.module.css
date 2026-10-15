@@ -9,9 +9,8 @@
 .numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
 .numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
 
-/* Barra da lista: título + (busca, Filtros) */
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 24px 10px; }
-.tituloLista { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-texto-2); letter-spacing: 0.01em; }
+/* Barra da lista: busca + Filtros, à direita */
+.toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 24px 10px; }
 .controles { display: flex; align-items: center; gap: 8px; flex: 1 1 320px; justify-content: flex-end; }
 .busca { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 260px; min-width: 180px; height: 36px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-3); }
 .busca:focus-within { border-color: var(--v2-texto); }

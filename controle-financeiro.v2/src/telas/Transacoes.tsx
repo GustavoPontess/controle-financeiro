@@ -157,10 +157,9 @@ export default function Transacoes() {
       </Bloco>
 
       <Bloco semRespiro>
-        {/* Barra: título à esquerda; busca + "Filtros" à direita. Os filtros avançados abrem num painel
-            ancorado no botão e só valem no "Aplicar". */}
+        {/* Barra: busca + "Filtros". Os filtros avançados abrem num painel ancorado no botão e só valem
+            no "Aplicar". Sem título — o topo da página já diz que é Transações. */}
         <div className={styles.toolbar}>
-          <h2 className={styles.tituloLista}>Todas as transações</h2>
           <div className={styles.controles}>
             <label className={styles.busca}>
               <Search size={16} strokeWidth={2.25} aria-hidden="true" />
