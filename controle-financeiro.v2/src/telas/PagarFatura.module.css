@@ -1,6 +1,9 @@
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 
+/* Valor em destaque fora da prévia (saldo da conta ao encerrar) */
+.saldoGrande { font-size: var(--v2-fs-3xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
 /* Atalho "Pagar tudo" logo abaixo do valor */
 .atalhos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
 

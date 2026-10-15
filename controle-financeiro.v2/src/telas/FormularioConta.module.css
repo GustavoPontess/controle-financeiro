@@ -1,0 +1,15 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+
+/* Prévia: a linha da lista de contas */
+.previa { gap: 12px; }
+.previaLinha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.previaTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.previaNome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.previaNome[data-vazio="true"] { color: var(--v2-texto-3); }
+.previaDetalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.previaValor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* No celular a prévia não cabe: o formulário já é a tela toda. */
+@media (max-width: 900px) {
+  .previa { display: none; }
+}

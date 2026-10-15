@@ -50,6 +50,11 @@ public class TransferenciaService
             .FirstOrDefaultAsync(c => c.Id == dto.ContaDestinoId && c.UsuarioIdProprietario == usuarioId);
         if (contaDestino == null)
             throw new KeyNotFoundException("Conta de destino não encontrada.");
+        // Conta encerrada não recebe nem manda dinheiro novo (reabra antes).
+        if (contaOrigem.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaOrigem.Nome));
+        if (contaDestino.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaDestino.Nome));
 
         var descricao = string.IsNullOrWhiteSpace(dto.Descricao)
             ? $"Transferência: {contaOrigem.Nome} → {contaDestino.Nome}"

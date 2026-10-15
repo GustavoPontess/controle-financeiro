@@ -17,6 +17,11 @@ import ContasFixas from "./telas/ContasFixas"
 import ContaFixa from "./telas/ContaFixa"
 import EditarContaFixa from "./telas/EditarContaFixa"
 import ProximaCobranca from "./telas/ProximaCobranca"
+import Bancos from "./telas/Bancos"
+import ContaDetalhe from "./telas/ContaDetalhe"
+import NovaConta from "./telas/NovaConta"
+import EditarConta from "./telas/EditarConta"
+import EncerrarConta from "./telas/EncerrarConta"
 import NovaTransacao from "./telas/NovaTransacao"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
@@ -28,7 +33,6 @@ const PENDENTES: [string, string, string][] = [
   ["/reconciliacao", "Reconciliação", "/reconciliacao"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
   ["/importar", "Importar extrato", "/importacao"],
-  ["/bancos", "Bancos", "/accounts"],
   ["/categorias", "Categorias", "/categories"],
   ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
@@ -52,6 +56,11 @@ export default function App() {
         <Route path="/contas-fixas/:id" element={<ContaFixa />} />
         <Route path="/contas-fixas/:id/editar" element={<EditarContaFixa />} />
         <Route path="/contas-fixas/:id/proxima" element={<ProximaCobranca />} />
+        <Route path="/bancos" element={<Bancos />} />
+        <Route path="/bancos/nova" element={<NovaConta />} />
+        <Route path="/bancos/:id" element={<ContaDetalhe />} />
+        <Route path="/bancos/:id/editar" element={<EditarConta />} />
+        <Route path="/bancos/:id/encerrar" element={<EncerrarConta />} />
         <Route path="/cartoes/novo" element={<NovoCartao />} />
         <Route path="/cartoes/:id" element={<Cartao />} />
         <Route path="/cartoes/:id/editar" element={<EditarCartao />} />

@@ -33,7 +33,7 @@ public class RecorrenteService
     // Conta, cartão e categoria vêm do cliente: todos têm que ser do usuário (categoria pode ser global).
     private async Task ExigirReferenciasDoUsuarioAsync(Guid? contaId, Guid? cartaoId, Guid? categoriaId, Guid usuarioId)
     {
-        if (contaId.HasValue) await DonoRecursos.ExigirContaAsync(_context, contaId.Value, usuarioId);
+        if (contaId.HasValue) await DonoRecursos.ExigirContaAbertaAsync(_context, contaId.Value, usuarioId);
         if (cartaoId.HasValue) await DonoRecursos.ExigirCartaoAsync(_context, cartaoId.Value, usuarioId);
         if (categoriaId.HasValue) await DonoRecursos.ExigirCategoriaAsync(_context, categoriaId.Value, usuarioId);
     }

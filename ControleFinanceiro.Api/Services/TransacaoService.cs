@@ -68,7 +68,7 @@ namespace ControleFinanceiro.Api.Services
             if (transacao.ContaId.HasValue && transacao.CartaoCreditoId.HasValue)
                 throw new ArgumentException("Informe uma conta ou um cartão de crédito, não os dois.");
             if (transacao.ContaId.HasValue)
-                await DonoRecursos.ExigirContaAsync(_context, transacao.ContaId.Value, usuarioId);
+                await DonoRecursos.ExigirContaAbertaAsync(_context, transacao.ContaId.Value, usuarioId);
             else if (transacao.CartaoCreditoId.HasValue)
                 await DonoRecursos.ExigirCartaoAsync(_context, transacao.CartaoCreditoId.Value, usuarioId);
             else
@@ -466,7 +466,7 @@ namespace ControleFinanceiro.Api.Services
                 if (transacao.EhSaldoInicial || transacao.EhAjusteReconciliacao)
                     throw new ArgumentException("Saldo inicial e ajuste de reconciliação não mudam de conta.");
                 if (contaNova.HasValue)
-                    await DonoRecursos.ExigirContaAsync(_context, contaNova.Value, usuarioId);
+                    await DonoRecursos.ExigirContaAbertaAsync(_context, contaNova.Value, usuarioId);
                 else
                     await DonoRecursos.ExigirCartaoAsync(_context, cartaoNovo!.Value, usuarioId);
             }

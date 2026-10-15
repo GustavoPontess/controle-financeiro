@@ -285,6 +285,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("BancoId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("EncerradaEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<bool>("IsCarteira")
                         .HasColumnType("boolean");
 

@@ -33,10 +33,11 @@ namespace ControleFinanceiro.Api.Services
 
         // Sem Include(Transacoes): o saldo não é mais somado em memória sobre o histórico inteiro
         // da conta — vem agregado no banco por ObterSaldosAsync (RegrasFinanceiras).
-        public async Task<List<Conta>> ListarAsync(Guid usuarioId)
+        /// <summary>Contas do usuário. Encerradas ficam fora (listas e seleções), salvo <paramref name="incluirEncerradas"/>.</summary>
+        public async Task<List<Conta>> ListarAsync(Guid usuarioId, bool incluirEncerradas = false)
         {
             return await _context.Contas
-                .Where(c => c.UsuarioIdProprietario == usuarioId)
+                .Where(c => c.UsuarioIdProprietario == usuarioId && (incluirEncerradas || c.EncerradaEm == null))
                 .Include(c => c.Banco)
                 .AsNoTracking()
                 .ToListAsync();
@@ -221,7 +222,7 @@ namespace ControleFinanceiro.Api.Services
                 .AnyAsync(t => t.ContaId == id && !t.EhSaldoInicial);
             if (temLancamento)
                 throw new InvalidOperationException(
-                    "Esta conta tem lançamentos e não pode ser excluída: o histórico dela entra no saldo e nos relatórios.");
+                    "Esta conta tem lançamentos e não pode ser excluída: o histórico dela entra no saldo e nos relatórios. Encerre a conta em vez de excluir.");
             if (await _context.Recorrentes.AnyAsync(r => r.ContaId == id))
                 throw new InvalidOperationException(
                     "Uma conta fixa usa esta conta. Troque a conta dela (ou exclua a conta fixa) antes de excluir a conta.");

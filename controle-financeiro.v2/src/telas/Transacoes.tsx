@@ -2,26 +2,26 @@
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeftRight, CreditCard, SlidersHorizontal } from "lucide-react"
+import { SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
 import type { Transaction } from "../types/Transaction"
 import type { Conta } from "../types/Conta"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
-import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
-import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
+import { Dinheiro } from "../componentes/Dinheiro"
+import ListaPorDia from "../componentes/ListaPorDia"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
 import Botao from "../componentes/Botao"
 import Busca from "../componentes/Busca"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
-import Etiqueta from "../componentes/Etiqueta"
 import SeletorData from "../componentes/SeletorData"
 import { maskMoney, parseMoney } from "../utils/money"
 import { diaSeguinte } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
+import { linhaDoLancamento } from "../dominio/linhaLancamento"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -44,8 +44,6 @@ type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: 
 const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "" }
 const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
 
-const naturezaDe = (t: Transaction): Exclude<Natureza, ""> =>
-  t.ehTransferencia ? "transferencia" : t.ehPagamentoFatura ? "fatura" : t.tipo === 2 ? "entrada" : "saida"
 
 export default function Transacoes() {
   const [itens, setItens] = useState<Transaction[] | null>(null)
@@ -200,7 +198,7 @@ export default function Transacoes() {
         ) : itens.length === 0 ? (
           <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : "Nenhum lançamento ainda."}</p>
         ) : (
-          <ListaPorDia itens={itens.map((t) => paraItem(t, categorias[t.categoriaId ?? ""]))} />
+          <ListaPorDia itens={itens.map((t) => linhaDoLancamento(t, categorias[t.categoriaId ?? ""]))} />
         )}
 
         {total > 0 && (
@@ -210,26 +208,4 @@ export default function Transacoes() {
       </Bloco>
     </div>
   )
-}
-
-/** Uma linha do extrato. Transferência e pagamento de fatura são neutros (mexem no caixa, não são ganho nem gasto). */
-function paraItem(t: Transaction, categoria?: string): ItemDoDia {
-  const n = naturezaDe(t)
-  const tom: TomDinheiro | undefined = n === "entrada" ? "positivo" : n === "saida" || n === "fatura" ? "negativo" : "neutro"
-  const icone = n === "transferencia" ? <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
-    : n === "fatura" ? <CreditCard size={16} strokeWidth={2} aria-hidden="true" />
-    : t.descricao.trim().charAt(0).toUpperCase() || "•"
-  return {
-    id: t.id,
-    dia: t.data,
-    para: `/transacoes/${t.id}`,
-    icone,
-    tomIcone: n === "entrada" ? "positivo" : n === "saida" ? undefined : "neutro",
-    nome: t.descricao,
-    sub: [t.contaNome, categoria, t.meioPagamentoDescricao].filter(Boolean).join(" · ") || "—",
-    hora: t.hora ? t.hora.slice(0, 5) : null,
-    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : undefined,
-    valor: t.valor,
-    tom,
-  }
 }

@@ -93,6 +93,8 @@ public class ParcelaTransacaoService
             .FirstOrDefaultAsync(c => c.Id == dto.ContaPagamentoId
                                       && c.UsuarioIdProprietario == usuarioId)
             ?? throw new InvalidOperationException("Conta de pagamento não encontrada.");
+        if (conta.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(conta.Nome));
 
         // 4. Validar saldo dinâmico da conta (Conta.Saldo não é persistido) — mesmo saldo que a
         //    tela de contas e o dashboard mostram, pela regra única.

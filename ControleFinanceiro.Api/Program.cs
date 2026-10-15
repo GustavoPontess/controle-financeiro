@@ -92,6 +92,7 @@ builder.Services.AddScoped<LancamentoService>();
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<SubcategoriaService>();
 builder.Services.AddScoped<ContaService>();
+builder.Services.AddScoped<EncerramentoContaService>();
 builder.Services.AddScoped<BancoService>();
 builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<AuthService>();

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.CartaoCredito;
+using ControleFinanceiro.Api.DTOs.Conta;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Recorrente;
+using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 
@@ -37,6 +39,7 @@ public static class DemoSeeder
         await ContasFixasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, carteira.Id, nubank.Id, Cat, hoje);
         var itau = await CartoesAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
         await ParcelamentosAsync(sp, context, dev.Id, nubank, itau, Cat, hoje);
+        await ContasAsync(sp, context, dev.Id, hoje);
         await NotificacoesAsync(sp, context, dev.Id, nubank.Id);
     }
 
@@ -129,6 +132,33 @@ public static class DemoSeeder
         await Criar(itau, "Geladeira Brastemp", 3600.00m, 12, 0, "Moradia");
         await Criar(itau, "Passagem aérea Recife", 1200.00m, 6, 1, "Lazer", TipoParcelamento.PIXCredito, 3.49m);
         await Criar(nubank, "Celular Samsung", 2400.00m, 12, 2, "Compras");
+    }
+
+    // ── Contas (Bancos): uma conta a mais aberta (Inter, com agência e número) e uma antiga já encerrada
+    //    (Santander: teve movimento, o saldo foi pro Inter no encerramento) — pras duas listas terem o que mostrar.
+    private static async Task ContasAsync(IServiceProvider sp, AppDbContext context, Guid dev, DateTime hoje)
+    {
+        if (await context.Contas.AnyAsync(c => c.UsuarioIdProprietario == dev && c.Nome == "Inter"))
+            return;
+        var bancos = await context.Bancos.ToListAsync();
+        Guid? Banco(string codigo) => bancos.FirstOrDefault(b => b.CodigoBanco == codigo)?.Id;
+        var contas = sp.GetRequiredService<ContaService>();
+        var inter = await contas.CriarAsync(new Domain.Entities.Conta
+        {
+            Nome = "Inter", Tipo = TipoConta.ContaCorrente, BancoId = Banco("077"), Agencia = "0001", NumeroConta = "1234567-8",
+        }, dev, 1250m, Utc(hoje.AddDays(-40)));
+        var santander = await contas.CriarAsync(new Domain.Entities.Conta
+        {
+            Nome = "Santander", Tipo = TipoConta.ContaCorrente, BancoId = Banco("033"), Agencia = "3456", NumeroConta = "01023456-7",
+        }, dev, 800m, Utc(hoje.AddDays(-90)));
+        await sp.GetRequiredService<TransferenciaService>().CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = santander.Id, ContaDestinoId = inter.Id, Valor = 200m,
+            Data = DateOnly.FromDateTime(hoje.AddDays(-30)), Descricao = "Transferência pro Inter",
+        }, dev);
+        // Encerrada com saldo: o que sobrou (R$ 600) vai pro Inter numa transferência de verdade.
+        await sp.GetRequiredService<EncerramentoContaService>().EncerrarAsync(santander.Id,
+            new EncerrarContaDto { ContaDestinoId = inter.Id, Data = DateOnly.FromDateTime(hoje.AddDays(-5)) }, dev, Guid.NewGuid().ToString());
     }
 
     // ── Notificações: pro sino ter o que mostrar (uma já lida).

@@ -14,10 +14,12 @@ namespace ControleFinanceiro.Api.Controllers
     public class ContasController : ControllerBase
     {
         private readonly ContaService _service;
+        private readonly EncerramentoContaService _encerramento;
 
-        public ContasController(ContaService service)
+        public ContasController(ContaService service, EncerramentoContaService encerramento)
         {
             _service = service;
+            _encerramento = encerramento;
         }
 
         private Guid GetUserId()
@@ -52,7 +54,10 @@ namespace ControleFinanceiro.Api.Controllers
             SaldoAtual = saldoAtual,
             IsCarteira = c.IsCarteira,
             BancoId = c.BancoId,
-            BancoNome = c.Banco?.Nome ?? string.Empty
+            BancoNome = c.Banco?.Nome ?? string.Empty,
+            BancoLogoUrl = c.Banco?.LogoUrl,
+            BancoCor = c.Banco?.Cor,
+            EncerradaEm = c.EncerradaEm,
         };
 
         private static void ValidarCartao(CriarContaDto dto)
@@ -68,11 +73,15 @@ namespace ControleFinanceiro.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Contas do usuário com o saldo atual. Encerradas ficam fora (seleções de conta no app); a tela de
+        /// Bancos/contas pede <paramref name="incluirEncerradas"/>=true pra mostrar a seção "Encerradas".
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Listar()
+        public async Task<IActionResult> Listar([FromQuery] bool incluirEncerradas = false)
         {
             var usuarioId = GetUserId();
-            var lista = await _service.ListarAsync(usuarioId);
+            var lista = await _service.ListarAsync(usuarioId, incluirEncerradas);
             var saldos = await _service.ObterSaldosAsync(lista.Select(c => c.Id), usuarioId);
             return Ok(lista.Select(c => ToDto(c, saldos[c.Id].Saldo)));
         }
@@ -144,6 +153,35 @@ namespace ControleFinanceiro.Api.Controllers
         {
             var usuarioId = GetUserId();
             await _service.AtualizarSaldoInicialAsync(id, usuarioId, dto.Valor, dto.Data);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Encerra a conta (fechada no banco): sai das listas e não recebe lançamento novo; o histórico fica.
+        /// Com saldo, o corpo diz o que aconteceu com o dinheiro — <c>contaDestinoId</c> (vira transferência) ou
+        /// <c>ajustar</c> (no banco já está zerado). Requer header Idempotency-Key: reenviar com a mesma chave
+        /// devolve o mesmo resultado sem transferir 2x. Conta fixa ou lançamento previsto na conta → 409.
+        /// </summary>
+        [HttpPost("{id}/encerrar")]
+        [ProducesResponseType(typeof(EncerramentoContaDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> Encerrar(Guid id, [FromBody] EncerrarContaDto dto,
+            [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
+        {
+            var usuarioId = GetUserId();
+            return Ok(await _encerramento.EncerrarAsync(id, dto, usuarioId, idempotencyKey));
+        }
+
+        /// <summary>Reabre a conta encerrada (volta pras listas e pode receber lançamento).</summary>
+        [HttpPost("{id}/reabrir")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Reabrir(Guid id)
+        {
+            var usuarioId = GetUserId();
+            await _encerramento.ReabrirAsync(id, usuarioId);
             return NoContent();
         }
 
