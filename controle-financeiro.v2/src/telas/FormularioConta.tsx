@@ -118,7 +118,7 @@ export default function FormularioConta({ conta, bancos, aoSair, aoSalvo }: {
         {!c && (
           <LinhaCampos colunas="2fr 1fr">
             <Campo rotulo="Saldo hoje (opcional)">
-              <EntradaValor valor={saldoInicial} tom="neutro" onChange={setSaldoInicial} />
+              <EntradaValor compacto valor={saldoInicial} onChange={setSaldoInicial} />
             </Campo>
             <Campo rotulo="Desde" erro={erros.data}>
               <SeletorData valor={desde} max={hoje} onChange={(x) => { setDesde(x); limpa("data") }} />

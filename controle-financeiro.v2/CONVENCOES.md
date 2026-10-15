@@ -20,7 +20,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Caixa de texto | `Entrada` | md 44 / sm 40 · `prefixo` ("R$") · `sufixo` (ex.: olho da senha). Dentro do `Campo` herda id e erro sozinha |
 | Escolha numa lista | `Selecao` | no lugar de `<select>`. md 44 / sm 40 / xs 32. Dentro do `Campo` herda id e erro |
 | Data | `SeletorData` | no lugar de `<input type="date">` (calendário próprio, tema, teclado). `min`/`max`, `limpavel` pra data opcional. Valor sempre `YYYY-MM-DD` |
-| Valor em dinheiro (campo principal) | `EntradaValor` | R$ grande, dígitos viram centavos, nunca negativo, até 12 dígitos |
+| Valor em dinheiro (campo principal) | `EntradaValor` | R$ grande, dígitos viram centavos, nunca negativo, até 12 dígitos · `compacto` = caixa comum com "R$" na frente, pra dinheiro secundário que divide a linha (saldo inicial, limite) |
 | Valor em dinheiro (filtro/campo pequeno) | `Entrada` + `prefixo="R$"` + `maskMoney` | nunca `type="number"` (aceita sinal de menos) |
 | Escolha única curta (2–4 opções) | `Segmentos` | radiogroup com setas; `cheio` pra ocupar a largura |
 | Liga/desliga | `Interruptor` | role=switch ("Já paguei", "Conta fixa") |
