@@ -13,9 +13,10 @@
 import { useMemo, useState } from "react"
 import { createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
-import { createRecorrente } from "../services/recorrenteService"
+import { createRecorrente, updateRecorrente } from "../services/recorrenteService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
+import type { Recorrente } from "../types/Recorrente"
 import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
@@ -45,9 +46,13 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
 ]
 const centavos = (n: number) => Math.round(n * 100) / 100
 
-export default function FormularioTransacao({ transacao, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo }: {
+export default function FormularioTransacao({ transacao, recorrente, inicial, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo }: {
   /** Com transação = editar; sem = nova. */
   transacao?: Transaction
+  /** Com conta fixa = editar a REGRA dela (valor, repetição, começo/fim…), travada como conta fixa. */
+  recorrente?: Recorrente
+  /** Estado inicial da tela nova (ex.: já como conta fixa, vindo de Contas fixas). */
+  inicial?: { fixa?: boolean }
   contas?: Conta[]
   cartoes?: CartaoCredito[]
   categorias: Category[]
@@ -57,23 +62,24 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   aoSalvo: (resultado?: EdicaoLancamentoResultado) => void
 }) {
   const t = transacao ?? null
-  const editando = !!t
+  const r = recorrente ?? null
+  const editando = !!t || !!r
   const horaOpcional = !!t && !t.hora
 
-  const [natureza, setNatureza] = useState<Natureza>(t?.tipo === TIPO.receita ? "receita" : "despesa")
-  const [valor, setValor] = useState(t ? moneyParaCampo(t.valor) : "")
-  const [descricao, setDescricao] = useState(t?.descricao ?? "")
-  const [meio, setMeio] = useState<number>(t ? (t.cartaoCreditoId ? MEIO.credito : t.meioPagamento ?? MEIO.pix) : MEIO.pix)
-  const [contaId, setContaId] = useState(t?.contaId ?? "")
-  const [cartaoId, setCartaoId] = useState(t?.cartaoCreditoId ?? "")
+  const [natureza, setNatureza] = useState<Natureza>((t?.tipo ?? r?.tipo) === TIPO.receita ? "receita" : "despesa")
+  const [valor, setValor] = useState(t ? moneyParaCampo(t.valor) : r ? moneyParaCampo(r.valor) : "")
+  const [descricao, setDescricao] = useState(t?.descricao ?? r?.descricao ?? "")
+  const [meio, setMeio] = useState<number>(t ? (t.cartaoCreditoId ? MEIO.credito : t.meioPagamento ?? MEIO.pix) : r?.cartaoCreditoId ? MEIO.credito : MEIO.pix)
+  const [contaId, setContaId] = useState(t?.contaId ?? r?.contaId ?? "")
+  const [cartaoId, setCartaoId] = useState(t?.cartaoCreditoId ?? r?.cartaoCreditoId ?? "")
   const [parcelas, setParcelas] = useState(1)
-  const [fixa, setFixa] = useState(false)
-  const [frequencia, setFrequencia] = useState(2)
-  const [dataFim, setDataFim] = useState("")
+  const [fixa, setFixa] = useState(!!r || !!inicial?.fixa)
+  const [frequencia, setFrequencia] = useState(r?.frequencia ?? 2)
+  const [dataFim, setDataFim] = useState(r?.dataFim?.slice(0, 10) ?? "")
   const [efetivado, setEfetivado] = useState(t ? t.statusTransacao !== 0 : true)
-  const [data, setData] = useState(() => t?.data ?? dataLocalISO())
+  const [data, setData] = useState(() => t?.data ?? r?.dataInicio.slice(0, 10) ?? dataLocalISO())
   const [hora, setHora] = useState(() => (t ? (t.hora ? t.hora.slice(0, 5) : "") : horaLocalHHMM()))
-  const [categoriaId, setCategoriaId] = useState(t?.categoriaId ?? "")
+  const [categoriaId, setCategoriaId] = useState(t?.categoriaId ?? r?.categoriaId ?? "")
   const [subcategoriaId, setSubcategoriaId] = useState(t?.subcategoriaId ?? "")
   // Virou transferência: a conta do lançamento é a origem (despesa) ou o destino (receita).
   const [origemId, setOrigemId] = useState(t && t.tipo !== TIPO.receita ? t.contaId ?? "" : "")
@@ -105,8 +111,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const opcoesConta = contas.map((c) => ({ valor: c.id, rotulo: c.nome }))
-  const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome ?? (t && id === t.contaId ? t.contaNome : undefined)
-  const nomeCartao = (id: string) => cartoesCredito.find((c) => c.id === id)?.nome ?? (t && id === t.cartaoCreditoId ? t.cartaoCreditoNome : undefined)
+  const nomeConta = (id: string) => contas.find((c) => c.id === id)?.nome ?? (t && id === t.contaId ? t.contaNome : undefined) ?? (r && id === r.contaId ? r.contaNome : undefined)
+  const nomeCartao = (id: string) => cartoesCredito.find((c) => c.id === id)?.nome ?? (t && id === t.cartaoCreditoId ? t.cartaoCreditoNome : undefined) ?? (r && id === r.cartaoCreditoId ? r.cartaoCreditoNome : undefined)
 
   const limpa = (...campos: string[]) => setErros((e) => {
     if (!campos.some((c) => e[c])) return e
@@ -171,7 +177,19 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     const horaEnvio = comHora && hora ? `${hora}:00` : null
     let resultado: EdicaoLancamentoResultado | undefined
     try {
-      if (t) {
+      if (r) {
+        // Editar a regra da conta fixa: o servidor regera as previsões a partir dela.
+        await updateRecorrente(r.id, {
+          descricao: desc, valor: v, tipo,
+          categoriaId,
+          contaId: credito ? undefined : contaId,
+          cartaoCreditoId: credito ? cartaoId : undefined,
+          frequencia,
+          dia: Number(data.slice(8, 10)),
+          dataInicio: data,
+          dataFim: dataFim || undefined,
+        })
+      } else if (t) {
         resultado = await updateTransaction(t.id, {
           descricao: desc, valor: v, tipo,
           categoriaId: transferencia ? null : categoriaId || null,
@@ -260,7 +278,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       <Campos>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-        <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />
+        <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={r ? NATUREZAS.filter((n) => n.valor !== "transferencia") : NATUREZAS} />
 
         <Campo rotulo="Valor" erro={erros.valor}>
           <EntradaValor valor={valor} tom={tom} autoFocus={!editando} onChange={(x) => { setValor(x); limpa("valor") }} />
@@ -359,7 +377,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             {!credito && !ehFixa && (
               <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
             )}
-            {podeConverter && <Interruptor ligado={fixa} onChange={trocarFixa}>Conta fixa</Interruptor>}
+            {podeConverter && <Interruptor ligado={fixa} onChange={trocarFixa} desabilitado={!!r}>Conta fixa</Interruptor>}
             {ehFixa && (
               <div className={styles.subOpcoes}>
                 <Campo rotulo="Repete">

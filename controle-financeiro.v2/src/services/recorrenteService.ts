@@ -37,6 +37,12 @@ export const getRecorrenteStats = async (): Promise<RecorrenteStats> => {
   return res.data
 }
 
+/** Uma conta fixa (com situação e próxima cobrança). Excluída/inexistente → 404. */
+export const getRecorrente = async (id: string): Promise<Recorrente> => {
+  const res = await api.get(`${BASE}/${id}`)
+  return res.data
+}
+
 /** @deprecated Use listRecorrentesPage em telas com paginação. Clampa em 100. */
 export const getRecorrentes = async (): Promise<Recorrente[]> => {
   const res = await api.get(BASE, { params: { page: 1, pageSize: 100 } })
