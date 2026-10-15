@@ -1,0 +1,51 @@
+.pagina { display: flex; flex-direction: column; gap: 16px; }
+.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.respiro { padding: 8px 24px 20px; }
+/* Barra da lista da fatura: busca à esquerda, tipo à direita (mesma anatomia de Transações/Cartões) */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
+.filtroTipo { flex: 0 0 160px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Cabeçalho: carinha + nome à esquerda, etiquetas à direita */
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.identidade { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 320px; }
+.identidadeTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+
+/* Principal | lado */
+.grade { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.principal { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.limite { display: flex; flex-direction: column; gap: 6px; }
+.limiteGrande { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* Faixa de meses: rola na horizontal; o mês escolhido fica em tinta, os futuros apagados */
+.meses { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+.meses::-webkit-scrollbar { display: none; }
+.mes { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex-shrink: 0; min-width: 92px; padding: 8px 12px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto-2); font: inherit; text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+.mes:hover { border-color: var(--v2-linha-forte); color: var(--v2-texto); }
+.mes[data-futuro="true"] { color: var(--v2-texto-3); }
+.mes[data-hoje="true"] .mesNome::after { content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 6px; border-radius: 999px; background: var(--v2-acento); vertical-align: middle; }
+.mes[data-ativo="true"], .mes[data-ativo="true"]:hover { background: var(--v2-tinta); border-color: var(--v2-tinta); color: var(--v2-sobre-tinta); }
+.mesNome { font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.mesValor { font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* A fatura escolhida */
+.fatura { gap: 10px; }
+.faturaTopo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.faturaTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.faturaRotulo { font-size: var(--v2-fs-md); font-weight: 600; }
+.faturaValor { display: block; font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.faturaValor[data-tom="negativo"] { color: var(--v2-negativo); }
+.faturaValor[data-tom="neutro"] { color: var(--v2-texto); }
+
+@media (max-width: 1100px) {
+  .grade { grid-template-columns: minmax(0, 1fr) 280px; }
+}
+@media (max-width: 900px) {
+  .grade { grid-template-columns: minmax(0, 1fr); }
+  .toolbar { padding: 14px 16px 4px; }
+  .faturaValor { font-size: var(--v2-fs-3xl); }
+}

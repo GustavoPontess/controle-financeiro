@@ -1,0 +1,17 @@
+.caixa { position: relative; width: 100%; padding-top: 34px; }
+.svg { display: block; width: 100%; height: auto; color: var(--v2-acento); touch-action: pan-y; cursor: crosshair; overflow: visible; }
+.linha { fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.grade line { stroke: var(--v2-linha); stroke-width: 1; }
+.grade text { fill: var(--v2-texto-3); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.zero { stroke: var(--v2-texto-3); stroke-width: 1; stroke-dasharray: 3 4; }
+.guia { stroke: var(--v2-linha-forte); stroke-width: 1; stroke-dasharray: 3 3; }
+.ponto { fill: var(--v2-superficie); stroke: currentColor; stroke-width: 2; transition: r 0.12s; }
+.ponto[data-sel="true"] { fill: currentColor; }
+.mes { fill: var(--v2-texto-3); font-size: 11px; font-weight: 500; }
+.mes[data-sel="true"] { fill: var(--v2-texto); font-weight: 600; }
+.dica { position: absolute; top: 0; transform: translateX(-50%); display: inline-flex; align-items: baseline; gap: 8px; padding: 5px 10px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); white-space: nowrap; pointer-events: none; transition: left 0.12s; }
+.dica[data-fim="true"] { transform: translateX(-100%); }
+.dica[data-inicio="true"] { transform: none; }
+.dicaMes { font-size: 11px; font-weight: 500; opacity: 0.75; }
+.dicaValor { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vazio { margin: 0; padding: 6px 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }

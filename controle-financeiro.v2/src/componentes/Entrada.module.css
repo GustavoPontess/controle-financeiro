@@ -1,0 +1,13 @@
+/* Caixa de texto do v2 — mesma moldura do gatilho da Selecao (44/40px, raio sm, anel no foco). */
+.entrada { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-base); font-weight: 500; outline: none; transition: border-color 0.12s, box-shadow 0.12s; }
+.entrada[data-tamanho="sm"] { height: 40px; }
+.entrada::placeholder { color: var(--v2-texto-3); }
+.entrada:hover:not(:disabled, :focus, [data-invalido="true"]) { border-color: var(--v2-texto-3); }
+.entrada:focus { border-color: var(--v2-texto); box-shadow: var(--v2-anel-foco); }
+.entrada[data-invalido="true"] { border-color: var(--v2-negativo); }
+.entrada:disabled { opacity: 0.6; }
+.moldura { position: relative; display: block; min-width: 0; }
+.prefixo { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-3); pointer-events: none; }
+.entrada[data-prefixo="true"] { padding-left: 36px; }
+.sufixo { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; }
+.entrada[data-sufixo="true"] { padding-right: 44px; }

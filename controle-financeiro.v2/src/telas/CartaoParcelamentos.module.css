@@ -1,0 +1,30 @@
+.pagina { display: flex; flex-direction: column; gap: 16px; }
+.muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Cabeçalho: carinha + nome à esquerda, os dois números à direita (mesma anatomia da página do cartão) */
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+.identidade { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 280px; }
+.identidadeTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.numeros { display: flex; gap: 32px; }
+.numero { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroEsqueleto { display: block; width: 100px; height: 24px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+/* Lista: inicial · nome + progresso · quanto falta */
+.lista { list-style: none; margin: 0; padding: 8px 8px; display: flex; flex-direction: column; }
+.linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--v2-r-sm); color: inherit; text-decoration: none; }
+.linha:hover { background: var(--v2-hover-linha); }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
+.texto { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 420px; }
+.nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.direita { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .numeros { width: 100%; justify-content: space-between; gap: 16px; }
+  .linha { padding: 12px 12px; }
+}

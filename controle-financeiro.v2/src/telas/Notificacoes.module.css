@@ -1,0 +1,7 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+.toolbar { display: flex; justify-content: flex-end; padding: 16px 24px 4px; }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+@media (max-width: 900px) {
+  .toolbar { padding: 14px 16px 4px; }
+}

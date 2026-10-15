@@ -1,0 +1,89 @@
+.raiz { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); background: var(--v2-bg); color: var(--v2-texto); font-family: var(--v2-font); font-size: var(--v2-fs-base); line-height: 1.45; -webkit-font-smoothing: antialiased; transition: grid-template-columns 0.2s ease; }
+.raiz[data-menu="trilho"] { grid-template-columns: 70px minmax(0, 1fr); }
+
+/* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
+/* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */
+/* padding-top 12: a marca (40px) fica centrada em y=32, o mesmo centro do título e dos botões do topo (64/2). */
+.lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 12px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
+/* padding-left 12: a palavra começa no mesmo x do ícone dos itens (14 + 12). */
+.marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 12px; color: var(--v2-texto); }
+.logo, .logoMini, .recolherIcone { display: inline-flex; min-width: 0; }
+.logoMini { display: none; }
+.recolher, .fecharMenu, .abrirMenu { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
+.recolher { margin-left: auto; }
+.recolher:hover, .fecharMenu:hover, .abrirMenu:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
+.fecharMenu, .abrirMenu { display: none; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.grupo { display: block; margin: 16px 12px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v2-texto-3); }
+/* Altura fixa: sem o rótulo (trilho) o item não pode encurtar, senão a lista sobe uns 2px por item. */
+.item { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border-radius: var(--v2-r-sm); font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto-2); text-decoration: none; white-space: nowrap; transition: background 0.12s, color 0.12s; }
+.item:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
+.itemAtivo, .itemAtivo:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
+.item svg { flex-shrink: 0; }
+.rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.usuario { position: relative; padding-top: 8px; border-top: 1px solid var(--v2-linha); }
+/* O bloco inteiro (avatar + nome) é o botão do menu da conta. */
+.usuarioBotao { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 8px 0 5px; border: 0; border-radius: 10px; background: transparent; color: var(--v2-texto); font: inherit; text-align: left; cursor: pointer; }
+.usuarioBotao:hover, .usuarioBotao[aria-expanded="true"] { background: var(--v2-superficie-2); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; flex-shrink: 0; }
+.usuarioTexto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.usuarioSeta { flex-shrink: 0; color: var(--v2-texto-3); }
+.usuarioNome { font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usuarioPlano { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Menu da conta: abre pra cima, na largura do menu lateral (no trilho, pro lado). */
+.menuUsuario { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.menuUsuario > .usuarioNome, .menuUsuario > .usuarioPlano { padding: 0 2px; }
+.menuItem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; }
+.menuItem:first-of-type { margin-top: 8px; }
+.menuItem:hover { background: var(--v2-superficie-2); }
+
+/* Trilho (recolhido): nome vira title; avatar abre o menu. A marca compacta vira o botão de
+   expandir (o "P" dá lugar à seta no hover) — a linha da marca continua com 40px.
+   Nada muda de lugar ao alternar: mesmo padding do painel, itens à esquerda com o mesmo padding,
+   ícones/avatar/"P" no mesmo eixo (x=35) nos dois estados. Só a largura anima e os rótulos somem —
+   sem isso os ícones centralizavam no painel ainda largo e deslizavam de volta enquanto encolhia. */
+.raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: none; }
+.raiz[data-menu="trilho"] .menuUsuario { left: calc(100% + 10px); right: auto; bottom: 6px; min-width: 220px; }
+/* "P" ancorado à esquerda, no mesmo x e tamanho do P de "Pontes": recolher parece o "ontes" sumindo.
+   (Centralizar faria o P centralizar no painel ainda largo e deslizar junto com a animação.) */
+.raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0; }
+.raiz[data-menu="trilho"] .recolher { margin-left: 0; width: 40px; height: 40px; padding: 0 0 0 11px; justify-content: flex-start; color: var(--v2-texto); }
+.raiz[data-menu="trilho"] .recolher:hover { background: transparent; }
+.raiz[data-menu="trilho"] .logoMini { display: inline-flex; }
+.raiz[data-menu="trilho"] .recolherIcone { display: none; }
+.raiz[data-menu="trilho"] .recolher:hover .logoMini, .raiz[data-menu="trilho"] .recolher:focus-visible .logoMini { display: none; }
+.raiz[data-menu="trilho"] .recolher:hover .recolherIcone, .raiz[data-menu="trilho"] .recolher:focus-visible .recolherIcone { display: inline-flex; }
+.raiz[data-menu="trilho"] .grupo { height: 1px; margin: 19px 0; background: var(--v2-linha); }
+
+/* Topo + conteúdo */
+.corpo { display: flex; flex-direction: column; min-width: 0; }
+.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 32px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
+/* Seta de voltar das telas internas: cola no título (o topo tem gap 14; aqui fica 8). */
+.voltar { margin: 0 -6px 0 -8px; color: var(--v2-texto-2); }
+.tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topoAcoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* Sino: contador de não lidas no canto do botão (vermelho + branco é fixo, não segue o tema). */
+.sino { position: relative; display: inline-flex; }
+.sinoContador { position: absolute; top: -5px; right: -5px; display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; border: 2px solid var(--v2-bg); border-radius: 999px; background: var(--v2-negativo); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; pointer-events: none; }
+/* Encostado à esquerda (sem centralizar): recolher o menu não faz a tela pular, só ganha espaço. */
+.conteudo { flex: 1; width: 100%; max-width: 1600px; margin: 0; padding: 8px 32px 48px; animation: v2-entra 240ms ease-out; }
+@keyframes v2-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Celular: menu vira gaveta (sempre completa; o trilho é só no computador) */
+.veu { position: fixed; inset: 0; z-index: 9; border: 0; background: rgba(0, 0, 0, 0.35); }
+@media (max-width: 900px) {
+  .raiz, .raiz[data-menu="trilho"] { grid-template-columns: minmax(0, 1fr); }
+  .lateral { position: fixed; left: 0; top: 0; z-index: 10; width: 272px; padding: 22px 14px 18px; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--v2-sombra-palco); }
+  .lateral[data-aberto="true"] { transform: none; }
+  .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: inline-flex; }
+  .raiz[data-menu="trilho"] .logoMini { display: none; }
+  .raiz[data-menu="trilho"] .menuUsuario { left: 0; right: 0; bottom: calc(100% + 6px); min-width: 0; }
+  .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0 10px; }
+  .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
+  .recolher { display: none; }
+  .abrirMenu, .fecharMenu { display: inline-flex; }
+  .fecharMenu { margin-left: auto; }
+  .topo { padding: 0 16px; gap: 8px; }
+  .tituloPagina { font-size: var(--v2-fs-lg); }
+  .conteudo { padding: 4px 16px 40px; }
+}

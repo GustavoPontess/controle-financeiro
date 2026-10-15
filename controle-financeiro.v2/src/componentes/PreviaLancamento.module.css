@@ -1,0 +1,22 @@
+/* Mesma anatomia da linha da lista de Transações. */
+.previa { gap: 12px; }
+.linha { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
+.icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.icone[data-tom="neutro"] { color: var(--v2-texto-3); }
+.texto { display: flex; flex-direction: column; min-width: 0; }
+.nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nome[data-vazio="true"] { color: var(--v2-texto-3); }
+.detalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor[data-vazio="true"] { color: var(--v2-texto-3); font-weight: 500; }
+.valor[data-tom="positivo"] { color: var(--v2-positivo); }
+.valor[data-tom="negativo"] { color: var(--v2-negativo); }
+.valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+.efeito { margin: 0; padding-top: 12px; border-top: 1px solid var(--v2-linha); font-size: var(--v2-fs-sm); line-height: 1.5; color: var(--v2-texto-2); }
+
+/* No celular a prévia não cabe: o formulário já é a tela toda. */
+@media (max-width: 900px) {
+  .previa { display: none; }
+}

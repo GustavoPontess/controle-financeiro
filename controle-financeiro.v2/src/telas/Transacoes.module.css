@@ -1,0 +1,42 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Faixa de números (mesma anatomia dos números do palco, sobre a superfície) */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+/* Barra da lista: busca à esquerda, Filtros à direita (pedido do Gustavo, 2026-10-14) */
+.toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 24px 10px; }
+.controles { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1 1 320px; }
+.filtrosWrap { position: relative; }
+.contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
+
+/* Painel de filtros: ancorado no botão, campos empilhados, rodapé Limpar/Aplicar. */
+.painel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 320px; display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.faixa { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.ate { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
+/* "Limpar tudo" é botão de texto: puxa o respiro pra letra alinhar com os campos. */
+.limparTudo { margin-left: -6px; }
+.painelRodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
+
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+/* Cada peça tem coluna fixa: sem hora ou sem "Previsto" a coluna fica vazia, mas o valor segue na última —
+   antes o valor subia pra coluna livre e ficava 12px pra dentro nas linhas sem hora. */
+
+
+@media (max-width: 900px) {
+  /* Celular: um número por linha (rótulo à esquerda, valor à direita). */
+  .resumo { padding: 14px 20px; }
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .toolbar { padding: 14px 16px 8px; }
+  .controles { flex-basis: 100%; }
+  .filtrosWrap { position: static; }
+  .painel { left: 16px; right: 16px; width: auto; }
+}

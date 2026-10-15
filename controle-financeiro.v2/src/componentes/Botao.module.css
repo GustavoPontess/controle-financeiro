@@ -1,0 +1,36 @@
+/* Botão do v2: medidas e cores só aqui. Altura md 36 (barra/caixa/diálogo) e lg 44 (= altura do campo). */
+.botao { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--v2-r-sm); background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; line-height: 1; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s, opacity 0.12s; }
+.botao:disabled { opacity: 0.6; cursor: default; }
+.botao svg { flex-shrink: 0; }
+.rotulo { display: inline-flex; align-items: center; gap: 6px; }
+
+.botao[data-tamanho="lg"] { height: 44px; padding: 0 20px; gap: 8px; font-size: var(--v2-fs-base); }
+.botao[data-cheio="true"] { width: 100%; }
+.botao[data-so-icone="true"] { width: 36px; padding: 0; }
+.botao[data-so-icone="true"][data-tamanho="lg"] { width: 44px; }
+
+/* Primário: tinta cheia */
+.botao[data-variante="primario"] { background: var(--v2-tinta); color: var(--v2-sobre-tinta); }
+.botao[data-variante="primario"]:hover:not(:disabled) { opacity: 0.9; }
+.botao[data-variante="primario"][data-perigo="true"] { background: var(--v2-negativo); color: var(--v2-sobre-negativo); }
+
+/* Secundário: contorno */
+.botao[data-variante="secundario"] { border-color: var(--v2-linha-forte); background: var(--v2-superficie); }
+.botao[data-variante="secundario"]:hover:not(:disabled) { background: var(--v2-superficie-2); }
+.botao[data-variante="secundario"][data-ativo="true"] { background: var(--v2-superficie-2); border-color: var(--v2-superficie-2); }
+.botao[data-variante="secundario"][data-perigo="true"] { color: var(--v2-negativo); }
+.botao[data-variante="secundario"][data-perigo="true"]:hover:not(:disabled) { background: var(--v2-negativo-suave); border-color: var(--v2-negativo-suave); }
+/* Só ícone com contorno (topo): ícone mais quieto, acende no hover. */
+.botao[data-variante="secundario"][data-so-icone="true"] { color: var(--v2-texto-2); }
+.botao[data-variante="secundario"][data-so-icone="true"]:hover:not(:disabled) { color: var(--v2-texto); }
+
+/* Texto: sem moldura (ações leves, como "Limpar tudo") */
+.botao[data-variante="texto"] { padding: 0 6px; color: var(--v2-texto-2); }
+.botao[data-variante="texto"][data-so-icone="true"] { padding: 0; }
+.botao[data-variante="texto"]:hover:not(:disabled) { color: var(--v2-texto); }
+.botao[data-variante="texto"][data-perigo="true"] { color: var(--v2-negativo); }
+
+@media (max-width: 900px) {
+  .botao[data-compacto="true"] { width: 36px; padding: 0; }
+  .botao[data-compacto="true"] .rotulo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
