@@ -43,7 +43,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Contas fixas no v2 (2026-10-15):** lista, página, novo/editar (mesmo formulário da transação), só a próxima, pausar/retomar/cancelar/excluir — testado de ponta a ponta. API: `GET /recorrentes/{id}` na branch do #301.
 
-**Próxima ação:** próxima frente do v2 (bancos/contas, relatórios, ações de família na transação…) — decidir com o Gustavo. PR #301 continua acumulando a API que o v2 precisa; mergear quando o Gustavo disser. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
+**Próxima ação:** próxima frente do v2 (bancos/contas, relatórios, ações de família na transação…) — decidir com o Gustavo. PRs #299 e #300 mergeados (2026-10-15). PR #301 com a `main` dentro (o Frontend do CI falhava num teste que dependia do #299 — passa após o merge; back 1452 verde local), CI rodando de novo; mergear quando ficar verde. Em paralelo, quando o Gustavo decidir o beta: PR da `feat/ds-premium` (se beta no v1) e volta ao M1 (write skew, sobras do extrato).
 
 ---
 
