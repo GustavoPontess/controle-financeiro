@@ -86,10 +86,8 @@ function FormularioCategoria({ categoria, tipoInicial, aoSair, aoSalvo }: {
     <Formulario onSubmit={() => { void enviar() }} className={styles.form}>
       <Campos>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-        <Campo rotulo="Tipo" grupo>
-          <Segmentos ariaLabel="Tipo da categoria" cheio valor={finalidade} onChange={setFinalidade}
-            opcoes={FINALIDADES.map((f) => ({ valor: String(f.valor), rotulo: f.rotulo }))} />
-        </Campo>
+        <Segmentos ariaLabel="Tipo da categoria" cheio valor={finalidade} onChange={setFinalidade}
+          opcoes={FINALIDADES.map((f) => ({ valor: String(f.valor), rotulo: f.rotulo }))} />
         <Campo rotulo="Nome" erro={erros.nome}>
           <Entrada value={nome} maxLength={MAX_NOME_CATEGORIA} placeholder="Pets" autoFocus={!categoria}
             onChange={(ev) => { setNome(ev.target.value); setErros({}) }} />
