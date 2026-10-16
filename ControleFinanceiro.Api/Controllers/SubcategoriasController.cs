@@ -63,10 +63,18 @@ namespace ControleFinanceiro.Api.Controllers
             return Ok(ToDto(sub));
         }
 
+        /// <summary>Quantos lançamentos e contas fixas usam a subcategoria (a tela pergunta pra onde mover).</summary>
+        [HttpGet("{id}/uso")]
+        public async Task<IActionResult> Uso(Guid id) => Ok(await _service.UsoAsync(id, UserId));
+
+        /// <summary>
+        /// Exclui uma subcategoria do usuário. Com <paramref name="moverPara"/> (da mesma categoria), os lançamentos e
+        /// contas fixas passam pra ela; sem, ficam só com a categoria.
+        /// </summary>
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Deletar(Guid id)
+        public async Task<IActionResult> Deletar(Guid id, [FromQuery] Guid? moverPara)
         {
-            await _service.DeletarAsync(id, UserId);
+            await _service.DeletarAsync(id, UserId, moverPara);
             return NoContent();
         }
 

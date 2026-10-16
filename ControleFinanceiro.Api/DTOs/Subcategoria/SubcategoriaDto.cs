@@ -9,3 +9,10 @@ public class SubcategoriaDto
     public Guid CategoriaId { get; set; }
     public bool IsPadrao { get; set; }
 }
+
+/// <summary>O que usa a subcategoria: lançamentos vivos e contas fixas.</summary>
+public class UsoSubcategoriaDto
+{
+    public int Lancamentos { get; set; }
+    public int ContasFixas { get; set; }
+}

@@ -121,7 +121,7 @@ public class SubcategoriaServiceTests
     }
 
     [Fact]
-    public async Task AtualizarAsync_OutroUsuario_LancaUnauthorized()
+    public async Task AtualizarAsync_OutroUsuario_404()
     {
         var ctx = CreateContext();
         var svc = new SubcategoriaService(ctx);
@@ -129,7 +129,7 @@ public class SubcategoriaServiceTests
         var cat = await SeedCategoria(ctx, dono);
         var sub = await svc.CriarAsync(new Subcategoria { Nome = "Hortifruti", CategoriaId = cat.Id }, dono);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             svc.AtualizarAsync(sub.Id, new Subcategoria { Nome = "Feira" }, Guid.NewGuid()));
     }
 
@@ -160,5 +160,101 @@ public class SubcategoriaServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.DeletarAsync(sub.Id, Guid.NewGuid()));
+    }
+
+    // ---------- regras novas (2026-10-16) ----------
+
+    [Theory]
+    [InlineData("vermelho", null)]
+    [InlineData("#12345", null)]
+    [InlineData(null, "Ícone Errado")]
+    [InlineData(null, "../x")]
+    public async Task CriarAsync_CorOuIconeInvalido_Recusa(string? cor, string? icone)
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var cat = await SeedCategoria(ctx, null);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.CriarAsync(new Subcategoria { Nome = "Feira", Cor = cor, Icone = icone, CategoriaId = cat.Id }, Guid.NewGuid()));
+        Assert.Empty(ctx.Subcategorias);
+    }
+
+    [Fact]
+    public async Task CriarAsync_CorEIconeValidos_Grava()
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var cat = await SeedCategoria(ctx, null);
+
+        var sub = await svc.CriarAsync(new Subcategoria { Nome = " Feira ", Cor = "#A1b2C3", Icone = "shopping-cart", CategoriaId = cat.Id }, Guid.NewGuid());
+        Assert.Equal(("Feira", "#A1b2C3", "shopping-cart"), (sub.Nome, sub.Cor, sub.Icone));
+    }
+
+    [Fact]
+    public async Task CriarAsync_NomeRepetidoNaMesmaCategoria_409_EmOutraPode()
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var u = Guid.NewGuid();
+        var mercado = await SeedCategoria(ctx, null);
+        var outra = await SeedCategoria(ctx, null);
+        ctx.Subcategorias.Add(new Subcategoria { Id = Guid.NewGuid(), Nome = "Feira", CategoriaId = mercado.Id, UsuarioId = null });
+        await ctx.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CriarAsync(new Subcategoria { Nome = "FEIRA", CategoriaId = mercado.Id }, u));
+        var ok = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = outra.Id }, u);
+        Assert.Equal(outra.Id, ok.CategoriaId);
+    }
+
+    [Fact]
+    public async Task DeletarAsync_MoverPara_LancamentosEContasFixasVaoPraOutra()
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var u = Guid.NewGuid();
+        var cat = await SeedCategoria(ctx, u);
+        var velha = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = cat.Id }, u);
+        var nova = await svc.CriarAsync(new Subcategoria { Nome = "Hortifruti", CategoriaId = cat.Id }, u);
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = velha.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Recorrentes.Add(new Recorrente { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 80, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = velha.Id, CriadoPor = u, DataInicio = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+
+        await svc.DeletarAsync(velha.Id, u, nova.Id);
+
+        Assert.Equal(nova.Id, (await ctx.Transacoes.IgnoreQueryFilters().AsNoTracking().SingleAsync()).SubcategoriaId);
+        Assert.Equal(nova.Id, (await ctx.Recorrentes.AsNoTracking().SingleAsync()).SubcategoriaId);
+        Assert.False(await ctx.Subcategorias.AnyAsync(s => s.Id == velha.Id));
+    }
+
+    [Fact]
+    public async Task DeletarAsync_DestinoDeOutraCategoria_Recusa_ENaoApaga()
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var u = Guid.NewGuid();
+        var a = await SeedCategoria(ctx, u);
+        var b = await SeedCategoria(ctx, null);
+        var sub = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = a.Id }, u);
+        var outra = await svc.CriarAsync(new Subcategoria { Nome = "Açougue", CategoriaId = b.Id }, u);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DeletarAsync(sub.Id, u, outra.Id));
+        Assert.True(await ctx.Subcategorias.AnyAsync(s => s.Id == sub.Id));
+    }
+
+    [Fact]
+    public async Task UsoAsync_ContaLancamentosVivosEContasFixas()
+    {
+        var ctx = CreateContext();
+        var svc = new SubcategoriaService(ctx);
+        var u = Guid.NewGuid();
+        var cat = await SeedCategoria(ctx, u);
+        var sub = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = cat.Id }, u);
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = true, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        await ctx.SaveChangesAsync();
+
+        var uso = await svc.UsoAsync(sub.Id, u);
+        Assert.Equal((1, 0), (uso.Lancamentos, uso.ContasFixas));
     }
 }

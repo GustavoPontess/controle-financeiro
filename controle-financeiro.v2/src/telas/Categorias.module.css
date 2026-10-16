@@ -1,0 +1,22 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Barra: Despesas | Receitas à esquerda, "Nova categoria" à direita (mesma anatomia de Bancos) */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.grupoNota { font-weight: 500; letter-spacing: 0; }
+.cadeado { display: inline-flex; color: var(--v2-texto-3); }
+
+/* Ficha: as subcategorias, uma por linha (as da pessoa com Editar/Excluir à direita) */
+.subs { display: flex; flex-direction: column; border-top: 1px solid var(--v2-linha); }
+.subsTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.subsTitulo { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.subsLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sub { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 2px 0; border-top: 1px solid var(--v2-linha); }
+.subNome { min-width: 0; font-size: var(--v2-fs-sm); font-weight: 500; overflow-wrap: anywhere; }
+.subAcoes { display: flex; gap: 2px; flex-shrink: 0; }
+.subs + * { margin-top: 0; }
+
+@media (max-width: 900px) {
+  .toolbar { padding: 14px 16px 4px; }
+}
