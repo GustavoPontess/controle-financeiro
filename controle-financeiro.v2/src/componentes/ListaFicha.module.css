@@ -1,7 +1,11 @@
 /* Grupos: cabeçalho com o rótulo (e o extra, ex.: total), depois as linhas */
 .lista { list-style: none; margin: 0; padding: 0 8px 8px; display: flex; flex-direction: column; }
 .grupo { display: flex; flex-direction: column; }
-.grupoTopo { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 14px 16px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
+.grupoTopo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0; padding: 14px 16px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
+.grupoRotulo { display: inline-flex; align-items: center; gap: 6px; }
+/* Um grupo depois do outro: linha separando (o cabeçalho sozinho não marcava a divisão). */
+.grupo + .grupo { margin-top: 8px; border-top: 1px solid var(--v2-linha); }
+.vazio { padding: 10px 16px 14px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 
 /* Linhas: marca · nome + detalhe · direita · seta. A linha é um botão: abre a ficha logo embaixo. */
 .grupoLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -20,6 +24,7 @@
 .seta { color: var(--v2-texto-3); transition: transform 0.15s; }
 .item[data-aberta="true"] .seta { transform: rotate(180deg); }
 .inicial { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 600; }
+.inicial[data-destaque="true"] { background: var(--v2-acento-suave); color: var(--v2-acento); }
 
 /* Ficha: alinha com o texto da linha; rótulo à esquerda, valor à direita, uma linha por dado; ações no pé. */
 .ficha { padding: 0 16px 14px 64px; }

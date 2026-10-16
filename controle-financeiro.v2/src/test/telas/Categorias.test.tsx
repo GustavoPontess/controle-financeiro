@@ -41,7 +41,7 @@ describe("Categorias", () => {
   it("Despesas: as da pessoa primeiro, depois as padrão; 'as duas' aparece nas duas abas", async () => {
     renderizar()
     await screen.findByRole("list", { name: "Categorias" })
-    expect(within(screen.getByRole("list", { name: "Criadas por você" })).getAllByRole("button").map((b) => b.textContent))
+    expect(within(screen.getByRole("list", { name: "Suas categorias" })).getAllByRole("button").map((b) => b.textContent))
       .toEqual([expect.stringContaining("Pets"), expect.stringContaining("Reembolsos")])
     expect(within(screen.getByRole("list", { name: "Padrão" })).getAllByRole("button")).toHaveLength(1)
     expect(linha(/Moradia/)).toHaveTextContent("Aluguel, Jardinagem")

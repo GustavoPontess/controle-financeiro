@@ -11,11 +11,11 @@ export function ListaFicha({ rotulo, children }: { rotulo: string; children: Rea
   return <ul className={styles.lista} aria-label={rotulo}>{children}</ul>
 }
 
-/** Um grupo: cabeçalho (rótulo à esquerda, `extra` à direita, ex.: o total) e as linhas. */
-export function GrupoFicha({ rotulo, extra, children }: { rotulo: string; extra?: ReactNode; children: ReactNode }) {
+/** Um grupo: cabeçalho (ícone + rótulo à esquerda, `extra` à direita, ex.: o total) e as linhas. */
+export function GrupoFicha({ rotulo, icone, extra, children }: { rotulo: string; icone?: ReactNode; extra?: ReactNode; children: ReactNode }) {
   return (
     <li className={styles.grupo}>
-      <h3 className={styles.grupoTopo}><span>{rotulo}</span>{extra}</h3>
+      <h3 className={styles.grupoTopo}><span className={styles.grupoRotulo}>{icone}{rotulo}</span>{extra}</h3>
       <ul className={styles.grupoLista} aria-label={rotulo}>{children}</ul>
     </li>
   )
@@ -64,7 +64,12 @@ export function AcoesFicha({ children }: { children: ReactNode }) {
   return <div className={styles.acoes}><RodapeFormulario>{children}</RodapeFormulario></div>
 }
 
-/** Bolinha com a inicial (quando a linha não tem logo). */
-export function InicialFicha({ texto }: { texto: string }) {
-  return <span className={styles.inicial} aria-hidden="true">{texto.trim().charAt(0).toUpperCase() || "?"}</span>
+/** Bolinha com a inicial (quando a linha não tem logo). `destaque` pinta com o acento (ex.: o que é da pessoa). */
+export function InicialFicha({ texto, destaque }: { texto: string; destaque?: boolean }) {
+  return <span className={styles.inicial} data-destaque={destaque || undefined} aria-hidden="true">{texto.trim().charAt(0).toUpperCase() || "?"}</span>
+}
+
+/** Linha de "nada aqui" dentro de um grupo. */
+export function VazioFicha({ children }: { children: ReactNode }) {
+  return <li className={styles.vazio}>{children}</li>
 }

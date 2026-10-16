@@ -5,14 +5,14 @@
 // `state.abrir` (id) e `state.tipo` pra chegar com aquela categoria aberta.
 import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Lock, Pencil, Plus, Trash2 } from "lucide-react"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
-import { AcoesFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
+import { AcoesFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha, VazioFicha } from "../componentes/ListaFicha"
 import Segmentos from "../componentes/Segmentos"
 import { FINALIDADE, serveParaTipo } from "../dominio/categoria"
 import styles from "./Categorias.module.css"
@@ -45,10 +45,11 @@ export default function Categorias() {
   const finalidade = aba === "receita" ? FINALIDADE.receita : FINALIDADE.despesa
   const grupos = useMemo(() => {
     const daAba = (categorias ?? []).filter((c) => serveParaTipo(c, finalidade)).sort(porNome((c) => c.descricao))
+    // "Suas" aparece mesmo vazio: é o que marca a divisão com as padrão (que não se editam nem saem).
     return [
-      { chave: "suas", rotulo: "Criadas por você", itens: daAba.filter((c) => !c.isPadrao) },
+      { chave: "suas", rotulo: "Suas categorias", itens: daAba.filter((c) => !c.isPadrao) },
       { chave: "padrao", rotulo: "Padrão", itens: daAba.filter((c) => c.isPadrao) },
-    ].filter((g) => g.itens.length > 0)
+    ].filter((g) => g.chave === "suas" || g.itens.length > 0)
   }, [categorias, finalidade])
   const subsDe = (id: string) => subcategorias.filter((s) => s.categoriaId === id).sort(porNome((s) => s.nome))
 
@@ -64,12 +65,13 @@ export default function Categorias() {
           <div className={styles.respiro}><Esqueleto linhas={4} altura={18} /></div>
         ) : erro ? (
           <p className={styles.vazio}>Não deu pra carregar as categorias.</p>
-        ) : grupos.length === 0 ? (
-          <p className={styles.vazio}>Nenhuma categoria.</p>
         ) : (
           <ListaFicha rotulo="Categorias">
             {grupos.map((g) => (
-              <GrupoFicha key={g.chave} rotulo={g.rotulo}>
+              <GrupoFicha key={g.chave} rotulo={g.rotulo}
+                icone={g.chave === "padrao" ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined}
+                extra={g.chave === "padrao" ? <span className={styles.grupoNota}>Não dá pra editar nem excluir</span> : undefined}>
+                {g.chave === "suas" && g.itens.length === 0 && <VazioFicha>Nenhuma ainda.</VazioFicha>}
                 {g.itens.map((c) => (
                   <Linha key={c.id} c={c} subs={subsDe(c.id)} aberta={c.id === abertaId}
                     aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} />
@@ -93,8 +95,9 @@ function Linha({ c, subs, aberta, aoAbrir }: { c: Category; subs: Subcategory[];
   ].filter(Boolean).join(" · ")
 
   return (
-    <ItemFicha id={`categoria-${c.id}`} aberto={aberta} aoAbrir={aoAbrir} marca={<InicialFicha texto={c.descricao} />}
-      titulo={c.descricao} detalhe={detalhe}>
+    <ItemFicha id={`categoria-${c.id}`} aberto={aberta} aoAbrir={aoAbrir} marca={<InicialFicha texto={c.descricao} destaque={!c.isPadrao} />}
+      titulo={c.descricao} detalhe={detalhe}
+      direita={c.isPadrao ? <span className={styles.cadeado} title="Padrão: não dá pra editar nem excluir"><Lock size={15} strokeWidth={2} aria-hidden="true" /></span> : undefined}>
       <div className={styles.subs}>
         <div className={styles.subsTopo}>
           <span className={styles.subsTitulo}>Subcategorias</span>
