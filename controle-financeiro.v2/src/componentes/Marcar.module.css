@@ -1,0 +1,5 @@
+.marcar { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--v2-fs-sm); color: var(--v2-texto); }
+.marcar[data-desabilitado="true"] { cursor: default; opacity: 0.5; }
+.caixa { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: var(--v2-tinta); cursor: inherit; }
+.caixa:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 2px; }
+.texto { min-width: 0; }

@@ -34,12 +34,48 @@ public class ImportacaoService
 
     /// <summary>Lê o extrato e devolve a preview: linhas parseadas, deduplicadas
     /// e com sugestão de categoria. Nada é persistido.</summary>
+    /// <summary>Operação no <see cref="RegistroIdempotencia"/> da confirmação.</summary>
+    public const string OperacaoImportarExtrato = "ImportarExtrato";
+
+    /// <summary>Teto de linhas por confirmação (um extrato de anos cabe; o arquivo já tem limite de 2 MB).</summary>
+    public const int MaxLinhasPorConfirmacao = 5000;
+
+    /// <summary>
+    /// Lê o extrato e devolve a prévia (nada é salvo). No CSV, as colunas vêm do <paramref name="mapeamento"/>
+    /// que a tela mandou; senão do que a pessoa já escolheu nessa conta pra esse cabeçalho; senão da sugestão.
+    /// Sem confiança, volta <c>PrecisaMapear</c> com as colunas e a amostra pra tela perguntar.
+    /// </summary>
     public async Task<PreviewImportacaoDto> PreviewAsync(
-        Guid contaId, Guid usuarioId, string nomeArquivo, string conteudo)
+        Guid contaId, Guid usuarioId, string nomeArquivo, string conteudo, MapeamentoCsvDto? mapeamento = null)
     {
         await ExigirContaAsync(contaId, usuarioId);
 
-        var lidas = _extratoImport.Parse(nomeArquivo, conteudo);
+        var ehCsv = Path.GetExtension(nomeArquivo).Equals(".csv", StringComparison.OrdinalIgnoreCase);
+        ExtratoImportService.TabelaCsv? tabela = ehCsv ? _extratoImport.LerTabela(conteudo) : null;
+        var mapa = mapeamento is null ? null : ParaMapa(mapeamento);
+        var lembrado = false;
+        if (tabela is not null && mapa is null)
+        {
+            var salvo = await _context.ModelosImportacao.AsNoTracking()
+                .FirstOrDefaultAsync(m => m.UsuarioId == usuarioId && m.ContaId == contaId && m.Assinatura == tabela.Assinatura);
+            if (salvo is not null) { mapa = ParaMapa(salvo); lembrado = true; }
+        }
+
+        var leitura = _extratoImport.Ler(nomeArquivo, conteudo, mapa);
+        var amostra = tabela?.Linhas.Take(5).Select(l => l.Select(c => c.Length > 80 ? c[..80] : c).ToArray()).ToList();
+        PreviewImportacaoDto ComTabela(PreviewImportacaoDto p) => tabela is null ? p : p with
+        {
+            Formato = "csv",
+            Colunas = tabela.Colunas,
+            Amostra = amostra,
+            Mapeamento = leitura.Mapeamento is { } m ? ParaDto(m) : null,
+            Assinatura = tabela.Assinatura,
+            MapeamentoLembrado = lembrado,
+        };
+        if (leitura.PrecisaMapear)
+            return ComTabela(new PreviewImportacaoDto(new(), 0, 0, PrecisaMapear: true));
+
+        var lidas = leitura.Linhas;
 
         // Transações ativas da conta para deduplicação.
         var existentes = await _context.Transacoes
@@ -96,21 +132,97 @@ public class ImportacaoService
                 categoria?.Id, categoria?.Descricao, pixNoCredito[i], faturaPaga?.DataFechamento));
         }
 
-        return new PreviewImportacaoDto(
-            linhas, linhas.Count, linhas.Count(l => l.Duplicada));
+        return ComTabela(new PreviewImportacaoDto(
+            linhas, linhas.Count, linhas.Count(l => l.Duplicada)));
     }
 
-    /// <summary>Cria as transações aprovadas pelo usuário na conta indicada.</summary>
+    private static ExtratoImportService.MapeamentoCsv ParaMapa(MapeamentoCsvDto m) =>
+        new(m.Data, m.Descricao, m.Valor, m.Entrada, m.Saida, m.Id, m.InverterSinal);
+
+    private static ExtratoImportService.MapeamentoCsv ParaMapa(ModeloImportacao m) =>
+        new(m.ColunaData, m.ColunaDescricao, m.ColunaValor, m.ColunaEntrada, m.ColunaSaida, m.ColunaId, m.InverterSinal);
+
+    private static MapeamentoCsvDto ParaDto(ExtratoImportService.MapeamentoCsv m) =>
+        new(m.Data, m.Descricao, m.Valor, m.Entrada, m.Saida, m.Id, m.InverterSinal);
+
+    /// <summary>
+    /// Cria as transações aprovadas pelo usuário na conta indicada — tudo ou nada, numa transação só do banco
+    /// (antes eram N gravações soltas: uma falha no meio deixava meio extrato importado). Com
+    /// <paramref name="idempotencyKey"/> (o controller exige), a mesma confirmação repetida (clique duplo,
+    /// rede que caiu depois de gravar) não importa de novo: a chave é gravada ANTES das linhas, no índice único,
+    /// então a segunda requisição simultânea espera a primeira e vira replay. Linha com FITID que já está na conta
+    /// é pulada aqui no servidor, mesmo que a prévia tenha mandado.
+    /// </summary>
     public async Task<ResultadoImportacaoDto> ConfirmarAsync(
-        ConfirmarImportacaoDto dto, Guid usuarioId)
+        ConfirmarImportacaoDto dto, Guid usuarioId, string? idempotencyKey = null)
     {
         await ExigirContaAsync(dto.ContaId, usuarioId);
+        Idempotencia.ExigirTamanho(idempotencyKey);
 
         if (dto.Linhas.Count == 0)
             throw new ArgumentException("Nenhuma linha selecionada para importação.");
+        if (dto.Linhas.Count > MaxLinhasPorConfirmacao)
+            throw new ArgumentException($"Importe no máximo {MaxLinhasPorConfirmacao} linhas por vez.");
 
         if (dto.Linhas.Any(l => l.Valor <= 0))
             throw new ArgumentException("O valor de cada transação deve ser positivo.");
+
+        if (!string.IsNullOrWhiteSpace(idempotencyKey)
+            && await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoImportarExtrato, idempotencyKey) is not null)
+            return new ResultadoImportacaoDto(0, Repetido: true);
+
+        var proprioTx = _context.Database.CurrentTransaction is null && _context.Database.IsRelational();
+        await using var tx = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoImportarExtrato, idempotencyKey, dto.ContaId));
+                await _context.SaveChangesAsync();
+            }
+            var resultado = await GravarLinhasAsync(dto, usuarioId);
+            if (dto.Mapeamento is not null && !string.IsNullOrWhiteSpace(dto.Assinatura))
+                await LembrarMapeamentoAsync(dto.ContaId, usuarioId, dto.Assinatura, dto.Mapeamento);
+            if (tx is not null) await tx.CommitAsync();
+            return resultado;
+        }
+        catch (DbUpdateException e) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(e))
+        {
+            // Outra requisição com a mesma chave gravou primeiro: o extrato já entrou (este pedido não gravou nada).
+            return new ResultadoImportacaoDto(0, Repetido: true);
+        }
+    }
+
+    private async Task LembrarMapeamentoAsync(Guid contaId, Guid usuarioId, string assinatura, MapeamentoCsvDto m)
+    {
+        var modelo = await _context.ModelosImportacao
+            .FirstOrDefaultAsync(x => x.UsuarioId == usuarioId && x.ContaId == contaId && x.Assinatura == assinatura);
+        if (modelo is null)
+        {
+            modelo = new ModeloImportacao { Id = Guid.NewGuid(), UsuarioId = usuarioId, ContaId = contaId, Assinatura = assinatura };
+            _context.ModelosImportacao.Add(modelo);
+        }
+        modelo.ColunaData = m.Data;
+        modelo.ColunaDescricao = m.Descricao;
+        modelo.ColunaValor = m.Valor;
+        modelo.ColunaEntrada = m.Entrada;
+        modelo.ColunaSaida = m.Saida;
+        modelo.ColunaId = m.Id;
+        modelo.InverterSinal = m.InverterSinal;
+        modelo.AtualizadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<ResultadoImportacaoDto> GravarLinhasAsync(ConfirmarImportacaoDto dto, Guid usuarioId)
+    {
+        // FITID que já está na conta (lançamento vivo) não entra de novo — nem repetido dentro do mesmo envio.
+        var fitIds = dto.Linhas.Where(l => l.FitId != null).Select(l => l.FitId!).Distinct().ToList();
+        var jaNaConta = (await _context.Transacoes
+                .Where(t => t.ContaId == dto.ContaId && t.ImportacaoFitId != null && fitIds.Contains(t.ImportacaoFitId))
+                .Select(t => t.ImportacaoFitId!)
+                .ToListAsync())
+            .ToHashSet();
+        var jaExistiam = 0;
 
         // Detecta de novo aqui, no servidor — as marcas da prévia são só pra mostrar.
         var paraRegra = dto.Linhas
@@ -122,6 +234,11 @@ public class ImportacaoService
         var importadas = 0;
         foreach (var (linha, i) in dto.Linhas.Select((l, i) => (l, i)))
         {
+            if (linha.FitId is not null && !jaNaConta.Add(linha.FitId))
+            {
+                jaExistiam++;
+                continue;
+            }
             if (faturasPagas.TryGetValue(i, out var fatura))
             {
                 await PagarFaturaDoExtratoAsync(dto.ContaId, usuarioId, fatura, linha);
@@ -149,7 +266,7 @@ public class ImportacaoService
             importadas++;
         }
 
-        return new ResultadoImportacaoDto(importadas);
+        return new ResultadoImportacaoDto(importadas, jaExistiam);
     }
 
     private record CategoriaResumo(Guid Id, string Descricao, Finalidade Finalidade);

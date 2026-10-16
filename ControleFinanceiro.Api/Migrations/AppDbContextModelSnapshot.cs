@@ -1066,6 +1066,57 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("MfaLoginChallenges");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ModeloImportacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Assinatura")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("ColunaData")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ColunaDescricao")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ColunaEntrada")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ColunaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ColunaSaida")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ColunaValor")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("InverterSinal")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaId");
+
+                    b.HasIndex("UsuarioId", "ContaId", "Assinatura")
+                        .IsUnique();
+
+                    b.ToTable("ModelosImportacao");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Notificacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2358,6 +2409,21 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.ModeloImportacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", null)
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Notificacao", b =>

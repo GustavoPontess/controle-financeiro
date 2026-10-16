@@ -26,6 +26,7 @@ import Categorias from "./telas/Categorias"
 import EditarCategoria from "./telas/EditarCategoria"
 import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
+import ImportarExtrato from "./telas/ImportarExtrato"
 import NovaConta from "./telas/NovaConta"
 import EditarConta from "./telas/EditarConta"
 import EncerrarConta from "./telas/EncerrarConta"
@@ -40,7 +41,6 @@ const PENDENTES: [string, string, string][] = [
   ["/relatorios", "Relatórios", "/reports"],
   ["/reconciliacao", "Reconciliação", "/reconciliacao"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
-  ["/importar", "Importar extrato", "/importacao"],
   ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
   ["/limites", "Limites", "/limites"],
@@ -70,6 +70,7 @@ export default function App() {
         <Route path="/contas-fixas/:id/proxima" element={<ProximaCobranca />} />
         <Route path="/bancos" element={<Bancos />} />
         <Route path="/categorias" element={<Categorias />} />
+        <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/categorias/nova" element={<EditarCategoria />} />
         <Route path="/categorias/:id/editar" element={<EditarCategoria />} />
         <Route path="/categorias/:id/excluir" element={<ExcluirCategoria />} />

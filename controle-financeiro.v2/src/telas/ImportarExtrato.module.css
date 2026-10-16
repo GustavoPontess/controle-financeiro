@@ -1,0 +1,75 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.alertaLista { margin: 0 24px 8px; }
+.mudo { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+
+/* Conta · arquivo · ler, na mesma linha (o botão alinha com os controles, não com os rótulos) */
+.escolherArquivo { width: 100%; justify-content: flex-start; }
+.escolherArquivo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acaoLer { display: flex; align-items: flex-end; }
+
+/* Qual coluna é o quê: as primeiras linhas do arquivo, como estão */
+.amostraRolagem { overflow-x: auto; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); }
+.amostra { width: 100%; border-collapse: collapse; font-size: var(--v2-fs-xs); }
+.amostra th, .amostra td { padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--v2-linha); }
+.amostra th { font-weight: 600; color: var(--v2-texto-2); background: var(--v2-superficie-2); }
+.amostra tr:last-child td { border-bottom: 0; }
+.inverter { display: flex; align-items: flex-end; padding-bottom: 10px; }
+
+/* Prévia */
+.previaTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px 10px; }
+.resumo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.resumo strong { font-size: var(--v2-fs-md); color: var(--v2-texto); }
+.resumoMudo { color: var(--v2-texto-3); }
+
+/* Linhas: marcar · data · descrição + etiquetas · categoria · valor */
+.cabecalhoLista, .linha { display: grid; grid-template-columns: 20px 84px minmax(0, 1fr) 220px 120px; align-items: center; gap: 12px; padding: 0 24px; }
+.cabecalhoLista { padding-top: 8px; padding-bottom: 8px; border-top: 1px solid var(--v2-linha); border-bottom: 1px solid var(--v2-linha); font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.direita { text-align: right; }
+.lista { list-style: none; margin: 0; padding: 0; }
+.linha { min-height: 52px; padding-top: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--v2-linha); }
+.linha[data-desmarcada="true"] .descricao, .linha[data-desmarcada="true"] .valor, .linha[data-desmarcada="true"] .data { color: var(--v2-texto-3); }
+.data { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.texto { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.descricao { font-size: var(--v2-fs-sm); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 4px; }
+.categoria { min-width: 0; }
+.valor { justify-self: end; font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor[data-tom="negativo"] { color: var(--v2-negativo); }
+.valor[data-tom="positivo"] { color: var(--v2-positivo); }
+.pe { padding: 14px 24px 18px; }
+
+/* Pronto: um resumo no centro (ícone, quanto entrou e saiu, o período) e as duas saídas embaixo */
+.pronto { align-items: center; gap: 12px; padding: 40px 24px; text-align: center; }
+.prontoIcone { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 999px; background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.prontoIcone[data-repetido="true"] { background: var(--v2-superficie-2); color: var(--v2-texto-2); }
+.prontoTitulo { margin: 4px 0 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.01em; }
+.prontoTexto { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.prontoTexto strong { color: var(--v2-texto); font-weight: 600; }
+.prontoNumeros { display: flex; gap: 12px; margin-top: 6px; }
+.prontoNumeros > div { display: flex; flex-direction: column; gap: 4px; min-width: 140px; padding: 12px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.prontoNumeros span:first-child { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); }
+.prontoValor { font-size: var(--v2-fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.prontoValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.prontoValor[data-tom="negativo"] { color: var(--v2-negativo); }
+.prontoAcoes { display: flex; gap: 8px; margin-top: 10px; }
+
+@media (max-width: 900px) {
+  .acaoLer > * { width: 100%; }
+  .previaTopo { padding: 14px 16px 8px; }
+  .alertaLista { margin: 0 16px 8px; }
+  .cabecalhoLista { display: none; }
+  /* No celular: marcar + texto em cima, data · categoria · valor embaixo */
+  .linha { grid-template-columns: 20px minmax(0, 1fr) auto; grid-template-areas: "marcar texto valor" ". data data" ". categoria categoria"; gap: 6px 10px; padding: 10px 16px; }
+  .linha > :first-child { grid-area: marcar; }
+  .data { grid-area: data; font-size: var(--v2-fs-xs); }
+  .texto { grid-area: texto; }
+  .categoria { grid-area: categoria; }
+  .valor { grid-area: valor; }
+  .pe { padding: 12px 16px 16px; }
+  .pronto { padding: 28px 16px; }
+  .prontoNumeros { width: 100%; }
+  .prontoNumeros > div { flex: 1; min-width: 0; }
+  .prontoAcoes { flex-direction: column-reverse; width: 100%; }
+  .prontoAcoes > * { width: 100%; }
+}

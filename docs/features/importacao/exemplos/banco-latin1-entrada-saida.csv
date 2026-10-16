@@ -1,0 +1,7 @@
+Extrato de conta corrente
+Agência: 0001;Conta: 12345-6
+Data;Histórico;Crédito;Débito;Saldo
+01/10/2026;Saldo anterior;;;100,00
+02/10/2026;Padaria Exemplo;;0,11;99,89
+03/10/2026;Pix recebido Exemplo;0,25;;100,14
+03/10/2026;Saldo do dia;;;100,14

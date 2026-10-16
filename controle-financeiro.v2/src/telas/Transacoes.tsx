@@ -2,6 +2,7 @@
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useLocation } from "react-router-dom"
 import { SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
@@ -61,8 +62,10 @@ export default function Transacoes() {
 
   const [busca, setBusca] = useState("")
   const buscaAplicada = useAtrasado(busca.trim())
-  const [filtros, setFiltros] = useState<Filtros>(SEM_FILTRO)      // o que está valendo
-  const [rascunho, setRascunho] = useState<Filtros>(SEM_FILTRO)    // o que está no painel
+  // Outra tela pode chegar com filtro (ex.: Importar extrato → "Ver em Transações" da conta): state.filtros.
+  const { state } = useLocation()
+  const [filtros, setFiltros] = useState<Filtros>(() => ({ ...SEM_FILTRO, ...((state as { filtros?: Partial<Filtros> } | null)?.filtros ?? {}) }))
+  const [rascunho, setRascunho] = useState<Filtros>(filtros)      // o que está no painel
   const [painel, setPainel] = useState(false)
   const painelRef = useRef<HTMLDivElement | null>(null)
 

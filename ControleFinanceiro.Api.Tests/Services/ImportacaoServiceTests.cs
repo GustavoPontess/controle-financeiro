@@ -427,4 +427,105 @@ public class ImportacaoServiceTests
             () => svc.ConfirmarAsync(
                 new ConfirmarImportacaoDto(contaId, new List<LinhaImportarDto>()), usuario));
     }
+
+    // ── CSV mapeado + confirmar seguro (2026-10-16) ──
+
+    private const string CsvEstranho = "Dia;Texto;X;Y\n05/05/2026;Salário;3500,00;\n06/05/2026;Aluguel;;1800,00\n";
+    private static readonly MapeamentoCsvDto MapaEstranho = new(0, 1, null, 2, 3, null, false);
+
+    [Fact]
+    public async Task PreviewAsync_CsvNaoReconhecido_VoltaPrecisaMapear_ComColunasEAmostra()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+
+        var preview = await CreateService(ctx).PreviewAsync(contaId, usuario, "banco.csv", CsvEstranho);
+
+        Assert.True(preview.PrecisaMapear);
+        Assert.Empty(preview.Linhas);
+        Assert.Equal("csv", preview.Formato);
+        Assert.Equal(new[] { "Dia", "Texto", "X", "Y" }, preview.Colunas);
+        Assert.Equal(2, preview.Amostra!.Count);
+        Assert.Equal("dia|texto|x|y", preview.Assinatura);
+    }
+
+    [Fact]
+    public async Task ConfirmarAsync_ComMapeamento_LembraPraConta_EAProximaPreviaJaVemLida()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        var svc = CreateService(ctx);
+
+        var preview = await svc.PreviewAsync(contaId, usuario, "banco.csv", CsvEstranho, MapaEstranho);
+        Assert.False(preview.PrecisaMapear);
+        Assert.Equal(2, preview.Linhas.Count);
+
+        await svc.ConfirmarAsync(new ConfirmarImportacaoDto(contaId,
+            preview.Linhas.Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, null)).ToList(),
+            MapaEstranho, preview.Assinatura), usuario, "chave-1");
+
+        var modelo = await ctx.ModelosImportacao.SingleAsync();
+        Assert.Equal((contaId, "dia|texto|x|y", 2, 3), (modelo.ContaId, modelo.Assinatura, modelo.ColunaEntrada!.Value, modelo.ColunaSaida!.Value));
+
+        var proxima = await svc.PreviewAsync(contaId, usuario, "banco.csv", CsvEstranho);
+        Assert.False(proxima.PrecisaMapear);
+        Assert.True(proxima.MapeamentoLembrado);
+        Assert.All(proxima.Linhas, l => Assert.True(l.Duplicada)); // já entraram
+    }
+
+    [Fact]
+    public async Task ConfirmarAsync_MesmaChaveDuasVezes_NaoImportaDeNovo()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        var svc = CreateService(ctx);
+        var dto = new ConfirmarImportacaoDto(contaId, new List<LinhaImportarDto>
+        {
+            new(new DateTime(2026, 5, 10), "Mercado", 50m, TipoTransacao.Despesa, null, null),
+        });
+
+        var primeira = await svc.ConfirmarAsync(dto, usuario, "chave-x");
+        var segunda = await svc.ConfirmarAsync(dto, usuario, "chave-x");
+
+        Assert.Equal((1, false), (primeira.Importadas, primeira.Repetido));
+        Assert.Equal((0, true), (segunda.Importadas, segunda.Repetido));
+        Assert.Equal(1, ctx.Transacoes.Count(t => t.ContaId == contaId));
+    }
+
+    [Fact]
+    public async Task ConfirmarAsync_FitIdQueJaEstaNaConta_OuRepetidoNoEnvio_EhPuladoNoServidor()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        SeedTransacao(ctx, contaId, 50m, new DateTime(2026, 5, 10), "Mercado", TipoTransacao.Despesa, "FIT-1");
+        var svc = CreateService(ctx);
+
+        var resultado = await svc.ConfirmarAsync(new ConfirmarImportacaoDto(contaId, new List<LinhaImportarDto>
+        {
+            new(new DateTime(2026, 5, 10), "Mercado", 50m, TipoTransacao.Despesa, "FIT-1", null),
+            new(new DateTime(2026, 5, 12), "Salario", 200m, TipoTransacao.Receita, "FIT-2", null),
+            new(new DateTime(2026, 5, 12), "Salario", 200m, TipoTransacao.Receita, "FIT-2", null),
+        }), usuario, "chave-y");
+
+        Assert.Equal((1, 2), (resultado.Importadas, resultado.JaExistiam));
+        Assert.Equal(2, ctx.Transacoes.Count(t => t.ContaId == contaId));
+    }
+
+    [Fact]
+    public async Task ConfirmarAsync_MaisLinhasQueOTeto_Recusa()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        var linhas = Enumerable.Range(0, ImportacaoService.MaxLinhasPorConfirmacao + 1)
+            .Select(i => new LinhaImportarDto(new DateTime(2026, 5, 10), $"L{i}", 1m, TipoTransacao.Despesa, null, null)).ToList();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService(ctx).ConfirmarAsync(new ConfirmarImportacaoDto(contaId, linhas), usuario, "chave-z"));
+        Assert.Equal(0, ctx.Transacoes.Count());
+    }
 }
