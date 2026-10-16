@@ -1,0 +1,5 @@
+/* Categoria e subcategoria: dois campos, sem prévia. Largura de formulário curto (não estica na tela larga). */
+.form { max-width: 640px; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+/* Mesmo respiro dos outros formulários: o erro do campo desenha nesse vão (Campo.module.css) sem mexer na tela. */
+.form > section { gap: 18px; }

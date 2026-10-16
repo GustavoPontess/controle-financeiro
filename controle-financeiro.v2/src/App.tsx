@@ -22,6 +22,10 @@ import ContaFixa from "./telas/ContaFixa"
 import EditarContaFixa from "./telas/EditarContaFixa"
 import ProximaCobranca from "./telas/ProximaCobranca"
 import Bancos from "./telas/Bancos"
+import Categorias from "./telas/Categorias"
+import EditarCategoria from "./telas/EditarCategoria"
+import EditarSubcategoria from "./telas/EditarSubcategoria"
+import ExcluirCategoria from "./telas/ExcluirCategoria"
 import NovaConta from "./telas/NovaConta"
 import EditarConta from "./telas/EditarConta"
 import EncerrarConta from "./telas/EncerrarConta"
@@ -37,7 +41,6 @@ const PENDENTES: [string, string, string][] = [
   ["/reconciliacao", "Reconciliação", "/reconciliacao"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
   ["/importar", "Importar extrato", "/importacao"],
-  ["/categorias", "Categorias", "/categories"],
   ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
   ["/limites", "Limites", "/limites"],
@@ -66,6 +69,13 @@ export default function App() {
         <Route path="/contas-fixas/:id/editar" element={<EditarContaFixa />} />
         <Route path="/contas-fixas/:id/proxima" element={<ProximaCobranca />} />
         <Route path="/bancos" element={<Bancos />} />
+        <Route path="/categorias" element={<Categorias />} />
+        <Route path="/categorias/nova" element={<EditarCategoria />} />
+        <Route path="/categorias/:id/editar" element={<EditarCategoria />} />
+        <Route path="/categorias/:id/excluir" element={<ExcluirCategoria />} />
+        <Route path="/categorias/:id/subcategorias/nova" element={<EditarSubcategoria nova />} />
+        <Route path="/subcategorias/:id/editar" element={<EditarSubcategoria />} />
+        <Route path="/subcategorias/:id/excluir" element={<ExcluirCategoria sub />} />
         <Route path="/bancos/nova" element={<NovaConta />} />
         <Route path="/bancos/:id/editar" element={<EditarConta />} />
         <Route path="/bancos/:id/encerrar" element={<EncerrarConta />} />

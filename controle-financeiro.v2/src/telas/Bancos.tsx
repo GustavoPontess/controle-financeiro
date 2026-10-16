@@ -8,7 +8,7 @@
 // (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Ban, ChevronDown, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
+import { Ban, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
 import { deleteConta, getContas, reabrirConta } from "../services/contaService"
 import { getCartoes } from "../services/cartaoCreditoService"
 import type { CartaoCredito } from "../types/CartaoCredito"
@@ -19,7 +19,7 @@ import Botao from "../componentes/Botao"
 import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
 import FaceCartao from "../componentes/FaceCartao"
-import { RodapeFormulario } from "../componentes/Formulario"
+import { AcoesFicha, DadosFicha, GrupoFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
 import { descreverConta, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
@@ -121,19 +121,16 @@ export default function Bancos() {
         ) : vazio ? (
           <p className={styles.vazio}>{situacao === "abertas" ? "Nenhuma conta ainda." : "Nenhuma conta encerrada."}</p>
         ) : (
-          <ul className={styles.lista} aria-label="Contas">
+          <ListaFicha rotulo="Contas">
             {grupos.map((g) => (
-              <li key={g.chave} className={styles.grupo}>
-                <h3 className={styles.grupoTopo}><span>{g.rotulo}</span>{g.total !== undefined && <Dinheiro valor={g.total} className={styles.grupoTotal} />}</h3>
-                <ul className={styles.grupoLista} aria-label={g.rotulo}>
-                  {g.contas.map((c) => (
-                    <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
-                      aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
-                  ))}
-                </ul>
-              </li>
+              <GrupoFicha key={g.chave} rotulo={g.rotulo} extra={g.total !== undefined && <Dinheiro valor={g.total} className={styles.grupoTotal} />}>
+                {g.contas.map((c) => (
+                  <Linha key={c.id} c={c} cartoes={cartoes.filter((k) => k.contaId === c.id)} aberta={c.id === abertaId}
+                    aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} aoMudar={mudou} />
+                ))}
+              </GrupoFicha>
             ))}
-          </ul>
+          </ListaFicha>
         )}
       </Bloco>
     </div>
@@ -164,7 +161,6 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
   const [excluindo, setExcluindo] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const encerrada = !!c.encerradaEm
-  const ficha = `conta-${c.id}`
 
   const excluir = async () => {
     setOcupado(true); setErro(null)
@@ -178,23 +174,15 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
   }
 
   return (
-    <li className={styles.item} data-aberta={aberta || undefined} data-encerrada={encerrada || undefined}>
-      <button type="button" className={styles.linha} aria-expanded={aberta} aria-controls={ficha} onClick={aoAbrir}>
-        {c.isCarteira
-          ? <span className={styles.carteira} aria-hidden="true"><Wallet size={18} strokeWidth={2} /></span>
-          : <LogoMarca nome={c.bancoNome || c.nome} logoUrl={c.bancoLogoUrl} cor={c.bancoCor} tamanho={36} />}
-        <span className={styles.texto}>
-          <span className={styles.nome}>{c.nome}</span>
-          <span className={styles.sub}>{encerrada ? `Encerrada em ${dataBR(c.encerradaEm!)}` : descreverConta(c)}</span>
-        </span>
-        <Dinheiro valor={c.saldoAtual} className={styles.valor} tom={encerrada ? "neutro" : c.saldoAtual < 0 ? "negativo" : undefined} />
-        <ChevronDown size={18} strokeWidth={2} aria-hidden="true" className={styles.seta} />
-      </button>
-
-      {aberta && (
-        <div id={ficha} className={styles.ficha}>
+    <ItemFicha id={`conta-${c.id}`} aberto={aberta} aoAbrir={aoAbrir} apagado={encerrada}
+      marca={c.isCarteira
+        ? <span className={styles.carteira} aria-hidden="true"><Wallet size={18} strokeWidth={2} /></span>
+        : <LogoMarca nome={c.bancoNome || c.nome} logoUrl={c.bancoLogoUrl} cor={c.bancoCor} tamanho={36} />}
+      titulo={c.nome}
+      detalhe={encerrada ? `Encerrada em ${dataBR(c.encerradaEm!)}` : descreverConta(c)}
+      direita={<Dinheiro valor={c.saldoAtual} className={styles.valor} tom={encerrada ? "neutro" : c.saldoAtual < 0 ? "negativo" : undefined} />}>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-          <dl className={styles.dados}>
+          <DadosFicha>
             <div><dt>Tipo</dt><dd>{rotuloTipo(c)}</dd></div>
             {!c.isCarteira && temDadosBancarios(c.tipo) && (
               <>
@@ -204,7 +192,7 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
               </>
             )}
             {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}
-          </dl>
+          </DadosFicha>
           {cartoes.length > 0 && (
             <div className={styles.cartoes}>
               <span className={styles.cartoesTitulo}>Cartões</span>
@@ -224,8 +212,7 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
             </div>
           )}
           {!c.isCarteira && (
-            <div className={styles.acoes}>
-              <RodapeFormulario>
+            <AcoesFicha>
                 <Botao perigo disabled={ocupado} onClick={() => { setErro(null); setExcluindo(true) }} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
                 {encerrada ? (
                   <Botao variante="primario" disabled={ocupado} onClick={() => { void reabrir() }} icone={<RotateCcw size={15} strokeWidth={2.25} aria-hidden="true" />}>Reabrir</Botao>
@@ -237,11 +224,8 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
                       icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
                   </>
                 )}
-              </RodapeFormulario>
-            </div>
+            </AcoesFicha>
           )}
-        </div>
-      )}
 
       <Confirmar
         aberto={excluindo}
@@ -253,6 +237,6 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
         onConfirmar={() => { void excluir() }}
         onCancelar={() => setExcluindo(false)}
       />
-    </li>
+    </ItemFicha>
   )
 }

@@ -40,6 +40,7 @@ public static class DemoSeeder
         var itau = await CartoesAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
         await ParcelamentosAsync(sp, context, dev.Id, nubank, itau, Cat, hoje);
         await ContasAsync(sp, context, dev.Id, hoje);
+        await CategoriasAsync(sp, context, dev.Id, corrente.Id, hoje);
         await NotificacoesAsync(sp, context, dev.Id, nubank.Id);
     }
 
@@ -172,6 +173,40 @@ public static class DemoSeeder
             Nome = "XP", Tipo = TipoConta.Investimento, BancoId = Banco("102"),
         }, dev, 5000m, Utc(hoje.AddDays(-120)));
         await contas.CriarAsync(new Domain.Entities.Conta { Nome = "Cofrinho", Tipo = TipoConta.Dinheiro }, dev, 200m, Utc(hoje.AddDays(-10)));
+    }
+
+    // ── Categorias: as da pessoa (despesa, receita e as duas), subcategoria própria numa padrão (Moradia) e uma
+    //    categoria com lançamentos e conta fixa (Pets), pra ver o "pra onde vai" ao excluir. Via services.
+    private static async Task CategoriasAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid corrente, DateTime hoje)
+    {
+        if (await context.Categorias.AnyAsync(c => c.UsuarioId == dev && c.Descricao == "Pets"))
+            return;
+        var cats = sp.GetRequiredService<CategoriaService>();
+        var subs = sp.GetRequiredService<SubcategoriaService>();
+        var pets = await cats.CriarAsync(new Domain.Entities.Categoria { Descricao = "Pets", Finalidade = Finalidade.Despesa }, dev);
+        var racao = await subs.CriarAsync(new Domain.Entities.Subcategoria { Nome = "Ração", CategoriaId = pets.Id }, dev);
+        await subs.CriarAsync(new Domain.Entities.Subcategoria { Nome = "Veterinário", CategoriaId = pets.Id }, dev);
+        var freelas = await cats.CriarAsync(new Domain.Entities.Categoria { Descricao = "Freelas", Finalidade = Finalidade.Receita }, dev);
+        await subs.CriarAsync(new Domain.Entities.Subcategoria { Nome = "Design", CategoriaId = freelas.Id }, dev);
+        await cats.CriarAsync(new Domain.Entities.Categoria { Descricao = "Reembolsos", Finalidade = Finalidade.Ambas }, dev);
+        if (await context.Categorias.FirstOrDefaultAsync(c => c.UsuarioId == null && c.Descricao == "Moradia") is { } moradia)
+            await subs.CriarAsync(new Domain.Entities.Subcategoria { Nome = "Jardinagem", CategoriaId = moradia.Id }, dev);
+
+        var tx = sp.GetRequiredService<TransacaoService>();
+        foreach (var (desc, valor, dias, sub) in new[] { ("Ração 15kg", 189.90m, -12, (Guid?)racao.Id), ("Banho e tosa", 80m, -5, null) })
+            await tx.CriarTransacaoAsync(new Domain.Entities.Transacao
+            {
+                Id = Guid.NewGuid(), Descricao = desc, Valor = valor, Tipo = TipoTransacao.Despesa, CategoriaId = pets.Id,
+                SubcategoriaId = sub, ContaId = corrente, MeioPagamento = MeioPagamento.Pix,
+                StatusTransacao = StatusTransacao.Executado, Data = DateOnly.FromDateTime(hoje.AddDays(dias)),
+            }, dev, Guid.NewGuid().ToString());
+        var inicio = Utc(hoje.AddDays(7));
+        await sp.GetRequiredService<RecorrenteService>().CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Ração mensal", Valor = 189.90m, Tipo = (int)TipoTransacao.Despesa, CategoriaId = pets.Id, SubcategoriaId = racao.Id,
+            ContaId = corrente, MeioPagamento = (int)MeioPagamento.Pix, Frequencia = (int)FrequenciaRecorrencia.Mensal,
+            Dia = inicio.Day, DataInicio = inicio,
+        }, dev, Guid.NewGuid().ToString());
     }
 
     // ── Notificações: pro sino ter o que mostrar (uma já lida).
