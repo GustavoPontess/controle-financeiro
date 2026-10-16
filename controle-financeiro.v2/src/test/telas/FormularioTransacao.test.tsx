@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn() }))
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn() }))
-vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn(), updateRecorrente: vi.fn() }))
 import { createTransaction } from "../../services/transactionService"
 import { createTransferencia } from "../../services/transferenciaService"
 import FormularioTransacao from "../../telas/FormularioTransacao"
@@ -35,6 +34,21 @@ describe("FormularioTransacao", () => {
     await userEvent.click(screen.getByRole("button", { name: "Adicionar" }))
     await userEvent.type(screen.getByPlaceholderText("Mercado"), "Feira")
     expect(screen.queryByText("Informe a descrição")).not.toBeInTheDocument()
+  })
+
+  it("conta fixa não entra aqui: sem interruptor nem atalho (tem formulário próprio)", () => {
+    renderizar()
+    expect(screen.queryByRole("switch", { name: "Conta fixa" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /conta fixa/i })).not.toBeInTheDocument()
+  })
+
+  it("receita não oferece débito automático nem crédito", async () => {
+    renderizar()
+    await userEvent.click(screen.getByRole("radio", { name: "Receita" }))
+    await userEvent.click(screen.getByRole("combobox", { name: "Recebido por" }))
+    const opcoes = screen.getAllByRole("option").map((o) => o.textContent)
+    expect(opcoes).not.toContain("Débito automático")
+    expect(opcoes).not.toContain("Crédito")
   })
 
   it("transferência pede origem e destino", async () => {

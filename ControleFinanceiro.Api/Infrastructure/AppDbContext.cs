@@ -757,5 +757,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.SubcategoriaId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Recorrente (conta fixa) → Subcategoria (SetNull: mesma regra da transação)
+        modelBuilder.Entity<Recorrente>()
+            .HasOne(r => r.Subcategoria)
+            .WithMany()
+            .HasForeignKey(r => r.SubcategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

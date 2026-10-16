@@ -16,9 +16,15 @@ public class CriarRecorrenteDto
 
     public Guid? CategoriaId { get; set; }
 
+    /// <summary>Opcional; tem que ser da <see cref="CategoriaId"/> (e visível pro usuário).</summary>
+    public Guid? SubcategoriaId { get; set; }
+
     public Guid? ContaId { get; set; }
 
     public Guid? CartaoCreditoId { get; set; }
+
+    /// <summary>Como paga/recebe (enum MeioPagamento). Opcional; no cartão vira Crédito; numa conta, Crédito é recusado.</summary>
+    public int? MeioPagamento { get; set; }
 
     [Required]
     public int Frequencia { get; set; }

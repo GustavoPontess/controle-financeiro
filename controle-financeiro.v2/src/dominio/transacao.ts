@@ -1,7 +1,7 @@
 // Regras e listas de lançamento usadas por mais de uma tela (nova, editar). Números = enums do back.
 
 /** Meio de pagamento (enum MeioPagamento do back). Crédito é o único que vai pro cartão. */
-export const MEIO = { dinheiro: 1, debito: 2, credito: 3, pix: 4, ted: 5, boleto: 6 } as const
+export const MEIO = { dinheiro: 1, debito: 2, credito: 3, pix: 4, ted: 5, boleto: 6, debitoAutomatico: 7 } as const
 
 /** Ordem de exibição: o mais usado primeiro. */
 export const MEIOS_PAGAMENTO = [
@@ -11,9 +11,33 @@ export const MEIOS_PAGAMENTO = [
   { valor: MEIO.dinheiro, rotulo: "Dinheiro" },
   { valor: MEIO.ted, rotulo: "TED / DOC" },
   { valor: MEIO.boleto, rotulo: "Boleto" },
+  { valor: MEIO.debitoAutomatico, rotulo: "Débito automático" },
 ]
-/** Meios de conta (sem crédito): receita e edição de lançamento em conta. */
+/** Meios de conta (sem crédito): edição de lançamento em conta e pagamento de fatura. */
 export const MEIOS_CONTA = MEIOS_PAGAMENTO.filter((m) => m.valor !== MEIO.credito)
+/** Como uma receita entra: sem cartão e sem débito automático (isso é de quem paga). */
+export const MEIOS_RECEBIMENTO = MEIOS_CONTA.filter((m) => m.valor !== MEIO.debitoAutomatico)
+
+/**
+ * Como a conta fixa é paga: o comum em conta de casa primeiro (débito automático, boleto). Crédito troca a
+ * conta pelo cartão.
+ */
+export const MEIOS_CONTA_FIXA = [
+  { valor: MEIO.debitoAutomatico, rotulo: "Débito automático" },
+  { valor: MEIO.boleto, rotulo: "Boleto" },
+  { valor: MEIO.pix, rotulo: "Pix" },
+  { valor: MEIO.credito, rotulo: "Cartão de crédito" },
+  { valor: MEIO.debito, rotulo: "Débito" },
+  { valor: MEIO.ted, rotulo: "TED / DOC" },
+  { valor: MEIO.dinheiro, rotulo: "Dinheiro" },
+]
+/** Como a receita fixa entra (salário, aluguel recebido). */
+export const MEIOS_RECEBIMENTO_FIXO = [
+  { valor: MEIO.pix, rotulo: "Pix" },
+  { valor: MEIO.ted, rotulo: "TED / DOC" },
+  { valor: MEIO.dinheiro, rotulo: "Dinheiro" },
+  { valor: MEIO.boleto, rotulo: "Boleto" },
+]
 
 /** Parcelas no cartão (1 = à vista). O back aceita até 360; a lista cobre o que loja oferece. */
 export const PARCELAS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24]

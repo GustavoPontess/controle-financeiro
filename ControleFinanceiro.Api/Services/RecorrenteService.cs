@@ -30,12 +30,24 @@ public class RecorrenteService
         _ => freq.ToString()
     };
 
-    // Conta, cartão e categoria vêm do cliente: todos têm que ser do usuário (categoria pode ser global).
-    private async Task ExigirReferenciasDoUsuarioAsync(Guid? contaId, Guid? cartaoId, Guid? categoriaId, Guid usuarioId)
+    public const string MensagemSubcategoriaDeOutraCategoria = "Subcategoria não pertence à categoria selecionada.";
+
+    // Conta, cartão, categoria e subcategoria vêm do cliente: todos têm que ser do usuário (categoria e
+    // subcategoria podem ser globais). A subcategoria ainda tem que ser DA categoria escolhida — senão a
+    // cobrança ia sair "Moradia › Hortifruti".
+    private async Task ExigirReferenciasDoUsuarioAsync(Guid? contaId, Guid? cartaoId, Guid? categoriaId, Guid? subcategoriaId, Guid usuarioId)
     {
         if (contaId.HasValue) await DonoRecursos.ExigirContaAbertaAsync(_context, contaId.Value, usuarioId);
         if (cartaoId.HasValue) await DonoRecursos.ExigirCartaoAsync(_context, cartaoId.Value, usuarioId);
         if (categoriaId.HasValue) await DonoRecursos.ExigirCategoriaAsync(_context, categoriaId.Value, usuarioId);
+        if (subcategoriaId.HasValue)
+        {
+            await DonoRecursos.ExigirSubcategoriaAsync(_context, subcategoriaId.Value, usuarioId);
+            var daCategoria = await _context.Subcategorias.AsNoTracking()
+                .AnyAsync(s => s.Id == subcategoriaId.Value && s.CategoriaId == categoriaId);
+            if (!daCategoria)
+                throw new ArgumentException(MensagemSubcategoriaDeOutraCategoria);
+        }
     }
 
     // Conta fixa do usuário. Excluída não existe mais pra ele (404); de outro usuário segue 403 (contrato atual).
@@ -111,10 +123,12 @@ public class RecorrenteService
                     Valor = r.Valor,
                     Tipo = r.Tipo,
                     CategoriaId = r.CategoriaId,
+                    SubcategoriaId = r.SubcategoriaId,
                     ContaId = r.ContaId,
                     CartaoCreditoId = r.CartaoCreditoId,
                     FaturaId = faturaId,
                     UsadoComoCredito = r.CartaoCreditoId.HasValue,
+                    MeioPagamento = r.MeioPagamento ?? (r.CartaoCreditoId.HasValue ? MeioPagamento.Credito : null),
                     StatusTransacao = status,
                     Ativo = true,
                     CriadoPor = r.CriadoPor,
@@ -422,6 +436,7 @@ public class RecorrenteService
 
         query = query
             .Include(r => r.Categoria)
+            .Include(r => r.Subcategoria)
             .Include(r => r.Conta)
             .Include(r => r.CartaoCredito)
             .OrderByDescending(r => r.Ativo)
@@ -463,6 +478,7 @@ public class RecorrenteService
     {
         var r = await _context.Recorrentes
             .Include(x => x.Categoria)
+            .Include(x => x.Subcategoria)
             .Include(x => x.Conta)
             .Include(x => x.CartaoCredito)
             .AsNoTracking()
@@ -491,10 +507,14 @@ public class RecorrenteService
         TipoDescricao = r.Tipo == TipoTransacao.Receita ? "Receita" : "Despesa",
         CategoriaId = r.CategoriaId,
         CategoriaNome = r.Categoria?.Descricao,
+        SubcategoriaId = r.SubcategoriaId,
+        SubcategoriaNome = r.Subcategoria?.Nome,
         ContaId = r.ContaId,
         ContaNome = r.Conta?.Nome,
         CartaoCreditoId = r.CartaoCreditoId,
         CartaoCreditoNome = r.CartaoCredito?.Nome,
+        MeioPagamento = r.MeioPagamento.HasValue ? (int)r.MeioPagamento.Value : null,
+        MeioPagamentoDescricao = r.MeioPagamento.Descricao(),
         Frequencia = (int)r.Frequencia,
         FrequenciaDescricao = DescricaoFrequencia(r.Frequencia),
         Dia = r.Dia,
@@ -540,6 +560,7 @@ public class RecorrenteService
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
 
+        var meio = MeioDaContaFixa(dto);
         Guid recorrenteId = Guid.NewGuid();
         var correlationId = Guid.NewGuid();
         var dataInicio = dto.DataInicio.ToUniversalTime();
@@ -554,7 +575,7 @@ public class RecorrenteService
         try
         {
             // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
-            await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
+            await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
 
             // Criar recorrente com janela de 3 meses
             var dataFimJanela = dataInicio.AddMonths(3);
@@ -565,8 +586,10 @@ public class RecorrenteService
                 Valor = dto.Valor,
                 Tipo = (TipoTransacao)dto.Tipo,
                 CategoriaId = dto.CategoriaId,
+                SubcategoriaId = dto.SubcategoriaId,
                 ContaId = dto.ContaId,
                 CartaoCreditoId = dto.CartaoCreditoId,
+                MeioPagamento = meio,
                 Frequencia = (FrequenciaRecorrencia)dto.Frequencia,
                 Dia = dto.Dia,
                 DataInicio = dataInicio,
@@ -670,6 +693,19 @@ public class RecorrenteService
     }
 
     /// <summary>
+    /// Como a conta fixa é paga: no cartão é sempre Crédito; numa conta, qualquer meio menos Crédito (crédito
+    /// numa conta não existe — é cartão). Valor fora do enum → 400.
+    /// </summary>
+    private static MeioPagamento? MeioDaContaFixa(CriarRecorrenteDto dto)
+    {
+        var meio = MeioPagamentoExtensions.DoCliente(dto.MeioPagamento);
+        if (dto.CartaoCreditoId.HasValue) return MeioPagamento.Credito;
+        if (meio == MeioPagamento.Credito)
+            throw new ArgumentException("Crédito é no cartão: escolha o cartão em vez da conta.");
+        return meio;
+    }
+
+    /// <summary>
     /// O retry traz o mesmo pedido que criou <paramref name="original"/>? Compara com o que foi GRAVADO
     /// (mesmas conversões do INSERT). Datas só pelo dia: a agenda da conta fixa é por dia.
     /// </summary>
@@ -678,8 +714,10 @@ public class RecorrenteService
         && original.Valor == dto.Valor
         && (int)original.Tipo == dto.Tipo
         && original.CategoriaId == dto.CategoriaId
+        && original.SubcategoriaId == dto.SubcategoriaId
         && original.ContaId == dto.ContaId
         && original.CartaoCreditoId == dto.CartaoCreditoId
+        && original.MeioPagamento == MeioDaContaFixa(dto)
         && (int)original.Frequencia == dto.Frequencia
         && original.Dia == dto.Dia
         && DateOnly.FromDateTime(original.DataInicio) == DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime())
@@ -711,6 +749,8 @@ public class RecorrenteService
         if (dto.CategoriaId.HasValue)
         {
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
+            // A subcategoria herdada é da categoria antiga: trocou a categoria, ela cai.
+            if (proxima.CategoriaId != dto.CategoriaId) proxima.SubcategoriaId = null;
             proxima.CategoriaId = dto.CategoriaId;
         }
 
@@ -780,7 +820,7 @@ public class RecorrenteService
         if ((dto.ContaId == null && dto.CartaoCreditoId == null) ||
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
-        await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, usuarioId);
+        await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
         // O início não muda na edição (fica o do cadastro); só o fim é conferido contra ele.
         AgendaRecorrente.ValidarPeriodo(
             DateOnly.FromDateTime(r.DataInicio),
@@ -791,8 +831,10 @@ public class RecorrenteService
         r.Valor = dto.Valor;
         r.Tipo = (TipoTransacao)dto.Tipo;
         r.CategoriaId = dto.CategoriaId;
+        r.SubcategoriaId = dto.SubcategoriaId;
         r.ContaId = dto.ContaId;
         r.CartaoCreditoId = dto.CartaoCreditoId;
+        r.MeioPagamento = MeioDaContaFixa(dto);
         r.Frequencia = (FrequenciaRecorrencia)dto.Frequencia;
         r.Dia = dto.Dia;
         r.DataFim = dto.DataFim?.ToUniversalTime();

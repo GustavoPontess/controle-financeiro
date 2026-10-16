@@ -1,6 +1,6 @@
-// Editar conta fixa (/contas-fixas/:id/editar): a regra (valor, descrição, categoria, conta/cartão, repete,
-// começo/fim) — no MESMO formulário da transação, já travado como conta fixa. Ocorrência avulsa se edita
-// em Transações; "só a próxima" tem página própria.
+// Editar conta fixa (/contas-fixas/:id/editar): a regra (valor, descrição, categoria, como paga, conta/cartão,
+// repete, começo/fim), no FormularioContaFixa (o mesmo de criar). Ocorrência avulsa se edita em Transações;
+// "só a próxima" tem página própria.
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { getRecorrente } from "../services/recorrenteService"
@@ -14,7 +14,7 @@ import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import { PaginaFormulario } from "../componentes/Formulario"
-import FormularioTransacao from "./FormularioTransacao"
+import FormularioContaFixa from "./FormularioContaFixa"
 
 export default function EditarContaFixa() {
   const { id = "" } = useParams<{ id: string }>()
@@ -45,7 +45,7 @@ export default function EditarContaFixa() {
   return (
     <PaginaFormulario titulo="Editar conta fixa" carregando={carregando} erroCarga={erroCarga}>
       {r && (
-        <FormularioTransacao recorrente={r} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        <FormularioContaFixa recorrente={r} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
           aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
       )}
     </PaginaFormulario>

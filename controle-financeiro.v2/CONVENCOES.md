@@ -24,7 +24,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 | Valor em dinheiro (campo principal) | `EntradaValor` | R$ grande, dígitos viram centavos, nunca negativo, até 12 dígitos · `compacto` = caixa comum com "R$" na frente, pra dinheiro secundário que divide a linha (saldo inicial, limite) |
 | Valor em dinheiro (filtro/campo pequeno) | `Entrada` + `prefixo="R$"` + `maskMoney` | nunca `type="number"` (aceita sinal de menos) |
 | Escolha única curta (2–4 opções) | `Segmentos` | radiogroup com setas; `cheio` pra ocupar a largura |
-| Liga/desliga | `Interruptor` | role=switch ("Já paguei", "Conta fixa") |
+| Liga/desliga | `Interruptor` | role=switch ("Já paguei") |
 | Status | `Etiqueta` | tom positivo / negativo / alerta |
 | Layout de formulário | `Formulario`, `LinhaCampos`, `RodapeFormulario` | `layout="pilha"` empilha; `layout="lateral"` = `<Campos>` à esquerda + `<Lado>` (prévia, opções, rodapé) à direita, 1 coluna no celular. `LinhaCampos colunas="2fr 1fr"` pra proporção sob medida |
 | Prévia do lançamento | `PreviaLancamento` | "Como vai aparecer": linha igual à da lista + frase do efeito; some no celular |
@@ -49,7 +49,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Conta bancária: tipos, validação (agência/número) e a linha de detalhe em `src/dominio/conta.ts`. Conta **encerrada** sai das seleções (`getContas()` já filtra; a tela de contas pede `incluirEncerradas`).
 - Tipos de conta e grupos da lista (em conta / poupança / investimentos / dinheiro por último) vêm de `src/dominio/conta.ts` (`TIPOS_CONTA`, `ehGuardado`, `ehDinheiro`, `temDadosBancarios`): Dinheiro não tem banco/agência/número (o formulário esconde); "Guardado" = poupança + investimentos; a carteira é sempre dinheiro, mesmo com tipo antigo.
 - **Bancos é só das contas** (decisão 2026-10-15, modelo Pierre): a linha abre, ali embaixo, a ficha (banco, tipo, agência, número) e as ações — sem página de detalhe nem extrato ali. Extrato é Transações: o link "Ver lançamentos" manda `state.filtros` e a tela já abre filtrada. Outra tela devolve a pessoa pra lista com a conta aberta por `state.abrir` (Nova/Editar/Encerrar fazem isso).
-- Conta fixa: repetição e situação em `src/dominio/contaFixa.ts`; criar/editar é o `FormularioTransacao` (prop `recorrente` edita a regra; `inicial={{ fixa: true }}` abre já como conta fixa).
+- Conta fixa: repetição, regra por extenso e situação em `src/dominio/contaFixa.ts`; criar e editar a regra é o `FormularioContaFixa` (formulário próprio: sem hora/parcela, com subcategoria opcional e **Como paga** obrigatório). O formulário da transação não tem nada de conta fixa (nem interruptor nem atalho: Gustavo tirou). Formas de pagamento: `MEIOS_PAGAMENTO` (transação), `MEIOS_RECEBIMENTO` (receita), `MEIOS_CONTA_FIXA` / `MEIOS_RECEBIMENTO_FIXO` em `src/dominio/transacao.ts`.
 - Ciclos de fatura (meses contínuos, vazio quando não há fatura, estado da fatura) moram em `src/dominio/fatura.ts` e espelham o servidor.
 - Listas e regras de domínio usadas por mais de uma tela (meios de pagamento, parcelas, frequências, limites) moram em `src/dominio/`, não copiadas por tela.
 - Topo: olho (esconder valores) · sino (não lidas, `estado/notificacoes.ts`, consulta a cada minuto e a cada troca de tela) · "Nova transação". Menu lateral: só as seções; **Configurações e Sair ficam no menu da conta** (o bloco avatar + nome no pé é um botão, em todo estado do menu — aberto, trilho e gaveta). Tela sem item no menu (Notificações) é `semMenu` em `secaoDaRota`: ganha a seta de voltar pra onde a pessoa estava.
@@ -60,5 +60,5 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - "Voltar" é a seta no **topo**, antes do título da seção (o layout põe sozinho em toda rota abaixo da raiz da seção) — a página não repete o nome da seção nem desenha link de voltar.
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
-- Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`) — nunca dois formulários parecidos que divergem.
+- Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`; `telas/FormularioContaFixa.tsx`, com ou sem `recorrente`) — nunca dois formulários parecidos que divergem.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.

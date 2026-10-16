@@ -74,7 +74,7 @@ namespace ControleFinanceiro.Api.Controllers
                 ContaId = dto.ContaId,
                 CartaoCreditoId = dto.CartaoCreditoId,
                 UsadoComoCredito = dto.UsadoComoCredito,
-                MeioPagamento = dto.MeioPagamento.HasValue ? (MeioPagamento)dto.MeioPagamento.Value : null,
+                MeioPagamento = MeioPagamentoExtensions.DoCliente(dto.MeioPagamento),
                 // Efetivado → entra no saldo real; não efetivado → previsão (futura permitida).
                 StatusTransacao = dto.Efetivado ? StatusTransacao.Executado : StatusTransacao.Previsao,
                 Data = dto.Data,
@@ -203,16 +203,7 @@ namespace ControleFinanceiro.Api.Controllers
             return ok ? NoContent() : NotFound();
         }
 
-        private static string? MeioPagamentoLabel(MeioPagamento? meio) => meio switch
-        {
-            Domain.Enums.MeioPagamento.Dinheiro => "Dinheiro",
-            Domain.Enums.MeioPagamento.Debito   => "Débito",
-            Domain.Enums.MeioPagamento.Credito  => "Crédito",
-            Domain.Enums.MeioPagamento.Pix      => "Pix",
-            Domain.Enums.MeioPagamento.Ted      => "TED/DOC",
-            Domain.Enums.MeioPagamento.Boleto   => "Boleto",
-            _ => null
-        };
+        private static string? MeioPagamentoLabel(MeioPagamento? meio) => meio.Descricao();
 
         /// <summary>
         /// Entradas, saídas e saldo REAL da conta (lançamentos ativos e efetivados — sem previsões),

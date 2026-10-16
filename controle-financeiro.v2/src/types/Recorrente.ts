@@ -6,10 +6,15 @@ export interface Recorrente {
   tipoDescricao: string
   categoriaId?: string
   categoriaNome?: string
+  subcategoriaId?: string | null
+  subcategoriaNome?: string | null
   contaId?: string
   contaNome?: string
   cartaoCreditoId?: string
   cartaoCreditoNome?: string
+  /** Como paga/recebe (enum MeioPagamento). No cartão é sempre Crédito; contas fixas antigas podem vir sem. */
+  meioPagamento?: number | null
+  meioPagamentoDescricao?: string | null
   frequencia: number
   frequenciaDescricao: string
   dia: number
@@ -49,8 +54,12 @@ export interface CriarRecorrente {
   valor: number
   tipo: number
   categoriaId?: string
+  /** Opcional; tem que ser da categoria (o servidor recusa outra). */
+  subcategoriaId?: string
   contaId?: string
   cartaoCreditoId?: string
+  /** Numa conta: qualquer meio menos Crédito. No cartão o servidor grava Crédito sozinho. */
+  meioPagamento?: number
   frequencia: number
   dia: number
   dataInicio: string

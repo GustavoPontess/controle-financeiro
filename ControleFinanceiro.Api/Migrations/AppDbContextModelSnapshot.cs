@@ -1466,12 +1466,18 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("Frequencia")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("MeioPagamento")
+                        .HasColumnType("integer");
+
                     b.Property<string>("MotivoCancelamento")
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
                     b.Property<DateTime?>("RealinhadoEm")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("SubcategoriaId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
@@ -1492,6 +1498,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("CategoriaId");
 
                     b.HasIndex("ContaId");
+
+                    b.HasIndex("SubcategoriaId");
 
                     b.ToTable("Assinaturas", (string)null);
                 });
@@ -2480,11 +2488,18 @@ namespace ControleFinanceiro.Api.Migrations
                         .WithMany()
                         .HasForeignKey("ContaId");
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Subcategoria", "Subcategoria")
+                        .WithMany()
+                        .HasForeignKey("SubcategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CartaoCredito");
 
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("Subcategoria");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.RefreshToken", b =>
