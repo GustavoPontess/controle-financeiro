@@ -24,7 +24,6 @@ import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
 import { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Marcar from "../componentes/Marcar"
-import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import { rotuloMesFatura } from "../dominio/fatura"
 import { TIPO } from "../dominio/transacao"
@@ -106,15 +105,21 @@ export default function ImportarExtrato() {
     const { resultado: r } = resumo
     // As somas só batem quando entrou tudo o que foi enviado (nada pulado nem repetido).
     const somasExatas = !r.repetido && !r.jaExistiam
+    // Tudo o que foi marcado já estava na conta (o servidor pulou pelo código do banco).
+    const nadaNovo = !r.repetido && r.importadas === 0 && !!r.jaExistiam
     return (
       <div className={styles.pagina}>
         <Bloco className={styles.pronto}>
-          <span className={styles.prontoIcone} data-repetido={r.repetido || undefined} aria-hidden="true"><CheckCircle2 size={26} strokeWidth={2} /></span>
+          <span className={styles.prontoIcone} data-repetido={r.repetido || nadaNovo || undefined} aria-hidden="true"><CheckCircle2 size={26} strokeWidth={2} /></span>
           <h2 className={styles.prontoTitulo}>
-            {r.repetido ? "Esse extrato já tinha sido importado" : `${r.importadas} ${r.importadas === 1 ? "lançamento importado" : "lançamentos importados"}`}
+            {r.repetido ? "Esse extrato já tinha sido importado"
+              : nadaNovo ? "Nada novo pra importar"
+              : `${r.importadas} ${r.importadas === 1 ? "lançamento importado" : "lançamentos importados"}`}
           </h2>
           <p className={styles.prontoTexto}>
-            {r.repetido ? "Nada foi gravado de novo." : <>Em <strong>{conta?.nome}</strong>{resumo.de && <>, de {dataBR(resumo.de)} a {dataBR(resumo.ate)}</>}.</>}
+            {r.repetido ? "Nada foi gravado de novo."
+              : nadaNovo ? <>{r.jaExistiam === 1 ? "O lançamento já estava" : `Os ${r.jaExistiam} lançamentos já estavam`} em <strong>{conta?.nome}</strong>.</>
+              : <>Em <strong>{conta?.nome}</strong>{resumo.de && <>, de {dataBR(resumo.de)} a {dataBR(resumo.ate)}</>}.</>}
           </p>
           {somasExatas && (resumo.entrou > 0 || resumo.saiu > 0) && (
             <div className={styles.prontoNumeros}>
@@ -122,7 +127,7 @@ export default function ImportarExtrato() {
               <div><span>Saiu</span><Dinheiro valor={resumo.saiu} tom="negativo" className={styles.prontoValor} /></div>
             </div>
           )}
-          {!!r.jaExistiam && (
+          {!!r.jaExistiam && !nadaNovo && (
             <p className={styles.prontoTexto}>{r.jaExistiam} {r.jaExistiam === 1 ? "já estava" : "já estavam"} na conta e {r.jaExistiam === 1 ? "ficou" : "ficaram"} de fora.</p>
           )}
           <div className={styles.prontoAcoes}>
@@ -162,7 +167,8 @@ export default function ImportarExtrato() {
       </Bloco>
 
       {previa && (previa.precisaMapear || trocandoColunas) && previa.colunas && (
-        <EscolherColunas colunas={previa.colunas} amostra={previa.amostra ?? []} inicial={previa.mapeamento ?? mapaEscolhido}
+        <EscolherColunas titulo={trocandoColunas ? "Qual coluna é o quê" : "Não reconhecemos as colunas desse arquivo"}
+          colunas={previa.colunas} amostra={previa.amostra ?? []} inicial={previa.mapeamento ?? mapaEscolhido}
           lendo={lendo} aoLer={(m) => { void ler(m) }} aoCancelar={trocandoColunas ? () => setTrocandoColunas(false) : undefined} />
       )}
 
@@ -180,87 +186,195 @@ export default function ImportarExtrato() {
 }
 
 // ── Qual coluna é o quê (CSV não reconhecido) ─────────────────────────────────────────────
+// Do jeito que o mercado faz (YNAB, Actual, Goodbudget; pesquisa de 2026-10-17): a prévia do arquivo em cima, do
+// jeito que ele veio, e embaixo um campo por informação que o app precisa (Data, Descrição, Dinheiro que entrou,
+// Dinheiro que saiu), cada um uma seleção das colunas do arquivo com um exemplo ao lado. A coluna escolhida ganha
+// a etiqueta no cabeçalho da prévia. Uma coluna só de valor (Nubank: "Valor" com sinal) é a mesma em entrou e em
+// saiu, igual ao YNAB; escolher uma preenche a outra. Sem "valor com sinal" nem "não usar" pra entender; a prévia
+// de como vai ficar fica sempre à vista. Antes disso vieram três versões que o Gustavo não entendeu de primeira
+// (campos soltos sem ligação com a tabela, a escolha no cabeçalho de cada coluna, uma grade de rádio).
 
-type ModoValor = "uma" | "duas"
+type Linha = "data" | "descricao" | "entrou" | "saiu"
+type Escolha = Record<Linha, number | null>
+const LINHAS: { chave: Linha; rotulo: string; etiqueta: string }[] = [
+  { chave: "data", rotulo: "Data", etiqueta: "Data" },
+  { chave: "descricao", rotulo: "Descrição", etiqueta: "Descrição" },
+  { chave: "entrou", rotulo: "Dinheiro que entrou", etiqueta: "Entrou" },
+  { chave: "saiu", rotulo: "Dinheiro que saiu", etiqueta: "Saiu" },
+]
+const PARECE_DATA = /^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/
+const PARECE_VALOR = /^[+-]?\(?\s*(R\$\s*)?[\d.,]+\)?\s*[DC-]?$/i
 
-function EscolherColunas({ colunas, amostra, inicial, lendo, aoLer, aoCancelar }: {
-  colunas: string[]; amostra: string[][]; inicial: MapeamentoCsv | null; lendo: boolean
+/** Número como o servidor lê: "1.234,56", "1,234.56", "-50.00", "150,00 D". Null se não for número. */
+function lerValor(bruto: string): number | null {
+  let s = bruto.trim().replace(/R\$/i, "").replace(/\s/g, "")
+  if (!s) return null
+  let negativo = false
+  if (/[Dd]$/.test(s)) { negativo = true; s = s.slice(0, -1) } else if (/[Cc]$/.test(s)) s = s.slice(0, -1)
+  if (s.endsWith("-")) { negativo = true; s = s.slice(0, -1) }
+  if (s.startsWith("(") && s.endsWith(")")) { negativo = true; s = s.slice(1, -1) }
+  if (!/^[+-]?[\d.,]+$/.test(s)) return null
+  const v = s.lastIndexOf(","), p = s.lastIndexOf(".")
+  s = v >= 0 && p >= 0 ? (v > p ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "")) : v >= 0 ? s.replace(",", ".") : s
+  const n = Number(s)
+  if (!Number.isFinite(n)) return null
+  return negativo ? -Math.abs(n) : n
+}
+
+/** Primeiro palpite pelos exemplos: a coluna com cara de data, a única de número (entrou e saiu juntos) e o texto
+ *  mais comprido. Duas colunas de número (débito/crédito) não dá pra saber qual é qual: a pessoa escolhe. */
+function palpite(colunas: string[], amostra: string[][]): Escolha {
+  const e: Escolha = { data: null, descricao: null, entrou: null, saiu: null }
+  const celulas = (i: number) => amostra.map((l) => (l[i] ?? "").trim()).filter(Boolean)
+  const data = colunas.findIndex((_, i) => celulas(i).length > 0 && celulas(i).every((c) => PARECE_DATA.test(c)))
+  if (data >= 0) e.data = data
+  const numeros = colunas.map((_, i) => i).filter((i) => i !== data && celulas(i).length > 0 && celulas(i).every((c) => PARECE_VALOR.test(c)))
+  if (numeros.length === 1) { e.entrou = numeros[0]; e.saiu = numeros[0] }
+  let texto = -1, maior = 0
+  colunas.forEach((_, i) => {
+    if (i === data || numeros.includes(i)) return
+    const cs = celulas(i)
+    if (cs.length === 0) return
+    const media = cs.reduce((t, c) => t + c.length, 0) / cs.length
+    if (media > maior) { maior = media; texto = i }
+  })
+  if (texto >= 0) e.descricao = texto
+  return e
+}
+
+function escolhaDoMapa(m: MapeamentoCsv): Escolha {
+  return m.valor !== null
+    ? { data: m.data, descricao: m.descricao, entrou: m.valor, saiu: m.valor }
+    : { data: m.data, descricao: m.descricao, entrou: m.entrada, saiu: m.saida }
+}
+
+function EscolherColunas({ titulo, colunas, amostra, inicial, lendo, aoLer, aoCancelar }: {
+  titulo: string; colunas: string[]; amostra: string[][]; inicial: MapeamentoCsv | null; lendo: boolean
   aoLer: (m: MapeamentoCsv) => void; aoCancelar?: () => void
 }) {
-  const ix = (n: number | null | undefined) => (n === null || n === undefined ? "" : String(n))
-  const [data, setData] = useState(ix(inicial?.data))
-  const [descricao, setDescricao] = useState(ix(inicial?.descricao))
-  const [modo, setModo] = useState<ModoValor>(inicial && inicial.valor === null && inicial.entrada !== null ? "duas" : "uma")
-  const [valor, setValor] = useState(ix(inicial?.valor))
-  const [entrada, setEntrada] = useState(ix(inicial?.entrada))
-  const [saida, setSaida] = useState(ix(inicial?.saida))
+  const [escolha, setEscolha] = useState<Escolha>(() => (inicial ? escolhaDoMapa(inicial) : palpite(colunas, amostra)))
   const [inverter, setInverter] = useState(!!inicial?.inverterSinal)
-  const [erros, setErros] = useState<Record<string, string>>({})
-  const opcoes = colunas.map((c, i) => ({ valor: String(i), rotulo: c }))
+  // Tentou continuar com campo vazio: o campo mostra o erro, como em qualquer formulário.
+  const [tentou, setTentou] = useState(false)
+  const nome = (i: number) => colunas[i] || `Coluna ${i + 1}`
+  // Nas opções, cada coluna vem com o primeiro exemplo não vazio: "A · 0,30" diz mais que "A".
+  const opcoes = colunas.map((_, i) => ({ valor: String(i), rotulo: nome(i), detalhe: amostra.map((l) => (l[i] ?? "").trim()).find(Boolean) }))
 
-  const continuar = () => {
-    const e: Record<string, string> = {}
-    if (!data) e.data = "Escolha a coluna da data"
-    if (!descricao) e.descricao = "Escolha a coluna da descrição"
-    if (modo === "uma" && !valor) e.valor = "Escolha a coluna do valor"
-    if (modo === "duas" && !entrada) e.entrada = "Escolha a coluna de entrada"
-    if (modo === "duas" && !saida) e.saida = "Escolha a coluna de saída"
-    const usadas = [data, descricao, ...(modo === "uma" ? [valor] : [entrada, saida])].filter(Boolean)
-    if (Object.keys(e).length === 0 && new Set(usadas).size !== usadas.length) e.geral = "Cada coluna só pode ter um papel."
-    setErros(e)
-    if (Object.keys(e).length > 0) return
-    aoLer({
-      data: Number(data), descricao: Number(descricao),
-      valor: modo === "uma" ? Number(valor) : null,
-      entrada: modo === "duas" ? Number(entrada) : null,
-      saida: modo === "duas" ? Number(saida) : null,
-      id: inicial?.id ?? null,
-      inverterSinal: modo === "uma" && inverter,
+  const escolherColuna = (linha: Linha, v: string) => {
+    const coluna = Number(v)
+    setTentou(false)
+    setEscolha((atual) => {
+      const n: Escolha = { ...atual, [linha]: coluna }
+      // Uma coluna só é uma coisa (fora entrou e saiu, que podem ser a mesma): sai de onde estava.
+      const outras: Linha[] = linha === "entrou" || linha === "saiu" ? ["data", "descricao"] : LINHAS.map((l) => l.chave).filter((l) => l !== linha)
+      for (const o of outras) if (n[o] === coluna) n[o] = null
+      // Disse onde entrou e ainda não disse onde saiu (ou o contrário): é a mesma coluna, o caso mais comum.
+      if (linha === "entrou" && n.saiu === null) n.saiu = coluna
+      if (linha === "saiu" && n.entrou === null) n.entrou = coluna
+      return n
     })
   }
-  const limpa = (k: string) => setErros((v) => { const n = { ...v }; delete n[k]; delete n.geral; return n })
+
+  const juntos = escolha.entrou !== null && escolha.entrou === escolha.saiu
+  const valorDaLinha = (l: string[]): number | null => {
+    if (juntos) { const v = lerValor(l[escolha.entrou!] ?? ""); return v === null ? null : inverter ? -v : v }
+    const e = escolha.entrou !== null ? lerValor(l[escolha.entrou] ?? "") : null
+    const s = escolha.saiu !== null ? lerValor(l[escolha.saiu] ?? "") : null
+    if (e) return Math.abs(e)
+    if (s) return -Math.abs(s)
+    return null
+  }
+  const temValor = escolha.entrou !== null || escolha.saiu !== null
+  const etiquetas = (i: number) => {
+    const e = LINHAS.filter((l) => escolha[l.chave] === i).map((l) => l.etiqueta)
+    return e.includes("Entrou") && e.includes("Saiu") ? [...e.filter((x) => x !== "Entrou" && x !== "Saiu"), "Entrou e saiu"] : e
+  }
+
+  const continuar = () => {
+    if (LINHAS.some((l) => escolha[l.chave] === null)) { setTentou(true); return }
+    const { data, descricao, entrou, saiu } = escolha as Record<Linha, number>
+    aoLer(juntos
+      ? { data, descricao, valor: entrou, entrada: null, saida: null, id: inicial?.id ?? null, inverterSinal: inverter }
+      : { data, descricao, valor: null, entrada: entrou, saida: saiu, id: inicial?.id ?? null, inverterSinal: false })
+  }
 
   return (
-    <Bloco titulo="Qual coluna é o quê">
-      <div className={styles.amostraRolagem}>
-        <table className={styles.amostra}>
-          <thead><tr>{colunas.map((c, i) => <th key={i} scope="col">{c}</th>)}</tr></thead>
-          <tbody>{amostra.map((l, i) => <tr key={i}>{colunas.map((_, j) => <td key={j}>{l[j] ?? ""}</td>)}</tr>)}</tbody>
+    <Bloco titulo={titulo}>
+      <div className={styles.arquivoRolagem}>
+        <table className={styles.arquivo}>
+          <thead>
+            <tr>
+              {colunas.map((c, i) => {
+                const tags = etiquetas(i)
+                return (
+                  <th key={i} scope="col" data-usada={tags.length > 0 || undefined}>
+                    <span className={styles.arquivoNome} title={c}>{nome(i)}</span>
+                    {tags.map((t) => <Etiqueta key={t} className={styles.arquivoEtiqueta}>{t}</Etiqueta>)}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {amostra.slice(0, 3).map((l, j) => (
+              <tr key={j}>
+                {colunas.map((_, i) => {
+                  const v = (l[i] ?? "").trim()
+                  return <td key={i} data-usada={etiquetas(i).length > 0 || undefined} data-vazio={v ? undefined : "true"}><span title={v}>{v || "vazio"}</span></td>
+                })}
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
-      {erros.geral && <p className={styles.alerta} role="alert">{erros.geral}</p>}
-      <LinhaCampos>
-        <Campo rotulo="Data" erro={erros.data}>
-          <Selecao valor={data} placeholder="Escolha" onChange={(x) => { setData(x); limpa("data") }} opcoes={opcoes} />
-        </Campo>
-        <Campo rotulo="Descrição" erro={erros.descricao}>
-          <Selecao valor={descricao} placeholder="Escolha" onChange={(x) => { setDescricao(x); limpa("descricao") }} opcoes={opcoes} />
-        </Campo>
-      </LinhaCampos>
-      <Segmentos ariaLabel="Como vem o valor" valor={modo} onChange={(m) => { setModo(m); setErros({}) }}
-        opcoes={[{ valor: "uma", rotulo: "Valor numa coluna" }, { valor: "duas", rotulo: "Entrada e saída separadas" }]} />
-      {modo === "uma" ? (
+
+      <div className={styles.escolhas}>
         <LinhaCampos>
-          <Campo rotulo="Valor" erro={erros.valor}>
-            <Selecao valor={valor} placeholder="Escolha" onChange={(x) => { setValor(x); limpa("valor") }} opcoes={opcoes} />
-          </Campo>
-          <div className={styles.inverter}>
-            <Marcar marcado={inverter} onChange={setInverter}>Saída aparece sem o sinal de menos</Marcar>
-          </div>
+          {LINHAS.slice(0, 2).map((l) => (
+            <Campo key={l.chave} rotulo={l.rotulo} erro={tentou && escolha[l.chave] === null ? "Falta escolher" : undefined}>
+              <Selecao valor={escolha[l.chave] === null ? "" : String(escolha[l.chave])} placeholder="Escolha a coluna" opcoes={opcoes}
+                onChange={(v) => escolherColuna(l.chave, v)} />
+            </Campo>
+          ))}
         </LinhaCampos>
-      ) : (
         <LinhaCampos>
-          <Campo rotulo="Entrada" erro={erros.entrada}>
-            <Selecao valor={entrada} placeholder="Escolha" onChange={(x) => { setEntrada(x); limpa("entrada") }} opcoes={opcoes} />
-          </Campo>
-          <Campo rotulo="Saída" erro={erros.saida}>
-            <Selecao valor={saida} placeholder="Escolha" onChange={(x) => { setSaida(x); limpa("saida") }} opcoes={opcoes} />
-          </Campo>
+          {LINHAS.slice(2).map((l) => (
+            <Campo key={l.chave} rotulo={l.rotulo} erro={tentou && escolha[l.chave] === null ? "Falta escolher" : undefined}>
+              <Selecao valor={escolha[l.chave] === null ? "" : String(escolha[l.chave])} placeholder="Escolha a coluna" opcoes={opcoes}
+                onChange={(v) => escolherColuna(l.chave, v)} />
+            </Campo>
+          ))}
         </LinhaCampos>
-      )}
+      </div>
+
+      <div className={styles.mapearPrevia}>
+        <div className={styles.mapearPreviaTopo}>
+          <span className={styles.mapearPreviaTitulo}>Vai ficar assim</span>
+          {juntos && (
+            <Botao variante="texto" onClick={() => setInverter((v) => !v)} icone={<RotateCcw size={14} strokeWidth={2.25} aria-hidden="true" />}>
+              Está ao contrário? Inverter
+            </Botao>
+          )}
+        </div>
+        <ul className={styles.mapearPreviaLista} aria-label="Como as primeiras linhas vão ficar">
+          {amostra.slice(0, 3).map((l, i) => {
+            const v = temValor ? valorDaLinha(l) : null
+            return (
+              <li key={i}>
+                <span className={styles.data}>{escolha.data !== null ? l[escolha.data] ?? "" : <span className={styles.mudo}>data?</span>}</span>
+                <span className={styles.descricao}>{escolha.descricao !== null ? l[escolha.descricao] || "Sem descrição" : <span className={styles.mudo}>descrição?</span>}</span>
+                {v === null ? <span className={styles.mudo}>{temValor ? "sem valor" : "valor?"}</span>
+                  : <span className={styles.mapearPreviaValor}><span className={styles.mudo}>{v < 0 ? "saiu" : "entrou"}</span>
+                    <Dinheiro valor={Math.abs(v)} tom={v < 0 ? "negativo" : "positivo"} className={styles.valor} /></span>}
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
       <RodapeFormulario>
         {aoCancelar && <Botao onClick={aoCancelar} disabled={lendo}>Cancelar</Botao>}
-        <Botao variante="primario" disabled={lendo} onClick={continuar}>{lendo ? "Lendo…" : "Ler com essas colunas"}</Botao>
+        <Botao variante="primario" disabled={lendo} onClick={continuar}>{lendo ? "Lendo…" : "Continuar"}</Botao>
       </RodapeFormulario>
     </Bloco>
   )

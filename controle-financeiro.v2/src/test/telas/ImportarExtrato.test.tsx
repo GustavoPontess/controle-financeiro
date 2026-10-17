@@ -29,7 +29,8 @@ const PREVIA_OFX = {
 }
 const PREVIA_MAPEAR = {
   formato: "csv", total: 0, duplicadas: 0, precisaMapear: true, linhas: [],
-  colunas: ["Dia", "Texto", "X", "Y"], amostra: [["05/05/2026", "Salário", "3500,00", ""]], mapeamento: null, assinatura: "dia|texto|x|y",
+  colunas: ["Dia", "Texto", "X", "Y"], amostra: [["05/05/2026", "Salário", "3500,00", ""], ["06/05/2026", "Mercado", "", "80,00"]],
+  mapeamento: null, assinatura: "dia|texto|x|y",
 }
 
 const Transacoes = () => { const { state } = useLocation(); return <p>transações {JSON.stringify(state)}</p> }
@@ -45,6 +46,12 @@ const escolher = async (campo: string, opcao: string) => {
   await userEvent.click(await screen.findByRole("combobox", { name: campo }))
   await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: opcao }))
 }
+/** "Qual coluna é o quê": cada campo lista as colunas do arquivo com um exemplo ao lado ("X · 3500,00"). */
+const escolherColuna = async (campo: string, coluna: string) => {
+  await userEvent.click(screen.getByRole("combobox", { name: campo }))
+  await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: new RegExp(`^${coluna}( ·|$)`) }))
+}
+const campoColuna = (campo: string) => screen.getByRole("combobox", { name: campo })
 const subir = (nome: string) => userEvent.upload(screen.getByLabelText("Arquivo do extrato"), new File(["conteudo"], nome))
 
 describe("ImportarExtrato", () => {
@@ -119,7 +126,7 @@ describe("ImportarExtrato", () => {
     expect(screen.getByRole("button", { name: "Importar 0 lançamentos" })).toBeDisabled()
   })
 
-  it("CSV não reconhecido: pergunta as colunas, lê de novo com elas e manda pra lembrar na conta", async () => {
+  it("CSV não reconhecido: um campo por informação com palpite, erro no campo, prévia ao vivo, e manda pra lembrar", async () => {
     vi.mocked(previewImportacao)
       .mockResolvedValueOnce(PREVIA_MAPEAR as never)
       .mockResolvedValueOnce({ ...PREVIA_OFX, formato: "csv", assinatura: "dia|texto|x|y" } as never)
@@ -129,37 +136,75 @@ describe("ImportarExtrato", () => {
     await subir("inter.csv")
     await userEvent.click(screen.getByRole("button", { name: "Ler extrato" }))
 
-    expect(await screen.findByText("Qual coluna é o quê")).toBeInTheDocument()
-    expect(screen.getByRole("columnheader", { name: "Dia" })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "Ler com essas colunas" }))
-    expect(screen.getByText("Escolha a coluna da data", { selector: "small > span" })).toBeInTheDocument()
+    expect(await screen.findByText("Não reconhecemos as colunas desse arquivo")).toBeInTheDocument()
+    // Palpite pelos exemplos: a coluna com cara de data e a de texto. Duas colunas de número, não adivinha qual é qual.
+    expect(campoColuna("Data")).toHaveTextContent("Dia")
+    expect(campoColuna("Descrição")).toHaveTextContent("Texto")
+    expect(campoColuna("Dinheiro que entrou")).toHaveTextContent("Escolha a coluna")
+    expect(campoColuna("Dinheiro que saiu")).toHaveTextContent("Escolha a coluna")
+    // A prévia do arquivo marca a coluna escolhida.
+    expect(screen.getByRole("columnheader", { name: /Dia/ })).toHaveTextContent("Data")
+    const previa = screen.getByRole("list", { name: "Como as primeiras linhas vão ficar" })
+    expect(previa).toHaveTextContent("valor?")
 
-    await escolher("Data", "Dia")
-    await escolher("Descrição", "Texto")
-    await userEvent.click(screen.getByRole("radio", { name: "Entrada e saída separadas" }))
-    await escolher("Entrada", "X")
-    await escolher("Saída", "Y")
-    await userEvent.click(screen.getByRole("button", { name: "Ler com essas colunas" }))
+    // Continuar com campo vazio não lê: o erro fica no campo.
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }))
+    expect(screen.getAllByText("Falta escolher")).toHaveLength(2)
+    expect(campoColuna("Dinheiro que entrou")).toHaveAttribute("aria-invalid", "true")
+    expect(campoColuna("Data")).not.toHaveAttribute("aria-invalid")
+    expect(previewImportacao).toHaveBeenCalledTimes(1)
 
+    // As opções trazem um exemplo da coluna. Escolher onde entrou preenche onde saiu na mesma coluna (caso comum).
+    await userEvent.click(campoColuna("Dinheiro que entrou"))
+    expect(within(screen.getByRole("listbox")).getByRole("option", { name: "X · 3500,00" })).toBeInTheDocument()
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "X · 3500,00" }))
+    expect(campoColuna("Dinheiro que saiu")).toHaveTextContent("X")
+    expect(screen.queryByText("Falta escolher")).not.toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: /^X/ })).toHaveTextContent("Entrou e saiu")
+    // Escolher outra pra saiu separa.
+    await escolherColuna("Dinheiro que saiu", "Y")
+    expect(campoColuna("Dinheiro que entrou")).toHaveTextContent("X")
+    expect(screen.getByRole("columnheader", { name: /^X/ })).toHaveTextContent("Entrou")
+    expect(screen.getByRole("columnheader", { name: /^Y/ })).toHaveTextContent("Saiu")
+    expect(previa).toHaveTextContent("Salário")
+    expect(previa).toHaveTextContent("entrou")
+    expect(previa).toHaveTextContent("saiu")
+
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }))
     const mapa = { data: 0, descricao: 1, valor: null, entrada: 2, saida: 3, id: null, inverterSinal: false }
     expect(previewImportacao).toHaveBeenLastCalledWith("k2", expect.any(File), mapa)
     await userEvent.click(await screen.findByRole("button", { name: "Importar 2 lançamentos" }))
     expect(confirmarImportacao).toHaveBeenCalledWith("k2", expect.any(Array), expect.any(String), mapa, "dia|texto|x|y")
   })
 
-  it("mesma coluna em dois papéis: avisa e não lê", async () => {
-    vi.mocked(previewImportacao).mockResolvedValueOnce(PREVIA_MAPEAR as never)
+  it("uma coluna só é uma coisa (fora entrou e saiu juntos); inverter troca o sinal", async () => {
+    vi.mocked(previewImportacao).mockResolvedValueOnce(PREVIA_MAPEAR as never).mockResolvedValueOnce(PREVIA_OFX as never)
     renderizar()
     await escolher("Conta", "Inter")
     await subir("inter.csv")
     await userEvent.click(screen.getByRole("button", { name: "Ler extrato" }))
-    await screen.findByText("Qual coluna é o quê")
-    await escolher("Data", "Dia")
-    await escolher("Descrição", "Dia")
-    await escolher("Valor", "X")
-    await userEvent.click(screen.getByRole("button", { name: "Ler com essas colunas" }))
-    expect(screen.getByRole("alert")).toHaveTextContent("Cada coluna só pode ter um papel.")
+    await screen.findByText("Não reconhecemos as colunas desse arquivo")
+
+    await escolherColuna("Dinheiro que entrou", "X")
+    // A coluna do valor virou data: sai de entrou e de saiu.
+    await escolherColuna("Data", "X")
+    expect(campoColuna("Dinheiro que entrou")).toHaveTextContent("Escolha a coluna")
+    expect(campoColuna("Dinheiro que saiu")).toHaveTextContent("Escolha a coluna")
+
+    await escolherColuna("Data", "Texto")
+    expect(campoColuna("Descrição")).toHaveTextContent("Escolha a coluna")
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }))
+    expect(campoColuna("Descrição")).toHaveAttribute("aria-invalid", "true")
     expect(previewImportacao).toHaveBeenCalledTimes(1)
+
+    await escolherColuna("Descrição", "Texto")
+    await escolherColuna("Data", "Dia")
+    await escolherColuna("Dinheiro que saiu", "X")
+    expect(campoColuna("Dinheiro que entrou")).toHaveTextContent("X")
+    await userEvent.click(screen.getByRole("button", { name: "Está ao contrário? Inverter" }))
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }))
+    expect(previewImportacao).toHaveBeenLastCalledWith("k2", expect.any(File),
+      { data: 0, descricao: 1, valor: 2, entrada: null, saida: null, id: null, inverterSinal: true })
   })
 
   it("confirmação repetida: avisa que já tinha sido importado", async () => {

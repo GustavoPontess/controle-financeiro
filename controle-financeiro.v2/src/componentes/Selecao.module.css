@@ -14,4 +14,5 @@
 .opcao[aria-selected="true"] { font-weight: 600; }
 .opcaoTexto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marca { flex-shrink: 0; color: var(--v2-texto); }
+.detalhe { font-weight: 400; color: var(--v2-texto-3); }
 .nada { padding: 10px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }

@@ -8,13 +8,25 @@
 .escolherArquivo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acaoLer { display: flex; align-items: flex-end; }
 
-/* Qual coluna é o quê: as primeiras linhas do arquivo, como estão */
-.amostraRolagem { overflow-x: auto; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); }
-.amostra { width: 100%; border-collapse: collapse; font-size: var(--v2-fs-xs); }
-.amostra th, .amostra td { padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--v2-linha); }
-.amostra th { font-weight: 600; color: var(--v2-texto-2); background: var(--v2-superficie-2); }
-.amostra tr:last-child td { border-bottom: 0; }
-.inverter { display: flex; align-items: flex-end; padding-bottom: 10px; }
+/* Não reconhecemos as colunas: a prévia do arquivo como veio (a coluna escolhida ganha a etiqueta e cor; a de fora
+   fica apagada) e, embaixo, um campo por informação que o app precisa. */
+.arquivoRolagem { overflow-x: auto; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); }
+.arquivo { width: 100%; border-collapse: collapse; font-size: var(--v2-fs-sm); }
+.arquivo th, .arquivo td { padding: 8px 14px; text-align: left; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.arquivo th { padding-top: 12px; padding-bottom: 10px; vertical-align: top; border-bottom: 1px solid var(--v2-linha); font-weight: 600; color: var(--v2-texto-3); background: var(--v2-superficie-2); }
+.arquivo th[data-usada] { color: var(--v2-texto); }
+.arquivoNome { display: block; font-size: var(--v2-fs-md); overflow: hidden; text-overflow: ellipsis; }
+.arquivoEtiqueta { margin-top: 6px; }
+.arquivo td { color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.arquivo td[data-usada] { color: var(--v2-texto-2); }
+.arquivo td[data-vazio="true"] { font-style: italic; }
+.escolhas { display: flex; flex-direction: column; gap: 18px; }
+.mapearPrevia { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.mapearPreviaTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.mapearPreviaTitulo { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-2); }
+.mapearPreviaLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mapearPreviaLista li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 6px 0; border-top: 1px solid var(--v2-linha); }
+.mapearPreviaValor { display: inline-flex; align-items: baseline; gap: 8px; }
 
 /* Prévia */
 .previaTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px 10px; }
@@ -55,6 +67,10 @@
 .prontoAcoes { display: flex; gap: 8px; margin-top: 10px; }
 
 @media (max-width: 900px) {
+  /* Prévia do mapear no celular: descrição e valor em cima, data embaixo (não herda o layout da lista de baixo) */
+  .mapearPreviaLista li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "descricao valor" "data valor"; gap: 2px 12px; }
+  .mapearPreviaLista .descricao { grid-area: descricao; }
+  .mapearPreviaLista li > :last-child { grid-area: valor; justify-self: end; }
   .acaoLer > * { width: 100%; }
   .previaTopo { padding: 14px 16px 8px; }
   .alertaLista { margin: 0 16px 8px; }
