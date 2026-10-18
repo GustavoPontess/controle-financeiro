@@ -1,5 +1,6 @@
 import { api } from "../api/cliente"
 import type { ExportacaoUsuario } from "@/types/Admin"
+import type { Usuario } from "../auth/contexto"
 
 /**
  * Autoatendimento do titular sobre a própria conta (LGPD Art. 18).
@@ -9,6 +10,10 @@ import type { ExportacaoUsuario } from "@/types/Admin"
 export type MetodoExclusao = "totp" | "email"
 
 const contaService = {
+  /** Nome e data de nascimento (e-mail não muda por aqui). `dataNascimento` = "YYYY-MM-DD" ou null. */
+  atualizarPerfil: (nome: string, dataNascimento: string | null) =>
+    api.put<Usuario>("/auth/profile", { nome, dataNascimento }, { skipErrorToast: true }).then((r) => r.data),
+
   /** Passo 1: confirma a senha; sem MFA dispara o PIN por e-mail. Retorna o 2º fator a pedir. */
   enviarCodigoExclusao: (senhaAtual: string) =>
     api.post<{ metodo: MetodoExclusao }>("/auth/conta/excluir/enviar-codigo", { senhaAtual }, { skipErrorToast: true })

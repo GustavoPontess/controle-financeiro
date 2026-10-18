@@ -50,6 +50,36 @@ public class AuthServiceTests
         return u;
     }
 
+    // ── UpdateProfileAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateProfile_recusaNomeVazio_e_dataNoFuturo()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "perfil@test.com");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.UpdateProfileAsync(u.Id, "   ", null));
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.UpdateProfileAsync(u.Id, new string('a', 201), null));
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.UpdateProfileAsync(u.Id, "Ana", DateTime.UtcNow.AddDays(1)));
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.UpdateProfileAsync(u.Id, "Ana", new DateTime(1850, 1, 1)));
+        Assert.Equal("User", (await ctx.Usuarios.FindAsync(u.Id))!.Nome);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_salvaNomeSemEspacoSobrando_e_data()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "perfil2@test.com");
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var dto = await auth.UpdateProfileAsync(u.Id, "  Ana Silva ", new DateTime(1990, 5, 10));
+
+        Assert.Equal("Ana Silva", dto.Nome);
+        Assert.Equal(new DateTime(1990, 5, 10), dto.DataNascimento);
+        Assert.Equal("Ana Silva", (await ctx.Usuarios.FindAsync(u.Id))!.Nome);
+    }
+
     // ── SolicitarResetSenhaAsync ───────────────────────────────────────────────
 
     [Fact]

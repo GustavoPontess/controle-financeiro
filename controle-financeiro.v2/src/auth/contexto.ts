@@ -4,6 +4,8 @@ export interface Usuario {
   id: string
   email: string
   nome: string
+  /** ISO ("1990-05-10T00:00:00") ou null. */
+  dataNascimento?: string | null
   isAdmin?: boolean
 }
 
