@@ -1,0 +1,61 @@
+.pagina { display: flex; flex-direction: column; gap: 16px; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.dica { margin: 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.voce { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
+
+/* Cabeçalho: inicial + nome à esquerda; etiquetas e ações à direita (mesma anatomia da página do cartão) */
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.identidade { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 320px; }
+.identidadeTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.marcaGrande { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); font-size: var(--v2-fs-lg); font-weight: 600; flex-shrink: 0; }
+.acoesTopo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+
+/* Principal | lado */
+.grade { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.principal, .lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Mês: título à esquerda, setas à direita */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
+.toolbarTitulo { font-size: var(--v2-fs-md); font-weight: 600; }
+.meses { display: flex; gap: 4px; }
+.filtro { padding: 4px 24px 8px; max-width: 240px; }
+
+/* Balanço: o total e uma linha por pessoa (pagou · parte → a receber / a acertar / em dia) */
+.balanco { display: flex; flex-direction: column; gap: 12px; padding: 8px 24px 20px; }
+.balancoTotal { display: flex; flex-direction: column; gap: 4px; }
+.grande { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.saldos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.saldos li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
+.saldoTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.saldoNome { font-size: var(--v2-fs-md); font-weight: 500; }
+.saldoDetalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.saldoValor { font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--v2-texto-2); }
+.saldoValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.saldoValor[data-tom="negativo"] { color: var(--v2-negativo); }
+
+/* Linhas das listas */
+.direita { display: inline-flex; align-items: center; gap: 10px; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Mini formulário dentro da ficha (renda, relação, responsável) e as regras */
+.fichaForm { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.fichaFormAcoes { display: flex; justify-content: flex-end; gap: 8px; }
+.regras { display: flex; flex-direction: column; gap: 14px; }
+
+@media (max-width: 1100px) {
+  .grade { grid-template-columns: minmax(0, 1fr) 320px; }
+}
+@media (max-width: 900px) {
+  .grade { grid-template-columns: minmax(0, 1fr); }
+  .toolbar { padding: 14px 16px 4px; }
+  .filtro { padding: 4px 16px 8px; max-width: none; }
+  .balanco { padding: 8px 16px 16px; }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 16px 16px 24px; }
+  .acoesTopo { width: 100%; }
+}

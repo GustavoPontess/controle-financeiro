@@ -1,3 +1,6 @@
+/** Permissão na família (PapelFamilia do servidor): 1 Admin, 2 Membro, 3 Dependente (só vê). */
+export type PapelFamilia = 1 | 2 | 3
+
 export interface Familia {
   id: string
   nome: string
@@ -18,6 +21,7 @@ export interface MembroFamilia {
   rendaMensal: number | null
   /** Se o membro já informou a renda (o peso do rateio proporcional), sem revelar o valor. */
   rendaInformada: boolean
+  papelPermissao: PapelFamilia
 }
 
 // ── Modos de rateio (#25) ──
@@ -53,6 +57,7 @@ export interface ConviteFamilia {
   expiraEm: string
   criadoEm: string
   token: string
+  papelPermissao: PapelFamilia
 }
 
 export interface FamiliaDetalhe {

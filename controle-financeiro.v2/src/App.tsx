@@ -28,6 +28,12 @@ import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
 import ImportarExtrato from "./telas/ImportarExtrato"
 import Reconciliacao from "./telas/Reconciliacao"
+import Familias from "./telas/Familias"
+import NovaFamilia from "./telas/NovaFamilia"
+import Familia from "./telas/Familia"
+import ConvidarMembro from "./telas/ConvidarMembro"
+import Dependente from "./telas/Dependente"
+import NovoAcerto from "./telas/NovoAcerto"
 import NovaConta from "./telas/NovaConta"
 import EditarConta from "./telas/EditarConta"
 import EncerrarConta from "./telas/EncerrarConta"
@@ -41,7 +47,6 @@ import EmConstrucao from "./telas/EmConstrucao"
 const PENDENTES: [string, string, string][] = [
   ["/relatorios", "Relatórios", "/reports"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
-  ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
   ["/limites", "Limites", "/limites"],
 ]
@@ -72,6 +77,13 @@ export default function App() {
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/reconciliacao" element={<Reconciliacao />} />
+        <Route path="/familias" element={<Familias />} />
+        <Route path="/familias/nova" element={<NovaFamilia />} />
+        <Route path="/familias/:id" element={<Familia />} />
+        <Route path="/familias/:id/convidar" element={<ConvidarMembro />} />
+        <Route path="/familias/:id/dependentes/novo" element={<Dependente />} />
+        <Route path="/familias/:id/dependentes/:depId/editar" element={<Dependente />} />
+        <Route path="/familias/:id/acertos/novo" element={<NovoAcerto />} />
         <Route path="/categorias/nova" element={<EditarCategoria />} />
         <Route path="/categorias/:id/editar" element={<EditarCategoria />} />
         <Route path="/categorias/:id/excluir" element={<ExcluirCategoria />} />
