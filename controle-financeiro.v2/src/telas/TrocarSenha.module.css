@@ -2,7 +2,8 @@
 .texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
 .ok { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
-.form { display: flex; flex-direction: column; gap: 18px; max-width: 420px; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.rodape { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .requisitos { list-style: none; margin: -8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
 .requisitos li { display: flex; align-items: center; gap: 6px; }
 .requisitos li svg { opacity: 0.35; }
@@ -10,10 +11,10 @@
 .requisitos li[data-ok="true"] svg { opacity: 1; }
 .marcar { display: flex; align-items: center; gap: 8px; font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); cursor: pointer; }
 .marcar input { width: 16px; height: 16px; margin: 0; accent-color: var(--v2-tinta); }
-.acoes { display: flex; gap: 8px; }
+.acoes { display: flex; gap: 8px; justify-content: flex-end; }
 
 @media (max-width: 900px) {
   .linha { flex-direction: column; align-items: stretch; }
-  .form { max-width: none; }
+  .rodape { flex-direction: column; align-items: stretch; }
   .acoes > * { flex: 1; }
 }

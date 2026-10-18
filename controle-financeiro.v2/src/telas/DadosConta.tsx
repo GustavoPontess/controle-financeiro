@@ -95,24 +95,28 @@ function ExcluirConta() {
       )}
       {fase === "senha" && (
         <form className={styles.form} noValidate onSubmit={(e) => { e.preventDefault(); void continuar() }}>
-          <Campo rotulo="Senha atual" erro={erroCampo}>
-            <Entrada type="password" autoComplete="current-password" value={senha} autoFocus onChange={(e) => { setSenha(e.target.value); setErroCampo(undefined) }} />
-          </Campo>
-          <div className={styles.acoes}>
-            <Botao onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
-            <Botao perigo type="submit" disabled={ocupado}>Continuar</Botao>
+          <div className={styles.formLinha}>
+            <Campo rotulo="Senha atual" erro={erroCampo}>
+              <Entrada type="password" autoComplete="current-password" value={senha} autoFocus onChange={(e) => { setSenha(e.target.value); setErroCampo(undefined) }} />
+            </Campo>
+            <div className={styles.acoes}>
+              <Botao onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
+              <Botao perigo type="submit" disabled={ocupado}>Continuar</Botao>
+            </div>
           </div>
         </form>
       )}
       {fase === "codigo" && (
         <form className={styles.form} noValidate onSubmit={(e) => { e.preventDefault(); void excluir() }}>
           <p className={styles.texto}>{metodo === "totp" ? "Digite o código do app autenticador ou um código de recuperação." : "Mandamos um código pro seu e-mail."}</p>
-          <Campo rotulo="Código" erro={erroCampo}>
-            <Entrada inputMode="numeric" autoComplete="one-time-code" placeholder="000000" value={codigo} autoFocus onChange={(e) => { setCodigo(e.target.value); setErroCampo(undefined) }} />
-          </Campo>
-          <div className={styles.acoes}>
-            <Botao onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
-            <Botao perigo type="submit" disabled={ocupado}>{ocupado ? "Excluindo…" : "Excluir de vez"}</Botao>
+          <div className={styles.formLinha}>
+            <Campo rotulo="Código" erro={erroCampo}>
+              <Entrada inputMode="numeric" autoComplete="one-time-code" placeholder="000000" value={codigo} autoFocus onChange={(e) => { setCodigo(e.target.value); setErroCampo(undefined) }} />
+            </Campo>
+            <div className={styles.acoes}>
+              <Botao onClick={cancelar} disabled={ocupado}>Cancelar</Botao>
+              <Botao perigo type="submit" disabled={ocupado}>{ocupado ? "Excluindo…" : "Excluir de vez"}</Botao>
+            </div>
           </div>
         </form>
       )}
