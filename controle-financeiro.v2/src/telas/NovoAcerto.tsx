@@ -1,5 +1,5 @@
 // Registrar acerto (/familias/:id/acertos/novo): quem passou dinheiro pra quem, quanto e uma nota. Vem
-// preenchido com o que o balanço do mês diz que falta (quem está "a acertar" paga pra quem está "a receber").
+// preenchido com o que o balanço do mês diz que falta (quem pagou a menos passa pra quem pagou a mais).
 // É só o registro: as contas de cada um não mudam. Chave de idempotência por tentativa.
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"

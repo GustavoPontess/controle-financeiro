@@ -165,11 +165,12 @@ public class RendaService
     }
 
     /// <summary>Peso de cada membro no rateio proporcional do mês: a renda prevista (declarada) de quem não escondeu
-    /// tudo. Quem escolheu "nada" (ou não declarou) fica com zero; sem nenhum peso o balanço cai pra divisão igual.</summary>
+    /// tudo. Quem escolheu "nada" (ou não declarou) fica com zero; sem nenhum peso o balanço cai pra divisão igual.
+    /// Quem "só vê" (Dependente) não paga e nem entra.</summary>
     public async Task<Dictionary<Guid, decimal>> PesosAsync(Guid familiaId, int ano, int mes)
     {
         var membros = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo)
+            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
             .Select(m => new { m.UsuarioId, m.VisibilidadeRenda })
             .ToListAsync();
         var pesos = new Dictionary<Guid, decimal>();

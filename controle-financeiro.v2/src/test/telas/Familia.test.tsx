@@ -33,7 +33,7 @@ let renda: RendaFamilia = { ano: 2026, mes: 10, total: 9500, previsto: 10000, me
   { usuarioId: "u1", nome: "Gabriel Dev", mostrada: true, recebido: 6000, previsto: 6500 },
   { usuarioId: "u2", nome: "Marina Dev", mostrada: true, recebido: 3500, previsto: 3500 },
 ] }
-vi.mock("../../services/rendaService", () => ({ getRendaFamilia: vi.fn(async () => renda) }))
+vi.mock("../../services/rendaService", () => ({ getRendaFamilia: vi.fn(async () => renda), definirVisibilidadeRenda: vi.fn(async () => {}) }))
 vi.mock("../../services/familiaService", () => ({
   getFamilia: vi.fn(async () => familia),
   getDependentes: vi.fn(async () => dependentes),
@@ -53,7 +53,8 @@ vi.mock("../../services/familiaService", () => ({
   removerMembro: vi.fn(async () => {}),
   revogarConvite: vi.fn(async () => {}),
 }))
-import { aprovarDespesa, dissolverFamilia, editarPermissao, removerMembro } from "../../services/familiaService"
+import { aprovarDespesa, dissolverFamilia, editarPermissao, rejeitarDespesa, removerMembro } from "../../services/familiaService"
+import { definirVisibilidadeRenda } from "../../services/rendaService"
 import Familia from "../../telas/Familia"
 
 const Acerto = () => { const { state } = useLocation(); return <p>novo acerto {JSON.stringify(state)}</p> }
@@ -97,10 +98,12 @@ describe("Família (página)", () => {
     expect(screen.getByText("Aguardando aprovação")).toBeInTheDocument()
     expect(screen.getByRole("list", { name: "Entre vocês" })).toHaveTextContent("Marina")
     // Renda da casa: só porque a Marina liberou o valor pra mim; soma o que está mostrado.
-    const rendaCasa = await screen.findByRole("list", { name: "Renda por pessoa" })
+    const rendaCasa = await screen.findByLabelText("Renda por pessoa")
     expect(rendaCasa).toHaveTextContent("Marina")
     expect(rendaCasa).toHaveTextContent("3.500,00")
-    expect(screen.getByText(/Renda da casa em/)).toBeInTheDocument()
+    expect(screen.getByText(/Renda da casa/)).toBeInTheDocument()
+    // Sem contador, sem chip de divisão: o cabeçalho é o nome e quem está.
+    expect(screen.queryByText(/pessoas/)).not.toBeInTheDocument()
     // Pessoas e Regras ficam nas outras abas.
     expect(screen.queryByRole("list", { name: "Quem está" })).not.toBeInTheDocument()
 
@@ -113,6 +116,9 @@ describe("Família (página)", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Sofá novo/ }))
     await userEvent.click(screen.getByRole("button", { name: "Aprovar" }))
     expect(aprovarDespesa).toHaveBeenCalledWith("f1", "t2")
+    await userEvent.click(screen.getByRole("button", { name: "Recusar" }))
+    expect(rejeitarDespesa).toHaveBeenCalledWith("f1", "t2")
+    expect(screen.queryByRole("button", { name: /Rejeitar/ })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: /Sofá novo/ })) // fecha
     await userEvent.click(screen.getByRole("button", { name: /Supermercado/ }))
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument()
@@ -120,7 +126,7 @@ describe("Família (página)", () => {
     expect(screen.getByText("lançamento")).toBeInTheDocument()
   })
 
-  it("aba Pessoas: admin promove e remove outro membro (nunca o criador); eu edito a minha renda; convites e dependentes", async () => {
+  it("aba Pessoas: admin promove e remove outro membro (nunca o criador); quem vê a minha renda é uma caixa por pessoa; convites e dependentes", async () => {
     renderizar("/familias/f1?aba=pessoas")
     await screen.findByRole("list", { name: "Quem está" })
     expect(screen.getByRole("list", { name: "Convites pendentes" })).toHaveTextContent("avo@exemplo.com")
@@ -137,9 +143,17 @@ describe("Família (página)", () => {
     await userEvent.click(linha("Quem está", /Marina Dev/)) // fecha
     await userEvent.click(linha("Quem está", /Gabriel Dev/))
     expect(screen.queryByRole("button", { name: "Remover" })).not.toBeInTheDocument()
-    // A minha renda não se edita aqui: a ficha diz o nível e leva pra página Renda.
-    expect(screen.getByText("Só o peso")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("link", { name: "mudar" }))
+    // Quem vê a sua renda: marcar a Marina = ela vê o valor (nível "pra alguns"); desmarcar = só o peso.
+    const quemVe = screen.getByRole("group", { name: "Quem vê a sua renda" })
+    const marina = within(quemVe).getByRole("checkbox", { name: "Marina" })
+    expect(marina).not.toBeChecked()
+    await userEvent.click(marina)
+    expect(definirVisibilidadeRenda).toHaveBeenCalledWith("f1", "m1", 2, ["u2"])
+    await userEvent.click(marina)
+    expect(definirVisibilidadeRenda).toHaveBeenLastCalledWith("f1", "m1", 1, [])
+    // Nunca uma lista com 4 níveis; a renda em si se edita na página Renda.
+    expect(screen.queryByText(/Só o peso/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("link", { name: "Ver renda" }))
     expect(screen.getByText("página de renda")).toBeInTheDocument()
   })
 
@@ -148,10 +162,11 @@ describe("Família (página)", () => {
     renderizar("/familias/f1?aba=pessoas")
     await screen.findByRole("list", { name: "Quem está" })
     await userEvent.click(linha("Quem está", /Marina Dev/))
-    expect(screen.getByText("Só o peso na divisão")).toBeInTheDocument()
+    expect(screen.queryByText(/Renda em/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/peso|não mostra|não compartilha/i)).not.toBeInTheDocument()
     await userEvent.click(aba("Mês"))
     await screen.findByRole("list", { name: "Quanto cada um pagou" })
-    expect(screen.queryByText(/Renda da casa em/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Renda da casa/)).not.toBeInTheDocument()
   })
 
   it("quem só vê não tem ações; quem não criou vê Sair em vez de Dissolver (aba Regras)", async () => {
@@ -165,10 +180,14 @@ describe("Família (página)", () => {
     await userEvent.click(aba("Pessoas"))
     expect(screen.queryByRole("button", { name: "Convidar" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Adicionar" })).not.toBeInTheDocument()
+    await userEvent.click(linha("Quem está", /Gabriel Dev/))
+    expect(screen.queryByRole("group", { name: "Quem vê a sua renda" })).not.toBeInTheDocument()
     await userEvent.click(aba("Regras"))
-    expect(screen.getByText("Só quem é admin muda as regras.")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Sair da família" })).toBeInTheDocument()
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+    expect(screen.getByText("Divisão")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Dissolver" })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Sair" }))
+    expect(within(await screen.findByRole("alertdialog")).getByText(/Seus lançamentos continuam com você/)).toBeInTheDocument()
   })
 
   it("aba Regras: o criador dissolve com confirmação e volta pra lista", async () => {

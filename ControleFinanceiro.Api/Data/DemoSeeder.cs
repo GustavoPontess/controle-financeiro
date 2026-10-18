@@ -280,6 +280,19 @@ public static class DemoSeeder
             await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, dev, new RegistrarAcertoDto(
                 conjuge, dev, 150m, hoje.Month, hoje.Year, "Pix do mercado", Guid.NewGuid().ToString()));
         }
+        // Marina: benefício fixo + bico, e libera o valor só pro Gabriel (quem entrar depois não vê). É o que faz
+        // a "Renda da casa" aparecer na aba Mês quando o Gabriel olha.
+        var marina = await context.MembrosFamilia.FirstAsync(m => m.FamiliaId == familia.Id && m.UsuarioId != dev);
+        if (!await context.RendasPrevistas.AnyAsync(r => r.UsuarioId == marina.UsuarioId))
+        {
+            context.RendasPrevistas.Add(new Domain.Entities.RendaPrevista
+            {
+                Id = Guid.NewGuid(), UsuarioId = marina.UsuarioId, Ano = hoje.Year, Mes = hoje.Month, FixaEsperada = 600m, VariavelEsperada = 800m,
+            });
+            marina.VisibilidadeRenda = VisibilidadeRenda.ValorParaAlguns;
+            marina.RendaVisivelPara = new List<Guid> { dev };
+            await context.SaveChangesAsync();
+        }
     }
     // ── Notificações: pro sino ter o que mostrar (uma já lida).
     private static async Task NotificacoesAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid nubank)

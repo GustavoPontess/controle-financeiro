@@ -14,7 +14,7 @@ export const MAX_NOME_FAMILIA = 100
 
 export const MODOS_RATEIO: { valor: ModoRateio; rotulo: string; detalhe: string }[] = [
   { valor: 1, rotulo: "Igual pra todos", detalhe: "cada adulto paga a mesma parte" },
-  { valor: 2, rotulo: "Proporcional à renda", detalhe: "quem ganha mais paga mais; cada um informa a própria renda" },
+  { valor: 2, rotulo: "Proporcional à renda", detalhe: "quem ganha mais paga mais, pela renda esperada que cada um liberou" },
   { valor: 3, rotulo: "Por despesa", detalhe: "a divisão é escolhida em cada lançamento" },
 ]
 export const rotuloModoRateio = (m: ModoRateio) => MODOS_RATEIO.find((x) => x.valor === m)?.rotulo ?? "Igual pra todos"

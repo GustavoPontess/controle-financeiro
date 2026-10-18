@@ -7,11 +7,8 @@
 .linkBotao { padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); color: var(--v2-acento); cursor: pointer; }
 .linkBotao:hover { text-decoration: underline; }
 
-/* Mês: título à esquerda, setas à direita */
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
-.toolbarTitulo { font-size: var(--v2-fs-md); font-weight: 600; }
-.meses { display: flex; gap: 4px; }
-.miolo { display: flex; flex-direction: column; gap: 18px; padding: 8px 24px 20px; }
+/* Miolo do bloco (a barra do mês fica fora, no NavegadorMes) */
+.miolo { display: flex; flex-direction: column; gap: 18px; padding: 20px 24px; }
 
 /* Esperado · Recebido · Falta (mesma anatomia da faixa de números de Bancos) */
 .numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -37,8 +34,7 @@
 .entradaValor[data-tom="neutro"] { color: var(--v2-texto-3); font-weight: 500; }
 
 @media (max-width: 900px) {
-  .toolbar { padding: 14px 16px 4px; }
-  .miolo { padding: 8px 16px 16px; }
+  .miolo { padding: 16px; }
   .alerta { margin: 0 16px 10px; }
   .numeros { gap: 8px; }
   .numeroValor { font-size: var(--v2-fs-lg); }

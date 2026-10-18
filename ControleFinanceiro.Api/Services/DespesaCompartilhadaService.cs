@@ -101,8 +101,8 @@ public class DespesaCompartilhadaService
         await _notificacaoService.CriarAsync(
             transacao.CriadoPor,
             aprovar ? TipoNotificacao.DespesaAprovada : TipoNotificacao.DespesaRejeitada,
-            aprovar ? "Despesa aprovada" : "Despesa rejeitada",
-            $"{avaliador} {(aprovar ? "aprovou" : "rejeitou")} \"{transacao.Descricao}\".",
+            aprovar ? "Despesa aprovada" : "Despesa recusada",
+            $"{avaliador} {(aprovar ? "aprovou" : "recusou")} \"{transacao.Descricao}\".",
             "/familias");
     }
 
@@ -184,7 +184,8 @@ public class DespesaCompartilhadaService
     }
 
     /// <summary>Balanço mensal: quem pagou quanto vs a cota devida. A cota de cada
-    /// membro respeita o modo de rateio efetivo de cada despesa (Issue #25).</summary>
+    /// membro respeita o modo de rateio efetivo de cada despesa (Issue #25). Quem "só vê"
+    /// (permissão Dependente) não paga: fica fora da divisão (visão §7.2, decisão 2026-10-18).</summary>
     public async Task<BalancoFamiliaDto> ObterBalancoAsync(
         Guid familiaId, Guid usuarioId, int mes, int ano)
     {
@@ -195,7 +196,7 @@ public class DespesaCompartilhadaService
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
         var membros = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo)
+            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
             .Select(m => new { m.UsuarioId, m.Usuario!.Nome })
             .ToListAsync();
         // Peso do rateio proporcional = renda prevista do mês de quem não escondeu tudo (renda-e-visibilidade.md).

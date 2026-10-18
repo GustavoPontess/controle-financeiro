@@ -229,6 +229,27 @@ public class RendaServiceTests
 
         Assert.Equal(4000m, pesos[admin]);
         Assert.Equal(2000m, pesos[ana]);
-        Assert.Equal(0m, pesos[bia]);
+        Assert.False(pesos.ContainsKey(bia)); // "só vê" não paga: nem entra
+    }
+
+    [Fact]
+    public async Task QuemSoVe_NaoEntraNaDivisaoDasDespesas()
+    {
+        var ctx = CreateContext();
+        var (familiaId, admin, ana, bia) = await SeedFamilia(ctx); // bia só vê
+        var renda = SeedCategoria(ctx, "Renda");
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 300m, Tipo = TipoTransacao.Despesa, Data = new DateOnly(2026, 10, 5),
+            CriadoPor = admin, FamiliaId = familiaId, StatusTransacao = StatusTransacao.Executado, Ativo = true, CategoriaId = renda.Id,
+        });
+        ctx.SaveChanges();
+
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx)).ObterBalancoAsync(familiaId, admin, 10, 2026);
+
+        Assert.Equal(2, balanco.Saldos.Count);                       // admin e ana; bia nem aparece
+        Assert.DoesNotContain(balanco.Saldos, s => s.UsuarioId == bia);
+        Assert.Equal(150m, balanco.Saldos.Single(s => s.UsuarioId == admin).Cota);
+        Assert.Equal(150m, balanco.Saldos.Single(s => s.UsuarioId == ana).Cota);
     }
 }

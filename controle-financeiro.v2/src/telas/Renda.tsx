@@ -3,7 +3,6 @@
 // com "contas fixas", que são contas a pagar (o Gustavo, 2026-10-18). O que a família vê disso se escolhe NA
 // família (ficha do próprio membro), não aqui. Spec: docs/features/familia/renda-e-visibilidade.md.
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { definirRendaPrevista, getRendaMes, limparRendaPrevista } from "../services/rendaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { RendaMes } from "../types/Renda"
@@ -13,14 +12,13 @@ import Campo from "../componentes/Campo"
 import { Dinheiro } from "../componentes/Dinheiro"
 import EntradaValor from "../componentes/EntradaValor"
 import { LinhaCampos } from "../componentes/Formulario"
-import { nomeDoMes } from "../dominio/familia"
+import NavegadorMes, { nomeDoPeriodo, periodoDeHoje, type Periodo } from "../componentes/NavegadorMes"
 import { dataBR } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Renda.module.css"
 
 export default function Renda() {
-  const hoje = new Date()
-  const [periodo, setPeriodo] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
+  const [periodo, setPeriodo] = useState<Periodo>(periodoDeHoje)
   const [renda, setRenda] = useState<RendaMes | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [fixa, setFixa] = useState("")
@@ -42,7 +40,6 @@ export default function Renda() {
     return () => { vivo = false }
   }, [periodo])
 
-  const mudarMes = (delta: number) => setPeriodo((p) => { const d = new Date(p.ano, p.mes - 1 + delta, 1); return { ano: d.getFullYear(), mes: d.getMonth() + 1 } })
   const rodar = async (acao: () => Promise<RendaMes>) => {
     setSalvando(true); setErro(null)
     try { aplicar(await acao()) } catch (e) { setErro(mensagemDeErro(e)) }
@@ -50,19 +47,13 @@ export default function Renda() {
   }
   const salvar = () => rodar(() => definirRendaPrevista(periodo.ano, periodo.mes, parseMoney(fixa), parseMoney(variavel)))
   const usarMedia = (media: number) => rodar(() => definirRendaPrevista(periodo.ano, periodo.mes, media, 0))
-  const mesNome = nomeDoMes(periodo.mes, periodo.ano)
+  const mesNome = nomeDoPeriodo(periodo)
   const mudou = !!renda && (parseMoney(fixa) !== renda.fixaEsperada || parseMoney(variavel) !== renda.variavelEsperada)
 
   return (
     <div className={styles.pagina}>
+      <NavegadorMes periodo={periodo} onChange={setPeriodo} prefixo="Renda de" />
       <Bloco semRespiro>
-        <div className={styles.toolbar}>
-          <span className={styles.toolbarTitulo}>Renda de {mesNome.toLowerCase()}</span>
-          <span className={styles.meses}>
-            <Botao soIcone aria-label="Mês anterior" onClick={() => mudarMes(-1)}><ChevronLeft size={16} strokeWidth={2.25} /></Botao>
-            <Botao soIcone aria-label="Próximo mês" onClick={() => mudarMes(1)}><ChevronRight size={16} strokeWidth={2.25} /></Botao>
-          </span>
-        </div>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
         {!renda ? <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div> : (
           <div className={styles.miolo}>
