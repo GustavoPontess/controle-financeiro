@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
 import type { AcertoContas, BalancoFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe } from "../../types/Familia"
@@ -29,14 +29,14 @@ const acertos: AcertoContas[] = [{ id: "a1", deUsuarioId: "u2", deNome: "Marina 
 const dependentes: Dependente[] = [{ id: "d1", familiaId: "f1", nome: "Theo", apelido: null, dataNascimento: "2021-03-10", tipo: 1, ativo: true }]
 
 let familia = detalhe()
-let renda: RendaFamilia = { ano: 2026, mes: 10, total: 9500, previsto: 10000, membros: [
-  { usuarioId: "u1", nome: "Gabriel Dev", mostrada: true, recebido: 6000, previsto: 6500 },
-  { usuarioId: "u2", nome: "Marina Dev", mostrada: true, recebido: 3500, previsto: 3500 },
-] }
+let renda: RendaFamilia = { ano: 2026, mes: 10, total: 9500, previsto: 10000, membros: [] }
 vi.mock("../../services/rendaService", () => ({ getRendaFamilia: vi.fn(async () => renda), definirVisibilidadeRenda: vi.fn(async () => {}) }))
 vi.mock("../../services/familiaService", () => ({
+  getFamilias: vi.fn(async () => []),
+  getConvitesPendentes: vi.fn(async () => []),
   getFamilia: vi.fn(async () => familia),
   getDependentes: vi.fn(async () => dependentes),
+  getGastoDependente: vi.fn(async () => ({ dependenteId: "d1", nome: "Theo", mes: 10, ano: 2026, total: 320 })),
   getBalancoFamilia: vi.fn(async () => balanco),
   getDespesasFamilia: vi.fn(async () => despesas),
   getAcertos: vi.fn(async () => acertos),
@@ -55,14 +55,24 @@ vi.mock("../../services/familiaService", () => ({
 }))
 import { aprovarDespesa, dissolverFamilia, editarPermissao, rejeitarDespesa, removerMembro } from "../../services/familiaService"
 import { definirVisibilidadeRenda } from "../../services/rendaService"
-import Familia from "../../telas/Familia"
+import FamiliaVisaoGeral from "../../telas/FamiliaVisaoGeral"
+import FamiliaDespesas from "../../telas/FamiliaDespesas"
+import FamiliaEntreVoces from "../../telas/FamiliaEntreVoces"
+import FamiliaMembros from "../../telas/FamiliaMembros"
+import FamiliaDependentes from "../../telas/FamiliaDependentes"
+import FamiliaRegras from "../../telas/FamiliaRegras"
 
 const Acerto = () => { const { state } = useLocation(); return <p>novo acerto {JSON.stringify(state)}</p> }
 const renderizar = (inicio = "/familias/f1") => render(
   <MemoryRouter initialEntries={[inicio]}>
     <Routes>
-      <Route path="/familias" element={<p>lista de famílias</p>} />
-      <Route path="/familias/:id" element={<Familia />} />
+      <Route path="/dashboard" element={<p>painel pessoal</p>} />
+      <Route path="/familias/:id" element={<FamiliaVisaoGeral />} />
+      <Route path="/familias/:id/despesas" element={<FamiliaDespesas />} />
+      <Route path="/familias/:id/entre-voces" element={<FamiliaEntreVoces />} />
+      <Route path="/familias/:id/membros" element={<FamiliaMembros />} />
+      <Route path="/familias/:id/dependentes" element={<FamiliaDependentes />} />
+      <Route path="/familias/:id/regras" element={<FamiliaRegras />} />
       <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
       <Route path="/familias/:id/acertos/novo" element={<Acerto />} />
       <Route path="/transacoes/:id" element={<p>lançamento</p>} />
@@ -70,10 +80,9 @@ const renderizar = (inicio = "/familias/f1") => render(
     </Routes>
   </MemoryRouter>,
 )
-const aba = (nome: string) => screen.getByRole("radio", { name: nome })
 const linha = (lista: string, nome: RegExp) => within(screen.getByRole("list", { name: lista })).getByRole("button", { name: nome })
 
-describe("Família (página)", () => {
+describe("Espaço da família (páginas)", () => {
   beforeEach(() => {
     vi.clearAllMocks(); familia = detalhe()
     renda = { ano: 2026, mes: 10, total: 9500, previsto: 10000, membros: [
@@ -82,9 +91,8 @@ describe("Família (página)", () => {
     ] }
   })
 
-  it("aba Mês: equilíbrio como fato (pagou a mais / a menos), sugestão de quem passa quanto, despesas com aprovação", async () => {
+  it("Visão geral: equilíbrio como fato (pagou a mais / a menos), quem passa quanto, renda da casa de quem liberou, só o que aguarda aprovação", async () => {
     renderizar()
-    expect(await screen.findByRole("heading", { name: "Casa Dev" })).toBeInTheDocument()
     const saldos = await screen.findByRole("list", { name: "Quanto cada um pagou" })
     expect(saldos).toHaveTextContent("Gabriel")
     expect(saldos).toHaveTextContent("pagou a mais")
@@ -94,26 +102,32 @@ describe("Família (página)", () => {
     expect(sugestao).toHaveTextContent("Marina")
     expect(sugestao).toHaveTextContent("Gabriel")
     expect(sugestao).toHaveTextContent("300,00")
-    expect(await screen.findByText("Sofá novo")).toBeInTheDocument()
-    expect(screen.getByText("Aguardando aprovação")).toBeInTheDocument()
-    expect(screen.getByRole("list", { name: "Entre vocês" })).toHaveTextContent("Marina")
     // Renda da casa: só porque a Marina liberou o valor pra mim; soma o que está mostrado.
     const rendaCasa = await screen.findByLabelText("Renda por pessoa")
     expect(rendaCasa).toHaveTextContent("Marina")
     expect(rendaCasa).toHaveTextContent("3.500,00")
     expect(screen.getByText(/Renda da casa/)).toBeInTheDocument()
-    // Sem contador, sem chip de divisão: o cabeçalho é o nome e quem está.
+    expect(screen.getByRole("list", { name: "Entre vocês" })).toHaveTextContent("Marina")
+    // Embaixo só o que pede ação: a despesa aguardando; a já aprovada fica na página de despesas.
+    const aguardando = await screen.findByRole("list", { name: "Aguardando aprovação" })
+    expect(aguardando).toHaveTextContent("Sofá novo")
+    expect(aguardando).not.toHaveTextContent("Supermercado")
+    expect(screen.getByRole("link", { name: "Ver todas" })).toHaveAttribute("href", "/familias/f1/despesas")
+    // Sem cabeçalho repetindo o nome, sem contador, sem abas: o espaço já diz onde a pessoa está.
+    expect(screen.queryByRole("heading", { name: "Casa Dev" })).not.toBeInTheDocument()
     expect(screen.queryByText(/pessoas/)).not.toBeInTheDocument()
-    // Pessoas e Regras ficam nas outras abas.
-    expect(screen.queryByRole("list", { name: "Quem está" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument()
 
     await userEvent.click(within(sugestao).getByRole("button", { name: "Marcar como feito" }))
     expect(screen.getByText(/novo acerto/)).toHaveTextContent('"de":"u2","para":"u1","valor":300')
   })
 
-  it("despesa de outra pessoa aguardando aprovação: aprova na própria linha; a minha abre o lançamento", async () => {
-    renderizar()
-    await userEvent.click(await screen.findByRole("button", { name: /Sofá novo/ }))
+  it("Despesas compartilhadas: aguardando aprovação primeiro; aprova ou recusa na própria linha; a minha abre o lançamento", async () => {
+    renderizar("/familias/f1/despesas")
+    const lista = await screen.findByRole("list", { name: "Despesas compartilhadas" })
+    expect(within(lista).getByRole("list", { name: "Aguardando aprovação" })).toHaveTextContent("Sofá novo")
+    expect(within(lista).getByRole("list", { name: "Outubro de 2026" })).toHaveTextContent("Supermercado")
+    await userEvent.click(screen.getByRole("button", { name: /Sofá novo/ }))
     await userEvent.click(screen.getByRole("button", { name: "Aprovar" }))
     expect(aprovarDespesa).toHaveBeenCalledWith("f1", "t2")
     await userEvent.click(screen.getByRole("button", { name: "Recusar" }))
@@ -126,12 +140,19 @@ describe("Família (página)", () => {
     expect(screen.getByText("lançamento")).toBeInTheDocument()
   })
 
-  it("aba Pessoas: admin promove e remove outro membro (nunca o criador); quem vê a minha renda é uma caixa por pessoa; convites e dependentes", async () => {
-    renderizar("/familias/f1?aba=pessoas")
+  it("Entre vocês: o equilíbrio e o que passou no mês, com o botão de registrar", async () => {
+    renderizar("/familias/f1/entre-voces")
+    expect(await screen.findByRole("list", { name: "Pra equilibrar o mês" })).toHaveTextContent("300,00")
+    expect(screen.getByRole("list", { name: "Entre vocês" })).toHaveTextContent("Marina")
+    await userEvent.click(screen.getByRole("button", { name: /Dinheiro entre vocês/ }))
+    expect(screen.getByText(/novo acerto/)).toHaveTextContent('"voltarPara":"/familias/f1/entre-voces"')
+  })
+
+  it("Membros: admin promove e remove outro membro (nunca o criador); quem vê a minha renda é uma caixa por pessoa; convites", async () => {
+    renderizar("/familias/f1/membros")
     await screen.findByRole("list", { name: "Quem está" })
     expect(screen.getByRole("list", { name: "Convites pendentes" })).toHaveTextContent("avo@exemplo.com")
-    expect(screen.getByRole("list", { name: "Dependentes" })).toHaveTextContent("Theo")
-    expect(screen.getByRole("button", { name: "Convidar" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Convidar/ })).toBeInTheDocument()
 
     await userEvent.click(linha("Quem está", /Marina Dev/))
     await userEvent.click(screen.getByRole("button", { name: "Tornar admin" }))
@@ -151,50 +172,65 @@ describe("Família (página)", () => {
     expect(definirVisibilidadeRenda).toHaveBeenCalledWith("f1", "m1", 2, ["u2"])
     await userEvent.click(marina)
     expect(definirVisibilidadeRenda).toHaveBeenLastCalledWith("f1", "m1", 1, [])
-    // Nunca uma lista com 4 níveis; a renda em si se edita na página Renda.
     expect(screen.queryByText(/Só o peso/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("link", { name: "Ver renda" }))
     expect(screen.getByText("página de renda")).toBeInTheDocument()
   })
 
-  it("ficha do outro membro: mostra a renda só quando a pessoa liberou pra mim; a renda da casa some sem ninguém liberado", async () => {
+  it("ficha do outro membro: renda só quando a pessoa liberou pra mim (senão nem linha); a renda da casa some da Visão geral", async () => {
     renda = { ...renda, total: 6000, previsto: 6500, membros: [renda.membros[0], { ...renda.membros[1], mostrada: false, recebido: null, previsto: null }] }
-    renderizar("/familias/f1?aba=pessoas")
+    renderizar("/familias/f1/membros")
     await screen.findByRole("list", { name: "Quem está" })
     await userEvent.click(linha("Quem está", /Marina Dev/))
     expect(screen.queryByText(/Renda em/)).not.toBeInTheDocument()
     expect(screen.queryByText(/peso|não mostra|não compartilha/i)).not.toBeInTheDocument()
-    await userEvent.click(aba("Mês"))
+    renderizar("/familias/f1")
     await screen.findByRole("list", { name: "Quanto cada um pagou" })
     expect(screen.queryByText(/Renda da casa/)).not.toBeInTheDocument()
   })
 
-  it("quem só vê não tem ações; quem não criou vê Sair em vez de Dissolver (aba Regras)", async () => {
+  it("Dependentes: idade na linha e o gasto do mês na ficha", async () => {
+    renderizar("/familias/f1/dependentes")
+    const lista = await screen.findByRole("list", { name: "Dependentes" })
+    expect(lista).toHaveTextContent("Theo")
+    expect(lista).toHaveTextContent("Criança")
+    await userEvent.click(within(lista).getByRole("button", { name: /Theo/ }))
+    await waitFor(() => expect(lista).toHaveTextContent("320,00"))
+    expect(screen.getByRole("button", { name: /Adicionar/ })).toBeInTheDocument()
+  })
+
+  it("quem só vê não tem ações em página nenhuma; quem não criou vê Sair em vez de Dissolver", async () => {
     familia = detalhe({ ehAdmin: false, criadoPorUsuarioId: "u2", membros: detalhe().membros.map((m) => (m.usuarioId === "u1" ? { ...m, papelPermissao: 3 } : { ...m, papelPermissao: 1 })) })
     renderizar()
-    await screen.findByRole("heading", { name: "Casa Dev" })
-    expect(screen.queryByRole("button", { name: "Registrar" })).not.toBeInTheDocument()
+    await screen.findByRole("list", { name: "Quanto cada um pagou" })
     expect(screen.queryByRole("button", { name: "Marcar como feito" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Dinheiro entre vocês/ })).not.toBeInTheDocument()
     await userEvent.click(await screen.findByRole("button", { name: /Sofá novo/ }))
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument()
-    await userEvent.click(aba("Pessoas"))
-    expect(screen.queryByRole("button", { name: "Convidar" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Adicionar" })).not.toBeInTheDocument()
+
+    renderizar("/familias/f1/membros")
+    await screen.findByRole("list", { name: "Quem está" })
+    expect(screen.queryByRole("button", { name: /Convidar/ })).not.toBeInTheDocument()
     await userEvent.click(linha("Quem está", /Gabriel Dev/))
     expect(screen.queryByRole("group", { name: "Quem vê a sua renda" })).not.toBeInTheDocument()
-    await userEvent.click(aba("Regras"))
+
+    renderizar("/familias/f1/dependentes")
+    await screen.findByRole("list", { name: "Dependentes" })
+    expect(screen.queryByRole("button", { name: /Adicionar/ })).not.toBeInTheDocument()
+
+    renderizar("/familias/f1/regras")
+    expect(await screen.findByText("Divisão")).toBeInTheDocument()
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
-    expect(screen.getByText("Divisão")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Dissolver" })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "Sair" }))
     expect(within(await screen.findByRole("alertdialog")).getByText(/Seus lançamentos continuam com você/)).toBeInTheDocument()
   })
 
-  it("aba Regras: o criador dissolve com confirmação e volta pra lista", async () => {
-    renderizar("/familias/f1?aba=regras")
+  it("Regras: o criador dissolve com confirmação e volta pro espaço pessoal", async () => {
+    renderizar("/familias/f1/regras")
     await userEvent.click(await screen.findByRole("button", { name: "Dissolver" }))
     await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Dissolver" }))
     expect(dissolverFamilia).toHaveBeenCalledWith("f1")
-    expect(await screen.findByText("lista de famílias")).toBeInTheDocument()
+    expect(await screen.findByText("painel pessoal")).toBeInTheDocument()
   })
 })

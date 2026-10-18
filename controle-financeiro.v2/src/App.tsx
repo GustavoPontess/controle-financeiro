@@ -31,7 +31,12 @@ import Reconciliacao from "./telas/Reconciliacao"
 import Renda from "./telas/Renda"
 import Familias from "./telas/Familias"
 import NovaFamilia from "./telas/NovaFamilia"
-import Familia from "./telas/Familia"
+import FamiliaVisaoGeral from "./telas/FamiliaVisaoGeral"
+import FamiliaDespesas from "./telas/FamiliaDespesas"
+import FamiliaEntreVoces from "./telas/FamiliaEntreVoces"
+import FamiliaMembros from "./telas/FamiliaMembros"
+import FamiliaDependentes from "./telas/FamiliaDependentes"
+import FamiliaRegras from "./telas/FamiliaRegras"
 import ConvidarMembro from "./telas/ConvidarMembro"
 import Dependente from "./telas/Dependente"
 import NovoAcerto from "./telas/NovoAcerto"
@@ -81,7 +86,13 @@ export default function App() {
         <Route path="/renda" element={<Renda />} />
         <Route path="/familias" element={<Familias />} />
         <Route path="/familias/nova" element={<NovaFamilia />} />
-        <Route path="/familias/:id" element={<Familia />} />
+        {/* Espaço da família: cada item do menu é uma página (modelo Notion/Slack, 2026-10-18). */}
+        <Route path="/familias/:id" element={<FamiliaVisaoGeral />} />
+        <Route path="/familias/:id/despesas" element={<FamiliaDespesas />} />
+        <Route path="/familias/:id/entre-voces" element={<FamiliaEntreVoces />} />
+        <Route path="/familias/:id/membros" element={<FamiliaMembros />} />
+        <Route path="/familias/:id/dependentes" element={<FamiliaDependentes />} />
+        <Route path="/familias/:id/regras" element={<FamiliaRegras />} />
         <Route path="/familias/:id/convidar" element={<ConvidarMembro />} />
         <Route path="/familias/:id/dependentes/novo" element={<Dependente />} />
         <Route path="/familias/:id/dependentes/:depId/editar" element={<Dependente />} />

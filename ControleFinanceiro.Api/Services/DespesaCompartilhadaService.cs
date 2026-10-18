@@ -249,8 +249,8 @@ public class DespesaCompartilhadaService
             }
         }
 
-        // Acertos ativos do mês (Issue #26): o pagador "abate" da dívida, o
-        // recebedor tem o saldo reduzido pelo que já recebeu.
+        // Acertos ativos do mês (Issue #26): o acerto entra no saldo de quem passou (soma) e de quem
+        // recebeu (subtrai); as contas de cada um não mudam.
         var acertos = await _context.AcertosContas
             .Where(a => a.FamiliaId == familiaId && a.Ativo && a.Mes == mes && a.Ano == ano)
             .Select(a => new { a.DeUsuarioId, a.ParaUsuarioId, a.Valor })

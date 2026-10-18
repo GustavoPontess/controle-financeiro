@@ -24,7 +24,7 @@ export default function NovoAcerto() {
   const navigate = useNavigate()
   const { usuario } = useAuth()
   // "Pra equilibrar o mês" na página da família manda quem passa, pra quem e quanto.
-  const sugestao = (useLocation().state as { de?: string; para?: string; valor?: number } | null) ?? null
+  const sugestao = (useLocation().state as { de?: string; para?: string; valor?: number; voltarPara?: string } | null) ?? null
   const [familia, setFamilia] = useState<FamiliaDetalhe | null>(null)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
   const [de, setDe] = useState("")
@@ -37,7 +37,7 @@ export default function NovoAcerto() {
   const [chave, setChave] = useState(() => crypto.randomUUID())
   const hoje = new Date()
   const mes = hoje.getMonth() + 1, ano = hoje.getFullYear()
-  const voltar = () => navigate(`/familias/${id}`, { replace: true })
+  const voltar = () => navigate(sugestao?.voltarPara ?? `/familias/${id}/entre-voces`, { replace: true })
 
   useEffect(() => {
     let vivo = true

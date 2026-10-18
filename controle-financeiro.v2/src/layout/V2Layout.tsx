@@ -1,22 +1,30 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
 // transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
+// Espaços (2026-10-18): o seletor no topo do menu troca entre Pessoal e cada família (modelo Notion/Slack).
+// Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
+// Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, BarChart3, Bell, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen,
-  Plus, Receipt, Repeat, Scale, Settings, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
+import { familiaDaRota } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
+import SeletorEspaco from "./SeletorEspaco"
 import styles from "./V2Layout.module.css"
 
-const PRINCIPAL = [
+type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
+type Secao = { para: string; rotulo: string; raiz?: string; semMenu?: boolean }
+
+const PRINCIPAL: ItemMenu[] = [
   { para: "/dashboard", rotulo: "Visão geral", icone: LayoutDashboard },
   { para: "/transacoes", rotulo: "Transações", icone: Receipt },
   { para: "/cartoes", rotulo: "Cartões", icone: CreditCard },
@@ -27,19 +35,41 @@ const PRINCIPAL = [
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },
   { para: "/importar", rotulo: "Importar extrato", icone: Upload },
 ]
-const GERENCIAR = [
+const GERENCIAR: ItemMenu[] = [
   { para: "/bancos", rotulo: "Bancos", icone: Landmark },
   { para: "/categorias", rotulo: "Categorias", icone: Tags },
-  { para: "/familias", rotulo: "Famílias", icone: Users },
   { para: "/metas", rotulo: "Metas", icone: Target },
   { para: "/limites", rotulo: "Limites", icone: Gauge },
+]
+const FAMILIA = (id: string): ItemMenu[] => [
+  { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },
+  { para: `/familias/${id}/despesas`, rotulo: "Despesas compartilhadas", icone: Receipt },
+  { para: `/familias/${id}/entre-voces`, rotulo: "Entre vocês", icone: ArrowLeftRight },
+]
+const FAMILIA_GERENCIAR = (id: string): ItemMenu[] => [
+  { para: `/familias/${id}/membros`, rotulo: "Membros", icone: Users },
+  { para: `/familias/${id}/dependentes`, rotulo: "Dependentes", icone: Baby },
+  { para: `/familias/${id}/regras`, rotulo: "Regras", icone: SlidersHorizontal },
 ]
 const CHAVE_MENU = "v2:menu"
 
 /** Seção da rota (prefixo mais longo): dá o título do topo e a raiz pra "voltar". `semMenu` = tela que não
- *  tem item no menu (Notificações, pelo sino): o topo mostra a seta de voltar pra onde a pessoa estava. */
-function secaoDaRota(pathname: string): { para: string; rotulo: string; semMenu?: boolean } | undefined {
-  const todos = [...PRINCIPAL, ...GERENCIAR, { para: "/configuracoes", rotulo: "Configurações" }, { para: "/notificacoes", rotulo: "Notificações", semMenu: true }]
+ *  tem item no menu (Notificações, pelo sino; a lista de famílias, pelo seletor): o topo mostra a seta de
+ *  voltar pra onde a pessoa estava. `raiz` = a página do menu a que a tela interna pertence (convidar → Membros). */
+function secaoDaRota(pathname: string): Secao | undefined {
+  const familiaId = familiaDaRota(pathname)
+  const todos: Secao[] = familiaId
+    ? [
+      ...FAMILIA(familiaId), ...FAMILIA_GERENCIAR(familiaId),
+      { para: `/familias/${familiaId}/convidar`, rotulo: "Membros", raiz: `/familias/${familiaId}/membros` },
+      { para: `/familias/${familiaId}/acertos`, rotulo: "Entre vocês", raiz: `/familias/${familiaId}/entre-voces` },
+    ]
+    : [
+      ...PRINCIPAL, ...GERENCIAR,
+      { para: "/familias", rotulo: "Famílias", semMenu: true },
+      { para: "/configuracoes", rotulo: "Configurações" },
+      { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
+    ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
 }
 
@@ -47,11 +77,13 @@ export default function V2Layout() {
   const { usuario, sair } = useAuth()
   const navigate = useNavigate()
   const { pathname, state } = useLocation()
+  const familiaId = familiaDaRota(pathname)
   // Tela interna da seção (/transacoes/nova, /transacoes/:id…): o topo ganha a seta de voltar antes do título
   // — sem repetir o nome da seção numa linha a mais dentro da página. Volta pra onde a pessoa veio, senão pra raiz.
   const secao = secaoDaRota(pathname)
-  const emTelaInterna = !!secao && (pathname !== secao.para || !!secao.semMenu)
-  const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? (secao && !secao.semMenu ? secao.para : "/dashboard")
+  const raiz = secao?.raiz ?? secao?.para
+  const emTelaInterna = !!secao && (pathname !== raiz || !!secao.semMenu)
+  const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? (secao && !secao.semMenu && raiz ? raiz : "/dashboard")
   const naoLidas = useNaoLidas(pathname)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -83,12 +115,14 @@ export default function V2Layout() {
 
   const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
   const sairAgora = () => void sair().then(() => navigate("/entrar"))
-  const Item = ({ para, rotulo, icone: Icone }: { para: string; rotulo: string; icone: typeof LayoutDashboard }) => (
-    <NavLink to={para} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
+  const Item = ({ para, rotulo, icone: Icone, exato }: ItemMenu) => (
+    <NavLink to={para} end={exato} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
       <span className={styles.itemRotulo}>{rotulo}</span>
     </NavLink>
   )
+  const principal = familiaId ? FAMILIA(familiaId) : PRINCIPAL
+  const gerenciar = familiaId ? FAMILIA_GERENCIAR(familiaId) : GERENCIAR
 
   return (
     <div className={`v2 ${styles.raiz}`} data-menu={recolhido ? "trilho" : undefined}>
@@ -105,10 +139,11 @@ export default function V2Layout() {
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><PanelLeftClose size={18} strokeWidth={2} /></button>
         </div>
+        <SeletorEspaco familiaId={familiaId} pathname={pathname} recolhido={recolhido} />
         <nav className={styles.nav} aria-label="Principal">
-          {PRINCIPAL.map((i) => <Item key={i.para} {...i} />)}
+          {principal.map((i) => <Item key={i.para} {...i} />)}
           <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
-          {GERENCIAR.map((i) => <Item key={i.para} {...i} />)}
+          {gerenciar.map((i) => <Item key={i.para} {...i} />)}
         </nav>
         <div className={styles.rodape}>
           <div className={styles.usuario} ref={usuarioRef}>

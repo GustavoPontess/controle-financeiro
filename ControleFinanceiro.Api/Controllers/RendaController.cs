@@ -8,7 +8,7 @@ namespace ControleFinanceiro.Api.Controllers;
 
 /// <summary>
 /// Renda da pessoa (docs/features/familia/renda-e-visibilidade.md): o que entrou no mês (fato) e o que ela
-/// esperava (contas fixas de receita + variável esperada). Dado pessoal: só o dono lê e escreve.
+/// declara esperar (fixa + variável). Dado pessoal: só o dono lê e escreve.
 /// </summary>
 [ApiController]
 [Route("api/renda")]

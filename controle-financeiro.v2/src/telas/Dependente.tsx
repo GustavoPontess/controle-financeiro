@@ -36,7 +36,7 @@ export default function Dependente() {
   return (
     <PaginaFormulario titulo={depId ? "Editar dependente" : "Novo dependente"} carregando={carregando} erroCarga={erroCarga}>
       {(!depId || dependente) && (
-        <FormularioDependente familiaId={id} dependente={dependente ?? undefined} aoSair={() => navigate(`/familias/${id}?aba=pessoas`, { replace: true })} />
+        <FormularioDependente familiaId={id} dependente={dependente ?? undefined} aoSair={() => navigate(`/familias/${id}/dependentes`, { replace: true })} />
       )}
     </PaginaFormulario>
   )

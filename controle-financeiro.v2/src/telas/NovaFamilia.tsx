@@ -8,12 +8,13 @@ import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import Formulario, { Campos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
 import { MAX_NOME_FAMILIA } from "../dominio/familia"
+import { recarregarEspacos } from "../estado/espaco"
 import styles from "./Familia.module.css"
 
 export default function NovaFamilia() {
   const navigate = useNavigate()
   const location = useLocation()
-  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/familias"
+  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/dashboard"
   const [nome, setNome] = useState("")
   const [erroNome, setErroNome] = useState<string | undefined>()
   const [erro, setErro] = useState<string | null>(null)
@@ -25,6 +26,7 @@ export default function NovaFamilia() {
     setSalvando(true)
     try {
       const f = await criarFamilia(nome.trim())
+      void recarregarEspacos()
       navigate(`/familias/${f.id}`, { replace: true })
     } catch (e) { setErro(mensagemDeErro(e)); setSalvando(false) }
   }

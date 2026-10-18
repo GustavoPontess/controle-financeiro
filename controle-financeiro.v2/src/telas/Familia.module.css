@@ -4,11 +4,14 @@
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .vazioMes { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.vazioAcao { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 24px; }
+.vazioAcao > .vazio { padding-top: 20px; padding-bottom: 20px; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
 .voce { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
 .seta { vertical-align: -2px; color: var(--v2-texto-3); }
-.linkFicha { margin-left: 8px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-acento); text-decoration: none; cursor: pointer; }
+.linkFicha { padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-acento); text-decoration: none; cursor: pointer; }
 .linkFicha:hover { text-decoration: underline; }
+dd > .linkFicha { margin-left: 8px; }
 
 /* Cabeçalho: inicial + nome + fileira de quem está; à direita só a etiqueta da sua permissão (se não for Membro) */
 .cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
