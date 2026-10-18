@@ -220,6 +220,7 @@ public static class DevDataSeeder
                 UsuarioId = dev.Id,
                 Papel = "Eu",
                 RendaMensal = 7500m,
+                PapelPermissao = PapelFamilia.Admin, // quem cria é admin (sem isso ninguém convida nem muda regra)
             },
             new MembroFamilia
             {

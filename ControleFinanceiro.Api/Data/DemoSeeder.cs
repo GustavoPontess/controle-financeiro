@@ -240,16 +240,32 @@ public static class DemoSeeder
     private static async Task FamiliaAsync(IServiceProvider sp, AppDbContext context, Guid dev, DateTime hoje)
     {
         var familia = await context.Familias.FirstOrDefaultAsync(f => f.CriadoPorUsuarioId == dev);
-        if (familia is null || await context.Dependentes.AnyAsync(d => d.FamiliaId == familia.Id))
+        if (familia is null)
             return;
-        var dependentes = sp.GetRequiredService<DependenteService>();
-        await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Theo", null, Utc(hoje.AddYears(-5).AddMonths(-3)), TipoDependente.Crianca));
-        await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Bolt", "Boltinho", null, TipoDependente.Pet));
-        await sp.GetRequiredService<ConviteService>().CriarAsync(familia.Id, new CriarConviteDto("avo@exemplo.com", "Avó", PapelFamilia.Dependente), dev);
-        await sp.GetRequiredService<FamiliaService>().DefinirLimiteAprovacaoAsync(familia.Id, dev, 1500m);
-        var conjuge = await context.MembrosFamilia.Where(m => m.FamiliaId == familia.Id && m.UsuarioId != dev).Select(m => m.UsuarioId).FirstAsync();
-        await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, dev, new RegistrarAcertoDto(
-            conjuge, dev, 150m, hoje.Month, hoje.Year, "Pix do mercado", Guid.NewGuid().ToString()));
+        // Banco semeado antes do PapelPermissao: o criador ficou como Membro e não podia convidar nem mudar regra.
+        var criador = await context.MembrosFamilia.FirstAsync(m => m.FamiliaId == familia.Id && m.UsuarioId == dev);
+        if (criador.PapelPermissao != PapelFamilia.Admin)
+        {
+            criador.PapelPermissao = PapelFamilia.Admin;
+            await context.SaveChangesAsync();
+        }
+        // Cada passo confere sozinho se já existe (um boot que caiu no meio não trava os seguintes).
+        if (!await context.Dependentes.AnyAsync(d => d.FamiliaId == familia.Id))
+        {
+            var dependentes = sp.GetRequiredService<DependenteService>();
+            await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Theo", null, Utc(hoje.AddYears(-5).AddMonths(-3)), TipoDependente.Crianca));
+            await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Bolt", "Boltinho", null, TipoDependente.Pet));
+        }
+        if (!await context.ConvitesFamilia.AnyAsync(c => c.FamiliaId == familia.Id && c.EmailConvidado == "avo@exemplo.com"))
+            await sp.GetRequiredService<ConviteService>().CriarAsync(familia.Id, new CriarConviteDto("avo@exemplo.com", "Avó", PapelFamilia.Dependente), dev);
+        if (familia.LimiteAprovacao is null)
+            await sp.GetRequiredService<FamiliaService>().DefinirLimiteAprovacaoAsync(familia.Id, dev, 1500m);
+        if (!await context.AcertosContas.AnyAsync(a => a.FamiliaId == familia.Id))
+        {
+            var conjuge = await context.MembrosFamilia.Where(m => m.FamiliaId == familia.Id && m.UsuarioId != dev).Select(m => m.UsuarioId).FirstAsync();
+            await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, dev, new RegistrarAcertoDto(
+                conjuge, dev, 150m, hoje.Month, hoje.Year, "Pix do mercado", Guid.NewGuid().ToString()));
+        }
     }
     // ── Notificações: pro sino ter o que mostrar (uma já lida).
     private static async Task NotificacoesAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid nubank)
