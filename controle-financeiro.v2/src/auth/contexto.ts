@@ -8,6 +8,8 @@ export interface Usuario {
   dataNascimento?: string | null
   /** Versão da foto de perfil (null = sem foto). */
   fotoEm?: string | null
+  /** Quando a conta foi criada (ISO). */
+  criadoEm?: string
   isAdmin?: boolean
 }
 

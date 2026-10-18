@@ -13,14 +13,14 @@ namespace ControleFinanceiro.Api.Services;
 /// - limite de tamanho do arquivo e de pixels (contra "bomba de descompressão"); JPG grande é decodificado
 ///   já reduzido (o decodificador corta 1/2, 1/4, 1/8), o resto tem teto menor;
 /// - a imagem é REDESENHADA (gira pela orientação EXIF, corta o quadrado do meio, 256x256) e gravada como
-///   WebP novo: o arquivo enviado nunca é guardado nem devolvido, então metadados (GPS, câmera) e qualquer
+///   WebP novo (512x512, a janela de ver a foto mostra grande): o arquivo enviado nunca é guardado nem devolvido, então metadados (GPS, câmera) e qualquer
 ///   conteúdo escondido somem;
 /// - quem vê: a própria pessoa e quem divide uma família ativa com ela; conta que não está ativa não mostra.
 /// </summary>
 public class FotoPerfilService
 {
     public const long TamanhoMaximoBytes = 8 * 1024 * 1024;
-    public const int Lado = 256;
+    public const int Lado = 512;
     private const long PixelsMaximosJpeg = 60_000_000;
     private const long PixelsMaximosOutros = 16_000_000;
     private const int QualidadeWebp = 85;

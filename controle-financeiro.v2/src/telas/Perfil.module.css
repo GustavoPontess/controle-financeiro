@@ -1,21 +1,43 @@
-/* Foto: o rosto grande à esquerda, trocar/remover ao lado; o seletor de arquivo fica escondido. */
-.foto { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--v2-linha); }
-.fotoGrande { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-lg); font-weight: 700; flex-shrink: 0; }
-.fotoAcoes { display: flex; align-items: center; gap: 8px; }
+/* Cabeçalho no modelo do Instagram: foto grande clicável · nome e e-mail · "Editar perfil" no canto. */
+.cabecalho { display: flex; align-items: center; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--v2-linha); }
+.fotoBotao { position: relative; display: inline-flex; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer; flex-shrink: 0; }
+.fotoBotao:disabled { cursor: progress; }
+.fotoBotao[data-enviando="true"] .fotoGrande { opacity: 0.5; }
+.fotoGrande { display: inline-flex; align-items: center; justify-content: center; width: 96px; height: 96px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-2xl); font-weight: 700; }
+/* Passar o mouse escurece a foto e mostra a câmera: dá pra clicar. */
+.fotoCamera { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: rgba(0, 0, 0, 0.45); color: #fff; opacity: 0; transition: opacity 0.15s; }
+.fotoBotao:hover .fotoCamera, .fotoBotao:focus-visible .fotoCamera { opacity: 1; }
+.identidade { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.nome { font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.email { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); overflow-wrap: anywhere; }
+.dica { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
 .arquivo { display: none; }
-.erroFoto { flex-basis: 100%; margin: 0; font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-negativo); }
 
-/* Dados do perfil: rótulo à esquerda, valor à direita, uma linha por dado */
-.dados { margin: 0; display: flex; flex-direction: column; }
-.dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
-.dados > div:first-child { border-top: 0; padding-top: 0; }
+/* Dados: rótulo à esquerda, valor à direita, uma linha por dado */
+.dados { margin: 4px 0 0; display: flex; flex-direction: column; }
+.dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--v2-linha); }
+.dados > div:first-child { border-top: 0; }
 .dados dt { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
 .dados dd { margin: 0; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; text-align: right; }
 .vazio { color: var(--v2-texto-3); font-weight: 400; }
 
-.form { display: flex; flex-direction: column; gap: 14px; }
-.email { display: flex; align-items: baseline; gap: 12px; padding-top: 2px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
-.email > span:last-child { color: var(--v2-texto); font-weight: 500; overflow-wrap: anywhere; }
+.form { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
 .acoes { display: flex; justify-content: flex-end; gap: 8px; }
-.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
-.ok { margin: 0 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
+.alerta { margin: 12px 0 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.ok { margin: 12px 0 0; display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
+
+/* Janela "Foto do perfil": a foto grande e as opções empilhadas, linha por linha (como no Instagram). */
+.fotoVer { display: flex; justify-content: center; padding: 20px 24px 24px; }
+.fotoEnorme { display: inline-flex; align-items: center; justify-content: center; width: 220px; height: 220px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: 64px; font-weight: 700; }
+.opcoes { display: flex; flex-direction: column; border-top: 1px solid var(--v2-linha); }
+.opcao { height: 48px; border: 0; border-top: 1px solid var(--v2-linha); background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-md); font-weight: 500; cursor: pointer; }
+.opcao:first-child { border-top: 0; }
+.opcao:hover, .opcao:focus-visible { background: var(--v2-superficie-2); }
+.opcao[data-tom="acento"] { color: var(--v2-acento); font-weight: 600; }
+.opcao[data-tom="perigo"] { color: var(--v2-negativo); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .cabecalho { flex-wrap: wrap; gap: 14px; }
+  .fotoGrande { width: 72px; height: 72px; font-size: var(--v2-fs-xl); }
+  .fotoEnorme { width: 180px; height: 180px; font-size: 52px; }
+}

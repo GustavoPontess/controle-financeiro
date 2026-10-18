@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const recarregar = vi.fn(async () => {})
-vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: { id: "u1", nome: "Ana Teste", email: "ana@teste.com", dataNascimento: "1990-05-10T00:00:00" }, recarregar }) }))
+vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: { id: "u1", nome: "Ana Teste", email: "ana@teste.com", dataNascimento: "1990-05-10T00:00:00", criadoEm: "2026-03-15T10:00:00" }, recarregar }) }))
 vi.mock("../../services/minhaContaService", () => ({ default: { atualizarPerfil: vi.fn(async () => ({})), enviarFoto: vi.fn(async () => "2026-10-18T19:00:00"), removerFoto: vi.fn(async () => {}) } }))
 import contaService from "../../services/minhaContaService"
 import Perfil from "../../telas/Perfil"
@@ -15,6 +15,7 @@ describe("Perfil (Configurações)", () => {
     render(<Perfil />)
     expect(screen.getByText("ana@teste.com")).toBeInTheDocument()
     expect(screen.getByText("10/05/1990")).toBeInTheDocument()
+    expect(screen.getByText("março de 2026")).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole("button", { name: /Editar/ }))
     const nome = screen.getByRole("textbox", { name: "Nome" })
@@ -39,8 +40,14 @@ describe("Perfil (Configurações)", () => {
     expect(screen.queryByRole("textbox", { name: "Nome" })).not.toBeInTheDocument()
   })
 
-  it("foto: só JPG/PNG/WebP até 8 MB (erro na hora, sem chamar o servidor); foto válida sobe e recarrega a conta", async () => {
+  it("foto: clicar abre a janela com a foto grande e as opções; só JPG/PNG/WebP até 8 MB; foto válida sobe e recarrega", async () => {
     render(<Perfil />)
+    await userEvent.click(screen.getByRole("button", { name: "Foto do perfil" }))
+    const janela = screen.getByRole("dialog", { name: "Foto do perfil" })
+    expect(within(janela).getByRole("button", { name: "Carregar foto" })).toBeInTheDocument()
+    expect(within(janela).queryByRole("button", { name: "Remover foto" })).not.toBeInTheDocument()
+    await userEvent.click(within(janela).getByRole("button", { name: "Cancelar" }))
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     const seletor = screen.getByLabelText("Escolher foto de perfil") as HTMLInputElement
     const enviar = (f: File) => fireEvent.change(seletor, { target: { files: [f] } })
 
@@ -56,7 +63,7 @@ describe("Perfil (Configurações)", () => {
     enviar(boa)
     await vi.waitFor(() => expect(contaService.enviarFoto).toHaveBeenCalledWith(boa))
     await vi.waitFor(() => expect(recarregar).toHaveBeenCalled())
-    expect(await screen.findByRole("button", { name: "Adicionar foto" })).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: "Foto do perfil" })).not.toBeDisabled()
   })
 
   it("cancelar fecha sem salvar; data vazia vai como nula", async () => {
