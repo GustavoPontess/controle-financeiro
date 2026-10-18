@@ -1,91 +1,143 @@
-# Família: renda de cada um e o que a família vê
+# Renda de cada um e o que a família vê
 
-> Pesquisa + proposta (2026-10-18), a pedido do Gustavo: "o app já sabe a renda do mês da pessoa; renda
-> variável (comissão, bico) tem que caber; previsto × recebido; só mostra pra família se a pessoa quiser e pra
-> quem ela quiser (os filhos não precisam saber); renda do governo entra".
-> Status: **proposta, não implementado**. Decisão pendente: agora (bloco C) ou depois das ações de família
-> na tela da transação.
+> Pesquisa aprofundada + arquitetura (2026-10-18), a pedido do Gustavo. Princípio dele, que vira o eixo
+> da spec: **renda é da pessoa; a família só reflete o que cada um liberou.** Quem não libera nada usa a
+> família só pra dividir conta; quem libera aparece; "renda da casa" é a soma de quem liberou pra quem olha.
+> Status: **spec aprovável, não implementado.** Decisão pendente: ordem (antes ou depois das ações de família
+> na tela da transação).
 
-## 1. O que o mercado faz
+## 1. Pesquisa
 
-| App | Quem vê o quê | Renda |
+### 1.1 Como os apps tratam renda
+
+| App | Renda | O que aprendemos |
 |---|---|---|
-| **Monarch** (household) | Membro da casa vê **tudo** ("full visibility"). "Shared Views" marca conta/lançamento como *mine / theirs / ours*, mas é **filtro, não privacidade**: não dá pra esconder conta do parceiro ([ajuda](https://help.monarch.com/hc/en-us/articles/42228648365076-Shared-Views-in-Monarch), [casais](https://help.monarch.com/hc/en-us/articles/20926382202004-Monarch-for-Couples)) | Não tem conceito de renda por pessoa; o fluxo de caixa mostra a média de meses |
-| **Honeydue** (casal) | Por conta, cada um escolhe: tudo · **só saldo** · nada. É o único com privacidade granular ([Experian](https://www.experian.com/blogs/ask-experian/honeydue-app-review/)) | Não trata renda |
-| **YNAB** (together) | Orçamento único, os dois veem tudo; sem esconder conta | Não orça renda futura: só dinheiro que já caiu ("budget only money you have") |
-| **Copilot** | Individual | **Expectativa de renda por mês** (muda mês a mês) e marca depósito fora do padrão pra não virar "renda recorrente" ([comparativo](https://joingerald.com/learn/financial-wellness/budgeting-app-variable-income)) |
-| **Splitwise / Tricount** | Grupo vê as despesas do grupo | Não existe renda; divisão por percentual fixo |
+| **Monarch** | Orçamento parte de uma **renda esperada do mês**; "Planned · Actual · Remaining"; lançamentos de receita precisam de categoria certa (paycheck, bonus, business income) porque o orçamento nasce delas; detecta depósitos recorrentes e pede pra confirmar valor e frequência ([ajuda](https://help.monarch.com/hc/en-us/articles/360048883631-Creating-Your-Budget-in-Monarch), [review](https://clark.com/save-money/monarch-money-review/amp/)) | Previsto × recebido por mês é padrão de mercado; a origem da receita é o que faz o número valer |
+| **Copilot** | **Não** tem renda esperada; receita aparece pela categoria "Income" no fluxo de caixa; notifica depósito ≥ $10; não categoriza tipos de renda (só tags) ([ajuda](https://help.copilot.money/en/articles/5542019-income-vs-budget)) | Caminho mínimo: renda = soma das receitas; aviso quando entra dinheiro |
+| **YNAB** | Não orça renda futura, só dinheiro que já caiu; pra renda irregular, "orce pelo pior mês" ([guia](https://www.ynab.com/guide/irregular-income)) | O "recebido" tem que ser o número forte; o previsto é apoio, nunca promessa |
+| **Mobills / Organizze** | Receita lançada com data; sem previsto × recebido como conceito (nada na ajuda deles) | Nenhum BR faz isso; é diferencial |
 
-**Leitura:** ninguém junta as três coisas (renda detectada + previsto/recebido + visibilidade por pessoa). O
-mais perto é Honeydue (visibilidade) + Copilot (expectativa mensal). É espaço nosso.
+### 1.2 Como os apps tratam "quem vê"
 
-## 2. O Brasil que a feature precisa atender
+| App | Modelo |
+|---|---|
+| **Honeydue** | Por conta, quem é dono escolhe: *tudo* · *só saldo* · *nada*; e dá pra esconder **um lançamento** isolado ([ajuda](https://support.honeydue.com/en/articles/3283211-how-to-change-what-my-partner-can-see)). É o único granular |
+| **Monarch** | Membro da casa vê **tudo**; "mine/theirs/ours" é filtro, não privacidade ([ajuda](https://help.monarch.com/hc/en-us/articles/42228648365076-Shared-Views-in-Monarch)) |
+| **YNAB** | Orçamento único, os dois veem tudo |
+| **Zeta** | "cada um controla 100% do que mostra" (reviews; serviço pode ter fechado) |
+| **Splitwise / Tricount** | Não existe renda; só despesas do grupo |
 
-- **Renda variável é a regra, não a exceção:** informalidade em **37,5%** dos ocupados (PNAD Contínua, nov/25 a
-  jan/26; **38,7 milhões** de pessoas) ([IBGE via Portal de Prefeitura](https://portaldeprefeitura.com.br/bastidores-da-politica/brasil-tem-387-milhoes-de-trabalhadores-sem-carteira-assinada-e-sem/610375/)).
-  Rendimento médio R$ 3.722 (1º tri/26). Comissão, bico, diária, app de entrega: a renda do mês só se sabe no fim do mês.
-- **Renda do governo é renda de família:** Bolsa Família (mínimo R$ 600/família + adicionais por criança,
-  gestante e nutriz; paga por final do NIS, escalonado na semana), BPC/LOAS (calendário do INSS), Pé-de-Meia
-  (estudante do médio), Gás do Povo (até 15 milhões de famílias do CadÚnico), seguro-desemprego, aposentadoria
-  e pensão do INSS ([calendário 2026](https://www.moneytimes.com.br/bolsa-familia-pe-de-meia-gas-do-povo-e-mais-confira-o-calendario-completo-dos-programas-sociais-do-governo-para-2026-isbl/)).
-  Hoje o app só tem a categoria "Renda": benefício cai como "Renda" genérica ou some em "Outros".
-- **Endividamento recorde:** 81,6% das famílias com dívida, inadimplência 12,3% (CNC/Peic, mai/26); nas
-  famílias de até 3 salários mínimos a inadimplência é 38,6%; cartão de crédito é a dívida de 84,6% dos
-  endividados ([CNN Brasil](https://www.cnnbrasil.com.br/economia/financas/endividamento-bate-recorde-de-816-das-familias-diz-cnc/)).
-- **Apostas:** estudo do Banco Central (ago/24): ~**R$ 3 bilhões** em Pix de famílias do Bolsa Família pra
-  bets num mês, ~5 milhões de pessoas, mediana R$ 100; 70% chefes de família; o setor contesta (R$ 210 mi) e o
-  STF obrigou a barrar benefício social em bet ([CartaCapital](https://www.cartacapital.com.br/economia/apostas-consumiram-r-3-bi-de-beneficiarios-do-bolsa-familia-em-um-unico-mes-aponta-o-bc/), [O Povo](https://www.opovo.com.br/noticias/economia/2024/11/14/stf-confirma-liminar-que-proibe-uso-de-bolsa-familia-em-bets.html)).
-  **Pro produto:** o problema não é "gente burra", é renda que não se enxerga e gasto que não se enxerga. A
-  família que vê "entrou R$ 600 do Bolsa Família, saiu R$ 300 em apostas" tem a conversa que hoje não acontece.
-  (Categoria "Apostas" própria e o aviso de gasto fora do padrão são da Fase 1, não desta spec.)
+**Leitura:** o nosso é Honeydue (dono decide, por nível) aplicado à **renda** e com um nível a mais: *valor pra
+quem eu escolher* (cônjuge sim, filho não). Ninguém faz isso.
 
-## 3. Proposta
+### 1.3 O Brasil que precisa caber
 
-### 3.1 Renda deixa de ser número digitado: é o que entrou
+- Informalidade em **37,5%** dos ocupados (38,7 milhões; PNAD Contínua nov/25–jan/26): comissão, bico, diária,
+  app. A renda do mês só se sabe no fim do mês ([IBGE via Portal](https://portaldeprefeitura.com.br/bastidores-da-politica/brasil-tem-387-milhoes-de-trabalhadores-sem-carteira-assinada-e-sem/610375/)).
+- **Renda do governo é renda:** Bolsa Família (mín. R$ 600/família + adicionais; paga por final do NIS, escalonado),
+  BPC/LOAS e aposentadoria/pensão (calendário INSS), seguro-desemprego, Pé-de-Meia, Gás do Povo ([calendário 2026](https://www.moneytimes.com.br/bolsa-familia-pe-de-meia-gas-do-povo-e-mais-confira-o-calendario-completo-dos-programas-sociais-do-governo-para-2026-isbl/)).
+- 81,6% das famílias com dívida; inadimplência 38,6% nas de até 3 salários; cartão em 84,6% dos endividados (CNC/Peic mai/26, [CNN](https://www.cnnbrasil.com.br/economia/financas/endividamento-bate-recorde-de-816-das-familias-diz-cnc/)).
+- Bets: ~R$ 3 bi/mês de famílias do Bolsa Família (BC ago/24, contestado; STF mandou barrar) ([CartaCapital](https://www.cartacapital.com.br/economia/apostas-consumiram-r-3-bi-de-beneficiarios-do-bolsa-familia-em-um-unico-mes-aponta-o-bc/)).
+  Pro produto: não é "gente burra", é dinheiro que ninguém enxerga. Ver "entrou R$ 600 (Bolsa Família) · saiu
+  R$ 300 (Apostas)" é a conversa. (Categoria Apostas + aviso de gasto fora do padrão: Fase 1, não aqui.)
 
-- **Renda recebida no mês** = soma das **receitas** da pessoa no mês com **origem de renda** (ver 3.2). Pix de
-  amigo, estorno, resgate, transferência entre contas próprias e saldo inicial ficam fora (já são
-  `EntraNoResultado = false` ou outra categoria).
-- **Renda prevista** = o que a pessoa diz que espera: `fixa` (salário, aposentadoria, benefício) +
-  `variável esperada` (comissão, bico), por mês. Pode mudar quando ela quiser; sem ela, o app sugere a **média
-  dos últimos 3 meses recebidos**.
-- A tela da pessoa mostra: **"Previsto R$ 4.200 · Recebido R$ 3.650 · faltam R$ 550"** e a lista de entradas
-  que compõem o recebido. Mês fechado abaixo do previsto não é alerta, é informação.
-- O campo manual `MembroFamilia.RendaMensal` (hoje usado no rateio proporcional) passa a ser **derivado**:
-  rateio proporcional usa a **renda prevista** (estável) e, quando a pessoa pedir, a **recebida** do mês
-  (muda o peso mês a mês). Decisão de produto: padrão = prevista.
+## 2. Arquitetura: duas camadas
 
-### 3.2 Origem de renda (tipos)
+```
+PESSOA (sempre, com ou sem família)                 FAMÍLIA (só reflete)
+┌──────────────────────────────────────┐            ┌──────────────────────────────────────┐
+│ Origem de renda (subcategoria de     │            │ Por membro: nível de visibilidade     │
+│   Renda): Salário, Comissão, INSS,   │   libera   │   escolhido PELA PESSOA, por família: │
+│   Bolsa Família, BPC, Seguro-desemp… │  ───────▶  │   só o peso · valor pra [quem] · nada │
+│ Recebido no mês = receitas executadas│            │ Renda da casa = soma de quem liberou  │
+│   com origem de renda                │            │   pra QUEM ESTÁ OLHANDO               │
+│ Previsto = contas fixas de receita   │            │ Rateio proporcional = peso (previsto) │
+│   + variável esperada do mês         │            │   de quem liberou pelo menos o peso   │
+└──────────────────────────────────────┘            └──────────────────────────────────────┘
+```
 
-Subcategorias de "Renda" (ou campo `OrigemRenda` na receita; decidir na spec técnica):
-`Salário` · `Comissão / variável` · `Autônomo / bico` · `Aposentadoria / pensão (INSS)` ·
-`Bolsa Família` · `BPC/LOAS` · `Seguro-desemprego` · `Outro benefício do governo (Pé-de-Meia, Gás do Povo…)` ·
-`Aluguel recebido` · `Pensão alimentícia recebida` · `Outra renda`.
-Governo em bloco próprio pro relatório poder dizer "R$ X da família vem de benefício". Importação de extrato
-e categorização automática reconhecem "PAGAMENTO BOLSA FAMILIA", "INSS", "SEGURO DESEMPREGO" pelo texto.
+Tudo que é **número** mora na pessoa e já existe em boa parte: `StatusTransacao.Previsao/Executado`
+(Dashboard já calcula `recebido` e `aReceber`), conta fixa de receita (`Recorrente` com `Tipo = Receita`),
+categoria "Renda" com subcategorias padrão (`SubcategoriaSeeder`), `EntraNoResultado` (tira transferência,
+estorno, saldo inicial). A família **não guarda renda**: guarda só a regra de quem vê.
 
-### 3.3 Quem vê (visibilidade por pessoa, modelo Honeydue + o nosso)
+### 2.1 Pessoa: origem de renda
 
-Por membro e por família, três níveis, escolhidos **pela própria pessoa**:
-1. **Só o peso** (padrão de hoje): a família vê que a renda foi informada e usa o peso no rateio; ninguém vê valor.
-2. **Valor pra quem eu escolher:** marca membros (ex.: cônjuge sim, filhos não). Os outros ficam no nível 1.
-3. **Nada:** nem peso; no rateio proporcional a pessoa entra como "não informou" (cai pra divisão igual).
-Dependente (quem só vê) nunca vê renda de ninguém. Guardar como `VisibilidadeRenda` + lista de `UsuarioId`
-autorizados em `MembroFamilia`; o DTO já esconde `RendaMensal` dos outros, estende-se a regra.
+A categoria "Renda" **já tem** subcategorias padrão (`SubcategoriaSeeder`): Salário · 13º e férias · Freelance e PJ ·
+Aposentadoria · Auxílio do governo · Aluguel recebido · Dividendos e juros · Cashback · Reembolso · Pensão recebida.
+Mudanças:
+- **Entram:** `Comissão / variável`, `Bolsa Família`, `BPC / LOAS`, `Seguro-desemprego`, `Pé-de-Meia e outros
+  benefícios` (o "Auxílio do governo" genérico vira esses; migration renomeia e mantém o que já foi lançado nele).
+- **Cada subcategoria padrão de Renda ganha `OrigemRenda`**: `Trabalho` (Salário, 13º, Freelance, Comissão) ·
+  `Governo` (Aposentadoria/INSS, Bolsa Família, BPC, Seguro-desemprego, Pé-de-Meia…) · `Patrimônio` (Aluguel,
+  Dividendos) · `Outra` (Pensão recebida) · **`null` = não é renda** (Cashback, Reembolso: dinheiro que volta,
+  não dinheiro que entra; hoje inflam "Renda"). O "Recebido" (2.2) soma só `OrigemRenda != null`.
+- Relatório pode dizer "R$ X da casa vem de benefício" (Governo) sem expor pessoa.
+- Importação de extrato: `Sinonimos` reconhecem "PAGAMENTO BOLSA FAMILIA", "INSS", "SEGURO DESEMPREGO" e sugerem
+  a subcategoria; "PIX RECEBIDO" continua sem categoria (não é renda).
 
-### 3.4 O que a família vê no mês (com a visibilidade respeitada)
+### 2.2 Pessoa: previsto × recebido
 
-- **"Renda da casa neste mês: R$ 7.900 · prevista R$ 8.400"**, somando só quem liberou o valor pra quem está
-  olhando; quem não liberou aparece como "+ renda de Marina (não mostrada)".
-- Sem comparação pessoa × pessoa na tela (sem ranking, sem "quem ganha mais"): o número é da casa.
+- **Recebido no mês** = `Σ receitas Executadas do mês com categoria Renda` (qualquer subcategoria), filtro
+  `EntraNoResultado`. É o número forte (lição do YNAB).
+- **Previsto no mês** = `Σ contas fixas de receita do mês` (já existe: salário, aposentadoria, benefício como
+  conta fixa com dia) **+** `RendaVariavelEsperada` (valor que a pessoa digita e muda quando quiser;
+  entidade pequena `RendaPrevista { UsuarioId, Mes, Ano, VariavelEsperada }`, uma linha por mês, copia do mês
+  anterior quando não há). Sem conta fixa nem variável, o app **sugere** a média dos 3 últimos meses recebidos.
+- Tela da pessoa (Visão geral): cartão **"Renda do mês"**: `Previsto R$ 4.200 · Recebido R$ 3.650 · faltam R$ 550`
+  e, aberto, a lista de entradas. Mês abaixo do previsto é informação, não alerta.
+- Configurações → **"Minha renda"**: a variável esperada, as contas fixas de receita (link), e **por família**
+  o nível de visibilidade (2.3).
 
-## 4. Fora desta proposta
+### 2.3 Família: o que cada um libera (modelo Honeydue aplicado à renda)
 
-- Conta júnior / mesada (visão §16.6). Alerta de gasto com apostas (Fase 1, regras). Open Finance pra
-  puxar o salário sozinho (Fase 4).
+`MembroFamilia` ganha `VisibilidadeRenda { Nada = 0, SoPeso = 1 (padrão), ValorParaAlguns = 2, ValorParaTodos = 3 }`
+e `RendaVisivelPara: List<Guid>` (só quando `ValorParaAlguns`). **Só a própria pessoa muda o seu**; admin não.
+`RendaMensal` (manual, hoje) sai: passa a ser derivada da camada pessoa (2.2). Migration de transição: quem tinha
+`RendaMensal` vira `RendaVariavelEsperada` do mês corrente + `SoPeso`.
 
-## 5. Ordem sugerida
+| Nível | Peso no rateio proporcional | Quem vê o valor | Entra na "renda da casa" de quem olha |
+|---|---|---|---|
+| Nada | não entra (cai pra parte igual) | ninguém | não |
+| Só o peso (padrão) | sim | ninguém | não (aparece "+ renda de Marina, não mostrada") |
+| Valor pra alguns | sim | os marcados | só pra os marcados |
+| Valor pra todos | sim | todos os membros com permissão Membro/Admin | sim |
 
-1. Origem de renda (3.2) + "Previsto × Recebido" na tela da pessoa (3.1). Vale sozinho, sem família.
-2. Visibilidade por pessoa (3.3) + renda da casa (3.4) na aba Pessoas/Mês da família.
-3. Rateio proporcional lendo a renda derivada (3.1, último parágrafo).
+Quem é "só vê" (permissão Dependente) **nunca** vê valor de ninguém, em nenhum nível. Peso = previsto (estável);
+a família pode trocar a regra pra "recebido do mês" (Regras), aí o peso muda mês a mês.
+
+### 2.4 Família: o que aparece
+
+- **Aba Mês:** "Renda da casa em outubro: R$ 7.900 (previsto R$ 8.400)" **só se pelo menos um membro liberou
+  valor pra quem está olhando**; senão o bloco nem aparece. Quem não liberou: "+ renda de Marina, não mostrada".
+  Sem ranking, sem "quem ganha mais".
+- **Aba Pessoas, ficha do membro:** "Renda: compartilhada com você (R$ X)" / "só o peso" / "não compartilha";
+  na **própria** ficha, o controle do nível (o mesmo de Configurações → Minha renda).
+- **Regras:** "Divisão proporcional usa: renda prevista | renda recebida do mês".
+
+### 2.5 API
+
+- `GET /renda/mes?mes&ano` → `{ previsto, recebido, variavelEsperada, fixas: [...], entradas: [...] }` (pessoa).
+- `PUT /renda/mes` `{ mes, ano, variavelEsperada }`.
+- `PUT /familias/{id}/membros/{membroId}/renda-visibilidade` `{ nivel, para: [usuarioId] }` (só o próprio).
+- `GET /familias/{id}/renda?mes&ano` → `{ total, previsto, membros: [{ usuarioId, nome, mostrada: bool, recebido?, previsto? }] }`
+  calculado **no servidor** com base em quem está pedindo (nunca mandar valor e esconder no front).
+- Balanço/rateio proporcional: lê o peso pela regra da família. Remove `PUT /membros/{id}/renda`.
+
+### 2.6 Segurança e LGPD
+
+Renda é dado pessoal sensível na prática (não é "sensível" na lei, mas é o que mais briga gera). O servidor
+é quem decide o que sai no JSON (2.5); nunca `rendaMensal` no DTO pra depois o front esconder. Log de segurança
+quando alguém pede renda de outro sem permissão (403). Política de Privacidade (P1 já aberta) cita renda e
+compartilhamento com a família.
+
+## 3. Ordem de implementação
+
+1. **Pessoa, sem família (vale sozinho):** subcategorias de Renda + `OrigemRenda` (2.1); `RendaPrevista` +
+   `GET/PUT /renda/mes` (2.2); cartão "Renda do mês" na Visão geral do v2; "Minha renda" em Configurações.
+   DemoSeeder: Gabriel com salário fixo + comissão variável; Marina com Bolsa Família + bico.
+2. **Família reflete:** `VisibilidadeRenda` + endpoint (2.3); "Renda da casa" na aba Mês e a linha na ficha
+   do membro (2.4); migration tirando `RendaMensal`.
+3. **Rateio proporcional** lendo o peso derivado + regra "prevista | recebida" em Regras.
+
+Fora: conta júnior/mesada (visão §16.6), alerta de apostas (Fase 1), Open Finance puxando salário (Fase 4).
