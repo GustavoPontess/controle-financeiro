@@ -2,7 +2,7 @@
 // preenchido com o que o balanço do mês diz que falta (quem está "a acertar" paga pra quem está "a receber").
 // É só o registro: as contas de cada um não mudam. Chave de idempotência por tentativa.
 import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
 import { getBalancoFamilia, getFamilia, registrarAcerto } from "../services/familiaService"
 import { mensagemDeErro } from "../api/cliente"
@@ -23,6 +23,8 @@ export default function NovoAcerto() {
   const { id = "" } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { usuario } = useAuth()
+  // "Pra equilibrar o mês" na página da família manda quem passa, pra quem e quanto.
+  const sugestao = (useLocation().state as { de?: string; para?: string; valor?: number } | null) ?? null
   const [familia, setFamilia] = useState<FamiliaDetalhe | null>(null)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
   const [de, setDe] = useState("")
@@ -43,16 +45,18 @@ export default function NovoAcerto() {
       .then(([f, b]) => {
         if (!vivo) return
         setFamilia(f)
-        // Sugestão: quem está a acertar (saldo negativo) paga pra quem está a receber; começa por você.
+        if (sugestao?.de && sugestao.para) { setDe(sugestao.de); setPara(sugestao.para); setValor(sugestao.valor ? moneyParaCampo(sugestao.valor) : ""); return }
+        // Sem sugestão: quem pagou a menos passa pra quem pagou a mais; começa por você.
         const meu = b?.saldos.find((s) => s.usuarioId === usuario?.id)
-        const recebe = b?.saldos.find((s) => s.saldo > 0.005)
-        const acerta = b?.saldos.find((s) => s.saldo < -0.005)
-        if (meu && meu.saldo < -0.005 && recebe) { setDe(meu.usuarioId); setPara(recebe.usuarioId); setValor(moneyParaCampo(-meu.saldo)) }
-        else if (acerta && recebe) { setDe(acerta.usuarioId); setPara(recebe.usuarioId); setValor(moneyParaCampo(-acerta.saldo)) }
+        const aMais = b?.saldos.find((s) => s.saldo > 0.005)
+        const aMenos = b?.saldos.find((s) => s.saldo < -0.005)
+        if (meu && meu.saldo < -0.005 && aMais) { setDe(meu.usuarioId); setPara(aMais.usuarioId); setValor(moneyParaCampo(-meu.saldo)) }
+        else if (aMenos && aMais) { setDe(aMenos.usuarioId); setPara(aMais.usuarioId); setValor(moneyParaCampo(-aMenos.saldo)) }
         else setDe(usuario?.id ?? "")
       })
       .catch(() => { if (vivo) setErroCarga("Não deu pra carregar a família. Recarregue a página.") })
     return () => { vivo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, mes, ano, usuario?.id])
 
   const opcoes = (familia?.membros ?? []).map((m) => ({ valor: m.usuarioId, rotulo: m.usuarioId === usuario?.id ? `${primeiroNome(m.nomeUsuario)} (você)` : primeiroNome(m.nomeUsuario) }))
@@ -74,7 +78,7 @@ export default function NovoAcerto() {
   }
 
   return (
-    <PaginaFormulario titulo="Registrar acerto" carregando={!familia && !erroCarga} erroCarga={erroCarga}>
+    <PaginaFormulario titulo="Dinheiro entre vocês" carregando={!familia && !erroCarga} erroCarga={erroCarga}>
       <Formulario onSubmit={() => { void enviar() }}>
         <Campos>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
@@ -92,7 +96,7 @@ export default function NovoAcerto() {
           <Campo rotulo="Nota">
             <Entrada value={observacao} maxLength={255} placeholder="Pix do mercado e da luz" onChange={(e) => setObservacao(e.target.value)} />
           </Campo>
-          <p className={styles.dica}>Acerto é só o registro de que o valor foi passado: as contas de cada um não mudam. Pra isso, lance uma transferência.</p>
+          <p className={styles.dica}>É só o registro de que o valor foi passado de uma pessoa pra outra; as contas de cada um não mudam. Pra mexer no saldo, lance uma transferência.</p>
         </Campos>
         <RodapeFormulario>
           <Botao onClick={voltar} disabled={salvando}>Cancelar</Botao>

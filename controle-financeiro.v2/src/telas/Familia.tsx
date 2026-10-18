@@ -1,13 +1,15 @@
-// Página de uma família (/familias/:id). Em cima: nome, quem você é nela e as ações da família (convidar,
-// sair ou dissolver). Na coluna principal, o mês: o balanço (quanto cada um pagou, a parte de cada um e o que
-// fica a receber ou a acertar, sem cobrança no texto), as despesas compartilhadas (com aprovação e responsável
-// na própria linha) e os acertos. Na coluna do lado: os membros (renda e papel se editam na própria ficha;
-// admin promove, rebaixa e remove), os convites pendentes, os dependentes e as regras (como divide e a partir
-// de quanto uma despesa precisa de aprovação). Visão: docs/features/familia/visao.md; permissões:
-// docs/features/familia/papeis-permissoes.md (o servidor é quem manda; a tela só esconde o que não pode).
+// Página de uma família (/familias/:id), o carro-chefe do produto. Três abas (pesquisa de 2026-10-18: Splitwise,
+// Tricount e Settle Up separam despesas de saldos; Monarch põe membros e papéis longe do dia a dia):
+// - Mês: o equilíbrio (quanto cada um pagou e a parte de cada um, como FATO: "pagou a mais", "pagou a menos",
+//   "equilibrado"; nunca "deve"), a sugestão de quem passa quanto pra quem zerar o mês, as despesas compartilhadas
+//   (aprovação e responsável na própria linha) e o dinheiro que já passou entre vocês;
+// - Pessoas: membros (renda e relação na própria ficha; admin promove, rebaixa e remove), convites, dependentes;
+// - Regras: como divide, a partir de quanto precisa de aprovação, e sair ou dissolver.
+// O servidor é quem manda nas permissões; a tela só esconde o que a pessoa não pode fazer.
+// Visão: docs/features/familia/visao.md; permissões: docs/features/familia/papeis-permissoes.md.
 import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import { Check, ChevronLeft, ChevronRight, Pencil, Trash2, UserPlus, X, ExternalLink, LogOut, Wallet } from "lucide-react"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Pencil, Trash2, X, ExternalLink, LogOut, Wallet } from "lucide-react"
 import { useAuth } from "../auth/useAuth"
 import {
   aprovarDespesa, atribuirResponsavel, cancelarAcerto, definirLimiteAprovacao, definirModoRateio, definirRendaMembro,
@@ -24,18 +26,23 @@ import { Dinheiro } from "../componentes/Dinheiro"
 import Entrada from "../componentes/Entrada"
 import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
-import { AcoesFicha, DadosFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha, VazioFicha } from "../componentes/ListaFicha"
+import { AcoesFicha, DadosFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
+import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
-import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, ROTULO_PERMISSAO, fraseSaldo, nomeDoMes, primeiroNome, rotuloModoRateio, rotuloTipoDependente } from "../dominio/familia"
+import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, ROTULO_PERMISSAO, fraseSaldo, nomeDoMes, primeiroNome, rotuloModoRateio, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
 import { dataBR } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
+type Aba = "mes" | "pessoas" | "regras"
+const ABAS: { valor: Aba; rotulo: string }[] = [{ valor: "mes", rotulo: "Mês" }, { valor: "pessoas", rotulo: "Pessoas" }, { valor: "regras", rotulo: "Regras" }]
 const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
 export default function Familia() {
   const { id = "" } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const aba: Aba = (ABAS.find((a) => a.valor === params.get("aba"))?.valor) ?? "mes"
   const { usuario } = useAuth()
   const meuId = usuario?.id ?? ""
   const [detalhe, setDetalhe] = useState<FamiliaDetalhe | null>(null)
@@ -47,9 +54,6 @@ export default function Familia() {
   const [acertos, setAcertos] = useState<AcertoContas[] | null>(null)
   const [responsavelFiltro, setResponsavelFiltro] = useState("")
   const [versao, setVersao] = useState(0)
-  const [erro, setErro] = useState<string | null>(null)
-  const [saindo, setSaindo] = useState<"sair" | "dissolver" | null>(null)
-  const [ocupado, setOcupado] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -69,6 +73,7 @@ export default function Familia() {
 
   const recarregar = () => setVersao((v) => v + 1)
   const mudarMes = (delta: number) => setPeriodo((p) => { const d = new Date(p.ano, p.mes - 1 + delta, 1); return { mes: d.getMonth() + 1, ano: d.getFullYear() } })
+  const trocarAba = (a: Aba) => setParams(a === "mes" ? {} : { aba: a }, { replace: true })
 
   if (erroCarga) return <div className={styles.pagina}><p className={styles.alerta} role="alert">{erroCarga}</p></div>
   if (!detalhe) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
@@ -76,18 +81,11 @@ export default function Familia() {
   const eu = detalhe.membros.find((m) => m.usuarioId === meuId)
   const souCriador = detalhe.criadoPorUsuarioId === meuId
   const admin = detalhe.ehAdmin
-  // Quem só vê (permissão Dependente) não lança, não aprova, não acerta: a tela nem mostra essas ações.
+  // Quem só vê (permissão Dependente) não lança, não aprova, não passa dinheiro: a tela nem mostra essas ações.
   const podeAgir = (eu?.papelPermissao ?? PAPEL_PERMISSAO.dependente) !== PAPEL_PERMISSAO.dependente
   const membrosOpcoes = detalhe.membros.map((m) => ({ valor: m.usuarioId, rotulo: primeiroNome(m.nomeUsuario) }))
-
-  const sairOuDissolver = async () => {
-    setOcupado(true); setErro(null)
-    try {
-      if (saindo === "dissolver") await dissolverFamilia(detalhe.id)
-      else if (eu) await removerMembro(detalhe.id, eu.id)
-      navigate("/familias", { replace: true })
-    } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false); setSaindo(null) }
-  }
+  const mesNome = nomeDoMes(periodo.mes, periodo.ano)
+  const equilibrio = balanco ? sugerirEquilibrio(balanco.saldos) : []
 
   return (
     <div className={styles.pagina}>
@@ -96,26 +94,22 @@ export default function Familia() {
           <span className={styles.marcaGrande} aria-hidden="true">{detalhe.nome.trim().charAt(0).toUpperCase()}</span>
           <div className={styles.identidadeTexto}>
             <h1 className={styles.titulo}>{detalhe.nome}</h1>
-            <span className={styles.muted}>{detalhe.membros.length} {detalhe.membros.length === 1 ? "membro" : "membros"}{eu ? ` · você: ${eu.papel}` : ""}</span>
+            <span className={styles.muted}>{detalhe.membros.length} {detalhe.membros.length === 1 ? "pessoa" : "pessoas"}{eu ? ` · você: ${eu.papel}` : ""}</span>
           </div>
         </div>
-        <div className={styles.acoesTopo}>
+        <div className={styles.chips}>
           {eu && <Etiqueta>{ROTULO_PERMISSAO[eu.papelPermissao]}</Etiqueta>}
           <Etiqueta>{rotuloModoRateio(detalhe.modoRateioPadrao)}</Etiqueta>
-          {admin && <Botao compactoNoCelular onClick={() => navigate(`/familias/${detalhe.id}/convidar`)} icone={<UserPlus size={15} strokeWidth={2.25} aria-hidden="true" />}>Convidar</Botao>}
-          {souCriador
-            ? <Botao variante="texto" perigo onClick={() => setSaindo("dissolver")} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Dissolver</Botao>
-            : eu && <Botao variante="texto" perigo onClick={() => setSaindo("sair")} icone={<LogOut size={15} strokeWidth={2.25} aria-hidden="true" />}>Sair da família</Botao>}
         </div>
       </header>
-      {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-      <div className={styles.grade}>
-        <div className={styles.principal}>
-          {/* ── Balanço do mês ── */}
+      <Segmentos ariaLabel="Parte da família" valor={aba} onChange={trocarAba} opcoes={ABAS} />
+
+      {aba === "mes" && (
+        <>
           <Bloco semRespiro>
             <div className={styles.toolbar}>
-              <span className={styles.toolbarTitulo}>{nomeDoMes(periodo.mes, periodo.ano)}</span>
+              <span className={styles.toolbarTitulo}>Equilíbrio de {mesNome.toLowerCase()}</span>
               <span className={styles.meses}>
                 <Botao soIcone aria-label="Mês anterior" onClick={() => mudarMes(-1)}><ChevronLeft size={16} strokeWidth={2.25} /></Botao>
                 <Botao soIcone aria-label="Próximo mês" onClick={() => mudarMes(1)}><ChevronRight size={16} strokeWidth={2.25} /></Botao>
@@ -124,10 +118,10 @@ export default function Familia() {
             {balanco === null ? <div className={styles.respiro}><Esqueleto linhas={2} altura={18} /></div> : (
               <div className={styles.balanco}>
                 <div className={styles.balancoTotal}>
-                  <span className={styles.rotulo}>Despesas da família</span>
+                  <span className={styles.rotulo}>Despesas da família no mês</span>
                   <Dinheiro valor={balanco.total} className={styles.grande} />
                 </div>
-                <ul className={styles.saldos} aria-label="Balanço por pessoa">
+                <ul className={styles.saldos} aria-label="Quanto cada um pagou">
                   {balanco.saldos.map((s) => {
                     const f = fraseSaldo(s.saldo)
                     return (
@@ -135,27 +129,46 @@ export default function Familia() {
                         <InicialFicha texto={s.nome} destaque={s.usuarioId === meuId} />
                         <span className={styles.saldoTexto}>
                           <span className={styles.saldoNome}>{primeiroNome(s.nome)}{s.usuarioId === meuId && <span className={styles.voce}> você</span>}</span>
-                          <span className={styles.saldoDetalhe}>pagou <Dinheiro valor={s.pagou} /> · parte <Dinheiro valor={s.cota} /></span>
+                          <span className={styles.saldoDetalhe}>pagou <Dinheiro valor={s.pagou} /> · a parte é <Dinheiro valor={s.cota} /></span>
                         </span>
-                        <span className={styles.saldoValor} data-tom={f.tom}>{f.tom === "neutro" ? "Em dia" : <>{f.texto} <Dinheiro valor={Math.abs(s.saldo)} /></>}</span>
+                        <span className={styles.saldoValor} data-tom={f.tom}>{f.tom === "neutro" ? "Equilibrado" : <>{f.texto} <Dinheiro valor={Math.abs(s.saldo)} /></>}</span>
                       </li>
                     )
                   })}
                 </ul>
+                {/* Sugestão pra zerar o mês (modelo Tricount): quem passa quanto pra quem. É sugestão, não cobrança. */}
+                {balanco.total > 0 && (
+                  <div className={styles.equilibrio} data-ok={equilibrio.length === 0 || undefined}>
+                    {equilibrio.length === 0 ? (
+                      <span className={styles.equilibrioOk}><Check size={16} strokeWidth={2.5} aria-hidden="true" />Mês equilibrado</span>
+                    ) : (
+                      <>
+                        <span className={styles.rotulo}>Pra equilibrar o mês</span>
+                        <ul className={styles.equilibrioLista} aria-label="Pra equilibrar o mês">
+                          {equilibrio.map((e) => (
+                            <li key={`${e.deUsuarioId}-${e.paraUsuarioId}`}>
+                              <span className={styles.equilibrioTexto}>{e.de} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" /> {e.para} <Dinheiro valor={e.valor} className={styles.equilibrioValor} /></span>
+                              {podeAgir && <Botao onClick={() => navigate(`/familias/${detalhe.id}/acertos/novo`, { state: { de: e.deUsuarioId, para: e.paraUsuarioId, valor: e.valor } })}>Marcar como feito</Botao>}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </Bloco>
 
-          {/* ── Despesas compartilhadas do mês ── */}
           <Bloco titulo="Despesas compartilhadas" semRespiro>
             {detalhe.membros.length > 1 && (
               <div className={styles.filtro}>
-                <Selecao valor={responsavelFiltro} ariaLabel="Responsável" placeholder="Todos"
+                <Selecao tamanho="sm" valor={responsavelFiltro} ariaLabel="Responsável" placeholder="Todos"
                   opcoes={[{ valor: "", rotulo: "Todos" }, ...membrosOpcoes]} onChange={setResponsavelFiltro} />
               </div>
             )}
             {despesas === null ? <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div>
-              : despesas.length === 0 ? <p className={styles.vazio}>{responsavelFiltro ? "Nada com esse responsável neste mês." : `Nenhuma despesa compartilhada em ${nomeDoMes(periodo.mes, periodo.ano).toLowerCase()}.`}</p>
+              : despesas.length === 0 ? <p className={styles.vazio}>{responsavelFiltro ? "Nada com esse responsável neste mês." : `Nenhuma despesa compartilhada em ${mesNome.toLowerCase()}.`}</p>
               : (
                 <ListaFicha rotulo="Despesas compartilhadas">
                   <GrupoFicha rotulo="Despesas">
@@ -165,23 +178,23 @@ export default function Familia() {
               )}
           </Bloco>
 
-          {/* ── Acertos do mês ── */}
-          <Bloco titulo="Acertos" semRespiro acao={podeAgir ? "Registrar acerto" : undefined} aoClicar={() => navigate(`/familias/${detalhe.id}/acertos/novo`)}>
+          <Bloco titulo="Entre vocês" semRespiro acao={podeAgir ? "Registrar" : undefined} aoClicar={() => navigate(`/familias/${detalhe.id}/acertos/novo`)}>
             {acertos === null ? <div className={styles.respiro}><Esqueleto linhas={2} altura={18} /></div>
-              : acertos.length === 0 ? <p className={styles.vazio}>Nenhum acerto em {nomeDoMes(periodo.mes, periodo.ano).toLowerCase()}.</p>
+              : acertos.length === 0 ? <p className={styles.vazio}>Nenhum dinheiro passou entre vocês em {mesNome.toLowerCase()}.</p>
               : (
-                <ListaFicha rotulo="Acertos">
-                  <GrupoFicha rotulo="Acertos do mês">
+                <ListaFicha rotulo="Entre vocês">
+                  <GrupoFicha rotulo="Dinheiro que passou entre vocês">
                     {acertos.map((a) => <Acerto key={a.id} a={a} familiaId={detalhe.id} podeAgir={podeAgir} aoMudar={recarregar} />)}
                   </GrupoFicha>
                 </ListaFicha>
               )}
           </Bloco>
-        </div>
+        </>
+      )}
 
-        <aside className={styles.lado}>
-          {/* ── Membros e convites ── */}
-          <Bloco titulo="Membros" semRespiro>
+      {aba === "pessoas" && (
+        <>
+          <Bloco titulo="Membros" semRespiro acao={admin ? "Convidar" : undefined} aoClicar={() => navigate(`/familias/${detalhe.id}/convidar`)}>
             <ListaFicha rotulo="Membros">
               <GrupoFicha rotulo="Quem está">
                 {detalhe.membros.map((m) => <Membro key={m.id} m={m} familia={detalhe} meuId={meuId} aoMudar={recarregar} />)}
@@ -194,10 +207,9 @@ export default function Familia() {
             </ListaFicha>
           </Bloco>
 
-          {/* ── Dependentes ── */}
           <Bloco titulo="Dependentes" semRespiro acao={podeAgir ? "Adicionar" : undefined} aoClicar={() => navigate(`/familias/${detalhe.id}/dependentes/novo`)}>
             {dependentes === null ? <div className={styles.respiro}><Esqueleto linhas={2} altura={18} /></div>
-              : dependentes.length === 0 ? <p className={styles.vazio}>Filhos, pais, pets: quem não usa o app mas tem gasto que você quer acompanhar.</p>
+              : dependentes.length === 0 ? <p className={styles.vazio}>Filhos, pais, pets: quem não usa o app mas tem gasto que a família acompanha.</p>
               : (
                 <ListaFicha rotulo="Dependentes">
                   <GrupoFicha rotulo="Dependentes da família">
@@ -206,20 +218,52 @@ export default function Familia() {
                 </ListaFicha>
               )}
           </Bloco>
+        </>
+      )}
 
+      {aba === "regras" && (
+        <>
           <Regras familia={detalhe} aoMudar={recarregar} />
-        </aside>
-      </div>
-
-      <Confirmar aberto={saindo !== null} perigo ocupado={ocupado}
-        titulo={saindo === "dissolver" ? "Dissolver a família?" : "Sair da família?"}
-        texto={saindo === "dissolver" ? "Ninguém mais vê as despesas compartilhadas, os acertos e os dependentes. Os lançamentos de cada um continuam nas contas de cada um." : "Você deixa de ver as despesas e o balanço. Seus lançamentos continuam com você."}
-        rotuloConfirmar={saindo === "dissolver" ? "Dissolver" : "Sair"} onConfirmar={sairOuDissolver} onCancelar={() => setSaindo(null)} />
+          <SairOuDissolver familia={detalhe} eu={eu} souCriador={souCriador} />
+        </>
+      )}
     </div>
   )
 }
 
-// ── Membro: a linha e a ficha (e-mail, renda, papel); as ações dependem de quem olha ──────────────────────
+// ── Sair (quem não criou) ou dissolver (quem criou), com confirmação ─────────────────────────────────────
+function SairOuDissolver({ familia, eu, souCriador }: { familia: FamiliaDetalhe; eu?: MembroFamilia; souCriador: boolean }) {
+  const navigate = useNavigate()
+  const [confirmando, setConfirmando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  if (!eu) return null
+  const confirmar = async () => {
+    setOcupado(true); setErro(null)
+    try {
+      if (souCriador) await dissolverFamilia(familia.id); else await removerMembro(familia.id, eu.id)
+      navigate("/familias", { replace: true })
+    } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false); setConfirmando(false) }
+  }
+  return (
+    <Bloco titulo={souCriador ? "Dissolver a família" : "Sair da família"}>
+      {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+      <p className={styles.muted}>{souCriador
+        ? "Ninguém mais vê as despesas compartilhadas, o que passou entre vocês e os dependentes. Os lançamentos de cada um continuam nas contas de cada um."
+        : "Você deixa de ver as despesas e o equilíbrio do mês. Seus lançamentos continuam com você."}</p>
+      <div className={styles.fichaFormAcoes}>
+        <Botao perigo onClick={() => setConfirmando(true)} icone={souCriador ? <Trash2 size={15} strokeWidth={2.25} aria-hidden="true" /> : <LogOut size={15} strokeWidth={2.25} aria-hidden="true" />}>
+          {souCriador ? "Dissolver" : "Sair da família"}
+        </Botao>
+      </div>
+      <Confirmar aberto={confirmando} perigo ocupado={ocupado} titulo={souCriador ? "Dissolver a família?" : "Sair da família?"}
+        texto={souCriador ? "Não dá pra desfazer." : "Pra voltar, alguém precisa te convidar de novo."}
+        rotuloConfirmar={souCriador ? "Dissolver" : "Sair"} onConfirmar={confirmar} onCancelar={() => setConfirmando(false)} />
+    </Bloco>
+  )
+}
+
+// ── Membro: a linha e a ficha (e-mail, renda, relação); as ações dependem de quem olha ──────────────────
 function Membro({ m, familia, meuId, aoMudar }: { m: MembroFamilia; familia: FamiliaDetalhe; meuId: string; aoMudar: () => void }) {
   const [aberto, setAberto] = useState(false)
   const [editando, setEditando] = useState<"renda" | "papel" | null>(null)
@@ -300,7 +344,7 @@ function Membro({ m, familia, meuId, aoMudar }: { m: MembroFamilia; familia: Fam
         )}
       </ItemFicha>
       <Confirmar aberto={removendo} perigo ocupado={ocupado} titulo={`Remover ${primeiroNome(m.nomeUsuario)} da família?`}
-        texto="A pessoa deixa de ver as despesas e o balanço. Os lançamentos dela continuam com ela." rotuloConfirmar="Remover"
+        texto="A pessoa deixa de ver as despesas e o equilíbrio. Os lançamentos dela continuam com ela." rotuloConfirmar="Remover"
         onConfirmar={() => { setRemovendo(false); void rodar(() => removerMembro(familia.id, m.id)) }} onCancelar={() => setRemovendo(false)} />
     </>
   )
@@ -359,7 +403,7 @@ function Despesa({ d, familiaId, meuId, podeAgir, membros, aoMudar }: {
       {podeAgir && (
         <div className={styles.fichaForm}>
           <Campo rotulo="Responsável">
-            <Selecao valor={d.responsavelUsuarioId ?? ""} placeholder="Ninguém" desabilitado={ocupado}
+            <Selecao tamanho="sm" valor={d.responsavelUsuarioId ?? ""} placeholder="Ninguém" desabilitado={ocupado}
               opcoes={[{ valor: "", rotulo: "Ninguém" }, ...membros]} onChange={(v) => rodar(() => atribuirResponsavel(familiaId, d.id, v || null))} />
           </Campo>
         </div>
@@ -390,15 +434,15 @@ function Acerto({ a, familiaId, podeAgir, aoMudar }: { a: AcertoContas; familiaI
     <>
       <ItemFicha id={`acerto-${a.id}`} aberto={aberto} aoAbrir={() => setAberto((act) => !act)}
         marca={<InicialFicha texto={a.deNome} />}
-        titulo={`${primeiroNome(a.deNome)} acertou com ${primeiroNome(a.paraNome)}`}
+        titulo={<>{primeiroNome(a.deNome)} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" className={styles.seta} /> {primeiroNome(a.paraNome)}</>}
         detalhe={`${dataBR(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
         direita={<Dinheiro valor={a.valor} className={styles.valor} />}>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-        <p className={styles.dica}>Acerto é só o registro de que o valor foi passado de um pro outro; as contas de cada um não mudam.</p>
-        {podeAgir && <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Cancelar acerto</Botao></AcoesFicha>}
+        <p className={styles.dica}>Registro de que o valor passou de uma pessoa pra outra; as contas de cada um não mudam.</p>
+        {podeAgir && <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Desfazer</Botao></AcoesFicha>}
       </ItemFicha>
-      <Confirmar aberto={confirmando} perigo ocupado={ocupado} titulo="Cancelar este acerto?" texto="O valor volta a contar como a receber e a acertar no balanço."
-        rotuloConfirmar="Cancelar acerto" rotuloCancelar="Manter" onConfirmar={cancelar} onCancelar={() => setConfirmando(false)} />
+      <Confirmar aberto={confirmando} perigo ocupado={ocupado} titulo="Desfazer este registro?" texto="O valor volta a contar no equilíbrio do mês."
+        rotuloConfirmar="Desfazer" rotuloCancelar="Manter" onConfirmar={cancelar} onCancelar={() => setConfirmando(false)} />
     </>
   )
 }
@@ -454,6 +498,7 @@ function Regras({ familia, aoMudar }: { familia: FamiliaDetalhe; aoMudar: () => 
           <div><dt>Divisão</dt><dd>{modo.rotulo}<span className={styles.dica}> · {modo.detalhe}</span></dd></div>
           <div><dt>Aprovação</dt><dd>{familia.limiteAprovacao ? <>a partir de <Dinheiro valor={familia.limiteAprovacao} /></> : "Desligada"}</dd></div>
         </DadosFicha>
+        <p className={styles.dica}>Só quem é admin muda as regras.</p>
       </Bloco>
     )
   }
@@ -468,7 +513,7 @@ function Regras({ familia, aoMudar }: { familia: FamiliaDetalhe; aoMudar: () => 
         <Campo rotulo="Aprovação a partir de">
           <EntradaValor compacto valor={limite} onChange={setLimite} />
         </Campo>
-        <p className={styles.dica}>Despesa compartilhada desse valor pra cima só entra no balanço depois que outra pessoa aprova. Vazio desliga.</p>
+        <p className={styles.dica}>Despesa compartilhada desse valor pra cima só entra no equilíbrio depois que outra pessoa aprova. Vazio desliga.</p>
         <div className={styles.fichaFormAcoes}>
           <Botao variante="primario" disabled={ocupado} onClick={() => rodar(() => definirLimiteAprovacao(familia.id, parseMoney(limite) || null))}>Salvar limite</Botao>
         </div>
@@ -476,5 +521,3 @@ function Regras({ familia, aoMudar }: { familia: FamiliaDetalhe; aoMudar: () => 
     </Bloco>
   )
 }
-
-export { VazioFicha }

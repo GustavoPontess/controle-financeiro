@@ -36,9 +36,29 @@ export function nomeDoMes(mes: number, ano: number): string {
 /** Primeiro nome ("Gustavo Nunes Pontes" → "Gustavo"). */
 export const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nome
 
-/** Copy sem cobrança (visão §7.5): saldo positivo = a receber; negativo = a acertar; zero = em dia. */
+/** Copy sem cobrança (visão §7.5, Gustavo 2026-10-18): o que cada um pagou no mês é FATO, não obrigação.
+ *  Positivo = pagou a mais que a parte; negativo = pagou a menos; zero = equilibrado. Nada de "deve", "a acertar". */
 export function fraseSaldo(saldo: number): { texto: string; tom: "positivo" | "negativo" | "neutro" } {
-  if (saldo > 0.005) return { texto: "a receber", tom: "positivo" }
-  if (saldo < -0.005) return { texto: "a acertar", tom: "negativo" }
-  return { texto: "em dia", tom: "neutro" }
+  if (saldo > 0.005) return { texto: "pagou a mais", tom: "positivo" }
+  if (saldo < -0.005) return { texto: "pagou a menos", tom: "negativo" }
+  return { texto: "equilibrado", tom: "neutro" }
+}
+
+export type Equilibrio = { deUsuarioId: string; de: string; paraUsuarioId: string; para: string; valor: number }
+
+/** O menor conjunto de "X passa R$ V pra Y" que zera o mês (modelo Tricount: é sugestão, não cobrança).
+ *  Quem pagou a menos passa pra quem pagou a mais, casando o maior com o maior. */
+export function sugerirEquilibrio(saldos: { usuarioId: string; nome: string; saldo: number }[]): Equilibrio[] {
+  const recebem = saldos.filter((s) => s.saldo > 0.005).map((s) => ({ ...s, resto: s.saldo })).sort((a, b) => b.resto - a.resto)
+  const passam = saldos.filter((s) => s.saldo < -0.005).map((s) => ({ ...s, resto: -s.saldo })).sort((a, b) => b.resto - a.resto)
+  const out: Equilibrio[] = []
+  let i = 0, j = 0
+  while (i < passam.length && j < recebem.length) {
+    const v = Math.min(passam[i].resto, recebem[j].resto)
+    out.push({ deUsuarioId: passam[i].usuarioId, de: primeiroNome(passam[i].nome), paraUsuarioId: recebem[j].usuarioId, para: primeiroNome(recebem[j].nome), valor: Math.round(v * 100) / 100 })
+    passam[i].resto -= v; recebem[j].resto -= v
+    if (passam[i].resto < 0.005) i++
+    if (recebem[j].resto < 0.005) j++
+  }
+  return out
 }

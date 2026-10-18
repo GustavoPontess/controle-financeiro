@@ -127,7 +127,7 @@ function Linha({ f, meuId, aberta, aoAbrir }: { f: Familia; meuId: string; abert
           <div><dt>Divisão</dt><dd>{rotuloModoRateio(resumo.detalhe.modoRateioPadrao)}</dd></div>
           {resumo.balanco && <div><dt>{nomeDoMes(mes, ano)}</dt><dd><Dinheiro valor={resumo.balanco.total} /> em despesas da família</dd></div>}
           {frase && meuSaldo !== undefined && (
-            <div><dt>Você</dt><dd className={styles.meuSaldo} data-tom={frase.tom}>{frase.tom === "neutro" ? "Em dia" : <>{frase.texto} <Dinheiro valor={Math.abs(meuSaldo)} /></>}</dd></div>
+            <div><dt>Você</dt><dd className={styles.meuSaldo} data-tom={frase.tom}>{frase.tom === "neutro" ? "Equilibrado" : <>{frase.texto} <Dinheiro valor={Math.abs(meuSaldo)} /></>}</dd></div>
           )}
         </DadosFicha>
       )}

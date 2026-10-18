@@ -31,7 +31,7 @@ export default function ConvidarMembro() {
   const [erros, setErros] = useState<Erros>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
-  const voltar = () => navigate(`/familias/${id}`, { replace: true })
+  const voltar = () => navigate(`/familias/${id}?aba=pessoas`, { replace: true })
 
   useEffect(() => {
     let vivo = true
