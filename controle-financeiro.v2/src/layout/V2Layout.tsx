@@ -1,7 +1,9 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
 // transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
-// Espaços (2026-10-18): o menu da conta (embaixo, modelo Notion) troca entre Pessoal e cada família.
+// Espaços (2026-10-18): o menu da conta (embaixo, modelo Notion) tem três partes: a conta ativa com os
+// ESPAÇOS dela (Pessoal e cada família), as outras CONTAS conectadas neste navegador (trocar / adicionar)
+// e as ações (Configurações, convites, Sair). Cada conta tem as suas famílias.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
 import { useEffect, useRef, useState } from "react"
@@ -73,11 +75,11 @@ function secaoDaRota(pathname: string): Secao | undefined {
 }
 
 export default function V2Layout() {
-  const { usuario, sair } = useAuth()
+  const { usuario, sair, contas, trocarConta } = useAuth()
   const navigate = useNavigate()
   const { pathname, state } = useLocation()
   const familiaId = familiaDaRota(pathname)
-  const { familias, convites, carregado } = useEspacos(pathname)
+  const { familias, convites, carregado } = useEspacos(pathname, usuario?.id)
   const familiaAtual = familiaId ? familias.find((f) => f.id === familiaId) : undefined
   const nomeDoEspaco = familiaId ? (familiaAtual?.nome ?? (carregado ? "Família" : "…")) : "Pessoal"
   // Tela interna da seção (/transacoes/nova, /transacoes/:id…): o topo ganha a seta de voltar antes do título
@@ -86,7 +88,7 @@ export default function V2Layout() {
   const raiz = secao?.raiz ?? secao?.para
   const emTelaInterna = !!secao && (pathname !== raiz || !!secao.semMenu)
   const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? (secao && !secao.semMenu && raiz ? raiz : "/dashboard")
-  const naoLidas = useNaoLidas(pathname)
+  const naoLidas = useNaoLidas(`${usuario?.id ?? ""}:${pathname}`)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
@@ -94,11 +96,13 @@ export default function V2Layout() {
   // O bloco da pessoa (avatar + nome) abre o menu da conta: e-mail, Configurações, Sair. Vale com o menu
   // aberto, no trilho e na gaveta do celular. Fecha ao clicar fora, no Esc e ao trocar de tela.
   const [menuUsuario, setMenuUsuario] = useState(false)
+  const [erroConta, setErroConta] = useState<string | null>(null)
+  const [trocando, setTrocando] = useState(false)
   const usuarioRef = useRef<HTMLDivElement>(null)
   // Sino: painel com as últimas notificações embaixo do botão; fecha ao clicar fora, no Esc e ao trocar de tela.
   const [painelNotif, setPainelNotif] = useState(false)
   const sinoRef = useRef<HTMLSpanElement>(null)
-  useEffect(() => { setMenuAberto(false); setMenuUsuario(false); setPainelNotif(false) }, [pathname])
+  useEffect(() => { setMenuAberto(false); setMenuUsuario(false); setPainelNotif(false); setErroConta(null) }, [pathname])
   useEffect(() => {
     if (!painelNotif) return
     const fora = (e: MouseEvent) => { if (!sinoRef.current?.contains(e.target as Node)) setPainelNotif(false) }
@@ -115,7 +119,17 @@ export default function V2Layout() {
   }, [menuUsuario])
   useEffect(() => { try { localStorage.setItem(CHAVE_MENU, recolhido ? "trilho" : "aberto") } catch { /* ignore */ } }, [recolhido])
 
-  const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+  const iniciaisDe = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"
+  const iniciais = iniciaisDe(usuario?.nome ?? "?")
+  const outrasContas = contas.filter((c) => c.id !== usuario?.id)
+  // Trocar de conta: o servidor reaponta a sessão; depois tudo recarrega como a outra pessoa (a chave do
+  // conteúdo leva o id da conta, então nenhuma tela fica com dado da conta anterior).
+  const trocarPara = async (id: string) => {
+    setTrocando(true); setErroConta(null)
+    try { await trocarConta(id); setMenuUsuario(false); navigate("/dashboard") }
+    catch (e) { setErroConta(e instanceof Error ? e.message : "Não deu pra trocar de conta.") }
+    setTrocando(false)
+  }
   const sairAgora = () => void sair().then(() => navigate("/entrar"))
   const irPara = (para: string) => { setMenuUsuario(false); navigate(para, { state: { voltarPara: pathname } }) }
   const inicial = (nome: string) => nome.trim().charAt(0).toUpperCase() || "?"
@@ -162,9 +176,14 @@ export default function V2Layout() {
             </button>
             {menuUsuario && (
               <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
-                <span className={styles.usuarioNome}>{usuario?.nome}</span>
-                <span className={styles.usuarioPlano}>{usuario?.email}</span>
-                <span className={styles.menuSeparador} aria-hidden="true" />
+                <div className={styles.menuConta}>
+                  <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
+                  <span className={styles.menuContaTexto}>
+                    <span className={styles.usuarioNome}>{usuario?.nome}</span>
+                    <span className={styles.usuarioPlano}>{usuario?.email}</span>
+                  </span>
+                </div>
+                <span className={styles.menuGrupo}>Espaços</span>
                 <button type="button" role="menuitemradio" aria-checked={!familiaId} className={styles.menuItem} onClick={() => irPara("/dashboard")}>
                   <span className={styles.espacoIcone} aria-hidden="true"><User size={14} strokeWidth={2.25} /></span>
                   <span className={styles.menuItemNome}>Pessoal</span>
@@ -181,6 +200,21 @@ export default function V2Layout() {
                   <span className={styles.espacoIcone} aria-hidden="true"><Plus size={14} strokeWidth={2.5} /></span>
                   <span className={styles.menuItemNome}>Nova família</span>
                 </button>
+                <span className={styles.menuGrupo}>Contas</span>
+                {outrasContas.map((c) => (
+                  <button key={c.id} type="button" role="menuitem" className={styles.menuItem} disabled={trocando} onClick={() => void trocarPara(c.id)}>
+                    <span className={styles.espacoAvatar} aria-hidden="true">{iniciaisDe(c.nome)}</span>
+                    <span className={styles.menuItemTexto}>
+                      <span className={styles.menuItemNome}>{c.nome}</span>
+                      <span className={styles.menuItemDetalhe}>{c.email}</span>
+                    </span>
+                  </button>
+                ))}
+                <button type="button" role="menuitem" className={styles.menuItem} onClick={() => irPara("/entrar?adicionar")}>
+                  <span className={styles.espacoIcone} aria-hidden="true"><Plus size={14} strokeWidth={2.5} /></span>
+                  <span className={styles.menuItemNome}>Adicionar conta</span>
+                </button>
+                {erroConta && <span className={styles.menuErro} role="alert">{erroConta}</span>}
                 <span className={styles.menuSeparador} aria-hidden="true" />
                 <NavLink to="/configuracoes" role="menuitem" className={styles.menuItem}>
                   <Settings size={16} strokeWidth={2} aria-hidden="true" /> Configurações
@@ -224,7 +258,7 @@ export default function V2Layout() {
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>
         </header>
-        <main className={styles.conteudo} key={pathname}>
+        <main className={styles.conteudo} key={`${usuario?.id ?? ""}:${pathname}`}>
           <Outlet />
         </main>
       </div>

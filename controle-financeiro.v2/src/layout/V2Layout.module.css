@@ -30,10 +30,14 @@
 .usuarioSeta { flex-shrink: 0; color: var(--v2-texto-3); }
 .usuarioNome { font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .usuarioPlano { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Menu da conta: abre pra cima, na largura do menu lateral (no trilho, pro lado). */
-.menuUsuario { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
-.menuUsuario > .usuarioNome, .menuUsuario > .usuarioPlano { padding: 0 2px; }
-.menuUsuario > .usuarioNome { white-space: normal; }
+/* Menu da conta: abre pra cima e sai da barra por cima do conteúdo (320px; no trilho, pro lado). */
+.menuUsuario { position: absolute; left: 0; width: 320px; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.menuConta { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; }
+.menuContaTexto { display: flex; flex-direction: column; min-width: 0; }
+.menuGrupo { margin: 6px 8px 4px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v2-texto-3); }
+.menuItemTexto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.menuItemDetalhe { font-size: var(--v2-fs-xs); font-weight: 400; color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menuErro { padding: 2px 8px 4px; font-size: var(--v2-fs-xs); color: var(--v2-negativo); }
 .menuItem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; }
 .menuItem:hover { background: var(--v2-superficie-2); }
 
@@ -44,6 +48,7 @@
 .menuItem[aria-checked="true"] { font-weight: 700; }
 .espacoMarca, .espacoIcone { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -3px 0; border-radius: 6px; flex-shrink: 0; font-size: var(--v2-fs-xs); font-weight: 700; }
 .espacoMarca { background: var(--v2-acento-suave); color: var(--v2-acento); }
+.espacoAvatar { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -3px 0; border-radius: 999px; flex-shrink: 0; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: 10px; font-weight: 700; }
 .espacoIcone { background: var(--v2-superficie-2); color: var(--v2-texto-2); }
 .espacoCheck { color: var(--v2-acento); flex-shrink: 0; }
 .espacoContador { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); font-size: var(--v2-fs-xs); font-weight: 700; }
@@ -54,7 +59,7 @@
    ícones/avatar/"P" no mesmo eixo (x=35) nos dois estados. Só a largura anima e os rótulos somem —
    sem isso os ícones centralizavam no painel ainda largo e deslizavam de volta enquanto encolhia. */
 .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: none; }
-.raiz[data-menu="trilho"] .menuUsuario { left: calc(100% + 10px); right: auto; bottom: 6px; min-width: 220px; }
+.raiz[data-menu="trilho"] .menuUsuario { left: calc(100% + 10px); bottom: 6px; }
 /* "P" ancorado à esquerda, no mesmo x e tamanho do P de "Pontes": recolher parece o "ontes" sumindo.
    (Centralizar faria o P centralizar no painel ainda largo e deslizar junto com a animação.) */
 .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0; }
@@ -88,7 +93,7 @@
   .lateral[data-aberto="true"] { transform: none; }
   .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: inline-flex; }
   .raiz[data-menu="trilho"] .logoMini { display: none; }
-  .raiz[data-menu="trilho"] .menuUsuario { left: 0; right: 0; bottom: calc(100% + 6px); min-width: 0; }
+  .menuUsuario, .raiz[data-menu="trilho"] .menuUsuario { left: 0; width: min(320px, calc(100vw - 32px)); bottom: calc(100% + 6px); }
   .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0 10px; }
   .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
   .recolher { display: none; }

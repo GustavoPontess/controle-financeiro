@@ -3,7 +3,11 @@ import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
-vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: { id: "u1", nome: "Gabriel Dev", email: "dev@pontes.app" }, sair: vi.fn(async () => {}) }) }))
+const trocarConta = vi.fn(async () => {})
+vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({
+  usuario: { id: "u1", nome: "Gabriel Dev", email: "dev@pontes.app" }, sair: vi.fn(async () => {}), trocarConta,
+  contas: [{ id: "u1", nome: "Gabriel Dev", email: "dev@pontes.app" }, { id: "u2", nome: "Marina Dev", email: "conjuge@pontes.app" }],
+}) }))
 vi.mock("../../services/notificacaoService", () => ({
   getContagemNaoLidas: vi.fn(async () => ({ naoLidas: 0 })),
   getNotificacoes: vi.fn(async () => []),
@@ -26,6 +30,7 @@ const renderizar = (inicio: string) => render(
         <Route path="/familias/:id" element={<p>visão da família</p>} />
         <Route path="/familias/:id/membros" element={<p>membros da família</p>} />
         <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
+        <Route path="/entrar" element={<p>entrar</p>} />
       </Route>
     </Routes>
   </MemoryRouter>,
@@ -66,6 +71,21 @@ describe("Espaços (Pessoal | família) no menu da conta", () => {
     await userEvent.click(screen.getByRole("button", { name: "Gabriel Dev" }))
     await userEvent.click(screen.getByRole("menuitem", { name: /Nova família/ }))
     expect(await screen.findByText("nova família")).toBeInTheDocument()
+  })
+
+  it("as outras contas conectadas ficam em Contas: trocar chama o servidor e volta pro painel; adicionar leva ao login", async () => {
+    renderizar("/familias/f1")
+    await userEvent.click(await screen.findByRole("button", { name: "Gabriel Dev" }))
+    const menu = screen.getByRole("menu", { name: "Conta e espaços" })
+    expect(menu).toHaveTextContent("Espaços")
+    expect(menu).toHaveTextContent("Contas")
+    expect(within(menu).queryByRole("menuitem", { name: /Gabriel Dev/ })).not.toBeInTheDocument()
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /Marina Dev/ }))
+    expect(trocarConta).toHaveBeenCalledWith("u2")
+    expect(await screen.findByText("painel pessoal")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Gabriel Dev" }))
+    await userEvent.click(screen.getByRole("menuitem", { name: /Adicionar conta/ }))
+    expect(await screen.findByText("entrar")).toBeInTheDocument()
   })
 
   it("tela interna da família (convidar) mostra a seta de voltar pra página do menu a que pertence", async () => {

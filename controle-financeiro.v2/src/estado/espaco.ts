@@ -24,10 +24,10 @@ export async function recarregarEspacos(): Promise<void> {
   ouvintes.forEach((l) => l())
 }
 
-/** As famílias da pessoa, pro seletor: carrega ao montar e a cada troca de tela dentro de /familias
- *  (é onde família nasce, convite se aceita e família se dissolve). */
-export function useEspacos(pathname: string): Espacos {
-  const chave = pathname.startsWith("/familias") ? pathname : "pessoal"
+/** As famílias da CONTA ativa, pro menu: carrega ao montar, ao trocar de conta e a cada troca de tela
+ *  dentro de /familias (é onde família nasce, convite se aceita e família se dissolve). */
+export function useEspacos(pathname: string, usuarioId?: string): Espacos {
+  const chave = `${usuarioId ?? ""}:${pathname.startsWith("/familias") ? pathname : "pessoal"}`
   useEffect(() => { void recarregarEspacos() }, [chave])
   return useSyncExternalStore(assinar, ler, ler)
 }
