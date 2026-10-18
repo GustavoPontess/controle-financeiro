@@ -1,8 +1,8 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
 // transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
-// Espaços (2026-10-18): o menu da conta (embaixo, modelo Notion) tem três partes: a conta ativa com os
-// ESPAÇOS dela (Pessoal e cada família), as outras CONTAS conectadas neste navegador (trocar / adicionar)
+// Espaços (2026-10-18): o menu da conta (embaixo, modelo Notion) tem três partes: a conta ativa (clicar nela
+// = espaço pessoal) com as FAMÍLIAS dela, as outras CONTAS conectadas neste navegador (trocar / adicionar)
 // e as ações (Configurações, convites, Sair). Cada conta tem as suas famílias.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, User, Users, Eye, EyeOff, Wallet,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
@@ -176,19 +176,16 @@ export default function V2Layout() {
             </button>
             {menuUsuario && (
               <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
-                <div className={styles.menuConta}>
+                {/* A própria conta é o espaço pessoal: clicar nela sai da família. */}
+                <button type="button" role="menuitemradio" aria-checked={!familiaId} className={`${styles.menuItem} ${styles.menuConta}`} onClick={() => irPara("/dashboard")}>
                   <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
                   <span className={styles.menuContaTexto}>
                     <span className={styles.usuarioNome}>{usuario?.nome}</span>
                     <span className={styles.usuarioPlano}>{usuario?.email}</span>
                   </span>
-                </div>
-                <span className={styles.menuGrupo}>Espaços</span>
-                <button type="button" role="menuitemradio" aria-checked={!familiaId} className={styles.menuItem} onClick={() => irPara("/dashboard")}>
-                  <span className={styles.espacoIcone} aria-hidden="true"><User size={14} strokeWidth={2.25} /></span>
-                  <span className={styles.menuItemNome}>Pessoal</span>
                   {!familiaId && <Check size={15} strokeWidth={2.5} className={styles.espacoCheck} aria-hidden="true" />}
                 </button>
+                <span className={styles.menuGrupo}>Famílias</span>
                 {familias.map((f) => (
                   <button key={f.id} type="button" role="menuitemradio" aria-checked={f.id === familiaId} className={styles.menuItem} onClick={() => irPara(`/familias/${f.id}`)}>
                     <span className={styles.espacoMarca} aria-hidden="true">{inicial(f.nome)}</span>
