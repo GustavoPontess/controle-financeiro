@@ -93,7 +93,7 @@ namespace ControleFinanceiro.Api.Migrations
                 WHERE t."SubcategoriaId" = s."Id" AND s."UsuarioId" IS NULL AND s."Nome" IN ('Cashback', 'Reembolso')
                   AND t."CategoriaId" IS DISTINCT FROM s."CategoriaId";
 
-                UPDATE "Recorrentes" r
+                UPDATE "Assinaturas" r -- a tabela das contas fixas (Recorrente) chama Assinaturas
                 SET "CategoriaId" = s."CategoriaId"
                 FROM "Subcategorias" s
                 WHERE r."SubcategoriaId" = s."Id" AND s."UsuarioId" IS NULL AND s."Nome" IN ('Cashback', 'Reembolso')
