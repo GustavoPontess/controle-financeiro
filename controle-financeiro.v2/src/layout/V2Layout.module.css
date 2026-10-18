@@ -33,30 +33,20 @@
 /* Menu da conta: abre pra cima, na largura do menu lateral (no trilho, pro lado). */
 .menuUsuario { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
 .menuUsuario > .usuarioNome, .menuUsuario > .usuarioPlano { padding: 0 2px; }
+.menuUsuario > .usuarioNome { white-space: normal; }
 .menuItem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; }
-.menuItem:first-of-type { margin-top: 8px; }
 .menuItem:hover { background: var(--v2-superficie-2); }
 
-/* Seletor de espaço (Pessoal | cada família), logo abaixo da marca: o menu inteiro depende dele.
-   Marca/ícone de 26px no mesmo eixo dos ícones dos itens (x=35). No trilho sobra só a marca; o menu abre pro lado. */
-.espaco { position: relative; margin-top: -4px; }
-.espacoBotao { display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 8px; border: 1px solid var(--v2-linha); border-radius: 10px; background: transparent; color: var(--v2-texto); font: inherit; text-align: left; cursor: pointer; }
-.espacoBotao:hover, .espacoBotao[aria-expanded="true"] { background: var(--v2-superficie-2); }
-.espacoMarca, .espacoIcone { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; font-size: var(--v2-fs-xs); font-weight: 700; }
+/* Espaços no menu da conta (modelo Notion): Pessoal e cada família como linha com marca de 22px; separadores
+   entre a conta, os espaços e as ações. */
+.menuSeparador { height: 1px; margin: 6px 2px; background: var(--v2-linha); }
+.menuItemNome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menuItem[aria-checked="true"] { font-weight: 700; }
+.espacoMarca, .espacoIcone { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -3px 0; border-radius: 6px; flex-shrink: 0; font-size: var(--v2-fs-xs); font-weight: 700; }
 .espacoMarca { background: var(--v2-acento-suave); color: var(--v2-acento); }
 .espacoIcone { background: var(--v2-superficie-2); color: var(--v2-texto-2); }
-.espacoNome { flex: 1; min-width: 0; font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.espacoMenu { position: absolute; left: 0; min-width: 100%; width: max-content; max-width: 300px; top: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--v2-linha); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
-.espacoItem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; text-align: left; cursor: pointer; }
-.espacoItem:hover { background: var(--v2-superficie-2); }
-.espacoItem[aria-checked="true"] { font-weight: 600; }
-.espacoItem .espacoIcone { background: var(--v2-superficie-2); }
-.espacoItemNome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .espacoCheck { color: var(--v2-acento); flex-shrink: 0; }
-.espacoSeparador { height: 1px; margin: 6px 4px; background: var(--v2-linha); }
 .espacoContador { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); font-size: var(--v2-fs-xs); font-weight: 700; }
-.raiz[data-menu="trilho"] .espacoBotao { padding: 0 7px; border-color: transparent; }
-.raiz[data-menu="trilho"] .espacoMenu { left: calc(100% + 10px); top: 0; min-width: 240px; }
 
 /* Trilho (recolhido): nome vira title; avatar abre o menu. A marca compacta vira o botão de
    expandir (o "P" dá lugar à seta no hover) — a linha da marca continua com 40px.
@@ -99,8 +89,6 @@
   .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: inline-flex; }
   .raiz[data-menu="trilho"] .logoMini { display: none; }
   .raiz[data-menu="trilho"] .menuUsuario { left: 0; right: 0; bottom: calc(100% + 6px); min-width: 0; }
-  .raiz[data-menu="trilho"] .espacoBotao { padding: 0 8px; border-color: var(--v2-linha); }
-  .raiz[data-menu="trilho"] .espacoMenu { left: 0; top: calc(100% + 6px); min-width: 100%; }
   .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0 10px; }
   .raiz[data-menu="trilho"] .grupo { height: auto; margin: 16px 12px 6px; background: transparent; }
   .recolher { display: none; }

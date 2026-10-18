@@ -1,24 +1,23 @@
 // Front v2 — esqueleto: menu lateral plano (recolhe num trilho de ícones), topo com olho/sino/"Nova
 // transação", conteúdo. Tema mora em Configurações. Projeto SEPARADO do app atual: mesma API (proxy do Vite), mesmo login (cookie de
 // localhost vale nos dois).
-// Espaços (2026-10-18): o seletor no topo do menu troca entre Pessoal e cada família (modelo Notion/Slack).
+// Espaços (2026-10-18): o menu da conta (embaixo, modelo Notion) troca entre Pessoal e cada família.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, User, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
-import { familiaDaRota } from "../estado/espaco"
+import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
-import SeletorEspaco from "./SeletorEspaco"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
@@ -78,6 +77,9 @@ export default function V2Layout() {
   const navigate = useNavigate()
   const { pathname, state } = useLocation()
   const familiaId = familiaDaRota(pathname)
+  const { familias, convites, carregado } = useEspacos(pathname)
+  const familiaAtual = familiaId ? familias.find((f) => f.id === familiaId) : undefined
+  const nomeDoEspaco = familiaId ? (familiaAtual?.nome ?? (carregado ? "Família" : "…")) : "Pessoal"
   // Tela interna da seção (/transacoes/nova, /transacoes/:id…): o topo ganha a seta de voltar antes do título
   // — sem repetir o nome da seção numa linha a mais dentro da página. Volta pra onde a pessoa veio, senão pra raiz.
   const secao = secaoDaRota(pathname)
@@ -115,6 +117,8 @@ export default function V2Layout() {
 
   const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
   const sairAgora = () => void sair().then(() => navigate("/entrar"))
+  const irPara = (para: string) => { setMenuUsuario(false); navigate(para, { state: { voltarPara: pathname } }) }
+  const inicial = (nome: string) => nome.trim().charAt(0).toUpperCase() || "?"
   const Item = ({ para, rotulo, icone: Icone, exato }: ItemMenu) => (
     <NavLink to={para} end={exato} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
@@ -139,7 +143,6 @@ export default function V2Layout() {
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><PanelLeftClose size={18} strokeWidth={2} /></button>
         </div>
-        <SeletorEspaco familiaId={familiaId} pathname={pathname} recolhido={recolhido} />
         <nav className={styles.nav} aria-label="Principal">
           {principal.map((i) => <Item key={i.para} {...i} />)}
           <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
@@ -147,22 +150,48 @@ export default function V2Layout() {
         </nav>
         <div className={styles.rodape}>
           <div className={styles.usuario} ref={usuarioRef}>
-            <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? usuario?.nome : undefined}
+            {/* O bloco da pessoa diz em que espaço ela está (Pessoal ou a família); o menu troca de espaço. */}
+            <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? `${usuario?.nome} · ${nomeDoEspaco}` : undefined}
               aria-haspopup="menu" aria-expanded={menuUsuario} onClick={() => setMenuUsuario((v) => !v)}>
               <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
               <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
                 <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
-                <span className={styles.usuarioPlano}>Plano gratuito</span>
+                <span className={styles.usuarioPlano}>{nomeDoEspaco}</span>
               </span>
               <ChevronsUpDown size={15} strokeWidth={2} className={`${styles.usuarioSeta} ${styles.itemRotulo}`} aria-hidden="true" />
             </button>
             {menuUsuario && (
-              <div className={styles.menuUsuario} role="menu">
+              <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
                 <span className={styles.usuarioNome}>{usuario?.nome}</span>
                 <span className={styles.usuarioPlano}>{usuario?.email}</span>
+                <span className={styles.menuSeparador} aria-hidden="true" />
+                <button type="button" role="menuitemradio" aria-checked={!familiaId} className={styles.menuItem} onClick={() => irPara("/dashboard")}>
+                  <span className={styles.espacoIcone} aria-hidden="true"><User size={14} strokeWidth={2.25} /></span>
+                  <span className={styles.menuItemNome}>Pessoal</span>
+                  {!familiaId && <Check size={15} strokeWidth={2.5} className={styles.espacoCheck} aria-hidden="true" />}
+                </button>
+                {familias.map((f) => (
+                  <button key={f.id} type="button" role="menuitemradio" aria-checked={f.id === familiaId} className={styles.menuItem} onClick={() => irPara(`/familias/${f.id}`)}>
+                    <span className={styles.espacoMarca} aria-hidden="true">{inicial(f.nome)}</span>
+                    <span className={styles.menuItemNome}>{f.nome}</span>
+                    {f.id === familiaId && <Check size={15} strokeWidth={2.5} className={styles.espacoCheck} aria-hidden="true" />}
+                  </button>
+                ))}
+                <button type="button" role="menuitem" className={styles.menuItem} onClick={() => irPara("/familias/nova")}>
+                  <span className={styles.espacoIcone} aria-hidden="true"><Plus size={14} strokeWidth={2.5} /></span>
+                  <span className={styles.menuItemNome}>Nova família</span>
+                </button>
+                <span className={styles.menuSeparador} aria-hidden="true" />
                 <NavLink to="/configuracoes" role="menuitem" className={styles.menuItem}>
                   <Settings size={16} strokeWidth={2} aria-hidden="true" /> Configurações
                 </NavLink>
+                {convites > 0 && (
+                  <button type="button" role="menuitem" className={styles.menuItem} onClick={() => irPara("/familias")}>
+                    <Mail size={16} strokeWidth={2} aria-hidden="true" /><span className={styles.menuItemNome}>Convites pra você</span>
+                    <span className={styles.espacoContador}>{convites}</span>
+                  </button>
+                )}
+                <span className={styles.menuSeparador} aria-hidden="true" />
                 <button type="button" role="menuitem" className={styles.menuItem} onClick={sairAgora}>
                   <LogOut size={16} strokeWidth={2} aria-hidden="true" /> Sair
                 </button>
