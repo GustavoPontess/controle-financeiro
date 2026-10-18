@@ -9,6 +9,7 @@ import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
+import { LinhaCampos } from "../componentes/Formulario"
 import { dataBR } from "../utils/dateTime"
 import styles from "./Perfil.module.css"
 
@@ -60,12 +61,14 @@ export default function Perfil() {
       ) : (
         <form className={styles.form} noValidate onSubmit={(e) => { void salvar(e) }}>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-          <Campo rotulo="Nome" erro={erros.nome}>
-            <Entrada value={nome} maxLength={NOME_MAX} autoComplete="name" autoFocus onChange={(e) => { setNome(e.target.value); limpa("nome") }} />
-          </Campo>
-          <Campo rotulo="Data de nascimento" erro={erros.nascimento}>
-            <Entrada type="date" autoComplete="bday" max={hoje} value={nascimento} onChange={(e) => { setNascimento(e.target.value); limpa("nascimento") }} />
-          </Campo>
+          <LinhaCampos colunas="minmax(0, 2fr) minmax(0, 1fr)">
+            <Campo rotulo="Nome" erro={erros.nome}>
+              <Entrada value={nome} maxLength={NOME_MAX} autoComplete="name" autoFocus onChange={(e) => { setNome(e.target.value); limpa("nome") }} />
+            </Campo>
+            <Campo rotulo="Data de nascimento" erro={erros.nascimento}>
+              <Entrada type="date" autoComplete="bday" max={hoje} value={nascimento} onChange={(e) => { setNascimento(e.target.value); limpa("nascimento") }} />
+            </Campo>
+          </LinhaCampos>
           <div className={styles.email}><span>E-mail</span><span>{usuario?.email}</span></div>
           <div className={styles.acoes}>
             <Botao onClick={fechar} disabled={salvando}>Cancelar</Botao>

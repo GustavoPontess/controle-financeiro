@@ -6,9 +6,9 @@
 .dados dd { margin: 0; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; text-align: right; }
 .vazio { color: var(--v2-texto-3); font-weight: 400; }
 
-.form { display: flex; flex-direction: column; gap: 14px; max-width: 420px; }
-.email { display: flex; justify-content: space-between; gap: 16px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
-.email > span:last-child { color: var(--v2-texto); font-weight: 500; overflow-wrap: anywhere; text-align: right; }
+.form { display: flex; flex-direction: column; gap: 14px; }
+.email { display: flex; align-items: baseline; gap: 12px; padding-top: 2px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.email > span:last-child { color: var(--v2-texto); font-weight: 500; overflow-wrap: anywhere; }
 .acoes { display: flex; justify-content: flex-end; gap: 8px; }
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .ok { margin: 0 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-positivo); }
