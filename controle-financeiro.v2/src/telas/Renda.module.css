@@ -1,10 +1,9 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
 .alerta { margin: 0 24px 10px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .mudo { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-weight: 400; }
-.dica { margin: 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.dica { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.link { font-size: var(--v2-fs-xs); color: var(--v2-acento); text-decoration: none; margin-left: 8px; }
-.link:hover { text-decoration: underline; }
 .linkBotao { padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); color: var(--v2-acento); cursor: pointer; }
 .linkBotao:hover { text-decoration: underline; }
 
@@ -14,20 +13,18 @@
 .meses { display: flex; gap: 4px; }
 .miolo { display: flex; flex-direction: column; gap: 18px; padding: 8px 24px 20px; }
 
-/* Previsto · Recebido · Falta (mesma anatomia da faixa de números de Bancos) */
+/* Esperado · Recebido · Falta (mesma anatomia da faixa de números de Bancos) */
 .numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
 .numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
 
-/* De onde vem o previsto: fixas (só leitura) e a variável (campo + salvar) */
-.composicao { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 14px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
-.composicao > div { display: flex; flex-direction: column; gap: 6px; }
-.composicao dt { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
-.composicao dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
-.variavel { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
-.variavelCampo { flex: 1 1 240px; }
+/* O que a pessoa espera receber: fixa + variável, salvar, limpar */
+.esperado { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.esperadoTitulo { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); }
+.esperadoAcoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.esperadoBotoes { display: flex; gap: 8px; margin-left: auto; }
 
 /* Entradas do mês */
 .entradas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -39,18 +36,11 @@
 .entradaValor[data-tom="positivo"] { color: var(--v2-positivo); }
 .entradaValor[data-tom="neutro"] { color: var(--v2-texto-3); font-weight: 500; }
 
-/* Por família */
-.familias { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
-.familia { display: flex; flex-direction: column; gap: 10px; }
-.familia .alerta { margin: 0; }
-.familiaNome { font-size: var(--v2-fs-md); font-weight: 600; }
-.quem { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
-
 @media (max-width: 900px) {
   .toolbar { padding: 14px 16px 4px; }
   .miolo { padding: 8px 16px 16px; }
   .alerta { margin: 0 16px 10px; }
-  .numeros { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .numeros { gap: 8px; }
   .numeroValor { font-size: var(--v2-fs-lg); }
   .entradas li { grid-template-columns: minmax(0, 1fr) auto; }
   .entradaData { grid-column: 1 / -1; font-size: var(--v2-fs-xs); }

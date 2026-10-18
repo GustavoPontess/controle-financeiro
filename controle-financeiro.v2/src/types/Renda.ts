@@ -1,4 +1,4 @@
-// Renda da pessoa (espelha RendaMesDto): o que entrou no mês (fato) e o que ela esperava.
+// Renda da pessoa (espelha RendaMesDto): o que entrou no mês (fato) e o que ela declarou esperar.
 export interface EntradaRenda {
   id: string
   /** "YYYY-MM-DD" */
@@ -7,20 +7,19 @@ export interface EntradaRenda {
   valor: number
   subcategoria: string | null
   recebida: boolean
-  contaFixa: boolean
 }
 
 export interface RendaMes {
   ano: number
   mes: number
-  /** Fixas + variável esperada. */
+  /** Fixa esperada + variável esperada. */
   previsto: number
-  /** Contas fixas de receita do mês (já recebidas ou ainda previstas). */
-  fixas: number
-  /** A variável esperada que vale neste mês (a do mês, ou herdada do último mês que tem). */
+  /** Renda fixa que a pessoa espera (salário, aposentadoria, benefício). */
+  fixaEsperada: number
+  /** Renda variável que a pessoa espera (comissão, bico, diária). */
   variavelEsperada: number
-  /** A variável foi definida neste mês mesmo (false = herdada ou nenhuma). */
-  variavelDoMes: boolean
+  /** O esperado foi declarado neste mês mesmo (false = herdado do último mês que tem, ou nenhum). */
+  declaradoNoMes: boolean
   recebido: number
   falta: number
   sugestaoMedia3Meses: number | null

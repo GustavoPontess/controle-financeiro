@@ -1,6 +1,8 @@
 // Família: rótulos e listas que mais de uma tela usa (lista, página da família, convite, dependente, acerto).
 // Espelham os enums do servidor (PapelFamilia, ModoRateio, TipoDependente, StatusAprovacaoDespesa).
 import type { ModoRateio, PapelFamilia, StatusAprovacaoDespesa, TipoDependente } from "../types/Familia"
+import type { VisibilidadeRenda } from "../types/Renda"
+import { VISIBILIDADE_RENDA } from "../types/Renda"
 
 export const PAPEL_PERMISSAO = { admin: 1, membro: 2, dependente: 3 } as const satisfies Record<string, PapelFamilia>
 export const ROTULO_PERMISSAO: Record<PapelFamilia, string> = { 1: "Admin", 2: "Membro", 3: "Só vê" }
@@ -62,3 +64,12 @@ export function sugerirEquilibrio(saldos: { usuarioId: string; nome: string; sal
   }
   return out
 }
+
+/** O que a família vê da renda de um membro (escolha da própria pessoa, na ficha dela dentro da família). */
+export const NIVEIS_VISIBILIDADE: { valor: VisibilidadeRenda; rotulo: string; detalhe: string }[] = [
+  { valor: VISIBILIDADE_RENDA.nada, rotulo: "Nada", detalhe: "nem o peso: na divisão proporcional você entra com parte igual" },
+  { valor: VISIBILIDADE_RENDA.soPeso, rotulo: "Só o peso", detalhe: "a divisão proporcional usa, mas ninguém vê o valor" },
+  { valor: VISIBILIDADE_RENDA.valorParaAlguns, rotulo: "O valor, pra quem eu marcar", detalhe: "" },
+  { valor: VISIBILIDADE_RENDA.valorParaTodos, rotulo: "O valor, pra toda a família", detalhe: "quem só vê a família não vê renda de ninguém" },
+]
+export const rotuloVisibilidade = (v: VisibilidadeRenda) => NIVEIS_VISIBILIDADE.find((n) => n.valor === v)?.rotulo ?? "Só o peso"

@@ -36,13 +36,12 @@ public class RendaServiceTests
     }
 
     private static Transacao Receita(AppDbContext ctx, Guid usuarioId, decimal valor, DateOnly data, Categoria? categoria,
-        StatusTransacao status = StatusTransacao.Executado, Guid? recorrente = null, Action<Transacao>? ajusta = null)
+        StatusTransacao status = StatusTransacao.Executado, Action<Transacao>? ajusta = null)
     {
         var t = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "receita", Valor = valor, Tipo = TipoTransacao.Receita, Data = data,
             CriadoPor = usuarioId, CategoriaId = categoria?.Id, StatusTransacao = status, Ativo = true,
-            RecorrenteOrigemId = recorrente,
         };
         ajusta?.Invoke(t);
         ctx.Transacoes.Add(t);
@@ -76,43 +75,42 @@ public class RendaServiceTests
         Assert.Equal(3470m, r.Recebido);
         Assert.Equal(4, r.Entradas.Count);                 // as 3 recebidas + a prevista (aparece como não recebida)
         Assert.Contains(r.Entradas, e => e.Valor == 1200m && !e.Recebida);
-        Assert.Equal(0m, r.Fixas);                         // nenhuma veio de conta fixa
-        Assert.Equal(0m, r.Previsto);
+        Assert.Equal(0m, r.Previsto);                      // nada declarado
         Assert.Equal(0m, r.Falta);
     }
 
     [Fact]
-    public async Task ObterMes_PrevistoEhFixasMaisVariavel_EAVariavelVemDoUltimoMesQueTem()
+    public async Task ObterMes_PrevistoEhODeclarado_FixaMaisVariavel_EValeAteMudar()
     {
         var ctx = CreateContext();
         var eu = SeedUsuario(ctx, "eu@test.com");
         var renda = SeedCategoria(ctx, "Renda");
-        var contaFixa = Guid.NewGuid();
         var mes = new DateOnly(2026, 10, 1);
-        Receita(ctx, eu, 3000m, mes.AddDays(4), renda, recorrente: contaFixa);                          // salário caiu
-        Receita(ctx, eu, 250m, mes.AddDays(0), renda, StatusTransacao.Previsao, recorrente: contaFixa); // aluguel ainda previsto
-        Receita(ctx, eu, 400m, mes.AddDays(12), renda);                                                 // comissão que caiu
+        Receita(ctx, eu, 3000m, mes.AddDays(4), renda);                                  // salário caiu
+        Receita(ctx, eu, 400m, mes.AddDays(12), renda);                                  // comissão que caiu
+        Receita(ctx, eu, 250m, mes.AddDays(0), renda, StatusTransacao.Previsao);         // ainda vai cair: entra na lista, não no recebido
         var svc = new RendaService(ctx);
-        // A variável foi definida em agosto; setembro e outubro herdam.
-        await svc.DefinirVariavelEsperadaAsync(eu, new DefinirVariavelEsperadaDto(2026, 8, 1200m));
+        // Declarado em agosto; setembro e outubro herdam.
+        await svc.DefinirPrevistoAsync(eu, new DefinirRendaPrevistaDto(2026, 8, 3000m, 1200m));
 
         var r = await svc.ObterMesAsync(eu, 2026, 10);
 
-        Assert.Equal(3250m, r.Fixas);
+        Assert.Equal(3000m, r.FixaEsperada);
         Assert.Equal(1200m, r.VariavelEsperada);
-        Assert.False(r.VariavelDoMes);
-        Assert.Equal(4450m, r.Previsto);
+        Assert.False(r.DeclaradoNoMes);
+        Assert.Equal(4200m, r.Previsto);
         Assert.Equal(3400m, r.Recebido);
-        Assert.Equal(1050m, r.Falta);
+        Assert.Equal(800m, r.Falta);
+        Assert.Equal(3, r.Entradas.Count);
 
-        // Definir no próprio mês passa a valer; apagar (null) volta a herdar; negativo é recusado.
-        var doMes = await svc.DefinirVariavelEsperadaAsync(eu, new DefinirVariavelEsperadaDto(2026, 10, 0m));
-        Assert.True(doMes.VariavelDoMes);
-        Assert.Equal(3250m, doMes.Previsto);
-        var apagou = await svc.DefinirVariavelEsperadaAsync(eu, new DefinirVariavelEsperadaDto(2026, 10, null));
-        Assert.False(apagou.VariavelDoMes);
-        Assert.Equal(1200m, apagou.VariavelEsperada);
-        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirVariavelEsperadaAsync(eu, new DefinirVariavelEsperadaDto(2026, 10, -1m)));
+        // Declarar no próprio mês passa a valer; limpar volta a herdar; negativo é recusado.
+        var doMes = await svc.DefinirPrevistoAsync(eu, new DefinirRendaPrevistaDto(2026, 10, 3000m, 0m));
+        Assert.True(doMes.DeclaradoNoMes);
+        Assert.Equal(3000m, doMes.Previsto);
+        var limpou = await svc.LimparPrevistoAsync(eu, 2026, 10);
+        Assert.False(limpou.DeclaradoNoMes);
+        Assert.Equal(4200m, limpou.Previsto);
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirPrevistoAsync(eu, new DefinirRendaPrevistaDto(2026, 10, -1m, 0m)));
         await Assert.ThrowsAsync<ArgumentException>(() => svc.ObterMesAsync(eu, 2026, 13));
     }
 
@@ -220,11 +218,11 @@ public class RendaServiceTests
         var (familiaId, admin, ana, bia) = await SeedFamilia(ctx);
         var renda = SeedCategoria(ctx, "Renda");
         var mes = new DateOnly(2026, 10, 1);
-        Receita(ctx, admin, 4000m, mes.AddDays(4), renda, recorrente: Guid.NewGuid()); // conta fixa: entra no previsto
-        Receita(ctx, ana, 9000m, mes.AddDays(4), renda);                                 // avulsa: recebido, não previsto
+        Receita(ctx, ana, 9000m, mes.AddDays(4), renda);                                 // o que caiu não é peso: o declarado é
         var svc = new RendaService(ctx);
-        await svc.DefinirVariavelEsperadaAsync(ana, new DefinirVariavelEsperadaDto(2026, 10, 2000m));
-        await svc.DefinirVariavelEsperadaAsync(bia, new DefinirVariavelEsperadaDto(2026, 10, 1000m));
+        await svc.DefinirPrevistoAsync(admin, new DefinirRendaPrevistaDto(2026, 10, 4000m, 0m));
+        await svc.DefinirPrevistoAsync(ana, new DefinirRendaPrevistaDto(2026, 10, 0m, 2000m));
+        await svc.DefinirPrevistoAsync(bia, new DefinirRendaPrevistaDto(2026, 10, 1000m, 0m));
         await svc.DefinirVisibilidadeAsync(familiaId, Membro(ctx, familiaId, bia).Id, bia, new DefinirVisibilidadeRendaDto(VisibilidadeRenda.Nada, null));
 
         var pesos = await svc.PesosAsync(familiaId, 2026, 10);

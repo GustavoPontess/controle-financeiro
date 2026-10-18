@@ -270,6 +270,9 @@ public class AppDbContext : DbContext
             .Property(r => r.VariavelEsperada)
             .HasPrecision(18, 2);
         modelBuilder.Entity<RendaPrevista>()
+            .Property(r => r.FixaEsperada)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<RendaPrevista>()
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(r => r.UsuarioId)

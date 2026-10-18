@@ -10,10 +10,10 @@ namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
 /// Renda de cada um e o que a família vê dela (docs/features/familia/renda-e-visibilidade.md).
-/// Renda é da PESSOA: o recebido vem dos lançamentos de receita que são renda; o previsto vem das contas fixas de
-/// receita do mês + a variável esperada que a pessoa digita (<see cref="RendaPrevista"/>). A família não guarda
-/// número nenhum: guarda só a regra de quem vê (<see cref="MembroFamilia.VisibilidadeRenda"/>), e tudo que sai pra
-/// família é calculado aqui, pra quem pede. Nunca mandar valor pro front esconder.
+/// Renda é da PESSOA: o recebido vem dos lançamentos de receita que são renda; o previsto é o que ela DECLARA
+/// esperar, fixa + variável (<see cref="RendaPrevista"/>; nada a ver com "contas fixas", que são contas a pagar).
+/// A família não guarda número nenhum: guarda só a regra de quem vê (<see cref="MembroFamilia.VisibilidadeRenda"/>),
+/// e tudo que sai pra família é calculado aqui, pra quem pede. Nunca mandar valor pro front esconder.
 /// </summary>
 public class RendaService
 {
@@ -36,7 +36,7 @@ public class RendaService
 
     // ── Pessoa ───────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>O mês da pessoa: previsto (fixas + variável), recebido, o que falta e as entradas.</summary>
+    /// <summary>O mês da pessoa: previsto (fixa + variável declaradas), recebido, o que falta e as entradas.</summary>
     public async Task<RendaMesDto> ObterMesAsync(Guid usuarioId, int ano, int mes)
     {
         ValidarMes(ano, mes);
@@ -46,48 +46,56 @@ public class RendaService
             .OrderByDescending(t => t.Data).ThenByDescending(t => t.CriadoEm)
             .Select(t => new EntradaRendaDto(t.Id, t.Data, t.Descricao, t.Valor,
                 t.Subcategoria != null ? t.Subcategoria.Nome : null,
-                t.StatusTransacao == StatusTransacao.Executado,
-                t.RecorrenteOrigemId != null))
+                t.StatusTransacao == StatusTransacao.Executado))
             .ToListAsync();
 
         var recebido = entradas.Where(e => e.Recebida).Sum(e => e.Valor);
-        // Fixas = as cobranças de conta fixa de receita do mês, caídas ou ainda previstas (o job expande até o fim do ano).
-        var fixas = entradas.Where(e => e.ContaFixa).Sum(e => e.Valor);
-        var (variavel, doMes) = await VariavelEsperadaAsync(usuarioId, ano, mes);
-        var previsto = fixas + variavel;
+        var (fixa, variavel, doMes) = await DeclaracaoAsync(usuarioId, ano, mes);
+        var previsto = fixa + variavel;
         var sugestao = await SugestaoAsync(usuarioId, ano, mes);
 
-        return new RendaMesDto(ano, mes, previsto, fixas, variavel, doMes, recebido, Math.Max(0m, previsto - recebido), sugestao, entradas);
+        return new RendaMesDto(ano, mes, previsto, fixa, variavel, doMes, recebido, Math.Max(0m, previsto - recebido), sugestao, entradas);
     }
 
-    /// <summary>Define a variável esperada do mês (null apaga a linha: volta a valer a do último mês que tem).</summary>
-    public async Task<RendaMesDto> DefinirVariavelEsperadaAsync(Guid usuarioId, DefinirVariavelEsperadaDto dto)
+    /// <summary>Declara o que a pessoa espera no mês (fixa e variável). Vale pros meses seguintes até ela mudar.</summary>
+    public async Task<RendaMesDto> DefinirPrevistoAsync(Guid usuarioId, DefinirRendaPrevistaDto dto)
     {
         ValidarMes(dto.Ano, dto.Mes);
-        if (dto.VariavelEsperada is < 0)
+        if (dto.FixaEsperada < 0 || dto.VariavelEsperada < 0)
             throw new ArgumentException("A renda esperada não pode ser negativa.");
 
         var linha = await _context.RendasPrevistas
             .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId && r.Ano == dto.Ano && r.Mes == dto.Mes);
-        if (dto.VariavelEsperada is null)
-        {
-            if (linha != null) _context.RendasPrevistas.Remove(linha);
-        }
-        else if (linha == null)
+        if (linha == null)
         {
             _context.RendasPrevistas.Add(new RendaPrevista
             {
                 Id = Guid.NewGuid(), UsuarioId = usuarioId, Ano = dto.Ano, Mes = dto.Mes,
-                VariavelEsperada = dto.VariavelEsperada.Value, AtualizadoEm = DateTime.UtcNow,
+                FixaEsperada = dto.FixaEsperada, VariavelEsperada = dto.VariavelEsperada, AtualizadoEm = DateTime.UtcNow,
             });
         }
         else
         {
-            linha.VariavelEsperada = dto.VariavelEsperada.Value;
+            linha.FixaEsperada = dto.FixaEsperada;
+            linha.VariavelEsperada = dto.VariavelEsperada;
             linha.AtualizadoEm = DateTime.UtcNow;
         }
         await _context.SaveChangesAsync();
         return await ObterMesAsync(usuarioId, dto.Ano, dto.Mes);
+    }
+
+    /// <summary>Apaga a declaração do mês: volta a valer a do último mês que tem (ou nenhuma).</summary>
+    public async Task<RendaMesDto> LimparPrevistoAsync(Guid usuarioId, int ano, int mes)
+    {
+        ValidarMes(ano, mes);
+        var linha = await _context.RendasPrevistas
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId && r.Ano == ano && r.Mes == mes);
+        if (linha != null)
+        {
+            _context.RendasPrevistas.Remove(linha);
+            await _context.SaveChangesAsync();
+        }
+        return await ObterMesAsync(usuarioId, ano, mes);
     }
 
     // ── Família ──────────────────────────────────────────────────────────────────────────────────
@@ -156,8 +164,8 @@ public class RendaService
             saida);
     }
 
-    /// <summary>Peso de cada membro no rateio proporcional do mês: a renda prevista de quem não escondeu tudo.
-    /// Quem escolheu "nada" (ou não tem previsto) fica com zero; sem nenhum peso o balanço cai pra divisão igual.</summary>
+    /// <summary>Peso de cada membro no rateio proporcional do mês: a renda prevista (declarada) de quem não escondeu
+    /// tudo. Quem escolheu "nada" (ou não declarou) fica com zero; sem nenhum peso o balanço cai pra divisão igual.</summary>
     public async Task<Dictionary<Guid, decimal>> PesosAsync(Guid familiaId, int ano, int mes)
     {
         var membros = await _context.MembrosFamilia
@@ -178,30 +186,25 @@ public class RendaService
 
     private async Task<(decimal Recebido, decimal Previsto)> ResumoAsync(Guid usuarioId, int ano, int mes)
     {
-        var linha = await _context.Transacoes
+        var recebido = await _context.Transacoes
             .Where(EhRenda)
-            .Where(t => t.CriadoPor == usuarioId && t.Data.Year == ano && t.Data.Month == mes)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Recebido = g.Sum(t => t.StatusTransacao == StatusTransacao.Executado ? t.Valor : 0m),
-                Fixas = g.Sum(t => t.RecorrenteOrigemId != null ? t.Valor : 0m),
-            })
-            .FirstOrDefaultAsync();
-        var (variavel, _) = await VariavelEsperadaAsync(usuarioId, ano, mes);
-        return (linha?.Recebido ?? 0m, (linha?.Fixas ?? 0m) + variavel);
+            .Where(t => t.CriadoPor == usuarioId && t.Data.Year == ano && t.Data.Month == mes
+                        && t.StatusTransacao == StatusTransacao.Executado)
+            .SumAsync(t => t.Valor);
+        var (fixa, variavel, _) = await DeclaracaoAsync(usuarioId, ano, mes);
+        return (recebido, fixa + variavel);
     }
 
-    /// <summary>A variável esperada que vale no mês: a linha do mês, ou a do último mês anterior que tem.</summary>
-    private async Task<(decimal Valor, bool DoMes)> VariavelEsperadaAsync(Guid usuarioId, int ano, int mes)
+    /// <summary>O que vale no mês: a declaração do mês, ou a do último mês anterior que tem.</summary>
+    private async Task<(decimal Fixa, decimal Variavel, bool DoMes)> DeclaracaoAsync(Guid usuarioId, int ano, int mes)
     {
         var chave = ano * 12 + mes;
         var linha = await _context.RendasPrevistas
             .Where(r => r.UsuarioId == usuarioId && r.Ano * 12 + r.Mes <= chave)
             .OrderByDescending(r => r.Ano).ThenByDescending(r => r.Mes)
             .FirstOrDefaultAsync();
-        if (linha == null) return (0m, false);
-        return (linha.VariavelEsperada, linha.Ano == ano && linha.Mes == mes);
+        if (linha == null) return (0m, 0m, false);
+        return (linha.FixaEsperada, linha.VariavelEsperada, linha.Ano == ano && linha.Mes == mes);
     }
 
     /// <summary>Média do recebido nos meses anteriores que tiveram renda (até 3), pra quem ainda não disse o previsto.</summary>

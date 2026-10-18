@@ -1722,6 +1722,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<decimal>("FixaEsperada")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("Mes")
                         .HasColumnType("integer");
 

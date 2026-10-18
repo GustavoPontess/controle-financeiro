@@ -26,8 +26,9 @@ public class MigrationAddRendaPrevistaEVisibilidadeTests
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_AddRendaPrevistaEVisibilidade", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddModeloImportacao", ids[^2]);
+        // Depois de AddModeloImportacao (a mais recente é a AddRendaFixaEsperada, que tem o próprio teste).
+        var i = ids.FindIndex(id => id.EndsWith("_AddRendaPrevistaEVisibilidade"));
+        Assert.True(i > 0 && ids[i - 1].EndsWith("_AddModeloImportacao"));
     }
 
     [Fact]

@@ -49,15 +49,15 @@ public static class DemoSeeder
         await RendaAsync(context, dev.Id, hoje);
     }
 
-    // ── Renda: a parte variável que o Gabriel espera no mês (o salário fixo e o freelance recebido vêm do
-    //    DevDataSeeder), pro cartão "Renda do mês" ter previsto × recebido. Vale pros meses seguintes também.
+    // ── Renda: o que o Gabriel declara esperar no mês (salário fixo + variável), pro cartão "Renda do mês" ter
+    //    previsto × recebido (o salário e o freelance recebidos vêm do DevDataSeeder). Vale pros meses seguintes.
     private static async Task RendaAsync(AppDbContext context, Guid dev, DateTime hoje)
     {
         if (await context.RendasPrevistas.AnyAsync(r => r.UsuarioId == dev))
             return;
         context.RendasPrevistas.Add(new Domain.Entities.RendaPrevista
         {
-            Id = Guid.NewGuid(), UsuarioId = dev, Ano = hoje.Year, Mes = hoje.Month, VariavelEsperada = 1500m,
+            Id = Guid.NewGuid(), UsuarioId = dev, Ano = hoje.Year, Mes = hoje.Month, FixaEsperada = 7500m, VariavelEsperada = 1500m,
         });
         await context.SaveChangesAsync();
     }

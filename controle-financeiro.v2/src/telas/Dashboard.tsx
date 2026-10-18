@@ -68,7 +68,7 @@ export default function Dashboard() {
       <Bloco titulo="Renda do mês" acao="Ver renda" para="/renda">
         {!renda ? <Esqueleto linhas={1} altura={28} /> : (
           <div className={styles.renda}>
-            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Previsto</span><Dinheiro valor={renda.previsto} className={styles.rendaValor} /></div>
+            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Esperado</span><Dinheiro valor={renda.previsto} className={styles.rendaValor} /></div>
             <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Recebido</span><Dinheiro valor={renda.recebido} className={styles.rendaValor} tom="positivo" /></div>
             <div className={styles.rendaNumero}>
               <span className={styles.rendaRotulo}>{renda.falta > 0 ? "Falta" : "A mais que o previsto"}</span>
@@ -76,8 +76,8 @@ export default function Dashboard() {
             </div>
             <span className={styles.rendaDetalhe}>
               {renda.previsto === 0
-                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses deu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga o que espera receber no mês em Renda.")
-                : <>Contas fixas <Dinheiro valor={renda.fixas} /> · variável esperada <Dinheiro valor={renda.variavelEsperada} /></>}
+                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses caiu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga em Renda o que espera receber por mês.")
+                : <>Fixa <Dinheiro valor={renda.fixaEsperada} /> · variável <Dinheiro valor={renda.variavelEsperada} /></>}
             </span>
           </div>
         )}

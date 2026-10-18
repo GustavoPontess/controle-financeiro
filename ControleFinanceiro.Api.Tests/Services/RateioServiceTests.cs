@@ -45,11 +45,11 @@ public class RateioServiceTests
         ctx.SaveChanges();
     }
 
-    /// <summary>A renda que entra no peso do rateio proporcional é a PREVISTA do mês (variável esperada aqui,
-    /// sem conta fixa) — renda-e-visibilidade.md §2.3. Mês de maio de 2026, o mesmo dos balanços dos testes.</summary>
+    /// <summary>A renda que entra no peso do rateio proporcional é a PREVISTA do mês (o que a pessoa declarou)
+    /// — renda-e-visibilidade.md §2.3. Mês de maio de 2026, o mesmo dos balanços dos testes.</summary>
     private static void DefinirRendaPrevista(AppDbContext ctx, Guid usuarioId, decimal renda)
     {
-        ctx.RendasPrevistas.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = usuarioId, Ano = 2026, Mes = 5, VariavelEsperada = renda });
+        ctx.RendasPrevistas.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = usuarioId, Ano = 2026, Mes = 5, FixaEsperada = renda });
         ctx.SaveChanges();
     }
 
