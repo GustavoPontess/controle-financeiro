@@ -219,8 +219,8 @@ public static class DevDataSeeder
                 FamiliaId = familia.Id,
                 UsuarioId = dev.Id,
                 Papel = "Eu",
-                RendaMensal = 7500m,
                 PapelPermissao = PapelFamilia.Admin, // quem cria é admin (sem isso ninguém convida nem muda regra)
+                VisibilidadeRenda = VisibilidadeRenda.ValorParaTodos,
             },
             new MembroFamilia
             {
@@ -228,7 +228,7 @@ public static class DevDataSeeder
                 FamiliaId = familia.Id,
                 UsuarioId = conjuge.Id,
                 Papel = "Cônjuge",
-                RendaMensal = 5200m,
+                VisibilidadeRenda = VisibilidadeRenda.SoPeso,
             });
 
         // Compras no crédito do dev → gera faturas reais (atual aberta + passadas pagas).

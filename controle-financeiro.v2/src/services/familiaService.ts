@@ -160,12 +160,6 @@ export const definirModoRateio = async (
   await api.put(`/familias/${familiaId}/modo-rateio`, { modo })
 }
 
-export const definirRendaMembro = async (
-  familiaId: string, membroId: string, rendaMensal: number | null,
-): Promise<void> => {
-  await api.put(`/familias/${familiaId}/membros/${membroId}/renda`, { rendaMensal })
-}
-
 export const getRateioTransacao = async (
   transacaoId: string,
 ): Promise<RateioTransacao> => {

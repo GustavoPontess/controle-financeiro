@@ -59,3 +59,15 @@ a.linha:hover { background: var(--v2-hover-linha); }
   .hero { font-size: var(--v2-fs-4xl); }
   .mes > span { min-width: 0; }
 }
+
+/* Renda do mês: Previsto · Recebido · Falta numa linha, e de onde vem o previsto embaixo */
+.renda { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rendaNumero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rendaRotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.rendaValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rendaValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.rendaDetalhe { grid-column: 1 / -1; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+@media (max-width: 900px) {
+  .renda { gap: 8px; }
+  .rendaValor { font-size: var(--v2-fs-lg); }
+}

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard } from "lucide-react"
 import { getDashboard } from "../services/dashboardService"
+import { getRendaMes } from "../services/rendaService"
+import type { RendaMes } from "../types/Renda"
 import type { DashboardData, TransacaoRecente } from "../types/Dashboard"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, diaCurto, variacao, type TomDinheiro } from "../componentes/Dinheiro"
@@ -18,11 +20,14 @@ export default function Dashboard() {
   const [ref, setRef] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
   const [dados, setDados] = useState<DashboardData | null>(null)
   const [erro, setErro] = useState(false)
+  // Renda do mês (previsto × recebido): pedido à parte, a Visão geral não espera por ele.
+  const [renda, setRenda] = useState<RendaMes | null>(null)
 
   useEffect(() => {
     let vivo = true
-    setDados(null); setErro(false)
+    setDados(null); setErro(false); setRenda(null)
     getDashboard(ref.ano, ref.mes).then((d) => { if (vivo) setDados(d) }).catch(() => { if (vivo) setErro(true) })
+    getRendaMes(ref.ano, ref.mes).then((r) => { if (vivo) setRenda(r) }).catch(() => { /* o cartão fica sem número */ })
     return () => { vivo = false }
   }, [ref])
 
@@ -59,6 +64,24 @@ export default function Dashboard() {
           <Numero rotulo="No cartão" valor={d ? (d.gastoCartaoMes ?? 0) : undefined} />
         </div>
       </section>
+
+      <Bloco titulo="Renda do mês" acao="Minha renda" para="/configuracoes?s=renda">
+        {!renda ? <Esqueleto linhas={1} altura={28} /> : (
+          <div className={styles.renda}>
+            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Previsto</span><Dinheiro valor={renda.previsto} className={styles.rendaValor} /></div>
+            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Recebido</span><Dinheiro valor={renda.recebido} className={styles.rendaValor} tom="positivo" /></div>
+            <div className={styles.rendaNumero}>
+              <span className={styles.rendaRotulo}>{renda.falta > 0 ? "Falta" : "A mais que o previsto"}</span>
+              <Dinheiro valor={renda.falta > 0 ? renda.falta : Math.max(0, renda.recebido - renda.previsto)} className={styles.rendaValor} />
+            </div>
+            <span className={styles.rendaDetalhe}>
+              {renda.previsto === 0
+                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses deu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga o que espera receber no mês em Minha renda.")
+                : <>Contas fixas <Dinheiro valor={renda.fixas} /> · variável esperada <Dinheiro valor={renda.variavelEsperada} /></>}
+            </span>
+          </div>
+        )}
+      </Bloco>
 
       <div className={styles.grade}>
         <Bloco titulo="Saldo nos últimos meses">

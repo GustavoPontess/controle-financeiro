@@ -46,6 +46,20 @@ public static class DemoSeeder
         await NotificacoesAsync(sp, context, dev.Id, nubank.Id);
         await ReconciliacaoAsync(sp, context, dev.Id, corrente.Id, hoje);
         await FamiliaAsync(sp, context, dev.Id, hoje);
+        await RendaAsync(context, dev.Id, hoje);
+    }
+
+    // ── Renda: a parte variável que o Gabriel espera no mês (o salário fixo e o freelance recebido vêm do
+    //    DevDataSeeder), pro cartão "Renda do mês" ter previsto × recebido. Vale pros meses seguintes também.
+    private static async Task RendaAsync(AppDbContext context, Guid dev, DateTime hoje)
+    {
+        if (await context.RendasPrevistas.AnyAsync(r => r.UsuarioId == dev))
+            return;
+        context.RendasPrevistas.Add(new Domain.Entities.RendaPrevista
+        {
+            Id = Guid.NewGuid(), UsuarioId = dev, Ano = hoje.Year, Mes = hoje.Month, VariavelEsperada = 1500m,
+        });
+        await context.SaveChangesAsync();
     }
 
     private static DateTime Utc(DateTime d) => DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);

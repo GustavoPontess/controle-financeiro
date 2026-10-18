@@ -187,13 +187,13 @@ public class FamiliaService
         return ParaDto(membro, usuarioId);
     }
 
-    /// <summary>Monta o DTO do membro pra quem está vendo (<paramref name="quemVe"/>). A renda é dado pessoal:
-    /// o VALOR só vai pro próprio membro — nem o admin vê a dos outros. Pros outros vai só se foi informada.</summary>
+    /// <summary>Monta o DTO do membro pra quem está vendo (<paramref name="quemVe"/>). Renda não vai aqui (é
+    /// derivada e sai filtrada em <see cref="RendaService.ObterRendaFamiliaAsync"/>); a lista de quem vê o valor
+    /// é configuração pessoal e só vai pro próprio membro.</summary>
     private static MembroFamiliaDto ParaDto(MembroFamilia m, Guid quemVe) =>
         new(m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
-            m.UsuarioId == quemVe ? m.RendaMensal : null,
-            m.RendaMensal.HasValue,
-            m.PapelPermissao);
+            m.PapelPermissao, m.VisibilidadeRenda,
+            m.UsuarioId == quemVe ? m.RendaVisivelPara.ToList() : null);
 
     private async Task<Familia> BuscarFamiliaAsync(Guid familiaId)
     {

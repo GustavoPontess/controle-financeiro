@@ -43,6 +43,15 @@
 .equilibrioTexto { display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-md); font-weight: 500; }
 .equilibrioValor { font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
 
+/* Renda da casa: total e uma linha por pessoa (valor só de quem liberou pra quem olha) */
+.rendaCasa { display: flex; flex-direction: column; gap: 12px; }
+.rendaMembros { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rendaMembros li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
+.rendaMembros .saldoNome { flex: 1; min-width: 0; }
+.rendaMembroValor { font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.linkFicha { margin-left: 8px; font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-acento); text-decoration: none; }
+.linkFicha:hover { text-decoration: underline; }
+
 /* Linhas das listas */
 .direita { display: inline-flex; align-items: center; gap: 10px; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }

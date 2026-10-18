@@ -29,27 +29,6 @@ public class RateioService
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Define a renda mensal de um membro (usada no rateio proporcional).</summary>
-    public async Task DefinirRendaAsync(
-        Guid familiaId, Guid membroId, Guid usuarioId, decimal? rendaMensal)
-    {
-        // 2.3 — escrita (bloqueia Dependente). Membro só edita a própria renda; Admin, qualquer.
-        var papel = await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
-
-        if (rendaMensal is < 0)
-            throw new ArgumentException("A renda mensal não pode ser negativa.");
-
-        var membro = await _context.MembrosFamilia
-            .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
-            ?? throw new KeyNotFoundException("Membro não encontrado.");
-
-        if (papel != PapelFamilia.Admin && membro.UsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Você só pode definir a própria renda.");
-
-        membro.RendaMensal = rendaMensal;
-        await _context.SaveChangesAsync();
-    }
-
     /// <summary>Define o modo de rateio (e os itens, se Personalizado) de uma despesa.</summary>
     public async Task DefinirRateioTransacaoAsync(
         Guid transacaoId, Guid usuarioId, DefinirRateioTransacaoDto dto)

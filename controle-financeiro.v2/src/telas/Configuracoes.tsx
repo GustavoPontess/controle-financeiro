@@ -4,7 +4,7 @@
 // baixar/excluir a conta) leva pro app atual.
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
+import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound, Wallet } from "lucide-react"
 import { Link } from "react-router-dom"
 import { APP_ATUAL } from "../config"
 import { useAuth } from "../auth/useAuth"
@@ -15,12 +15,14 @@ import Segmentos from "../componentes/Segmentos"
 import SegurancaMfa from "./SegurancaMfa"
 import SegurancaDispositivos from "./SegurancaDispositivos"
 import TrocarSenha from "./TrocarSenha"
+import MinhaRenda from "./MinhaRenda"
 import styles from "./Configuracoes.module.css"
 
-type IdSecao = "seguranca" | "perfil" | "aparencia" | "privacidade"
+type IdSecao = "seguranca" | "perfil" | "renda" | "aparencia" | "privacidade"
 const SECOES: Secao<IdSecao>[] = [
   { id: "seguranca", rotulo: "Segurança e login", icone: ShieldCheck },
   { id: "perfil", rotulo: "Perfil", icone: UserRound },
+  { id: "renda", rotulo: "Minha renda", icone: Wallet },
   { id: "aparencia", rotulo: "Aparência", icone: Palette },
   { id: "privacidade", rotulo: "Dados e privacidade", icone: FileLock2 },
 ]
@@ -39,6 +41,7 @@ export default function Configuracoes() {
         <h2 id="secao-titulo" className={styles.titulo}>{ativa.rotulo}</h2>
         {ativa.id === "seguranca" && <Seguranca />}
         {ativa.id === "perfil" && <Perfil />}
+        {ativa.id === "renda" && <MinhaRenda />}
         {ativa.id === "aparencia" && <Aparencia />}
         {ativa.id === "privacidade" && <Privacidade />}
       </section>

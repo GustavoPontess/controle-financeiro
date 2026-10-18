@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
 import type { AcertoContas, BalancoFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe } from "../../types/Familia"
+import type { RendaFamilia } from "../../types/Renda"
 
 const EU = { id: "u1", nome: "Gabriel Dev", email: "dev@pontes.app" }
 vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: EU }) }))
@@ -10,8 +11,8 @@ vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: EU }) }))
 const detalhe = (extra: Partial<FamiliaDetalhe> = {}): FamiliaDetalhe => ({
   id: "f1", nome: "Casa Dev", criadoPorUsuarioId: "u1", criadoEm: "2026-01-01", ehAdmin: true, modoRateioPadrao: 1, limiteAprovacao: null,
   membros: [
-    { id: "m1", usuarioId: "u1", nomeUsuario: "Gabriel Dev", emailUsuario: "dev@pontes.app", papel: "Companheiro(a)", entrouEm: "2026-01-01", rendaMensal: null, rendaInformada: false, papelPermissao: 1 },
-    { id: "m2", usuarioId: "u2", nomeUsuario: "Marina Dev", emailUsuario: "conjuge@pontes.app", papel: "Companheiro(a)", entrouEm: "2026-01-02", rendaMensal: null, rendaInformada: true, papelPermissao: 2 },
+    { id: "m1", usuarioId: "u1", nomeUsuario: "Gabriel Dev", emailUsuario: "dev@pontes.app", papel: "Companheiro(a)", entrouEm: "2026-01-01", papelPermissao: 1, visibilidadeRenda: 1, rendaVisivelPara: [] },
+    { id: "m2", usuarioId: "u2", nomeUsuario: "Marina Dev", emailUsuario: "conjuge@pontes.app", papel: "Companheiro(a)", entrouEm: "2026-01-02", papelPermissao: 2, visibilidadeRenda: 3, rendaVisivelPara: null },
   ],
   convitesPendentes: [{ id: "c1", familiaId: "f1", nomeFamilia: "Casa Dev", emailConvidado: "avo@exemplo.com", papel: "Avó", status: 1, expiraEm: "2026-10-25", criadoEm: "2026-10-18", token: "t", papelPermissao: 3 }],
   ...extra,
@@ -28,6 +29,11 @@ const acertos: AcertoContas[] = [{ id: "a1", deUsuarioId: "u2", deNome: "Marina 
 const dependentes: Dependente[] = [{ id: "d1", familiaId: "f1", nome: "Theo", apelido: null, dataNascimento: "2021-03-10", tipo: 1, ativo: true }]
 
 let familia = detalhe()
+let renda: RendaFamilia = { ano: 2026, mes: 10, total: 9500, previsto: 10000, membros: [
+  { usuarioId: "u1", nome: "Gabriel Dev", mostrada: true, recebido: 6000, previsto: 6500 },
+  { usuarioId: "u2", nome: "Marina Dev", mostrada: true, recebido: 3500, previsto: 3500 },
+] }
+vi.mock("../../services/rendaService", () => ({ getRendaFamilia: vi.fn(async () => renda) }))
 vi.mock("../../services/familiaService", () => ({
   getFamilia: vi.fn(async () => familia),
   getDependentes: vi.fn(async () => dependentes),
@@ -40,7 +46,6 @@ vi.mock("../../services/familiaService", () => ({
   cancelarAcerto: vi.fn(async () => {}),
   definirLimiteAprovacao: vi.fn(async () => {}),
   definirModoRateio: vi.fn(async () => {}),
-  definirRendaMembro: vi.fn(async () => {}),
   dissolverFamilia: vi.fn(async () => {}),
   editarPapel: vi.fn(async () => {}),
   editarPermissao: vi.fn(async () => {}),
@@ -48,7 +53,7 @@ vi.mock("../../services/familiaService", () => ({
   removerMembro: vi.fn(async () => {}),
   revogarConvite: vi.fn(async () => {}),
 }))
-import { aprovarDespesa, definirRendaMembro, dissolverFamilia, editarPermissao, removerMembro } from "../../services/familiaService"
+import { aprovarDespesa, dissolverFamilia, editarPermissao, removerMembro } from "../../services/familiaService"
 import Familia from "../../telas/Familia"
 
 const Acerto = () => { const { state } = useLocation(); return <p>novo acerto {JSON.stringify(state)}</p> }
@@ -60,6 +65,7 @@ const renderizar = (inicio = "/familias/f1") => render(
       <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
       <Route path="/familias/:id/acertos/novo" element={<Acerto />} />
       <Route path="/transacoes/:id" element={<p>lançamento</p>} />
+      <Route path="/configuracoes" element={<p>configurações</p>} />
     </Routes>
   </MemoryRouter>,
 )
@@ -67,7 +73,13 @@ const aba = (nome: string) => screen.getByRole("radio", { name: nome })
 const linha = (lista: string, nome: RegExp) => within(screen.getByRole("list", { name: lista })).getByRole("button", { name: nome })
 
 describe("Família (página)", () => {
-  beforeEach(() => { vi.clearAllMocks(); familia = detalhe() })
+  beforeEach(() => {
+    vi.clearAllMocks(); familia = detalhe()
+    renda = { ano: 2026, mes: 10, total: 9500, previsto: 10000, membros: [
+      { usuarioId: "u1", nome: "Gabriel Dev", mostrada: true, recebido: 6000, previsto: 6500 },
+      { usuarioId: "u2", nome: "Marina Dev", mostrada: true, recebido: 3500, previsto: 3500 },
+    ] }
+  })
 
   it("aba Mês: equilíbrio como fato (pagou a mais / a menos), sugestão de quem passa quanto, despesas com aprovação", async () => {
     renderizar()
@@ -84,6 +96,11 @@ describe("Família (página)", () => {
     expect(await screen.findByText("Sofá novo")).toBeInTheDocument()
     expect(screen.getByText("Aguardando aprovação")).toBeInTheDocument()
     expect(screen.getByRole("list", { name: "Entre vocês" })).toHaveTextContent("Marina")
+    // Renda da casa: só porque a Marina liberou o valor pra mim; soma o que está mostrado.
+    const rendaCasa = await screen.findByRole("list", { name: "Renda por pessoa" })
+    expect(rendaCasa).toHaveTextContent("Marina")
+    expect(rendaCasa).toHaveTextContent("3.500,00")
+    expect(screen.getByText(/Renda da casa em/)).toBeInTheDocument()
     // Pessoas e Regras ficam nas outras abas.
     expect(screen.queryByRole("list", { name: "Quem está" })).not.toBeInTheDocument()
 
@@ -120,10 +137,21 @@ describe("Família (página)", () => {
     await userEvent.click(linha("Quem está", /Marina Dev/)) // fecha
     await userEvent.click(linha("Quem está", /Gabriel Dev/))
     expect(screen.queryByRole("button", { name: "Remover" })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "Minha renda" }))
-    await userEvent.type(screen.getByRole("textbox", { name: "Sua renda por mês" }), "650000")
-    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
-    expect(definirRendaMembro).toHaveBeenCalledWith("f1", "m1", 6500)
+    // A minha renda não se edita aqui: a ficha diz o nível e leva pra Configurações › Minha renda.
+    expect(screen.getByText("Só o peso")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("link", { name: "mudar" }))
+    expect(screen.getByText("configurações")).toBeInTheDocument()
+  })
+
+  it("ficha do outro membro: mostra a renda só quando a pessoa liberou pra mim; a renda da casa some sem ninguém liberado", async () => {
+    renda = { ...renda, total: 6000, previsto: 6500, membros: [renda.membros[0], { ...renda.membros[1], mostrada: false, recebido: null, previsto: null }] }
+    renderizar("/familias/f1?aba=pessoas")
+    await screen.findByRole("list", { name: "Quem está" })
+    await userEvent.click(linha("Quem está", /Marina Dev/))
+    expect(screen.getByText("Só o peso na divisão")).toBeInTheDocument()
+    await userEvent.click(aba("Mês"))
+    await screen.findByRole("list", { name: "Quanto cada um pagou" })
+    expect(screen.queryByText(/Renda da casa em/)).not.toBeInTheDocument()
   })
 
   it("quem só vê não tem ações; quem não criou vê Sair em vez de Dissolver (aba Regras)", async () => {

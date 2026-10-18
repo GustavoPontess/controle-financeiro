@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
+    public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -259,6 +260,19 @@ public class AppDbContext : DbContext
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RendaPrevista → Usuario (Cascade: dado pessoal, some com a pessoa). Uma linha por mês.
+        modelBuilder.Entity<RendaPrevista>()
+            .HasIndex(r => new { r.UsuarioId, r.Ano, r.Mes })
+            .IsUnique();
+        modelBuilder.Entity<RendaPrevista>()
+            .Property(r => r.VariavelEsperada)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<RendaPrevista>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // RegistroIdempotencia → Usuario (Cascade: chaves somem com o usuário na purga LGPD).

@@ -65,11 +65,16 @@ public static class SubcategoriaSeeder
         },
         ["Apostas e jogos"] = new[] { "Apostas", "Loteria" },
 
+        // Renda = o que ENTRA (trabalho, governo, patrimônio). Dinheiro que volta fica em categoria própria.
         ["Renda"] = new[]
         {
-            "Salário", "13º e férias", "Freelance e PJ", "Aposentadoria",
-            "Auxílio do governo", "Aluguel recebido", "Dividendos e juros",
-            "Cashback", "Reembolso", "Pensão recebida",
+            "Salário", "13º e férias", "Freelance e PJ", "Comissão e variável", "Aposentadoria",
+            "Bolsa Família", "BPC / LOAS", "Seguro-desemprego", "Outro benefício do governo",
+            "Aluguel recebido", "Dividendos e juros", "Pensão recebida",
+        },
+        ["Dinheiro que volta"] = new[]
+        {
+            "Cashback", "Reembolso", "Estorno",
         },
     };
 

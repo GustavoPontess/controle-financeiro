@@ -9,15 +9,20 @@
 // Visão: docs/features/familia/visao.md; permissões: docs/features/familia/papeis-permissoes.md.
 import { useEffect, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Pencil, Trash2, X, ExternalLink, LogOut, Wallet } from "lucide-react"
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Pencil, Trash2, X, ExternalLink, LogOut } from "lucide-react"
+import { Link } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
 import {
-  aprovarDespesa, atribuirResponsavel, cancelarAcerto, definirLimiteAprovacao, definirModoRateio, definirRendaMembro,
+  aprovarDespesa, atribuirResponsavel, cancelarAcerto, definirLimiteAprovacao, definirModoRateio,
   dissolverFamilia, editarPapel, editarPermissao, getAcertos, getBalancoFamilia, getDependentes, getDespesasFamilia,
   getFamilia, inativarDependente, rejeitarDespesa, removerMembro, revogarConvite,
 } from "../services/familiaService"
+import { getRendaFamilia } from "../services/rendaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { AcertoContas, BalancoFamilia, ConviteFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
+import type { RendaFamilia } from "../types/Renda"
+import { VISIBILIDADE_RENDA } from "../types/Renda"
+import { rotuloVisibilidade } from "./MinhaRenda"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -52,6 +57,8 @@ export default function Familia() {
   const [balanco, setBalanco] = useState<BalancoFamilia | null>(null)
   const [despesas, setDespesas] = useState<DespesaCompartilhada[] | null>(null)
   const [acertos, setAcertos] = useState<AcertoContas[] | null>(null)
+  // Renda da casa: calculada no servidor pra quem pede (só entra quem liberou o valor pra essa pessoa).
+  const [renda, setRenda] = useState<RendaFamilia | null>(null)
   const [responsavelFiltro, setResponsavelFiltro] = useState("")
   const [versao, setVersao] = useState(0)
 
@@ -68,6 +75,7 @@ export default function Familia() {
     getBalancoFamilia(id, periodo.mes, periodo.ano).then((b) => { if (vivo) setBalanco(b) }).catch(() => { /* sem balanço */ })
     getDespesasFamilia(id, periodo.mes, periodo.ano, responsavelFiltro || undefined).then((d) => { if (vivo) setDespesas(d) }).catch(() => { if (vivo) setDespesas([]) })
     getAcertos(id, periodo.mes, periodo.ano).then((a) => { if (vivo) setAcertos(a) }).catch(() => { if (vivo) setAcertos([]) })
+    getRendaFamilia(id, periodo.ano, periodo.mes).then((r) => { if (vivo) setRenda(r) }).catch(() => { /* sem o bloco */ })
     return () => { vivo = false }
   }, [id, periodo, responsavelFiltro, versao])
 
@@ -86,6 +94,8 @@ export default function Familia() {
   const membrosOpcoes = detalhe.membros.map((m) => ({ valor: m.usuarioId, rotulo: primeiroNome(m.nomeUsuario) }))
   const mesNome = nomeDoMes(periodo.mes, periodo.ano)
   const equilibrio = balanco ? sugerirEquilibrio(balanco.saldos) : []
+  // "Renda da casa" só aparece se alguém ALÉM de você liberou o valor pra você (a sua sozinha não é "da casa").
+  const rendaDaCasa = renda && renda.membros.some((m) => m.mostrada && m.usuarioId !== meuId) ? renda : null
 
   return (
     <div className={styles.pagina}>
@@ -160,6 +170,28 @@ export default function Familia() {
             )}
           </Bloco>
 
+          {rendaDaCasa && (
+            <Bloco titulo={`Renda da casa em ${mesNome.toLowerCase()}`}>
+              <div className={styles.rendaCasa}>
+                <div className={styles.balancoTotal}>
+                  <span className={styles.rotulo}>Recebido até agora{rendaDaCasa.previsto > 0 && <> · previsto <Dinheiro valor={rendaDaCasa.previsto} /></>}</span>
+                  <Dinheiro valor={rendaDaCasa.total} className={styles.grande} />
+                </div>
+                <ul className={styles.rendaMembros} aria-label="Renda por pessoa">
+                  {rendaDaCasa.membros.map((m) => (
+                    <li key={m.usuarioId}>
+                      <InicialFicha texto={m.nome} destaque={m.usuarioId === meuId} />
+                      <span className={styles.saldoNome}>{primeiroNome(m.nome)}{m.usuarioId === meuId && <span className={styles.voce}> você</span>}</span>
+                      {m.mostrada
+                        ? <span className={styles.rendaMembroValor}><Dinheiro valor={m.recebido ?? 0} />{(m.previsto ?? 0) > 0 && <span className={styles.dica}> de <Dinheiro valor={m.previsto ?? 0} /></span>}</span>
+                        : <span className={styles.dica}>não mostrada</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Bloco>
+          )}
+
           <Bloco titulo="Despesas compartilhadas" semRespiro>
             {detalhe.membros.length > 1 && (
               <div className={styles.filtro}>
@@ -197,7 +229,7 @@ export default function Familia() {
           <Bloco titulo="Membros" semRespiro acao={admin ? "Convidar" : undefined} aoClicar={() => navigate(`/familias/${detalhe.id}/convidar`)}>
             <ListaFicha rotulo="Membros">
               <GrupoFicha rotulo="Quem está">
-                {detalhe.membros.map((m) => <Membro key={m.id} m={m} familia={detalhe} meuId={meuId} aoMudar={recarregar} />)}
+                {detalhe.membros.map((m) => <Membro key={m.id} m={m} familia={detalhe} meuId={meuId} renda={renda?.membros.find((r) => r.usuarioId === m.usuarioId)} aoMudar={recarregar} />)}
               </GrupoFicha>
               {detalhe.convitesPendentes.length > 0 && (
                 <GrupoFicha rotulo="Convites pendentes">
@@ -264,10 +296,11 @@ function SairOuDissolver({ familia, eu, souCriador }: { familia: FamiliaDetalhe;
 }
 
 // ── Membro: a linha e a ficha (e-mail, renda, relação); as ações dependem de quem olha ──────────────────
-function Membro({ m, familia, meuId, aoMudar }: { m: MembroFamilia; familia: FamiliaDetalhe; meuId: string; aoMudar: () => void }) {
+function Membro({ m, familia, meuId, renda, aoMudar }: {
+  m: MembroFamilia; familia: FamiliaDetalhe; meuId: string; renda?: RendaFamilia["membros"][number]; aoMudar: () => void
+}) {
   const [aberto, setAberto] = useState(false)
-  const [editando, setEditando] = useState<"renda" | "papel" | null>(null)
-  const [renda, setRenda] = useState(m.rendaMensal ? moneyParaCampo(m.rendaMensal) : "")
+  const [editando, setEditando] = useState<"papel" | null>(null)
   const [papel, setPapel] = useState(m.papel)
   const [erroPapel, setErroPapel] = useState<string | undefined>()
   const [erro, setErro] = useState<string | null>(null)
@@ -297,22 +330,18 @@ function Membro({ m, familia, meuId, aoMudar }: { m: MembroFamilia; familia: Fam
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
         <DadosFicha>
           <div><dt>E-mail</dt><dd>{m.emailUsuario}</dd></div>
-          {/* Renda é dado pessoal: o valor só aparece na própria linha; dos outros, só se informaram. */}
-          <div><dt>Renda</dt><dd>{sou ? (m.rendaMensal ? <Dinheiro valor={m.rendaMensal} /> : "Não informada") : m.rendaInformada ? "Informada" : "Não informada"}</dd></div>
-        </DadosFicha>
-        {editando === "renda" && (
-          <div className={styles.fichaForm}>
-            <Campo rotulo="Sua renda por mês">
-              <EntradaValor compacto valor={renda} onChange={setRenda} autoFocus />
-            </Campo>
-            <p className={styles.dica}>Só você vê o valor. Os outros veem só que você informou; ela entra como peso na divisão proporcional.</p>
-            <div className={styles.fichaFormAcoes}>
-              <Botao onClick={() => setEditando(null)} disabled={ocupado}>Cancelar</Botao>
-              {m.rendaMensal ? <Botao variante="texto" disabled={ocupado} onClick={() => rodar(() => definirRendaMembro(familia.id, m.id, null))}>Apagar</Botao> : null}
-              <Botao variante="primario" disabled={ocupado} onClick={() => rodar(() => definirRendaMembro(familia.id, m.id, parseMoney(renda) || null))}>Salvar</Botao>
-            </div>
+          {/* Renda é da pessoa: o que aparece aqui é o que ELA liberou pra quem está olhando (o servidor decide). */}
+          <div>
+            <dt>Renda</dt>
+            <dd>
+              {sou
+                ? <>{rotuloVisibilidade(m.visibilidadeRenda)} <Link to="/configuracoes?s=renda" className={styles.linkFicha}>mudar</Link></>
+                : renda?.mostrada
+                  ? <><Dinheiro valor={renda.recebido ?? 0} /> este mês{(renda.previsto ?? 0) > 0 && <span className={styles.dica}> · previsto <Dinheiro valor={renda.previsto ?? 0} /></span>}</>
+                  : m.visibilidadeRenda === VISIBILIDADE_RENDA.nada ? "Não compartilha" : "Só o peso na divisão"}
+            </dd>
           </div>
-        )}
+        </DadosFicha>
         {editando === "papel" && (
           <div className={styles.fichaForm}>
             <Campo rotulo="Sua relação com a família" erro={erroPapel}>
@@ -330,7 +359,6 @@ function Membro({ m, familia, meuId, aoMudar }: { m: MembroFamilia; familia: Fam
               <Botao variante="texto" perigo disabled={ocupado} onClick={() => setRemovendo(true)} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Remover</Botao>
             )}
             {sou && <Botao onClick={() => setEditando("papel")} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Minha relação</Botao>}
-            {sou && <Botao onClick={() => setEditando("renda")} icone={<Wallet size={15} strokeWidth={2.25} aria-hidden="true" />}>Minha renda</Botao>}
             {admin && !criador && !sou && m.papelPermissao !== PAPEL_PERMISSAO.admin && (
               <Botao disabled={ocupado} onClick={() => rodar(() => editarPermissao(familia.id, m.id, PAPEL_PERMISSAO.admin))}>Tornar admin</Botao>
             )}

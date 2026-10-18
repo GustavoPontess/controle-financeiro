@@ -17,6 +17,7 @@ public class FamiliasController : ControllerBase
     private readonly DependenteService _dependenteService;
     private readonly RateioService _rateioService;
     private readonly AcertoService _acertoService;
+    private readonly RendaService _rendaService;
 
     public FamiliasController(
         FamiliaService familiaService,
@@ -24,7 +25,8 @@ public class FamiliasController : ControllerBase
         DespesaCompartilhadaService despesaCompartilhada,
         DependenteService dependenteService,
         RateioService rateioService,
-        AcertoService acertoService)
+        AcertoService acertoService,
+        RendaService rendaService)
     {
         _familiaService = familiaService;
         _conviteService = conviteService;
@@ -32,6 +34,7 @@ public class FamiliasController : ControllerBase
         _dependenteService = dependenteService;
         _rateioService = rateioService;
         _acertoService = acertoService;
+        _rendaService = rendaService;
     }
 
     private Guid GetUserId()
@@ -241,14 +244,22 @@ public class FamiliasController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Define a renda mensal de um membro (usada no rateio proporcional).</summary>
-    [HttpPut("{id:guid}/membros/{membroId:guid}/renda")]
+    /// <summary>A própria pessoa escolhe o que a família vê da renda dela (nada, só o peso, o valor pra alguns ou pra todos).</summary>
+    [HttpPut("{id:guid}/membros/{membroId:guid}/renda-visibilidade")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> DefinirRenda(
-        Guid id, Guid membroId, [FromBody] DefinirRendaDto dto)
+    public async Task<IActionResult> DefinirVisibilidadeRenda(
+        Guid id, Guid membroId, [FromBody] DefinirVisibilidadeRendaDto dto)
     {
-        await _rateioService.DefinirRendaAsync(id, membroId, GetUserId(), dto.RendaMensal);
+        await _rendaService.DefinirVisibilidadeAsync(id, membroId, GetUserId(), dto);
         return NoContent();
+    }
+
+    /// <summary>Renda da casa no mês, calculada pra quem pede: só entra quem liberou o valor pra essa pessoa.</summary>
+    [HttpGet("{id:guid}/renda")]
+    [ProducesResponseType(typeof(RendaFamiliaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObterRenda(Guid id, [FromQuery] int mes, [FromQuery] int ano)
+    {
+        return Ok(await _rendaService.ObterRendaFamiliaAsync(id, GetUserId(), ano, mes));
     }
 
     /// <summary>Registra um acerto de contas entre dois membros da família.</summary>

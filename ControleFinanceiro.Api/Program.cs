@@ -148,6 +148,9 @@ builder.Services.AddScoped<RateioService>();
 // Issue #26 — Acerto de contas
 builder.Services.AddScoped<AcertoService>();
 
+// Renda de cada um (previsto × recebido) e o que a família vê dela
+builder.Services.AddScoped<RendaService>();
+
 // Issue #27 — Importação de extrato OFX/CSV
 builder.Services.AddScoped<ExtratoImportService>();
 builder.Services.AddScoped<ImportacaoService>();

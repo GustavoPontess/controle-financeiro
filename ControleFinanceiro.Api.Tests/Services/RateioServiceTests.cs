@@ -39,8 +39,17 @@ public class RateioServiceTests
         ctx.MembrosFamilia.Add(new MembroFamilia
         {
             Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = usuarioId,
-            Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true, RendaMensal = renda,
+            Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true,
         });
+        if (renda is { } r) DefinirRendaPrevista(ctx, usuarioId, r);
+        ctx.SaveChanges();
+    }
+
+    /// <summary>A renda que entra no peso do rateio proporcional é a PREVISTA do mês (variável esperada aqui,
+    /// sem conta fixa) — renda-e-visibilidade.md §2.3. Mês de maio de 2026, o mesmo dos balanços dos testes.</summary>
+    private static void DefinirRendaPrevista(AppDbContext ctx, Guid usuarioId, decimal renda)
+    {
+        ctx.RendasPrevistas.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = usuarioId, Ano = 2026, Mes = 5, VariavelEsperada = renda });
         ctx.SaveChanges();
     }
 
@@ -87,36 +96,6 @@ public class RateioServiceTests
 
         var familia = await ctx.Familias.FindAsync(familiaId);
         Assert.Equal(ModoRateio.Proporcional, familia!.ModoRateioPadrao);
-    }
-
-    // ── DefinirRendaAsync ──
-
-    [Fact]
-    public async Task DefinirRendaAsync_Negativa_LancaArgument()
-    {
-        var ctx = CreateContext();
-        var dono = SeedUsuario(ctx, "dono@test.com");
-        var familiaId = await SeedFamilia(ctx, dono);
-        var membroId = ctx.MembrosFamilia.First(m => m.FamiliaId == familiaId).Id;
-        var svc = new RateioService(ctx);
-
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.DefinirRendaAsync(familiaId, membroId, dono, -1m));
-    }
-
-    [Fact]
-    public async Task DefinirRendaAsync_Valida_AtualizaRenda()
-    {
-        var ctx = CreateContext();
-        var dono = SeedUsuario(ctx, "dono@test.com");
-        var familiaId = await SeedFamilia(ctx, dono);
-        var membroId = ctx.MembrosFamilia.First(m => m.FamiliaId == familiaId).Id;
-        var svc = new RateioService(ctx);
-
-        await svc.DefinirRendaAsync(familiaId, membroId, dono, 5000m);
-
-        var membro = await ctx.MembrosFamilia.FindAsync(membroId);
-        Assert.Equal(5000m, membro!.RendaMensal);
     }
 
     // ── DefinirRateioTransacaoAsync ──
@@ -252,9 +231,8 @@ public class RateioServiceTests
         var ana = SeedUsuario(ctx, "ana@test.com", "Ana");
         var bia = SeedUsuario(ctx, "bia@test.com", "Bia");
         var familiaId = await SeedFamilia(ctx, ana);
-        // Ana é membro admin já criado; define renda dela e adiciona Bia.
-        ctx.MembrosFamilia.First(m => m.UsuarioId == ana).RendaMensal = 3000m;
-        ctx.SaveChanges();
+        // Ana é membro admin já criado; define a renda prevista dela e adiciona Bia.
+        DefinirRendaPrevista(ctx, ana, 3000m);
         AddMembro(ctx, familiaId, bia, renda: 1000m);
 
         ctx.Familias.First(f => f.Id == familiaId).ModoRateioPadrao = ModoRateio.Proporcional;
