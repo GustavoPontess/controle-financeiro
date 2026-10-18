@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using ControleFinanceiro.Api.DTOs.Importacao;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,8 @@ public class PreviewUploadForm
 {
     public IFormFile Arquivo { get; set; } = null!;
     public Guid ContaId { get; set; }
+    /// <summary>CSV: as colunas que a pessoa escolheu, em JSON (<see cref="MapeamentoCsvDto"/>). Opcional.</summary>
+    public string? Mapeamento { get; set; }
 }
 
 [ApiController]
@@ -36,25 +39,54 @@ public class ImportacaoController : ControllerBase
         return id;
     }
 
-    /// <summary>Lê um extrato OFX/CSV e devolve a preview (sem salvar nada).</summary>
+    /// <summary>
+    /// Lê um extrato OFX/CSV e devolve a preview (sem salvar nada). CSV que não deu pra reconhecer volta com
+    /// <c>precisaMapear</c>, as colunas e uma amostra; a tela manda de novo com <c>mapeamento</c>.
+    /// </summary>
     [HttpPost("preview")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(PreviewImportacaoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Preview([FromForm] PreviewUploadForm form)
     {
         var conteudo = LerArquivo(form.Arquivo);
+        var mapeamento = LerMapeamento(form.Mapeamento);
         var preview = await _importacaoService.PreviewAsync(
-            form.ContaId, GetUserId(), form.Arquivo.FileName, conteudo);
+            form.ContaId, GetUserId(), form.Arquivo.FileName, conteudo, mapeamento);
         return Ok(preview);
     }
 
-    /// <summary>Cria as transações aprovadas pelo usuário na conta indicada.</summary>
+    /// <summary>
+    /// Cria as transações aprovadas pelo usuário na conta indicada, numa transação só. Exige o header
+    /// Idempotency-Key (uma por prévia): repetir não importa de novo.
+    /// </summary>
     [HttpPost("confirmar")]
     [ProducesResponseType(typeof(ResultadoImportacaoDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Confirmar([FromBody] ConfirmarImportacaoDto dto)
+    public async Task<IActionResult> Confirmar([FromBody] ConfirmarImportacaoDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
     {
-        var resultado = await _importacaoService.ConfirmarAsync(dto, GetUserId());
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para importar o extrato.");
+        var resultado = await _importacaoService.ConfirmarAsync(dto, GetUserId(), idempotencyKey);
         return Ok(resultado);
+    }
+
+    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+
+    private static MapeamentoCsvDto? LerMapeamento(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        if (json.Length > 500) throw new ArgumentException("Mapeamento inválido.");
+        try
+        {
+            var m = JsonSerializer.Deserialize<MapeamentoCsvDto>(json, Json) ?? throw new ArgumentException("Mapeamento inválido.");
+            int?[] colunas = { m.Data, m.Descricao, m.Valor, m.Entrada, m.Saida, m.Id };
+            if (colunas.Any(c => c is < 0 or > 200)) throw new ArgumentException("Mapeamento inválido.");
+            return m;
+        }
+        catch (JsonException)
+        {
+            throw new ArgumentException("Mapeamento inválido.");
+        }
     }
 
     /// <summary>Valida e lê o arquivo enviado. OFX brasileiro costuma vir em

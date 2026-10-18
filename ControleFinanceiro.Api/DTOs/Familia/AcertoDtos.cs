@@ -8,8 +8,8 @@ public record RegistrarAcertoDto(
     decimal Valor,
     int? Mes,
     int? Ano,
-    [property: MaxLength(1000)] string? Observacao,
-    [property: Required, MaxLength(100)] string IdempotencyKey);
+    [MaxLength(1000)] string? Observacao,
+    [Required, MaxLength(100)] string IdempotencyKey);
 
 public record AcertoContasDto(
     Guid Id,

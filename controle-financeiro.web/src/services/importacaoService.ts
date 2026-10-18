@@ -14,6 +14,7 @@ export const previewImportacao = async (
 export const confirmarImportacao = async (
   contaId: string, linhas: LinhaImportar[],
 ): Promise<ResultadoImportacao> => {
-  const res = await api.post("/importacao/confirmar", { contaId, linhas })
+  // O servidor exige Idempotency-Key desde 2026-10-16 (repetir não importa de novo).
+  const res = await api.post("/importacao/confirmar", { contaId, linhas }, { headers: { "Idempotency-Key": crypto.randomUUID() } })
   return res.data
 }

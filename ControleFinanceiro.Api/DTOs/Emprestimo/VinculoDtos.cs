@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ControleFinanceiro.Api.DTOs.Emprestimo;
 
-public record VincularEmprestimoDto([property: Required, EmailAddress, MaxLength(255)] string Email);
+public record VincularEmprestimoDto([Required, EmailAddress, MaxLength(255)] string Email);
 
 /// <summary>
 /// Link pronto pra credor copiar/compartilhar (WhatsApp, e-mail, etc — sem SMTP no projeto).

@@ -7,7 +7,8 @@ import { useCampo } from "./campoContexto"
 import g from "./gatilho.module.css"
 import styles from "./Selecao.module.css"
 
-export type OpcaoSelecao = { valor: string; rotulo: string }
+/** `detalhe`: um complemento apagado ao lado do rótulo (ex.: a coluna do arquivo com um exemplo, "A · 0,30"). */
+export type OpcaoSelecao = { valor: string; rotulo: string; detalhe?: string }
 
 const BUSCA_A_PARTIR_DE = 9
 
@@ -31,6 +32,10 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   const [ativo, setAtivo] = useState(0)
   const [busca, setBusca] = useState("")
   const [paraCima, setParaCima] = useState(false)
+  // Onde o painel fica NA TELA (position: fixed): assim nenhum pai que rola (tabela com rolagem lateral, caixa
+  // com overflow) corta a lista nem ganha barra de rolagem por causa dela (Importar extrato, 2026-10-16).
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null)
+  const painel = useRef<HTMLDivElement | null>(null)
   const raiz = useRef<HTMLDivElement | null>(null)
   const gatilho = useRef<HTMLButtonElement | null>(null)
   const lista = useRef<HTMLUListElement | null>(null)
@@ -57,10 +62,28 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   useLayoutEffect(() => {
     if (!aberto) return
     const r = gatilho.current?.getBoundingClientRect()
-    if (r) setParaCima(window.innerHeight - r.bottom < 300 && r.top > window.innerHeight - r.bottom)
-    if (comBusca) campoBusca.current?.focus()
-    else lista.current?.focus()
+    if (r) {
+      const cima = window.innerHeight - r.bottom < 300 && r.top > window.innerHeight - r.bottom
+      setParaCima(cima)
+      setPos(cima
+        ? { bottom: window.innerHeight - r.top + 6, left: r.left, width: r.width }
+        : { top: r.bottom + 6, left: r.left, width: r.width })
+    }
+    // preventScroll: com o painel fixo, focar rolaria os pais (e fecharia o painel pelo "rolou, fecha").
+    if (comBusca) campoBusca.current?.focus({ preventScroll: true })
+    else lista.current?.focus({ preventScroll: true })
   }, [aberto, comBusca])
+
+  // Painel preso na tela: se a página (ou um pai) rolar ou a janela mudar, ele ficaria solto, então fecha.
+  // A rolagem da própria lista não conta.
+  useEffect(() => {
+    if (!aberto) return
+    const rolou = (e: Event) => { if (!painel.current?.contains(e.target as Node)) fechar(false) }
+    const mudou = () => fechar(false)
+    window.addEventListener("scroll", rolou, true)
+    window.addEventListener("resize", mudou)
+    return () => { window.removeEventListener("scroll", rolou, true); window.removeEventListener("resize", mudou) }
+  }, [aberto])
 
   // Fecha no clique fora.
   useEffect(() => {
@@ -73,7 +96,13 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   // Mantém a opção ativa à vista ao navegar com o teclado.
   useEffect(() => {
     if (!aberto) return
-    lista.current?.querySelector<HTMLElement>(`[data-indice="${ativo}"]`)?.scrollIntoView({ block: "nearest" })
+    // Rola só a lista (scrollIntoView rolaria também a página e os pais).
+    const l = lista.current
+    const el = l?.querySelector<HTMLElement>(`[data-indice="${ativo}"]`)
+    if (!l || !el) return
+    const lr = l.getBoundingClientRect(), er = el.getBoundingClientRect()
+    if (er.top < lr.top) l.scrollTop -= lr.top - er.top
+    else if (er.bottom > lr.bottom) l.scrollTop += er.bottom - lr.bottom
   }, [ativo, aberto])
 
   useEffect(() => { setAtivo(0) }, [busca])
@@ -98,12 +127,13 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
         aria-describedby={inv && campo ? campo.erroId : undefined}
         data-invalido={inv ? "true" : undefined} data-vazio={escolhida ? undefined : "true"} disabled={desabilitado}
         onClick={() => (aberto ? fechar() : abrir())} onKeyDown={teclaNoGatilho}>
-        <span className={g.texto}>{escolhida?.rotulo ?? placeholder}</span>
+        <span className={g.texto}>{escolhida?.rotulo ?? placeholder}{escolhida?.detalhe && <>{" "}<span className={styles.detalhe}>· {escolhida.detalhe}</span></>}</span>
         <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={`${g.icone} ${styles.seta}`} data-aberto={aberto ? "true" : undefined} />
       </button>
 
       {aberto && (
-        <div className={`${g.painel} ${styles.painel}`} data-cima={paraCima ? "true" : undefined}>
+        <div ref={painel} className={`${g.painel} ${styles.painel}`} data-cima={paraCima ? "true" : undefined}
+          style={pos ? { position: "fixed", top: pos.top ?? "auto", bottom: pos.bottom ?? "auto", left: pos.left, right: "auto", width: Math.max(pos.width, 180) } : undefined}>
           {comBusca && (
             <label className={styles.busca}>
               <Search size={14} strokeWidth={2.25} aria-hidden="true" />
@@ -118,7 +148,7 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
               <li key={o.valor || "__vazio"} id={`${idLista}-${i}`} role="option" aria-selected={o.valor === valor}
                 data-indice={i} data-ativo={i === ativo ? "true" : undefined} className={styles.opcao}
                 onMouseEnter={() => setAtivo(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => escolher(o)}>
-                <span className={styles.opcaoTexto}>{o.rotulo}</span>
+                <span className={styles.opcaoTexto}>{o.rotulo}{o.detalhe && <>{" "}<span className={styles.detalhe}>· {o.detalhe}</span></>}</span>
                 {o.valor === valor && <Check size={15} strokeWidth={2.5} aria-hidden="true" className={styles.marca} />}
               </li>
             ))}

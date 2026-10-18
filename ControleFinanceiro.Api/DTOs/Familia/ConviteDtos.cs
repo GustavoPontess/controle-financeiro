@@ -4,8 +4,8 @@ using ControleFinanceiro.Api.Domain.Enums;
 namespace ControleFinanceiro.Api.DTOs.Familia;
 
 public record CriarConviteDto(
-    [property: Required, EmailAddress, MaxLength(255)] string Email,
-    [property: Required, MaxLength(30)] string Papel,
+    [Required, EmailAddress, MaxLength(255)] string Email,
+    [Required, MaxLength(30)] string Papel,
     PapelFamilia PapelPermissao = PapelFamilia.Membro);
 
 public record ConviteFamiliaDto(

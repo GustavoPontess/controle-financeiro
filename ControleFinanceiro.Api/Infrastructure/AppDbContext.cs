@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
     public DbSet<ParcelaTransacao> ParcelasTransacao => Set<ParcelaTransacao>();
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
+    public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -244,6 +245,21 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RegistroIdempotencia>()
             .HasIndex(r => new { r.UsuarioId, r.Operacao, r.Chave })
             .IsUnique();
+
+        // ModeloImportacao: um por conta e cabeçalho; some com a conta e com o usuário (só índices de coluna).
+        modelBuilder.Entity<ModeloImportacao>()
+            .HasIndex(m => new { m.UsuarioId, m.ContaId, m.Assinatura })
+            .IsUnique();
+        modelBuilder.Entity<ModeloImportacao>()
+            .HasOne<Conta>()
+            .WithMany()
+            .HasForeignKey(m => m.ContaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ModeloImportacao>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // RegistroIdempotencia → Usuario (Cascade: chaves somem com o usuário na purga LGPD).
         modelBuilder.Entity<RegistroIdempotencia>()

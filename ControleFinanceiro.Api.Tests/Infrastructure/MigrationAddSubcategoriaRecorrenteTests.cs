@@ -20,13 +20,14 @@ public class MigrationAddSubcategoriaRecorrenteTests
             .Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDaAddMeioPagamentoRecorrente()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_AddSubcategoriaRecorrente", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddMeioPagamentoRecorrente", ids[^2]);
+        var i = ids.FindIndex(x => x.EndsWith("_AddSubcategoriaRecorrente"));
+        Assert.True(i > 0);
+        Assert.EndsWith("_AddMeioPagamentoRecorrente", ids[i - 1]);
     }
 
     [Fact]
