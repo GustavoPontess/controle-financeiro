@@ -9,7 +9,7 @@ import type { AcertoContas, BalancoFamilia } from "../types/Familia"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { GrupoFicha, ListaFicha } from "../componentes/ListaFicha"
 import NavegadorMes, { nomeDoPeriodo } from "../componentes/NavegadorMes"
-import { Acerto, Alerta, Equilibrio, Saldos, papeisDe, useFamilia } from "./FamiliaPecas"
+import { Acerto, Alerta, Equilibrio, Saldos, fotosDe, papeisDe, useFamilia } from "./FamiliaPecas"
 import styles from "./Familia.module.css"
 
 export default function FamiliaEntreVoces() {
@@ -39,6 +39,7 @@ export default function FamiliaEntreVoces() {
   const aqui = `/familias/${detalhe.id}/entre-voces`
   const mesNome = nomeDoPeriodo(periodo)
   const novo = () => navigate(`/familias/${detalhe.id}/acertos/novo`, { state: { voltarPara: aqui } })
+  const fotos = fotosDe(detalhe)
 
   return (
     <div className={styles.pagina}>
@@ -49,7 +50,7 @@ export default function FamiliaEntreVoces() {
           : balanco.total === 0 && balanco.saldos.every((s) => s.saldo === 0) ? <p className={styles.vazioMes}>Nenhuma despesa compartilhada em {mesNome.toLowerCase()}.</p>
           : (
             <div className={styles.mes}>
-              <Saldos balanco={balanco} meuId={meuId} />
+              <Saldos balanco={balanco} meuId={meuId} fotos={fotos} />
               <Equilibrio balanco={balanco} familiaId={detalhe.id} podeAgir={podeAgir} voltarPara={aqui} />
             </div>
           )}
@@ -60,7 +61,7 @@ export default function FamiliaEntreVoces() {
           : (
             <ListaFicha rotulo="Entre vocês">
               <GrupoFicha rotulo={mesNome}>
-                {acertos.map((a) => <Acerto key={a.id} a={a} familiaId={detalhe.id} podeAgir={podeAgir} aoMudar={recarregar} />)}
+                {acertos.map((a) => <Acerto key={a.id} a={a} familiaId={detalhe.id} podeAgir={podeAgir} aoMudar={recarregar} foto={fotos[a.deUsuarioId]} />)}
               </GrupoFicha>
             </ListaFicha>
           )}

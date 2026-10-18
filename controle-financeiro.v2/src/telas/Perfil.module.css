@@ -1,3 +1,10 @@
+/* Foto: o rosto grande à esquerda, trocar/remover ao lado; o seletor de arquivo fica escondido. */
+.foto { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--v2-linha); }
+.fotoGrande { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-lg); font-weight: 700; flex-shrink: 0; }
+.fotoAcoes { display: flex; align-items: center; gap: 8px; }
+.arquivo { display: none; }
+.erroFoto { flex-basis: 100%; margin: 0; font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-negativo); }
+
 /* Dados do perfil: rótulo à esquerda, valor à direita, uma linha por dado */
 .dados { margin: 0; display: flex; flex-direction: column; }
 .dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }

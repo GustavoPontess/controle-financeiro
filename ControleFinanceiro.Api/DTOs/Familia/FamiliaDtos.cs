@@ -33,7 +33,8 @@ public record MembroFamiliaDto(
     DateTime EntrouEm,
     PapelFamilia PapelPermissao,
     VisibilidadeRenda VisibilidadeRenda,
-    List<Guid>? RendaVisivelPara);
+    List<Guid>? RendaVisivelPara,
+    DateTime? FotoEm = null);
 
 /// <summary>A própria pessoa escolhe o que a família vê da renda dela. <c>Para</c> só vale com ValorParaAlguns.</summary>
 public record DefinirVisibilidadeRendaDto(VisibilidadeRenda Visibilidade, List<Guid>? Para);

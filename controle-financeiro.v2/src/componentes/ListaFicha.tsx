@@ -3,6 +3,7 @@
 // o abre/fecha moram aqui (memória "tela só do seu assunto": nada de página de detalhe pra cadastro).
 import type { ReactNode } from "react"
 import { ChevronDown } from "lucide-react"
+import Avatar from "./Avatar"
 import { RodapeFormulario } from "./Formulario"
 import styles from "./ListaFicha.module.css"
 
@@ -64,9 +65,10 @@ export function AcoesFicha({ children }: { children: ReactNode }) {
   return <div className={styles.acoes}><RodapeFormulario>{children}</RodapeFormulario></div>
 }
 
-/** Bolinha com a inicial (quando a linha não tem logo). `destaque` pinta com o acento (ex.: o que é da pessoa). */
-export function InicialFicha({ texto, destaque }: { texto: string; destaque?: boolean }) {
-  return <span className={styles.inicial} data-destaque={destaque || undefined} aria-hidden="true">{texto.trim().charAt(0).toUpperCase() || "?"}</span>
+/** Bolinha com a inicial (quando a linha não tem logo), ou a foto de perfil quando a pessoa tem.
+ *  `destaque` pinta com o acento (ex.: o que é da pessoa). */
+export function InicialFicha({ texto, destaque, foto }: { texto: string; destaque?: boolean; foto?: string }) {
+  return <Avatar className={styles.inicial} destaque={destaque} foto={foto} texto={texto.trim().charAt(0).toUpperCase() || "?"} />
 }
 
 /** Linha de "nada aqui" dentro de um grupo. */

@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
     public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
+    public DbSet<FotoPerfil> FotosPerfil => Set<FotoPerfil>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -260,6 +261,14 @@ public class AppDbContext : DbContext
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // FotoPerfil → Usuario (1:1, chave = UsuarioId, Cascade: dado pessoal, some com a pessoa).
+        modelBuilder.Entity<FotoPerfil>().HasKey(f => f.UsuarioId);
+        modelBuilder.Entity<FotoPerfil>()
+            .HasOne(f => f.Usuario)
+            .WithOne()
+            .HasForeignKey<FotoPerfil>(f => f.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // RendaPrevista → Usuario (Cascade: dado pessoal, some com a pessoa). Uma linha por mês.

@@ -14,6 +14,16 @@ const contaService = {
   atualizarPerfil: (nome: string, dataNascimento: string | null) =>
     api.put<Usuario>("/auth/profile", { nome, dataNascimento }, { skipErrorToast: true }).then((r) => r.data),
 
+  /** Troca a própria foto (o servidor redesenha: WebP 256x256, sem metadados). Devolve a nova versão. */
+  enviarFoto: (arquivo: File) => {
+    const corpo = new FormData()
+    corpo.append("arquivo", arquivo)
+    return api.put<{ fotoEm: string }>("/usuarios/me/foto", corpo, { skipErrorToast: true }).then((r) => r.data.fotoEm)
+  },
+
+  /** Remove a própria foto (volta a inicial). */
+  removerFoto: () => api.delete("/usuarios/me/foto", { skipErrorToast: true }).then(() => undefined),
+
   /** Passo 1: confirma a senha; sem MFA dispara o PIN por e-mail. Retorna o 2º fator a pedir. */
   enviarCodigoExclusao: (senhaAtual: string) =>
     api.post<{ metodo: MetodoExclusao }>("/auth/conta/excluir/enviar-codigo", { senhaAtual }, { skipErrorToast: true })

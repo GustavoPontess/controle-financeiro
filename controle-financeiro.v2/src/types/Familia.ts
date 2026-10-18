@@ -22,6 +22,8 @@ export interface MembroFamilia {
   visibilidadeRenda: 0 | 1 | 2 | 3
   /** Quem vê o valor (com "pra alguns"). Só vem pro PRÓPRIO membro; pros outros é null. */
   rendaVisivelPara: string[] | null
+  /** Versão da foto de perfil (null = sem foto). */
+  fotoEm?: string | null
 }
 
 // ── Modos de rateio (#25) ──

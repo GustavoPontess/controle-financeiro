@@ -6,6 +6,8 @@ export interface Usuario {
   nome: string
   /** ISO ("1990-05-10T00:00:00") ou null. */
   dataNascimento?: string | null
+  /** Versão da foto de perfil (null = sem foto). */
+  fotoEm?: string | null
   isAdmin?: boolean
 }
 

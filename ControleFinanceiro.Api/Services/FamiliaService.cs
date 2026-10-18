@@ -193,7 +193,8 @@ public class FamiliaService
     private static MembroFamiliaDto ParaDto(MembroFamilia m, Guid quemVe) =>
         new(m.Id, m.UsuarioId, m.Usuario!.Nome, m.Usuario.Email, m.Papel, m.EntrouEm,
             m.PapelPermissao, m.VisibilidadeRenda,
-            m.UsuarioId == quemVe ? m.RendaVisivelPara.ToList() : null);
+            m.UsuarioId == quemVe ? m.RendaVisivelPara.ToList() : null,
+            m.Usuario.FotoPerfilEm);
 
     private async Task<Familia> BuscarFamiliaAsync(Guid familiaId)
     {

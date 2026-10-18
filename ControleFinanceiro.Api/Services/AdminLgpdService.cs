@@ -56,6 +56,7 @@ public class AdminLgpdService
     public async Task<ExportacaoUsuarioDto> MontarExportacaoAsync(Guid usuarioId)
     {
         var u = await BuscarOuFalharAsync(usuarioId);
+        var foto = await _context.FotosPerfil.AsNoTracking().FirstOrDefaultAsync(f => f.UsuarioId == usuarioId);
 
         return new ExportacaoUsuarioDto
         {
@@ -66,6 +67,7 @@ public class AdminLgpdService
                 Email = u.Email,
                 Nome = u.Nome,
                 DataNascimento = u.DataNascimento,
+                FotoPerfil = foto is null ? null : $"data:{foto.TipoConteudo};base64,{Convert.ToBase64String(foto.Dados)}",
                 Status = u.Status,
                 MfaAtivo = u.MfaAtivo,
                 OnboardingConcluido = u.OnboardingConcluido,
@@ -343,6 +345,9 @@ public class AdminLgpdService
         var subcats = await _context.Subcategorias.Where(s => s.UsuarioId == id).ToListAsync();
         _context.Subcategorias.RemoveRange(subcats);
         await _context.SaveChangesAsync();
+
+        // 7b. Foto de perfil (o cascade do banco também apaga; explícito pra não depender dele).
+        _context.FotosPerfil.RemoveRange(await _context.FotosPerfil.Where(f => f.UsuarioId == id).ToListAsync());
 
         // 8. Usuário — o cascade cuida do resto (Conta+Compartilhamento, Orcamento, Meta, Notificacao,
         //    RefreshToken, PasswordResetToken, MfaBackupCode, MfaLoginChallenge, Relacionamento próprio,

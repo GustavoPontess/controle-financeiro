@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 const recarregar = vi.fn(async () => {})
 vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ usuario: { id: "u1", nome: "Ana Teste", email: "ana@teste.com", dataNascimento: "1990-05-10T00:00:00" }, recarregar }) }))
-vi.mock("../../services/minhaContaService", () => ({ default: { atualizarPerfil: vi.fn(async () => ({})) } }))
+vi.mock("../../services/minhaContaService", () => ({ default: { atualizarPerfil: vi.fn(async () => ({})), enviarFoto: vi.fn(async () => "2026-10-18T19:00:00"), removerFoto: vi.fn(async () => {}) } }))
 import contaService from "../../services/minhaContaService"
 import Perfil from "../../telas/Perfil"
 
@@ -37,6 +37,26 @@ describe("Perfil (Configurações)", () => {
     expect(recarregar).toHaveBeenCalled()
     expect(await screen.findByText("Dados salvos.")).toBeInTheDocument()
     expect(screen.queryByRole("textbox", { name: "Nome" })).not.toBeInTheDocument()
+  })
+
+  it("foto: só JPG/PNG/WebP até 8 MB (erro na hora, sem chamar o servidor); foto válida sobe e recarrega a conta", async () => {
+    render(<Perfil />)
+    const seletor = screen.getByLabelText("Escolher foto de perfil") as HTMLInputElement
+    const enviar = (f: File) => fireEvent.change(seletor, { target: { files: [f] } })
+
+    enviar(new File(["<svg/>"], "x.svg", { type: "image/svg+xml" }))
+    expect(await screen.findByText("Use uma foto em JPG, PNG ou WebP.")).toBeInTheDocument()
+    const grande = new File(["x"], "g.jpg", { type: "image/jpeg" })
+    Object.defineProperty(grande, "size", { value: 9 * 1024 * 1024 })
+    enviar(grande)
+    expect(await screen.findByText("A foto pode ter até 8 MB.")).toBeInTheDocument()
+    expect(contaService.enviarFoto).not.toHaveBeenCalled()
+
+    const boa = new File(["jpg"], "eu.jpg", { type: "image/jpeg" })
+    enviar(boa)
+    await vi.waitFor(() => expect(contaService.enviarFoto).toHaveBeenCalledWith(boa))
+    await vi.waitFor(() => expect(recarregar).toHaveBeenCalled())
+    expect(await screen.findByRole("button", { name: "Adicionar foto" })).toBeInTheDocument()
   })
 
   it("cancelar fecha sem salvar; data vazia vai como nula", async () => {

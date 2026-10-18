@@ -25,6 +25,8 @@ public class PerfilExportadoDto
     public string Email { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
+    /// <summary>A foto de perfil como data URL ("data:image/webp;base64,..."), ou null.</summary>
+    public string? FotoPerfil { get; set; }
     public StatusUsuario Status { get; set; }
     public bool MfaAtivo { get; set; }
     public bool OnboardingConcluido { get; set; }

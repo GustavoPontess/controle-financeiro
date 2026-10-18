@@ -856,6 +856,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
+            FotoEm = usuario.FotoPerfilEm,
             Status = usuario.Status,
             CriadoEm = usuario.CriadoEm,
             IsAdmin = usuario.IsAdmin
@@ -890,6 +891,7 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
+            FotoEm = usuario.FotoPerfilEm,
             Status = usuario.Status,
             CriadoEm = usuario.CriadoEm,
             IsAdmin = usuario.IsAdmin

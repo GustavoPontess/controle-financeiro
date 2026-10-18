@@ -1,10 +1,12 @@
-// Perfil (Configurações → Perfil): nome e data de nascimento editáveis na própria caixa; e-mail só leitura
-// (trocar e-mail não existe ainda). Salvar recarrega /auth/me, então o nome no menu muda na hora.
-import { useState, type FormEvent } from "react"
+// Perfil (Configurações → Perfil): a foto (trocar/remover; quem divide família com a pessoa vê), nome e data
+// de nascimento editáveis na própria caixa; e-mail só leitura (trocar e-mail não existe ainda). Salvar recarrega
+// /auth/me, então o nome e a foto no menu mudam na hora.
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { Check } from "lucide-react"
 import { useAuth } from "../auth/useAuth"
 import { mensagemDeErro } from "../api/cliente"
 import contaService from "../services/minhaContaService"
+import Avatar, { urlFoto } from "../componentes/Avatar"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -14,6 +16,8 @@ import { dataBR } from "../utils/dateTime"
 import styles from "./Perfil.module.css"
 
 export const NOME_MAX = 200
+export const FOTO_MAX_BYTES = 8 * 1024 * 1024
+const FOTO_TIPOS = ["image/jpeg", "image/png", "image/webp"]
 type Erros = Partial<Record<"nome" | "nascimento", string>>
 
 export default function Perfil() {
@@ -26,6 +30,30 @@ export default function Perfil() {
   const [ok, setOk] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const hoje = new Date().toISOString().slice(0, 10)
+  const arquivo = useRef<HTMLInputElement>(null)
+  const [enviandoFoto, setEnviandoFoto] = useState(false)
+  const [erroFoto, setErroFoto] = useState<string | null>(null)
+  const temFoto = !!usuario?.fotoEm
+  const iniciais = (usuario?.nome ?? "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"
+
+  const escolherFoto = async (ev: ChangeEvent<HTMLInputElement>) => {
+    const f = ev.target.files?.[0]
+    ev.target.value = ""
+    if (!f) return
+    setErroFoto(null); setOk(null)
+    if (!FOTO_TIPOS.includes(f.type)) { setErroFoto("Use uma foto em JPG, PNG ou WebP."); return }
+    if (f.size > FOTO_MAX_BYTES) { setErroFoto("A foto pode ter até 8 MB."); return }
+    setEnviandoFoto(true)
+    try { await contaService.enviarFoto(f); await recarregar() }
+    catch (err) { setErroFoto(mensagemDeErro(err)) }
+    setEnviandoFoto(false)
+  }
+  const removerFoto = async () => {
+    setErroFoto(null); setOk(null); setEnviandoFoto(true)
+    try { await contaService.removerFoto(); await recarregar() }
+    catch (err) { setErroFoto(mensagemDeErro(err)) }
+    setEnviandoFoto(false)
+  }
   const nascimentoAtual = usuario?.dataNascimento ? usuario.dataNascimento.slice(0, 10) : ""
 
   const abrir = () => { setNome(usuario?.nome ?? ""); setNascimento(nascimentoAtual); setErros({}); setErro(null); setOk(null); setEditando(true) }
@@ -51,6 +79,15 @@ export default function Perfil() {
 
   return (
     <Bloco titulo="Seus dados" acao={editando ? undefined : "Editar"} aoClicar={abrir}>
+      <div className={styles.foto}>
+        <Avatar className={styles.fotoGrande} foto={urlFoto(usuario?.id, usuario?.fotoEm)} texto={iniciais} />
+        <div className={styles.fotoAcoes}>
+          <Botao disabled={enviandoFoto} onClick={() => arquivo.current?.click()}>{enviandoFoto ? "Enviando…" : temFoto ? "Trocar foto" : "Adicionar foto"}</Botao>
+          {temFoto && <Botao variante="texto" perigo disabled={enviandoFoto} onClick={() => void removerFoto()}>Remover</Botao>}
+        </div>
+        <input ref={arquivo} type="file" accept={FOTO_TIPOS.join(",")} className={styles.arquivo} aria-label="Escolher foto de perfil" onChange={(e) => void escolherFoto(e)} />
+        {erroFoto && <p className={styles.erroFoto} role="alert">{erroFoto}</p>}
+      </div>
       {ok && !editando && <p className={styles.ok} role="status"><Check size={15} strokeWidth={2.5} aria-hidden="true" /> {ok}</p>}
       {!editando ? (
         <dl className={styles.dados}>

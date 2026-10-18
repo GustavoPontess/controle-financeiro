@@ -920,6 +920,28 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("FinancialEventLogs");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.FotoPerfil", b =>
+                {
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AtualizadaEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<byte[]>("Dados")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("TipoConteudo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("UsuarioId");
+
+                    b.ToTable("FotosPerfil");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MembroFamilia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2048,6 +2070,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("FalhasLoginConsecutivas")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FotoPerfilEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 
@@ -2382,6 +2407,17 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("CartaoCredito");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.FotoPerfil", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithOne()
+                        .HasForeignKey("ControleFinanceiro.Api.Domain.Entities.FotoPerfil", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MembroFamilia", b =>

@@ -150,6 +150,7 @@ builder.Services.AddScoped<AcertoService>();
 
 // Renda de cada um (previsto × recebido) e o que a família vê dela
 builder.Services.AddScoped<RendaService>();
+builder.Services.AddScoped<FotoPerfilService>();
 
 // Issue #27 — Importação de extrato OFX/CSV
 builder.Services.AddScoped<ExtratoImportService>();
@@ -247,6 +248,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+
+    // Foto de perfil: reprocessar imagem custa CPU; por pessoa (cai pro IP sem login).
+    options.AddPolicy("foto-perfil", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 10,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
             }));
 
