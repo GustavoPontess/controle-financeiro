@@ -27,6 +27,7 @@ import EditarCategoria from "./telas/EditarCategoria"
 import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
 import ImportarExtrato from "./telas/ImportarExtrato"
+import Reconciliacao from "./telas/Reconciliacao"
 import NovaConta from "./telas/NovaConta"
 import EditarConta from "./telas/EditarConta"
 import EncerrarConta from "./telas/EncerrarConta"
@@ -39,7 +40,6 @@ import EmConstrucao from "./telas/EmConstrucao"
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
   ["/relatorios", "Relatórios", "/reports"],
-  ["/reconciliacao", "Reconciliação", "/reconciliacao"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
   ["/familias", "Famílias", "/familias"],
   ["/metas", "Metas", "/metas"],
@@ -71,6 +71,7 @@ export default function App() {
         <Route path="/bancos" element={<Bancos />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/importar" element={<ImportarExtrato />} />
+        <Route path="/reconciliacao" element={<Reconciliacao />} />
         <Route path="/categorias/nova" element={<EditarCategoria />} />
         <Route path="/categorias/:id/editar" element={<EditarCategoria />} />
         <Route path="/categorias/:id/excluir" element={<ExcluirCategoria />} />
