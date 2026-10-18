@@ -1,6 +1,7 @@
-// Minha renda (Configurações › Renda): o mês da pessoa como FATO (o que caiu em renda) e o que ela esperava
+// Renda (/renda, menu principal): o mês da pessoa como FATO (o que caiu em renda) e o que ela esperava
 // (contas fixas de receita + a variável que ela digita e muda quando quiser); e, por família, o que a família vê
-// disso: nada, só o peso, o valor pra quem ela marcar, ou pra todos. Só a própria pessoa mexe aqui.
+// disso: nada, só o peso, o valor pra quem ela marcar, ou pra todos. Só a própria pessoa mexe aqui. É página do
+// dia a dia, não configuração (o Gustavo mandou tirar de Configurações, 2026-10-18).
 // Spec: docs/features/familia/renda-e-visibilidade.md.
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
@@ -22,7 +23,7 @@ import Selecao from "../componentes/Selecao"
 import { nomeDoMes, primeiroNome } from "../dominio/familia"
 import { dataBR } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
-import styles from "./MinhaRenda.module.css"
+import styles from "./Renda.module.css"
 
 export const NIVEIS_VISIBILIDADE: { valor: VisibilidadeRenda; rotulo: string; detalhe: string }[] = [
   { valor: VISIBILIDADE_RENDA.nada, rotulo: "Nada", detalhe: "nem o peso; na divisão proporcional você entra com parte igual" },
@@ -32,7 +33,7 @@ export const NIVEIS_VISIBILIDADE: { valor: VisibilidadeRenda; rotulo: string; de
 ]
 export const rotuloVisibilidade = (v: VisibilidadeRenda) => NIVEIS_VISIBILIDADE.find((n) => n.valor === v)?.rotulo ?? "Só o peso"
 
-export default function MinhaRenda() {
+export default function Renda() {
   const hoje = new Date()
   const [periodo, setPeriodo] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
   const [renda, setRenda] = useState<RendaMes | null>(null)

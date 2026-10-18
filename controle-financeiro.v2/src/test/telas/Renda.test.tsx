@@ -28,11 +28,11 @@ vi.mock("../../services/familiaService", () => ({
     ] })),
 }))
 import { definirVariavelEsperada, definirVisibilidadeRenda } from "../../services/rendaService"
-import MinhaRenda from "../../telas/MinhaRenda"
+import Renda from "../../telas/Renda"
 
-const renderizar = () => render(<MemoryRouter><MinhaRenda /></MemoryRouter>)
+const renderizar = () => render(<MemoryRouter><Renda /></MemoryRouter>)
 
-describe("Minha renda", () => {
+describe("Renda", () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it("mostra previsto × recebido, de onde vem o previsto (fixas + variável herdada) e as entradas do mês", async () => {

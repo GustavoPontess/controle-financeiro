@@ -22,7 +22,7 @@ import { mensagemDeErro } from "../api/cliente"
 import type { AcertoContas, BalancoFamilia, ConviteFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
 import type { RendaFamilia } from "../types/Renda"
 import { VISIBILIDADE_RENDA } from "../types/Renda"
-import { rotuloVisibilidade } from "./MinhaRenda"
+import { rotuloVisibilidade } from "./Renda"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -335,7 +335,7 @@ function Membro({ m, familia, meuId, renda, aoMudar }: {
             <dt>Renda</dt>
             <dd>
               {sou
-                ? <>{rotuloVisibilidade(m.visibilidadeRenda)} <Link to="/configuracoes?s=renda" className={styles.linkFicha}>mudar</Link></>
+                ? <>{rotuloVisibilidade(m.visibilidadeRenda)} <Link to="/renda" className={styles.linkFicha}>mudar</Link></>
                 : renda?.mostrada
                   ? <><Dinheiro valor={renda.recebido ?? 0} /> este mês{(renda.previsto ?? 0) > 0 && <span className={styles.dica}> · previsto <Dinheiro valor={renda.previsto ?? 0} /></span>}</>
                   : m.visibilidadeRenda === VISIBILIDADE_RENDA.nada ? "Não compartilha" : "Só o peso na divisão"}

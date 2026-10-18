@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, BarChart3, Bell, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen,
-  Plus, Receipt, Repeat, Scale, Settings, Tags, Target, Upload, Users, Eye, EyeOff,
+  Plus, Receipt, Repeat, Scale, Settings, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
@@ -21,6 +21,7 @@ const PRINCIPAL = [
   { para: "/transacoes", rotulo: "Transações", icone: Receipt },
   { para: "/cartoes", rotulo: "Cartões", icone: CreditCard },
   { para: "/contas-fixas", rotulo: "Contas fixas", icone: Repeat },
+  { para: "/renda", rotulo: "Renda", icone: Wallet },
   { para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 },
   { para: "/reconciliacao", rotulo: "Reconciliação", icone: Scale },
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },

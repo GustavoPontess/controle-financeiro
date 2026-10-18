@@ -65,7 +65,7 @@ const renderizar = (inicio = "/familias/f1") => render(
       <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
       <Route path="/familias/:id/acertos/novo" element={<Acerto />} />
       <Route path="/transacoes/:id" element={<p>lançamento</p>} />
-      <Route path="/configuracoes" element={<p>configurações</p>} />
+      <Route path="/renda" element={<p>página de renda</p>} />
     </Routes>
   </MemoryRouter>,
 )
@@ -137,10 +137,10 @@ describe("Família (página)", () => {
     await userEvent.click(linha("Quem está", /Marina Dev/)) // fecha
     await userEvent.click(linha("Quem está", /Gabriel Dev/))
     expect(screen.queryByRole("button", { name: "Remover" })).not.toBeInTheDocument()
-    // A minha renda não se edita aqui: a ficha diz o nível e leva pra Configurações › Minha renda.
+    // A minha renda não se edita aqui: a ficha diz o nível e leva pra página Renda.
     expect(screen.getByText("Só o peso")).toBeInTheDocument()
     await userEvent.click(screen.getByRole("link", { name: "mudar" }))
-    expect(screen.getByText("configurações")).toBeInTheDocument()
+    expect(screen.getByText("página de renda")).toBeInTheDocument()
   })
 
   it("ficha do outro membro: mostra a renda só quando a pessoa liberou pra mim; a renda da casa some sem ninguém liberado", async () => {

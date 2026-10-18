@@ -28,6 +28,7 @@ import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
 import ImportarExtrato from "./telas/ImportarExtrato"
 import Reconciliacao from "./telas/Reconciliacao"
+import Renda from "./telas/Renda"
 import Familias from "./telas/Familias"
 import NovaFamilia from "./telas/NovaFamilia"
 import Familia from "./telas/Familia"
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/reconciliacao" element={<Reconciliacao />} />
+        <Route path="/renda" element={<Renda />} />
         <Route path="/familias" element={<Familias />} />
         <Route path="/familias/nova" element={<NovaFamilia />} />
         <Route path="/familias/:id" element={<Familia />} />

@@ -65,7 +65,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <Bloco titulo="Renda do mês" acao="Minha renda" para="/configuracoes?s=renda">
+      <Bloco titulo="Renda do mês" acao="Ver renda" para="/renda">
         {!renda ? <Esqueleto linhas={1} altura={28} /> : (
           <div className={styles.renda}>
             <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Previsto</span><Dinheiro valor={renda.previsto} className={styles.rendaValor} /></div>
@@ -76,7 +76,7 @@ export default function Dashboard() {
             </div>
             <span className={styles.rendaDetalhe}>
               {renda.previsto === 0
-                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses deu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga o que espera receber no mês em Minha renda.")
+                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses deu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga o que espera receber no mês em Renda.")
                 : <>Contas fixas <Dinheiro valor={renda.fixas} /> · variável esperada <Dinheiro valor={renda.variavelEsperada} /></>}
             </span>
           </div>
