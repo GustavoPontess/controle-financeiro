@@ -24,6 +24,7 @@ Quase toda resposta sai do mesmo cálculo. Ele mora num lugar só, como `RegrasF
 | Renda que ainda vai cair no mês | receitas previstas do mês |
 | Contas fixas que ainda vão cair | `Recorrente` → previsões do mês |
 | Faturas a pagar | `RegrasFinanceiras` (restante de fatura) |
+| Parcelas já compradas (próximos meses) | `RegrasFinanceiras.ParcelasPorMesAsync` (parcela no mês dela, com juros) |
 | Gasto típico por categoria | `GastosPorCategoriaDoMesAsync`, média dos últimos 3 meses |
 | O que as metas pedem | `MetaService` (por mês de cada meta) |
 | Saldo de hoje | `SaldosDasContasAsync` |
@@ -46,6 +47,7 @@ Inspirada no medidor de contexto do Claude Code: o total da barra é a renda do 
 - Embaixo, a resposta em uma frase e a ação: "Saiu mais do que entrou: R$ 2.700,70 acima da renda. O maior peso é Sem categoria (R$ 4.312,13)" → Classificar lançamentos · Ver onde cortar.
 - Mora no Início (é a resposta principal do mês), na Renda e no check-up de Relatórios. Vem do mesmo cálculo do mês.
 - Metas entram como um pedaço ("Guardado nas metas") quando a pessoa guarda no mês.
+- **Fatura e parcelas (decisões do Gustavo, 2026-10-19):** a compra no cartão conta como gasto no mês em que foi feita; parcela, no mês dela (nunca o total no mês da compra). A fatura a pagar aparece à parte ("Faturas a pagar este mês", o lado do caixa), fora do gasto e do livre. O que já está comprado pros próximos meses também aparece à parte ("Parcelas já compradas pros próximos meses": 3 meses e "depois, até …"), na ficha do limite da categoria e no "essa meta cabe?" (a folga desconta a média das parcelas no prazo; o gasto normal é sem parcelas, pra não contar duas vezes).
 
 Números do mockup = a conta do Gustavo em outubro/2026 (banco local).
 

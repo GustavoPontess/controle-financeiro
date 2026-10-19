@@ -537,6 +537,32 @@ public static class RegrasFinanceiras
         return resultado;
     }
 
+    /// <summary>Parcelas de compras parceladas num mês (e categoria): o valor devido (com juros).</summary>
+    public sealed record ParcelasDoMes(int Ano, int Mes, Guid? CategoriaId, decimal Valor);
+
+    /// <summary>
+    /// Parcelas por mês e categoria, de <paramref name="de"/> (dia 1) por <paramref name="meses"/> meses. Parcela
+    /// cancelada e parcelamento cancelado saem. <paramref name="soPendentes"/>: só as que ainda não foram pagas (o que
+    /// já está comprometido pra frente; a antecipada já saiu). Sem ele, a mesma base do gasto do mês
+    /// (<see cref="GastosPorCategoriaDoMesAsync"/>), pra separar "gasto normal" de "parcela".
+    /// </summary>
+    public static async Task<List<ParcelasDoMes>> ParcelasPorMesAsync(AppDbContext context, Guid usuarioId, DateTime de, int meses, bool soPendentes)
+    {
+        var inicio = new DateTime(de.Year, de.Month, 1);
+        var fim = inicio.AddMonths(meses);
+        var query = context.ParcelasTransacao.AsNoTracking()
+            .Where(p => p.Parcelamento!.CriadoPor == usuarioId && p.Parcelamento.Ativo && p.Status != StatusParcela.Cancelada
+                        && p.DataVencimento >= inicio && p.DataVencimento < fim);
+        if (soPendentes)
+            query = query.Where(p => p.Status == StatusParcela.Pendente);
+        var linhas = await query
+            .GroupBy(p => new { p.DataVencimento.Year, p.DataVencimento.Month, p.Parcelamento!.CategoriaId })
+            .Select(g => new { g.Key.Year, g.Key.Month, g.Key.CategoriaId, Valor = g.Sum(p => p.ValorComJuros ?? p.Valor) })
+            .ToListAsync();
+        return linhas.Select(l => new ParcelasDoMes(l.Year, l.Month, l.CategoriaId, l.Valor))
+            .OrderBy(l => l.Ano).ThenBy(l => l.Mes).ToList();
+    }
+
     /// <summary>Uma fatura a pagar: quanto cobra no total, quanto já foi pago e o que falta.</summary>
     public sealed record FaturaAPagar(Guid FaturaId, Guid CartaoId, string Cartao, DateTime DataInicio, DateTime DataFechamento,
         DateTime DataVencimento, decimal Total, decimal Pago, decimal Restante, bool Atrasada);

@@ -34,12 +34,16 @@ public class ViabilidadeMetaService
         var renda = await _renda.ObterMesAsync(usuarioId, hoje.Year, hoje.Month);
         decimal? rendaEsperada = renda.Previsto > 0 ? renda.Previsto : renda.SugestaoMedia3Meses;
 
+        // Gasto normal = o que saiu nos 3 meses antes SEM as parcelas (essas entram à parte, pelo que já está comprado).
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
+        var parcelasPassadas = await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, inicioMes.AddMonths(-3), 3, soPendentes: false);
         var meses3 = new List<decimal>();
         for (var i = 1; i <= 3; i++)
         {
-            var m = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-i);
+            var m = inicioMes.AddMonths(-i);
             var gasto = (await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(_context, usuarioId, m.Year, m.Month)).Values.Sum(g => g.Gasto);
-            if (gasto > 0) meses3.Add(gasto);
+            var parcelas = parcelasPassadas.Where(p => p.Ano == m.Year && p.Mes == m.Month).Sum(p => p.Valor);
+            if (gasto > 0) meses3.Add(gasto - parcelas);
         }
         decimal? gastoTipico = meses3.Count > 0 ? Math.Round(meses3.Average(), 2) : null;
 
@@ -50,7 +54,11 @@ public class ViabilidadeMetaService
 
         var meses = dataLimite is null ? (int?)null : Math.Max(1, MetaService.MesesAte(dataLimite, hoje)!.Value);
         decimal? porMes = meses is { } n ? Math.Ceiling(falta / n * 100m) / 100m : null;
-        decimal? folga = rendaEsperada is { } r && gastoTipico is { } g ? r - g - outras : null;
+        // Parcelas já compradas: a média por mês no período da meta (até o prazo; sem prazo, os próximos 12 meses).
+        var horizonte = meses ?? 12;
+        var parcelasPorMes = Math.Round((await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, inicioMes, horizonte, soPendentes: false))
+            .Sum(p => p.Valor) / horizonte, 2);
+        decimal? folga = rendaEsperada is { } r && gastoTipico is { } g ? r - g - parcelasPorMes - outras : null;
         // Guardando a folga todo mês, em quantos meses chega (contando este). Mais de 50 anos não vira data.
         int? mesesPraChegar = folga is > 0 && falta > 0 ? (int)Math.Min(int.MaxValue, Math.Ceiling(falta / folga.Value)) : null;
         var longeDemais = mesesPraChegar > MaxMesesPraChegar;
@@ -58,8 +66,8 @@ public class ViabilidadeMetaService
             ? new DateTime(hoje.Year, hoje.Month, 1).AddMonths(mp - 1)
             : null;
 
-        return new ViabilidadeMetaDto(porMes, meses, folga, rendaEsperada, gastoTipico, outras, prazoQueCabe,
-            Responder(porMes, meses, folga, rendaEsperada, gastoTipico, outras, prazoQueCabe, longeDemais, dataLimite));
+        return new ViabilidadeMetaDto(porMes, meses, folga, rendaEsperada, gastoTipico, outras, parcelasPorMes, prazoQueCabe,
+            Responder(porMes, meses, folga, rendaEsperada, gastoTipico, outras, prazoQueCabe, longeDemais, dataLimite, parcelasPorMes));
     }
 
     /// <summary>50 anos: daí pra frente a resposta não vira data.</summary>
@@ -70,7 +78,7 @@ public class ViabilidadeMetaService
     private static string Uns(decimal v) => $"uns {Reais.Formatar(Math.Floor(v / 10m) * 10m)}";
 
     public static RespostaDto Responder(decimal? porMes, int? meses, decimal? folga, decimal? renda, decimal? gastoTipico, decimal outras,
-        DateTime? prazoQueCabe, bool longeDemais, DateTime? prazo)
+        DateTime? prazoQueCabe, bool longeDemais, DateTime? prazo, decimal parcelas = 0m)
     {
         var temGasto = gastoTipico is not null;
         var pede = porMes is { } p ? $"Precisa guardar {Reais.Formatar(p)} por mês" : null;
@@ -89,17 +97,23 @@ public class ViabilidadeMetaService
                 : pede + ". Pra saber se cabe, lance os gastos de pelo menos um mês.", []);
         if (folga is not > 0)
         {
-            // O que está apertando: o gasto normal sozinho, ou as outras metas em cima do que sobra dele.
-            var porque = gastoTipico >= renda
-                ? $"o seu gasto normal ({Reais.Formatar(gastoTipico!.Value)} por mês) já {(gastoTipico > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)})."
-                : $"depois do gasto normal sobram {Uns(renda.Value - gastoTipico!.Value)}, e as outras metas já pedem {Reais.Formatar(outras)} por mês.";
-            return new RespostaDto("negativo", (pede is null ? "Hoje" : pede + ", e hoje") + " não sobra nada: " + porque,
-                [new AcaoDto(gastoTipico >= renda ? "Ver os limites" : "Ver as metas", gastoTipico >= renda ? "/limites" : "/metas")]);
+            // O que está apertando: o gasto normal sozinho, as parcelas já compradas em cima dele, ou as outras metas.
+            var g = gastoTipico!.Value;
+            var (porque, acao) = g >= renda
+                ? ($"o seu gasto normal ({Reais.Formatar(g)} por mês) já {(g > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)}).",
+                   new AcaoDto("Ver os limites", "/limites"))
+                : g + parcelas >= renda
+                ? ($"depois do gasto normal sobram {Uns(renda.Value - g)}, e as parcelas já compradas levam {Reais.Formatar(parcelas)} por mês.",
+                   new AcaoDto("Ver os cartões", "/cartoes"))
+                : ($"depois do gasto normal{(parcelas > 0 ? " e das parcelas" : "")} sobram {Uns(renda.Value - g - parcelas)}, e as outras metas já pedem {Reais.Formatar(outras)} por mês.",
+                   new AcaoDto("Ver as metas", "/metas"));
+            return new RespostaDto("negativo", (pede is null ? "Hoje" : pede + ", e hoje") + " não sobra nada: " + porque, [acao]);
         }
         if (porMes is null)
             return new RespostaDto("positivo", chega ?? "Guardando o que sobra, chega lá logo.", []);
         if (porMes <= folga)
-            return new RespostaDto("positivo", $"{pede}. Cabe: sobram {Uns(folga.Value)} por mês depois dos gastos e das outras metas.", []);
+            return new RespostaDto("positivo",
+                $"{pede}. Cabe: sobram {Uns(folga.Value)} por mês depois dos gastos{(parcelas > 0 ? ", das parcelas" : "")} e das outras metas.", []);
         return new RespostaDto("alerta",
             $"{pede}, mas sobram {Uns(folga.Value)}. Até {MesAno(prazo!.Value)} você junta {Uns(folga.Value * meses!.Value)}." +
             (longeDemais ? " Nesse ritmo levaria mais de 50 anos." : prazoQueCabe is { } q ? $" Nesse ritmo chega lá em {MesAno(q)}." : ""), []);

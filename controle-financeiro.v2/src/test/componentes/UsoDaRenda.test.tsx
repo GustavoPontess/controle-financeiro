@@ -19,6 +19,10 @@ const base: DinheiroDoMes = {
     { faturaId: "f1", cartaoId: "nubank", cartao: "Nubank", dataInicio: "2026-09-03T00:00:00", dataFechamento: "2026-10-02T00:00:00", dataVencimento: "2026-10-10T00:00:00", total: 1200, pago: 200, restante: 1000, atrasada: false },
   ],
   faturasAPagar: 1150,
+  parcelasFuturas: {
+    total: 4000, ateAno: 2027, ateMes: 2,
+    porMes: [{ ano: 2026, mes: 11, valor: 1000 }, { ano: 2026, mes: 12, valor: 1000 }, { ano: 2027, mes: 1, valor: 1000 }, { ano: 2027, mes: 2, valor: 1000 }],
+  },
 }
 const Onde = () => <p>em {useLocation().pathname}</p>
 const renderizar = (dados: DinheiroDoMes) => render(
@@ -54,6 +58,13 @@ describe("UsoDaRenda", () => {
     expect(nubank).toHaveTextContent("R$ 1.000,00 de R$ 1.200,00")
     expect(within(nubank).getByRole("link")).toHaveAttribute("href", "/cartoes/nubank")
     expect(screen.getByText(/Faturas a pagar este mês/)).toHaveTextContent("R$ 1.150,00")
+
+    // Parcelas já compradas: os 3 próximos meses e o resto junto.
+    const parcelas = screen.getByRole("list", { name: "Parcelas já compradas pros próximos meses" })
+    expect(within(parcelas).getAllByRole("listitem").map((l) => l.textContent?.replace(/\u00a0/g, " "))).toEqual([
+      "novembro de 2026R$ 1.000,00", "dezembro de 2026R$ 1.000,00", "janeiro de 2027R$ 1.000,00", "depois, até fevereiro de 2027R$ 1.000,00",
+    ])
+    expect(screen.getByText(/Parcelas já compradas pros próximos meses/, { selector: "span" })).toHaveTextContent("R$ 4.000,00")
   })
 
   it("a resposta leva pra ação", async () => {
@@ -69,7 +80,10 @@ describe("UsoDaRenda", () => {
       ...base, rendaRecebida: 1000, rendaEsperada: 3000, rendaBase: 3000, jaSaiu: 1000, aindaVemTotal: 99.9, livre: 1900.1, percentualUsado: 36.7,
       jaSaiuPorCategoria: [{ categoriaId: "moradia", nome: "Moradia", valor: 1000, percentualDaRenda: 33.3 }],
       resposta: { tom: "positivo", texto: "Fecha o mês com R$ 1.900,10 sobrando, contando o que ainda entra e sai.", acoes: [] },
+      faturas: [], faturasAPagar: 0, parcelasFuturas: { total: 0, ateAno: null, ateMes: null, porMes: [] },
     })
+    expect(screen.queryByText(/Parcelas já compradas/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Faturas a pagar/)).not.toBeInTheDocument()
     expect(screen.getByText("Livre")).toBeInTheDocument()
     expect(screen.queryByText("sua renda")).not.toBeInTheDocument()
     expect(screen.getByText(/Recebeu/)).toHaveTextContent("Recebeu R$ 1.000,00 de R$ 3.000,00 esperados")

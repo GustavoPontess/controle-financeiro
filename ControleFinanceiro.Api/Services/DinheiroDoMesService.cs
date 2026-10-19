@@ -14,6 +14,8 @@ public class DinheiroDoMesService
 {
     /// <summary>Pedaços com nome na barra; o resto vira "Outras".</summary>
     public const int MaxPartes = 5;
+    /// <summary>Até quantos meses pra frente olhar as parcelas já compradas (5 anos).</summary>
+    public const int MesesDeParcelas = 60;
     /// <summary>Abaixo disto do que entra, "sobra pouco".</summary>
     private const decimal FolgaApertada = 0.10m;
 
@@ -58,7 +60,15 @@ public class DinheiroDoMesService
 
         return new DinheiroDoMesDto(ano, mes, renda.Previsto, renda.Recebido, baseRenda, jaSaiu, vem, livre, Pct(jaSaiu + vem),
             partes, aindaVem, Responder(baseRenda, jaSaiu, vem, livre, porCategoria.Count > 0 ? (Nome(porCategoria[0].Id), porCategoria[0].Valor, porCategoria[0].Id is null) : null),
-            faturas, faturas.Sum(f => f.Restante));
+            faturas, faturas.Sum(f => f.Restante), await ParcelasFuturasAsync(usuarioId, ano, mes));
+    }
+
+    /// <summary>As parcelas ainda não pagas dos meses DEPOIS deste (as do mês já contam no que saiu).</summary>
+    private async Task<ParcelasFuturasDto> ParcelasFuturasAsync(Guid usuarioId, int ano, int mes)
+    {
+        var linhas = await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, new DateTime(ano, mes, 1).AddMonths(1), MesesDeParcelas, soPendentes: true);
+        var porMes = linhas.GroupBy(l => (l.Ano, l.Mes)).Select(g => new ParcelaFuturaDto(g.Key.Ano, g.Key.Mes, g.Sum(l => l.Valor))).ToList();
+        return new ParcelasFuturasDto(porMes.Sum(p => p.Valor), porMes.LastOrDefault()?.Ano, porMes.LastOrDefault()?.Mes, porMes);
     }
 
     /// <summary>A pergunta do mês: "vai dar?". Uma frase com o número e o que dá pra fazer.</summary>

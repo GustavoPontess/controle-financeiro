@@ -26,7 +26,7 @@ vi.mock("../../services/metaService", () => ({
   resgatarDaMeta: vi.fn(async () => meta({})),
   concluirMeta: vi.fn(async () => meta({})),
   getViabilidadeMeta: vi.fn(async () => ({
-    porMes: 1666.67, meses: 3, folga: 200, rendaEsperada: 3000, gastoTipico: 2000, outrasMetasPorMes: 800, prazoQueCabe: "2028-10-01",
+    porMes: 1666.67, meses: 3, folga: 200, rendaEsperada: 3000, gastoTipico: 2000, outrasMetasPorMes: 800, parcelasPorMes: 0, prazoQueCabe: "2028-10-01",
     resposta: { tom: "alerta", texto: "Precisa guardar R$ 1.666,67 por mês, mas sobram uns R$ 200,00.", acoes: [] },
   })),
 }))

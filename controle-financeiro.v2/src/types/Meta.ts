@@ -57,6 +57,8 @@ export interface ViabilidadeMeta {
   rendaEsperada: number | null
   gastoTipico: number | null
   outrasMetasPorMes: number
+  /** Parcelas já compradas: média por mês no período da meta. */
+  parcelasPorMes: number
   /** Mês (ISO, dia 1) em que dá pra chegar guardando a folga, quando o prazo não cabe ou não tem prazo. */
   prazoQueCabe: string | null
   resposta: { tom: "positivo" | "alerta" | "negativo" | "neutro"; texto: string; acoes: { rotulo: string; para: string }[] }

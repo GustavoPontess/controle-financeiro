@@ -164,6 +164,44 @@ public class DinheiroDoMesServiceTests
         Assert.Equal(2500m, mes.Livre);       // nem no livre (as compras já contaram quando foram feitas)
     }
 
+    /// <summary>Compra parcelada: uma parcela por mês informado (ano 2026), cada uma com o status dado.</summary>
+    private static void Parcelado(AppDbContext ctx, Guid u, Guid? categoria, decimal parcela, params (int Mes, StatusParcela Status)[] parcelas)
+    {
+        var pc = new Parcelamento
+        {
+            Id = Guid.NewGuid(), CriadoPor = u, Descricao = "Geladeira", DataCompra = new DateTime(2026, parcelas[0].Mes, 5),
+            ValorTotal = parcela * parcelas.Length, QuantidadeParcelas = parcelas.Length, CartaoCreditoId = Guid.NewGuid(), CategoriaId = categoria,
+        };
+        ctx.Parcelamentos.Add(pc);
+        var n = 1;
+        foreach (var (mes, status) in parcelas)
+            ctx.ParcelasTransacao.Add(new ParcelaTransacao
+            {
+                Id = Guid.NewGuid(), ParcelamentoId = pc.Id, Numero = n++, QuantidadeTotal = parcelas.Length,
+                DataVencimento = mes > 12 ? new DateTime(2027, mes - 12, 5) : new DateTime(2026, mes, 5),
+                Valor = parcela, FaturaId = Guid.NewGuid(), Status = status, CriadoPor = u,
+            });
+        ctx.SaveChanges();
+    }
+
+    [Fact]
+    public async Task ParcelasJaCompradas_PraFrente_SoAsNaoPagas_ComTotalEAteQuando()
+    {
+        var ctx = CreateContext();
+        var u = Usuario(ctx);
+        RendaEsperada(ctx, u, 3000m);
+        var casa = Categoria(ctx, "Casa");
+        // Geladeira em 4x de R$ 1.000: outubro (conta no mês), novembro e dezembro a pagar, janeiro antecipada (já paga).
+        Parcelado(ctx, u, casa, 1000m, (10, StatusParcela.Pendente), (11, StatusParcela.Pendente), (12, StatusParcela.Pendente), (13, StatusParcela.Paga));
+
+        var mes = await Servico(ctx).CalcularAsync(u, 2026, 10);
+
+        Assert.Equal(1000m, mes.JaSaiu); // a de outubro já conta no mês
+        Assert.Equal((2000m, (int?)2026, (int?)12), (mes.ParcelasFuturas.Total, mes.ParcelasFuturas.AteAno, mes.ParcelasFuturas.AteMes));
+        Assert.Equal([(11, 1000m), (12, 1000m)], mes.ParcelasFuturas.PorMes.Select(p => (p.Mes, p.Valor)));
+        Assert.Equal(2000m, mes.Livre); // as dos próximos meses não comem a renda deste
+    }
+
     [Theory]
     [InlineData(900, 200, "alerta", "Com o que ainda vem (R$ 200,00 em contas), o mês passa R$ 100,00 da renda.")]
     [InlineData(950, 0, "alerta", "Sobra pouco: R$ 50,00 até o fim do mês, contando o que ainda entra e sai.")]

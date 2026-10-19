@@ -6,7 +6,8 @@ import type { LimiteDoMes, LimitesDoMes } from "../../types/Limite"
 
 const limite = (extra: Partial<LimiteDoMes>): LimiteDoMes => ({
   categoriaId: "mercado", categoria: "Mercado", limite: 1200, gasto: 870, previsto: 0, sobra: 330, percentual: 72.5,
-  situacao: "ok", desdeAno: 2026, desdeMes: 8, percentualAlerta: 80, aindaVem: [], resposta: null, ...extra,
+  situacao: "ok", desdeAno: 2026, desdeMes: 8, percentualAlerta: 80, aindaVem: [], resposta: null,
+  parcelasFuturas: 0, parcelasAteAno: null, parcelasAteMes: null, ...extra,
 })
 let mes: LimitesDoMes
 vi.mock("../../services/limiteService", () => ({
@@ -51,6 +52,7 @@ describe("Limites", () => {
           categoriaId: "lazer", categoria: "Lazer", limite: 400, gasto: 340, sobra: 60, percentual: 85, situacao: "vai-passar", previsto: 90,
           aindaVem: [{ transacaoId: "t1", contaFixaId: "cf-streaming", descricao: "Streaming", data: "2026-10-22", categoriaId: "lazer", categoria: "Lazer", valor: 90 }],
           resposta: "Ainda vem Streaming (dia 22, R$ 90,00). Contando isso, passa R$ 30,00 do limite.",
+          parcelasFuturas: 800, parcelasAteAno: 2027, parcelasAteMes: 1,
         }),
         limite({}),
       ],
@@ -84,6 +86,7 @@ describe("Limites", () => {
     expect(within(vem).getByRole("link")).toHaveTextContent("Streaming · dia 22")
     expect(screen.getByText("Ainda vem Streaming (dia 22, R$ 90,00). Contando isso, passa R$ 30,00 do limite.")).toBeInTheDocument()
     expect(screen.queryByText("Ainda vai cair")).not.toBeInTheDocument()
+    expect(screen.getByText("Parcelas já compradas pros próximos meses").nextSibling).toHaveTextContent("R$ 800,00 até janeiro de 2027")
   })
 
   it("Novo limite e Pôr limite levam pro formulário no mesmo mês", async () => {
