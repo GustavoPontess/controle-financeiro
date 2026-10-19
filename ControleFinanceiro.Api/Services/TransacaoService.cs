@@ -115,6 +115,11 @@ namespace ControleFinanceiro.Api.Services
                 && transacao.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
+            // Compra no cartão só entra se o limite disponível cobre (mesma trava da compra parcelada).
+            if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue
+                && transacao.Tipo == TipoTransacao.Despesa && transacao.StatusTransacao == StatusTransacao.Executado)
+                await RegrasFinanceiras.ExigirLimiteDisponivelAsync(_context, transacao.CartaoCreditoId.Value, usuarioId, transacao.Valor);
+
             // Transação de crédito → associar à fatura correspondente (invariante 2)
             if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue)
             {
@@ -514,6 +519,16 @@ namespace ControleFinanceiro.Api.Services
                 await DonoRecursos.ExigirCategoriaAsync(_context, dados.CategoriaId.Value, usuarioId);
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
+
+            // Trava de limite: o que a edição põe A MAIS no cartão (no mesmo cartão, só o aumento; vindo de conta ou
+            // de outro cartão, o valor todo) tem que caber no disponível. Baixar o valor ou tirar do cartão sempre passa.
+            if (creditoNovo && dados.Tipo == TipoTransacao.Despesa)
+            {
+                var jaUsava = transacao.UsadoComoCredito && transacao.CartaoCreditoId == cartaoNovo
+                    && transacao.Tipo == TipoTransacao.Despesa && transacao.StatusTransacao == StatusTransacao.Executado;
+                await RegrasFinanceiras.ExigirLimiteDisponivelAsync(_context, cartaoNovo!.Value, usuarioId,
+                    jaUsava ? dados.Valor - transacao.Valor : dados.Valor);
+            }
 
             // Fatura de destino: no mesmo cartão a compra fica na fatura atual enquanto a data nova cai no período
             // dela (dado antigo com período fora do padrão não é mexido à toa); fora do período, ou em outro cartão,

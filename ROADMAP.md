@@ -58,7 +58,7 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 > ✅ **Compra parcelada de verdade + Transações em duas visões (2026-10-19, `fix/v2-parcelado-de-verdade`; Gustavo: "isso mesmo pode fazer", "Dois modos, como o Organizze"):** o formulário de transação (e a edição que vira parcelado) cria um `Parcelamento` (`ParcelamentoService.CriarDoLancamentoAsync`), nunca mais N lançamentos soltos; o fluxo antigo saiu. Transações ganhou **Saldo | Gastos**: Saldo = o extrato de caixa de sempre; Gastos = o que a pessoa gastou na data em que gastou (conta e cartão; compra parcelada uma vez, com o total, abrindo o parcelamento; sem pagamento de fatura nem transferência). Os grupos antigos do banco local ficaram como estão.
 
-> 🟡 **Decidir (2026-10-19): limite do cartão bloqueia registrar compra parcelada.** O parcelamento recusa se o limite disponível do app não cobre ("Limite insuficiente"); compra à vista no cartão não confere. Como a compra já aconteceu no banco, talvez seja melhor avisar em vez de bloquear. Perguntar ao Gustavo.
+> ✅ **Trava de limite do cartão também na compra à vista (Gustavo, 2026-10-19: "não tem compra nenhuma que aconteceu no banco, à vista também tem que ter essa trava"):** `RegrasFinanceiras.ExigirLimiteDisponivelAsync` (regra única) no criar à vista e na edição (só o que aumenta no cartão); a compra parcelada já travava. Fora: conta fixa no cartão (nasce pelo job) e importação de extrato.
 
 > 🔵 **P3 (dado local, 2026-10-19):** no banco local, os 19 "Pagamento de fatura" do extrato do Gustavo estão gravados como despesa comum (sem ligação com a fatura), então contam como gasto (cartão da renda, limites, Transações › Gastos). Reimportar ou ter uma ação "isso foi pagamento da fatura" na transação.
 

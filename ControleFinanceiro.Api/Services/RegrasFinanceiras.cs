@@ -483,6 +483,27 @@ public static class RegrasFinanceiras
     public static async Task<decimal> LimiteUsadoDoCartaoAsync(AppDbContext context, Guid cartaoId, Guid usuarioId) =>
         (await LimitesUsadosDosCartoesAsync(context, new[] { cartaoId }, usuarioId))[cartaoId];
 
+    public static string MensagemLimiteInsuficiente(decimal precisa, decimal disponivel) =>
+        $"Limite insuficiente. Precisa de {Reais.Formatar(precisa)}, disponível {Reais.Formatar(disponivel)}.";
+
+    /// <summary>
+    /// Trava de limite do cartão (decisão do Gustavo 2026-10-19: o app é registro manual, então a compra só entra
+    /// se o limite disponível cobre, à vista ou parcelada). <paramref name="valorNovo"/> = o que a compra passa a
+    /// usar do limite (na edição, só o que aumentou). Limite sem valor cadastrado conta como 0, como no parcelamento.
+    /// Fora: conta fixa no cartão (a ocorrência nasce pelo job, não dá pra recusar) e importação de extrato.
+    /// </summary>
+    public static async Task ExigirLimiteDisponivelAsync(AppDbContext context, Guid cartaoId, Guid usuarioId, decimal valorNovo)
+    {
+        if (valorNovo <= 0) return;
+        var limiteTotal = await context.CartoesCredito
+            .Where(c => c.Id == cartaoId && c.CriadoPor == usuarioId)
+            .Select(c => c.LimiteTotal)
+            .FirstOrDefaultAsync() ?? 0m;
+        var disponivel = LimiteDisponivel(limiteTotal, await LimiteUsadoDoCartaoAsync(context, cartaoId, usuarioId));
+        if (disponivel < valorNovo)
+            throw new InvalidOperationException(MensagemLimiteInsuficiente(valorNovo, disponivel));
+    }
+
     // ── Gasto do mês por categoria ───────────────────────────────────────────
 
     /// <summary>O que foi gasto (efetivado) e o que ainda está previsto numa categoria no mês.</summary>

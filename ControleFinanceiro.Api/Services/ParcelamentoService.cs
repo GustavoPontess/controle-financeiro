@@ -294,8 +294,7 @@ public class ParcelamentoService
         var limiteAtual = await _limiteCalc.CalcularAsync(dto.CartaoCreditoId, usuarioId);
         if (limiteAtual.LimiteDisponivel < valorBloquear)
             throw new InvalidOperationException(
-                $"Limite insuficiente. Precisa de {Reais.Formatar(valorBloquear)}, " +
-                $"disponível {Reais.Formatar(limiteAtual.LimiteDisponivel)}.");
+                RegrasFinanceiras.MensagemLimiteInsuficiente(valorBloquear, limiteAtual.LimiteDisponivel));
 
         // 9. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
         var correlationId = Guid.NewGuid();
