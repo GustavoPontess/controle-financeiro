@@ -32,6 +32,12 @@ public class MetasController : ControllerBase
     public async Task<IActionResult> Viabilidade([FromQuery] decimal valorAlvo, [FromQuery] DateTime? dataLimite, [FromQuery] Guid? metaId) =>
         Ok(await _viabilidade.CalcularAsync(GetUserId(), valorAlvo, dataLimite, metaId));
 
+    /// <summary>"As metas juntas cabem?": o que as metas em andamento pedem por mês × a folga do mês, com a frase.</summary>
+    [HttpGet("viabilidade/todas")]
+    [ProducesResponseType(typeof(ViabilidadeDasMetasDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ViabilidadeDasMetas() =>
+        Ok(await _viabilidade.DasMetasAsync(GetUserId()));
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier);

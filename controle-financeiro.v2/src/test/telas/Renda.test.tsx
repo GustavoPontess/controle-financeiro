@@ -18,7 +18,16 @@ vi.mock("../../services/rendaService", () => ({
   definirRendaPrevista: vi.fn(async (_a: number, _m: number, f: number, v: number) => ({ ...renda, fixaEsperada: f, variavelEsperada: v, previsto: f + v, declaradoNoMes: true })),
   limparRendaPrevista: vi.fn(async () => ({ ...base, declaradoNoMes: false })),
 }))
+vi.mock("../../services/dinheiroDoMesService", () => ({
+  getDinheiroDoMes: vi.fn(async () => ({
+    ano: 2026, mes: 10, rendaEsperada: 4200, rendaRecebida: 3400, rendaBase: 4200, jaSaiu: 3000, aindaVemTotal: 0, livre: 1200, percentualUsado: 71.4,
+    jaSaiuPorCategoria: [{ categoriaId: "moradia", nome: "Moradia", valor: 3000, percentualDaRenda: 71.4 }],
+    aindaVem: [], resposta: { tom: "positivo", texto: "Fecha o mês com R$ 1.200,00 sobrando.", acoes: [] },
+    faturas: [], faturasAPagar: 0, parcelasFuturas: { total: 0, ateAno: null, ateMes: null, porMes: [] },
+  })),
+}))
 import { definirRendaPrevista, limparRendaPrevista } from "../../services/rendaService"
+import { getDinheiroDoMes } from "../../services/dinheiroDoMesService"
 import Renda from "../../telas/Renda"
 
 const renderizar = () => render(<MemoryRouter><Renda /></MemoryRouter>)
@@ -63,5 +72,22 @@ describe("Renda", () => {
     expect(screen.getByText(/caiu em média/)).toHaveTextContent("3.900,00")
     await userEvent.click(screen.getByRole("button", { name: "Usar como esperado" }))
     expect(definirRendaPrevista).toHaveBeenCalledWith(2026, expect.any(Number), 3900, 0)
+  })
+})
+
+describe("Renda: pra onde vai a renda", () => {
+  beforeEach(() => { vi.clearAllMocks(); renda = base })
+
+  it("mostra o cartão da renda do mês e refaz quando a pessoa muda o que espera receber", async () => {
+    renderizar()
+    expect(await screen.findByText("Pra onde vai a renda")).toBeInTheDocument()
+    expect(await screen.findByText(/Fecha o mês com R\$\s1\.200,00 sobrando\./)).toBeInTheDocument()
+    expect(getDinheiroDoMes).toHaveBeenCalledTimes(1)
+
+    const fixa = screen.getByRole("textbox", { name: "Fixa (salário, aposentadoria, benefício)" })
+    await userEvent.clear(fixa)
+    await userEvent.type(fixa, "350000")
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    await vi.waitFor(() => expect(getDinheiroDoMes).toHaveBeenCalledTimes(2))
   })
 })

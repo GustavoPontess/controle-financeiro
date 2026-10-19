@@ -25,6 +25,11 @@ vi.mock("../../services/metaService", () => ({
   guardarNaMeta: vi.fn(async () => meta({})),
   resgatarDaMeta: vi.fn(async () => meta({})),
   concluirMeta: vi.fn(async () => meta({})),
+  getViabilidadeDasMetas: vi.fn(async () => ({
+    pedemPorMes: 2800, folga: 1000,
+    resposta: { tom: "alerta", texto: "As metas pedem R$ 2.800,00 por mês, mas sobram uns R$ 1.000,00. Pra caber, estique o prazo de Entrada do apê pra março de 2029.",
+      acoes: [{ rotulo: "Ajustar Entrada do apê", para: "/metas/m1/editar" }] },
+  })),
   getViabilidadeMeta: vi.fn(async () => ({
     porMes: 1666.67, meses: 3, folga: 200, rendaEsperada: 3000, gastoTipico: 2000, outrasMetasPorMes: 800, parcelasPorMes: 0, prazoQueCabe: "2028-10-01",
     resposta: { tom: "alerta", texto: "Precisa guardar R$ 1.666,67 por mês, mas sobram uns R$ 200,00.", acoes: [] },
@@ -231,5 +236,16 @@ describe("Metas (caixinhas)", () => {
     await user.click(screen.getByRole("button", { name: /Resgatar tudo/ }))
     await user.click(screen.getByRole("button", { name: "Resgatar" }))
     expect(resgatarDaMeta).toHaveBeenCalledWith("m1", "c1", 5000, expect.any(String), expect.any(String))
+  })
+})
+
+describe("Metas: as metas juntas cabem?", () => {
+  beforeEach(() => { vi.clearAllMocks(); metas = [meta({})]; contas = [] })
+
+  it("a lista responde com o que as metas pedem × a folga e leva pra ajustar o prazo da que mais pede", async () => {
+    renderizar("/metas", { lista: true })
+    expect(await screen.findByText(/As metas pedem R\$\s2\.800,00 por mês, mas sobram/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Ajustar Entrada do apê" }))
+    expect(await screen.findByRole("heading", { name: /Editar meta|Entrada do apê/ })).toBeInTheDocument()
   })
 })

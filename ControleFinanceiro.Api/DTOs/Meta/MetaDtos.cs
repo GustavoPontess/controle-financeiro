@@ -64,6 +64,13 @@ public record ConcluirMetaDto(Guid ContaId, DateOnly? Data = null);
 /// quando falta renda ou gasto pra saber). <c>PrazoQueCabe</c>: o mês em que dá pra chegar
 /// guardando a folga (quando o prazo não cabe ou não tem prazo). <c>Resposta</c>: a frase.
 /// </summary>
+/// <summary>
+/// "As metas juntas cabem?" (lista de Metas): <c>PedemPorMes</c> = soma do que as metas em andamento pedem por mês;
+/// <c>Folga</c> = renda esperada − gasto normal − parcelas já compradas (null quando falta renda ou gasto pra saber);
+/// <c>Resposta</c> = a frase (null quando nenhuma meta pede nada por mês).
+/// </summary>
+public record ViabilidadeDasMetasDto(decimal PedemPorMes, decimal? Folga, ControleFinanceiro.Api.DTOs.DinheiroDoMes.RespostaDto? Resposta);
+
 public record ViabilidadeMetaDto(
     decimal? PorMes,
     int? Meses,
