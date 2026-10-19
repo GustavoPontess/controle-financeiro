@@ -133,6 +133,12 @@ public class Transacao
     /// extrato importado sem a fatura). Marcado pela importação. Fora de relatórios de P&amp;L.</summary>
     public bool EhPixNoCredito { get; set; }
 
+    /// <summary>true se esta Transacao é dinheiro de EMPRÉSTIMO: o que saiu ao emprestar, o que entrou ao pegar, e o
+    /// que voltou ou foi devolvido depois (criado ou ligado pelo <c>EmprestimoService</c>). Mexe no saldo, mas NÃO é
+    /// receita/despesa: o dinheiro vai e volta, como uma transferência (decisão do Gustavo, 2026-10-19). Fora do
+    /// resultado (<c>RegrasFinanceiras.EntraNoResultado</c>): gasto do mês, limites, renda, Entrou/Saiu.</summary>
+    public bool EhEmprestimo { get; set; }
+
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;
 

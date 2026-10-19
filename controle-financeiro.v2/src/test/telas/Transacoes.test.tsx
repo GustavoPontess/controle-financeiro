@@ -67,3 +67,14 @@ describe("Transações: visões Saldo e Gastos", () => {
     expect(linha.valor).toBe(1500)
   })
 })
+
+describe("Transações: dinheiro de empréstimo", () => {
+  it("leva a etiqueta Empréstimo (mexe no saldo, fora do mês)", () => {
+    const linha = linhaDoLancamento({
+      id: "t1", descricao: "Empréstimo: Conserto do carro", valor: 1800, tipo: 1, categoriaId: "c1", data: "2026-10-19",
+      contaNome: "Itaú", ehEmprestimo: true, statusTransacao: 1,
+    })
+    render(<>{linha.etiqueta}</>)
+    expect(screen.getByText("Empréstimo")).toBeInTheDocument()
+  })
+})

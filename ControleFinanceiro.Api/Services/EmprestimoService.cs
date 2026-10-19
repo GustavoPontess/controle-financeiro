@@ -239,6 +239,7 @@ public class EmprestimoService(
             if (jaVinculada)
                 throw new InvalidOperationException("Essa transação já está vinculada a outro empréstimo.");
 
+            existente.EhEmprestimo = true; // dinheiro de empréstimo: fora do resultado do mês
             transacaoId = existente.Id;
         }
         else if (dto.ContaId.HasValue)
@@ -252,6 +253,7 @@ public class EmprestimoService(
                 Descricao = $"Empréstimo: {dto.Descricao}",
                 Valor = dto.ValorTotal,
                 Tipo = tipoTransacaoEsperado,
+                EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
                 Data = DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime()),
@@ -692,6 +694,7 @@ public class EmprestimoService(
             if (jaVinculada)
                 throw new InvalidOperationException("Essa transação já está vinculada a outra solicitação de pagamento.");
 
+            transacao.EhEmprestimo = true; // dinheiro de empréstimo: fora do resultado do mês
             valor = transacao.Valor;
         }
         else
@@ -709,6 +712,7 @@ public class EmprestimoService(
                     : $"Pagamento empréstimo: {emprestimo.Descricao}",
                 Valor = dto.Valor,
                 Tipo = tipoEsperado,
+                EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
                 Data = DateOnly.FromDateTime(dto.Data.ToUniversalTime()),
@@ -942,6 +946,7 @@ public class EmprestimoService(
             if (jaVinculada)
                 throw new InvalidOperationException("Essa transação já está vinculada a outra solicitação de pagamento.");
 
+            existente.EhEmprestimo = true; // dinheiro de empréstimo: fora do resultado do mês
             solicitacao.TransacaoRecebimentoId = existente.Id;
         }
         else if (dto.ContaId.HasValue)
@@ -955,6 +960,7 @@ public class EmprestimoService(
                 Descricao = $"Recebimento empréstimo: {emprestimo.Descricao}",
                 Valor = solicitacao.Valor,
                 Tipo = TipoTransacao.Receita, // credor recebendo — entra na conta dele
+                EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
                 Data = DateOnly.FromDateTime(DateTime.UtcNow),
