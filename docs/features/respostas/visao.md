@@ -78,7 +78,7 @@ Números do mockup = a conta do Gustavo em outubro/2026 (banco local).
 
 1. ✅ O cálculo do mês (regra única) + o cartão no Início + resposta em Limites e ao criar meta.
 2. ✅ Lista de Metas (as metas juntas cabem na folga?) e o cartão também na tela de Renda (2026-10-19, `feat/v2-respostas-passo2`).
-3. **Tela de Empréstimos** (o Gustavo lembrou: falta antes de Relatórios).
+3. ✅ **Tela de Empréstimos** (2026-10-19, `feat/v2-emprestimos`): o topo responde o que vence nos próximos 30 dias dos dois lados e se o saldo nas contas cobre (`ProximosEmprestimosService`).
 4. Essencial/não essencial + sinais.
 5. Relatórios (check-up).
 6. Modo "juntar mais".

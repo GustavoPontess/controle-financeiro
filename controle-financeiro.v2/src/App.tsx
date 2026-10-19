@@ -54,11 +54,15 @@ import NovaContaFixa from "./telas/NovaContaFixa"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
 import EmConstrucao from "./telas/EmConstrucao"
+import Emprestimos from "./telas/Emprestimos"
+import EmprestimoFormulario from "./telas/EmprestimoFormulario"
+import RegistrarEmprestimo from "./telas/RegistrarEmprestimo"
+import ConvidarEmprestimo from "./telas/ConvidarEmprestimo"
+import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
   ["/relatorios", "Relatórios", "/reports"],
-  ["/emprestimos", "Empréstimos", "/emprestimos"],
 ]
 
 export default function App() {
@@ -89,6 +93,11 @@ export default function App() {
         <Route path="/reconciliacao" element={<Reconciliacao />} />
         <Route path="/renda" element={<Renda />} />
         <Route path="/metas" element={<Metas />} />
+        <Route path="/emprestimos" element={<Emprestimos />} />
+        <Route path="/emprestimos/novo" element={<EmprestimoFormulario />} />
+        <Route path="/emprestimos/:id/registrar" element={<RegistrarEmprestimo />} />
+        <Route path="/emprestimos/:id/convidar" element={<ConvidarEmprestimo />} />
+        <Route path="/emprestimos/pagamentos/:id/confirmar" element={<ConfirmarPagamentoEmprestimo />} />
         <Route path="/metas/nova" element={<MetaFormulario />} />
         <Route path="/metas/:id" element={<MetaPagina />} />
         <Route path="/limites" element={<Limites />} />

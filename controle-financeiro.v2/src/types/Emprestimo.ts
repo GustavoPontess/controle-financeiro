@@ -124,6 +124,28 @@ export interface CriarEmprestimo {
   percentualMultaAtraso?: number
 }
 
+/** Uma parcela (ou o empréstimo à vista) que vence nos próximos 30 dias, ou que já venceu e ainda falta. */
+export interface VencimentoEmprestimo {
+  emprestimoId: string
+  /** A pessoa ou o banco do outro lado. */
+  quem: string
+  descricao: string
+  data: string
+  valor: number
+  venceu: boolean
+  /** "4 de 12" (null à vista). */
+  parcela: number | null
+  deParcelas: number | null
+}
+
+/** O topo de Empréstimos (GET /emprestimos/proximos): a frase, o que você devolve e o que volta pra você em 30 dias. */
+export interface ProximosEmprestimos {
+  resposta: { tom: "positivo" | "alerta" | "negativo" | "neutro"; texto: string; acoes: { rotulo: string; para: string }[] } | null
+  devolver: VencimentoEmprestimo[]
+  voltar: VencimentoEmprestimo[]
+  saldoNasContas: number
+}
+
 export interface EmprestimoConviteResultado {
   linkConvite: string
 }

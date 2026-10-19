@@ -1,0 +1,7 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.resumo { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.resumo strong { color: var(--v2-texto); font-weight: 600; }
+.aviso { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.link { display: flex; gap: 8px; align-items: center; }
+.link input { flex: 1; min-width: 0; }
+.ok { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-positivo-suave); color: var(--v2-positivo); font-size: var(--v2-fs-sm); font-weight: 500; }
