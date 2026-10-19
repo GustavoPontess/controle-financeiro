@@ -56,6 +56,10 @@ public class AdminLgpdService
     public async Task<ExportacaoUsuarioDto> MontarExportacaoAsync(Guid usuarioId)
     {
         var u = await BuscarOuFalharAsync(usuarioId);
+        var foto = await _context.FotosPerfil.AsNoTracking().FirstOrDefaultAsync(f => f.UsuarioId == usuarioId);
+        // Guardado de cada meta = saldo da caixinha dela (regra única de saldo).
+        var metas = await _context.Metas.AsNoTracking().Where(m => m.UsuarioId == usuarioId).ToListAsync();
+        var caixinhas = await RegrasFinanceiras.SaldosDasContasAsync(_context, metas.Where(m => m.ContaId.HasValue).Select(m => m.ContaId!.Value), usuarioId);
 
         return new ExportacaoUsuarioDto
         {
@@ -66,6 +70,7 @@ public class AdminLgpdService
                 Email = u.Email,
                 Nome = u.Nome,
                 DataNascimento = u.DataNascimento,
+                FotoPerfil = foto is null ? null : $"data:{foto.TipoConteudo};base64,{Convert.ToBase64String(foto.Dados)}",
                 Status = u.Status,
                 MfaAtivo = u.MfaAtivo,
                 OnboardingConcluido = u.OnboardingConcluido,
@@ -119,10 +124,14 @@ public class AdminLgpdService
                     Categoria = t.Categoria,
                 })
                 .ToList(),
-            Metas = await _context.Metas
-                .Where(m => m.UsuarioId == usuarioId)
-                .Select(m => new MetaExportadaDto { Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo })
-                .ToListAsync(),
+            Metas = metas
+                .Select(m => new MetaExportadaDto
+                {
+                    Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo, DataLimite = m.DataLimite,
+                    ConcluidaEm = m.ConcluidaEm, ValorJuntado = m.ValorJuntado,
+                    Guardado = m.ContaId.HasValue && caixinhas.TryGetValue(m.ContaId.Value, out var s) ? s.Saldo : 0m,
+                })
+                .ToList(),
             Orcamentos = await _context.Orcamentos
                 .Where(o => o.UsuarioId == usuarioId)
                 .Select(o => new OrcamentoExportadoDto { Id = o.Id, Mes = o.Mes, Ano = o.Ano, Valor = o.ValorLimite })
@@ -343,6 +352,9 @@ public class AdminLgpdService
         var subcats = await _context.Subcategorias.Where(s => s.UsuarioId == id).ToListAsync();
         _context.Subcategorias.RemoveRange(subcats);
         await _context.SaveChangesAsync();
+
+        // 7b. Foto de perfil (o cascade do banco também apaga; explícito pra não depender dele).
+        _context.FotosPerfil.RemoveRange(await _context.FotosPerfil.Where(f => f.UsuarioId == id).ToListAsync());
 
         // 8. Usuário — o cascade cuida do resto (Conta+Compartilhamento, Orcamento, Meta, Notificacao,
         //    RefreshToken, PasswordResetToken, MfaBackupCode, MfaLoginChallenge, Relacionamento próprio,

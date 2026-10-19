@@ -49,17 +49,9 @@ public class ParcelamentoService
         _relogio = relogio ?? TimeProvider.System;
     }
 
-    // Nome do mês sem CultureInfo("pt-BR"): a imagem de produção (alpine) roda com globalização
-    // invariante, e lá o construtor lança CultureNotFoundException — o usuário veria um 400 técnico em
-    // inglês no lugar da mensagem da regra.
-    private static readonly string[] MesesPtBr =
-    {
-        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-    };
-
+    // Nome do mês sem CultureInfo("pt-BR") (a imagem alpine roda com globalização invariante): MesesPt.
     private static string RotuloMesFatura(DateTime fechamento) =>
-        $"{MesesPtBr[fechamento.Month - 1]} de {fechamento.Year}";
+        $"{MesesPt.Nome(fechamento.Month)} de {fechamento.Year}";
 
     // ── Criar ─────────────────────────────────────────────────────────────────
 
@@ -217,8 +209,8 @@ public class ParcelamentoService
         var limiteAtual = await _limiteCalc.CalcularAsync(dto.CartaoCreditoId, usuarioId);
         if (limiteAtual.LimiteDisponivel < valorBloquear)
             throw new InvalidOperationException(
-                $"Limite insuficiente. Precisa de {valorBloquear:C}, " +
-                $"disponível {limiteAtual.LimiteDisponivel:C}.");
+                $"Limite insuficiente. Precisa de {Reais.Formatar(valorBloquear)}, " +
+                $"disponível {Reais.Formatar(limiteAtual.LimiteDisponivel)}.");
 
         // 9. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
         var correlationId = Guid.NewGuid();

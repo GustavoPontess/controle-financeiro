@@ -308,11 +308,12 @@ public class AuthService
         // (spec `docs/features/admin/spec.md` §3). `Status` é setado explicitamente pra deixar a
         // intenção clara no código, mesmo coincidindo com o default. NUNCA vem do DTO (blindagem
         // contra escalação — cliente não escolhe o próprio status).
+        ValidarDataNascimento(dto.DataNascimento);
         var usuario = new Usuario
         {
             Id = Guid.NewGuid(),
             Email = dto.Email.ToLower(),
-            Nome = dto.Nome,
+            Nome = dto.Nome.Trim(),
             DataNascimento = dto.DataNascimento,
             PasswordHash = PasswordHasher.HashPassword(dto.Password),
             Status = StatusUsuario.AguardandoAprovacao,
@@ -855,14 +856,24 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
+            FotoEm = usuario.FotoPerfilEm,
             Status = usuario.Status,
             CriadoEm = usuario.CriadoEm,
             IsAdmin = usuario.IsAdmin
         };
     }
 
+    /// <summary>Nome (1 a 200 caracteres, sem espaço sobrando) e data de nascimento (nunca no futuro, nem antes
+    /// de 1900). O DTO já barra o grosso; aqui vale pra quem chama o service direto.</summary>
     public async Task<UsuarioDto> UpdateProfileAsync(Guid usuarioId, string nome, DateTime? dataNascimento)
     {
+        nome = (nome ?? string.Empty).Trim();
+        if (nome.Length == 0)
+            throw new ArgumentException("Informe o nome.");
+        if (nome.Length > 200)
+            throw new ArgumentException("O nome pode ter no máximo 200 caracteres.");
+        ValidarDataNascimento(dataNascimento);
+
         var usuario = await _context.Usuarios.FindAsync(usuarioId);
         if (usuario == null)
             throw new KeyNotFoundException("Usuário não encontrado");
@@ -880,10 +891,20 @@ public class AuthService
             Email = usuario.Email,
             Nome = usuario.Nome,
             DataNascimento = usuario.DataNascimento,
+            FotoEm = usuario.FotoPerfilEm,
             Status = usuario.Status,
             CriadoEm = usuario.CriadoEm,
             IsAdmin = usuario.IsAdmin
         };
+    }
+
+    private static void ValidarDataNascimento(DateTime? data)
+    {
+        if (!data.HasValue) return;
+        if (data.Value.Date > DateTime.UtcNow.Date)
+            throw new ArgumentException("A data de nascimento não pode ser no futuro.");
+        if (data.Value.Year < 1900)
+            throw new ArgumentException("Data de nascimento inválida.");
     }
 
     /// <summary>Troca a senha (exige a atual). Sempre esquece os dispositivos confiáveis; com

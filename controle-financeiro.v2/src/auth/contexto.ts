@@ -4,6 +4,12 @@ export interface Usuario {
   id: string
   email: string
   nome: string
+  /** ISO ("1990-05-10T00:00:00") ou null. */
+  dataNascimento?: string | null
+  /** Versão da foto de perfil (null = sem foto). */
+  fotoEm?: string | null
+  /** Quando a conta foi criada (ISO). */
+  criadoEm?: string
   isAdmin?: boolean
 }
 
@@ -13,10 +19,23 @@ export type ResultadoEntrar =
   | { tipo: "mfa"; challengeToken: string }
   | { tipo: "exclusao"; diasRestantes: number | null }
 
+/** Conta conectada neste navegador (multi-conta): a lista mora no navegador; a autoridade é o cookie `rt_` dela. */
+export interface ContaConectada {
+  id: string
+  nome: string
+  email: string
+}
+
 export interface AuthContexto {
   usuario: Usuario | null
   carregando: boolean
   autenticado: boolean
+  /** As contas conectadas neste navegador (a ativa inclusa). */
+  contas: ContaConectada[]
+  /** Conecta OUTRA conta sem sair desta (POST /auth/add-account) e a torna ativa. Lança Error com a mensagem. */
+  adicionarConta: (email: string, senha: string) => Promise<void>
+  /** Torna ativa uma conta já conectada (POST /auth/switch). Se a sessão dela caiu, tira da lista e lança Error. */
+  trocarConta: (id: string) => Promise<void>
   /** Lança Error com a mensagem do servidor (senha errada, bloqueio…). */
   entrar: (email: string, senha: string, manterConectado: boolean) => Promise<ResultadoEntrar>
   /** 2º passo do login (código do autenticador ou de recuperação). */

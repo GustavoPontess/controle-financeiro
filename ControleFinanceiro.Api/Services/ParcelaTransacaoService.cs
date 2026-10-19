@@ -103,7 +103,7 @@ public class ParcelaTransacaoService
         var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, conta.Id, usuarioId)).Saldo;
         if (saldo < valorParcela)
             throw new InvalidOperationException(
-                $"Saldo insuficiente. Necessário {valorParcela:C}, disponível {saldo:C}.");
+                $"Saldo insuficiente. Necessário {Reais.Formatar(valorParcela)}, disponível {Reais.Formatar(saldo)}.");
 
         // 5. Fatura da parcela — "já paga" é decidido pelo RESTANTE no passo 5b, não pelo rótulo Pago
         //    (compra nova numa fatura marcada Pago volta a ter restante).
@@ -120,8 +120,8 @@ public class ParcelaTransacaoService
                 "A fatura desta parcela já está coberta pelos pagamentos feitos — não há o que antecipar.");
         if (restanteFatura < valorParcela)
             throw new InvalidOperationException(
-                $"A fatura desta parcela já foi paga em parte e resta {restanteFatura:C}, menos que a parcela " +
-                $"({valorParcela:C}). Pague o restante pela fatura.");
+                $"A fatura desta parcela já foi paga em parte e resta {Reais.Formatar(restanteFatura)}, menos que a parcela " +
+                $"({Reais.Formatar(valorParcela)}). Pague o restante pela fatura.");
 
         // 6. Transação ACID
         var correlationId = Guid.NewGuid();

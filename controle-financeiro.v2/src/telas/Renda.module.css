@@ -1,0 +1,43 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+.alerta { margin: 0 24px 10px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.mudo { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-weight: 400; }
+.dica { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.linkBotao { padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); color: var(--v2-acento); cursor: pointer; }
+.linkBotao:hover { text-decoration: underline; }
+
+/* Miolo do bloco (a barra do mês fica fora, no NavegadorMes) */
+.miolo { display: flex; flex-direction: column; gap: 18px; padding: 20px 24px; }
+
+/* Esperado · Recebido · Falta (mesma anatomia da faixa de números de Bancos) */
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-tom="positivo"] { color: var(--v2-positivo); }
+
+/* O que a pessoa espera receber: fixa + variável, salvar, limpar */
+.esperado { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.esperadoTitulo { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); }
+.esperadoAcoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.esperadoBotoes { display: flex; gap: 8px; margin-left: auto; }
+
+/* Entradas do mês */
+.entradas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.entradas li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--v2-linha); font-size: var(--v2-fs-sm); }
+.entradas li[data-prevista="true"] .entradaTexto { color: var(--v2-texto-3); }
+.entradaData { color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.entradaTexto { min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entradaValor { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.entradaValor[data-tom="positivo"] { color: var(--v2-positivo); }
+.entradaValor[data-tom="neutro"] { color: var(--v2-texto-3); font-weight: 500; }
+
+@media (max-width: 900px) {
+  .miolo { padding: 16px; }
+  .alerta { margin: 0 16px 10px; }
+  .numeros { gap: 8px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .entradas li { grid-template-columns: minmax(0, 1fr) auto; }
+  .entradaData { grid-column: 1 / -1; font-size: var(--v2-fs-xs); }
+}

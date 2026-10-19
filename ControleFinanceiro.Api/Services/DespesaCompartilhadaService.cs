@@ -60,7 +60,7 @@ public class DespesaCompartilhadaService
                 requerAprovacao ? TipoNotificacao.DespesaAprovacaoPendente : TipoNotificacao.DespesaCompartilhada,
                 requerAprovacao ? "Despesa aguardando aprovação" : "Nova despesa compartilhada",
                 requerAprovacao
-                    ? $"\"{transacao.Descricao}\" ({transacao.Valor:C}) precisa da sua aprovação."
+                    ? $"\"{transacao.Descricao}\" ({Reais.Formatar(transacao.Valor)}) precisa da sua aprovação."
                     : $"\"{transacao.Descricao}\" foi compartilhada na família.",
                 "/familias");
         }
@@ -101,8 +101,8 @@ public class DespesaCompartilhadaService
         await _notificacaoService.CriarAsync(
             transacao.CriadoPor,
             aprovar ? TipoNotificacao.DespesaAprovada : TipoNotificacao.DespesaRejeitada,
-            aprovar ? "Despesa aprovada" : "Despesa rejeitada",
-            $"{avaliador} {(aprovar ? "aprovou" : "rejeitou")} \"{transacao.Descricao}\".",
+            aprovar ? "Despesa aprovada" : "Despesa recusada",
+            $"{avaliador} {(aprovar ? "aprovou" : "recusou")} \"{transacao.Descricao}\".",
             "/familias");
     }
 
@@ -184,7 +184,8 @@ public class DespesaCompartilhadaService
     }
 
     /// <summary>Balanço mensal: quem pagou quanto vs a cota devida. A cota de cada
-    /// membro respeita o modo de rateio efetivo de cada despesa (Issue #25).</summary>
+    /// membro respeita o modo de rateio efetivo de cada despesa (Issue #25). Quem "só vê"
+    /// (permissão Dependente) não paga: fica fora da divisão (visão §7.2, decisão 2026-10-18).</summary>
     public async Task<BalancoFamiliaDto> ObterBalancoAsync(
         Guid familiaId, Guid usuarioId, int mes, int ano)
     {
@@ -195,9 +196,11 @@ public class DespesaCompartilhadaService
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
         var membros = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo)
-            .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.RendaMensal })
+            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
+            .Select(m => new { m.UsuarioId, m.Usuario!.Nome })
             .ToListAsync();
+        // Peso do rateio proporcional = renda prevista do mês de quem não escondeu tudo (renda-e-visibilidade.md).
+        var pesos = await new RendaService(_context).PesosAsync(familiaId, ano, mes);
 
         // Feature 2.4 — só despesas contabilizáveis entram no rateio (Pendente/Rejeitada fora).
         var despesas = await QueryDespesasDoMes(familiaId, mes, ano)
@@ -221,7 +224,7 @@ public class DespesaCompartilhadaService
         var total = despesas.Sum(d => d.Valor);
         var membroIds = membros.Select(m => m.UsuarioId).ToList();
         var cotaIgualitaria = membros.Count > 0 ? total / membros.Count : 0m;
-        var somaRenda = membros.Sum(m => m.RendaMensal ?? 0m);
+        var somaRenda = membros.Sum(m => pesos.GetValueOrDefault(m.UsuarioId));
 
         // Cota devida acumulada por membro.
         var cotaDevida = membroIds.ToDictionary(id => id, _ => 0m);
@@ -237,7 +240,7 @@ public class DespesaCompartilhadaService
                 cotaDevida[m.UsuarioId] += modo switch
                 {
                     ModoRateio.Proporcional when somaRenda > 0 =>
-                        despesa.Valor * ((m.RendaMensal ?? 0m) / somaRenda),
+                        despesa.Valor * (pesos.GetValueOrDefault(m.UsuarioId) / somaRenda),
                     ModoRateio.Personalizado when itens is { Count: > 0 } =>
                         despesa.Valor * (itens.GetValueOrDefault(m.UsuarioId, 0m) / 100m),
                     // Igualitário, ou fallback quando não há renda/itens definidos.
@@ -246,8 +249,8 @@ public class DespesaCompartilhadaService
             }
         }
 
-        // Acertos ativos do mês (Issue #26): o pagador "abate" da dívida, o
-        // recebedor tem o saldo reduzido pelo que já recebeu.
+        // Acertos ativos do mês (Issue #26): o acerto entra no saldo de quem passou (soma) e de quem
+        // recebeu (subtrai); as contas de cada um não mudam.
         var acertos = await _context.AcertosContas
             .Where(a => a.FamiliaId == familiaId && a.Ativo && a.Mes == mes && a.Ano == ano)
             .Select(a => new { a.DeUsuarioId, a.ParaUsuarioId, a.Valor })

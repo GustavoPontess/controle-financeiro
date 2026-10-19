@@ -45,6 +45,20 @@ public class EncerramentoContaServiceTests
         (await RegrasFinanceiras.SaldosDasContasAsync(ctx, new[] { contaId }, usuarioId))[contaId].Saldo;
 
     [Fact]
+    public async Task CaixinhaDeMeta_NaoSeEncerraPorBancos()
+    {
+        var ctx = CreateContext();
+        var u = Guid.NewGuid();
+        var metas = new MetaService(ctx, new TransferenciaService(ctx));
+        var meta = await metas.CriarAsync(new DTOs.Meta.CriarMetaDto("Viagem", null, 1000m, null, null, null), u);
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Servico(ctx).EncerrarAsync(meta.ContaId!.Value, new DTOs.Conta.EncerrarContaDto { Ajustar = true }, u, Chave()));
+        Assert.Contains("Metas", erro.Message);
+        Assert.Null((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
+    }
+
+    [Fact]
     public async Task SaldoZerado_EncerraDireto_ESaiDaLista()
     {
         var ctx = CreateContext();
@@ -72,6 +86,25 @@ public class EncerramentoContaServiceTests
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => Servico(ctx).EncerrarAsync(conta.Id, new EncerrarContaDto(), u, Chave()));
         Assert.Contains("saldo", ex.Message);
         Assert.Null((await ctx.Contas.FindAsync(conta.Id))!.EncerradaEm);
+    }
+
+    [Fact]
+    public async Task ComSaldo_Recusa_ComOValorEmReais_MesmoComCulturaInvariante()
+    {
+        // Como na imagem de produção (alpine): sem dados de cultura, {valor:C} saía "¤300.00".
+        var antes = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try
+        {
+            var ctx = CreateContext();
+            var u = Guid.NewGuid();
+            var conta = NovaConta(ctx, u, "Inter", 1300m);
+            await ctx.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => Servico(ctx).EncerrarAsync(conta.Id, new EncerrarContaDto(), u, Chave()));
+            Assert.Contains("saldo de R$ 1.300,00.", ex.Message);
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = antes; }
     }
 
     [Fact]

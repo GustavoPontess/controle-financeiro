@@ -2,8 +2,9 @@
 // formulário, encerrar). Espelham o servidor (ContaService.ValidarFormato, CriarContaDto).
 import type { Conta } from "../types/Conta"
 
-/** Enum TipoConta do back. Cartão (3) e Empréstimo (5) não são conta pra criar aqui (têm telas próprias). */
-export const TIPO_CONTA = { corrente: 1, poupanca: 2, dinheiro: 4, investimento: 6 } as const
+/** Enum TipoConta do back. Cartão (3) e Empréstimo (5) não são conta pra criar aqui (têm telas próprias);
+ *  Caixinha (7) é a conta de uma meta, criada e mexida só por Metas. */
+export const TIPO_CONTA = { corrente: 1, poupanca: 2, dinheiro: 4, investimento: 6, caixinha: 7 } as const
 /** Os tipos que a pessoa cria em Bancos, na ordem do formulário. `curto` cabe no segmento. */
 export const TIPOS_CONTA = [
   { valor: String(TIPO_CONTA.corrente), rotulo: "Conta corrente", curto: "Corrente", exemplo: "Nubank" },
@@ -12,12 +13,15 @@ export const TIPOS_CONTA = [
   { valor: String(TIPO_CONTA.dinheiro), rotulo: "Dinheiro", curto: "Dinheiro", exemplo: "Cofrinho" },
 ]
 export const rotuloTipo = (c: Pick<Conta, "tipo" | "isCarteira">): string =>
-  c.isCarteira ? "Dinheiro em mãos" : TIPOS_CONTA.find((t) => t.valor === String(c.tipo))?.rotulo ?? "Conta"
-/** Dinheiro não tem banco, agência nem número. */
-export const temDadosBancarios = (tipo: number) => tipo !== TIPO_CONTA.dinheiro
-/** Guardado = poupança ou investimentos. A carteira nunca é (mesmo gravada com tipo antigo). */
+  c.isCarteira ? "Dinheiro em mãos" : c.tipo === TIPO_CONTA.caixinha ? "Caixinha de meta"
+    : TIPOS_CONTA.find((t) => t.valor === String(c.tipo))?.rotulo ?? "Conta"
+/** Dinheiro e caixinha não têm banco, agência nem número. */
+export const temDadosBancarios = (tipo: number) => tipo !== TIPO_CONTA.dinheiro && tipo !== TIPO_CONTA.caixinha
+/** Caixinha de meta: o dinheiro guardado numa meta mora nela. */
+export const ehCaixinha = (c: Pick<Conta, "tipo">) => c.tipo === TIPO_CONTA.caixinha
+/** Guardado = poupança, investimentos ou caixinha de meta. A carteira nunca é (mesmo gravada com tipo antigo). */
 export const ehGuardado = (c: Pick<Conta, "tipo" | "isCarteira">) =>
-  !c.isCarteira && (c.tipo === TIPO_CONTA.poupanca || c.tipo === TIPO_CONTA.investimento)
+  !c.isCarteira && (c.tipo === TIPO_CONTA.poupanca || c.tipo === TIPO_CONTA.investimento || c.tipo === TIPO_CONTA.caixinha)
 /** Dinheiro em espécie: a carteira padrão e as outras que a pessoa criar (cofrinho, caixa de casa). */
 export const ehDinheiro = (c: Pick<Conta, "tipo" | "isCarteira">) => c.isCarteira || c.tipo === TIPO_CONTA.dinheiro
 

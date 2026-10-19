@@ -1,5 +1,7 @@
 // Bancos (contas) do v2: três números (saldo total, disponível em conta corrente + carteira, guardado na
-// poupança) e a lista de contas — abertas ou encerradas. A tela é SÓ das contas: clicar numa linha abre, ali
+// poupança, investimentos e caixinhas das metas) e a lista de contas — abertas ou encerradas. As caixinhas
+// das metas aparecem num grupo próprio, só pra ver: a ficha leva pra página da meta (guardar e resgatar moram
+// lá); caixinha de meta excluída não aparece. A tela é SÓ das contas: clicar numa linha abre, ali
 // embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
 // Encerrar, Editar / Reabrir); extrato é assunto de Transações. As abertas vêm em grupos com o total de
 // cada um — em conta, poupança, investimentos e dinheiro (a carteira e os cofrinhos) por último. As
@@ -8,7 +10,7 @@
 // (id) pra chegar com aquela conta aberta — é o que Nova/Editar/Encerrar fazem ao voltar.
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Ban, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
+import { ArrowRight, Ban, Pencil, PiggyBank, Plus, RotateCcw, Trash2, Wallet } from "lucide-react"
 import { deleteConta, getContas, reabrirConta } from "../services/contaService"
 import { getCartoes } from "../services/cartaoCreditoService"
 import type { CartaoCredito } from "../types/CartaoCredito"
@@ -22,7 +24,7 @@ import FaceCartao from "../componentes/FaceCartao"
 import { AcoesFicha, DadosFicha, GrupoFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
-import { descreverConta, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
+import { descreverConta, ehCaixinha, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
 import { NOME_BANDEIRA } from "../dominio/fatura"
 import { dataBR } from "../utils/dateTime"
 import styles from "./Bancos.module.css"
@@ -33,6 +35,9 @@ const SITUACOES: { valor: Situacao; rotulo: string }[] = [
   { valor: "encerradas", rotulo: "Encerradas" },
 ]
 
+// Abertas e encerradas, com as caixinhas das metas; a caixinha de meta excluída (encerrada) fica de fora.
+const carregarContas = () => getContas({ incluirEncerradas: true, incluirCaixinhas: true })
+  .then((cs) => cs.filter((c) => !(ehCaixinha(c) && c.encerradaEm)))
 // Por nome; no grupo "Dinheiro" a carteira padrão vem primeiro.
 const ordenar = (xs: Conta[]) => xs.slice().sort((a, b) => Number(b.isCarteira) - Number(a.isCarteira) || a.nome.localeCompare(b.nome, "pt-BR"))
 const soma = (xs: Conta[]) => xs.reduce((s, c) => s + c.saldoAtual, 0)
@@ -57,11 +62,11 @@ export default function Bancos() {
 
   useEffect(() => {
     let vivo = true
-    getContas({ incluirEncerradas: true }).then((c) => { if (vivo) setContas(c) }).catch(() => { if (vivo) setErro(true) })
+    carregarContas().then((c) => { if (vivo) setContas(c) }).catch(() => { if (vivo) setErro(true) })
     getCartoes().then((k) => { if (vivo) setCartoes(k) }).catch(() => { /* ficha sem cartões */ })
     return () => { vivo = false }
   }, [])
-  const recarregar = () => getContas({ incluirEncerradas: true }).then(setContas)
+  const recarregar = () => carregarContas().then(setContas)
 
   const abertas = useMemo(() => ordenar((contas ?? []).filter((c) => !c.encerradaEm)), [contas])
   const encerradas = useMemo(() => ordenar((contas ?? []).filter((c) => !!c.encerradaEm)), [contas])
@@ -73,6 +78,7 @@ export default function Bancos() {
       { chave: "conta", rotulo: "Em conta", contas: abertas.filter((c) => !ehDinheiro(c) && !ehGuardado(c)) },
       { chave: "poupanca", rotulo: "Poupança", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.poupanca) },
       { chave: "investimentos", rotulo: "Investimentos", contas: abertas.filter((c) => ehGuardado(c) && c.tipo === TIPO_CONTA.investimento) },
+      { chave: "caixinhas", rotulo: "Caixinhas das metas", contas: abertas.filter(ehCaixinha) },
       { chave: "dinheiro", rotulo: "Dinheiro", contas: abertas.filter(ehDinheiro) },
     ].filter((g) => g.contas.length > 0).map((g) => ({ ...g, total: soma(g.contas) as number | undefined }))
   }, [situacao, abertas, encerradas])
@@ -177,6 +183,7 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
     <ItemFicha id={`conta-${c.id}`} aberto={aberta} aoAbrir={aoAbrir} apagado={encerrada}
       marca={c.isCarteira
         ? <span className={styles.carteira} aria-hidden="true"><Wallet size={18} strokeWidth={2} /></span>
+        : ehCaixinha(c) ? <span className={styles.caixinha} aria-hidden="true"><PiggyBank size={18} strokeWidth={2} /></span>
         : <LogoMarca nome={c.bancoNome || c.nome} logoUrl={c.bancoLogoUrl} cor={c.bancoCor} tamanho={36} />}
       titulo={c.nome}
       detalhe={encerrada ? `Encerrada em ${dataBR(c.encerradaEm!)}` : descreverConta(c)}
@@ -211,7 +218,12 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
               </ul>
             </div>
           )}
-          {!c.isCarteira && (
+          {ehCaixinha(c) ? (
+            <AcoesFicha>
+              <Botao variante="primario" disabled={!c.metaId} onClick={() => navigate(`/metas/${c.metaId}`)}
+                icone={<ArrowRight size={15} strokeWidth={2.25} aria-hidden="true" />}>Abrir a meta</Botao>
+            </AcoesFicha>
+          ) : !c.isCarteira && (
             <AcoesFicha>
                 <Botao perigo disabled={ocupado} onClick={() => { setErro(null); setExcluindo(true) }} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
                 {encerrada ? (

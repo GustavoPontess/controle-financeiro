@@ -1,0 +1,41 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Faixa de números (mesma anatomia de Bancos) */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+/* Barra: situação à esquerda, "Nova meta" à direita (mesma anatomia de Bancos e Cartões) */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; }
+
+/* Cartões estilo caixinha: grade que se ajusta à largura */
+.grade { list-style: none; margin: 0; padding: 12px 24px 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.grade > li { display: flex; }
+.cartao { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 16px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); color: inherit; text-decoration: none; transition: border-color 0.12s, background 0.12s; }
+.cartao:hover { border-color: var(--v2-linha-forte); background: var(--v2-hover-linha); }
+.cartao:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.cartaoTopo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); flex-shrink: 0; }
+.cartao[data-concluida="true"] .icone { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.nome { font-size: var(--v2-fs-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.valores { display: flex; flex-direction: column; gap: 2px; }
+.guardado { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.de { font-size: var(--v2-fs-sm); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.rodape { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.porMes { font-weight: 600; color: var(--v2-texto); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .toolbar { padding: 14px 16px 4px; }
+  .grade { padding: 10px 16px 16px; grid-template-columns: minmax(0, 1fr); }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 16px 16px 24px; }
+}

@@ -1,9 +1,11 @@
+using ControleFinanceiro.Api.DTOs.Meta;
 using Microsoft.EntityFrameworkCore;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.CartaoCredito;
 using ControleFinanceiro.Api.DTOs.Conta;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Recorrente;
+using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.DTOs.Reconciliacao;
 using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Infrastructure;
@@ -44,6 +46,114 @@ public static class DemoSeeder
         await CategoriasAsync(sp, context, dev.Id, corrente.Id, hoje);
         await NotificacoesAsync(sp, context, dev.Id, nubank.Id);
         await ReconciliacaoAsync(sp, context, dev.Id, corrente.Id, hoje);
+        await FamiliaAsync(sp, context, dev.Id, hoje);
+        await RendaAsync(context, dev.Id, hoje);
+        await MetasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, hoje);
+        await LimitesAsync(sp, context, dev.Id, hoje);
+    }
+
+    // ── Limites: em cima do gasto real do mês (o seeder não inventa gasto). A categoria que mais gastou passou do
+    //    limite, a segunda está perto (≈90%), a terceira com folga e um limite que vale desde 3 meses atrás (valor
+    //    mudou neste mês), mais uma categoria com limite e nada gasto. As outras com gasto ficam "sem limite".
+    private static async Task LimitesAsync(IServiceProvider sp, AppDbContext context, Guid dev, DateTime hoje)
+    {
+        if (await context.Orcamentos.AnyAsync(o => o.UsuarioId == dev))
+            return;
+        var svc = sp.GetRequiredService<OrcamentoService>();
+        var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(context, dev, hoje.Year, hoje.Month);
+        var top = gastos.Where(kv => kv.Key != RegrasFinanceiras.SemCategoria && kv.Value.Gasto > 0)
+            .OrderByDescending(kv => kv.Value.Gasto).Take(3).ToList();
+        static decimal Redondo(decimal v) => Math.Max(10m, Math.Ceiling(v / 10m) * 10m);
+        async Task Limite(Guid categoria, decimal valor) =>
+            await svc.DefinirAsync(new ControleFinanceiro.Api.DTOs.Orcamento.DefinirLimiteDto(categoria, hoje.Year, hoje.Month, valor), dev);
+
+        if (top.Count > 0) await Limite(top[0].Key, Redondo(top[0].Value.Gasto * 0.8m));       // passou
+        if (top.Count > 1) await Limite(top[1].Key, Redondo(top[1].Value.Gasto / 0.9m));       // perto
+        if (top.Count > 2)
+        {
+            // Vinha valendo há 3 meses com outro valor (o mês passado ainda mostra o antigo) e mudou agora.
+            var inicio = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-3);
+            context.Orcamentos.Add(new Domain.Entities.Orcamento
+            {
+                Id = Guid.NewGuid(), UsuarioId = dev, CategoriaId = top[2].Key, Ano = inicio.Year, Mes = inicio.Month,
+                ValorLimite = Redondo(top[2].Value.Gasto * 1.5m),
+            });
+            await context.SaveChangesAsync();
+            await Limite(top[2].Key, Redondo(top[2].Value.Gasto * 2m));                         // com folga
+        }
+        var comGasto = gastos.Keys.ToList();
+        // Uma categoria comum que ainda não gastou nada no mês (Lazer, Educação, Transporte…, a primeira livre).
+        var preferidas = new[] { "Lazer", "Educação", "Transporte", "Saúde" };
+        var livres = await context.Categorias
+            .Where(c => c.UsuarioId == null && c.Finalidade != Finalidade.Receita && !comGasto.Contains(c.Id))
+            .Select(c => new { c.Id, c.Descricao }).ToListAsync();
+        var semGasto = preferidas.Select(n => livres.FirstOrDefault(c => c.Descricao.StartsWith(n))?.Id).FirstOrDefault(id => id.HasValue)
+            ?? livres.OrderBy(c => c.Descricao).Select(c => (Guid?)c.Id).FirstOrDefault() ?? Guid.Empty;
+        if (semGasto != Guid.Empty) await Limite(semGasto, 300m);                               // nada gasto ainda
+    }
+
+    // ── Metas (caixinhas): uma de cada situação. "Entrada do apê" atrás do ritmo (criada há 4 meses, guardada de
+    //    duas contas), "Reserva de emergência" sem prazo, "Carro novo" no ritmo (criada agora) e "Viagem de férias"
+    //    concluída (com um resgate no histórico). Guardar é transferência de verdade e nunca passa do saldo da
+    //    conta (o seeder corta, não inventa).
+    private static async Task MetasAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid corrente, Guid poupanca, DateTime hoje)
+    {
+        // Cada bloco olha se a meta dele já existe: dá pra acrescentar estado novo sem apagar o banco.
+        var jaTem = await context.Metas.Where(m => m.UsuarioId == dev).Select(m => m.Nome).ToListAsync();
+        var svc = sp.GetRequiredService<MetaService>();
+        var mes = new DateTime(hoje.Year, hoje.Month, 1);
+        async Task<Guid> Meta(string nome, string icone, decimal alvo, DateTime? prazo, int criadaHaMeses, params (Guid Conta, decimal Valor)[] guardar)
+        {
+            var m = await svc.CriarAsync(new CriarMetaDto(nome, null, alvo, prazo, null, null, icone), dev);
+            foreach (var (conta, valor) in guardar)
+            {
+                var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(context, conta, dev)).Saldo;
+                var v = Math.Min(valor, saldo);
+                if (v > 0)
+                    await svc.GuardarAsync(m.Id, new MovimentoMetaDto(conta, v), dev, Guid.NewGuid().ToString());
+            }
+            if (criadaHaMeses > 0)
+            {
+                var entidade = await context.Metas.FirstAsync(x => x.Id == m.Id);
+                entidade.CriadoEm = mes.AddMonths(-criadaHaMeses);
+                await context.SaveChangesAsync();
+            }
+            return m.Id;
+        }
+        if (!jaTem.Contains("Entrada do apê"))
+        {
+            await Meta("Entrada do apê", "casa", 60000m, mes.AddMonths(14), 4, (corrente, 1500m), (poupanca, 3500m));
+            await Meta("Reserva de emergência", "emergencia", 10000m, null, 2, (poupanca, 2300m));
+            await Meta("Carro novo", "carro", 40000m, mes.AddMonths(24), 0, (corrente, 2000m));
+            var viagem = await Meta("Viagem de férias", "viagem", 6000m, mes.AddMonths(5), 1, (corrente, 6500m));
+            await svc.ResgatarAsync(viagem, new MovimentoMetaDto(corrente, 500m), dev, Guid.NewGuid().ToString());
+        }
+        // Concluída de vez: chegou lá e o dinheiro foi usado ("Concluir e usar o dinheiro"), fica em Concluídas.
+        if (!jaTem.Contains("Notebook novo"))
+        {
+            var saldoC = (await RegrasFinanceiras.SaldoDaContaAsync(context, corrente, dev)).Saldo;
+            var saldoP = (await RegrasFinanceiras.SaldoDaContaAsync(context, poupanca, dev)).Saldo;
+            var (origem, saldo) = saldoC >= saldoP ? (corrente, saldoC) : (poupanca, saldoP);
+            if (saldo >= 1000m)
+            {
+                var alvo = Math.Min(3500m, Math.Floor(saldo));
+                var notebook = await Meta("Notebook novo", "celular", alvo, mes, 3, (origem, alvo));
+                await svc.ConcluirAsync(notebook, new ConcluirMetaDto(corrente), dev, Guid.NewGuid().ToString());
+            }
+        }
+    }
+
+    // ── Renda: o que o Gabriel declara esperar no mês (salário fixo + variável), pro cartão "Renda do mês" ter
+    //    previsto × recebido (o salário e o freelance recebidos vêm do DevDataSeeder). Vale pros meses seguintes.
+    private static async Task RendaAsync(AppDbContext context, Guid dev, DateTime hoje)
+    {
+        if (await context.RendasPrevistas.AnyAsync(r => r.UsuarioId == dev))
+            return;
+        context.RendasPrevistas.Add(new Domain.Entities.RendaPrevista
+        {
+            Id = Guid.NewGuid(), UsuarioId = dev, Ano = hoje.Year, Mes = hoje.Month, FixaEsperada = 7500m, VariavelEsperada = 1500m,
+        });
+        await context.SaveChangesAsync();
     }
 
     private static DateTime Utc(DateTime d) => DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
@@ -233,6 +343,51 @@ public static class DemoSeeder
         await Marco(3, 120m, null);
     }
 
+    // ── Família (Casa Dev, do DevDataSeeder: Gabriel + Marina com despesas compartilhadas): dependentes (criança
+    //    e pet), um convite pendente de quem só vê, aprovação a partir de R$ 1.500 e um acerto do mês.
+    private static async Task FamiliaAsync(IServiceProvider sp, AppDbContext context, Guid dev, DateTime hoje)
+    {
+        var familia = await context.Familias.FirstOrDefaultAsync(f => f.CriadoPorUsuarioId == dev);
+        if (familia is null)
+            return;
+        // Banco semeado antes do PapelPermissao: o criador ficou como Membro e não podia convidar nem mudar regra.
+        var criador = await context.MembrosFamilia.FirstAsync(m => m.FamiliaId == familia.Id && m.UsuarioId == dev);
+        if (criador.PapelPermissao != PapelFamilia.Admin)
+        {
+            criador.PapelPermissao = PapelFamilia.Admin;
+            await context.SaveChangesAsync();
+        }
+        // Cada passo confere sozinho se já existe (um boot que caiu no meio não trava os seguintes).
+        if (!await context.Dependentes.AnyAsync(d => d.FamiliaId == familia.Id))
+        {
+            var dependentes = sp.GetRequiredService<DependenteService>();
+            await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Theo", null, Utc(hoje.AddYears(-5).AddMonths(-3)), TipoDependente.Crianca));
+            await dependentes.CriarAsync(familia.Id, dev, new CriarDependenteDto("Bolt", "Boltinho", null, TipoDependente.Pet));
+        }
+        if (!await context.ConvitesFamilia.AnyAsync(c => c.FamiliaId == familia.Id && c.EmailConvidado == "avo@exemplo.com"))
+            await sp.GetRequiredService<ConviteService>().CriarAsync(familia.Id, new CriarConviteDto("avo@exemplo.com", "Avó", PapelFamilia.Dependente), dev);
+        if (familia.LimiteAprovacao is null)
+            await sp.GetRequiredService<FamiliaService>().DefinirLimiteAprovacaoAsync(familia.Id, dev, 1500m);
+        if (!await context.AcertosContas.AnyAsync(a => a.FamiliaId == familia.Id))
+        {
+            var conjuge = await context.MembrosFamilia.Where(m => m.FamiliaId == familia.Id && m.UsuarioId != dev).Select(m => m.UsuarioId).FirstAsync();
+            await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, dev, new RegistrarAcertoDto(
+                conjuge, dev, 150m, hoje.Month, hoje.Year, "Pix do mercado", Guid.NewGuid().ToString()));
+        }
+        // Marina: benefício fixo + bico, e libera o valor só pro Gabriel (quem entrar depois não vê). É o que faz
+        // a "Renda da casa" aparecer na aba Mês quando o Gabriel olha.
+        var marina = await context.MembrosFamilia.FirstAsync(m => m.FamiliaId == familia.Id && m.UsuarioId != dev);
+        if (!await context.RendasPrevistas.AnyAsync(r => r.UsuarioId == marina.UsuarioId))
+        {
+            context.RendasPrevistas.Add(new Domain.Entities.RendaPrevista
+            {
+                Id = Guid.NewGuid(), UsuarioId = marina.UsuarioId, Ano = hoje.Year, Mes = hoje.Month, FixaEsperada = 600m, VariavelEsperada = 800m,
+            });
+            marina.VisibilidadeRenda = VisibilidadeRenda.ValorParaAlguns;
+            marina.RendaVisivelPara = new List<Guid> { dev };
+            await context.SaveChangesAsync();
+        }
+    }
     // ── Notificações: pro sino ter o que mostrar (uma já lida).
     private static async Task NotificacoesAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid nubank)
     {
